@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -772,6 +773,55 @@
       (testing "with :skip-archived, archived actions are left out"
         (is (= {["Action" action-id] {"Card" model-id}}
                (serdes/descendants "Card" model-id {:skip-archived true})))))))
+
+(defn- action-events-during!
+  "The set of `[topic action-id archived?]` for the action events `thunk` publishes."
+  [thunk]
+  (let [published (atom #{})]
+    (with-redefs [events/publish-event! (fn [topic {:keys [object]}]
+                                          (when (#{:event/action-create :event/action-update :event/action-delete} topic)
+                                            (swap! published conj [topic (:id object) (boolean (:archived object))])))]
+      (thunk))
+    @published))
+
+(defn- do-with-model-actions!
+  "Runs `f` with `{:model-id :implicit :query :archived}`: a model with an implicit action, a query action, and an
+  already-archived query action."
+  [f]
+  (mt/with-temp [:model/Card   {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                 :model/Action {implicit :id} {:type :implicit :name "Create" :model_id model-id}
+                 :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
+                 :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
+    ;; the implicit_action row is what marks an action implicit to the queries that retire them
+    (t2/insert! :model/ImplicitAction {:action_id implicit :kind "row/create"})
+    (f {:model-id model-id :implicit implicit :query query :archived archived})))
+
+(deftest model-becoming-question-publishes-action-events-test
+  (testing "GHY-4722: turning a model into a question announces its archived and deleted actions"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit query]}]
+       (is (= #{[:event/action-update query true]
+                [:event/action-delete implicit false]}
+              (action-events-during! #(t2/update! :model/Card model-id {:type :question}))))))))
+
+(deftest model-query-without-implicit-support-publishes-action-events-test
+  (testing "GHY-4722: a model query that no longer supports implicit actions announces their deletion"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit]}]
+       (let [mp       (mt/metadata-provider)
+             filtered (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
+         (is (= #{[:event/action-delete implicit false]}
+                (action-events-during! #(t2/update! :model/Card model-id {:dataset_query filtered})))))))))
+
+(deftest model-delete-publishes-action-events-test
+  (testing "GHY-4722: deleting a model announces the deletion of all its actions"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit query archived]}]
+       (is (= #{[:event/action-delete implicit false]
+                [:event/action-delete query false]
+                [:event/action-delete archived true]}
+              (action-events-during! #(t2/delete! :model/Card model-id))))))))
 
 (deftest ^:parallel extract-result-metadata-non-model-test
   (testing "non-model Card extraction drops :result_metadata entirely"

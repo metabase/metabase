@@ -540,11 +540,30 @@
                       (not (lib/has-clauses? query stage-number))))
                (range 0 (count (:stages query))))))
 
+(defn- publish-action-events!
+  "Publish `topic` for each of `actions`, which a bulk change to their model touched without going through the
+  Action API."
+  [topic actions]
+  (doseq [action actions]
+    (events/publish-event! topic {:object action :user-id api/*current-user-id*})))
+
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (queries.db/implicit-action-ids-for-model model-id)]
-    (queries.db/delete-actions! action-ids)))
+  (when-let [action-ids (not-empty (queries.db/implicit-action-ids-for-model model-id))]
+    (let [actions (filter #(contains? action-ids (:id %)) (queries.db/actions-for-model model-id))]
+      (queries.db/delete-actions! action-ids)
+      (publish-action-events! :event/action-delete actions))))
+
+(defn- retire-actions-for-model!
+  "Archive the explicit actions and delete the implicit actions of the model Card with `model-id`, which is becoming
+  a question."
+  [model-id]
+  (let [{implicit true explicit false} (group-by #(= :implicit (:type %)) (queries.db/actions-for-model model-id))]
+    (queries.db/archive-explicit-actions-for-model! model-id)
+    (queries.db/delete-implicit-actions-for-model! model-id)
+    (publish-action-events! :event/action-update (map #(assoc % :archived true) (remove :archived explicit)))
+    (publish-action-events! :event/action-delete implicit)))
 
 ;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
 ;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
@@ -581,8 +600,7 @@
       ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
-        (queries.db/archive-explicit-actions-for-model! id)
-        (queries.db/delete-implicit-actions-for-model! id))
+        (retire-actions-for-model! id))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
@@ -860,7 +878,9 @@
   ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
   ;; return empty by the time the actual DELETE executes.
   (when-let [notification-ids (seq (queries.db/card-notification-ids id))]
-    (queries.db/delete-notifications! notification-ids)))
+    (queries.db/delete-notifications! notification-ids))
+  ;; The database deletes the card's actions through the foreign key, so announce them while the card still exists.
+  (publish-action-events! :event/action-delete (queries.db/actions-for-model id)))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]

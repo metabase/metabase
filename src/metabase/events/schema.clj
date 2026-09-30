@@ -125,7 +125,7 @@
 
 (mr/def ::action
   [:map {:closed true}
-   [:user-id  pos-int?]
+   [:user-id  [:maybe pos-int?]]
    [:object   [:fn #(t2/instance-of? :model/Action %)]]])
 
 (mr/def :event/action-create ::action)

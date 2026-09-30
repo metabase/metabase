@@ -895,6 +895,76 @@
                         (is (remote-sync.task/successful? (push!)))
                         (is (nil? (repo-file "actions/create_venue.yaml")))))))))))))))
 
+(defn- do-with-pushed-model-actions!
+  "Pushes a synced model with an implicit action (`actions/create_venue.yaml`) and a query action
+  (`actions/rename_venue.yaml`) through the API, then calls `f` with `{:model :push! :repo-file}`."
+  [f]
+  (mt/with-temporary-setting-values [remote-sync-type :read-write]
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Action :model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/"}]
+          (let [source    (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+                repo-file #(source.p/read-file (source.p/snapshot source) %)
+                push!     #(wait-for-task-completion
+                            (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                               remote-sync-token "test-token"
+                                               remote-sync-branch "main"]
+              (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                          settings/check-and-update-remote-settings! (constantly nil)
+                                          impl/finish-remote-config! (constantly nil)]
+                (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+                (let [model (mt/user-http-request :crowberto :post 200 "card"
+                                                  {:name                   "Venues Model"
+                                                   :type                   "model"
+                                                   :collection_id          coll-id
+                                                   :display                "table"
+                                                   :visualization_settings {}
+                                                   :dataset_query          (mt/mbql-query venues)})]
+                  (mt/user-http-request :crowberto :post 200 "action"
+                                        {:name "Create Venue" :type "implicit" :kind "row/create" :model_id (:id model)})
+                  (mt/user-http-request :crowberto :post 200 "action"
+                                        {:name          "Rename Venue"
+                                         :type          "query"
+                                         :model_id      (:id model)
+                                         :database_id   (mt/id)
+                                         :dataset_query {:type     "native"
+                                                         :database (mt/id)
+                                                         :native   {:query "UPDATE venues SET name = 'x' WHERE id = 1"}}
+                                         :parameters    []})
+                  (is (remote-sync.task/successful? (push!)))
+                  (is (some? (repo-file "actions/create_venue.yaml")))
+                  (is (some? (repo-file "actions/rename_venue.yaml")))
+                  (f {:model model :push! push! :repo-file repo-file}))))))))))
+
+(deftest push-after-model-becomes-question-removes-actions-test
+  (testing "GHY-4722: turning a pushed model into a question removes its actions from the repo on the next push"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [model push! repo-file]}]
+       (mt/user-http-request :crowberto :put 200 (str "card/" (:id model)) {:type "question"})
+       (is (remote-sync.task/successful? (push!)))
+       (is (nil? (repo-file "actions/create_venue.yaml")))
+       (is (nil? (repo-file "actions/rename_venue.yaml")))))))
+
+(deftest push-after-model-query-drops-implicit-actions-test
+  (testing "GHY-4722: a model query that no longer supports implicit actions removes them from the repo on the next push"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [model push! repo-file]}]
+       (mt/user-http-request :crowberto :put 200 (str "card/" (:id model))
+                             {:dataset_query (mt/mbql-query venues {:filter [:> $price 1]})})
+       (is (remote-sync.task/successful? (push!)))
+       (is (nil? (repo-file "actions/create_venue.yaml")))
+       (is (some? (repo-file "actions/rename_venue.yaml")) "the query action stays")))))
+
+(deftest push-after-model-deleted-removes-actions-test
+  (testing "GHY-4722: deleting a pushed model removes its actions from the repo on the next push"
+    (do-with-pushed-model-actions!
+     (fn [{:keys [model push! repo-file]}]
+       (mt/user-http-request :crowberto :delete 204 (str "card/" (:id model)))
+       (is (remote-sync.task/successful? (push!)))
+       (is (nil? (repo-file "actions/create_venue.yaml")))
+       (is (nil? (repo-file "actions/rename_venue.yaml")))))))
+
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
 (deftest current-task-requires-superuser-test
