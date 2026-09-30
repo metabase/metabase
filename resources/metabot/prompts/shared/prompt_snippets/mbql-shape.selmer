@@ -17,9 +17,9 @@ Questions of the form *"which / who / what has the most / highest / slowest / la
 
 ```json
 {"lib/type": "mbql.stage/mbql",
- "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
- "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
- "breakout": [["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]]],
+ "source-table": ["Sample Database", null, "ORDERS"],
+ "aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]]],
+ "breakout": [["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]]],
  "order-by": [["desc", {}, ["aggregation", {}, 0]]],
  "limit": 1}
 ```

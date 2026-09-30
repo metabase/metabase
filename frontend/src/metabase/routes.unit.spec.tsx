@@ -1,6 +1,10 @@
 import { waitFor } from "@testing-library/react";
 
-import { setupCurrentUserEndpoint } from "__support__/server-mocks";
+import {
+  setupCurrentUserEndpoint,
+  setupDashboardQuestionCandidatesEndpoint,
+  setupUserKeyValueEndpoints,
+} from "__support__/server-mocks";
 import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
@@ -58,6 +62,11 @@ jest.mock("metabase/monitor/components/MonitorLayout", () => {
   return {
     MonitorLayout: () => (mockRenderMonitorOutlet ? <Outlet /> : null),
   };
+});
+
+jest.mock("metabase/collections/components/CollectionLanding", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return { __esModule: true, default: () => <Outlet /> };
 });
 
 function setupAppRoutes({
@@ -150,5 +159,23 @@ describe("application routes", () => {
         expect(router?.location.pathname).toBe("/unauthorized");
       });
     });
+  });
+});
+
+describe("collection modal routes", () => {
+  it("renders the move-questions-into-dashboards modal with a single dialog", async () => {
+    setupUserKeyValueEndpoints({
+      namespace: "user_acknowledgement",
+      key: "dashboard_question_migration_info_modal",
+      value: false,
+    });
+    setupDashboardQuestionCandidatesEndpoint([]);
+
+    setupAppRoutes({ initialRoute: "/collection/1/move-questions-dashboard" });
+
+    expect(
+      await screen.findByText("Move questions into their dashboards?"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 });

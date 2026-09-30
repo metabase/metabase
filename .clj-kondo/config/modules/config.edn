@@ -552,6 +552,7 @@
            query-processor.pivot
            request
            settings
+           startup
            system
            task
            tiles
@@ -910,7 +911,6 @@
            metabase.driver.settings
            metabase.driver.sql
            metabase.driver.sql-jdbc
-           metabase.driver.sql-jdbc.connection.pool-lock
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
@@ -936,6 +936,7 @@
            query-processor.driver-api
            settings
            sql-tools
+           startup
            system
            tracing
            util
@@ -1110,6 +1111,7 @@
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
+           metabase.indexed-entities.core
            metabase.indexed-entities.init}
    :uses #{analytics
            api
@@ -1553,27 +1555,23 @@
           metabase.llm.provider
           metabase.llm.settings
           metabase.llm.startup}
-   :uses #{analytics
-           api
-           driver
+   :uses #{api
            lib
            lib.be
            lib.metadata
            lib.schema
            metabot
            models
-           parameters
            permissions
            premium-features
            request
            settings
            setup
            sql-tools
-           sync
+           startup
            util
            util.config
-           warehouse-schema-overlay
-           warehouses.schema}
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2326,7 +2324,8 @@
   {:team "UX West"
    :api  #{metabase.revisions.api
            metabase.revisions.core
-           metabase.revisions.init}
+           metabase.revisions.init
+           metabase.revisions.models.revision}
    :uses #{api
            collections
            dashboards
@@ -2356,7 +2355,8 @@
                     :model/Measure
                     :model/ParameterCard
                     :model/Segment
-                    :model/Transform}}
+                    :model/Transform
+                    :model/TransformTest}}
 
   run-tracking
   {:team "Gadget"
@@ -2380,7 +2380,7 @@
    :model-imports #{:model/DataPermissions :model/Database :model/Table}}
 
   search
-  {:team "UX West"
+  {:team "Metabot"
    :module-exports #{search.embeddings
                      search.entity-retrieval}
    :api  #{metabase.search.api
@@ -2638,6 +2638,7 @@
               server
               settings
               sso.auth-identity
+              startup
               system
               util
               util.config}
@@ -2813,6 +2814,7 @@
            premium-features
            query-processor
            settings
+           startup
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
@@ -3343,6 +3345,7 @@
            collections
            dashboards
            driver
+           indexed-entities
            lib
            lib.be
            lib.legacy-mbql
@@ -3367,7 +3370,6 @@
                     :model/Database
                     :model/Field
                     :model/ModelIndex
-                    :model/ModelIndexValue
                     :model/Query
                     :model/Revision
                     :model/Segment
@@ -4118,7 +4120,7 @@
                     :model/User}}
 
   enterprise/search
-  {:team "UX West"
+  {:team "Metabot"
    :module-exports #{enterprise/search.embeddings
                      enterprise/search.entity-retrieval
                      enterprise/search.semantic}
@@ -4353,14 +4355,18 @@
   {:team "Graphy"
    :api #{metabase-enterprise.transform-testing.api metabase-enterprise.transform-testing.init}
    :uses #{api
+           audit-app
            driver
            events
            lib
            lib.schema
            models
            premium-features
+           revisions
+           run-tracking
            sql-tools
            sql-tools.parsing
+           task
            transforms.base
            util
            warehouses}

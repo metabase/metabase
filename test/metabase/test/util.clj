@@ -414,6 +414,12 @@
        :inputs       []
        :expectations []}))
 
+   :model/TransformTestRun
+   (fn [_]
+     {:status         "started"
+      :start_time     (t/instant)
+      :last_heartbeat (t/instant)})
+
    :model/TransformRun
    (fn [_]
      {:status     "succeeded"

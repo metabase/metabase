@@ -45,11 +45,13 @@ export function GdriveConnectionModal({
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
-  const { data: gSheetData, error } = useGetGsheetsFolderQuery(
-    shouldShow ? undefined : skipToken,
-  );
+  const {
+    data: gSheetData,
+    error,
+    isLoading,
+  } = useGetGsheetsFolderQuery(shouldShow ? undefined : skipToken);
 
-  if (!shouldShow) {
+  if (!shouldShow || isLoading) {
     return null;
   }
 
@@ -245,16 +247,12 @@ function GoogleSheetsDisconnectModal({
             {errorMessage}
           </Text>
           <Flex justify="flex-end" gap="lg">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={isDeletingFolderLink}
-            >
+            <Button onClick={onClose} disabled={isDeletingFolderLink}>
               {connectButtonText}
             </Button>
             <Button
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >

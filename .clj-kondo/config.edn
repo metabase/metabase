@@ -65,6 +65,7 @@
   :metabase/check-testing-not-empty                          {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
+  :metabase/discourage-dynamic-vars                          {:level :warning}
   :metabase/discourage-millis-duration                       {:level :warning}
   :metabase/mbql-query-first-arg                             {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
@@ -588,7 +589,11 @@
 
  :hooks
  {:analyze-call
-  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+  {cljs.core/def                                                                                                             hooks.clojure.core.def/lint-dynamic
+   cljs.core/defn                                                                                                            hooks.clojure.core.def/lint-dynamic
+   cljs.core/defn-                                                                                                           hooks.clojure.core.def/lint-dynamic
+   cljs.core/defonce                                                                                                         hooks.clojure.core.def/lint-dynamic
+   cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/testing                                                                                                         hooks.clojure.test/testing
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
@@ -803,7 +808,11 @@
    metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
    metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.malli.defn/defn                                                                                             hooks.clojure.core.def/lint-dynamic
+   metabase.util.malli.defn/defn-                                                                                            hooks.clojure.core.def/lint-dynamic
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util.malli/defn                                                                                                  hooks.clojure.core.def/lint-dynamic
+   metabase.util.malli/defn-                                                                                                 hooks.clojure.core.def/lint-dynamic
    metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
    metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?
@@ -854,7 +863,13 @@
    metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
    metabase.util.namespaces/import-macro                                                        macros.metabase.util.namespaces/import-macro
-   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
+   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world
+   potemkin/import-def                                                                          macros.potemkin.namespaces/import-def
+   potemkin/import-fn                                                                           macros.potemkin.namespaces/import-fn
+   potemkin/import-macro                                                                        macros.potemkin.namespaces/import-macro
+   potemkin.namespaces/import-def                                                               macros.potemkin.namespaces/import-def
+   potemkin.namespaces/import-fn                                                                macros.potemkin.namespaces/import-fn
+   potemkin.namespaces/import-macro                                                             macros.potemkin.namespaces/import-macro}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
