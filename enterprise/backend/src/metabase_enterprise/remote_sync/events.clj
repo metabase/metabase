@@ -231,6 +231,11 @@
         existing-entry (remote-sync.db/rso model-type model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
+      ;; a synced item on a read-only instance can still change (e.g. an admin's public link), but that change can
+      ;; never be pushed, so tracking it would only block the next pull
+      (not (spec/model-editable? (:model-key model-spec) object))
+      nil
+
       eligible?
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
