@@ -278,3 +278,14 @@
       (is (some? (profiles/get-profile ::alternatives)))
       (finally
         (swap! @#'profiles/*profiles dissoc ::alternatives)))))
+
+(deftest resolve-tools-checks-availability-once-test
+  (testing "the offered tools and the unavailable list come from one availability check per tool"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (doseq [available? [true false]]
+        (let [probes (atom 0)]
+          (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (fn [] (swap! probes inc) available?)]
+            (let [{:keys [tools unavailable-tools]} (profiles/resolve-tools (profiles/get-profile :nlq) [] {})]
+              (is (= available? (contains? tools "retrieve_library_entities")))
+              (is (= (not available?) (boolean (some #(= "retrieve_library_entities" (:name %)) unavailable-tools))))
+              (is (= 1 @probes) (str "index available? " available?)))))))))

@@ -193,10 +193,11 @@
 
 (defn- library-unavailable-note
   "What the prompt says about library retrieval when it isn't offered. Nothing here is sensitive."
-  [_ctx]
+  [ctx]
   {:purpose    "finds curated data published to the library, by what it means"
    :missing    "curator usage instructions, and a signal for how well the library covers a request"
-   :reason     (if (entity-retrieval/entity-retrieval-available?)
+   ;; inferred from the cheap metabot lookup rather than a second probe of the index
+   :reason     (if (limited-discovery? ctx)
                  "library search can't yet be limited to what this metabot may show"
                  "library search isn't set up on this instance")
    :workaround "search with the search tools, and prefer results marked as library members"})

@@ -477,9 +477,9 @@
         capabilities (get context :capabilities #{})
         ;; what tools' `:available?` checks read, e.g. whether this metabot is confined to a collection
         tool-ctx     {:metabot-id metabot-id :profile-id profile-id}
-        base-tools   (profiles/profile->tools profile capabilities tool-ctx)
-        ;; resolved alongside the tools, so the prompt's "Unavailable tools" section matches what was offered
-        profile      (assoc profile :unavailable-tools (profiles/unavailable-tools profile capabilities tool-ctx))
+        ;; one availability check per tool feeds both the offered tools and the prompt's "Unavailable tools" section
+        {base-tools :tools unavailable :unavailable-tools} (profiles/resolve-tools profile capabilities tool-ctx)
+        profile      (assoc profile :unavailable-tools unavailable)
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)

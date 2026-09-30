@@ -301,46 +301,56 @@
     ;; An unregistered profile-id is a wiring bug; warn so it's diagnosable (callers handle the nil).
     (log/warnf "No metabot profile registered for %s" profile-id)))
 
+(defn- with-load-skill
+  "Register load_skill whenever the profile has ANY skills — on-demand (catalog) or always-on. Always-on bodies are
+  inlined, but their presence still implies a skill-bearing, possibly dialect-capable profile whose
+  `dialect-preload-parts` emit a synthetic `load_skill` call that must resolve to a registered tool."
+  [base profile capabilities]
+  (let [manifest (skills/build-skill-manifest profile (keys base) capabilities)]
+    (cond-> base
+      (or (seq (:catalog manifest)) (seq (:always-on manifest)))
+      (assoc "load_skill" #'tools/load-skill-tool))))
+
+(defn resolve-tools
+  "The tools an ALREADY-RESOLVED profile offers this turn, and the ones it can't, from one availability check per tool.
+
+  `:tools` is the registry of tool-name -> tool-var, filtered by capabilities, `*current-user-scope*`, and each tool's
+  `:available?` check, a function of the request context `ctx` (`{:metabot-id ... :profile-id ...}`). When the
+  profile exposes any skills, `load_skill` is injected for on-demand loading; profiles with `:skills? false` never get
+  it (see [[metabase.metabot.skills/build-skill-manifest]]).
+
+  `:unavailable-tools` feeds the system prompt's \"Unavailable tools\" section: the allowed tools whose name no
+  offered tool carries and that describe themselves with an `:unavailable-note` (a function of the same `ctx`). Each
+  entry is `{:name ... :purpose ...}`, plus whichever of `:missing`, `:reason` and `:workaround` the tool supplies.
+  Deriving both from the same check keeps the prompt from contradicting the tools when availability changes mid-turn."
+  [profile capabilities ctx]
+  (when profile
+    (let [allowed         (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
+          offered         (filterv #(available? % ctx) allowed)
+          offered-names   (into #{} (map #(:tool-name (meta %))) offered)]
+      {:tools             (with-load-skill (tool-map offered) profile capabilities)
+       :unavailable-tools (->> allowed
+                               (remove #(offered-names (:tool-name (meta %))))
+                               (keep (fn [tool-var]
+                                       (when-let [note (:unavailable-note (meta tool-var))]
+                                         (assoc (note ctx) :name (:tool-name (meta tool-var))))))
+                               (into (sorted-map) (map (juxt :name identity)))
+                               vals
+                               vec)})))
+
 (defn profile->tools
-  "Tool registry for an ALREADY-RESOLVED profile, filtered by capabilities and `*current-user-scope*`.
-  Returns a map of tool-name -> tool-var.
-  `ctx` is the request context `{:metabot-id ... :profile-id ...}` that tools' `:available?` checks read. When the profile exposes any skills, `load_skill` is injected for on-demand loading.
-  Profiles with `:skills? false` never get `load_skill` (see [[metabase.metabot.skills/build-skill-manifest]])."
+  "The tool registry an ALREADY-RESOLVED profile offers this turn; see [[resolve-tools]]."
   ([profile capabilities]
    (profile->tools profile capabilities {}))
   ([profile capabilities ctx]
-   (when profile
-     (let [base     (->> (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
-                         (filter #(available? % ctx))
-                         tool-map)
-           manifest (skills/build-skill-manifest profile (keys base) capabilities)]
-       (cond-> base
-         ;; Register load_skill whenever the profile has ANY skills — on-demand (catalog) or
-         ;; always-on. Always-on bodies are inlined, but their presence still implies a
-         ;; skill-bearing, possibly dialect-capable profile whose `dialect-preload-parts` emit a
-         ;; synthetic `load_skill` call that must resolve to a registered tool.
-         (or (seq (:catalog manifest)) (seq (:always-on manifest)))
-         (assoc "load_skill" #'tools/load-skill-tool))))))
+   (:tools (resolve-tools profile capabilities ctx))))
 
 (defn unavailable-tools
-  "The tools `profile` would offer this turn but can't, for the system prompt's \"Unavailable tools\" section. These are
-  the tools the profile, capabilities and scope allow whose name no available tool carries, and that describe
-  themselves with an `:unavailable-note`. Each entry is `{:name ... :purpose ...}`, plus whichever of `:missing`,
-  `:reason` and `:workaround` the tool supplies (its `:unavailable-note` takes the same `ctx` as `:available?`)."
+  "The tools an ALREADY-RESOLVED profile can't offer this turn, for the system prompt; see [[resolve-tools]]."
   ([profile capabilities]
    (unavailable-tools profile capabilities {}))
   ([profile capabilities ctx]
-   (when profile
-     (let [allowed         (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
-           available-names (into #{} (comp (filter #(available? % ctx)) (map #(:tool-name (meta %)))) allowed)]
-       (->> allowed
-            (remove #(available-names (:tool-name (meta %))))
-            (keep (fn [tool-var]
-                    (when-let [note (:unavailable-note (meta tool-var))]
-                      (assoc (note ctx) :name (:tool-name (meta tool-var))))))
-            (into (sorted-map) (map (juxt :name identity)))
-            vals
-            vec)))))
+   (:unavailable-tools (resolve-tools profile capabilities ctx))))
 
 (defn get-tools-for-profile
   "Resolve a profile by id and return its capability/scope-filtered tool registry (see [[profile->tools]]).
