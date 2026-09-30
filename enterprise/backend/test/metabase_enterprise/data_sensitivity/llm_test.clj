@@ -6,7 +6,11 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
+
+(set! *warn-on-reflection* true)
 
 (defn- field
   [name & {:as overrides}]
@@ -149,7 +153,7 @@
       (let [result (llm/classify-packet (packet fields) :model "test/model")]
         (testing "a 130-field packet takes three requests of at most 60 fields"
           (is (= 3 (:requests result)))
-          (is (= [60 60 10] (map #(count (re-seq #"(?m)^- F\d+ \(" (:content (second (:messages %))))) @calls))))
+          (is (= [60 60 10] (sort > (map #(count (re-seq #"(?m)^- F\d+ \(" (:content (second (:messages %))))) @calls)))))
         (testing "every field appears exactly once, all labeled"
           (is (= 130 (count (:fields result))))
           (is (= (set (map :name fields)) (set (keys (:fields result)))))
@@ -160,12 +164,72 @@
           (is (every? #(= "system" (-> % :messages first :role)) @calls))
           (is (every? #(= llm/response-schema (:schema %)) @calls))
           (is (every? #(= 0.0 (:temperature %)) @calls))
-          (is (= [(llm/max-tokens 60) (llm/max-tokens 60) (llm/max-tokens 10)] (map :max-tokens @calls)))
+          (is (= [(llm/max-tokens 60) (llm/max-tokens 60) (llm/max-tokens 10)] (sort > (map :max-tokens @calls))))
           (is (every? #(= {:source "data_sensitivity_classification" :tag "data-sensitivity"
                            :required-permission :permission/metabot-other-tools}
                           (dissoc (:opts %) :request-id))
                       @calls))
           (is (= 3 (count (set (map #(get-in % [:opts :request-id]) @calls))))))))))
+
+(defn- latched-call
+  "A `canned-call` stand-in that holds each call until `latch` has counted down to zero or 5 seconds pass, recording
+  the peak number of calls in flight in `peak`."
+  [^CountDownLatch latch in-flight peak]
+  (let [call (canned-call (atom []))]
+    (fn [& args]
+      (swap! peak max (swap! in-flight inc))
+      (try
+        (.countDown latch)
+        (.await latch 5 TimeUnit/SECONDS)
+        (Thread/sleep 20)
+        (apply call args)
+        (finally
+          (swap! in-flight dec))))))
+
+(deftest classify-packet-concurrent-chunks-test
+  (let [fields    (for [i (range 130)] (field (str "F" i)))
+        latch     (CountDownLatch. 3)
+        in-flight (atom 0)
+        peak      (atom 0)]
+    (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (latched-call latch in-flight peak)]
+      (let [result (llm/classify-packet (packet fields) :model "test/model" :chunk-size 60)]
+        (testing "the chunks of one table are in flight together"
+          (is (zero? (.getCount latch)))
+          (is (= 3 @peak)))
+        (testing "concurrent chunks merge every field exactly once"
+          (is (= 3 (:requests result)))
+          (is (= (set (map :name fields)) (set (keys (:fields result)))))
+          (is (every? #(= :labeled (:status %)) (vals (:fields result)))))))))
+
+(deftest classify-packet-chunk-parallelism-test
+  (let [in-flight (atom 0)
+        peak      (atom 0)
+        call      (canned-call (atom []))]
+    (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace
+                                (fn [& args]
+                                  (swap! peak max (swap! in-flight inc))
+                                  (try
+                                    (Thread/sleep 20)
+                                    (apply call args)
+                                    (finally
+                                      (swap! in-flight dec))))]
+      (let [result (llm/classify-packet (packet (for [i (range 10)] (field (str "F" i))))
+                                        :model "test/model" :chunk-size 2 :chunk-parallelism 2)]
+        (is (= 5 (:requests result)))
+        (is (<= @peak 2) "no more than chunk-parallelism chunks are in flight")))))
+
+(deftest max-concurrent-calls-test
+  (testing "calls from concurrent classifications share one instance-wide bound"
+    (let [n         llm/max-concurrent-calls
+          latch     (CountDownLatch. n)
+          in-flight (atom 0)
+          peak      (atom 0)]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (latched-call latch in-flight peak)]
+        (let [classify #(llm/classify-packet (packet (for [i (range (* n 2))] (field (str "F" i))))
+                                             :model "test/model" :chunk-size 2 :chunk-parallelism n)
+              runs     (doall (repeatedly 2 #(future (classify))))]
+          (is (every? #(= (* n 2) (count (:fields (deref % 30000 nil)))) runs))
+          (is (= n @peak)))))))
 
 (deftest classify-packet-defaults-test
   (let [calls (atom [])]
@@ -189,4 +253,18 @@
   (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace
                               (fn [& _] (throw (ex-info "limit" {:type :metabot/usage-limit-reached})))]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"limit"
-                          (llm/classify-packet (packet [(field "A")]) :model "test/model")))))
+                          (llm/classify-packet (packet [(field "A")]) :model "test/model"))))
+  (testing "a chunk failure surfaces as the chunk threw it, with its ex-data"
+    (let [call (canned-call (atom []))]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace
+                                  (fn [model messages & more]
+                                    (if (str/includes? (:content (second messages)) "- F3 (")
+                                      (throw (ex-info "rate limited" {:api-error true :status 429}))
+                                      (apply call model messages more)))]
+        (is (= {:api-error true :status 429}
+               (try
+                 (llm/classify-packet (packet (for [i (range 6)] (field (str "F" i))))
+                                      :model "test/model" :chunk-size 2)
+                 nil
+                 (catch clojure.lang.ExceptionInfo e
+                   (ex-data e)))))))))

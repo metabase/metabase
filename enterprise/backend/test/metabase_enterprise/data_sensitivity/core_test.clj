@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.llm :as llm]
+   [metabase.driver.util :as driver.u]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
@@ -332,6 +333,115 @@
                                  #(core/classify-database! (mt/db) :include-values? false :parallelism 2))]
         (is (= (count tables) (:failed result)))
         (is (every? #(= "later" (:error %)) (:tables result)))))))
+
+(defn- table-in-message
+  "The name of the table a user message renders."
+  [messages]
+  (second (re-find #"(?m)^name: (\S+)$" (:content (last messages)))))
+
+(defn- rate-limit [& {:as headers}]
+  (ex-info "Rate limited" {:api-error true :status 429 :provider "anthropic" :error-code :provider-api-error
+                           :headers headers}))
+
+(defn- flaky-llm
+  "A canned LLM that throws `(ex-fn table-name attempt)` when it returns an exception, counting attempts per table in
+  `attempts`."
+  [attempts ex-fn]
+  (fn [& [_model messages :as args]]
+    (let [table   (table-in-message messages)
+          attempt (get (swap! attempts update table (fnil inc 0)) table)]
+      (if-let [ex (ex-fn table attempt)]
+        (throw ex)
+        (apply (canned-llm (constantly {})) args)))))
+
+(deftest rate-limited-test
+  (is (core/rate-limited? (rate-limit)))
+  (is (core/rate-limited? (ex-info "x" {:api-error true :status 529})))
+  (is (not (core/rate-limited? (ex-info "x" {:api-error true :status 500}))))
+  (is (not (core/rate-limited? (ex-info "x" {:status 429}))))
+  (is (not (core/fatal-error? (rate-limit)))))
+
+(deftest retry-after-ms-test
+  (is (= 7000 (#'core/retry-after-ms (rate-limit "retry-after" "7"))))
+  (is (= 60000 (#'core/retry-after-ms (rate-limit "retry-after" "600"))) "capped at a minute")
+  (is (nil? (#'core/retry-after-ms (rate-limit "retry-after" "Wed, 21 Oct 2015 07:28:00 GMT"))))
+  (is (nil? (#'core/retry-after-ms (rate-limit)))))
+
+(deftest classify-database-rate-limit-requeue-test
+  (let [tables    (active-tables nil)
+        [a b c d] (map :name tables)]
+    (testing "a table rate limited once is retried after the run and succeeds"
+      (let [attempts (atom {})
+            result   (do-with-llm! (flaky-llm attempts (fn [table attempt] (when (and (= table a) (= attempt 1)) (rate-limit))))
+                                   #(core/classify-database! (mt/db) :include-values? false :requeue-delay-ms 0))]
+        (is (= 2 (get @attempts a)))
+        (is (= 0 (:failed result)))
+        (is (= 0 (:rate_limited result)))
+        (is (= (count tables) (:requests result)))
+        (is (= (map :id tables) (map :table_id (:tables result))) "the requeued result keeps its place")))
+    (testing "a table rate limited again is reported as rate_limited without stopping the run"
+      (let [attempts (atom {})
+            result   (do-with-llm! (flaky-llm attempts (fn [table _] (when (= table a) (rate-limit))))
+                                   #(core/classify-database! (mt/db) :include-values? false :requeue-delay-ms 0))]
+        (is (= 2 (get @attempts a)))
+        (is (= 1 (:failed result)))
+        (is (= 1 (:rate_limited result)))
+        (is (=? {:table_name a :error "Rate limited" :error_code "rate_limited"}
+                (first (:tables result))))
+        (is (= (dec (count tables)) (:requests result)))))
+    (testing "nothing is requeued after a fatal failure"
+      (let [attempts (atom {})
+            result   (do-with-llm! (flaky-llm attempts (fn [table _] (condp = table b (rate-limit) c provider-rejection nil)))
+                                   #(core/classify-database! (mt/db) :include-values? false :parallelism 1
+                                                             :requeue-delay-ms 0))]
+        (is (= 1 (get @attempts b)))
+        (is (nil? (get @attempts d)) "tables after the fatal failure never start")
+        (is (nil? (:error (first (:tables result)))))
+        (is (=? {:table_name b :error_code "rate_limited"} (second (:tables result))))
+        (is (=? {:table_name c :error_code "provider-api-error"} (nth (:tables result) 2)))))))
+
+(defn- values-rendered?
+  "Whether any recorded user message rendered sampled or cached values."
+  [messages]
+  (boolean (some #(str/includes? (:content (last %)) "; values: ") messages)))
+
+(defn- recording-llm [messages]
+  (fn [& [_model msgs :as args]]
+    (swap! messages conj msgs)
+    (apply (canned-llm (constantly {})) args)))
+
+(deftest connection-pre-flight-test
+  (let [connects (atom 0)]
+    (testing "a database that connects is tested once per run and sampled"
+      (let [messages (atom [])
+            result   (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details? (fn [& _] (swap! connects inc) true)]
+                       (do-with-llm! (recording-llm messages) #(core/classify-database! (mt/db) :parallelism 2)))]
+        (is (= 1 @connects))
+        (is (nil? (:sample_error result)))
+        (is (values-rendered? @messages))))
+    (testing "a database that cannot connect is classified on metadata alone and reports why"
+      (let [messages (atom [])
+            result   (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details?
+                                                 (fn [& _] (throw (ex-info "Timed out after 10.0 s" {})))]
+                       (do-with-llm! (recording-llm messages) #(core/classify-database! (mt/db) :parallelism 2)))]
+        (is (= "Timed out after 10.0 s" (:sample_error result)))
+        (is (= 0 (:failed result)))
+        (is (every? #(nil? (:sample_error %)) (:tables result)))
+        (is (not (values-rendered? @messages)))))
+    (testing "the table entry point tests the connection too"
+      (let [messages (atom [])
+            result   (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details?
+                                                 (fn [& _] (throw (ex-info "Timed out after 10.0 s" {})))]
+                       (do-with-llm! (recording-llm messages) #(core/classify-table! (people-table))))]
+        (is (= "Timed out after 10.0 s" (:sample_error result)))
+        (is (not (values-rendered? @messages)))))
+    (testing "no connection test runs when values are not requested"
+      (reset! connects 0)
+      (mt/with-dynamic-fn-redefs [driver.u/can-connect-with-details? (fn [& _] (swap! connects inc) true)]
+        (do-with-llm! (canned-llm (constantly {})) #(core/classify-database! (mt/db) :include-values? false)))
+      (is (= 0 @connects)))
+    (testing "an H2 database is allowed to be tested, as sync does"
+      (is (nil? (#'core/connection-error (mt/db)))))))
 
 (deftest classify-database-worker-pool-test
   (let [tables       (active-tables nil)
