@@ -2303,3 +2303,49 @@
           (is (=? {"PRICE"    {:global {:distinct-count 4}}
                    "LATITUDE" {:type {:type/Number {:min number?}}}}
                   (col-fingerprints (mt/user-http-request :crowberto :post 202 "dataset" query)))))))))
+
+(deftest sandboxed-card-and-dashcard-results-omit-fingerprints-test
+  (testing "BOT-2115: saved card and dashcard results for a sandboxed user carry no fingerprint"
+    (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
+                      :attributes {:price 1}}
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Collection    {collection-id :id} {}
+                     :model/Card          {card-id :id}       {:dataset_query (mt/mbql-query venues)
+                                                               :collection_id collection-id}
+                     :model/Dashboard     {dashboard-id :id}  {:collection_id collection-id}
+                     :model/DashboardCard {dashcard-id :id}   {:dashboard_id dashboard-id
+                                                               :card_id      card-id}]
+        (perms/grant-collection-read-permissions! &group collection-id)
+        (doseq [[path url] {"card"     (format "card/%d/query" card-id)
+                            "dashcard" (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                               dashboard-id dashcard-id card-id)}]
+          (testing path
+            (let [result (mt/user-http-request :rasta :post 202 url)]
+              (is (true? (-> result :data :is_sandboxed)))
+              (is (seq (mt/cols result)))
+              (is (every? nil? (vals (col-fingerprints result)))))))))))
+
+(deftest sandboxed-join-results-omit-fingerprints-test
+  (testing "BOT-2115: when a sandboxed table is joined to an unrestricted one, no result col carries a fingerprint"
+    (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
+                      :attributes {:price 1}}
+      (data-perms/set-table-permission! &group (mt/id :categories) :perms/create-queries :query-builder)
+      (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+      (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                         (mt/mbql-query venues
+                                           {:joins [{:source-table $$categories
+                                                     :fields       :all
+                                                     :condition    [:= $category_id &c.categories.id]
+                                                     :alias        "c"}]}))]
+        (is (true? (-> result :data :is_sandboxed)))
+        (testing "sanity check: the joined table's cols are in the result"
+          (is (contains? (set (map :table_id (mt/cols result))) (mt/id :categories))))
+        (is (every? nil? (vals (col-fingerprints result))))))))
+
+(deftest native-sandbox-results-omit-fingerprints-test
+  (testing "BOT-2115: result cols for a user sandboxed by a native query carry no fingerprint"
+    (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query {:query "SELECT * FROM VENUES WHERE PRICE = 1"})}}}
+      (let [result (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues))]
+        (is (true? (-> result :data :is_sandboxed)))
+        (is (= 22 (count (mt/rows result))))
+        (is (every? nil? (vals (col-fingerprints result))))))))
