@@ -4,6 +4,7 @@ import type {
   DatasetQuery,
   GoalValue,
   ReferencedEntity,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { GoalValueInput, StaticGoalValueInput } from "../GoalValueInput";
@@ -16,6 +17,7 @@ type Props = {
   placeholder: string;
   referencedEntities: ReferencedEntity[];
   value: GoalValue | null;
+  visualizationSettings: VisualizationSettings | undefined;
   onChange: (value: GoalValue | null) => void;
 };
 
@@ -27,6 +29,7 @@ export function SegmentBoundInput({
   placeholder,
   referencedEntities,
   value,
+  visualizationSettings,
   onChange,
 }: Props) {
   return (
@@ -48,6 +51,7 @@ export function SegmentBoundInput({
           placeholder={placeholder}
           referencedEntities={referencedEntities}
           value={value}
+          visualizationSettings={visualizationSettings}
           onChange={onChange}
         />
       )}

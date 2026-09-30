@@ -80,6 +80,7 @@ export type ChartSettingSegmentsEditorProps = {
   data?: DatasetData;
   datasetQuery?: DatasetQuery;
   value: GoalSegment[];
+  visualizationSettings?: VisualizationSettings;
   onChange: (value: GoalSegment[]) => void;
 };
 

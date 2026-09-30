@@ -83,6 +83,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       getProps: ([{ card, data }]) => ({
         data,
         datasetQuery: card.dataset_query,
+        visualizationSettings: card.visualization_settings,
       }),
     },
   },
