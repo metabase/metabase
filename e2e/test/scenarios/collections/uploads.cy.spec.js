@@ -191,6 +191,19 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
           uploadMode: "replace",
         });
         closeUploadErrorDetails();
+
+        cy.log("rejected uploads leave the table unchanged");
+        const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${VALID_CSV_FILES[0].tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
+        H.queryWritableDB(tableQuery, dialect).then((result) => {
+          const tableName =
+            result.rows[0].table_name ?? result.rows[0].TABLE_NAME;
+          H.queryWritableDB(
+            `SELECT count(*) as count FROM ${tableName};`,
+            dialect,
+          ).then((result) => {
+            expect(Number(result.rows[0].count)).to.equal(rowCount);
+          });
+        });
       });
     });
   });
@@ -381,7 +394,7 @@ function uploadToExisting({
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("status")
       .last()
-      .findByText(uploadMode === "replace" ? /Data replaced/i : /Data added/i, {
+      .findByText(/Data (added|replaced)/i, {
         timeout: 10 * 1000,
       });
   } else {

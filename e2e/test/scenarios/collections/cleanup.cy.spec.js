@@ -42,7 +42,7 @@ describe("scenarios > collections > clean up", () => {
           cy.findByText("Custom reports").click();
         });
         cy.location("pathname")
-          .should("match", /^\/collection\/\d+/)
+          .should("match", /^\/collection\/\d+-custom-reports/)
           .then((pathname) => {
             const customReportsId = parseInt(pathname.split("/")[2], 10);
             H.createQuestion({
