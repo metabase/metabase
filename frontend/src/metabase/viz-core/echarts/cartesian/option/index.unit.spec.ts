@@ -222,15 +222,21 @@ describe("row chart bands", () => {
   const CATEGORIES = ["Doohickey", "Gadget", "Gizmo", "Widget"];
 
   // Bars render as `<path d="M{x} {y}l{w} 0l0 {h}l-{w} 0Z">`; returns each
-  // series-0 bar's top and thickness.
+  // series-0 bar's top, length and thickness.
   const getBarRects = (svg: string) =>
     [
       ...svg.matchAll(
-        /<path d="M[\d.]+ ([\d.]+)l[\d.]+ 0l0 ([\d.]+)l-[\d.]+ 0Z"[^>]*ecmeta_series_index="0"/g,
+        /<path d="M[\d.]+ ([\d.]+)l([\d.]+) 0l0 ([\d.]+)l-[\d.]+ 0Z"[^>]*ecmeta_series_index="0"/g,
       ),
-    ].map((match) => ({ top: Number(match[1]), thickness: Number(match[2]) }));
+    ].map((match) => ({
+      top: Number(match[1]),
+      length: Number(match[2]),
+      thickness: Number(match[3]),
+    }));
 
-  const getRowChartOption = () => {
+  const getRowChartOption = (
+    values = CATEGORIES.map((_, index) => 100 * (index + 1)),
+  ) => {
     const renderingContext: RenderingContext = {
       ...mockRenderingContext,
       getColor: () => "#509EE3",
@@ -245,10 +251,7 @@ describe("row chart bands", () => {
       {
         card: createMockCard({ display: "row" }),
         data: createMockDatasetData({
-          rows: CATEGORIES.map((category, index) => [
-            category,
-            100 * (index + 1),
-          ]),
+          rows: CATEGORIES.map((category, index) => [category, values[index]]),
           cols: [
             createMockColumn({ name: "CATEGORY", base_type: "type/Text" }),
             createMockColumn({ name: "count", base_type: "type/Integer" }),
@@ -284,14 +287,14 @@ describe("row chart bands", () => {
     );
   };
 
-  const renderRowChartBars = () => {
+  const renderRowChartBars = (values?: number[]) => {
     const chart = echarts.init(null, null, {
       renderer: "svg",
       ssr: true,
       width: chartWidth,
       height: chartHeight,
     });
-    chart.setOption(getRowChartOption());
+    chart.setOption(getRowChartOption(values));
     const bars = getBarRects(chart.renderToSVGString());
     chart.dispose();
 
@@ -312,6 +315,14 @@ describe("row chart bands", () => {
 
     // With no goal label, the plot starts at the base top padding.
     expect((bars[0].top - CHART_STYLE.padding.y) / pitch).toBeCloseTo(0.2, 2);
+  });
+
+  it("draws near-zero bars at least 1px long", () => {
+    const { bars } = renderRowChartBars([1_000_000, 1, 2, 3]);
+
+    for (const { length } of bars) {
+      expect(length).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("lets ECharts keep metric tick labels inside the chart, but not move axis names", () => {

@@ -203,8 +203,7 @@ export function buildGridAndSeriesOption(
     ? buildSplitPanelGrid(chartLayout, panelCount)
     : {
         ...chartLayout.padding,
-        // Row charts let ECharts keep metric tick labels in bounds, since it
-        // knows the rounded axis end; axis names stay where the layout put them.
+        // Row charts let ECharts keep metric tick labels in bounds
         ...(chartModel.isRowChart
           ? { outerBoundsMode: "auto", outerBoundsContain: "axisLabel" }
           : { outerBoundsMode: "none" }),
@@ -315,7 +314,6 @@ export const getCartesianChartOption = (
       // X and Y axis option types are structurally compatible but don't overlap.
       xAxis = (axes.yAxis as unknown as XAXisOption[]).map((axis) => ({
         ...axis,
-        nameRotate: 0,
         nameGap:
           getAxisNameGap(ticksDimensions.xTicksHeight) +
           CHART_STYLE.rowChartAxisName.metricGapExtra,
@@ -332,7 +330,6 @@ export const getCartesianChartOption = (
       const rotatedDimensionAxis = {
         ...axes.xAxis,
         inverse: true,
-        nameRotate: 90,
         nameGap: getAxisNameGap(ticksDimensions.yTicksWidthLeft),
       } as unknown as YAXisOption;
       yAxis = [rotatedDimensionAxis];

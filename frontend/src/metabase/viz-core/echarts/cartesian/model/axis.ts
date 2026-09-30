@@ -589,8 +589,8 @@ export function getYAxisModel(
   };
 }
 
-// For a replaced dataset, e.g. the row fold, whose "Other" row can exceed
-// every extent computed before it.
+// Only called when row chart rows fold into "Other", which can exceed every
+// extent computed before the fold.
 export function refitYAxisExtents(
   { leftAxisModel, rightAxisModel, stackModels }: BaseCartesianChartModel,
   transformedDataset: ChartDataset,

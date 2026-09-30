@@ -128,13 +128,13 @@ export function getGoalLineSeriesOption(
         (settings["graph.goal_label"] ?? "").length * fontSize * 0.6;
       const flipLabel = isRowChart && goalX + labelWidth > xEnd;
 
-      const align = isRowChart
+      const align: "left" | "right" = isRowChart
         ? flipLabel
-          ? ("right" as const)
-          : ("left" as const)
+          ? "right"
+          : "left"
         : labelOnLeft
-          ? ("left" as const)
-          : ("right" as const);
+          ? "left"
+          : "right";
       const labelX = isRowChart ? goalX : labelOnLeft ? xStart : xEnd;
       const labelY = isRowChart
         ? yStart - fontSize - labelMargin

@@ -61,8 +61,6 @@ export interface SeriesSettingOptions {
   def?: Partial<NestedSettingsOptions<SingleSeries>>;
 }
 
-// The chart model looks settings up with a bare `{ card: { _seriesKey } }`
-// object, so the card's display is only reliable on the transformed series.
 const isRowChartSeries = (extra?: SettingsExtra) =>
   extra?.series?.[0]?.card.display === "row";
 

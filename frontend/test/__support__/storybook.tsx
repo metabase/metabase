@@ -44,12 +44,7 @@ export const VisualizationWrapper = ({
   displayTheme?: "light" | "dark";
   initialStore?: State;
 }) => {
-  // `getMainStore` adds the RTK Query `Api` reducer and its middleware, which
-  // the bare `getStore(mainReducers, ...)` omits. Visualizations reach the API
-  // through hooks now — `CartesianChart` calls `useTimelineEvents`, which calls
-  // `useListTimelinesQuery` — and without the middleware RTK warns that the
-  // "metabase-api" reducer is missing from the store. It went unnoticed because
-  // the bar/line/combo stories that would have hit it are `loki: { skip: true }`.
+  // Visualizations call RTK Query hooks, which need the `Api` reducer and middleware.
   const store = getMainStore(initialStore);
 
   return (

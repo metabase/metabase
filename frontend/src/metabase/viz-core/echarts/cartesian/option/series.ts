@@ -624,13 +624,11 @@ const buildEChartsBarSeries = (
     xAxisIndex,
     yAxisIndex,
     barGap: 0,
-    // A rotated bar grows along x, so the "don't vanish" floor swaps too.
-    ...(isRowChart
-      ? {
-          barMinWidth: 1,
-          barCategoryGap: CHART_STYLE.series.rowBarCategoryGap,
-        }
-      : { barMinHeight: 1 }),
+    // Minimum length along the value axis, whichever way the bars run.
+    barMinHeight: 1,
+    ...(isRowChart && {
+      barCategoryGap: CHART_STYLE.series.rowBarCategoryGap,
+    }),
     stack,
     barWidth: computeBarWidth(
       xAxisModel,
