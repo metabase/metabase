@@ -406,6 +406,7 @@ describe("scenarios > question > saved", () => {
     cy.wait("@cardCreate");
     cy.findByTestId("save-question-modal").should("not.exist");
     cy.wrap(names).should((values) => {
+      expect(values).to.include("Products");
       expect(values.filter((name) => /- Modified$/.test(name))).to.be.empty;
     });
   });
