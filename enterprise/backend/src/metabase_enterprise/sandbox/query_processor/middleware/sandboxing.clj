@@ -466,14 +466,23 @@
                  (get col-name->expected-col (:name col))))))]
     (update metadata :cols merge-cols)))
 
+(defn- remove-fingerprints
+  "A Field's fingerprint is computed at sync time over every row of the table, so it describes rows the sandbox hides.
+  Both the merged original metadata and the sandboxed query's own cols carry it, so drop it from every col."
+  [metadata]
+  (update metadata :cols (partial mapv #(dissoc % :fingerprint))))
+
 (defenterprise merge-sandboxing-metadata
-  "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
+  "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query, minus
+  fingerprints."
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (boolean (match/match-one query
-                                                            {:query-permissions/sandboxed-table &truthy} true)))
-          metadata (if original-metadata
-                     (merge-metadata original-metadata metadata)
-                     metadata)]
-      (rff metadata))))
+    (let [sandboxed? (boolean (match/match-one query
+                                {:query-permissions/sandboxed-table &truthy} true))
+          metadata   (assoc metadata :is_sandboxed sandboxed?)
+          metadata   (if original-metadata
+                       (merge-metadata original-metadata metadata)
+                       metadata)]
+      (rff (cond-> metadata
+             (or sandboxed? original-metadata) remove-fingerprints)))))

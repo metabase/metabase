@@ -691,6 +691,8 @@
                               ;; should return a field for the original field
                               (update :field_ref (fn [[tag _id opts]]
                                                    [tag id opts]))
+                              ;; except for the fingerprint, which describes rows the sandbox hides (BOT-2115)
+                              (assoc :fingerprint (symbol "nil #_\"key is not present.\""))
                               (dissoc :fk_target_field_id
                                       :lib/original-display-name
                                       :lib/transformation-added-base-type))))]
@@ -1170,11 +1172,10 @@
                                                    :attributes {"user_id" 1, "user_cat" "Widget"}}
                                    (qp.store/with-metadata-provider (remap-metadata-provider)
                                      (mt/run-mbql-query orders)))]
-        (testing "Sanity check: merged results metadata should not get normalized incorrectly"
-          (is (=? {:type {:type/Number {}}}
-                  (-> (get-in mbql-sandbox-results [:data :cols])
-                      (nth 3)
-                      :fingerprint))))
+        (testing "Sanity check: merged results metadata carries no fingerprint (BOT-2115)"
+          (is (nil? (-> (get-in mbql-sandbox-results [:data :cols])
+                        (nth 3)
+                        :fingerprint))))
         (doseq [orders-gtap-card-has-metadata? [true false]
                 products-gtap-card-has-metadata? [true false]]
           (testing (format "\nwith GTAP metadata for Orders? %s Products? %s"
@@ -2282,3 +2283,23 @@
                   :let [source-col (col-by-name (:remapped_from col))]]
             (is (= (:name col)
                    (:remapped_to source-col)))))))))
+
+(defn- col-fingerprints
+  "`{col-name fingerprint}` for every col in a query `result`."
+  [result]
+  (into {} (map (juxt :name :fingerprint)) (mt/cols result)))
+
+(deftest sandboxed-results-omit-fingerprints-test
+  (testing "BOT-2115: result cols for a sandboxed user carry no fingerprint, since it describes rows the sandbox hides"
+    (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
+                      :attributes {:price 1}}
+      (let [query  (mt/mbql-query venues)
+            result (mt/user-http-request :rasta :post 202 "dataset" query)]
+        (testing "sanity check: the sandbox is in force"
+          (is (true? (-> result :data :is_sandboxed)))
+          (is (= #{1} (into #{} (map #(nth % 5)) (mt/rows result)))))
+        (is (every? nil? (vals (col-fingerprints result))))
+        (testing "an unsandboxed admin still gets the fingerprint"
+          (is (=? {"PRICE"    {:global {:distinct-count 4}}
+                   "LATITUDE" {:type {:type/Number {:min number?}}}}
+                  (col-fingerprints (mt/user-http-request :crowberto :post 202 "dataset" query)))))))))
