@@ -145,7 +145,7 @@
                    :label     (deferred-tru "Service account key file")
                    :type      :file
                    :show-when {:field :auth-method :value "key"}}]
-      (is (= "**Service account key file**. Only when **Authentication method** is **Service account key**."
+      (is (= "**Service account key file**. Only when **Authentication method** is **Service account key** (`key`)."
              (#'ai-provider-dox/field-entry keyfile (provider [method keyfile]))))))
   (testing "a field optional here, required on Metabase Cloud, and useless without its partner says all three"
     (let [fields [access-key-field secret-key-field]]
@@ -235,7 +235,7 @@
       (is (str/includes? markdown
                          (str "needs either **Service account key file**, or "
                               "**OAuth access token** and **Project ID**.")))
-      (is (str/includes? markdown "Only when **Authentication method** is **Service account key**."))
+      (is (str/includes? markdown "Only when **Authentication method** is **Service account key** (`service-account-key`)."))
       (testing "a field with no `:show-when` carries no condition of its own"
         (let [project-id (->> (str/split-lines markdown)
                               (filter #(str/starts-with? % "- **Project ID**"))

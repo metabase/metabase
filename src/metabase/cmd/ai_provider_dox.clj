@@ -84,9 +84,14 @@
   "The condition that reveals a field, or nil when it is always shown."
   [{:keys [show-when]} {:keys [fields]}]
   (when-let [{:keys [field value]} show-when]
-    (let [controlling (field-at fields field)]
+    (let [controlling  (field-at fields field)
+          value-label  (option-label controlling value)]
+      ;; the stored value, in code, ties the label to the value [[field-options-sentence]] lists
       (str "Only when " (md/bold (label controlling))
-           " is " (md/bold (option-label controlling value)) "."))))
+           " is " (md/bold value-label)
+           (when (not= (str value-label) (str value))
+             (str " (" (md/code value) ")"))
+           "."))))
 
 (defn- field-requires-sentence
   "The siblings a field cannot be set without, or nil when it stands on its own. The registry keys `:requires` by
