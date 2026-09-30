@@ -13,13 +13,17 @@ title: Driver interface changelog
 ## Metabase 0.64.0
 
 - `metabase.util.date-2/extract`, `truncate`, `bucket`, `range`, and `comparison-range` now take a `time-config` map
-  as their first argument, e.g. `[time-config t unit]`. It holds `:start-of-week`, which these functions used to
-  read from the `start-of-week` setting. Drivers can pass `{:start-of-week (driver-api/start-of-week)}`. The arities
-  without `t`, which used the current time, have been removed. The `:first-day-of-week`, `:first-week-of-year`, and
-  `:week-of-year` methods of `metabase.util.date-2/adjuster` now take the start of the week as their last argument.
+  as their first argument, e.g. `[time-config t unit]`, instead of reading the `start-of-week` setting. The arities
+  without `t`, which used the current time, have been removed. Drivers should call `driver-api/date-extract`,
+  `date-truncate`, `date-bucket`, `date-range`, and `date-comparison-range` instead. They take the old arguments and
+  fill in the instance's time config.
 
-- `metabase.lib.core/desugar-filter-clause` now takes a `time-config` map as its first argument:
-  `[time-config filter-clause]`.
+- `metabase.lib.core/desugar-filter-clause` and `negate-boolean-expression` now take a `time-config` map as their
+  first argument. Drivers should call `driver-api/desugar-filter-clause` and `driver-api/negate-boolean-expression`,
+  which take the old arguments.
+
+- The `:first-day-of-week`, `:first-week-of-year`, and `:week-of-year` methods of `metabase.util.date-2/adjuster` now
+  take the start of the week as their last argument, e.g. `(driver-api/start-of-week)`.
 
 - `metabase.driver.sql.normalize/default-schema` now takes the database as well as the driver:
   `[driver database]`. The schema an unqualified table reference resolves to is a property of the connection for a

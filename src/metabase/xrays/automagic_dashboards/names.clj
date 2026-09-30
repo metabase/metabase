@@ -155,7 +155,7 @@
 (defn- humanize-datetime
   "Convert a time data type into a human friendly string."
   [t unit]
-  (let [options {:start-of-week (lib-be/start-of-week)}
+  (let [options (lib-be/time-config)
         dt      (if (integer? t)
                   (u.time/coerce-to-timestamp t (assoc options :unit unit))
                   (u.date/parse t))]

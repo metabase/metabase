@@ -77,7 +77,7 @@
    (comparison-range start end unit :day))
 
   ([start end unit resolution]
-   (let [time-config {:start-of-week (lib-be/start-of-week)}
+   (let [time-config (lib-be/time-config)
          options     {:resolution resolution}]
      (merge
       (u.date/comparison-range time-config start unit :>= options)

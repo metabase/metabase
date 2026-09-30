@@ -24,7 +24,7 @@
   "Compute relative datetime from [[qp.timezone/now]] shifted by `unit` and `amount`. Format the resulting value
    to literal string compatible with most sql databases, to avoid possible jdbc driver timezone conversions."
   [unit amount effective-or-base-type]
-  (-> (u.date/truncate {:start-of-week (lib-be/start-of-week)} (qp.timezone/now) unit)
+  (-> (u.date/truncate (lib-be/time-config) (qp.timezone/now) unit)
       (u.date/add unit amount)
       (maybe-truncate-dt-value effective-or-base-type)
       (u.date/format-sql)))
