@@ -568,43 +568,6 @@ describe("issue 41464", () => {
   });
 });
 
-describe("issue 45452", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should only have one scrollbar for the summarize sidebar and not show the run button overlay when an error occurs (metabase#45452, metabase#12586)", () => {
-    H.openOrdersTable();
-    H.summarize();
-
-    cy.findByTestId("summarize-aggregation-item-list").then(($el) => {
-      const element = $el[0];
-      expectNoScrollbarContainer(element);
-    });
-
-    cy.findByTestId("summarize-breakout-column-list").then(($el) => {
-      const element = $el[0];
-      expectNoScrollbarContainer(element);
-    });
-
-    // the sidebar is the only element with a scrollbar
-    cy.findByTestId("sidebar-content").then(($el) => {
-      const element = $el[0];
-      expect(element.scrollHeight > element.clientHeight).to.be.true;
-      expect(element.offsetWidth > element.clientWidth).to.be.true;
-    });
-
-    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
-
-    H.rightSidebar().button("Done").click();
-    H.main()
-      .findByText("We're experiencing server issues")
-      .should("be.visible");
-    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
-  });
-});
-
 describe("issue 41612", () => {
   beforeEach(() => {
     H.restore();
@@ -746,14 +709,6 @@ describe("issue 36027", () => {
     });
   });
 });
-
-function expectNoScrollbarContainer(element) {
-  const hasScrollbarContainer =
-    element.scrollHeight <= element.clientHeight &&
-    element.offsetWidth > element.clientWidth;
-
-  expect(hasScrollbarContainer).to.be.false;
-}
 
 describe("issue 48829", () => {
   const questionDetails = {

@@ -326,7 +326,7 @@ describe("scenarios > question > native", () => {
     cy.get("@sidebar").contains(/added/i);
   });
 
-  it("should not autorun ad-hoc native queries by default", () => {
+  it("should not autorun ad-hoc native queries by default or native queries after updating a question (metabase#30165)", () => {
     H.visitQuestionAdhoc(
       {
         display: "scalar",
@@ -343,9 +343,7 @@ describe("scenarios > question > native", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear").should("be.visible");
-  });
 
-  it("should not autorun native queries after updating a question (metabase#30165)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");

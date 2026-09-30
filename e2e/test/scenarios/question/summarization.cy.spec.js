@@ -106,6 +106,33 @@ describe("scenarios > question > summarize sidebar", () => {
       cy.findByLabelText("Binning strategy").should("be.visible");
     });
   });
+
+  it("should only have one scrollbar for the summarize sidebar and not show the run button overlay when an error occurs (metabase#45452, metabase#12586)", () => {
+    cy.findByTestId("summarize-aggregation-item-list").then(($el) => {
+      const element = $el[0];
+      expectNoScrollbarContainer(element);
+    });
+
+    cy.findByTestId("summarize-breakout-column-list").then(($el) => {
+      const element = $el[0];
+      expectNoScrollbarContainer(element);
+    });
+
+    // the sidebar is the only element with a scrollbar
+    cy.findByTestId("sidebar-content").then(($el) => {
+      const element = $el[0];
+      expect(element.scrollHeight > element.clientHeight).to.be.true;
+      expect(element.offsetWidth > element.clientWidth).to.be.true;
+    });
+
+    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
+
+    H.rightSidebar().button("Done").click();
+    H.main()
+      .findByText("We're experiencing server issues")
+      .should("be.visible");
+    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
+  });
 });
 
 describe("scenarios > question > summarize", () => {
@@ -270,4 +297,12 @@ function removeMetricFromSidebar(metricName) {
 
     cy.findByLabelText(metricName).should("not.exist");
   });
+}
+
+function expectNoScrollbarContainer(element) {
+  const hasScrollbarContainer =
+    element.scrollHeight <= element.clientHeight &&
+    element.offsetWidth > element.clientWidth;
+
+  expect(hasScrollbarContainer).to.be.false;
 }

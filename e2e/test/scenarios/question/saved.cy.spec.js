@@ -83,7 +83,8 @@ describe("scenarios > question > saved", () => {
     });
   });
 
-  it("should duplicate a saved question into a collection", () => {
+  it("should duplicate a saved question into a collection, into a dashboard, and to a collection created on the go", () => {
+    cy.log("into a collection");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
@@ -100,9 +101,8 @@ describe("scenarios > question > saved", () => {
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
     });
-  });
 
-  it("should duplicate a saved question into a dashboard", () => {
+    cy.log("into a dashboard");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
@@ -130,9 +130,8 @@ describe("scenarios > question > saved", () => {
     cy.url().should("include", "/dashboard/");
     cy.location("hash").should("not.include", "scrollTo");
     H.dashboardCards().findByText("Orders - Duplicate").should("be.visible");
-  });
 
-  it("should duplicate a saved question to a collection created on the go", () => {
+    cy.log("to a collection created on the go");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
