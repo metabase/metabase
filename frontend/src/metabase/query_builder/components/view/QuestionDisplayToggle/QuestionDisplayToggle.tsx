@@ -29,29 +29,19 @@ export const QuestionDisplayToggle = ({
       classNames={{
         root: className,
       }}
-      onClick={(e) => {
-        e.preventDefault();
+      onChange={() => {
         onToggleRawTable(!isShowingRawTable);
       }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onToggleRawTable(!isShowingRawTable);
-        }
-      }}
-      tabIndex={0}
       value={isShowingRawTable ? "data" : "visualization"}
       data-testid="query-display-tabular-toggle"
       data={[
         {
-          disabled: true,
           value: "data",
           label: (
             <Icon size={16} name="table2" aria-label={t`Switch to data`} />
           ),
         },
         {
-          disabled: true,
           value: "visualization",
           label: (
             <Icon
