@@ -909,6 +909,17 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (is (nil? (:join-required-dimensions (metric-details-for unjoined-metric-query)))))))
 
+(deftest metric-details-default-time-dimension-test
+  (testing "metric-details finds the time dimension a metric breaks out by when its table has FK-reachable columns"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (= (mt/id :orders :created_at)
+             (:default_time_dimension_field_id
+              (metric-details-for
+               (fn [mp]
+                 (lib/breakout (unjoined-metric-query mp)
+                               (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                                 :month))))))))))
+
 (deftest metric-details-omits-join-required-dimensions-when-export-fails-test
   (testing (str "fail closed: when the portable join clause cannot be exported, the entry is DROPPED "
                 "rather than surfaced with a nil join - instructing the LLM to paste `null` into "
