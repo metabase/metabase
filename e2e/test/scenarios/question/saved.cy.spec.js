@@ -69,6 +69,18 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Started from").should("not.exist");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 100").should("not.exist");
+
+    H.summarize();
+    H.rightSidebar().within(() => {
+      cy.findByText("Quantity").click();
+      cy.button("Done").click();
+    });
+
+    H.appBar().within(() => {
+      cy.findByText("Started from").should("be.visible");
+      cy.findByText("Orders").click();
+      cy.findByText("Started from").should("not.exist");
+    });
   });
 
   it("should duplicate a saved question into a collection", () => {
@@ -231,16 +243,14 @@ describe("scenarios > question > saved", () => {
     H.undoToast().should("contain.text", "Cannot revert: missing card");
   });
 
-  it("should show collection breadcrumbs for a saved question in the root collection", () => {
+  it("should show collection breadcrumbs for a saved question in the root and a non-root collection", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Our analytics").click());
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
-  });
 
-  it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       collection_id: SECOND_COLLECTION_ID,
     });
@@ -275,22 +285,6 @@ describe("scenarios > question > saved", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
-  });
-
-  it("should show the question lineage when a saved question is changed", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    H.summarize();
-    H.rightSidebar().within(() => {
-      cy.findByText("Quantity").click();
-      cy.button("Done").click();
-    });
-
-    H.appBar().within(() => {
-      cy.findByText("Started from").should("be.visible");
-      cy.findByText("Orders").click();
-      cy.findByText("Started from").should("not.exist");
-    });
   });
 
   it("'read-only' user should be able to resize column width (metabase#9772)", () => {
@@ -410,24 +404,7 @@ describe("scenarios > question > saved", () => {
     }
 
     HIDDEN_TYPES.forEach((visibilityType) => {
-      it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
-        hideTable({ name: "Orders", id: ORDERS_ID, visibilityType });
-
-        H.visitQuestion(ORDERS_QUESTION_ID);
-
-        H.queryBuilderHeader()
-          .findByText("View-only")
-          .should("be.visible")
-          .realHover();
-        H.popover()
-          .findByText(
-            "One of the administrators hid the source table “Orders”, making this question view-only.",
-          )
-          .should("be.visible");
-      });
-
-      it(`should show a View-only tag when a joined table is marked as ${visibilityType}`, () => {
-        cy.signInAsAdmin();
+      it(`should show a View-only tag when a joined or the source table is marked as ${visibilityType}`, () => {
         hideTable({ name: "Products", id: PRODUCTS_ID, visibilityType });
         H.createQuestion(
           {
@@ -459,6 +436,20 @@ describe("scenarios > question > saved", () => {
         H.popover()
           .findByText(
             "One of the administrators hid the source table “Products”, making this question view-only.",
+          )
+          .should("be.visible");
+
+        hideTable({ name: "Orders", id: ORDERS_ID, visibilityType });
+
+        H.visitQuestion(ORDERS_QUESTION_ID);
+
+        H.queryBuilderHeader()
+          .findByText("View-only")
+          .should("be.visible")
+          .realHover();
+        H.popover()
+          .findByText(
+            "One of the administrators hid the source table “Orders”, making this question view-only.",
           )
           .should("be.visible");
       });

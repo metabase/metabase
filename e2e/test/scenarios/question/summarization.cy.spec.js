@@ -18,18 +18,7 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize();
   });
 
-  it("removing all aggregations should show add aggregation button with label", () => {
-    cy.findByTestId("aggregation-item").within(() => {
-      cy.icon("close").click();
-    });
-
-    cy.findByTestId("add-aggregation-button").should(
-      "have.text",
-      "Add a function or metric",
-    );
-  });
-
-  it("selected dimensions becomes pinned to the top of the dimensions list", () => {
+  it("selected dimensions become pinned to the top of the dimensions list (with the table alias for another table), and removing all aggregations shows the add aggregation button", () => {
     H.getDimensionByName({ name: "Total" })
       .should("have.attr", "aria-selected", "false")
       .click({ position: "left" });
@@ -65,9 +54,7 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByTestId("unpinned-dimensions").within(() => {
       cy.findByText("Total");
     });
-  });
 
-  it("selected dimensions from another table includes the table alias when becomes pinned to the top", () => {
     H.getDimensionByName({ name: "State" }).click();
 
     cy.button("Done").click();
@@ -86,6 +73,15 @@ describe("scenarios > question > summarize sidebar", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User → State").should("not.exist");
+
+    cy.findByTestId("aggregation-item").within(() => {
+      cy.icon("close").click();
+    });
+
+    cy.findByTestId("add-aggregation-button").should(
+      "have.text",
+      "Add a function or metric",
+    );
   });
 
   it("selecting a binning adds a dimension", () => {
@@ -111,10 +107,23 @@ describe("scenarios > question > summarize sidebar", () => {
     });
   });
 
-  it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
+  it("should allow using `Custom Expression` in orders metrics and keep manually entered parenthesis intact if they affect the result (metabase#12899, metabase#13306)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
     H.popover().contains("Custom Expression").click();
+
+    H.enterCustomColumnDetails({
+      formula: "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      format: true,
+    });
+
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        Sum([Total]) /
+          (Sum([Product → Price]) * Average([Quantity]))
+      `.trim(),
+    );
 
     H.enterCustomColumnDetails({
       formula: "2 * Max([Total])",
@@ -130,25 +139,6 @@ describe("scenarios > question > summarize sidebar", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("318.7");
-  });
-
-  it("should keep manually entered parenthesis intact if they affect the result (metabase#13306)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
-
-    H.popover().contains("Custom Expression").click();
-    H.enterCustomColumnDetails({
-      formula: "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
-      format: true,
-    });
-
-    H.CustomExpressionEditor.value().should(
-      "equal",
-      dedent`
-        Sum([Total]) /
-          (Sum([Product → Price]) * Average([Quantity]))
-      `.trim(),
-    );
   });
 
   it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {

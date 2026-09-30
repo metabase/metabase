@@ -225,7 +225,7 @@ describe("scenarios > question > native query drill", () => {
       H.assertQueryBuilderRowCount(5);
     });
 
-    it("quick-filter drill", () => {
+    it("quick-filter drill and unsupported aggregated cell drills", () => {
       H.createNativeQuestion(timeseriesLineQuestionDetails, {
         visitQuestion: true,
       });
@@ -233,6 +233,9 @@ describe("scenarios > question > native query drill", () => {
       H.cartesianChartCircle().eq(0).click();
       H.popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");
+        cy.findByText(/See these/).should("not.exist");
+        cy.findByText(/Breakout by/).should("not.exist");
+        cy.findByText(/Automatic insights/).should("not.exist");
         cy.findByText("=").click();
         cy.wait("@dataset");
       });
@@ -316,20 +319,7 @@ describe("scenarios > question > native query drill", () => {
       });
     });
 
-    it("unsupported drills", () => {
-      cy.log("aggregated cell click");
-      H.createNativeQuestion(timeseriesLineQuestionDetails, {
-        visitQuestion: true,
-      });
-      H.assertQueryBuilderRowCount(10);
-      H.cartesianChartCircle().eq(0).click();
-      H.popover().within(() => {
-        cy.findByText(/See these/).should("not.exist");
-        cy.findByText(/Breakout by/).should("not.exist");
-        cy.findByText(/Automatic insights/).should("not.exist");
-      });
-
-      cy.log("legend item click");
+    it("unsupported legend item drill", () => {
       H.createNativeQuestion(timeseriesWithCategoryLineQuestionDetails, {
         visitQuestion: true,
       });

@@ -622,7 +622,7 @@ describe(
       cy.signInAsAdmin();
     });
 
-    it("can create a question from the sample database", () => {
+    it("can create a question from the sample database or a saved question, and shows models and raw data options after creating a model", () => {
       cy.visit("/question/new");
 
       H.miniPickerBrowseAll().click();
@@ -634,9 +634,7 @@ describe(
       H.tableInteractive().within(() => {
         cy.findByText("Rustic Paper Wallet").should("be.visible");
       });
-    });
 
-    it("can create a question from a saved question", () => {
       cy.visit("/question/new");
 
       H.miniPickerBrowseAll().click();
@@ -648,9 +646,7 @@ describe(
       H.tableInteractive().within(() => {
         cy.findByText(39.72).should("be.visible");
       });
-    });
 
-    it("shows models and raw data options after creating a model", () => {
       H.createQuestion({
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
@@ -672,7 +668,10 @@ describe(
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findByText("Recent items").click();
-        cy.findByTestId("result-item").should("contain.text", "Orders Model");
+        cy.findAllByTestId("result-item").should(
+          "contain.text",
+          "Orders Model",
+        );
       });
     });
   },

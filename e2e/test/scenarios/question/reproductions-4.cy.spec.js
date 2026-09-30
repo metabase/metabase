@@ -571,10 +571,10 @@ describe("issue 41464", () => {
 describe("issue 45452", () => {
   beforeEach(() => {
     H.restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
-  it("should only have one scrollbar for the summarize sidebar (metabase#45452)", () => {
+  it("should only have one scrollbar for the summarize sidebar and not show the run button overlay when an error occurs (metabase#45452, metabase#12586)", () => {
     H.openOrdersTable();
     H.summarize();
 
@@ -594,6 +594,14 @@ describe("issue 45452", () => {
       expect(element.scrollHeight > element.clientHeight).to.be.true;
       expect(element.offsetWidth > element.clientWidth).to.be.true;
     });
+
+    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
+
+    H.rightSidebar().button("Done").click();
+    H.main()
+      .findByText("We're experiencing server issues")
+      .should("be.visible");
+    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
   });
 });
 
@@ -736,26 +744,6 @@ describe("issue 36027", () => {
         cy.findByText(state).should("be.visible");
       });
     });
-  });
-});
-
-describe("issue 12586", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not show the run button overlay when an error occurs (metabase#12586)", () => {
-    H.openOrdersTable();
-    H.summarize();
-
-    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
-
-    H.rightSidebar().button("Done").click();
-    H.main()
-      .findByText("We're experiencing server issues")
-      .should("be.visible");
-    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
   });
 });
 

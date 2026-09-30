@@ -156,11 +156,11 @@ describe("scenarios > notebook > data source", () => {
       H.createLibrary();
     });
 
-    it("should allow to pick a published table from the mini picker", () => {
+    it("should allow to pick a published table from the mini picker and the data picker", () => {
       H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
       H.startNewQuestion();
 
-      cy.log("verify the picker when nothing is selected");
+      cy.log("mini picker: verify the picker when nothing is selected");
       H.popover().findByText("Orders").click();
       H.join();
       H.popover().findByText("Products").click();
@@ -168,37 +168,7 @@ describe("scenarios > notebook > data source", () => {
       H.tableHeaderColumn("User ID").should("be.visible");
       H.tableHeaderColumn("Products → ID").should("be.visible");
 
-      cy.log("verify the picker when there is a selected item");
-      H.openNotebook();
-      H.getNotebookStep("data").findByText("Orders").click();
-      H.popover().findByText("Products").click();
-      H.getNotebookStep("data").findByText("Products").should("be.visible");
-    });
-
-    it("should allow to pick a publish table from the data picker", () => {
-      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
-      H.startNewQuestion();
-
-      cy.log("verify the picker when nothing is selected");
-      H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Library").click();
-        H.entityPickerModalLevel(1).findByText("Data").click();
-        cy.findByText("Orders").click();
-      });
-
-      H.join();
-      H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Library").click();
-        H.entityPickerModalLevel(1).findByText("Data").click();
-        cy.findByText("Products").click();
-      });
-
-      H.visualize();
-      H.tableHeaderColumn("User ID").should("be.visible");
-      H.tableHeaderColumn("Products → ID").should("be.visible");
-
+      cy.log("data picker: verify the picker when there is a selected item");
       H.openNotebook();
       H.getNotebookStep("data").findByText("Orders").click();
       H.popover().within(() => {
@@ -223,6 +193,34 @@ describe("scenarios > notebook > data source", () => {
           "true",
         );
       });
+      H.entityPickerModal().button("Close").click();
+
+      cy.log("mini picker: verify the picker when there is a selected item");
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().findByText("Products").click();
+      H.getNotebookStep("data").findByText("Products").should("be.visible");
+
+      H.startNewQuestion();
+
+      cy.log("data picker: verify the picker when nothing is selected");
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      H.join();
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Products").click();
+      });
+
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
     });
   });
 

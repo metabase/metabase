@@ -14,23 +14,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signInAsAdmin();
   });
 
-  it("should not show empty sidebar when no data source is selected", () => {
-    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
-    openSidebar();
-    cy.wait("@nativeDataset");
-
-    cy.findByTestId("app-bar").findByLabelText("New").click();
-    H.popover().findByTextEnsureVisible("Question").click();
-    H.miniPickerBrowseAll().click();
-    cy.findByPlaceholderText("Search for tables and more...").should(
-      "be.visible",
-    );
-    H.entityPickerModal().button("Close").click();
-
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-  });
-
   it("smoke test: should show the preview sidebar, update it, and close it", () => {
     const queryLimit = 2;
 
@@ -66,6 +49,23 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.log("It should be possible to close the sidebar");
     closeSidebar();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+    cy.log(
+      "It should not show an empty sidebar when no data source is selected",
+    );
+    openSidebar();
+    cy.wait("@nativeDataset");
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.findByTestId("app-bar").findByLabelText("New").click();
+    H.popover().findByTextEnsureVisible("Question").click();
+    H.miniPickerBrowseAll().click();
+    cy.findByPlaceholderText("Search for tables and more...").should(
+      "be.visible",
+    );
+    H.entityPickerModal().button("Close").click();
+
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 

@@ -372,30 +372,16 @@ describe("issue 53170", () => {
   );
 });
 
-describe("issue 54817", () => {
-  const placeholder = "Find...";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should allow to navigate to the search input in the filter picker via keyboard (metabase#54817)", () => {
-    H.openOrdersTable();
-    H.filter();
-    H.popover().findByPlaceholderText(placeholder).should("be.focused");
-  });
-});
-
 describe("issue 57398", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it("should show the query running state when navigating back (metabase#57398)", () => {
+  it("should focus the filter picker search input and show the query running state when navigating back (metabase#54817, metabase#57398)", () => {
     H.openProductsTable();
     H.filter();
+    H.popover().findByPlaceholderText("Find...").should("be.focused");
     H.popover().within(() => {
       cy.log("1st filter");
       cy.findByText("Category").click();
@@ -717,23 +703,6 @@ describe("issue 66210", () => {
   });
 });
 
-describe("issue #67903", () => {
-  beforeEach(() => {
-    cy.viewport(630, 800);
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not show preview table headers on top of other elements (metabase#67903)", () => {
-    H.startNewQuestion();
-    H.miniPickerBrowseAll().click();
-    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
-    H.getNotebookStep("data").findByTestId("step-preview-button").click();
-    H.queryBuilderHeader().findByLabelText("View SQL").click();
-    cy.findByTestId("table-header").should("not.be.visible");
-  });
-});
-
 describe("issue #67767", () => {
   const SCREEN_WIDTH = 630;
 
@@ -743,12 +712,13 @@ describe("issue #67767", () => {
     cy.signInAsAdmin();
   });
 
-  it("only show preview query at full width on small screens (metabase#67767)", () => {
+  it("should not show preview table headers on top of other elements and only show preview query at full width on small screens (metabase#67903, metabase#67767)", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
     H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
     H.getNotebookStep("data").findByTestId("step-preview-button").click();
     H.queryBuilderHeader().findByLabelText("View SQL").click();
+    cy.findByTestId("table-header").should("not.be.visible");
     H.sidebar()
       .findByText("SQL for this question")
       .then(($el) => {
