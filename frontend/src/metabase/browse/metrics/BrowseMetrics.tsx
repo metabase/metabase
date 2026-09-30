@@ -35,12 +35,6 @@ import { trackNewMetricInitiated } from "./analytics";
 import type { MetricFilterSettings, MetricResult } from "./types";
 import { useFetchMetrics } from "./use-fetch-metrics";
 
-const {
-  contentVerificationEnabled,
-  MetricFilterControls,
-  getDefaultMetricFilters,
-} = PLUGIN_CONTENT_VERIFICATION;
-
 export function BrowseMetrics() {
   const [metricFilters, setMetricFilters] = useMetricFilterSettings();
   const { isLoading, error, metrics, hasVerifiedMetrics } =
@@ -111,7 +105,7 @@ export function BrowseMetrics() {
                 </Tooltip>
               )}
               {hasVerifiedMetrics && (
-                <MetricFilterControls
+                <PLUGIN_CONTENT_VERIFICATION.MetricFilterControls
                   metricFilters={metricFilters}
                   setMetricFilters={setMetricFilters}
                 />
@@ -193,13 +187,15 @@ function MetricsEmptyState({
 }
 
 function useMetricFilterSettings() {
-  const defaultMetricFilters = useSelector(getDefaultMetricFilters);
+  const defaultMetricFilters = useSelector(
+    PLUGIN_CONTENT_VERIFICATION.getDefaultMetricFilters,
+  );
   return useState(defaultMetricFilters);
 }
 
 function useHasVerifiedMetrics() {
   const result = useFetchMetrics(
-    contentVerificationEnabled
+    PLUGIN_CONTENT_VERIFICATION.contentVerificationEnabled
       ? {
           filter_items_in_personal_collection: "exclude",
           model_ancestors: false,
@@ -209,7 +205,7 @@ function useHasVerifiedMetrics() {
       : skipToken,
   );
 
-  if (!contentVerificationEnabled) {
+  if (!PLUGIN_CONTENT_VERIFICATION.contentVerificationEnabled) {
     return {
       isLoading: false,
       error: null,

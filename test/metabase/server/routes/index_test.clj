@@ -84,3 +84,34 @@
     ;; but we can override with the user locale
     (binding [i18n/*user-locale* "fr"]
       (is (= "fr" (:language (#'index/template-parameters false {})))))))
+
+(def ^:private test-ee-plugin-manifest
+  {"audit_app"  {"features" ["audit_app"]
+                 "files"    ["ee-plugin-audit_app.1.js" "shared.2.js"]}
+   "sandboxes"  {"features" ["sandboxes"]
+                 "files"    ["ee-plugin-sandboxes.3.js" "shared.2.js" "ee-plugin-sandboxes.4.css"]}
+   "custom_viz" {"features" ["custom-viz"]
+                 "files"    ["ee-plugin-custom_viz.5.js"]}})
+
+(deftest ee-plugin-files-test
+  (mt/with-dynamic-fn-redefs [index/load-ee-plugin-manifest (constantly test-ee-plugin-manifest)]
+    (testing "lists the files of every plugin with an enabled feature, each once"
+      (is (= #{"ee-plugin-audit_app.1.js" "shared.2.js" "ee-plugin-sandboxes.3.js" "ee-plugin-sandboxes.4.css"}
+             (set (#'index/ee-plugin-files {:audit_app true, :sandboxes true, :custom-viz false}))))
+      (is (= 4 (count (#'index/ee-plugin-files {:audit_app true, :sandboxes true})))))
+    (testing "reads hyphenated feature names as the frontend spells them"
+      (is (= ["ee-plugin-custom_viz.5.js"]
+             (#'index/ee-plugin-files {:custom-viz true}))))
+    (testing "lists nothing when no plugin's features are enabled"
+      (is (empty? (#'index/ee-plugin-files {:audit_app false})))
+      (is (empty? (#'index/ee-plugin-files nil))))))
+
+(deftest ee-plugin-preloads-test
+  (mt/with-dynamic-fn-redefs [index/load-ee-plugin-manifest (constantly test-ee-plugin-manifest)]
+    (is (= (str "<link rel=\"preload\" href=\"app/dist/ee-plugin-sandboxes.3.js\" as=\"script\">\n    "
+                "<link rel=\"preload\" href=\"app/dist/shared.2.js\" as=\"script\">\n    "
+                "<link rel=\"preload\" href=\"app/dist/ee-plugin-sandboxes.4.css\" as=\"style\">")
+           (#'index/ee-plugin-preloads {:sandboxes true})))
+    (testing "renders nothing for an edition without the manifest"
+      (mt/with-dynamic-fn-redefs [index/load-ee-plugin-manifest (constantly nil)]
+        (is (= "" (#'index/ee-plugin-preloads {:sandboxes true})))))))

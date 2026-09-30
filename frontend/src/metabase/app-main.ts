@@ -7,7 +7,7 @@ import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
 import { getUser } from "metabase/current-user";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
-import { mainReducers } from "metabase/reducers-main";
+import { makeMainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { navigate } from "metabase/router";
 import { getRoutes } from "metabase/routes";
@@ -34,7 +34,7 @@ if (isWithinIframe() && !IFRAMED_IN_SELF) {
     setRequestClientHeaders({ name: "embedding-iframe-full-app" });
 }
 
-init(mainReducers, getRoutes, (store) => {
+init(makeMainReducers, getRoutes, (store) => {
   // received a 401 response
   api.on(401, (url) => {
     if (url.indexOf("/api/user/current") >= 0) {
