@@ -153,70 +153,43 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
         });
       });
 
-      describe("CSV appends", () => {
-        it("Can append a CSV file to an existing table", () => {
-          uploadFileToCollection(VALID_CSV_FILES[0]);
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+      it("Can append and replace data in an existing table, but not with a different schema", () => {
+        const { rowCount } = VALID_CSV_FILES[0];
 
-          uploadToExisting({
-            testFile: VALID_CSV_FILES[0],
-            uploadMode: "append",
-          });
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount * 2} rows`,
-          );
+        uploadFileToCollection(VALID_CSV_FILES[0]);
+        cy.findByTestId("view-footer").findByText(`Showing ${rowCount} rows`);
+
+        cy.log("append with an identical schema");
+        uploadToExisting({
+          testFile: VALID_CSV_FILES[0],
+          uploadMode: "append",
         });
+        cy.findByTestId("view-footer").findByText(
+          `Showing ${rowCount * 2} rows`,
+        );
 
-        it("Cannot append a CSV file to a table with a different schema", () => {
-          uploadFileToCollection(VALID_CSV_FILES[0]);
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
-
-          uploadToExisting({
-            testFile: VALID_CSV_FILES[1],
-            identicalSchema: false,
-            uploadMode: "append",
-          });
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+        cy.log("replace with an identical schema");
+        uploadToExisting({
+          testFile: VALID_CSV_FILES[0],
+          uploadMode: "replace",
         });
-      });
+        cy.findByTestId("view-footer").findByText(`Showing ${rowCount} rows`);
 
-      describe("CSV replacement", () => {
-        it("Can replace data in an existing table", () => {
-          uploadFileToCollection(VALID_CSV_FILES[0]);
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
-
-          uploadToExisting({
-            testFile: VALID_CSV_FILES[0],
-            uploadMode: "replace",
-          });
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+        cy.log("append with a different schema");
+        uploadToExisting({
+          testFile: VALID_CSV_FILES[1],
+          identicalSchema: false,
+          uploadMode: "append",
         });
+        closeUploadErrorDetails();
 
-        it("Cannot data in a table with a different schema", () => {
-          uploadFileToCollection(VALID_CSV_FILES[0]);
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
-
-          uploadToExisting({
-            testFile: VALID_CSV_FILES[1],
-            identicalSchema: false,
-            uploadMode: "replace",
-          });
-          cy.findByTestId("view-footer").findByText(
-            `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
-          );
+        cy.log("replace with a different schema");
+        uploadToExisting({
+          testFile: VALID_CSV_FILES[1],
+          identicalSchema: false,
+          uploadMode: "replace",
         });
+        closeUploadErrorDetails();
       });
     });
   });
@@ -357,6 +330,13 @@ function uploadFileToCollection(testFile, viewModel = true) {
     cy.url().should("include", "/model/");
     H.tableInteractive();
   }
+}
+
+function closeUploadErrorDetails() {
+  cy.findByRole("dialog", { name: "Upload error details" })
+    .findByRole("button", { name: "Close" })
+    .click();
+  cy.findByRole("dialog", { name: "Upload error details" }).should("not.exist");
 }
 
 function uploadToExisting({

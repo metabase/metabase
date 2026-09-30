@@ -89,11 +89,8 @@ describe("collection permissions", () => {
               });
 
               describe("move", () => {
-                it("should let a user move/undo move a question", () => {
+                it("should let a user move/undo move a question and a dashboard", () => {
                   move("Orders");
-                });
-
-                it("should let a user move/undo move a dashboard", () => {
                   move("Orders in a dashboard");
                 });
               });
@@ -105,44 +102,39 @@ describe("collection permissions", () => {
               });
 
               describe("archive", () => {
-                it("should be able to archive/unarchive question (metabase#15253)", () => {
+                it("should be able to archive/unarchive items and show archived items in the trash (metabase#15253, metabase#15080, metabase#16617)", () => {
                   archiveUnarchive("Orders", "question");
-                });
-
-                it("should be able to archive/unarchive dashboard", () => {
                   archiveUnarchive("Orders in a dashboard", "dashboard");
-                });
 
-                it("should be able to archive/unarchive model", () => {
-                  cy.skipOn(user === "nodata");
-                  H.createNativeQuestion({
-                    name: "Model",
-                    type: "model",
-                    native: {
-                      query: "SELECT 1",
-                    },
-                  });
-                  archiveUnarchive("Model", "model");
-                });
+                  if (user !== "nodata") {
+                    H.createNativeQuestion({
+                      name: "Model",
+                      type: "model",
+                      native: {
+                        query: "SELECT 1",
+                      },
+                    });
+                    archiveUnarchive("Model", "model");
+                  }
 
-                describe("archive page", () => {
-                  it("should show archived items (metabase#15080, metabase#16617)", () => {
-                    cy.visit("collection/root");
-                    H.openCollectionItemMenu("Orders");
-                    H.popover().within(() => {
-                      cy.findByText("Move to trash").click();
-                    });
-                    cy.findByTestId("toast-undo").within(() => {
-                      cy.findByText("Trashed question");
-                      cy.icon("close").click();
-                    });
-                    H.navigationSidebar().within(() => {
-                      cy.findByText("Trash").click();
-                    });
-                    cy.location("pathname").should("eq", "/trash");
-                    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                    cy.findByText("Orders");
+                  cy.log(
+                    "Trashed items show up in the trash (metabase#15080, metabase#16617)",
+                  );
+                  cy.visit("collection/root");
+                  H.openCollectionItemMenu("Orders");
+                  H.popover().within(() => {
+                    cy.findByText("Move to trash").click();
                   });
+                  cy.findByTestId("toast-undo").within(() => {
+                    cy.findByText("Trashed question");
+                    cy.icon("close").click();
+                  });
+                  H.navigationSidebar().within(() => {
+                    cy.findByText("Trash").click();
+                  });
+                  cy.location("pathname").should("eq", "/trash");
+                  // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+                  cy.findByText("Orders");
                 });
 
                 onlyOn(user !== "nodata", () => {
@@ -155,7 +147,7 @@ describe("collection permissions", () => {
                       cy.icon("edit").should("not.exist");
                     });
 
-                    it("archiving sub-collection should redirect to its parent", () => {
+                    it("should cancel, trash, and undo trashing a sub-collection, and not allow editing it once archived (metabase#15289, metabase#12489)", () => {
                       cy.request("GET", "/api/collection").then((xhr) => {
                         // We need to obtain the ID programatically
                         const { id: THIRD_COLLECTION_ID } = xhr.body.find(
@@ -169,52 +161,61 @@ describe("collection permissions", () => {
                         ).as("editCollection");
 
                         cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
-                      });
 
-                      H.openCollectionMenu();
-                      H.popover().within(() =>
-                        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- linter erroring for no reason
-                        cy.findByText("Move to trash").click(),
-                      );
-                      H.modal().findByText("Move to trash").click();
-
-                      cy.wait("@editCollection");
-
-                      cy.findByTestId("archive-banner").should("exist");
-
-                      H.navigationSidebar().within(() => {
-                        cy.findByText("First collection");
-                        cy.findByText("Second collection");
-                        cy.findByText("Third collection").should("not.exist");
-                      });
-
-                      // While we're here, we can test unarchiving the collection as well
-                      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                      cy.findByText("Trashed collection");
-                      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                      cy.findByText("Undo").click();
-
-                      cy.wait("@editCollection");
-
-                      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                      cy.findByText(
-                        "Sorry, you don’t have permission to see that.",
-                      ).should("not.exist");
-                      cy.findByTestId("archive-banner").should("not.exist");
-
-                      // But unarchived collection is now visible in the sidebar
-                      H.navigationSidebar().within(() => {
-                        cy.findByText("Third collection");
-                      });
-                    });
-
-                    it("visiting already archived collection by its ID shouldn't let you edit it (metabase#12489)", () => {
-                      cy.request("GET", "/api/collection").then((xhr) => {
-                        const { id: THIRD_COLLECTION_ID } = xhr.body.find(
-                          (collection) =>
-                            collection.slug === "third_collection",
+                        cy.log(
+                          "Abandoning the trash process keeps you in the same collection (metabase#15289)",
                         );
-                        // Archive it
+                        H.openCollectionMenu();
+                        H.popover().within(() =>
+                          cy.findByText("Move to trash").click(),
+                        );
+                        H.modal().findByText("Cancel").click();
+                        H.modal().should("not.exist");
+                        cy.location("pathname").should(
+                          "eq",
+                          `/collection/${THIRD_COLLECTION_ID}-third-collection`,
+                        );
+                        cy.findByTestId("collection-name-heading").contains(
+                          "Third collection",
+                        );
+
+                        H.openCollectionMenu();
+                        H.popover().within(() =>
+                          cy.findByText("Move to trash").click(),
+                        );
+                        H.modal().findByText("Move to trash").click();
+
+                        cy.wait("@editCollection");
+
+                        cy.findByTestId("archive-banner").should("exist");
+
+                        H.navigationSidebar().within(() => {
+                          cy.findByText("First collection");
+                          cy.findByText("Second collection");
+                          cy.findByText("Third collection").should("not.exist");
+                        });
+
+                        // While we're here, we can test unarchiving the collection as well
+
+                        cy.findByText("Trashed collection");
+
+                        cy.findByText("Undo").click();
+
+                        cy.wait("@editCollection");
+
+                        cy.findByText(
+                          "Sorry, you don’t have permission to see that.",
+                        ).should("not.exist");
+                        cy.findByTestId("archive-banner").should("not.exist");
+
+                        // But unarchived collection is now visible in the sidebar
+                        H.navigationSidebar().within(() => {
+                          cy.findByText("Third collection");
+                        });
+
+                        cy.log(
+                          "Visiting an archived collection by its ID shouldn't let you edit it (metabase#12489)",
+                        );
                         cy.request(
                           "PUT",
                           `/api/collection/${THIRD_COLLECTION_ID}`,
@@ -222,59 +223,14 @@ describe("collection permissions", () => {
                             archived: true,
                           },
                         );
-
-                        // What happens if we visit the archived collection by its id?
-                        // This is the equivalent of hitting the back button but it also shows that the same UI is present whenever we visit the collection by its id
                         cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                       });
-                      cy.findByTestId("collection-name-heading")
-                        .as("title")
-                        .contains("Third collection");
-                      // Creating new sub-collection at this point shouldn't be possible
-                      // We shouldn't be able to change permissions for an archived collection (the root issue of #12489!)
+                      cy.findByTestId("collection-name-heading").contains(
+                        "Third collection",
+                      );
+                      cy.findByTestId("archive-banner").should("be.visible");
+                      // We shouldn't be able to change permissions for an archived collection
                       cy.findByTestId("collection-menu").should("not.exist");
-
-                      /**
-                       *  We can take 2 routes from here - it will really depend on the design decision:
-                       *    1. Edit icon shouldn't exist at all in which case some other call to drill-through menu/button should exist
-                       *       notifying the user that this collection is archived and prompting them to unarchive it
-                       *    2. Edit icon stays but with "Unarchive this item" ONLY in the menu
-                       */
-
-                      // Option 1
-                      cy.icon("edit").should("not.exist");
-
-                      // Option 2
-                      // cy.icon("edit").click();
-                      // popover().within(() => {
-                      //   cy.findByText("Edit this collection").should("not.exist");
-                      //   cy.findByText("Archive this collection").should(
-                      //     "not.exist",
-                      //   );
-                      //   cy.findByText("Unarchive this collection");
-                      // });
-                    });
-
-                    it("abandoning archive process should keep you in the same collection (metabase#15289)", () => {
-                      cy.request("GET", "/api/collection").then((xhr) => {
-                        const { id: THIRD_COLLECTION_ID } = xhr.body.find(
-                          (collection) =>
-                            collection.slug === "third_collection",
-                        );
-                        cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
-                        H.openCollectionMenu();
-                        H.popover().within(() =>
-                          cy.findByText("Move to trash").click(),
-                        );
-                        H.modal().findByText("Cancel").click();
-                        cy.location("pathname").should(
-                          "eq",
-                          `/collection/${THIRD_COLLECTION_ID}-third-collection`,
-                        );
-                        cy.findByTestId("collection-name-heading")
-                          .as("title")
-                          .contains("Third collection");
-                      });
                     });
                   });
                 });
@@ -302,28 +258,11 @@ describe("collection permissions", () => {
               cy.signIn(user);
             });
 
-            it("should not show pins or a helper text (metabase#20043)", () => {
-              cy.visit("/collection/root");
-
-              // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("Orders in a dashboard");
-              cy.icon("pin").should("not.exist");
-            });
-
-            it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+            it("should not offer bulk actions or pins, but should offer to duplicate dashboard in collections they have `read` access to (metabase#16490, metabase#20043)", () => {
               const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
-              H.openCollectionItemMenu("Orders in a dashboard");
-              H.popover().findByText("Duplicate").click();
-              cy.findByTestId("collection-picker-button").should(
-                "have.text",
-                `${first_name} ${last_name}'s Personal Collection`,
-              );
-            });
 
-            it("should not be able to use bulk actions on collection items (metabase#16490)", () => {
-              cy.visit("/collection/root");
-
+              cy.log("No bulk actions on collection items (metabase#16490)");
               // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders")
                 .closest("tr")
@@ -339,6 +278,18 @@ describe("collection permissions", () => {
                   cy.icon("dashboard").trigger("mouseover");
                   cy.findByRole("checkbox").should("not.exist");
                 });
+
+              cy.log("No option to pin items (metabase#20043)");
+              H.openCollectionItemMenu("Orders in a dashboard");
+              H.popover().within(() => {
+                cy.findByText("Duplicate").should("be.visible");
+                cy.findByText("Pin this").should("not.exist");
+                cy.findByText("Duplicate").click();
+              });
+              cy.findByTestId("collection-picker-button").should(
+                "have.text",
+                `${first_name} ${last_name}'s Personal Collection`,
+              );
             });
 
             ["/", "/collection/root"].forEach((route) => {

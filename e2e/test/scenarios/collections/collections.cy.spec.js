@@ -210,6 +210,15 @@ describe("scenarios > collection defaults", () => {
         ensureCollectionHasNoChildren("Third collection");
         ensureCollectionHasNoChildren("Your personal collection");
       });
+
+      cy.log("new collections are created within the current collection");
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal").within(() => {
+        cy.findByText("Collection it's saved in").should("be.visible");
+        cy.findByTestId("collection-picker-button")
+          .findByText("Second collection")
+          .should("be.visible");
+      });
     });
 
     it("should correctly display deep nested collections with long names", () => {
@@ -273,33 +282,31 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
-  it("should support markdown in collection description", () => {
+  it("should support markdown in collection description and allow it to be edited in the sidesheet", () => {
+    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
+      description: "[link](https://metabase.com)",
+    });
     cy.request("PUT", `/api/collection/${SECOND_COLLECTION_ID}`, {
       description: "[link](https://metabase.com)",
     });
 
     H.visitCollection(FIRST_COLLECTION_ID);
 
-    cy.get("table").within(() => {
-      cy.findByText("Second collection")
-        .closest("tr")
-        .within(() => {
-          cy.icon("info").trigger("mouseenter");
-        });
-    });
+    cy.log("Markdown description renders in the collection items tooltip");
+    cy.findByTestId("collection-table")
+      .findByText("Second collection")
+      .closest("tr")
+      .icon("info")
+      .as("descriptionIcon")
+      .trigger("mouseenter");
 
     cy.findByRole("tooltip").within(() => {
       cy.findByRole("link").should("include.text", "link");
       cy.findByRole("link").should("not.include.text", "[link]");
     });
-  });
 
-  it("should allow description to be edited in the sidesheet", () => {
-    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
-      description: "[link](https://metabase.com)",
-    });
-
-    H.visitCollection(FIRST_COLLECTION_ID);
+    cy.get("@descriptionIcon").trigger("mouseleave");
+    cy.findByRole("tooltip").should("not.exist");
 
     cy.log("Description visible in collection caption");
     cy.findByTestId("collection-caption")
@@ -334,56 +341,54 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
-  describe("render last edited by when names are null", () => {
-    it("should render short value without tooltip", () => {
-      cy.intercept(
-        "GET",
-        "/api/collection/root/items?models=dashboard**",
-        (req) => {
-          req.on("response", (res) => {
-            res.send(
-              assocIn(res.body, ["data", 0, "last-edit-info"], {
-                id: 1,
-                last_name: null,
-                first_name: null,
-                email: "me@email.com",
-                timestamp: "2022-07-05T07:31:09.054-07:00",
-              }),
-            );
-          });
-        },
-      );
-      visitRootCollection();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("me@email.com").trigger("mouseenter");
-      cy.findByRole("tooltip").should("not.exist");
+  it("should render last edited by email when names are null, with a tooltip only for long values", () => {
+    const LONG_EMAIL = "averyverylongemail@veryverylongdomain.com";
+    const SHORT_EMAIL = "me@email.com";
+    const lastEditInfo = (email) => ({
+      id: 1,
+      last_name: null,
+      first_name: null,
+      email,
+      timestamp: "2022-07-05T07:31:09.054-07:00",
     });
 
-    it("should render long value with tooltip", () => {
-      cy.intercept(
-        "GET",
-        "/api/collection/root/items?models=dashboard**",
-        (req) => {
-          req.on("response", (res) => {
-            res.send(
-              assocIn(res.body, ["data", 0, "last-edit-info"], {
-                id: 1,
-                last_name: null,
-                first_name: null,
-                email: "averyverylongemail@veryverylongdomain.com",
-                timestamp: "2022-07-05T07:31:09.054-07:00",
-              }),
-            );
-          });
-        },
-      );
-      visitRootCollection();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("averyverylongemail@veryverylongdomain.com").trigger(
-        "mouseenter",
-      );
-      cy.findByRole("tooltip").should("exist");
-    });
+    cy.intercept(
+      "GET",
+      "/api/collection/root/items?models=dashboard**",
+      (req) => {
+        req.on("response", (res) => {
+          const withLong = assocIn(
+            res.body,
+            ["data", 0, "last-edit-info"],
+            lastEditInfo(LONG_EMAIL),
+          );
+          res.send(
+            assocIn(
+              withLong,
+              ["data", 1, "last-edit-info"],
+              lastEditInfo(SHORT_EMAIL),
+            ),
+          );
+        });
+      },
+    );
+    visitRootCollection();
+
+    cy.log("long value renders with a tooltip");
+    cy.findByTestId("collection-table")
+      .findByText(LONG_EMAIL)
+      .as("longEmail")
+      .trigger("mouseenter");
+    cy.findByRole("tooltip").should("be.visible");
+
+    cy.get("@longEmail").trigger("mouseleave");
+    cy.findByRole("tooltip").should("not.exist");
+
+    cy.log("short value renders without a tooltip");
+    cy.findByTestId("collection-table")
+      .findByText(SHORT_EMAIL)
+      .trigger("mouseenter");
+    cy.findByRole("tooltip").should("not.exist");
   });
 
   it("should not show you the parent collection in recents or search results", () => {
@@ -478,41 +483,11 @@ describe("scenarios > collection defaults", () => {
       );
     });
 
-    it("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
-      const questionDetails = {
-        native: { query: "select 1 --[[]]", "template-tags": {} },
-      };
-
-      H.createNativeQuestion(questionDetails);
-
-      visitRootCollection();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard");
-    });
-
-    it("should be able to drag an item to the root collection (metabase#16498)", () => {
-      moveItemToCollection("Orders", "First collection");
-
-      H.visitCollection(FIRST_COLLECTION_ID);
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").as("dragSubject");
-
-      H.navigationSidebar().findByText("Our analytics").as("dropTarget");
-
-      H.dragAndDrop("dragSubject", "dropTarget");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Moved question");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").should("not.exist");
-
-      visitRootCollection();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders");
-    });
-
     it("should be able to drag an item into a sub-collection shown in the items table (metabase#37329)", () => {
+      H.createNativeQuestion({
+        name: "Native question with invalid parameters",
+        native: { query: "select 1 --[[]]", "template-tags": {} },
+      });
       H.createDocument({
         name: "Quarterly Notes",
         collection_id: null,
@@ -538,6 +513,16 @@ describe("scenarios > collection defaults", () => {
       });
 
       visitRootCollection();
+
+      cy.log(
+        "Collection items are listed even if one question has invalid parameters (metabase#25543)",
+      );
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Native question with invalid parameters").should(
+          "be.visible",
+        );
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
 
       cy.log("Drag a question into the sub-collection row");
       cy.findByTestId("collection-table").within(() => {
@@ -581,6 +566,23 @@ describe("scenarios > collection defaults", () => {
       cy.findByTestId("collection-table").findByText("Orders");
       cy.findByTestId("collection-table").findByText("Quarterly Notes");
       cy.findByTestId("collection-table").findByText("Count of orders");
+
+      cy.log("Drag an item to the root collection (metabase#16498)");
+      cy.findByTestId("collection-table")
+        .findByText("Orders")
+        .as("rootDragSubject");
+      H.navigationSidebar().findByText("Our analytics").as("rootDropTarget");
+
+      H.dragAndDrop("rootDragSubject", "rootDropTarget");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Moved question");
+      cy.findByTestId("collection-table")
+        .findByText("Orders")
+        .should("not.exist");
+
+      visitRootCollection();
+      cy.findByTestId("collection-table").findByText("Orders");
     });
 
     it("should reject dragging a subcollection directly or in a mixed selection (metabase#37329)", () => {
@@ -882,7 +884,7 @@ describe("scenarios > collection defaults", () => {
             .should("be.visible");
         });
 
-        it("should clear the selection with Escape and trash it with Delete", () => {
+        it("should clear the selection with Escape and trash it with Delete or the bulk actions menu (metabase#16496)", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
           cy.findByTestId("toast-card")
@@ -898,6 +900,24 @@ describe("scenarios > collection defaults", () => {
           H.modal().button("Move to trash").click();
 
           H.getUnpinnedSection().findByText("Orders").should("not.exist");
+          cy.findByTestId("toast-card").should("not.exist");
+
+          cy.log("bulk archive from the selection toast (metabase#16496)");
+          H.getUnpinnedSection()
+            .findByText("Orders, Count")
+            .should("be.visible");
+          selectItemUsingCheckbox("Orders, Count");
+          cy.findByTestId("toast-card")
+            .findByText("1 item selected")
+            .should("be.visible");
+
+          cy.findByTestId("toast-card").findByLabelText("More actions").click();
+          H.popover().findByText("Move to trash").click();
+          H.modal().button("Move to trash").click();
+
+          H.getUnpinnedSection()
+            .findByText("Orders, Count")
+            .should("not.exist");
           cy.findByTestId("toast-card").should("not.exist");
         });
 
@@ -915,20 +935,6 @@ describe("scenarios > collection defaults", () => {
 
           H.navigationSidebar().findByText("Our analytics").click();
           cy.location("pathname").should("eq", "/collection/root");
-          cy.findByTestId("toast-card").should("not.exist");
-        });
-      });
-
-      describe("archive", () => {
-        it("should be possible to bulk archive items (metabase#16496)", () => {
-          cy.visit("/collection/root");
-          selectItemUsingCheckbox("Orders");
-
-          cy.findByTestId("toast-card").findByLabelText("More actions").click();
-          H.popover().findByText("Move to trash").click();
-          H.modal().button("Move to trash").click();
-
-          H.getUnpinnedSection().findByText("Orders").should("not.exist");
           cy.findByTestId("toast-card").should("not.exist");
         });
       });
@@ -1104,18 +1110,6 @@ describe("scenarios > collection defaults", () => {
       // There is already a collection named "First collection" in the default snapshot
       H.navigationSidebar().within(() => {
         cy.findByText("First collection");
-      });
-    });
-
-    it("should create new collections within the current collection", () => {
-      H.visitCollection(THIRD_COLLECTION_ID);
-      H.startNewCollectionFromSidebar();
-
-      cy.findByTestId("new-collection-modal").then((modal) => {
-        cy.findByText("Collection it's saved in").should("be.visible");
-        cy.findByTestId("collection-picker-button")
-          .findByText("Third collection")
-          .should("be.visible");
       });
     });
   });
@@ -1400,7 +1394,7 @@ describe("scenarios > collection items listing", () => {
       );
     });
 
-    it("should allow to navigate back and forth", () => {
+    it("should allow to navigate back and forth and reset pagination when sorting", () => {
       visitRootCollection();
 
       // First page
@@ -1428,6 +1422,19 @@ describe("scenarios > collection items listing", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+
+      cy.log("sorting on a page other than the first resets pagination");
+      cy.findByLabelText("Next page").click();
+      cy.wait("@getCollectionItems");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
+
+      toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
     });
   });
@@ -1584,30 +1591,6 @@ describe("scenarios > collection items listing", () => {
         "First collection",
       ]);
     });
-
-    it("should reset pagination if sorting applied on not first page", () => {
-      _.times(15, (i) => H.createDashboard(`dashboard ${i}`));
-      _.times(15, (i) =>
-        H.createQuestion({
-          name: `generated question ${i}`,
-          query: TEST_QUESTION_QUERY,
-        }),
-      );
-
-      visitRootCollection();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`1 - ${PAGE_SIZE}`);
-
-      cy.findByLabelText("Next page").click();
-      cy.wait("@getCollectionItems");
-
-      toggleSortingFor(/Last edited at/i);
-      cy.wait("@getCollectionItems");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`1 - ${PAGE_SIZE}`);
-    });
   });
 });
 
@@ -1617,15 +1600,15 @@ describe("scenarios > collections > entity id support", () => {
     cy.signInAsAdmin();
   });
 
-  it("/collection/entity/${entity_id} should redirect to /collection/${id}", () => {
+  it("/collection/entity/${entity_id} and /collection/entity/${entity_id}/move should redirect to /collection/${id} and /collection/${id}/move", () => {
+    cy.log("/collection/entity/${entity_id}");
     cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}`);
     cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}`);
 
     // Making sure the collection loads
     H.main().findByText("First collection").should("be.visible");
-  });
 
-  it("/collection/entity/${entity_id}/move should redirect to /collection/${id}/move", () => {
+    cy.log("/collection/entity/${entity_id}/move");
     cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}/move`);
     cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}/move`);
 
@@ -1690,23 +1673,6 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
           cy.findByText(child);
         });
       });
-  }
-}
-
-function moveItemToCollection(itemName, collectionName) {
-  cy.request("GET", "/api/collection/root/items").then((resp) => {
-    const ALL_ITEMS = resp.body.data;
-
-    const { id, model } = getCollectionItem(ALL_ITEMS, itemName);
-    const { id: collection_id } = getCollectionItem(ALL_ITEMS, collectionName);
-
-    cy.request("PUT", `/api/${model}/${id}`, {
-      collection_id,
-    });
-  });
-
-  function getCollectionItem(collection, itemName) {
-    return collection.find((item) => item.name === itemName);
   }
 }
 

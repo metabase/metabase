@@ -67,11 +67,15 @@ describe("personal collections", () => {
       });
     });
 
-    it("cannot edit details for personal collections nor change permissions for personal collections or sub-collections (metabase#8406)", () => {
+    it("cannot edit details for personal collections nor change permissions for personal collections or sub-collections, but can view other users' personal sub-collections (metabase#8406, metabase#15339)", () => {
       // Let's use the API to create a sub-collection "Foo" in admin's personal collection
       cy.request("POST", "/api/collection", {
         name: "Foo",
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
+      });
+      H.createCollection({
+        name: "Nodata sub-collection",
+        parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
       });
 
       H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
@@ -121,17 +125,13 @@ describe("personal collections", () => {
         cy.icon("info").should("exist");
         cy.icon("ellipsis").should("not.exist");
       });
-    });
 
-    it("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      H.createCollection({
-        name: "Foo",
-        parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
-      });
-
-      cy.visit(`/collection/${NO_DATA_PERSONAL_COLLECTION_ID}`);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo");
+      cy.log(
+        "Other users' personal sub-collections are visible (metabase#15339)",
+      );
+      cy.findByTestId("collection-table")
+        .findByText("Nodata sub-collection")
+        .should("be.visible");
     });
   });
 

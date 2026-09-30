@@ -313,46 +313,27 @@ describe("scenarios > collections > clean up", () => {
               event.total_items_archived === 1 &&
               typeof event.cutoff_date === "string",
           );
-        });
-      });
 
-      it("show empty and error states correctly", () => {
-        cy.log("should handle empty state");
-        cy.intercept("GET", "/api/ee/stale/**?**").as("stale-items");
-
-        // visit collection w/ items but no stale items
-        H.createCollection({ name: "Not empty w/ not stale items" })
-          .then(({ body: { id } }) => id)
-          .as("collectionId");
-
-        cy.get("@collectionId").then((id) => {
-          return bulkCreateQuestions(2, { collection_id: id }).then(() => {
-            H.visitCollection(id);
+          cy.log("should handle empty state in a collection w/ no stale items");
+          H.main().within(() => {
+            cy.findByText("Type").should("be.visible");
+            cy.findByText("Name").should("be.visible");
           });
+          cy.intercept("GET", "/api/ee/stale/**?**").as("stale-items");
+          selectCleanThingsUpCollectionAction();
+          cy.wait("@stale-items");
+          cleanUpModal().within(() => {
+            emptyState().should("exist");
+          });
+
+          cy.log("should handle error state");
+          cy.intercept("GET", "/api/ee/stale/**?**", {
+            statusCode: 500,
+          }).as("stale-items");
+          setDateFilter("1 year");
+          cy.wait("@stale-items");
+          errorState().should("exist");
         });
-
-        cy.log("should render a table w/ contents");
-        H.main().within(() => {
-          cy.findByText("Type");
-          cy.findByText("Name");
-        });
-
-        selectCleanThingsUpCollectionAction();
-
-        cy.wait("@stale-items");
-
-        cleanUpModal().within(() => {
-          emptyState().should("exist");
-        });
-
-        cy.log("should handle error state");
-        cy.intercept("GET", "/api/ee/stale/**?**", {
-          statusCode: 500,
-        }).as("stale-items");
-
-        setDateFilter("1 year");
-        cy.wait("@stale-items");
-        errorState().should("exist");
       });
     });
   });

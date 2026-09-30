@@ -122,44 +122,40 @@ describe("revision history", () => {
               cy.findByTestId("visualization-root").should("contain", "117.03");
             });
 
-            it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
+            it("should be able to access the question's revision history via the header button and the info sidesheet, and revert the question", () => {
               cy.skipOn(user === "nodata");
 
               H.visitQuestion(ORDERS_QUESTION_ID);
 
+              cy.log("open revision history via the header button");
               cy.findByTestId("revision-history-button").click();
-              cy.findByRole("tab", { name: "History" }).click();
-
-              cy.findByTestId("question-revert-button").click();
-
-              cy.wait("@revert").then(({ response: { statusCode, body } }) => {
-                expect(statusCode).to.eq(200);
-                expect(body.cause).not.to.exist;
+              H.sidesheet().within(() => {
+                cy.findByRole("tab", { name: "History" }).should(
+                  "have.attr",
+                  "aria-selected",
+                  "true",
+                );
+                cy.findByTestId("question-revert-button").should("be.visible");
               });
+              H.sidesheet().findByLabelText("Close").click();
+              H.sidesheet().should("not.exist");
 
-              // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-              cy.contains(/^Orders$/);
-            });
-
-            it("should be able to revert the question via the action button found in the saved question timeline", () => {
-              cy.skipOn(user === "nodata");
-
-              H.visitQuestion(ORDERS_QUESTION_ID);
-
+              cy.log("open revision history via the question info sidesheet");
               H.questionInfoButton().click();
-              cy.findByRole("tab", { name: "History" }).click();
-
-              // Last revert is the original state
-              // eslint-disable-next-line metabase/no-unsafe-element-filtering
-              cy.findAllByTestId("question-revert-button").last().click();
+              H.sidesheet().within(() => {
+                cy.findByRole("tab", { name: "History" }).click();
+                cy.findByTestId("question-revert-button").click();
+              });
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
                 expect(statusCode).to.eq(200);
                 expect(body.cause).not.to.exist;
               });
 
-              // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-              cy.contains(/^Orders$/);
+              cy.findByTestId("saved-question-header-title").should(
+                "have.value",
+                "Orders",
+              );
             });
           });
         });
