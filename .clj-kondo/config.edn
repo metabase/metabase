@@ -95,7 +95,8 @@
   ;; entry is a namespace symbol (exact) or a string (a regex on the namespace name).
   :metabase/proof-system-issuer
   {:level :warning
-   :allowed-callers {provisioning #{metabase.collections.models.collection}
+   :allowed-callers {provisioning #{metabase.collections.models.collection
+                                    metabase-enterprise.data-apps.resources}
                      serdes-load  #{metabase-enterprise.remote-sync.impl
                                     metabase-enterprise.remote-sync.init}
                      test-only    #{"(?:-test(?:\\..*)?$)|(?:^metabase\\.test(?:\\.|$))"}}}

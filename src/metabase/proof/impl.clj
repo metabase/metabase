@@ -341,9 +341,9 @@
 
 (mu/defn provisioning
   "System issuer for the collections the application provisions rather than a user creates: a User's Personal
-  Collection when the User is created (or on first use, for Users who predate personal collections), and the Library
-  collections. No user check applies because no user has editorial right over them; they are created for their owner
-  or for the system, with a fixed shape."
+  Collection when the User is created (or on first use, for Users who predate personal collections), the Library
+  collections, and a data app's resource collection. No user check applies because no user has editorial right over
+  them; they are created for their owner or for the system, with a fixed shape, and deleted with it."
   [write :- ::write]
   (issue `provisioning write))
 

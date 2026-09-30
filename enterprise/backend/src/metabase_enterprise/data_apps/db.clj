@@ -174,11 +174,6 @@
   [collection-id changes]
   (t2/update! :model/Collection :id collection-id changes))
 
-(defn delete-resource-collection!
-  "Delete the resource collection with `collection-id`."
-  [collection-id]
-  (t2/delete! :model/Collection :id collection-id))
-
 (defn non-router-database-ids
   "The IDs of databases that are not routed through another database."
   []

@@ -3670,6 +3670,7 @@
            models
            permissions
            premium-features
+           proof
            request
            settings
            util

@@ -28,9 +28,8 @@
   obviously a bad experience -- we do not want a User to move a Collection that they have read/write perms for
   (by definition) to somewhere else and lose all access for it."
   [collection :- (ms/InstanceOf :model/Collection) new-location :- @#'collection/LocationPath]
-  ;; TODO(johnswanson, 2025-11-25) fix the private bits
-  (#'collection/copy-collection-permissions! (#'collection/parent {:location new-location})
-                                             (cons collection (collection/descendants collection))))
+  (perms/copy-collection-permissions! (#'collection/parent {:location new-location})
+                                      (cons collection (collection/descendants collection))))
 
 (defenterprise update-perms-for-tenant-specific-namespace-change!
   "If a Collection is moving into or out of the tenant-specific namespace, adjust the Permissions for it accordingly.

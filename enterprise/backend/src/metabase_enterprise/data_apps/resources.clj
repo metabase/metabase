@@ -5,6 +5,7 @@
    [metabase-enterprise.data-apps.permissions :as data-app.permissions]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
+   [metabase.proof.core :as proof]
    [metabase.request.core :as request]))
 
 (set! *warn-on-reflection* true)
@@ -89,9 +90,15 @@
        :resource_collection_id (:id collection)})))
 
 (defn delete-resources!
-  "Delete the generated collection and permission group referenced by `app`."
+  "Delete the generated collection (with everything in it) and permission group referenced by `app`.
+
+  The collection is application-provisioned, and the app may be deleted with no user acting (sync pruning), so its
+  deletion is issued by [[proof/provisioning]] rather than checked against a user. A collection already gone (deleted
+  from the trash by a user, say) is skipped."
   [{:keys [permission_group_id resource_collection_id]}]
-  (when resource_collection_id
-    (data-apps.db/delete-resource-collection! resource_collection_id))
+  (when (and resource_collection_id (data-apps.db/resource-collection resource_collection_id))
+    (collection/delete-collection! (proof/provisioning {:model     :model/Collection
+                                                        :operation :delete
+                                                        :subject   resource_collection_id})))
   (when permission_group_id
     (data-apps.db/delete-permission-group! permission_group_id)))
