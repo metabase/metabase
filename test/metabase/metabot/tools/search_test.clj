@@ -21,6 +21,7 @@
    [metabase.test :as mt]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel search-display-test
@@ -602,6 +603,18 @@
                 (testing "library membership still lands — it discloses the root's type, never a name"
                   (is (true? (:library_member tbl)))
                   (is (true? (:library_member msr))))))))))))
+
+(deftest binding-table-publication-reads-user-settings-test
+  (testing "a measure's binding table counts as published when a user published it, not only when its own row says so"
+    (mt/with-temp [:model/Collection {coll-id :id}         {:name "Us3Coll" :type "library-data"}
+                   :model/Database   {db-id :id}           {:name "Us3DB"}
+                   :model/Table      {tbl-id :id :as tbl}  {:name "Us3Table" :db_id db-id}]
+      (table-user-settings/upsert-user-settings tbl {:is_published true :collection_id coll-id})
+      (mt/with-test-user :crowberto
+        (is (=? {:collection {:id coll-id}}
+                (first (#'search/enrich-with-base-tables
+                        [{:type "measure" :id 1 :base_table_id tbl-id
+                          :base_table_name "Us3Table" :database_name "Us3DB"}]))))))))
 
 (deftest measure-segment-inherit-library-membership-test
   ;; A measure or segment is only surfaced by `retrieve_library_entities` because its binding table

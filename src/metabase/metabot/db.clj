@@ -483,7 +483,7 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :schema :db_id :collection_id :is_published]
              :id [:in table-ids]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+             {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-summaries-with-publication
   "The ID, names, schema, Database ID, description, Collection ID, and published flag of the Tables with
