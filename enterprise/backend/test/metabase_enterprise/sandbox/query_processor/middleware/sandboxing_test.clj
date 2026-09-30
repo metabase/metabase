@@ -2420,17 +2420,85 @@
   [result]
   (into {} (map (juxt :name :fingerprint)) (mt/cols result)))
 
+(defn- results-metadata-fingerprints
+  "`{col-name fingerprint}` for every column of the `:results_metadata` of a query `result`. The insights step computes
+  these over the returned rows when the cols carry no fingerprint, and copies the cols' fingerprint when they do."
+  [result]
+  (into {} (map (juxt :name :fingerprint)) (-> result :data :results_metadata :columns)))
+
 (deftest sandboxed-results-omit-fingerprints-test
   (testing "BOT-2115: result cols for a sandboxed user carry no fingerprint, since it describes rows the sandbox hides"
+    (testing "control: the same non-admin without a sandbox gets the fingerprint, in cols and results_metadata"
+      (let [result (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues))]
+        (is (=? {"PRICE"    {:global {:distinct-count 4}}
+                 "LATITUDE" {:type {:type/Number {:min number?}}}}
+                (col-fingerprints result)))
+        (is (=? {"PRICE" {:global {:distinct-count 4}}}
+                (results-metadata-fingerprints result)))))
     (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
                       :attributes {:price 1}}
+      ;; built inside the sandbox, which runs against a temp copy of the test DB
       (let [query  (mt/mbql-query venues)
             result (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "sanity check: the sandbox is in force"
           (is (true? (-> result :data :is_sandboxed)))
           (is (= #{1} (into #{} (map #(nth % 5)) (mt/rows result)))))
+        (is (seq (mt/cols result)))
         (is (every? nil? (vals (col-fingerprints result))))
-        (testing "an unsandboxed admin still gets the fingerprint"
-          (is (=? {"PRICE"    {:global {:distinct-count 4}}
-                   "LATITUDE" {:type {:type/Number {:min number?}}}}
-                  (col-fingerprints (mt/user-http-request :crowberto :post 202 "dataset" query)))))))))
+        (testing "results_metadata is computed over the rows the sandbox returned, not copied from the table"
+          (is (=? {"PRICE" {:global {:distinct-count 1}, :type {:type/Number {:min 1.0, :max 1.0}}}}
+                  (results-metadata-fingerprints result))))
+        (testing "an unsandboxed admin still gets the fingerprint, in cols and results_metadata"
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+            (is (=? {"PRICE"    {:global {:distinct-count 4}}
+                     "LATITUDE" {:type {:type/Number {:min number?}}}}
+                    (col-fingerprints result)))
+            (is (=? {"PRICE" {:global {:distinct-count 4}}}
+                    (results-metadata-fingerprints result)))))))))
+
+(deftest sandboxed-card-and-dashcard-results-omit-fingerprints-test
+  (testing "BOT-2115: saved card and dashcard results for a sandboxed user carry no fingerprint"
+    (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
+                      :attributes {:price 1}}
+      ;; the HTTP endpoints need real Card, Dashboard and DashboardCard rows; a mock metadata provider cannot stand in
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Collection    {collection-id :id} {}
+                     :model/Card          {card-id :id}       {:dataset_query (mt/mbql-query venues)
+                                                               :collection_id collection-id}
+                     :model/Dashboard     {dashboard-id :id}  {:collection_id collection-id}
+                     :model/DashboardCard {dashcard-id :id}   {:dashboard_id dashboard-id
+                                                               :card_id      card-id}]
+        (perms/grant-collection-read-permissions! &group collection-id)
+        (doseq [[path url] {"card"     (format "card/%d/query" card-id)
+                            "dashcard" (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                               dashboard-id dashcard-id card-id)}]
+          (testing path
+            (let [result (mt/user-http-request :rasta :post 202 url)]
+              (is (true? (-> result :data :is_sandboxed)))
+              (is (seq (mt/cols result)))
+              (is (every? nil? (vals (col-fingerprints result)))))))))))
+
+(deftest sandboxed-join-results-omit-fingerprints-test
+  (testing "BOT-2115: when a sandboxed table is joined to an unrestricted one, no result col carries a fingerprint"
+    (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
+                      :attributes {:price 1}}
+      (data-perms/set-table-permission! &group (mt/id :categories) :perms/create-queries :query-builder)
+      (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+      (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                         (mt/mbql-query venues
+                                           {:joins [{:source-table $$categories
+                                                     :fields       :all
+                                                     :condition    [:= $category_id &c.categories.id]
+                                                     :alias        "c"}]}))]
+        (is (true? (-> result :data :is_sandboxed)))
+        (testing "sanity check: the joined table's cols are in the result"
+          (is (contains? (set (map :table_id (mt/cols result))) (mt/id :categories))))
+        (is (every? nil? (vals (col-fingerprints result))))))))
+
+(deftest native-sandbox-results-omit-fingerprints-test
+  (testing "BOT-2115: result cols for a user sandboxed by a native query carry no fingerprint"
+    (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query {:query "SELECT * FROM VENUES WHERE PRICE = 1"})}}}
+      (let [result (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues))]
+        (is (true? (-> result :data :is_sandboxed)))
+        (is (= 22 (count (mt/rows result))))
+        (is (every? nil? (vals (col-fingerprints result))))))))
