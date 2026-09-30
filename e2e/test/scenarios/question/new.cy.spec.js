@@ -666,6 +666,7 @@ describe(
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findByText("Recent items").click();
+        // Recents are sorted newest first, and the model was picked last
         cy.findAllByTestId("result-item")
           .first()
           .should("contain.text", "Orders Model");
