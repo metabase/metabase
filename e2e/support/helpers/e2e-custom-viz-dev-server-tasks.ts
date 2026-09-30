@@ -87,6 +87,18 @@ export async function startCustomVizDevServer(
     await stopCustomVizDevServer(running.pid);
   }
 
+  const url = `http://localhost:${port}`;
+  const manifestUrl = `${url}/metabase-plugin.json`;
+  const connectionRefused = await waitForConnectionRefused(
+    manifestUrl,
+    SHUTDOWN_TIMEOUT,
+  );
+  if (!connectionRefused) {
+    throw new Error(
+      `Cannot start custom viz dev server: port ${port} already in use`,
+    );
+  }
+
   const logFilePath = join(tmpdir(), `custom-viz-dev-server-${Date.now()}.log`);
   const logStream = createWriteStream(logFilePath);
   const child = spawn("npm", ["run", "dev"], {
@@ -103,10 +115,8 @@ export async function startCustomVizDevServer(
     throw new Error("Failed to start custom-viz dev server (no pid)");
   }
 
-  const url = `http://localhost:${port}`;
-
   // Ensure the dev server is ready and serving the manifest.
-  await waitForHttpOk(`${url}/metabase-plugin.json`, TIMEOUT, logFilePath);
+  await waitForHttpOk(manifestUrl, TIMEOUT, logFilePath);
   running = { pid: child.pid, url };
   console.log(`Custom viz dev server started at ${url} (log: ${logFilePath})`);
 
