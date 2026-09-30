@@ -134,10 +134,9 @@
              {:order-by [[:name :asc]]}))
 
 (mu/defn unarchived-models-for-table
-  "The id, query, query type, result metadata, and schema of the unarchived model Cards whose primary table is
-  `table-id`."
+  "The query-related fields and query type of the unarchived model Cards whose primary table is `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Card :id :dataset_query :query_type :result_metadata :card_schema]
+  (t2/select (queries.card-schema/selection [:query_type])
              :table_id table-id
              :type     :model
              :archived false))
@@ -152,7 +151,7 @@
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
   (t2/with-transaction [_conn]
     ;; lock the row so that no save can land between the check and the write
-    (let [current (t2/select-one [:model/Card :dataset_query :result_metadata] :id card-id {:for :update})]
+    (let [current (t2/select-one (queries.card-schema/selection) :id card-id {:for :update})]
       (boolean
        (when (= expected (select-keys current [:dataset_query :result_metadata]))
          (t2/update! :model/Card card-id {:result_metadata result-metadata
