@@ -255,25 +255,21 @@
 
   Values are returned as numbers (currently, always and integers, but this may change if we add support for
   `:fraction-of-second` in the future.) `time-config` controls the first day used by week-based fields."
-  ([time-config :- TimeConfig
-    unit        :- (into [:enum] (conj extract-units :day-of-week-iso))]
-   (extract time-config (t/zoned-date-time) unit))
-
-  ([{:keys [start-of-week]} :- TimeConfig
-    t                      :- TemporalInstance
-    unit                   :- (into [:enum] (conj extract-units :day-of-week-iso))]
-   (t/as t (case unit
-             :second-of-minute :second-of-minute
-             :minute-of-hour   :minute-of-hour
-             :hour-of-day      :hour-of-day
-             :day-of-week      (.dayOfWeek (week-fields start-of-week))
-             :day-of-week-iso  (.dayOfWeek (week-fields :monday))
-             :day-of-month     :day-of-month
-             :day-of-year      :day-of-year
-             :week-of-year     (.weekOfYear (week-fields start-of-week))
-             :month-of-year    :month-of-year
-             :quarter-of-year  :quarter-of-year
-             :year             :year))))
+  [{:keys [start-of-week]} :- TimeConfig
+   t                      :- TemporalInstance
+   unit                   :- (into [:enum] (conj extract-units :day-of-week-iso))]
+  (t/as t (case unit
+            :second-of-minute :second-of-minute
+            :minute-of-hour   :minute-of-hour
+            :hour-of-day      :hour-of-day
+            :day-of-week      (.dayOfWeek (week-fields start-of-week))
+            :day-of-week-iso  (.dayOfWeek (week-fields :monday))
+            :day-of-month     :day-of-month
+            :day-of-year      :day-of-year
+            :week-of-year     (.weekOfYear (week-fields start-of-week))
+            :month-of-year    :month-of-year
+            :quarter-of-year  :quarter-of-year
+            :year             :year)))
 
 (defmulti ^TemporalAdjuster adjuster
   "Get the custom `TemporalAdjuster` named by `k`.
@@ -338,24 +334,20 @@
   "Truncate a temporal value `t` to the beginning of `unit`, e.g. `:hour` or `:day`. Not all truncation units are
   supported on all subclasses of `Temporal` — for example, you can't truncate a `LocalTime` to `:month`, for obvious
   reasons. `time-config` controls the beginning of a week."
-  ([time-config :- TimeConfig
-    unit        :- (into [:enum] truncate-units)]
-   (truncate time-config (t/zoned-date-time) unit))
-
-  ([{:keys [start-of-week]} :- TimeConfig
-    ^Temporal t             :- TemporalInstance
-    unit                    :- (into [:enum] truncate-units)]
-   (case unit
-     :default     t
-     :millisecond (t/truncate-to t :millis)
-     :second      (t/truncate-to t :seconds)
-     :minute      (t/truncate-to t :minutes)
-     :hour        (t/truncate-to t :hours)
-     :day         (t/truncate-to t :days)
-     :week        (-> (.with t (adjuster :first-day-of-week start-of-week)) (t/truncate-to :days))
-     :month       (-> (t/adjust t :first-day-of-month)           (t/truncate-to :days))
-     :quarter     (-> (.with t (adjuster :first-day-of-quarter)) (t/truncate-to :days))
-     :year        (-> (t/adjust t :first-day-of-year)            (t/truncate-to :days)))))
+  [{:keys [start-of-week]} :- TimeConfig
+   ^Temporal t             :- TemporalInstance
+   unit                    :- (into [:enum] truncate-units)]
+  (case unit
+    :default     t
+    :millisecond (t/truncate-to t :millis)
+    :second      (t/truncate-to t :seconds)
+    :minute      (t/truncate-to t :minutes)
+    :hour        (t/truncate-to t :hours)
+    :day         (t/truncate-to t :days)
+    :week        (-> (.with t (adjuster :first-day-of-week start-of-week)) (t/truncate-to :days))
+    :month       (-> (t/adjust t :first-day-of-month)           (t/truncate-to :days))
+    :quarter     (-> (.with t (adjuster :first-day-of-quarter)) (t/truncate-to :days))
+    :year        (-> (t/adjust t :first-day-of-year)            (t/truncate-to :days))))
 
 (mu/defn bucket :- [:or number? TemporalInstance]
   "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
@@ -368,18 +360,14 @@
     ;; -> {1 [(t/local-date \"2019-01-01\") (t/local-date \"2019-01-02\")], 2 [(t/local-date \"2019-01-04\")]}
 
   `time-config` controls week-based extraction and truncation."
-  ([time-config :- TimeConfig
-    unit        :- (into [:enum] cat [extract-units truncate-units])]
-   (bucket time-config (t/zoned-date-time) unit))
-
-  ([time-config :- TimeConfig
-    t           :- TemporalInstance
-    unit        :- (into [:enum] cat [extract-units truncate-units])]
-   (cond
-     (= unit :default)     t
-     (extract-units unit)  (extract time-config t unit)
-     (truncate-units unit) (truncate time-config t unit)
-     :else                 (throw (Exception. (tru "Invalid unit: {0}" unit))))))
+  [time-config :- TimeConfig
+   t           :- TemporalInstance
+   unit        :- (into [:enum] cat [extract-units truncate-units])]
+  (cond
+    (= unit :default)     t
+    (extract-units unit)  (extract time-config t unit)
+    (truncate-units unit) (truncate time-config t unit)
+    :else                 (throw (Exception. (tru "Invalid unit: {0}" unit)))))
 
 (mu/defn range :- [:map
                    [:start TemporalInstance]
@@ -393,10 +381,6 @@
      :end   (t/zoned-date-time \"2019-11-03T00:00Z[UTC]\")}
 
   `time-config` controls the beginning of a week."
-  ([time-config :- TimeConfig
-    unit        :- (into [:enum] add-units)]
-   (range time-config (t/zoned-date-time) unit))
-
   ([time-config :- TimeConfig
     t           :- TemporalInstance
     unit        :- (into [:enum] add-units)]
@@ -433,12 +417,7 @@
 
   `time-config` controls the beginning of week-based ranges."
   ([time-config     :- TimeConfig
-    unit            :- (into [:enum] truncate-units)
-    comparison-type :- ComparisonType]
-   (comparison-range time-config (t/zoned-date-time) unit comparison-type))
-
-  ([time-config     :- TimeConfig
-    t               :- TemporalInstance
+    t             :- TemporalInstance
     unit            :- (into [:enum] truncate-units)
     comparison-type :- ComparisonType]
    (comparison-range time-config t unit comparison-type nil))
