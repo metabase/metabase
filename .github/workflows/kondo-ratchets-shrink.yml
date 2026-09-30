@@ -45,7 +45,7 @@ jobs:
     steps:
       # `ref: master` checks out the branch head at checkout time rather than the pushed commit, so a run
       # that queued behind another one starts from the newest master it can see.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: master
           # The persisted GITHUB_TOKEN header would override the automation token in the push URL and

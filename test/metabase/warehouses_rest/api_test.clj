@@ -49,7 +49,8 @@
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.jdbc.query :as t2.jdbc.query])
   (:import
    (java.sql Connection)
    (java.util.concurrent CountDownLatch Executors)
@@ -90,7 +91,7 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults :model/Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version :default_schema
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled :uploads_schema_name])
     {:engine                (u/qualified-name (:engine db))
      :settings              {}
@@ -1812,6 +1813,44 @@
             (is (pos? (t2/count :model/Table :db_id db-id))
                 "Sync-now must populate tables even when disable-auto-sync is on")))))))
 
+(deftest sync-schema-does-not-refetch-database-per-field-test
+  (testing (str "GHY-3289: POST /api/database/:id/sync_schema must not read the Database row from the app DB once "
+                "per column. The Database does not change during a sync, so the number of reads should not grow "
+                "with the number of columns.")
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/dataset (mt/dataset-definition "ghy_3289_wide"
+                                         [["wide_table"
+                                           (for [i (range 60)]
+                                             {:field-name (str "col_" i) :base-type :type/Integer})
+                                           [(vec (range 60))]]])
+        ;; `mt/dataset` syncs the dataset's own Database when it loads. Sync a new Database row that points at the
+        ;; same warehouse instead, so its Fields exist only if the sync_schema request really ran.
+        (let [details (:details (mt/db))]
+          (mt/with-temporary-setting-values [disable-auto-sync true]
+            (mt/with-temp [:model/Database {db-id :id} {:engine (tx/driver) :details details}]
+              (let [db-reads  (atom 0)
+                    run-query (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)]
+                (mt/with-dynamic-fn-redefs [quick-task/submit-task!           (fn [f]
+                                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                                  (f)))
+                                            t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
+                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
+                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = \?$" sql)
+                                                                                (swap! db-reads inc))
+                                                                              (run-query rf init conn model sql-args opts))]
+                  (t2/select-one :model/Database :id db-id)
+                  (testing "the counter sees a Database read on this app DB"
+                    (is (= 1 @db-reads)))
+                  (reset! db-reads 0)
+                  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+                (let [fields (->> (mt/user-http-request :crowberto :get 200 (format "database/%d/metadata" db-id))
+                                  :tables
+                                  (mapcat :fields))]
+                  (testing "the sync ran and created a field for every column"
+                    (is (<= 60 (count fields))))
+                  (testing "the Database row is read a few times per sync, not once per column"
+                    (is (< @db-reads 30))))))))))))
+
 (deftest sync-schema-labels-data-sensitivity-test
   (testing "POST /api/database/:id/sync_schema runs the data sensitivity step when the setting is on"
     ;; Same shape as the test above: create the Database under disable-auto-sync so only the explicit request syncs
@@ -1833,6 +1872,34 @@
             (is (= :PII (label "PEOPLE" "EMAIL")))
             (is (= :SEC_KEY (label "PEOPLE" "PASSWORD")))
             (is (= :PUBLIC (label "ORDERS" "TOTAL")))))))))
+
+(deftest initial-sync-skips-field-values-scan-test
+  (testing (str "GHY-3274: the initial sync of a new Database must not scan FieldValues. A new Database has no "
+                "FieldValues (they are made on demand by the `/values` endpoints), so the scan can only issue a "
+                "useless per-Field clear/update attempt for every Field.")
+    (let [details (:details (mt/db))]
+      (mt/with-model-cleanup [:model/Database]
+        (let [db-id (binding [driver.settings/*allow-testing-h2-connections* true]
+                      (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                            (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                              (f)))]
+                        (:id (mt/user-http-request :crowberto :post 200 "database"
+                                                   {:name         (mt/random-name)
+                                                    :engine       "h2"
+                                                    :details      details
+                                                    :is_full_sync true}))))
+              task-runs (fn [task-name]
+                          (->> (mt/user-http-request :crowberto :get 200 "task/" :task task-name :limit 1000)
+                               :data
+                               (filter #(= db-id (:db_id %)))))]
+          (testing "the initial sync ran"
+            (is (= "complete" (:initial_sync_status (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id)))))
+            (is (seq (task-runs "sync-fields")))
+            (is (seq (task-runs "fingerprint-fields"))))
+          (testing "the initial sync did not scan FieldValues"
+            (is (empty? (task-runs "field values scanning")))
+            (is (empty? (task-runs "update-field-values")))
+            (is (empty? (task-runs "delete-expired-advanced-field-values")))))))))
 
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"

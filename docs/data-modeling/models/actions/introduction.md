@@ -53,6 +53,12 @@ There are multiple ways to run actions:
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../../../dashboards/actions.md).
 
+## Auditing actions
+
+{% include plans-blockquote.html feature="Usage analytics" %}
+
+Metabase records every action run in the [Query log](../../../usage-and-performance-tools/usage-analytics-reference.md#query-log) model in your Usage analytics collection.
+
 ## Actions change data in tables, which affect models
 
 Just something to clarify here: actions, even though they are added to models, make their changes to the underlying table that a model queries. Which means that anyone who has access to the underlying table, or to questions or other models based on that table, will be able to see the effects of an action. Tools other than Metabase that are connected to that database will also pick up these changes.

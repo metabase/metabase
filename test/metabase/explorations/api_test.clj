@@ -14,7 +14,6 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.queues :as explorations.queues]
-   [metabase.explorations.test-util :as explorations.tu]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,9 +28,6 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
-
-;; The application does not mount `/api/exploration` while explorations are disabled; serve it for these tests.
-(use-fixtures :each explorations.tu/exploration-routes-fixture)
 
 (deftest gate-threads-derived-data-forbidden-status-test
   (testing "gate-threads-derived-data stamps forbidden when derived data is not visible"
@@ -946,6 +942,19 @@
     ;; expressible here. Perms ride the thread's parent exploration (see the permissions test).
     (mt/with-temp [:model/User u {:email "rs-404@example.com"}]
       (mt/user-http-request u :post 404 "exploration/thread/9999999/restart"))))
+
+(deftest exploration-get-hydrates-trash-permissions-test
+  (testing "GET /api/exploration/:id hydrates :can_restore and :can_delete"
+    (mt/with-temp [:model/Exploration {trashed-id :id} {:name              "trashed"
+                                                        :creator_id        (mt/user->id :crowberto)
+                                                        :archived          true
+                                                        :archived_directly true}
+                   :model/Exploration {live-id :id}    {:name       "live"
+                                                        :creator_id (mt/user->id :crowberto)}]
+      (is (=? {:archived true, :can_restore true, :can_delete true}
+              (mt/user-http-request :crowberto :get 200 (format "exploration/%d" trashed-id))))
+      (is (=? {:archived false, :can_restore false, :can_delete false}
+              (mt/user-http-request :crowberto :get 200 (format "exploration/%d" live-id)))))))
 
 (deftest exploration-get-permissions-test
   (testing "Only the creator (or a superuser) can GET an exploration"

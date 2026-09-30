@@ -25,7 +25,7 @@
                               :config-text-file
                               :content-translation
                               :content-verification
-                              :data-apps-preview
+                              :data-apps
                               :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login
@@ -62,6 +62,7 @@
                               :support-users
                               :transforms-basic
                               :transforms-python
+                              :transforms-testing
                               :upload-management
                               :whitelabel
                               :collection-cleanup
@@ -116,6 +117,7 @@
             :table_data_editing             false
             :transforms-basic               true
             :transforms-python              true
+            :transforms-testing             true
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true

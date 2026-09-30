@@ -14,6 +14,7 @@
   flex-flow: column nowrap;
   outline: none;
   overflow: auto;
+  overscroll-behavior-x: contain;
   flex-grow: 1;
   width: 100%;
   height: 100%;
