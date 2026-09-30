@@ -74,8 +74,9 @@
                        :schedule     {:frequency "daily" :hour 9}})]
           (is (= "no dashboard with this dashboard_id found" (:output result))))))))
 
-(deftest create-dashboard-subscription-schedule-keywords-test
-  (testing "schedule keywords are converted from snake_case to kebab-case"
+(deftest create-dashboard-subscription-schedule-passthrough-test
+  (testing "the raw schedule arg is passed through unchanged; snake_case->kebab-case normalization
+            happens downstream in schedule->schedule-map"
     (let [captured-args (atom nil)
           sent-schedule (fn [schedule]
                           (agent-subscriptions/create-dashboard-subscription-tool
@@ -86,9 +87,9 @@
       (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
                                   (fn [args] (reset! captured-args args) {:output "success"})]
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (= {:frequency :weekly :hour 9 :day-of-week :monday}
+          (is (= {:frequency "weekly" :hour 9 :day_of_week "monday"}
                  (sent-schedule {:frequency "weekly" :hour 9 :day_of_week "monday"})))
-          (is (= {:frequency :monthly :hour 9 :day-of-month :first-monday}
+          (is (= {:frequency "monthly" :hour 9 :day_of_month "first-monday"}
                  (sent-schedule {:frequency "monthly" :hour 9 :day_of_month "first-monday"}))))))))
 
 (deftest ^:parallel create-dashboard-subscription-unknown-day-of-week-test
