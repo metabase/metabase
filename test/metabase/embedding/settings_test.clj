@@ -156,6 +156,18 @@
   (depricated-setting-throws #'embed.settings/check-enable-settings! {:mb-enable-embedding true :mb-enable-embedding-interactive false :mb-enable-embedding-static true})
   (depricated-setting-throws #'embed.settings/check-enable-settings! {:mb-enable-embedding true :mb-enable-embedding-interactive false :mb-enable-embedding-sdk true :mb-enable-embedding-static true}))
 
+(deftest deprecated-modular-enabled-embedding-settings-test
+  ;; OK:
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-static true})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-interactive false})))
+  ;; Not OK: the modular value would silently override each of these.
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding-static true})
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-sdk false})
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-simple false})
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding true}))
+
 (deftest deprecated-origin-embedding-settings-test
   ;; OK:
   (is (nil? (#'embed.settings/check-origins-settings! {})))
