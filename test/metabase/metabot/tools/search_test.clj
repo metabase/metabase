@@ -1399,3 +1399,12 @@
                 (is (not (contains? models "transform")))
                 (is (contains? models "dashboard")
                     "sanity: the other requested type is unaffected, so this isn't an empty-set pass")))))))))
+
+(deftest vector-only-reaches-the-search-context-test
+  (mt/with-test-user :rasta
+    (with-redefs [perms/impersonated-user? (fn [] false)
+                  perms/sandboxed-user? (fn [] false)]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [search-core/search (fn [ctx] (reset! captured ctx) {:data []})]
+          (search/search-by-query {:query "how much did we make" :vector-only? true}))
+        (is (true? (:vector-only? @captured)))))))

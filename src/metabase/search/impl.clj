@@ -300,6 +300,8 @@
    [:vector-search-max-scan-tuples       {:optional true} [:maybe ms/PositiveInt]]
    [:vector-search-explain?              {:optional true} [:maybe boolean?]]
    [:vector-search-force-index?          {:optional true} [:maybe boolean?]]
+   ;; semantic engine: match by meaning alone, with no keyword branch and no fallback to a keyword engine
+   [:vector-only?                        {:optional true} [:maybe boolean?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    ;; a structured keyword query; engines that compile it use it in place of `:search-string` for matching
    [:search-expr                         {:optional true} [:maybe (query-expr/schema query-expr/all-ops)]]
@@ -344,6 +346,7 @@
            vector-search-max-scan-tuples
            vector-search-explain?
            vector-search-force-index?
+           vector-only?
            search-native-query
            search-expr
            search-string
@@ -392,6 +395,7 @@
                  (some? vector-search-max-scan-tuples)       (assoc :vector-search-max-scan-tuples vector-search-max-scan-tuples)
                  (some? vector-search-explain?)              (assoc :vector-search-explain? vector-search-explain?)
                  (some? vector-search-force-index?)          (assoc :vector-search-force-index? vector-search-force-index?)
+                 vector-only?                                (assoc :vector-only? true)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? search-expr)                         (assoc :search-expr search-expr)
                  (some? verified)                            (assoc :verified verified)

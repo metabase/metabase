@@ -673,10 +673,10 @@
    agent gets *something* useful back. Skipped when the query is a single token, is
    quoted, or already uses `or`.
 
-   `engine` pins the engine instead of resolving one. `search-expr` is a structured keyword query (see
+   `engine` pins the engine instead of resolving one, and `vector-only?` asks the semantic engine for meaning alone. `search-expr` is a structured keyword query (see
    `metabase.search.query-expr`): engines that compile it match on it, the others match its leaves as a plain
    string, and it is never broadened."
-  [{:keys [query search-expr engine database-id collection-id created-at last-edited-at
+  [{:keys [query search-expr engine vector-only? database-id collection-id created-at last-edited-at
            entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:database-id         database-id
@@ -731,7 +731,8 @@
                                    search-native-query (assoc :search-native-query (boolean search-native-query))
                                    use-verified?       (assoc :curated true)
                                    collection-id       (assoc :collection collection-id)
-                                   search-expr         (assoc :search-expr search-expr)))]
+                                   search-expr         (assoc :search-expr search-expr)
+                                   vector-only?        (assoc :vector-only? true)))]
                             (:data (search/search search-context))))
         primary         (run-engine (if search-expr (search/query-expr-search-string search-expr) query))
         ;; The `or`-rewrite only broadens where lowercase `or` compiles to a tsquery `|` — see
@@ -1010,7 +1011,7 @@
 
 (def ^:private matchers
   "How each matcher runs: the engine it pins, and whether its `query` is a structured query."
-  {:semantic      {:engine (constantly :search.engine/semantic) :expr? false}
+  {:semantic      {:engine (constantly :search.engine/semantic) :expr? false :vector-only? true}
    :fulltext      {:engine search.engine/keyword-engine :expr? true :validate-tsquery? true}
    :substring-or  {:engine search.engine/keyword-engine :expr? true}
    :substring-and {:engine search.engine/keyword-engine :expr? true}})
@@ -1072,18 +1073,27 @@
 (defn- run-search-tool
   [profile matcher {:keys [query entity_types] :as args}]
   (let [{:keys [label allowed default-types opts]} (profiles profile)
-        {:keys [engine expr?]}                     (matchers matcher)
+        {:keys [engine expr? vector-only?]}        (matchers matcher)
         args                                       (cond-> args
                                                      (and default-types (not (seq entity_types)))
                                                      (assoc :entity_types default-types))]
     (when expr?
       (validate-keyword-query! matcher query))
-    (do-search label allowed
-               (merge opts
-                      {:engine (engine)}
-                      (when expr? {:search-expr query})
-                      (when (= :sql profile) {:database-id (:database_id args)}))
-               args)))
+    (try
+      (do-search label allowed
+                 (merge opts
+                        {:engine (engine)}
+                        (when vector-only? {:vector-only? true})
+                        (when expr? {:search-expr query})
+                        (when (= :sql profile) {:database-id (:database_id args)}))
+                 args)
+      (catch clojure.lang.ExceptionInfo e
+        ;; vector-only search doesn't fall back to a keyword engine; point the model at the keyword tool instead
+        (if (= :semantic-search-error (:type (ex-data e)))
+          (throw (tool-error (str "Semantic search isn't working right now. Use `"
+                                  (if (fulltext-available?) "fulltext_search" "substring_search")
+                                  "` instead, with the likely words.")))
+          (throw e))))))
 
 (defn- search-display
   [{:keys [query]}]

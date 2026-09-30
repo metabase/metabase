@@ -905,7 +905,10 @@
   "Build a hybrid search query using vector + keyword based searches and reranking with RRF"
   [index embedding search-context]
   (let [semantic-results (semantic-search-query index embedding search-context)
-        keyword-results (keyword-search-query index search-context)
+        ;; A vector-only search keeps the keyword branch's shape so the join and scorers are unchanged, but matches
+        ;; nothing with it: the caller wants meaning alone, and runs keyword matching as a separate search.
+        keyword-results  (cond-> (keyword-search-query index search-context)
+                           (:vector-only? search-context) (assoc :where [:= [:inline 1] [:inline 0]]))
         full-query {:with [[:vector_results semantic-results]
                            [:text_results keyword-results]]
                     :select (into
