@@ -11,7 +11,15 @@ import {
   isDefaultGroup,
 } from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
-import { Box, Divider, Flex, Icon, Popover, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Divider,
+  Flex,
+  Icon,
+  Popover,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo, Member } from "metabase-types/api";
 
@@ -112,10 +120,9 @@ export const MembershipSelect = ({
     return (
       <li key={group.id} className={S.membershipSelectItem}>
         <Tooltip label={addDisabledReason} disabled={addDisabledReason == null}>
-          <button
+          <UnstyledButton
             type="button"
             className={S.membershipToggle}
-            aria-label={group.name}
             aria-pressed={isMember}
             aria-disabled={isDisabled || undefined}
             onClick={() => {
@@ -127,9 +134,10 @@ export const MembershipSelect = ({
             <span>{getGroupNameLocalized(group)}</span>
             <Icon
               name="check"
+              aria-hidden
               style={{ visibility: isMember ? "visible" : "hidden" }}
             />
-          </button>
+          </UnstyledButton>
         </Tooltip>
         {canEditMembershipType && (
           <PLUGIN_GROUP_MANAGERS.UserTypeToggle
