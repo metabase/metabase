@@ -15,7 +15,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.config :as metabot.config]
-   [metabase.metabot.db :as metabot.db]))
+   [metabase.metabot.db :as metabot.db]
+   [metabase.util :as u]))
 
 (def ^:private report-card-models
   "Search-model strings backed by `report_card`, moderated as \"card\"."
@@ -150,8 +151,8 @@
 
 (defn- metric-context
   "State for one judgement of a query's metrics: `:seen`, the metrics being judged up the current reference chain
-  (the cycle guard), and `:verdicts`, an atom memoizing each metric's verdict so a metric reachable through several
-  references is judged once."
+  (the cycle guard), and `:verdicts`, an atom memoizing each metric's verdict by `[id depth]` so a metric reachable
+  through several references is judged once per depth."
   []
   {:seen #{} :verdicts (atom {})})
 
@@ -160,16 +161,18 @@
   it's curated, or its definition passes [[uncurated-query-sources]] on its own. A missing metric, a reference cycle,
   or a chain deeper than [[max-metric-nesting]] fails closed."
   [curated? id definition {:keys [seen verdicts] :as ctx}]
-  (if-some [verdict (get @verdicts id)]
-    verdict
-    (let [verdict (boolean
-                   (or (curated? "card" id)
-                       (and (some? definition)
-                            (not (seen id))
-                            (< (count seen) max-metric-nesting)
-                            (empty? (uncurated-query-sources definition (update ctx :seen conj id))))))]
-      (swap! verdicts assoc id verdict)
-      verdict)))
+  ;; keyed by depth as well as id: the depth guard is a property of the path, so the same metric may pass when
+  ;; referenced directly and fail at the end of a long chain
+  (let [k [id (count seen)]]
+    (if-some [verdict (get @verdicts k)]
+      verdict
+      (u/prog1 (boolean
+                (or (curated? "card" id)
+                    (and (some? definition)
+                         (not (seen id))
+                         (< (count seen) max-metric-nesting)
+                         (empty? (uncurated-query-sources definition (update ctx :seen conj id))))))
+        (swap! verdicts assoc k <>)))))
 
 (defn- query-coverage
   "What the curated content among the `table`s, `card`s, and `curated-metric-queries` a query reads exposes:
