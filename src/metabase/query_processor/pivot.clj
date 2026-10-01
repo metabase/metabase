@@ -754,9 +754,9 @@
 (def ^:private pivot-flow-comparison-pairs
   "Pivot flow pairs the parity checker compares, in order. `:multi-query` is placed first in each pair that
   includes it so `do-report` renders it as `:expected` (the reference)."
-  [[:multi-query :grouping-sets]
+  [[:multi-query :native-pivot-query]
    [:multi-query :union-all]
-   [:grouping-sets :union-all]])
+   [:native-pivot-query :union-all]])
 
 (def ^:private throwable-signature
   (juxt class ex-message ex-data))
@@ -806,7 +806,7 @@
 
 (def on-parity-mismatch
   "Called with `{:outcomes {<flow> <outcome-map> ...} :divergent-pairs [[<flow-a> <flow-b>] ...]}` when the
-  parity checker sees any divergence across the pivot flows it ran (a subset of `:grouping-sets`,
+  parity checker sees any divergence across the pivot flows it ran (a subset of `:native-pivot-query`,
   `:union-all`, `:multi-query`). Each outcome is a `{:outcome ...}` on success or `{:throwable ...}` on
   failure. `:divergent-pairs` preserves the order of [[pivot-flow-comparison-pairs]]. Defaults to
   [[default-on-parity-mismatch!]]; override via
@@ -820,7 +820,7 @@
                (lib/aggregations query))))
 
 (defn- run-pivot-flow
-  "Run one pivot `flow` (`:multi-query`, `:grouping-sets`, or `:union-all`) against `query`. The primary
+  "Run one pivot `flow` (`:multi-query`, `:native-pivot-query`, or `:union-all`) against `query`. The primary
   flow uses the caller's `rff` and lets `qp.pipeline/*result*` pass through; the others use the default rff
   and result handler purely to collect an outcome for comparison. Returns `{:outcome ...}` on success or
   `{:throwable ...}` on failure — annotated with `:elapsed-ms` and `:flow` so the parity checker (and CI
@@ -830,7 +830,7 @@
         runner       (if (= flow :multi-query) run-pivot-query-multi run-sql-pivot-query)
         force-shape  (case flow
                        :multi-query   nil
-                       :grouping-sets :grouping-sets
+                       :native-pivot-query :native-pivot-query
                        :union-all     :union-all)
         scoped-query (cond-> query
                        force-shape (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape force-shape))
@@ -846,14 +846,14 @@
 
 (defn- driver-supports-grouping-sets?
   "True iff `query`'s driver supports the `:native-pivot-tables` feature — i.e. forcing the
-  `:grouping-sets` compilation shape would produce valid SQL."
+  `:native-pivot-query` compilation shape would produce valid SQL."
   [query]
   (let [db (query-database query)]
     (driver.u/supports? (driver.u/database->driver db) :native-pivot-tables db)))
 
 (defn- run-with-parity-check
   "Run every applicable pivot flow — `:multi-query` always, `:union-all` on every SQL driver, and
-  `:grouping-sets` when the driver supports `:native-pivot-tables` and the query has no window-function
+  `:native-pivot-query` when the driver supports `:native-pivot-tables` and the query has no window-function
   aggregation — and report any pairwise divergence via [[on-parity-mismatch]]. The primary flow (per
   `sql-primary?` + GS applicability) uses the caller's `rff`; other flows use the default rff for
   comparison only. Returns the primary flow's success value or rethrows its exception.
@@ -869,9 +869,9 @@
         primary-flow    (cond
                           (not sql-primary?) :multi-query
                           skip-gs?           :union-all
-                          :else              :grouping-sets)
+                          :else              :native-pivot-query)
         flows           (cond-> [:multi-query :union-all]
-                          (not skip-gs?) (conj :grouping-sets))
+                          (not skip-gs?) (conj :native-pivot-query))
         outcomes        (into {} (map (fn [flow] [flow (run-pivot-flow flow query rff primary-flow)])) flows)
         divergent-pairs (divergent-pivot-pairs outcomes)
         cause-chain     (fn [^Throwable t]
