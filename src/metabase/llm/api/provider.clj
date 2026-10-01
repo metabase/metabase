@@ -200,9 +200,13 @@
                    {:models (or config-models (vec (:models listed)))}))
           (catch clojure.lang.ExceptionInfo e
             (if (provider-client-error? e)
-              ;; Keep offering config-models, otherwise admin has no way to select a different model to fix "model not
-              ;; served in given region" errors.
-              {:models (or config-models []) :error (.getMessage e)}
+              (do
+                ;; the admin gets only the message; the cause — say, the parse error behind a model list that was
+                ;; not JSON — is what tells an operator what actually came back
+                (log/warn e "Listing models was refused for LLM provider connection" {:connection conn-key :type type})
+                ;; Keep offering config-models, otherwise admin has no way to select a different model to fix "model
+                ;; not served in given region" errors.
+                {:models (or config-models []) :error (.getMessage e)})
               (throw e))))))))
 
 (def ^:private models-cache-ttl-ms

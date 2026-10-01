@@ -676,6 +676,13 @@
            #"vLLM returned an unexpected model list response.*http://vllm\.internal:8000/v1"
            (vllm/list-models {:credentials credentials}))))))
 
+(deftest list-models-keeps-the-parse-error-as-the-cause-test
+  (testing "the parse error travels as the cause, so a log shows whether the body was HTML, empty or cut off"
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (json/decode "<html>404 Not Found</html>"))]
+      (is (instance? com.fasterxml.jackson.core.JsonProcessingException
+                     (try (vllm/list-models {:credentials credentials})
+                          (catch clojure.lang.ExceptionInfo e (ex-cause e))))))))
+
 (deftest list-models-fails-closed-before-probing-test
   (testing "a malformed catalog throws without issuing a probe request"
     (let [chat-requests (atom 0)]

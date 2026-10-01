@@ -396,14 +396,17 @@
   the admin still sees the sentence, but it bumps the unhandled-error counter and collapses to \"Something
   went wrong\" under `MB_HIDE_STACKTRACES=true`, losing the diagnostic for the operators who enabled that.
 
-  `detail` is a sentence appended to the message, for a provider that has something more specific to say."
+  `detail` is a sentence appended to the message, for a provider that has something more specific to say, and
+  `cause` the error that made the body unreadable, kept so a log shows whether it was HTML, empty or cut off."
   ([provider-name] (malformed-catalog-ex provider-name nil))
-  ([provider-name detail]
+  ([provider-name detail] (malformed-catalog-ex provider-name detail nil))
+  ([provider-name detail cause]
    (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
               detail (str ". " detail))
             {:api-error   true
              :status-code 400
-             :error-code  :malformed-model-catalog})))
+             :error-code  :malformed-model-catalog}
+            cause)))
 
 (defn models-catalog
   "Extract the model list from an OpenAI-compatible `GET /models` response, failing closed.

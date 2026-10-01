@@ -108,8 +108,8 @@
         (chat-completions/models-catalog "Ollama" res {:detail detail}))
       ;; Ordered ahead of the `IOException` catch, which Jackson's parse error is one of: a 2xx whose
       ;; body is not JSON means the server answered, so the address is wrong rather than unreachable.
-      (catch JsonProcessingException _
-        (throw (chat-completions/malformed-catalog-ex "Ollama" detail)))
+      (catch JsonProcessingException e
+        (throw (chat-completions/malformed-catalog-ex "Ollama" detail e)))
       ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
       (catch IOException e
         (throw (list-models-io-ex e url)))
