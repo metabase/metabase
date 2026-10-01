@@ -97,7 +97,6 @@
   a provider (see [[collect-tool-result]])."
   [:or
    :string
-   :keyword
    number?
    :boolean
    :nil
@@ -120,7 +119,6 @@
   string keys, so it can't stand in here."
   [:or
    :string
-   :keyword
    number?
    :boolean
    :nil
