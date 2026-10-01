@@ -29,6 +29,7 @@ const PAGE_SIZE = 25;
 type Props = {
   isAdding: boolean;
   groups: DataAppGroup[];
+
   onAddGroups: (groupIds: number[]) => Promise<boolean>;
   onCancelAdd: () => void;
   onRemoveGroup: (group: DataAppGroup) => Promise<boolean>;
@@ -61,7 +62,9 @@ export const DataAppGroupList = ({
       <Box
         className={cx(
           S.groupListContent,
-          !isAdding && S.transitioningGroupListContent,
+
+          // transitions between empty state and group list content
+          !isAdding && S.overlappingGroupListContent,
         )}
       >
         {(isAdding || groups.length > 0) && (
@@ -172,13 +175,9 @@ const GroupRow = ({
           style={{ minWidth: "max-content" }}
         >
           <UnstyledButton
+            className={S.removeGroupButton}
             aria-label={t`Remove ${name}`}
             onClick={() => onRemove(group)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
           >
             <Icon name="close" c="text-disabled" size={16} />
           </UnstyledButton>
