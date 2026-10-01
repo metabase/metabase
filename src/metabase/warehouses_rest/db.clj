@@ -49,8 +49,11 @@
   [card-type        :- [:or :keyword :string]
    database-ids     :- [:set ::lib.schema.id/database]
    collection-scope :- [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
+  ;; Rows are pushed through `mi/do-after-select :model/Card` by the caller, so `:dataset_query` and
+  ;; `:result_metadata` drag in the rest of [[metabase.queries.card-schema/schema-upgrade-triggers]].
   (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
                                   :result_metadata :type :source_card_id :card_schema
+                                  :dimensions :dimension_mappings
                                   [^:allow-subquery {:select   [:status]
                                                      :from     [:moderation_review]
                                                      :where    [:and
@@ -175,7 +178,7 @@
    search-card-slug               :- :string
    include-dashboard-questions?   :- [:maybe :boolean]]
   (t2/select [:model/Card :id :type :database_id :name :collection_id
-              [:collection.name :collection_name] :card_schema]
+              [:collection.name :collection_name]]
              {:where    [:and
                          [:= :report_card.database_id database-id]
                          [:= :report_card.archived false]

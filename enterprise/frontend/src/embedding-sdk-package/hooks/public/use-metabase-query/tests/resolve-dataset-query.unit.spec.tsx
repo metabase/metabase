@@ -400,8 +400,8 @@ describe("resolveDatasetQuery", () => {
       filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
     });
 
-    // The generated field's `tableId`/`sourceName` scope it to the orders table;
-    // keeping them would stop it matching the question's own STATUS column.
+    // The question's STATUS column comes from the orders table, so the table
+    // field's `tableId` still matches it.
     expect(stagesOf(datasetQuery)[0].filters).toEqual([
       ["=", expect.anything(), ["field", expect.anything(), "STATUS"], "paid"],
     ]);

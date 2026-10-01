@@ -411,6 +411,20 @@
         (contains? data :requested)     "invalid_scope"
         :else                           "invalid_request")))
 
+(defn- token-error-code
+  "The RFC 6749 section 5.2 `error` code for the ex-data of an exception thrown while handling a token request."
+  [{:keys [error] :as data}]
+  (or error
+      ;; oidc-provider names a code only for its PKCE, expired refresh token, and resource-indicator errors. Its other
+      ;; grant failures carry the code or refresh token that failed, or the client or redirect URI the grant is bound
+      ;; to as `:expected`/`:actual`. Malformed requests carry none of these. A missing `redirect_uri` also carries
+      ;; `:code`, and `invalid_grant` is right for it too: the code is consumed by then, so a retry cannot succeed.
+      (if (or (contains? data :code)
+              (contains? data :refresh-token)
+              (and (contains? data :expected) (contains? data :actual)))
+        "invalid_grant"
+        "invalid_request")))
+
 (defn- error-description
   "The `error_description` for an exception's ex-data: the one it carries, else `fallback`."
   [data fallback]
@@ -650,7 +664,7 @@
                 (catch ExceptionInfo e
                   (log/warnf "OAuth token request failed: %s" (ex-message e))
                   (let [data  (ex-data e)
-                        error (or (:error data) "invalid_request")]
+                        error (token-error-code data)]
                     {:status  (if (= error "invalid_client") 401 400)
                      :headers {"Content-Type"  "application/json"
                                "Cache-Control" "no-store"
