@@ -1404,7 +1404,10 @@
               (assert-destination-change-authorized! group-type current-config new-config {field value}
                                                      (:env-fields live) {:legacy-setting? true}))
             (when value
-              (assert-credential-write-authorized! group-type field live))))
+              (assert-credential-write-authorized! group-type field live)
+              (when idx
+                (assert-credentials-not-captured! (nth stored idx) {field value}
+                                                  (env-overlay-config conn-key group-type))))))
         (when value
           ;; against the whole connection, not the one value: a field is only worth judging — and only
           ;; worth keeping — in the deployment its own controller puts it in

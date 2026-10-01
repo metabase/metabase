@@ -908,3 +908,13 @@
     (mt/with-temporary-setting-values [llm-providers [(connection "google" "google" {:project-id "my-project"})]]
       (llm.settings/llm-google-oauth-access-token! "ya29.token")
       (is (= "ya29.token" (:oauth-access-token (:config (first (llm.provider/stored-connections)))))))))
+
+(deftest per-setting-write-refuses-a-key-the-environment-moved-away-from-test
+  (testing "a key written through the per-provider setting is refused, not stored for every read to drop"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting  "self-hosted"
+                                                                   :base-url "http://ollama.internal:11434/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (=? {:message #".*MB_LLM_OLLAMA_API_KEY.*"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-key" {:value "sk-new"})))
+        (is (nil? (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
