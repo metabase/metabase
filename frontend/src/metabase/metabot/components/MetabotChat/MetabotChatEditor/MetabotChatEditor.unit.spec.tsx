@@ -7,6 +7,7 @@ import {
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
@@ -241,6 +242,23 @@ describe("MetabotChatEditor", () => {
 
     await userEvent.type(await input(), "@DB");
     await userEvent.click(await screen.findByText("DB 1"));
+
+    expect(onChange).toHaveBeenLastCalledWith("[DB 1](metabase://database/1)");
+  });
+
+  it("can mention a database picked in the browse all modal", async () => {
+    mockGetBoundingClientRect();
+    setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+    const onChange = jest.fn();
+    setup({ onChange });
+
+    await userEvent.type(await input(), "@");
+    await userEvent.click(await screen.findByText("Browse all"));
+    await userEvent.click(await screen.findByText("Databases"));
+    await userEvent.click(await screen.findByRole("link", { name: /DB 1/ }));
+    await userEvent.click(
+      await screen.findByTestId("entity-picker-select-button"),
+    );
 
     expect(onChange).toHaveBeenLastCalledWith("[DB 1](metabase://database/1)");
   });
