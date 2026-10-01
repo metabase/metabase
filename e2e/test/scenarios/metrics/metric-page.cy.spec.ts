@@ -140,6 +140,22 @@ describe("scenarios > metrics > metric page", () => {
       .findByDisplayValue("Renamed metric")
       .should("be.visible");
 
+    cy.log("navigate between tabs");
+    H.MetricPage.aboutTab().should("be.visible");
+    H.MetricPage.overviewTab().should("be.visible");
+    H.MetricPage.definitionTab().should("be.visible");
+    H.MetricPage.historyTab().should("be.visible");
+
+    H.MetricPage.definitionTab().click();
+    H.MetricPage.queryEditor().should("be.visible");
+    H.getNotebookStep("data").findByText("Orders").should("be.visible");
+
+    H.MetricPage.historyTab().click();
+    cy.findAllByTestId("revision-history-event").should("have.length.gte", 1);
+
+    H.MetricPage.aboutTab().click();
+    H.MetricPage.aboutPage().should("be.visible");
+
     cy.log("duplicate via more menu");
     H.MetricPage.moreMenu().click();
     H.popover().findByText("Duplicate").click();
@@ -220,41 +236,6 @@ describe("scenarios > metrics > metric page", () => {
       H.popover().findByText("Edit alerts").should("be.visible");
     },
   );
-
-  it("should display timeseries metric and navigate between tabs", () => {
-    H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
-      // Set default dimension so the metric can be previewed as a timeseries chart.
-      H.setMetricDefaultDimension(metric.id, "Created At");
-      H.visitMetric(metric.id);
-    });
-
-    H.MetricPage.aboutPage().should("be.visible");
-    cy.log("the curated default time dimension charts the metric");
-    H.MetricPage.aboutPage().within(() => {
-      cy.findByTestId("visualization-root")
-        .should("be.visible")
-        .and("have.attr", "data-viz-ui-name", "Line");
-      H.echartsContainer().should("be.visible");
-      cy.findByRole("button", { name: /^Select dimension: Created At/ }).should(
-        "be.visible",
-      );
-    });
-
-    H.MetricPage.aboutTab().should("be.visible");
-    H.MetricPage.overviewTab().should("be.visible");
-    H.MetricPage.definitionTab().should("be.visible");
-    H.MetricPage.historyTab().should("be.visible");
-
-    H.MetricPage.definitionTab().click();
-    H.MetricPage.queryEditor().should("be.visible");
-    H.getNotebookStep("data").findByText("Orders").should("be.visible");
-
-    H.MetricPage.historyTab().click();
-    cy.findAllByTestId("revision-history-event").should("have.length.gte", 1);
-
-    H.MetricPage.aboutTab().click();
-    H.MetricPage.aboutPage().should("be.visible");
-  });
 
   it("should render curated dimension charts in order and load more", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {

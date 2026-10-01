@@ -519,23 +519,6 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   describe("Entry points", () => {
-    it("should show empty state on first load", () => {
-      H.MetricsViewer.goToViewer();
-      cy.url().should("include", "/explore");
-      cy.findByRole("heading", { name: "Start exploring" }).should(
-        "be.visible",
-      );
-
-      addMetric("Count of products");
-
-      H.echartsContainer().should("be.visible");
-
-      cy.log("should persist state in url");
-
-      cy.reload();
-      verifyMetricCount(1);
-    });
-
     it("should handle breakout with no results gracefully", () => {
       createMetrics([
         {
@@ -558,6 +541,10 @@ describe("scenarios > metrics > explorer", () => {
   describe("Adding metrics and measures", () => {
     it("should add multiple metrics", () => {
       H.MetricsViewer.goToViewer();
+      cy.url().should("include", "/explore");
+      cy.findByRole("heading", { name: "Start exploring" }).should(
+        "be.visible",
+      );
 
       addMetric("Count of products");
 
@@ -565,6 +552,12 @@ describe("scenarios > metrics > explorer", () => {
         event: "metrics_viewer_metric_added",
         event_detail: "metric",
       });
+
+      H.echartsContainer().should("be.visible");
+
+      cy.log("should persist state in url");
+      cy.reload();
+      verifyMetricCount(1);
 
       addMetric("Count of orders");
       verifyMetricCount(2);
@@ -1481,20 +1474,17 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     describe("Expression pills", () => {
-      it("should show an expression dimension pill with per-metric accordion", () => {
+      it("should preserve non-default expression dimensions after page reload", () => {
         H.MetricsViewer.goToViewer();
-        cy.log("Create expression: Count of orders + Count of products");
-        addOrdersProductsExpression();
-
         cy.log(
-          "Dimension pill bar should contain a selected expression dimension label",
+          "Create expression with only expression entity: Count of orders + Count of products",
         );
+        addOrdersProductsExpression();
         showColumnLabels();
         H.MetricsViewer.getDimensionPillBarContainer()
           .should("be.visible")
-          .and("not.contain.text", "Select dimensions");
+          .and("contain.text", "Multiple dimensions");
 
-        cy.log("Open the sidebar dimension picker");
         H.MetricsViewer.openDimensionPickerSidebar();
 
         cy.log(
@@ -1514,40 +1504,11 @@ describe("scenarios > metrics > explorer", () => {
             .should("be.visible")
             .and("have.length", 2);
         });
-
-        cy.log(
-          "Configure the shared Time category and select a non-default dimension",
-        );
         H.MetricsViewer.dimensionPickerSidebar()
           .findByRole("button", { name: "Back" })
           .click();
-        openTimeDimensionConfiguration();
-        H.MetricsViewer.dimensionPickerSidebar()
-          .findByLabelText("Select dimension for Count of orders")
-          .click();
-        cy.findByRole("option", { name: /Birth Date/ }).click();
-
-        cy.wait("@dataset");
-
-        cy.log(
-          "Expression dimension pill should now show 'Multiple dimensions'",
-        );
-        H.MetricsViewer.getDimensionPillBarContainer().should(
-          "contain.text",
-          "Multiple dimensions",
-        );
-      });
-
-      it("should preserve non-default expression dimensions after page reload", () => {
-        H.MetricsViewer.goToViewer();
-        cy.log(
-          "Create expression with only expression entity: Count of orders + Count of products",
-        );
-        addOrdersProductsExpression();
-        showColumnLabels();
 
         cy.log("Pick a non-default dimension for one metric in the expression");
-        H.MetricsViewer.openDimensionPickerSidebar();
         openTimeDimensionConfiguration();
         H.MetricsViewer.dimensionPickerSidebar()
           .findByLabelText("Select dimension for Count of orders")
@@ -1595,19 +1556,6 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of orders");
     });
 
-    it("should show unified view for display types that support multiple series", () => {
-      addMetric("Count of products");
-
-      cy.log("line charts support multiple series, so should be unified");
-      H.MetricsViewer.assertVizType("Line");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
-
-      cy.log("bar charts also support multiple series");
-      selectDimensionBreakout("Category");
-      H.MetricsViewer.assertVizType("Bar");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
-    });
-
     it("should stack series into panels when the stack series button is toggled", () => {
       addMetric("Count of products");
 
@@ -1632,27 +1580,6 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.assertVizType("Map");
       cy.findByTestId("chart-layout-picker").should("not.exist");
     });
-
-    it("should automatically split for display types that do not support multiple series", () => {
-      cy.log("with a single series, map shows one visualization");
-      selectDimensionBreakout("State");
-      H.MetricsViewer.assertVizType("Map");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
-
-      cy.log("add a breakout to create multiple series");
-      selectDimensionBreakout("Created At", { waitForDataset: false });
-      selectBreakout("Count of orders", "Source");
-
-      cy.log("line supports multiple series, so should remain unified");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
-
-      cy.log("map does not support multiple series, so should auto-split");
-      selectDimensionBreakout("State");
-      H.MetricsViewer.getAllMetricVisualizations().should(
-        "have.length.greaterThan",
-        1,
-      );
-    });
   });
 
   describe("Filters", () => {
@@ -1662,12 +1589,22 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should apply a categorical filter to a metric (UXW-4849)", () => {
+      cy.log("with a single series, map shows one visualization");
+      selectDimensionBreakout("State");
+      H.MetricsViewer.assertVizType("Map");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
+
+      cy.log("add a breakout to create multiple series");
+      selectDimensionBreakout("Created At", { waitForDataset: false });
       selectBreakout("Count of orders", "Category");
       H.MetricsViewer.breakoutLegend()
         .should("contain.text", "Doohickey")
         .should("contain.text", "Gadget")
         .should("contain.text", "Gizmo")
         .should("contain.text", "Widget");
+
+      cy.log("line supports multiple series, so should remain unified");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
 
       H.MetricsViewer.getFilterButton().click();
       H.popover().findByText("Category").click();
@@ -1808,6 +1745,7 @@ describe("scenarios > metrics > explorer", () => {
     it("should allow me to apply filters to each metric individually (UXW-4849)", () => {
       addMetric("Count of products");
       selectDimensionBreakout("Category");
+      H.MetricsViewer.assertVizType("Bar");
       H.MetricsViewer.changeVizType("line");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",

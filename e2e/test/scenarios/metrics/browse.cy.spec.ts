@@ -94,13 +94,10 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("no metrics", () => {
-    it("should not hide the browse metrics link in the sidebar", () => {
-      cy.visit("/");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
-    });
-
     it("should show the empty metrics page", () => {
-      cy.visit("/browse/metrics");
+      cy.visit("/");
+      H.navigationSidebar().findByText("Metrics").should("be.visible").click();
+      cy.location("pathname").should("eq", "/browse/metrics");
       H.main().within(() => {
         cy.findByText(
           "Create Metrics to define the official way to calculate important numbers for your team",
@@ -157,16 +154,6 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("multiple metrics", () => {
-    it("can browse metrics", () => {
-      createMetrics(ALL_METRICS);
-      cy.visit("/browse/metrics");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
-
-      ALL_METRICS.forEach((metric) => {
-        findMetric(metric.name).should("be.visible");
-      });
-    });
-
     it("should navigate to the metric when clicking a metric title", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
@@ -216,6 +203,7 @@ describe("scenarios > browse > metrics", () => {
         "This is a _very_ **long description** that should be truncated by the metrics table because it is really very long.";
 
       createMetrics([
+        ...ALL_METRICS,
         {
           ...ORDERS_SCALAR_METRIC,
           name,
@@ -224,6 +212,11 @@ describe("scenarios > browse > metrics", () => {
       ]);
 
       cy.visit("/browse/metrics");
+      H.navigationSidebar().findByText("Metrics").should("be.visible");
+
+      ALL_METRICS.forEach((metric) => {
+        findMetric(metric.name).should("be.visible");
+      });
 
       metricsTable()
         .findByText(name)
@@ -395,15 +388,6 @@ describe("scenarios > browse > metrics", () => {
       H.activateToken("pro-self-hosted");
     });
 
-    it("should not show the verified metrics filter when there are no verified metrics", () => {
-      createMetrics(ALL_METRICS);
-      cy.visit("/browse/metrics");
-
-      cy.findByLabelText("Table of metrics").should("be.visible");
-
-      cy.findByLabelText(/show.*verified.*metrics/i).should("not.exist");
-    });
-
     it("should show the verified metrics filter when there are verified metrics", () => {
       cy.intercept(
         "PUT",
@@ -415,9 +399,11 @@ describe("scenarios > browse > metrics", () => {
 
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+      cy.findByLabelText(/show.*verified.*metrics/i).should("not.exist");
 
       verifyMetric(ORDERS_SCALAR_METRIC);
 
+      cy.findByLabelText(/show.*verified.*metrics/i).should("be.visible");
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
 

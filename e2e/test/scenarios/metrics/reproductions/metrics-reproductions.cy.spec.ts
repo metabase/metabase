@@ -237,6 +237,15 @@ describe("issue 79571", () => {
         expect(response?.statusCode).to.eq(204);
       });
 
+      H.getNotebookStep("data").within(() => {
+        cy.findByTestId("action-buttons")
+          .button("Custom column")
+          .should("be.visible");
+        cy.findByTestId("action-buttons")
+          .button("Join data")
+          .should("be.visible");
+      });
+
       // Reopening the picker now surfaces the metric under Recent items
       H.getNotebookStep("data").findByText("Orders").click();
       H.miniPickerHeader().click();

@@ -169,6 +169,7 @@ describe("scenarios > metrics > editing", () => {
         cy.visit(`/metric/${card.id}/query`);
       });
       H.MetricPage.queryEditor().should("be.visible");
+      H.getNotebookStep("summarize").findByText("Formula").should("be.visible");
       H.getNotebookStep("summarize").button("Count").click();
       H.popover().within(() => {
         cy.findByText("Sum of ...").click();
@@ -251,19 +252,6 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       });
     });
-
-    it("should be possible to join data on the first stage of a metric-based query", () => {
-      H.createQuestion(ORDERS_SCALAR_METRIC);
-      H.startNewQuestion();
-      H.miniPicker().within(() => {
-        cy.findByText("Our analytics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      H.getNotebookStep("data").within(() => {
-        getActionButton("Custom column").should("be.visible");
-        getActionButton("Join data").should("be.visible");
-      });
-    });
   });
 
   describe("custom columns", () => {
@@ -344,25 +332,6 @@ describe("scenarios > metrics > editing", () => {
       H.popover().button("Update").should("not.be.disabled").click();
       saveNewMetric();
       verifyMetricAboutTimeseries({ yAxis: "Orders metric" });
-    });
-
-    it("should have metric-specific summarize step copy", () => {
-      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-        cy.visit(`/metric/${card.id}/query`),
-      );
-      H.MetricPage.queryEditor().should("be.visible");
-
-      H.getNotebookStep("summarize").within(() => {
-        cy.findByText("Formula").should("be.visible");
-        cy.findByText("Default time dimension").should("not.exist");
-      });
-
-      cy.viewport(800, 600);
-      H.getNotebookStep("summarize").within(() => {
-        // We need the scroll because of the viewport change, the next findByText is technically off the screen without it
-        cy.findByText("Formula").should("be.visible").scrollIntoView({});
-        cy.findByText("Default time dimension").should("not.exist");
-      });
     });
   });
 

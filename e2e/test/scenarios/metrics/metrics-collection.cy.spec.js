@@ -38,7 +38,7 @@ describe("scenarios > metrics > collection", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show metrics in collections", () => {
+  it("should be possible to pin and unpin metrics", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion(ORDERS_TIMESERIES_METRIC);
     cy.visit("/collection/root");
@@ -47,21 +47,16 @@ describe("scenarios > metrics > collection", () => {
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
       cy.findAllByText("A metric").should("have.length", 2).and("be.visible");
     });
-  });
-
-  it("should be possible to pin and unpin metrics", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    cy.visit("/collection/root");
-    H.getPinnedSection()
-      .findByText(ORDERS_SCALAR_METRIC.name)
-      .should("be.visible");
     // Pinned items also stay in the contents list below the pinned section
     H.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
     H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Unpin").click();
-    H.getPinnedSection().should("not.exist");
+    H.getPinnedSection().within(() => {
+      cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
+      cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+    });
     H.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
