@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { setStoredSidePanelWidth } from "metabase/common/components/ResizableSidePanel";
 import { MetricsViewerProvider } from "metabase/metrics-viewer/context";
 import { createMockMetricsViewerResult } from "metabase/metrics-viewer/test-utils";
 import type {
@@ -133,6 +134,32 @@ function setup({
 describe("DimensionPickerSidebar", () => {
   beforeEach(() => {
     trackSimpleEvent.mockClear();
+  });
+
+  describe("resizing", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it("renders in a resizable panel at the medium width", () => {
+      setup();
+
+      const panel = screen.getByTestId("resizable-side-panel");
+      expect(panel).toHaveStyle({ width: "320px" });
+      expect(
+        within(panel).getByTestId("side-panel-resize-handle"),
+      ).toBeInTheDocument();
+    });
+
+    it("opens at the width the user last resized it to", () => {
+      setStoredSidePanelWidth("metrics-dimension-picker", 300);
+
+      setup();
+
+      expect(screen.getByTestId("resizable-side-panel")).toHaveStyle({
+        width: "300px",
+      });
+    });
   });
 
   it("renders the active dimension as selected", () => {

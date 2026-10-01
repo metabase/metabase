@@ -44,7 +44,7 @@ function TestSidebarSetter() {
   return (
     <>
       <div data-testid="content">{"Content"}</div>
-      <Sidebar containerWidth={1000}>
+      <Sidebar storageKey="test-sidebar" containerWidth={1000}>
         <aside data-testid="monitor-sidebar">{"Sidebar"}</aside>
       </Sidebar>
     </>
@@ -69,7 +69,7 @@ function TestSidebarToggle({ onRender }: { onRender: () => void }) {
       <TestMainContent onRender={onRender} />
       <button onClick={() => setIsOpen(true)}>{"Open sidebar"}</button>
       {isOpen && (
-        <Sidebar containerWidth={1000}>
+        <Sidebar storageKey="test-sidebar" containerWidth={1000}>
           <aside data-testid="monitor-sidebar">{"Sidebar"}</aside>
         </Sidebar>
       )}

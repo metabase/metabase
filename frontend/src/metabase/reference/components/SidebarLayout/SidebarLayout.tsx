@@ -1,8 +1,7 @@
-import cx from "classnames";
 import type { CSSProperties, ReactElement } from "react";
 import { Children, cloneElement } from "react";
 
-import CS from "metabase/css/core/index.css";
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 
 interface SidebarLayoutProps {
   className?: string;
@@ -21,19 +20,9 @@ export const SidebarLayout = ({
     className={className}
     style={{ ...style, display: "flex", flexDirection: "row" }}
   >
-    {cloneElement(
-      sidebar,
-      {
-        style: { flexShrink: 0, alignSelf: "stretch" },
-        className: cx(
-          CS.scrollY,
-          CS.scrollShow,
-          CS.scrollLight,
-          CS.scrollShowHover,
-        ),
-      },
-      sidebar.props.children,
-    )}
+    <ResizableSidePanel storageKey="reference-nav" side="left" defaultSize="md">
+      {sidebar}
+    </ResizableSidePanel>
     {cloneElement(
       Children.only(children),
       {

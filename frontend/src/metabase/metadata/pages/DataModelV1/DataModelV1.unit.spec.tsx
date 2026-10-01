@@ -21,6 +21,7 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { Link } from "metabase/common/components/Link";
+import { setStoredSidePanelWidth } from "metabase/common/components/ResizableSidePanel";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -271,6 +272,32 @@ describe("DataModelV1", () => {
     expect(
       screen.getByText("Start by selecting data to model"),
     ).toBeInTheDocument();
+  });
+
+  describe("resizable nav", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it("shows the table picker in a resizable panel at the medium width", async () => {
+      await setup();
+
+      const panel = screen.getByTestId("resizable-side-panel");
+      expect(panel).toHaveStyle({ width: "320px" });
+      expect(
+        within(panel).getByRole("link", { name: /Segments/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("opens at the width the user last resized it to, up to the xl max", async () => {
+      setStoredSidePanelWidth("admin-data-model-nav", 440);
+
+      await setup();
+
+      expect(screen.getByTestId("resizable-side-panel")).toHaveStyle({
+        width: "440px",
+      });
+    });
   });
 
   describe("no schema database", () => {

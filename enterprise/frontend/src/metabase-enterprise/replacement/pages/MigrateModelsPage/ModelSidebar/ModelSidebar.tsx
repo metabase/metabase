@@ -47,6 +47,7 @@ export const ModelSidebar = memo(function ModelSidebar({
 
   return (
     <SidebarResizableBox
+      storageKey="migrate-models-sidebar"
       containerWidth={containerWidth}
       onResizeStart={onResizeStart}
       onResizeStop={onResizeStop}

@@ -15,6 +15,7 @@ export const Sidebar = styled.aside<{
   isOpen: boolean;
   side: "left" | "right";
   width?: string;
+  isResizable?: boolean;
 }>`
   ${({ isOpen }) => (isOpen ? "" : "display: none")};
 
@@ -24,7 +25,8 @@ export const Sidebar = styled.aside<{
   align-items: center;
   background-color: var(--mb-color-background_page-primary);
   z-index: 4;
-  width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
+  width: ${(props) =>
+    props.isResizable ? "fit-content" : (props.width ?? NAV_SIDEBAR_WIDTH)};
   ${(props) =>
     props.side === "left"
       ? "border-inline-end: 1px solid var(--mb-color-border-neutral);"

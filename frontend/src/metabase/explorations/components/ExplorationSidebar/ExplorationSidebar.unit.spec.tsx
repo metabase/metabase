@@ -9,6 +9,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { setStoredSidePanelWidth } from "metabase/common/components/ResizableSidePanel";
 import {
   trackExplorationSidebarTabChanged,
   trackExplorationVisualizationChanged,
@@ -42,6 +43,32 @@ describe("ExplorationSidebar", () => {
   beforeEach(() => {
     jest.mocked(trackExplorationVisualizationChanged).mockClear();
     jest.mocked(trackExplorationSidebarTabChanged).mockClear();
+  });
+
+  describe("resizing", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it("renders in a resizable panel at the medium width", () => {
+      setup({ queries: [doneQuery] });
+
+      const panel = screen.getByTestId("resizable-side-panel");
+      expect(panel).toHaveStyle({ width: "320px" });
+      expect(
+        within(panel).getByTestId("side-panel-resize-handle"),
+      ).toBeInTheDocument();
+    });
+
+    it("opens at the width the user last resized it to", () => {
+      setStoredSidePanelWidth("explorations-nav", 300);
+
+      setup({ queries: [doneQuery] });
+
+      expect(screen.getByTestId("resizable-side-panel")).toHaveStyle({
+        width: "300px",
+      });
+    });
   });
 
   describe("keyboard navigation", () => {

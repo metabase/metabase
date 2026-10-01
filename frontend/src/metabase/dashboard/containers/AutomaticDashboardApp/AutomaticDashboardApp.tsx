@@ -7,6 +7,7 @@ import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { Link } from "metabase/common/components/Link";
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import CS from "metabase/css/core/index.css";
 import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard";
@@ -209,7 +210,13 @@ const AutomaticDashboardAppInner = () => {
               S.SuggestionsSidebarWrapper,
             )}
           >
-            <SuggestionsSidebar related={related} />
+            <ResizableSidePanel
+              storageKey="xray-suggestions"
+              side="right"
+              defaultSize="md"
+            >
+              <SuggestionsSidebar related={related} />
+            </ResizableSidePanel>
           </Box>
         )}
       </div>

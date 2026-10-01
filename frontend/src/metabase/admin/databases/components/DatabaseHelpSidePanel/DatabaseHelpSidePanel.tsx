@@ -3,7 +3,9 @@ import { c, t } from "ttag";
 
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { Link } from "metabase/common/components/Link";
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import { useDocsUrl } from "metabase/common/hooks";
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { getHelpUrl } from "metabase/common/utils/help-url";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
@@ -41,6 +43,7 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
   const version = useSetting("version");
   const talkToExpertUrl = getHelpUrl(isPaidPlan, version.tag);
   const isAdmin = useSelector(getUserIsAdmin);
+  const isSmallScreen = useIsSmallScreen();
 
   if (!engines[engineKey]) {
     return null;
@@ -48,12 +51,13 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
 
   const driverName = engines[engineKey]?.["driver-name"];
 
-  return (
+  const panel = (
     <ScrollArea
       component="aside"
       data-testid="database-help-side-panel"
       display="flex"
-      flex={{ sm: "1 0 20rem", md: "1 0 26.5rem", base: "1 0 100%" }}
+      flex={isSmallScreen ? "1 0 100%" : undefined}
+      w={isSmallScreen ? undefined : "100%"}
       h="100%"
       bg="background_page-primary"
     >
@@ -110,5 +114,21 @@ export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
       </Box>
       {showUserModal && <NewUserModal onClose={toggleUserModal} />}
     </ScrollArea>
+  );
+
+  // On small screens the panel takes the full width, so it isn't resizable.
+  if (isSmallScreen) {
+    return panel;
+  }
+
+  return (
+    <ResizableSidePanel
+      storageKey="admin-database-help"
+      side="right"
+      defaultSize="lg"
+      maxSize="xl"
+    >
+      {panel}
+    </ResizableSidePanel>
   );
 };

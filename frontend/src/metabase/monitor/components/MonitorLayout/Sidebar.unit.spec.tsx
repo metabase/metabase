@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { ResizableProps } from "react-resizable";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { setStoredSidePanelWidth } from "metabase/common/components/ResizableSidePanel";
 
 import { MonitorContent } from "./MonitorContent";
 import { Sidebar } from "./Sidebar";
@@ -27,11 +28,12 @@ function setup(sidebar: ReactNode) {
 describe("Sidebar", () => {
   beforeEach(() => {
     latestResizableBoxProps = null;
+    localStorage.clear();
   });
 
   it("portals resizable content into the sidebar region at the default width", () => {
     setup(
-      <Sidebar containerWidth={1000}>
+      <Sidebar storageKey="test-sidebar" containerWidth={1000}>
         <div data-testid="sidebar-content">{"Sidebar"}</div>
       </Sidebar>,
     );
@@ -46,9 +48,25 @@ describe("Sidebar", () => {
     expect(latestResizableBoxProps?.width).toBe(512);
   });
 
+  it("opens at the width the user last resized this sidebar to", () => {
+    setStoredSidePanelWidth("test-sidebar", 600);
+
+    setup(
+      <Sidebar storageKey="test-sidebar" containerWidth={1000}>
+        <div data-testid="sidebar-content">{"Sidebar"}</div>
+      </Sidebar>,
+    );
+
+    expect(latestResizableBoxProps?.width).toBe(600);
+  });
+
   it("uses the provided default width", () => {
     setup(
-      <Sidebar containerWidth={1000} defaultWidth={560}>
+      <Sidebar
+        storageKey="test-sidebar"
+        containerWidth={1000}
+        defaultWidth={560}
+      >
         <div data-testid="sidebar-content">{"Sidebar"}</div>
       </Sidebar>,
     );

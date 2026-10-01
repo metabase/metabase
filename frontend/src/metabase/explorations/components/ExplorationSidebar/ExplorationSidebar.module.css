@@ -14,6 +14,10 @@
   background-color: var(--mb-color-brand);
 }
 
+.sidebarPanel {
+  margin-right: 2rem;
+}
+
 .tree {
   overflow-y: auto;
   /*

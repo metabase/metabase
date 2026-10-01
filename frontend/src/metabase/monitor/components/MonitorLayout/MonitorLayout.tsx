@@ -219,6 +219,7 @@ export function MonitorLayout() {
 
   return (
     <AreaLayout
+      navStorageKey="monitor-nav"
       logo={
         <Flex
           bdrs="50%"

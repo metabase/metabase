@@ -134,6 +134,7 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
 
   return (
     <SidebarResizableBox
+      storageKey="transforms-graph-run-sidebar"
       containerWidth={containerWidth}
       onResizeStart={onResizeStart}
       onResizeStop={onResizeStop}

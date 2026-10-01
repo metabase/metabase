@@ -3,10 +3,6 @@
   overflow: auto;
 }
 
-.opened {
-  width: 300px;
-}
-
 .logo {
   display: flex;
   align-items: center;

@@ -8,6 +8,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Outlet, useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
@@ -93,25 +94,30 @@ export const DataModelV1 = () => {
 
   return (
     <Flex bg="background_page-secondary" data-testid="data-model" h="100%">
-      <Stack
-        bg="background_page-primary"
-        className={S.column}
-        flex={COLUMN_CONFIG.nav.flex}
-        gap={0}
-        h="100%"
-        maw={COLUMN_CONFIG.nav.max}
-        miw={COLUMN_CONFIG.nav.min}
+      <ResizableSidePanel
+        storageKey="admin-data-model-nav"
+        side="left"
+        defaultSize="md"
+        maxSize="xl"
       >
-        <RouterTablePicker
-          databaseId={databaseId}
-          schemaName={schemaName}
-          tableId={tableId}
-        />
+        <Stack
+          bg="background_page-primary"
+          className={S.column}
+          gap={0}
+          h="100%"
+          w="100%"
+        >
+          <RouterTablePicker
+            databaseId={databaseId}
+            schemaName={schemaName}
+            tableId={tableId}
+          />
 
-        <Box className={S.footer} mx="xxl" py="sm">
-          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
-        </Box>
-      </Stack>
+          <Box className={S.footer} mx="xxl" py="sm">
+            <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
+          </Box>
+        </Stack>
+      </ResizableSidePanel>
 
       {isSegments && <Outlet />}
 

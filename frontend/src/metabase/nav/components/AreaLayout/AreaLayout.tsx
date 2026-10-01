@@ -1,7 +1,7 @@
 import { useHotkeys } from "@mantine/hooks";
-import cx from "classnames";
 import type { ReactNode } from "react";
 
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import { Box, Center, Flex, Loader, Stack } from "metabase/ui";
 
 import S from "./AreaLayout.module.css";
@@ -10,6 +10,8 @@ import { AreaNavbarHeader } from "./AreaNavbarHeader";
 type AreaLayoutProps = {
   logo: ReactNode;
   testId: string;
+  /** Remembers this area's resized nav width separately from other areas. */
+  navStorageKey: string;
   isLoading: boolean;
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
@@ -25,6 +27,7 @@ type AreaLayoutProps = {
 export function AreaLayout({
   logo,
   testId,
+  navStorageKey,
   isLoading,
   isNavbarOpened,
   onNavbarToggle,
@@ -50,26 +53,41 @@ export function AreaLayout({
     );
   }
 
+  const nav = (
+    <Stack
+      className={S.nav}
+      h="100%"
+      w={isNavbarOpened ? "100%" : undefined}
+      p="0.75rem"
+      justify="space-between"
+      data-testid={testId}
+    >
+      <Stack gap="lg" flex={1} mih={0} className={S.upperGroup}>
+        <AreaNavbarHeader
+          logo={logo}
+          headerControls={headerControls}
+          isNavbarOpened={isNavbarOpened}
+          onNavbarToggle={onNavbarToggle}
+        />
+        {upperNav}
+      </Stack>
+      {lowerNav && <Stack gap="0.75rem">{lowerNav}</Stack>}
+    </Stack>
+  );
+
   return (
     <Flex h="100%">
-      <Stack
-        className={cx(S.nav, { [S.opened]: isNavbarOpened })}
-        h="100%"
-        p="0.75rem"
-        justify="space-between"
-        data-testid={testId}
-      >
-        <Stack gap="lg" flex={1} mih={0} className={S.upperGroup}>
-          <AreaNavbarHeader
-            logo={logo}
-            headerControls={headerControls}
-            isNavbarOpened={isNavbarOpened}
-            onNavbarToggle={onNavbarToggle}
-          />
-          {upperNav}
-        </Stack>
-        {lowerNav && <Stack gap="0.75rem">{lowerNav}</Stack>}
-      </Stack>
+      {isNavbarOpened ? (
+        <ResizableSidePanel
+          storageKey={navStorageKey}
+          side="left"
+          defaultSize="md"
+        >
+          {nav}
+        </ResizableSidePanel>
+      ) : (
+        nav
+      )}
       <Box h="100%" flex={1} miw={0}>
         {children}
       </Box>

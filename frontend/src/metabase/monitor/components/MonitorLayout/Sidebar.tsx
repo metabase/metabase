@@ -14,6 +14,8 @@ type SidebarProps = {
 } & (
   | {
       resizable?: true;
+      /** Where the user's resized width for this sidebar is remembered. */
+      storageKey: string;
       containerWidth: number;
     }
   | {
@@ -39,6 +41,7 @@ export function Sidebar(props: SidebarProps) {
       content
     ) : (
       <SidebarResizableBox
+        storageKey={props.storageKey}
         containerWidth={props.containerWidth}
         defaultWidth={defaultWidth}
       >

@@ -1,4 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 
 import { SidebarRoot } from "./PermissionsSidebar.styled";
 import type { PermissionsSidebarContentProps } from "./PermissionsSidebarContent";
@@ -15,10 +16,16 @@ export const PermissionsSidebar = ({
   ...contentProps
 }: PermissionsSidebarProps) => {
   return (
-    <SidebarRoot>
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-        <PermissionsSidebarContent {...contentProps} />
-      </LoadingAndErrorWrapper>
-    </SidebarRoot>
+    <ResizableSidePanel
+      storageKey="admin-permissions-nav"
+      side="left"
+      defaultSize="md"
+    >
+      <SidebarRoot>
+        <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+          <PermissionsSidebarContent {...contentProps} />
+        </LoadingAndErrorWrapper>
+      </SidebarRoot>
+    </ResizableSidePanel>
   );
 };

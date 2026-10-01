@@ -6,6 +6,8 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { setStoredSidePanelWidth } from "metabase/common/components/ResizableSidePanel";
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { Route } from "metabase/router";
 import type { EngineKey } from "metabase-types/api";
 import {
@@ -22,6 +24,10 @@ jest.mock(
   "docs/databases/connections/postgresql.md",
   () => "Postgres MD Content",
 );
+
+jest.mock("metabase/common/hooks/use-is-small-screen", () => ({
+  useIsSmallScreen: jest.fn(() => false),
+}));
 
 interface SetupOptions {
   onClose?: VoidFunction;
@@ -70,6 +76,52 @@ const setup = (opts: SetupOptions) => {
 };
 
 describe("DatabaseHelpSidePanel", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    jest.mocked(useIsSmallScreen).mockReturnValue(false);
+  });
+
+  describe("resizing", () => {
+    it("is resizable at the large width on larger screens", async () => {
+      await act(async () => {
+        setup({});
+      });
+
+      const panel = screen.getByTestId("resizable-side-panel");
+      expect(panel).toHaveStyle({ width: "400px" });
+      expect(
+        within(panel).getByTestId("database-help-side-panel"),
+      ).toBeInTheDocument();
+    });
+
+    it("opens at the width the user last resized it to", async () => {
+      setStoredSidePanelWidth("admin-database-help", 460);
+
+      await act(async () => {
+        setup({});
+      });
+
+      expect(screen.getByTestId("resizable-side-panel")).toHaveStyle({
+        width: "460px",
+      });
+    });
+
+    it("is not resizable on small screens", async () => {
+      jest.mocked(useIsSmallScreen).mockReturnValue(true);
+
+      await act(async () => {
+        setup({});
+      });
+
+      expect(
+        screen.getByTestId("database-help-side-panel"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("resizable-side-panel"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("should render help links and the engine md content", async () => {
     await act(async () => {
       setup({});

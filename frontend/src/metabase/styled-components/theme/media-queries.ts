@@ -4,6 +4,8 @@ export const breakpointMinLarge = "@media screen and (min-width: 80em)";
 export const breakpointMinExtraLarge = "@media screen and (min-width: 120em)";
 
 export const breakpointMaxSmall = "@media screen and (max-width: 40em)";
+/** Raw form of `breakpointMaxSmall` for JS media-query hooks (e.g. `useMediaQuery`). */
+export const maxSmallMediaQuery = "(max-width: 40em)";
 export const breakpointMaxMedium = "@media screen and (max-width: 60em)";
 export const breakpointMaxLarge = "@media screen and (max-width: 80em)";
 export const breakpointMaxExtraLarge = "@media screen and (max-width: 120em)";

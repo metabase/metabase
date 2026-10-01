@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import { Tree, useTree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { getInitialExpandedIds } from "metabase/common/components/tree/utils";
@@ -262,40 +263,47 @@ export function ExplorationSidebar({
   }
 
   return (
-    <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Group pl="0.5rem" gap="lg" wrap="nowrap" align="center">
-        <Box flex={1} miw={0}>
-          <SegmentedControl<ExplorationSidebarTab>
-            fullWidth
-            radius="xl"
-            bg="background-tertiary"
-            value={selectedSidebarTab}
-            onChange={(value) => {
-              if (
-                isExplorationSidebarTab(value) &&
-                value !== selectedSidebarTab
-              ) {
-                trackExplorationSidebarTabChanged(exploration.id, value);
-                navigate(getSelectedSidebarTabUrl(value));
-              }
-            }}
-            data={Object.values(explorationSidebarTabsInfo).map(
-              ({ value, label }) => ({
-                value,
-                label: <SidebarTabLabel tab={value} label={label} />,
-              }),
-            )}
+    <ResizableSidePanel
+      storageKey="explorations-nav"
+      side="left"
+      defaultSize="md"
+      className={S.sidebarPanel}
+    >
+      <Stack h="100%" flex={1} miw={0}>
+        <Group pl="0.5rem" gap="lg" wrap="nowrap" align="center">
+          <Box flex={1} miw={0}>
+            <SegmentedControl<ExplorationSidebarTab>
+              fullWidth
+              radius="xl"
+              bg="background-tertiary"
+              value={selectedSidebarTab}
+              onChange={(value) => {
+                if (
+                  isExplorationSidebarTab(value) &&
+                  value !== selectedSidebarTab
+                ) {
+                  trackExplorationSidebarTabChanged(exploration.id, value);
+                  navigate(getSelectedSidebarTabUrl(value));
+                }
+              }}
+              data={Object.values(explorationSidebarTabsInfo).map(
+                ({ value, label }) => ({
+                  value,
+                  label: <SidebarTabLabel tab={value} label={label} />,
+                }),
+              )}
+            />
+          </Box>
+          <SidebarShowFilterMenu
+            showHidden={showHidden}
+            onToggleShowHidden={onToggleShowHidden}
+            sortOrder={sortOrder}
+            onChangeSortOrder={onChangeSortOrder}
           />
-        </Box>
-        <SidebarShowFilterMenu
-          showHidden={showHidden}
-          onToggleShowHidden={onToggleShowHidden}
-          sortOrder={sortOrder}
-          onChangeSortOrder={onChangeSortOrder}
-        />
-      </Group>
-      {treeContent}
-    </Stack>
+        </Group>
+        {treeContent}
+      </Stack>
+    </ResizableSidePanel>
   );
 }
 

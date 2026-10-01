@@ -71,6 +71,7 @@ export type SetupOpts = {
   hasEmbeddingFeature?: boolean;
   applicationName?: string;
   activeUsersCount?: number;
+  isOpen?: boolean;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -111,6 +112,7 @@ export async function setup({
   hasWhitelabelToken,
   hasEmbeddingFeature,
   applicationName = "Metabase",
+  isOpen = true,
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -231,7 +233,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
+      element={<RoutedMainNavbar isOpen={isOpen} dashboard={storeDashboard} />}
     />,
     {
       storeInitialState,

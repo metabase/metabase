@@ -383,7 +383,11 @@ export const NotificationsAdminPage = () => {
         </MonitorMain>
 
         {isSidebarOpen && (
-          <Sidebar containerWidth={containerWidth} defaultWidth={SIDEBAR_WIDTH}>
+          <Sidebar
+            storageKey="monitor-notification-detail"
+            containerWidth={containerWidth}
+            defaultWidth={SIDEBAR_WIDTH}
+          >
             <NotificationDetailSidebar
               notificationId={notificationId}
               notificationSummary={notificationSummary}

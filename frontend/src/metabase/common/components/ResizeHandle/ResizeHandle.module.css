@@ -3,5 +3,25 @@
 }
 
 .vertical {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.25rem;
+  width: 0.5rem;
   cursor: col-resize;
+  z-index: 2;
+}
+
+.vertical::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0.25rem;
+  width: 1px;
+  background-color: transparent;
+}
+
+.vertical:hover::after {
+  background-color: var(--mb-color-border-strong);
 }
