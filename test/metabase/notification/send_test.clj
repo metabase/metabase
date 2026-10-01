@@ -1,6 +1,7 @@
 (ns metabase.notification.send-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.send-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.prometheus-test :as prometheus-test]
@@ -184,7 +185,8 @@
                                 (throw (ex-info "Failed to send" {:metadata 42})))]
               (with-redefs [notification.send/should-skip-retry? (constantly true)
                             channel/send!                        send!]
-                (#'notification.send/send-notification-sync! n))
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to deliver"
+                                      (#'notification.send/send-notification-sync! n))))
               (is (=? {:task "channel-send"
                        :status       :failed
                        :task_details {:attempted_retries 0
@@ -208,7 +210,8 @@
           (t2/update! :model/Channel (:id chn) {:active false})
           (let [send-count (atom 0)]
             (with-redefs [channel/send! (fn [& _] (swap! send-count inc))]
-              (#'notification.send/send-notification-sync! n))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to deliver"
+                                    (#'notification.send/send-notification-sync! n))))
             (testing "channel/send! is never invoked"
               (is (zero? @send-count))))
           (is (=? {:task         "channel-send"
@@ -216,6 +219,67 @@
                    :task_details {:message           #"The channel this notification is set to send to no longer exists or is inactive\."
                                   :attempted_retries 0}}
                   (latest-task-history-entry "channel-send"))))))))
+
+(deftest notification-send-channel-failure-fails-notification-send-test
+  (testing "a channel failure fails the notification-send row, the run and the caller (GDGT-3144)"
+    (notification.tu/with-notification-testing-setup!
+      (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+        (notification.tu/with-card-notification
+          [n {:handlers [{:channel_type notification.tu/test-channel-type
+                          :channel_id   (:id chn)
+                          :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}]
+          (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)]
+            (with-redefs [channel/render-notification (constantly [{:message "stub"}])
+                          channel/send!               (fn [& _] (throw (ex-info "channel is down" {})))]
+              (testing "the caller sees which handler failed, and the reason stays in the cause"
+                (is (=? {:status-code     502
+                         :error-code      :notification/delivery-failed
+                         :failed-handlers [{:channel_id (:id chn)}]}
+                        (try (notification/send-notification! n :notification/sync? true)
+                             (catch clojure.lang.ExceptionInfo e
+                               (is (re-matches #"Failed to deliver to channel/metabase-test \d+" (ex-message e)))
+                               (is (not (str/includes? (pr-str (ex-data e)) "channel is down")))
+                               (is (=? {:failed-handlers [{:channel_id (:id chn) :message "channel is down"}]}
+                                       (ex-data (ex-cause e))))
+                               (ex-data e))))))))
+          (testing "the channel-send row records the failure"
+            (is (=? {:status       :failed
+                     :task_details {:message "channel is down"}}
+                    (latest-task-history-entry "channel-send"))))
+          (testing "the notification-send row is failed and names the handler"
+            (is (=? {:status       :failed
+                     :task_details {:message #"Failed to deliver to channel/metabase-test \d+: channel is down"
+                                    :ex-data {:error-code      "notification/delivery-failed"
+                                              :failed-handlers [{:channel_id (:id chn) :message "channel is down"}]}}}
+                    (latest-task-history-entry "notification-send"))))
+          (testing "the run is failed"
+            (is (=? {:status :failed}
+                    (t2/select-one :model/TaskRun :notification_id (:id n))))))))))
+
+(deftest notification-send-render-failure-fails-notification-send-test
+  (testing "a failure while building the message fails the notification-send row, the run and the caller (GDGT-3144)"
+    (notification.tu/with-notification-testing-setup!
+      (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+        (notification.tu/with-card-notification
+          [n {:handlers [{:channel_type notification.tu/test-channel-type
+                          :channel_id   (:id chn)
+                          :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}]
+          (let [send-count (atom 0)]
+            (with-redefs [channel/render-notification (fn [& _] (throw (ex-info "cannot build the message" {})))
+                          channel/send!               (fn [& _] (swap! send-count inc))]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"Failed to deliver to channel/metabase-test \d+$"
+                                    (notification/send-notification! n :notification/sync? true))))
+            (testing "channel/send! is never invoked"
+              (is (zero? @send-count))))
+          (testing "the notification-send row is failed and names the handler"
+            (is (=? {:status       :failed
+                     :task_details {:ex-data {:failed-handlers [{:channel_id (:id chn)
+                                                                 :message    "cannot build the message"}]}}}
+                    (latest-task-history-entry "notification-send"))))
+          (testing "the run is failed"
+            (is (=? {:status :failed}
+                    (t2/select-one :model/TaskRun :notification_id (:id n))))))))))
 
 (def ^:private fake-email-notification
   {:subject      "test-message"
@@ -406,7 +470,10 @@
                                                                                   (throw (Exception. "test-exception")))]
             (is (thrown? Exception (#'notification.send/send-notification-sync! n)))
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/send-error
-                                                            {:payload-type "notification/testing"})))))))))
+                                                            {:payload-type "notification/testing"})))
+            (testing "the duration of a send that throws is observed too"
+              (is (prometheus-test/approx= 1 (:count (mt/metric-value system :metabase-notification/send-duration-ms
+                                                                      {:payload-type "notification/testing"})))))))))))
 
 (deftest send-notification-record-prometheus-channel-error-metrics-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
@@ -422,7 +489,8 @@
             (with-redefs [notification.send/default-retry-config (assoc @#'notification.send/default-retry-config :max-retries 1)
                           channel/send! (fn [& _]
                                           (throw (Exception. "test-channel-exception")))]
-              (#'notification.send/send-notification-sync! n)
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to deliver"
+                                    (#'notification.send/send-notification-sync! n)))
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-notification/channel-send-error
                                                               {:payload-type "notification/testing"
                                                                :channel-type "channel/metabase-test"}))))))))))
