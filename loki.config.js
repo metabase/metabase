@@ -40,10 +40,6 @@ module.exports = {
     "^viz/GridMapPdfExport",
     "ParameterValueWidget",
     "^Explorations/ExplorationGroupVisualization",
-    // TEMPORARY: row chart -> ECharts migration regression suite.
-    // Remove this line together with
-    // frontend/src/metabase/visualizations/__row-chart-migration__/
-    "^RowChartMigration",
   ].join("|"),
   configurations: {
     "chrome.laptop": {
