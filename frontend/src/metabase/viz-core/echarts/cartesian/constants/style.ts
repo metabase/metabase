@@ -1,5 +1,7 @@
 import type { LineSize } from "metabase-types/api";
 
+export const HORIZONTAL_TICKS_GAP = 6;
+
 export const LINE_SIZE: Record<LineSize, number> = {
   S: 1,
   M: 2,
@@ -38,6 +40,12 @@ export const CHART_STYLE = {
     weight: 400,
   },
   hiddenYAxisWidth: 12,
+  // Minimum gap between the plot edge and the outer edge of the first/last x-axis label
+  xAxisEndpointInset: {
+    small: 8,
+    medium: 16,
+    large: 24,
+  },
   seriesLabels: {
     weight: 700,
     size: 13,

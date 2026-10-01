@@ -2,6 +2,7 @@ import {
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
+import { dayjs } from "metabase/dayjs";
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
 import {
   createMockColumn,
@@ -291,5 +292,112 @@ describe("getChartLayout", () => {
     expect(chartLayout.ticksDimensions.yTicksWidthLeft).not.toBe(
       WIDEST_MEASURED_TICK_WIDTH + 24 + CHART_STYLE.padding.x,
     );
+  });
+});
+
+describe("x-axis endpoint label overflow", () => {
+  const WIDE_LABEL_WIDTH = 400;
+  const CHART_WIDTH = 640;
+  const HIDDEN_Y_AXIS_PADDING =
+    CHART_STYLE.padding.x + CHART_STYLE.hiddenYAxisWidth;
+  const NO_AXIS_PADDING = CHART_STYLE.padding.x;
+  const PLOT_WIDTH = CHART_WIDTH - HIDDEN_Y_AXIS_PADDING - NO_AXIS_PADDING;
+  const MEDIUM_PLOT_INSET = 16;
+
+  const getEdgeLabelContext = (): RenderingContext => ({
+    ...getChartContext(),
+    measureText: (text: string) => (text === "Wide" ? WIDE_LABEL_WIDTH : 20),
+  });
+
+  const edgeLabelSettings = createMockVisualizationSettings({
+    ...settings,
+    "graph.y_axis.axis_enabled": false,
+    "graph.x_axis.axis_enabled": "compact",
+  });
+
+  const layoutFor = (chartInput: ChartLayoutInput) =>
+    getChartLayout(
+      chartInput,
+      edgeLabelSettings,
+      false,
+      CHART_WIDTH,
+      360,
+      getEdgeLabelContext(),
+    );
+
+  it("does not shrink the plot for a wide first category label, which is aligned inward instead", () => {
+    const categoryInput = {
+      ...input,
+      xAxisModel: { ...xAxisModel, valuesCount: 2 },
+    };
+    const wide = layoutFor({
+      ...categoryInput,
+      dataset: [
+        { [X_AXIS_DATA_KEY]: "Wide", price: 1200 },
+        { [X_AXIS_DATA_KEY]: "Beta", price: 1500 },
+      ],
+    });
+    const narrow = layoutFor({
+      ...categoryInput,
+      dataset: [
+        { [X_AXIS_DATA_KEY]: "Alpha", price: 1200 },
+        { [X_AXIS_DATA_KEY]: "Beta", price: 1500 },
+      ],
+    });
+
+    expect(wide.padding.left).toBe(narrow.padding.left);
+    expect(wide.padding.left).toBe(HIDDEN_Y_AXIS_PADDING);
+  });
+
+  it("does not shrink the plot for a wide first time-series label, which is pinned inside the plot instead", () => {
+    const timeInput: ChartLayoutInput = {
+      ...input,
+      xAxisModel: {
+        axisType: "time",
+        interval: { unit: "month", count: 1 },
+        intervalsCount: 1,
+        range: [dayjs.utc("2025-04-01"), dayjs.utc("2025-05-01")],
+        formatter: (value) => (value === "2025-04-01" ? "Wide" : "Beta"),
+        toEChartsAxisValue: (value) =>
+          dayjs.utc(String(value)).format("YYYY-MM-DDTHH:mm:ss[Z]"),
+        fromEChartsAxisValue: (value) => dayjs.utc(value),
+      },
+      dataset: [
+        { [X_AXIS_DATA_KEY]: "2025-04-01", price: 1200 },
+        { [X_AXIS_DATA_KEY]: "2025-05-01", price: 1500 },
+      ],
+    };
+
+    expect(layoutFor(timeInput).padding.left).toBe(HIDDEN_Y_AXIS_PADDING);
+  });
+
+  it("keeps a wide first numeric label the inset away from the plot edge", () => {
+    const numericInput: ChartLayoutInput = {
+      ...input,
+      xAxisModel: {
+        axisType: "value",
+        extent: [0, 1],
+        interval: 1,
+        intervalsCount: 1,
+        isPadded: true,
+        formatter: (value) => (value === 0 ? "Wide" : "Beta"),
+        toEChartsAxisValue: (value) => Number(value),
+        fromEChartsAxisValue: (value) => value,
+      },
+      dataset: [
+        { [X_AXIS_DATA_KEY]: 0, price: 1200 },
+        { [X_AXIS_DATA_KEY]: 1, price: 1500 },
+      ],
+    };
+    const dimensionWidth = PLOT_WIDTH / 2;
+    const expectedOverflow =
+      WIDE_LABEL_WIDTH / 2 -
+      dimensionWidth / 2 -
+      HIDDEN_Y_AXIS_PADDING +
+      MEDIUM_PLOT_INSET;
+
+    const layout = layoutFor(numericInput);
+
+    expect(layout.padding.left).toBe(HIDDEN_Y_AXIS_PADDING + expectedOverflow);
   });
 });
