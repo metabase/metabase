@@ -82,13 +82,21 @@ describe("scenarios > search", () => {
     it("should reset the page when filters change (metabase#65501)", () => {
       cy.visit("/search?q=");
       cy.findByLabelText("Next page").click();
+      cy.location("search").should("include", "page=1");
+      cy.findByLabelText("Previous page").should("be.enabled");
+
       cy.findByTestId("type-search-filter").click();
       H.popover().findByText("Table").click();
       H.popover().findByText("Apply").click();
-      cy.findByTestId("search-app")
-        .findByText("Didn't find anything")
-        .should("not.exist");
-      cy.findAllByTestId("search-result-item").should("exist");
+
+      cy.location("search")
+        .should("include", "type=table")
+        .and("not.include", "page=");
+      cy.findAllByTestId("search-result-item").should(($items) => {
+        $items.each((_index, item) => {
+          expect(item).to.have.attr("data-model-type", "table");
+        });
+      });
     });
   });
 });

@@ -1034,6 +1034,7 @@ describe("scenarios > search", () => {
         expectSearchResultItemNameContent({
           itemNames: ["Normal User Personal Question [keyword]"],
         });
+        cy.findByTestId("archived-search-filter").should("be.visible");
         cy.findByTestId(
           "filter_items_in_personal_collection-search-filter",
         ).should("not.exist");
@@ -1133,6 +1134,23 @@ describe("scenarios > search", () => {
 
       //getSearchBar().clear().type("count{enter}");
       H.commandPaletteSearch("count");
+
+      cy.findByTestId("search-app").within(() => {
+        cy.findByText('Results for "count"').should("exist");
+      });
+      cy.location("search")
+        .should("include", `created_by=${ADMIN_USER_ID}`)
+        .and("include", `last_edited_by=${ADMIN_USER_ID}`)
+        .and("include", "type=card");
+      cy.findByTestId("created_by-search-filter")
+        .findByText("Bobby Tables")
+        .should("exist");
+      cy.findByTestId("last_edited_by-search-filter")
+        .findByText("Bobby Tables")
+        .should("exist");
+      cy.findByTestId("type-search-filter")
+        .findByText("Question")
+        .should("exist");
 
       expectSearchResultItemNameContent({
         itemNames: [
