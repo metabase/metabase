@@ -43,6 +43,17 @@
              #".*remove all but one of the names.*"]
             (str/split-lines msg)))))
 
+(deftest ^:parallel a-three-way-merge-shows-requires-to-every-named-cluster-test
+  (let [graph   (assoc graph 'settings #{'app-db 'qp}, 'lib #{'qp}, 'qp #{'sync 'lib})
+        anchors '{foundation app-db, galactic-center qp, rosetta lib}
+        [msg]   (module-cycles/problems graph (conj modules 'lib) anchors)
+        reaches (filter #(str/includes? % " reaches ") (str/split-lines msg))]
+    (is (=? [#"  foundation reaches galactic-center .*"
+             #"  galactic-center reaches foundation .*"
+             #"  foundation reaches rosetta .*"
+             #"  rosetta reaches foundation .*"]
+            reaches))))
+
 (deftest ^:parallel an-unnamed-cluster-fails-with-a-proposed-name-test
   (testing "a tie for the most requires inside the cluster proposes the alphabetically first member"
     (is (=? [#"A cluster without a name: 2 modules, qp, sync\."
@@ -72,7 +83,12 @@
 (deftest ^:parallel an-anchor-must-be-a-module-test
   (is (=? [#"A cluster without a name.*"
            #"galactic-center is anchored on query-processor, which is not a module\..*"]
-          (headlines graph '{foundation app-db, galactic-center query-processor}))))
+          (headlines graph '{foundation app-db, galactic-center query-processor})))
+  (testing "even when the anchor is a graph node inside a cycle, it names nothing unless the config declares it"
+    (is (=? [#"A cluster without a name: 2 modules, qp, sync\."
+             #"galactic-center is anchored on qp, which is not a module\..*"]
+            (mapv (comp first str/split-lines)
+                  (module-cycles/problems graph (disj modules 'qp) '{foundation app-db, galactic-center qp}))))))
 
 (deftest ^:parallel malformed-names-throw-test
   (are [anchors msg] (thrown-with-msg? clojure.lang.ExceptionInfo msg (module-cycles/validate-anchors anchors))

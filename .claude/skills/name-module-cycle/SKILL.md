@@ -23,9 +23,9 @@ Unnamed clusters print first.
 
 ## 2. Split, or a new cycle?
 
-Look at the branch's diff (`git diff origin/master...HEAD`). If it removed requires and these modules were part of
-a named cluster on master, the cluster split: name the new half. If it added a require between these modules, it
-created a new cycle: help break it instead, and stop here.
+Look at everything the branch changes, committed or not: `git diff $(git merge-base origin/master HEAD)`.
+If it removed requires and these modules were part of a named cluster on master, the cluster split: name the new
+half. If it added a require between these modules, it created a new cycle: help break it instead, and stop here.
 
 ## 3. Learn what the cluster does
 

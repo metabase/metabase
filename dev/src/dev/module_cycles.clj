@@ -112,7 +112,7 @@
                    (into seen nexts))))))))
 
 (defn- merge-message [graph cluster anchors-in]
-  (let [[[name-a anchor-a] [name-b anchor-b]] anchors-in
+  (let [[[name-a anchor-a] & others] anchors-in
         chain #(str/join " -> " (shortest-path graph cluster %1 %2))]
     (str/join
      "\n"
@@ -120,8 +120,12 @@
               (str/join " and " (map first anchors-in)) (count cluster))
       (str "  This undoes the work that kept them apart, and the merged tangle is hard to cut apart again."
            " Please find another way.")
-      (format "  %s reaches %s through %s" name-a name-b (chain anchor-a anchor-b))
-      (format "  %s reaches %s through %s" name-b name-a (chain anchor-b anchor-a))
+      (str/join
+       "\n"
+       (for [[name-b anchor-b] others
+             line [(format "  %s reaches %s through %s" name-a name-b (chain anchor-a anchor-b))
+                   (format "  %s reaches %s through %s" name-b name-a (chain anchor-b anchor-a))]]
+         line))
       (str "  The require that joined them is most likely on one of these chains, probably one your change added."
            " Cut it, for example by moving the code that needs it, or by inverting the dependency with an event or"
            " a multimethod.")
@@ -163,7 +167,8 @@
   `modules` is every configured module."
   [graph modules anchors]
   (let [clusters  (deps-graph/cyclic-components graph)
-        anchor->n (into {} (map (juxt val key)) anchors)
+        valid     (into {} (filter (comp modules val)) anchors)
+        anchor->n (into {} (map (juxt val key)) valid)
         anchors-in (fn [cluster] (sort (keep (fn [m] (when-let [n (anchor->n m)] [n m])) cluster)))
         in-any    (into #{} cat clusters)
         unnamed   (filter (comp empty? anchors-in) clusters)
@@ -180,7 +185,7 @@
      (for [[cluster proposal] proposals]
        (unnamed-message graph cluster proposal))
      (for [[cluster-name anchor] (sort-by key anchors)
-           :when (not (contains? in-any anchor))]
+           :when (or (not (contains? modules anchor)) (not (contains? in-any anchor)))]
        (if (contains? modules anchor)
          (dissolved-message cluster-name anchor)
          (format "%s is anchored on %s, which is not a module. Anchor it on another module of the cluster in %s."
