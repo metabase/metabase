@@ -60,7 +60,12 @@ export type GoalValueInputProps = {
   data: DatasetData;
   datasetQuery: DatasetQuery | undefined;
   excludedSelfColumn?: string;
-  // the chart's own value formatting, so values read as they do on the chart
+  /**
+   * Formatting settings of the current chart, not of the card the dynamic goal
+   * value comes from. This is intentional: values should be formatted the same
+   * way the chart formats its own values (Progress and Gauge also show them as
+   * labels on the chart).
+   */
   formatOptions?: ColumnSettings;
   id: string;
   placeholder?: string;
