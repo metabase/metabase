@@ -2532,6 +2532,7 @@
    :uses #{api
            api-scope
            app-db
+           appearance
            channel
            events
            lib.schema
