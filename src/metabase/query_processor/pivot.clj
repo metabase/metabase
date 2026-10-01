@@ -679,26 +679,23 @@
 (defn pivot-cols-equivalent?
   "Column-metadata equivalence for pivot results — compares the [[->cols-fingerprint]] projection so pivot
   paths agree on the FE-visible shape (name/field_ref/source/base_type) even when rows legitimately differ
-  (e.g. `:limit N` under multi-query applies per subquery). Exposed so
-  [[metabase.query-processor.pivot.test-util/with-metadata-only-parity]] can bind
-  [[*pivot-outcome-comparator*]] to it."
+  (e.g. `:limit N` under multi-query applies per subquery)."
   [r1 r2]
   (= (->cols-fingerprint r1) (->cols-fingerprint r2)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *pivot-outcome-comparator*
+(def pivot-outcome-comparator
   "Predicate `(fn [r1 r2])` the parity checker uses to decide whether two pivot-flow outcomes agree. Defaults
   to [[pivot-rows-equivalent?]] (row-frequency compare). Tests whose paths legitimately diverge on rows but
-  should agree on column metadata can bind this to [[pivot-cols-equivalent?]] via
+  should agree on column metadata can override this via
   [[metabase.query-processor.pivot.test-util/with-metadata-only-parity]]."
   pivot-rows-equivalent?)
 
 (defn- outcomes-data-equivalent?
-  "Delegates to [[*pivot-outcome-comparator*]], then logs an asymmetric-cache warning when a mismatch shows
+  "Delegates to [[pivot-outcome-comparator]], then logs an asymmetric-cache warning when a mismatch shows
   the cache freshness diverged between the two sides (helps distinguish stale-cache flakes from real
   regressions)."
   [r1 r2]
-  (let [equivalent? (*pivot-outcome-comparator* r1 r2)
+  (let [equivalent? (pivot-outcome-comparator r1 r2)
         control-cached-at   (cache-updated-at r1)
         candidate-cached-at (cache-updated-at r2)]
     (when (and (not equivalent?)
@@ -767,7 +764,7 @@
 (defn- outcomes-match?
   "True when two `{:outcome ...}`/`{:throwable ...}` maps represent equivalent behavior — both threw
   throwables with the same signature (see [[throwable-signature]]), or both succeeded with results the
-  active [[*pivot-outcome-comparator*]] considers equivalent."
+  active [[pivot-outcome-comparator]] considers equivalent."
   [{a-outcome :outcome a-throwable :throwable}
    {b-outcome :outcome b-throwable :throwable}]
   (cond
@@ -816,15 +813,6 @@
   [[default-on-parity-mismatch!]]."
   default-on-parity-mismatch!)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *force-compilation-shape*
-  "Optional hint that coerces the single-query pivot compiler for the current call to a specific shape. Each
-  per-driver-family compiler interprets the values it knows and ignores the rest — SQL recognises
-  `:grouping-sets` and `:union-all`; a future Mongo compiler could recognise e.g. `:facet`. `nil` (default)
-  means the compiler picks the shape via its usual logic. Used by the parity checker to compare each SQL
-  compiler shape against multi-query in one run — no new routing plumbing."
-  nil)
-
 (defn- query-has-window-fn-aggregation?
   "True iff any aggregation in the last stage of the preprocessed `query` is a window-function aggregation."
   [query]
@@ -838,18 +826,19 @@
   `{:throwable ...}` on failure — annotated with `:elapsed-ms` and `:flow` so the parity checker (and CI
   log inspection) can see per-flow timings without extra plumbing."
   [flow query rff primary-flow]
-  (let [primary?    (= flow primary-flow)
-        runner      (if (= flow :multi-query) run-pivot-query-multi run-sql-pivot-query)
-        force-shape (case flow
-                      :multi-query   nil
-                      :grouping-sets :grouping-sets
-                      :union-all     :union-all)
-        do-run      (fn [rff]
-                      (binding [*force-compilation-shape* force-shape]
-                        (let [t0     (System/nanoTime)
-                              result (try {:outcome (runner query rff)}
-                                          (catch Throwable t {:throwable t}))]
-                          (assoc result :flow flow, :elapsed-ms (long (/ (- (System/nanoTime) t0) 1e6))))))]
+  (let [primary?     (= flow primary-flow)
+        runner       (if (= flow :multi-query) run-pivot-query-multi run-sql-pivot-query)
+        force-shape  (case flow
+                       :multi-query   nil
+                       :grouping-sets :grouping-sets
+                       :union-all     :union-all)
+        scoped-query (cond-> query
+                       force-shape (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape force-shape))
+        do-run       (fn [rff]
+                       (let [t0     (System/nanoTime)
+                             result (try {:outcome (runner scoped-query rff)}
+                                         (catch Throwable t {:throwable t}))]
+                         (assoc result :flow flow, :elapsed-ms (long (/ (- (System/nanoTime) t0) 1e6)))))]
     (if primary?
       (do-run rff)
       (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]

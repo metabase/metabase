@@ -30,9 +30,9 @@
 
 (defn- use-grouping-sets?
   "True iff `database`'s driver supports `:native-pivot-tables` and the compiled `stage` has no window aggregation.
-  Short-circuits when [[qp.pivot/*force-compilation-shape*]] is bound to `:grouping-sets` or `:union-all`."
+  Short-circuits when the stage carries `:qp.pivot/forced-shape` `:grouping-sets` or `:union-all`."
   [database stage]
-  (case qp.pivot/*force-compilation-shape*
+  (case (:qp.pivot/forced-shape stage)
     :grouping-sets true
     :union-all     false
     (and (driver.u/supports? (driver.u/database->driver database) :native-pivot-tables database)

@@ -1180,21 +1180,21 @@
 
 (deftest ^:parallel single-combo-ua-preserves-user-order-by-test
   (testing "UA compilation must honor user :order-by when there's only one grouping-set combo"
-    (let [mp        (mt/metadata-provider)
-          orders    (lib.metadata/table mp (mt/id :orders))
-          prod-id   (lib.metadata/field mp (mt/id :orders :product_id))
-          query     (-> (lib/query mp orders)
-                        (lib/breakout prod-id)
-                        (lib/aggregate (lib/count))
-                        (as-> q (lib/order-by q (lib/aggregation-ref q 0) :desc))
-                        (merge {:pivot-rows         [0]
-                                :pivot-cols         []
-                                :show-row-totals    false
-                                :show-column-totals false}))]
-      (binding [qp.pivot/*force-compilation-shape* :union-all]
-        (let [counts (mapv last (mt/rows (qp.pivot/run-pivot-query query)))]
-          (is (apply >= counts)
-              (str "Expected counts DESC; got: " counts)))))))
+    (let [mp       (mt/metadata-provider)
+          orders   (lib.metadata/table mp (mt/id :orders))
+          prod-id  (lib.metadata/field mp (mt/id :orders :product_id))
+          query    (-> (lib/query mp orders)
+                       (lib/breakout prod-id)
+                       (lib/aggregate (lib/count))
+                       (as-> q (lib/order-by q (lib/aggregation-ref q 0) :desc))
+                       (merge {:pivot-rows         [0]
+                               :pivot-cols         []
+                               :show-row-totals    false
+                               :show-column-totals false}))
+          forced   (lib.util/update-query-stage query -1 assoc :qp.pivot/forced-shape :union-all)
+          counts   (mapv last (mt/rows (qp.pivot/run-pivot-query forced)))]
+      (is (apply >= counts)
+          (str "Expected counts DESC; got: " counts)))))
 
 (deftest ^:parallel run-pivot-query-falls-through-when-not-pivotable-test
   (testing "run-pivot-query on a query whose last stage has no breakouts falls through to qp/process-query"

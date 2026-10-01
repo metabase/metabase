@@ -115,7 +115,7 @@
   and native paths (e.g. `:limit N` applied per-subquery) but should still agree on the FE-visible column
   shape."
   [& body]
-  `(binding [qp.pivot/*pivot-outcome-comparator* qp.pivot/pivot-cols-equivalent?]
+  `(mt/with-dynamic-fn-redefs [qp.pivot/pivot-outcome-comparator qp.pivot/pivot-cols-equivalent?]
      ~@body))
 
 (defmacro with-multi-query-pivot!
