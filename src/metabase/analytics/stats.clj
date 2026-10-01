@@ -131,9 +131,9 @@
    :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (analytics.db/sample-database-exists?)
    :enable_embedding                     (setting/get :enable-embedding)
-   ;; Modular embedding, the SDK and guest embeds are one setting since 0.65.0. The three field names are kept so
-   ;; existing reports keep resolving; they now all report that one flag.
-   :enable_embedding_sdk                 (setting/get :enable-embedding-modular)
+   :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
+   ;; Modular embedding and guest embeds are one setting since 0.65.0. The two field names are kept so existing
+   ;; reports keep resolving; they now both report that one flag.
    :enable_embedding_simple              (setting/get :enable-embedding-modular)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
    :enable_embedding_static              (setting/get :enable-embedding-modular)
@@ -950,7 +950,7 @@
     :enabled   (premium-features/enable-remote-sync?)}
    {:name      :sdk-embedding
     :available true
-    :enabled   (setting/get :enable-embedding-modular)}
+    :enabled   (setting/get :enable-embedding-sdk)}
    {:name      :tenants
     :enabled   (setting/get :use-tenants)
     :available (premium-features/enable-tenants?)}
