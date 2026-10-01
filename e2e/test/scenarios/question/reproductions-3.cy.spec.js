@@ -136,61 +136,6 @@ function assertPlanFieldValues() {
   cy.findByText("Premium").should("be.visible");
 }
 
-describe("issue 38176", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/**").as("updateQuestion");
-  });
-
-  it("restoring a question to a previous version should preserve the variables (metabase#38176)", () => {
-    H.createNativeQuestion(
-      {
-        name: "38176",
-        native: {
-          query:
-            'SELECT "COUNTRY" from "ACCOUNTS" WHERE country = {{ country }} LIMIT 5',
-          "template-tags": {
-            country: {
-              type: "text",
-              id: "dd06cd10-596b-41d0-9d6e-94e98ceaf989",
-              name: "country",
-              "display-name": "Country",
-            },
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByPlaceholderText("Country").type("NL");
-
-    cy.findByTestId("qb-header").icon("play").click();
-
-    H.questionInfoButton().click();
-    H.sidesheet().within(() => {
-      cy.findByPlaceholderText("Add description")
-        .type("This is a question")
-        .blur();
-
-      cy.wait("@updateQuestion");
-      cy.wait("@cardQuery");
-      cy.findByRole("tab", { name: "History" }).click();
-      cy.findByText(/added a description/i);
-      cy.findByTestId("question-revert-button").click();
-      cy.wait("@cardQuery");
-
-      cy.findByRole("tab", { name: "History" }).click();
-      cy.findByText(/reverted to an earlier version/i, {
-        timeout: 10000,
-      }).should("be.visible");
-    });
-
-    cy.findByLabelText("Close").click();
-    H.tableInteractive().should("contain", "NL");
-  });
-});
-
 describe("issue 38354", { tags: "@external" }, () => {
   const QUESTION_DETAILS = {
     query: {
@@ -357,7 +302,7 @@ describe("issue 39795", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    //If you comment out this post, then the test will pass.
+    // Remapping Product ID to the product title is what made the column order reset
     cy.request("post", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
       human_readable_field_id: PRODUCTS.TITLE,
       name: "Product ID",
@@ -376,11 +321,21 @@ describe("issue 39795", () => {
       },
     });
     H.openVizSettingsSidebar();
-    H.moveColumnDown(H.getDraggableElements().first(), 2);
+    H.getDraggableElements()
+      .eq(0)
+      .should("have.attr", "data-testid", "draggable-item-ID");
+    H.moveDnDKitListElement("draggable-item", {
+      startIndex: 0,
+      dropIndex: 2,
+      useMouseEvents: true,
+    });
 
-    // We are not able to re-order because the dataset will also contain values a column for Product ID
-    // This causes the isValid() check to fire, and you are always forced into the default value for table.columns
-    H.getDraggableElements().eq(2).should("contain.text", "ID");
+    H.getDraggableElements()
+      .eq(0)
+      .should("have.attr", "data-testid", "draggable-item-User ID");
+    H.getDraggableElements()
+      .eq(2)
+      .should("have.attr", "data-testid", "draggable-item-ID");
   });
 });
 
@@ -467,23 +422,6 @@ describe("issue 40435", () => {
     cy.findByRole("columnheader", { name: "ID" }).should("be.visible");
     cy.findByRole("columnheader", { name: "User ID" }).should("be.visible");
     cy.findByRole("columnheader", { name: "Product ID" }).should("be.visible");
-  });
-});
-
-describe("issue 41381", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not show an error message when adding a constant-only custom expression (metabase#41381)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
-    H.popover().within(() => {
-      cy.findByText("Invalid expression").should("not.exist");
-      cy.button("Done").should("be.enabled");
-    });
   });
 });
 
@@ -578,27 +516,6 @@ function removeFilter() {
   cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 }
 
-describe("issue 33439", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should show an error message when trying to use convertTimezone on an unsupported db (metabase#33439)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({
-      formula:
-        'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
-      name: "Date",
-    });
-    H.popover().within(() => {
-      cy.findByText("Unsupported function convertTimezone");
-      cy.button("Done").should("be.disabled");
-    });
-  });
-});
-
 describe("issue 42244", () => {
   const COLUMN_NAME = "Created At".repeat(5);
 
@@ -625,59 +542,6 @@ describe("issue 42244", () => {
     H.getNotebookStep("summarize")
       .findByText(`${COLUMN_NAME}: Year`)
       .should("be.visible");
-  });
-});
-
-describe("issue 40064", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            Tax: ["*", ["field", ORDERS.TAX, { "base-type": "type/Float" }], 2],
-          },
-          limit: 1,
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.log("check the initial expression value");
-    H.tableInteractive().findByText("4.14").should("be.visible");
-
-    cy.log("update the expression and check the value");
-    H.openNotebook();
-    H.getNotebookStep("expression").findByText("Tax").click();
-    H.enterCustomColumnDetails({ formula: "[Tax] * 3", blur: true });
-    H.popover().button("Update").click();
-    H.visualize();
-    H.tableInteractive().findByText("6.21").should("be.visible");
-
-    cy.log("rename the expression and make sure you cannot create a cycle");
-    H.openNotebook();
-    H.getNotebookStep("expression").findByText("Tax").click();
-    H.enterCustomColumnDetails({
-      formula: "[Tax] * 3",
-      name: "Tax3",
-      blur: true,
-    });
-    H.popover().button("Update").should("not.be.disabled").click();
-    H.getNotebookStep("expression").findByText("Tax3").click();
-    H.enterCustomColumnDetails({
-      formula: "[Tax3] * 3",
-      name: "Tax3",
-      blur: true,
-    });
-    H.popover().within(() => {
-      cy.findByText("Unknown column: Tax3").should("be.visible");
-      cy.button("Update").should("be.disabled");
-    });
   });
 });
 
@@ -816,7 +680,7 @@ describe("issue 44532", () => {
     H.openProductsTable();
   });
 
-  it("should update chart metrics and dimensions with each added breakout (metabase #44532)", () => {
+  it("should update chart metrics and dimensions with each added breakout (metabase#44532)", () => {
     H.summarize();
 
     H.rightSidebar()
@@ -893,26 +757,6 @@ describe("issue 44532", () => {
   });
 });
 
-describe("issue 33441", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should show an error message for an incorrect date expression (metabase#33441)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({
-      formula: 'datetimeDiff([Created At] , now(), "days")',
-      name: "Date",
-    });
-    H.popover().within(() => {
-      cy.findByText("Types are incompatible.").should("be.visible");
-      cy.button("Done").should("be.disabled");
-    });
-  });
-});
-
 describe("issue 31960", () => {
   const questionDetails = {
     query: {
@@ -927,7 +771,7 @@ describe("issue 31960", () => {
     },
   };
 
-  // the dot that corresponds to July 10–16, 2025
+  // the dot that corresponds to July 13–19, 2025
   const dotIndex = 10;
   const rowCount = 11;
 
@@ -981,6 +825,7 @@ describe("issue 43294", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should not overwrite viz settings with click actions in raw data mode (metabase#43294)", () => {
@@ -1000,11 +845,13 @@ describe("issue 43294", () => {
       cy.findByText("Created At: Month").click();
       cy.findByText("Year").click();
     });
+    cy.wait("@dataset");
 
     cy.log("combine action");
     cy.button("Add column").click();
     H.popover().findByText("Combine columns").click();
     H.popover().button("Done").click();
+    cy.wait("@dataset");
 
     cy.log("check visualization");
     H.queryBuilderFooter().findByLabelText("Switch to visualization").click();

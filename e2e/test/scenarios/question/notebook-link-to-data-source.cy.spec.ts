@@ -401,11 +401,23 @@ describe("scenarios > notebook > link to data source", () => {
   });
 
   context("permissions", () => {
-    it("shouldn't show the source question if it lives in a collection that user can't see", () => {
+    it("shouldn't show the source question to users without write query permissions or if it lives in a collection that user can't see", () => {
       H.createQuestion({
         name: "Nested question based on a question",
         query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
       }).then(({ body: nestedQuestion }) => {
+        cy.log(
+          "A user with curate collection permissions but without write query permissions should not see the notebook icon",
+        );
+        cy.signIn("nodata");
+        H.visitQuestion(nestedQuestion.id);
+        cy.findByTestId("qb-header-action-panel").should("be.visible");
+        cy.findByTestId("qb-header-action-panel")
+          .icon("notebook")
+          .should("not.exist");
+
+        cy.signInAsAdmin();
+
         cy.log("Move the source question to admin's personal collection");
         cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
           collection_id: ADMIN_PERSONAL_COLLECTION_ID,
@@ -443,24 +455,6 @@ describe("scenarios > notebook > link to data source", () => {
         H.main()
           .findByText("Sorry, you don’t have permission to see that.")
           .should("be.visible");
-      });
-    });
-
-    it("user with the curate collection permissions but without write query permissions shouldn't be able to see/open the source question", () => {
-      H.createQuestion({
-        name: "Nested question based on a question",
-        query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
-      }).then(({ body: nestedQuestion }) => {
-        cy.signIn("nodata");
-        H.visitQuestion(nestedQuestion.id);
-
-        cy.log("We should not even show the notebook icon");
-        cy.findByTestId("qb-header-action-panel")
-          .icon("notebook")
-          .should("not.exist");
-
-        // TODO update the following once metabase#46398 is fixed
-        // cy.visit(`/question/${nestedQuestion.id}/notebook`);
       });
     });
 
