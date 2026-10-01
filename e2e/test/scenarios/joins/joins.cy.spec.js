@@ -160,10 +160,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should join structured questions (metabase#13000, metabase#13649, metabase#13744)", () => {
-    cy.intercept("GET", `/api/table/${PRODUCTS_ID}/query_metadata`).as(
-      "metadata",
-    );
-
     H.createQuestion({
       name: "Q1",
       query: {
@@ -257,7 +253,6 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should allow joins with multiple conditions", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     H.openOrdersTable({ mode: "notebook" });
 
     H.join();

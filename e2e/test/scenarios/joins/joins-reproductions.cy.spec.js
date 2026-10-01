@@ -127,7 +127,6 @@ describe("issue 15578", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
 
     // Remap display value
     cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
@@ -169,7 +168,6 @@ describe("issue 15578", () => {
 
 describe("issue 17710, 39448", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     H.restore();
     cy.signInAsNormalUser();
   });
@@ -262,14 +260,11 @@ describe("issue 18502", () => {
   }
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     H.restore();
     cy.signInAsAdmin();
   });
 
   it("should be able to join two saved questions based on the same table (metabase#18502)", () => {
-    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
-
     H.createQuestion(question1);
     H.createQuestion(question2);
 
@@ -291,7 +286,6 @@ describe("issue 18502", () => {
 });
 describe("issue 18818", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     H.restore();
     cy.signInAsAdmin();
   });
@@ -558,7 +552,6 @@ describe("issue 23293", () => {
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByRole("grid")
         .last()
-        .as("tableResults")
         .should("contain", "Doohickey")
         .and("not.contain", "Gizmo");
     });
@@ -658,8 +651,7 @@ describe("issue 31769", () => {
     cy.signInAsAdmin();
 
     H.createQuestion({ name: "Q1", query: Q1 }).then(() => {
-      H.createQuestion({ name: "Q2", query: Q2 }).then((response) => {
-        cy.wrap(response.body.id).as("card_id_q2");
+      H.createQuestion({ name: "Q2", query: Q2 }).then(() => {
         H.startNewQuestion();
       });
     });
@@ -676,11 +668,9 @@ describe("issue 31769", () => {
     // Asserting there're two columns from Q1 and two columns from Q2
     cy.findAllByTestId("header-cell").should("have.length", 4);
 
-    cy.get("@card_id_q2").then((cardId) => {
-      H.tableInteractive()
-        .findByText("Q2 - Products → Category → Category")
-        .should("exist");
-    });
+    H.tableInteractive()
+      .findByText("Q2 - Products → Category → Category")
+      .should("exist");
 
     H.tableInteractive().findByText("Products → Category").should("exist");
   });
