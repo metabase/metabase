@@ -298,15 +298,20 @@
                                      (recur acc (.getDecodedMessages decoder))))))))))))
 
 (defn- check-runtime-model!
-  "Generate one token with `model` on `bedrock-runtime`, which has no catalog to check a model against."
+  "Generate one token with `model` on `bedrock-runtime`, which has no catalog to check a model against.
+  Throws unless the model finishes its response."
   [{:keys [model] :as opts}]
-  (run! identity
-        (adapter/stream! runtime-provider (select-keys opts [:model :credentials :ai-proxy?])
-                         {:path        (runtime-path model)
-                          :body        {:anthropic_version runtime-anthropic-version
-                                        :max_tokens        1
-                                        :messages          [{:role "user" :content "Hi"}]}
-                          :read-stream runtime-events})))
+  (let [chunks (into [] (claude/claude->aisdk-chunks-xf)
+                     (adapter/stream! runtime-provider (select-keys opts [:model :credentials :ai-proxy?])
+                                      {:path        (runtime-path model)
+                                       :body        {:anthropic_version runtime-anthropic-version
+                                                     :max_tokens        1
+                                                     :messages          [{:role "user" :content "Hi"}]}
+                                       :read-stream runtime-events}))]
+    (when-let [error (or (some :errorText chunks)
+                         (when-not (some :finish-reason chunks)
+                           (tru "AWS Bedrock returned an incomplete response from {0}" (pr-str model))))]
+      (throw (ex-info error {:api-error true :status-code 400})))))
 
 ;;; ------------------------------------------------ Model listing ----------------------------------------------
 

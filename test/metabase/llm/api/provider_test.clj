@@ -1,11 +1,12 @@
 (ns metabase.llm.api.provider-test
   (:require
    [clj-http.client :as http]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.llm.api.provider :as llm.api.provider]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.bedrock-test :as bedrock-test]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
@@ -473,24 +474,40 @@
               (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
               (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))))
 
+(def ^:private bedrock-inference-profile-connection
+  {:type   "bedrock"
+   :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+            :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+            :region            "eu-central-1"
+            :model-id          "eu.anthropic.claude-sonnet-4-6"}})
+
 (deftest create-bedrock-connection-with-an-inference-profile-test
   (testing "a Bedrock connection that names an inference profile is checked on bedrock-runtime and Metabot runs on it"
     (let [requested (atom [])]
       (mt/with-dynamic-fn-redefs [http/request (fn [req]
                                                  (swap! requested conj (:url req))
-                                                 {:status 200 :body (java.io.ByteArrayInputStream. (byte-array 0))})]
+                                                 (bedrock-test/runtime-response-for bedrock-test/one-token-completion))]
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-            (mt/user-http-request :crowberto :post 200 "llm/providers"
-                                  {:type   "bedrock"
-                                   :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
-                                            :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
-                                            :region            "eu-central-1"
-                                            :model-id          "eu.anthropic.claude-sonnet-4-6"}})
+            (mt/user-http-request :crowberto :post 200 "llm/providers" bedrock-inference-profile-connection)
             (is (= [(str "https://bedrock-runtime.eu-central-1.amazonaws.com/model/eu.anthropic.claude-sonnet-4-6"
                          "/invoke-with-response-stream")]
                    @requested))
             (is (= "bedrock/eu.anthropic.claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest create-bedrock-connection-is-rejected-when-the-model-does-not-finish-test
+  (testing "the connection is not saved when the model errors partway through or never finishes its response"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (let [connect!   (fn [messages]
+                         (mt/with-dynamic-fn-redefs [http/request (fn [_] (bedrock-test/runtime-response-for messages))]
+                           (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                                           bedrock-inference-profile-connection))))
+            incomplete "AWS Bedrock returned an incomplete response from \"eu.anthropic.claude-sonnet-4-6\""]
+        (are [messages error] (= error (connect! messages))
+          [bedrock-test/message-start bedrock-test/stream-error] "Model stream error"
+          []                                                     incomplete
+          [bedrock-test/message-start]                           incomplete))
+      (is (= [] (llm.provider/connections))))))
 
 (deftest writes-keep-a-stored-connection-the-environment-shadows-test
   (testing (str "The environment wins on read, but it must not take the stored credentials with it: they are what "

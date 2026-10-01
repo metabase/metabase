@@ -647,7 +647,7 @@
   (event-stream-message {":message-type" "event" ":event-type" "chunk" ":content-type" "application/json"}
                         (json/encode {:bytes (u/encode-base64 (json/encode event)) :p "abcdefgh"})))
 
-(defn- runtime-response-for
+(defn runtime-response-for
   "A stubbed clj-http response streaming `messages` in reads of a few bytes, so messages straddle them."
   [messages]
   {:status 200
@@ -663,11 +663,25 @@
                                :input       [{:role :user :content "hi"}]
                                :credentials credentials}))))
 
-(def ^:private message-start
+(def message-start
   (chunk-message {:type    "message_start"
                   :message {:id    "msg_bdrk_1"
                             :model "claude-sonnet-4-6"
                             :usage {:input_tokens 10 :cache_read_input_tokens 5 :output_tokens 1}}}))
+
+(def one-token-completion
+  [message-start
+   (chunk-message {:type "content_block_start" :index 0 :content_block {:type "text" :text ""}})
+   (chunk-message {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "Hello"}})
+   (chunk-message {:type "content_block_stop" :index 0})
+   (chunk-message {:type "message_delta" :delta {:stop_reason "max_tokens"} :usage {:output_tokens 1}})
+   (chunk-message {:type "message_stop"})])
+
+(def stream-error
+  (event-stream-message {":message-type"   "exception"
+                         ":exception-type" "modelStreamErrorException"
+                         ":content-type"   "application/json"}
+                        (json/encode {:message "Model stream error"})))
 
 (deftest runtime-model-streams-claude-events-test
   (testing "chunks carry Claude's events, and message_start's input counts survive a message_delta with output only"
@@ -686,12 +700,7 @@
   (testing "an exception partway through becomes Claude's error chunk"
     (is (= [{:type :error :errorText "Model stream error"}]
            (filter (comp #{:error} :type)
-                   (runtime-chunks-for!
-                    [message-start
-                     (event-stream-message {":message-type"   "exception"
-                                            ":exception-type" "modelStreamErrorException"
-                                            ":content-type"   "application/json"}
-                                           (json/encode {:message "Model stream error"}))]))))))
+                   (runtime-chunks-for! [message-start stream-error]))))))
 
 (deftest list-models-runtime-model-test
   (let [opts {:credentials credentials :model "eu.anthropic.claude-sonnet-4-6"}]
@@ -700,7 +709,7 @@
         (is (= {:models []} (bedrock/list-models opts)))))
     (testing "with :probe? it generates one token on bedrock-runtime"
       (let [captured (atom nil)]
-        (with-redefs [http/request (fn [req] (reset! captured req) (runtime-response-for []))]
+        (with-redefs [http/request (fn [req] (reset! captured req) (runtime-response-for one-token-completion))]
           (is (= {:models []} (bedrock/list-models (assoc opts :probe? true))))
           (is (= (str "https://bedrock-runtime.us-east-1.amazonaws.com/model/eu.anthropic.claude-sonnet-4-6"
                       "/invoke-with-response-stream")
