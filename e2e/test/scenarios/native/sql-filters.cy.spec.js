@@ -20,17 +20,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       );
     });
 
-    it("when set through the filter widget", () => {
-      SQLFilter.setWidgetValue("Gizmo");
-
-      SQLFilter.runQuery();
-
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("Rustic Paper Wallet");
-        cy.findAllByText("Doohickey").should("not.exist");
-      });
-    });
-
     describe("required tag", () => {
       it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();

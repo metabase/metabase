@@ -312,7 +312,7 @@ describe("issue 53194", () => {
   });
 });
 
-describe("issues 53299, 47793", { tags: ["@external", "@mongo"] }, () => {
+describe("issue 47793", { tags: ["@external", "@mongo"] }, () => {
   const MONGO_DB_ID = 2;
 
   const questionDetails: NativeQuestionDetails = {
@@ -356,12 +356,7 @@ describe("issues 53299, 47793", { tags: ["@external", "@mongo"] }, () => {
     cy.signInAsAdmin();
   });
 
-  it("should be possible to switch to mongodb when editing an sql question and to preview queries for mongodb (metabase#53299, metabase#47793)", () => {
-    H.startNewNativeQuestion();
-
-    H.selectNativeEditorDataSource("QA Mongo");
-    H.nativeEditorDataSource().should("contain", "QA Mongo");
-
+  it("should be possible to preview queries for mongodb (metabase#47793)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     cy.findByTestId("visibility-toggler")
       .findByText(/open editor/i)

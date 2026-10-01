@@ -102,16 +102,6 @@ describe("scenarios > question > native", () => {
   });
 
   describe("template tags", () => {
-    it("should handle template tags", () => {
-      H.startNewNativeQuestion();
-      H.NativeEditor.type("select * from PRODUCTS where RATING > {{Stars}}");
-
-      cy.get("input[placeholder*='Stars']").type("3");
-      runQuery();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Showing 168 rows");
-    });
-
     it("should modify parameters accordingly when tags are modified", () => {
       H.startNewNativeQuestion();
       H.NativeEditor.type("select * from PRODUCTS where CATEGORY = {{cat}}");
@@ -147,6 +137,7 @@ describe("scenarios > question > native", () => {
       cy.get("input[placeholder*='Stars']").type("3");
 
       runQuery();
+      H.assertQueryBuilderRowCount(45);
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
@@ -471,6 +462,7 @@ describe("scenarios > question > native", () => {
     H.startNewNativeQuestion();
     cy.findByTestId("gui-builder-data").click();
     cy.findByLabelText(MONGO_DB_NAME).click();
+    H.nativeEditorDataSource().should("contain", MONGO_DB_NAME);
 
     H.NativeEditor.type('[{enter}{ {enter}"foo": "bar",{enter}"baz"');
 
