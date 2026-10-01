@@ -163,6 +163,19 @@
              :object [:in paths]
              :group_id [:not= group-id]))
 
+(defn table
+  "The Table with `table-id`, or nil."
+  [table-id]
+  (t2/select-one :model/Table :id table-id
+                 {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+
+(defn cards-by-ids
+  "The Cards with `card-ids`."
+  [card-ids]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
 (defn table-details
   "Table names and database details for `table-ids`."
   [table-ids]
