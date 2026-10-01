@@ -641,30 +641,6 @@
         (is (= {:hosting "self-hosted" :base-url "http://elsewhere.example.com:11434/v1"}
                (llm.provider/credentials "ollama"))
             "and the Cloud key does not follow it to the operator's server"))))
-  (testing (str "a blank address is the vendor's own, so a variable replacing it moves the connection and the "
-                "key typed for the vendor does not follow")
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                  {:api-key "sk-ant-db"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
-        (is (= {:base-url "https://gateway.example.com"}
-               (llm.provider/credentials "anthropic")))))
-    (testing "and so is one stored at the vendor's default"
-      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                    {:api-key  "sk-ant-db"
-                                                                     :base-url "https://api.anthropic.com"})]]
-        (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
-          (is (nil? (:api-key (llm.provider/credentials "anthropic")))))))
-    (testing "while a variable naming where the connection already points moves nothing"
-      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                    {:api-key "sk-ant-db"})]]
-        (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://api.anthropic.com/"]
-          (is (= "sk-ant-db" (:api-key (llm.provider/credentials "anthropic")))))))
-    (testing "and an address the admin did choose is a move like any other"
-      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                    {:api-key  "sk-ant-db"
-                                                                     :base-url "https://chosen.example.com"})]]
-        (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
-          (is (nil? (:api-key (llm.provider/credentials "anthropic"))))))))
   (testing "the environment supplying both halves moves nothing it does not also credential"
     (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
       (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"
@@ -678,6 +654,32 @@
                                                         "\"api-key\":\"sk-operator-key\"}}]")
                                   mb-llm-ollama-hosting "cloud"]
       (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
+
+(deftest env-base-url-moves-a-connection-from-the-vendors-own-address-test
+  (testing (str "a blank address is the vendor's own, so a variable replacing it moves the connection and the "
+                "key typed for the vendor does not follow")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key "sk-ant-db"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+        (is (= {:base-url "https://gateway.example.com"}
+               (llm.provider/credentials "anthropic"))))))
+  (testing "an address stored at the vendor's default moves the same way"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-db"
+                                                                   :base-url "https://api.anthropic.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+        (is (nil? (:api-key (llm.provider/credentials "anthropic")))))))
+  (testing "a variable naming where the connection already points moves nothing"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key "sk-ant-db"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://api.anthropic.com/"]
+        (is (= "sk-ant-db" (:api-key (llm.provider/credentials "anthropic")))))))
+  (testing "an address the admin chose is a move like any other"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-db"
+                                                                   :base-url "https://chosen.example.com"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+        (is (nil? (:api-key (llm.provider/credentials "anthropic"))))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
