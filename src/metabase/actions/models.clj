@@ -640,7 +640,7 @@
 (search/define-spec "action"
   {:model        :model/Action
    :attrs        {:archived       true
-                  :collection-id  :model.collection_id
+                  :collection-id  true
                   :creator-id     true
                   :database-id    :query_action.database_id
                   :native-query   :query_action.dataset_query
@@ -654,4 +654,4 @@
    :where        [:= :collection.namespace nil]
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
-                  :collection   [:model/Collection [:= :collection.id :model.collection_id]]}})
+                  :collection   [:model/Collection [:= :collection.id :this.collection_id]]}})
