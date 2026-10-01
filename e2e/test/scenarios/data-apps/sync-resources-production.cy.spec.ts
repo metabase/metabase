@@ -2,7 +2,7 @@ import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToGroup,
-  assignDataAppTestGroup,
+  assignTestGroupToDataApp,
   createDataAppApiKey,
   dataAppIframe,
   mockDataApp,
@@ -164,7 +164,7 @@ describe("scenarios > data apps > sync-resources in production", () => {
 
   it("serves the app to a member of an assigned group", () => {
     syncApp().then(() => {
-      assignDataAppTestGroup(APP_SLUG).then((groupId) => {
+      assignTestGroupToDataApp(APP_SLUG).then((groupId) => {
         addUserToGroup(groupId, USERS.normal.email);
 
         cy.signInAsNormalUser();

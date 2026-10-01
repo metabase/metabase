@@ -2,7 +2,7 @@ import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToGroup,
-  assignDataAppTestGroup,
+  assignTestGroupToDataApp,
   buildDataAppHostApp,
   createDataAppApiKey,
   createSecondDataApp,
@@ -482,13 +482,12 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         });
 
         cy.request(`/api/apps/${OTHER_SLUG}`).then(({ body: otherApp }) => {
-          assignDataAppTestGroup(APP_SLUG).then((groupId) => {
+          assignTestGroupToDataApp(APP_SLUG).then((groupId) => {
             expect(
               otherApp.resource_collection_id,
               "each app gets its own collection",
             ).not.to.eq(null);
 
-            // Assignment to one app must not grant access to the other app's copy.
             addUserToGroup(groupId, USERS.normal.email);
 
             cy.request(
@@ -500,9 +499,13 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
               );
 
               cy.signInAsNormalUser();
+
+              cy.log("can read the card from the app it has access to");
               cy.request(`/api/card/${card.id}`)
                 .its("body.id")
                 .should("eq", card.id);
+
+              cy.log("cannot read the card from the other app");
               cy.request({
                 url: `/api/card/${otherCard.id}`,
                 failOnStatusCode: false,
@@ -550,14 +553,14 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   });
 
   describe("permissions", () => {
-    const grantNormalUserAppAccess = () =>
-      assignDataAppTestGroup(APP_SLUG).then((groupId) =>
+    const grantAppAccessToNormalUser = () =>
+      assignTestGroupToDataApp(APP_SLUG).then((groupId) =>
         addUserToGroup(groupId, USERS.normal.email),
       );
 
     it("does not let a viewer modify the copy it can read", () => {
       syncOneQuery().then((card) => {
-        grantNormalUserAppAccess();
+        grantAppAccessToNormalUser();
 
         cy.signInAsNormalUser();
         cy.request(`/api/card/${card.id}`).its("body.id").should("eq", card.id);
@@ -618,7 +621,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
             collection_id: collection.id,
           }).then(({ body: unrelated }) => {
             syncOneQuery().then((card) => {
-              grantNormalUserAppAccess();
+              grantAppAccessToNormalUser();
 
               cy.signInAsNormalUser();
               cy.request(`/api/card/${card.id}`)
@@ -638,7 +641,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
     it("leaves the group with nothing once the declaration is removed", () => {
       syncOneQuery().then((card) => {
-        grantNormalUserAppAccess();
+        grantAppAccessToNormalUser();
 
         cy.signInAsNormalUser();
         cy.request(`/api/card/${card.id}`).its("body.id").should("eq", card.id);
@@ -658,7 +661,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
     it("lets an assigned group read the copy while the rest of the instance cannot", () => {
       syncOneQuery().then((card) => {
-        assignDataAppTestGroup(APP_SLUG).then((groupId) => {
+        assignTestGroupToDataApp(APP_SLUG).then((groupId) => {
           cy.signInAsNormalUser();
           cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
             .its("status")
