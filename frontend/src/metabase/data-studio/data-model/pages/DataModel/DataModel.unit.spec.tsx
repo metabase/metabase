@@ -16,6 +16,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -322,7 +323,7 @@ describe("DataModel", () => {
 
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
-      setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
       await waitFor(async () => {
         expect(
@@ -783,7 +784,9 @@ describe("DataModel", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        router?.back();
+        act(() => {
+          router?.back();
+        });
 
         await waitFor(() => {
           expect(

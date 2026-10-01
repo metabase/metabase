@@ -216,6 +216,9 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     getFilteredRowModel: getFilteredRowModel(),
     filterFromLeafRows: true,
     globalFilterFn: effectiveFilterFn,
+    // This table does not paginate, and the reset is queued rather than run
+    // with the change that triggers it, which lands a state update on its own.
+    autoResetPageIndex: false,
     initialState,
   });
 

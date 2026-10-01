@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { act, screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -31,8 +31,11 @@ function setup(opts: SetupOpts = {}) {
 }
 
 describe("StrategyEditorForDatabases", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setup();
+    // Let the initial data load settle, so a request does not resolve mid-test
+    // and rerender outside act().
+    await screen.findByLabelText(/Edit default policy/);
   });
 
   it("lets user override root strategy on enterprise instance", async () => {
@@ -195,10 +198,8 @@ describe("StrategyEditorForDatabases", () => {
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
-    await act(async () => {
-      await changeInput(/minimum query duration/i, 1, 5);
-      await changeInput(/multiplier/i, 10, 3);
-    });
+    await changeInput(/minimum query duration/i, 1, 5);
+    await changeInput(/multiplier/i, 10, 3);
 
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
@@ -246,31 +247,6 @@ describe("StrategyEditorForDatabases", () => {
         `Edit policy for database 'Database 1' (currently: Scheduled: weekly)`,
       ),
     ).toBeInTheDocument();
-  });
-
-  it("can abbreviate a 'Schedule' strategy", () => {
-    const strategy: ScheduleStrategy = {
-      type: "schedule",
-      schedule: "0 0 * * * ?",
-      refresh_automatically: false,
-    };
-    const result = getShortStrategyLabel(strategy);
-    expect(result).toBe("Scheduled: hourly");
-  });
-
-  it.each([
-    [CacheDurationUnit.Hours, "Duration: 5h"],
-    [CacheDurationUnit.Minutes, "Duration: 5m"],
-    [CacheDurationUnit.Seconds, "Duration: 5s"],
-    [CacheDurationUnit.Days, "Duration: 5d"],
-  ])("can abbreviate a 'Duration' strategy with unit %s", (unit, expected) => {
-    const strategy: DurationStrategy = {
-      type: "duration",
-      duration: 5,
-      unit,
-      refresh_automatically: false,
-    };
-    expect(getShortStrategyLabel(strategy)).toBe(expected);
   });
 
   it("does not silently save default values when saving right after switching strategies", async () => {
@@ -361,6 +337,33 @@ describe("StrategyEditorForDatabases", () => {
         "Edit default policy (currently: Duration: 1m)",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("getShortStrategyLabel", () => {
+  it("can abbreviate a 'Schedule' strategy", () => {
+    const strategy: ScheduleStrategy = {
+      type: "schedule",
+      schedule: "0 0 * * * ?",
+      refresh_automatically: false,
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Scheduled: hourly");
+  });
+
+  it.each([
+    [CacheDurationUnit.Hours, "Duration: 5h"],
+    [CacheDurationUnit.Minutes, "Duration: 5m"],
+    [CacheDurationUnit.Seconds, "Duration: 5s"],
+    [CacheDurationUnit.Days, "Duration: 5d"],
+  ])("can abbreviate a 'Duration' strategy with unit %s", (unit, expected) => {
+    const strategy: DurationStrategy = {
+      type: "duration",
+      duration: 5,
+      unit,
+      refresh_automatically: false,
+    };
+    expect(getShortStrategyLabel(strategy)).toBe(expected);
   });
 });
 

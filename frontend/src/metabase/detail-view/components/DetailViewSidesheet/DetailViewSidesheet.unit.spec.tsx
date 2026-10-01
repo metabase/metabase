@@ -4,7 +4,11 @@ import {
   setupActionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+} from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
@@ -82,8 +86,10 @@ function setup({
 }
 
 describe("DetailViewSidesheet", () => {
-  it("navigates rows with arrow keys when keyboard navigation is enabled", () => {
+  it("navigates rows with arrow keys when keyboard navigation is enabled", async () => {
     const { onNextClick, onPreviousClick } = setup();
+    // The action modal prefetches its initial values after this render.
+    await settlePendingUpdates();
 
     fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
     expect(onPreviousClick).toHaveBeenCalledTimes(1);
@@ -92,8 +98,9 @@ describe("DetailViewSidesheet", () => {
     expect(onNextClick).toHaveBeenCalledTimes(1);
   });
 
-  it("does not navigate rows with arrow keys when keyboard navigation is disabled", () => {
+  it("does not navigate rows with arrow keys when keyboard navigation is disabled", async () => {
     const { onNextClick, onPreviousClick } = setup({ showNav: false });
+    await settlePendingUpdates();
 
     fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
     expect(onPreviousClick).not.toHaveBeenCalled();

@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, settlePendingUpdates } from "__support__/ui";
 
 import { PythonEditorBody } from "./PythonEditorBody";
 
@@ -47,8 +47,9 @@ function setup({
 
 describe("PythonEditorBody", () => {
   describe("view mode (not editing)", () => {
-    it("should not render run button when not in edit mode", () => {
+    it("should not render run button when not in edit mode", async () => {
       setup({ isEditMode: false });
+      await settlePendingUpdates();
       expect(screen.queryByTestId("run-button")).not.toBeInTheDocument();
     });
 

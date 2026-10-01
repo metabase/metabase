@@ -6,7 +6,12 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+  waitFor,
+} from "__support__/ui";
 import type { SettingDefinition } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -72,8 +77,8 @@ describe("EmbeddingToggle", () => {
       expect(screen.getByText("Enabled")).toBeInTheDocument();
     });
 
-    it("should render a switch in the 'off' position when value is false", () => {
-      setup({ value: false });
+    it("should render a switch in the 'off' position when value is false", async () => {
+      await setup({ value: false });
       const switchElement = screen.getByRole("switch");
       expect(switchElement).toBeInTheDocument();
       expect(switchElement).not.toBeChecked();
@@ -84,6 +89,7 @@ describe("EmbeddingToggle", () => {
   describe("when clicking on the switch", () => {
     it("should send a PUT request with value=true when setting is off", async () => {
       await setup({ value: false });
+      await settlePendingUpdates();
 
       expect(screen.getByRole("switch")).not.toBeChecked();
       await userEvent.click(screen.getByRole("switch"));
