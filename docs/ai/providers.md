@@ -169,14 +169,14 @@ Credentials:
 
 - Provider key: `deepseek`
 - Default model: `deepseek-v4-pro`
-- Model for short tasks like naming a conversation: `deepseek-v4-flash`
+- Model for short tasks like naming a conversation: `deepseek-flash`
 
 Supported models:
 
-| Model             | Model ID            |
-| ----------------- | ------------------- |
-| DeepSeek V4 Flash | `deepseek-v4-flash` |
-| DeepSeek V4 Pro   | `deepseek-v4-pro`   |
+| Model           | Model ID          |
+| --------------- | ----------------- |
+| DeepSeek Flash  | `deepseek-flash`  |
+| DeepSeek V4 Pro | `deepseek-v4-pro` |
 
 Credentials:
 

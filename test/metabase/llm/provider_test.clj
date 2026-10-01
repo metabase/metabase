@@ -711,7 +711,7 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
-            "deepseek"   "deepseek-v4-flash"
+            "deepseek"   "deepseek-flash"
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"
