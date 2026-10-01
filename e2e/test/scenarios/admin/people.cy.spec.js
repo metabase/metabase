@@ -865,12 +865,14 @@ describe("scenarios > admin > people > group managers", () => {
         });
 
       // Demote myself from being manager
-      H.popover().findByLabelText("collection").click();
+      H.popover().findByRole("button", { name: "collection" }).click();
       confirmLosingAbilityToManageGroup();
-      H.popover().findByLabelText("collection").should("not.exist");
+      H.popover()
+        .findByRole("button", { name: "collection" })
+        .should("not.exist");
 
       // Remove myself from another group
-      H.popover().findByLabelText("data").click();
+      H.popover().findByRole("button", { name: "data" }).click();
       confirmLosingAbilityToManageGroup();
 
       // Redirected to the home page

@@ -56209,6 +56209,12 @@
                       "label" : {
                         "type" : "string"
                       },
+                      "model_fields" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
                       "type" : {
                         "type" : "string"
                       },
@@ -56344,7 +56350,7 @@
                         }
                       }
                     },
-                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "requires", "fields" ]
+                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "model_fields", "required_any", "requires", "fields" ]
                   }
                 }
               }

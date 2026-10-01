@@ -13,12 +13,12 @@
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.image-bundle :as img]
+   [metabase.channel.render.markdown :as markdown]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.system.core :as system]
-   [metabase.util :as u]
-   [metabase.util.markdown :as markdown]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 

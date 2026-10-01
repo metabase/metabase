@@ -222,9 +222,14 @@
    :measure   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- current-user-visibility
-  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`."
+  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`.
+
+  Analyst-wide visibility comes with the role rather than a permissions graph, so it pauses while the
+  `advanced-permissions` feature is unavailable (see [[api/entitled-data-analyst?]])."
   [{:keys [include-archived-items]}]
-  (cond-> {:user-id api/*current-user-id* :is-superuser? api/*is-superuser?* :is-data-analyst? api/*is-data-analyst?*}
+  (cond-> {:user-id          api/*current-user-id*
+           :is-superuser?    api/*is-superuser?*
+           :is-data-analyst? (api/entitled-data-analyst?)}
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (defn- readable-graph-dependencies
