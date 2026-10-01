@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+import { getRunQueryButton } from "./helpers/e2e-sql-filter-helpers";
 
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
 

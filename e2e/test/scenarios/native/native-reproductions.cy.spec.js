@@ -2,10 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-import {
-  getRunQueryButton,
-  runQuery,
-} from "../native-filters/helpers/e2e-sql-filter-helpers";
+import { getRunQueryButton, runQuery } from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
