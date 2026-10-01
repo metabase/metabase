@@ -219,17 +219,18 @@
         (is (<= @peak 2) "no more than chunk-parallelism chunks are in flight")))))
 
 (deftest max-concurrent-calls-test
-  (testing "calls from concurrent classifications share one instance-wide bound"
-    (let [n         llm/max-concurrent-calls
+  (testing "calls from concurrent classifications share one instance-wide bound set by the setting"
+    (let [n         3
           latch     (CountDownLatch. n)
           in-flight (atom 0)
           peak      (atom 0)]
-      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (latched-call latch in-flight peak)]
-        (let [classify #(llm/classify-packet (packet (for [i (range (* n 2))] (field (str "F" i))))
-                                             :model "test/model" :chunk-size 2 :chunk-parallelism n)
-              runs     (doall (repeatedly 2 #(future (classify))))]
-          (is (every? #(= (* n 2) (count (:fields (deref % 30000 nil)))) runs))
-          (is (= n @peak)))))))
+      (mt/with-temporary-setting-values [data-sensitivity-max-concurrent-llm-calls n]
+        (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (latched-call latch in-flight peak)]
+          (let [classify #(llm/classify-packet (packet (for [i (range (* n 2))] (field (str "F" i))))
+                                               :model "test/model" :chunk-size 2 :chunk-parallelism n)
+                runs     (doall (repeatedly 2 #(future (classify))))]
+            (is (every? #(= (* n 2) (count (:fields (deref % 30000 nil)))) runs))
+            (is (= n @peak))))))))
 
 (deftest classify-packet-defaults-test
   (let [calls (atom [])]

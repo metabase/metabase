@@ -2,12 +2,13 @@
   "The single LLM interaction of the data-sensitivity classifier: category and semantic-type enums, the system
   prompt, the user message rendered from a [[metabase-enterprise.data-sensitivity.context]] packet, the structured
   response schema, the call, and response parsing. [[classify-packet]] chunks wide tables into concurrent calls and
-  merges the parsed entries by field name. Every call from this module holds one of [[max-concurrent-calls]] permits
-  shared by the whole instance. Nothing here catches exceptions: gate failures, malformed responses, and transport
+  merges the parsed entries by field name. Every call from this module holds one of
+  [[settings/data-sensitivity-max-concurrent-llm-calls]] permits shared by the whole instance. Nothing here catches exceptions: gate failures, malformed responses, and transport
   errors propagate to the caller."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-sensitivity.context :as context]
+   [metabase-enterprise.data-sensitivity.settings :as settings]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -186,30 +187,37 @@
   [field-count]
   (min 8192 (+ 512 (* 120 field-count))))
 
-(def max-concurrent-calls
-  "LLM calls this module may have in flight across the whole instance, however many tables, chunks, and concurrent
-  runs are asking. A permit is held through the provider adapter's own retries and backoff."
-  4)
+(defonce ^:private permits
+  (atom nil))
 
-(defonce ^:private ^Semaphore call-permits
-  (Semaphore. max-concurrent-calls true))
+(defn- call-permits
+  "The instance-wide semaphore bounding LLM calls from this module, sized by
+  [[settings/data-sensitivity-max-concurrent-llm-calls]]. A permit is held through the provider adapter's own retries
+  and backoff. A changed setting replaces the semaphore; calls holding a permit of the old one release it there."
+  ^Semaphore []
+  (let [n (settings/data-sensitivity-max-concurrent-llm-calls)]
+    (:semaphore (swap! permits (fn [current]
+                                 (if (= n (:size current))
+                                   current
+                                   {:size n :semaphore (Semaphore. n true)}))))))
 
 (defn- call! [model packet fields]
-  (.acquire call-permits)
-  (try
-    (metabot.self/call-llm-structured-with-trace
-     model
-     [{:role "system" :content system-prompt}
-      {:role "user"   :content (user-message packet fields)}]
-     response-schema
-     temperature
-     (max-tokens (count fields))
-     {:request-id          (str (random-uuid))
-      :source              "data_sensitivity_classification"
-      :tag                 "data-sensitivity"
-      :required-permission :permission/metabot-other-tools})
-    (finally
-      (.release call-permits))))
+  (let [^Semaphore permit (call-permits)]
+    (.acquire permit)
+    (try
+      (metabot.self/call-llm-structured-with-trace
+       model
+       [{:role "system" :content system-prompt}
+        {:role "user"   :content (user-message packet fields)}]
+       response-schema
+       temperature
+       (max-tokens (count fields))
+       {:request-id          (str (random-uuid))
+        :source              "data_sensitivity_classification"
+        :tag                 "data-sensitivity"
+        :required-permission :permission/metabot-other-tools})
+      (finally
+        (.release permit)))))
 
 (defn usage-from-parts
   "Token usage of one call, from the `:usage` part of its trace."
@@ -300,7 +308,7 @@
   60)
 
 (def default-chunk-parallelism
-  "Chunks of one table classified concurrently, still bounded by [[max-concurrent-calls]]."
+  "Chunks of one table classified concurrently, still bounded by [[settings/data-sensitivity-max-concurrent-llm-calls]]."
   4)
 
 (defn- run-chunks
