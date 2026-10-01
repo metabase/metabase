@@ -10,6 +10,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.util.malli :as mu]))
 
@@ -48,12 +49,9 @@
   [value]
   (if (nil? value)
     ""
-    (let [s (-> (str value)
-                (str/replace #"\s+" " ")
-                (str/replace "|" "\\|"))]
-      (if (> (count s) max-cell-chars)
-        (str (subs s 0 max-cell-chars) "…")
-        s))))
+    (-> (llm-shape/truncate value max-cell-chars)
+        (str/replace #"\s+" " ")
+        (str/replace "|" "\\|"))))
 
 (defn- table-line
   [cells]
