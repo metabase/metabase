@@ -1964,17 +1964,33 @@
                       "AUTHENTICATOR=http://localhost:8080/okta"]]
           (is (=? {:status-code 400} (refusal opts))
               (str "should be refused: " opts))))
+      (testing "the client percent-decodes names and values, so an encoded one is refused like the plain one"
+        (doseq [opts ["serverURL=https%3A%2F%2Flocalhost%2F"
+                      "useProxy=true&proxy%48ost=localhost"
+                      "useProxy=true&proxyHost=%6Cocalhost"
+                      "authenticator=https%3A%2F%2Flocalhost%2F"
+                      "authenticat%6Fr=https://localhost/"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "every `authenticator` is checked when one is given more than once"
+        (doseq [opts ["authenticator=SNOWFLAKE_JWT&authenticator=https://localhost/"
+                      "authenticator=https://localhost/&authenticator=SNOWFLAKE_JWT"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
       (testing "an `authenticator` naming a flow rather than a URL is not treated as a host"
         (doseq [opts [nil
                       "authenticator=SNOWFLAKE_JWT"
                       "authenticator=OAUTH_CLIENT_CREDENTIALS"
-                      "authenticator=externalbrowser"]]
+                      "authenticator=externalbrowser"
+                      "authenticator=SNOWFLAKE%5FJWT"]]
           (is (nil? (check! opts))
               (str "should be allowed: " opts))))
-      (testing "an `authenticator` detail key reaches the client as a connection property too"
-        (is (=? {:status-code 400}
-                (try (driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
-                                                                      :authenticator "https://localhost/"
-                                                                      :additional-options "authenticator=SNOWFLAKE_JWT"})
-                     nil
-                     (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))
+      (testing "an `authenticator` detail key reaches the client as a connection property too, in any case"
+        (doseq [k [:authenticator :AUTHENTICATOR :Authenticator]]
+          (is (=? {:status-code 400}
+                  (try (driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                        k "https://localhost/"
+                                                                        :additional-options "authenticator=SNOWFLAKE_JWT"})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))
+              (str "should be refused: " k)))))))

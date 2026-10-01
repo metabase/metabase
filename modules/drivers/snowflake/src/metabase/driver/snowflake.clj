@@ -33,6 +33,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -57,20 +58,34 @@
   [_driver]
   ["proxyHost" "host" "serverURL" "oauthTokenRequestUrl" "oauthAuthorizationUrl"])
 
-;; `oauthRedirectUri` is the local listener the browser is sent back to; `nonProxyHosts` lists hosts to exclude from
-;; the proxy.
 (defmethod driver/non-host-parameters :snowflake
   [_driver]
-  ["oauthRedirectUri" "nonProxyHosts"])
+  ["oauthRedirectUri" "nonProxyHosts" "proxyPort" "proxyUser" "proxyPassword" "proxyProtocol" "useProxy"
+   "disableSocksProxy" "allowUnderscoresInHost" "disableSamlURLCheck"])
+
+(defn- authenticator-values
+  "Every `authenticator` the client could be handed by `spec`: each one in the connection string, as written and as the
+  client percent-decodes it, and each property whose name matches regardless of case -- the client looks property
+  names up case-insensitively, and details the driver does not recognize are passed through as properties. All are
+  returned rather than guessing which one the client lets win."
+  [spec]
+  (into (sql-jdbc.common/connection-string-parameter-values (:subname spec) "authenticator")
+        (keep (fn [[k v]]
+                (when (= "authenticator" (u/lower-case-en (str/trim (name k))))
+                  v)))
+        spec))
 
 (defmethod driver/connection-parameter-hosts :snowflake
-  [driver {:keys [additional-options] :as details}]
-  ;; details the driver does not recognize are passed to the client as connection properties, so an `:authenticator`
-  ;; detail counts as much as one in `:additional-options`; both are checked rather than guessing which one wins
-  (into ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)
-        (filter #(and (string? %) (re-find #"(?i)^\s*https?://" %)))
-        [(get (sql-jdbc.common/additional-options->map additional-options :url) "authenticator")
-         (:authenticator details)]))
+  [driver details]
+  (let [spec (try
+               (sql-jdbc.conn/connection-details->spec driver details)
+               ;; details that do not make a spec cannot open a connection either; the `:sql-jdbc` method below
+               ;; answers the same way
+               (catch Throwable _ nil))]
+    (into ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)
+          (comp (filter #(and (string? %) (re-find #"(?i)^\s*https?://" %)))
+                (keep u.http/->hostname))
+          (authenticator-values spec))))
 
 (defmethod driver/connection-hosts :snowflake
   [_driver {:keys [account host use-hostname]}]

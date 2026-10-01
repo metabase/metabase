@@ -47,6 +47,11 @@
   ["ProxyHost" "CFProxyHost" "OAuth2ConnAuthAuthorizeEndpoint" "OAuth2ConnAuthTokenEndpoint"
    "OAuth2AuthorizationEndPoint" "OAuth2TokenEndpoint" "OAuthDiscoveryURL" "OIDCDiscoveryEndpoint"])
 
+(defmethod driver/non-host-parameters :databricks
+  [_driver]
+  ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
+   "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
+
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :database-routing                true
