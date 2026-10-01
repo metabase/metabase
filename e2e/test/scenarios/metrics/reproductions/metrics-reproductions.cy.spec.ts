@@ -43,13 +43,14 @@ describe("issue 47058", () => {
       cy.findByText("Loading...").should("be.visible");
       H.getNotebookStep("summarize").should("not.exist");
 
-      cy.findByText("[Unknown Metric]").should("not.exist");
-
       cy.wait("@metadata");
 
       cy.findByText("Loading...").should("not.exist");
       H.getNotebookStep("summarize").should("be.visible");
 
+      H.getNotebookStep("summarize")
+        .findByText("Metric 47058")
+        .should("be.visible");
       cy.findByText("[Unknown Metric]").should("not.exist");
     });
   });
@@ -107,7 +108,7 @@ describe("issue 44171", () => {
 
   it("should not save viz settings on metrics", () => {
     cy.intercept("PUT", "/api/card/*").as("saveCard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.get<number>("@metricBId").then((metricBId) => {
       cy.visit(`/metric/${metricBId}/query`);
@@ -119,6 +120,8 @@ describe("issue 44171", () => {
       cy.findByText("Sum of ...").click();
       cy.findByText("Total").click();
     });
+    H.runButtonInOverlay().click();
+    cy.wait("@dataset");
     H.MetricPage.saveButton().click();
     cy.wait("@saveCard");
 

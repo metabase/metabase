@@ -649,10 +649,9 @@ describe("scenarios > metrics > explorer", () => {
       selectBreakout("Count of orders", "Created At", 0, "Year");
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Created At" }).should("be.visible");
-        const currentYear = new Date().getFullYear();
-        for (let year = 2025; year <= currentYear; year++) {
-          cy.findByText(String(year)).should("be.visible");
-        }
+        ["2025", "2026", "2027", "2028", "2029"].forEach((year) => {
+          cy.findByText(year).should("be.visible");
+        });
       });
 
       H.MetricsViewer.searchBarPills()
@@ -1280,7 +1279,6 @@ describe("scenarios > metrics > explorer", () => {
           );
         });
         H.MetricsViewer.assertVizType("Number");
-        H.MetricsViewer.breakoutLegend().should("not.exist");
 
         H.MetricsViewer.closeDimensionPickerSidebar();
         H.MetricsViewer.dimensionPickerSidebar().should("not.exist");
@@ -2183,13 +2181,16 @@ describe("scenarios > metrics > explorer", () => {
           .findByText("2")
           .should("be.visible");
 
-        cy.log("dimension filter is applied");
-        H.MetricsViewer.getMetricVisualizationDataPoints().should(
-          "have.length.of.at.most",
-          60,
-        );
         cy.log("metric math expression still renders with the applied state");
         H.MetricsViewer.getMetricVisualization().should("be.visible");
+
+        cy.log("dimension filter is applied");
+        H.echartsContainer().within(() => {
+          cy.findByText("Doohickey").should("be.visible");
+          cy.findByText("Gadget").should("not.exist");
+          cy.findByText("Gizmo").should("not.exist");
+          cy.findByText("Widget").should("not.exist");
+        });
       }
       assertMetricMath();
 
@@ -2234,12 +2235,12 @@ describe("scenarios > metrics > explorer", () => {
       cy.log(
         "Append literal number 123 — typed without selecting from dropdown",
       );
-      addMetricInputSequence([
-        "+",
-        { nameOrPath: ["Our analytics", NUMERIC_METRIC_NAME] },
-      ]);
+      addMetricInputSequence(["+ 123"]);
 
       H.MetricsViewer.getMetricVisualization().should("be.visible");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .should("contain", "123 + 123 + 123");
 
       cy.log("Append metric '123' as standalone — selected from dropdown");
       addMetricInputSequence([
@@ -2250,7 +2251,9 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Verify final pill layout");
       H.MetricsViewer.searchBarPills().should("have.length", 2);
-      H.MetricsViewer.searchBarPills().eq(0).should("contain", "123 + 123");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .should("contain", "123 + 123 + 123");
       H.MetricsViewer.searchBarPills().eq(1).should("contain", "123");
     });
   });

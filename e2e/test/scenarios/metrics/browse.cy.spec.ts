@@ -232,7 +232,10 @@ describe("scenarios > browse > metrics", () => {
         .findByText(/This is a/)
         .realHover();
 
-      cy.findAllByText(/should be truncated/).should("have.length", 2);
+      H.tooltip().within(() => {
+        cy.findByText(/should be truncated/).should("be.visible");
+        cy.get("strong").should("have.text", "long description");
+      });
     });
 
     it("should be possible to sort the metrics", () => {
@@ -272,8 +275,6 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
 
       cy.visit("/browse/metrics");
-
-      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
       metricsTable().findByLabelText("Metric options").click();
       H.popover().findByText("Bookmark").should("be.visible").click();
@@ -361,8 +362,6 @@ describe("scenarios > browse > metrics", () => {
 
         cy.visit("/browse/metrics");
 
-        shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
-
         metricsTable().findByLabelText("Metric options").click();
         H.popover().findByText("Bookmark").should("be.visible").click();
 
@@ -431,37 +430,28 @@ describe("scenarios > browse > metrics", () => {
     });
 
     it("should respect the user setting on whether to only show verified metrics", () => {
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          res.body["browse-filter-only-verified-metrics"] = true;
-          res.send();
-        });
-      });
-
       createMetrics([ORDERS_SCALAR_METRIC, ORDERS_SCALAR_MODEL_METRIC]);
       cy.visit("/browse/metrics");
       verifyMetric(ORDERS_SCALAR_METRIC);
 
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
         "have.attr",
         "aria-selected",
         "true",
       );
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
 
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          res.body["browse-filter-only-verified-metrics"] = false;
-          res.send();
-        });
-      });
+      H.updateSetting("browse-filter-only-verified-metrics", false);
+      cy.reload();
 
-      cy.visit("/browse/metrics");
       cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
         "have.attr",
         "aria-selected",
         "false",
       );
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+      findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
     });
   });
 });

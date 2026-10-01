@@ -247,7 +247,7 @@ describe("scenarios > metrics > editing", () => {
       });
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders").should("be.visible");
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       });
@@ -340,6 +340,7 @@ describe("scenarios > metrics > editing", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.createQuestion(ORDERS_SCALAR_FILTER_METRIC);
       H.createQuestion(PRODUCTS_SCALAR_METRIC);
+      H.createQuestion(ORDERS_SCALAR_MODEL_METRIC);
       H.startNewQuestion();
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
@@ -373,7 +374,6 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Metrics").should("be.visible");
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
         cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
-        cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
       });
     });

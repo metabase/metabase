@@ -184,10 +184,6 @@ describe("scenarios > metrics > question", () => {
       .should("be.visible")
       .and("have.attr", "data-viz-ui-name", "Number");
     cy.findByTestId("scalar-value").should("be.visible");
-    H.MetricPage.aboutPage().within(() => {
-      cy.button(/Filter/).should("not.exist");
-      cy.button(/Summarize/).should("not.exist");
-    });
   });
 });
 

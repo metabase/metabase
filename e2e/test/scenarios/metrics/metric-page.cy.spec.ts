@@ -166,8 +166,12 @@ describe("scenarios > metrics > metric page", () => {
         .type("Renamed metric copy");
       cy.button("Duplicate").click();
     });
-    cy.wait("@createCard");
-    H.MetricPage.aboutPage().should("be.visible");
+    cy.wait("@createCard").then(({ response }) => {
+      cy.location("pathname").should("eq", `/metric/${response?.body.id}`);
+    });
+    H.MetricPage.aboutPage()
+      .findByDisplayValue("Renamed metric copy")
+      .should("be.visible");
   });
 
   it("should open alert channel setup modal from more menu when no channels configured", () => {
