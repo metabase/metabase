@@ -2,10 +2,7 @@
   "Application database queries for the search module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (connection and transaction handling still use `toucan2.core`)."
   (:require
-   <<<<<<<
-   =======
-   >>>>>>>
-   HEAD [honey.sql.helpers :as sql.helpers]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -21,7 +18,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   origin/master
    [toucan2.core :as t2]))
 
 (def ^:private SearchIndexRow
