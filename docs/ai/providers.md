@@ -183,6 +183,24 @@ Credentials:
 - **API key** (required). [Where do I find this?](https://platform.deepseek.com/api_keys) You can also set it with the environment variable `MB_LLM_DEEPSEEK_API_KEY`.
 - **API base URL** (advanced). The root both surfaces hang off; leave off any /anthropic or /v1 path. Defaults to `https://api.deepseek.com`. You can also set it with the environment variable `MB_LLM_DEEPSEEK_API_BASE_URL`.
 
+## xAI
+
+- Provider key: `xai`
+- Default model: `grok-4.7`
+- Model for short tasks like naming a conversation: `grok-4.3`
+
+Supported models:
+
+| Model    | Model ID   | Context window (tokens) |
+| -------- | ---------- | ----------------------- |
+| Grok 4.3 | `grok-4.3` | 1,000,000               |
+| Grok 4.7 | `grok-4.7` | 500,000                 |
+
+Credentials:
+
+- **API key** (required). [Where do I find this?](https://console.x.ai/team/default/api-keys) You can also set it with the environment variable `MB_LLM_XAI_API_KEY`.
+- **API base URL** (advanced). Defaults to `https://api.x.ai/v1`. You can also set it with the environment variable `MB_LLM_XAI_API_BASE_URL`.
+
 ## Google Gemini Enterprise
 
 - Provider key: `google`
