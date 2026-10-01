@@ -25,7 +25,6 @@
 
 (def ^:private init-timeout-ms (u/seconds->ms 120))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *initializing*
   "Collection of components that are being currently initialized by the current thread."
   [])

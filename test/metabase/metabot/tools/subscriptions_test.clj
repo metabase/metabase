@@ -5,7 +5,8 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.subscriptions :as agent-subscriptions]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------------ schema / metadata tests -----------------------------------------------
 
@@ -74,23 +75,6 @@
                        :schedule     {:frequency "daily" :hour 9}})]
           (is (= "no dashboard with this dashboard_id found" (:output result))))))))
 
-(deftest create-dashboard-subscription-schedule-keywords-test
-  (testing "schedule keywords are converted from snake_case to kebab-case"
-    (let [captured-args (atom nil)
-          sent-schedule (fn [schedule]
-                          (agent-subscriptions/create-dashboard-subscription-tool
-                           {:dashboard_id 1
-                            :email        "test@example.com"
-                            :schedule     schedule})
-                          (:schedule @captured-args))]
-      (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
-                                  (fn [args] (reset! captured-args args) {:output "success"})]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (is (= {:frequency :weekly :hour 9 :day-of-week :monday}
-                 (sent-schedule {:frequency "weekly" :hour 9 :day_of_week "monday"})))
-          (is (= {:frequency :monthly :hour 9 :day-of-month :first-monday}
-                 (sent-schedule {:frequency "monthly" :hour 9 :day_of_month "first-monday"}))))))))
-
 (deftest ^:parallel create-dashboard-subscription-unknown-day-of-week-test
   (testing "a day_of_week outside the listed days is rejected at argument validation"
     (is (=? #"Invalid tool arguments: `schedule` .*should be either \"sunday\".*"
@@ -122,7 +106,7 @@
               (is (= {:output "success"} result)))))))))
 
 (deftest create-dashboard-subscription-slack-monthly-schedule-test
-  (testing "Slack subscription with monthly schedule → success"
+  (testing "Slack subscription with monthly schedule → success, stored with the requested schedule"
     (mt/with-model-cleanup [:model/Pulse]
       (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                       (constantly true)
                                   channel.settings/slack-cached-channels-and-usernames
@@ -140,7 +124,12 @@
                            :schedule      {:frequency    "monthly"
                                            :day_of_month "last-sunday"
                                            :hour         7}})]
-              (is (= {:output "success"} result)))))))))
+              (is (= {:output "success"} result))
+              (is (=? [{:schedule_type  :monthly
+                        :schedule_hour  7
+                        :schedule_day   "sun"
+                        :schedule_frame :last}]
+                      (t2/select :model/PulseChannel :pulse_id (t2/select-one-pk :model/Pulse :dashboard_id dash-id)))))))))))
 
 (deftest create-dashboard-subscription-slack-required-test
   (testing "empty slack_channel → error"
