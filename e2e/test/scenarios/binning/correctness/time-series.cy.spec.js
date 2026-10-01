@@ -13,11 +13,6 @@ const questionDetails = {
   },
 };
 
-/**
- * The list of issues this spec covers:
- *  - metabase#11183
- *  -
- */
 describe("scenarios > binning > correctness > time series", () => {
   beforeEach(() => {
     H.restore();
