@@ -68,6 +68,23 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
           url: `/api/apps/${encodeURIComponent(name)}/groups`,
           body: { group_ids },
         }),
+        async onQueryStarted({ name }, { dispatch, queryFulfilled }) {
+          try {
+            const { data: groups } = await queryFulfilled;
+
+            // pending group-permission-warnings request delays tag invalidation; after a
+            // successful add, replace the groups cache so new groups appear immediately.
+            dispatch(
+              dataAppApi.util.updateQueryData(
+                "getDataAppGroups",
+                name,
+                () => groups,
+              ),
+            );
+          } catch {
+            return;
+          }
+        },
         invalidatesTags: (_, error, { name }) =>
           invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
       },
@@ -77,6 +94,24 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/apps/${encodeURIComponent(name)}/groups/${group_id}`,
       }),
+
+      async onQueryStarted({ name, group_id }, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+
+          // pending group-permission-warnings request delays tag invalidation; after a
+          // successful removal, filter the group from the cache so it disappears immediately.
+          dispatch(
+            dataAppApi.util.updateQueryData(
+              "getDataAppGroups",
+              name,
+              (groups) => groups.filter((group) => group.id !== group_id),
+            ),
+          );
+        } catch {
+          return;
+        }
+      },
       invalidatesTags: (_, error, { name }) =>
         invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
     }),
