@@ -129,7 +129,8 @@
 (defn send-channel-response
   "Send a visible threaded reply for non-DM Slack conversations.
    Accumulates AI text during streaming and posts the final response as a single message."
-  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}
+  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id
+                                      model-selection]}
    {:keys [tool-name->friendly
            make-streaming-ai-request collect-viz-blocks feedback-blocks post-viz-error!
            make-viz-prefetch-callback cancel-prefetched-viz! error-message]}]
@@ -157,7 +158,8 @@
               :thread-ts            thread-ts
               :req-slack-msg-id     (:ts event)
               :get-res-slack-msg-id nil
-              :request-prompt       (channel-request-prompt prompt)})]
+              :request-prompt       (channel-request-prompt prompt)
+              :model-selection      model-selection})]
         (when (seq @prefetched-viz)
           (set-status! "Rendering results..."))
         (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
