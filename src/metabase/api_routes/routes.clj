@@ -165,8 +165,12 @@
   depend on `server` (which depends on the query processor, which depends on `api`)."
   [handler]
   (fn [request respond raise]
-    (binding [streaming-response/*error-response-fn* metabase.public-sharing-rest.api/error-response]
-      (handler request respond raise))))
+    (handler request
+             (fn [response]
+               (respond (streaming-response/with-error-response-fn
+                          response
+                          metabase.public-sharing-rest.api/error-response)))
+             raise)))
 
 (def ^:private ^{:arglists '([handler])} +sanitize-streaming-errors
   (routes.common/wrap-middleware-for-open-api-spec-generation sanitize-streaming-errors))
