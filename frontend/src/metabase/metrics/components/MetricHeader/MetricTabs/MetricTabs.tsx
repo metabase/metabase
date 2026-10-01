@@ -7,7 +7,10 @@ import {
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
+import {
+  getUserIsAdmin,
+  getUserIsEntitledAnalyst,
+} from "metabase/current-user";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
@@ -26,7 +29,7 @@ export function MetricTabs({ card, urls }: MetricTabsProps) {
   const hasDimensions =
     metric?.dimensions != null && metric.dimensions.length > 0;
   const canSeeDependencies = useSelector(
-    (state) => getUserIsAdmin(state) || getUserIsAnalyst(state),
+    (state) => getUserIsAdmin(state) || getUserIsEntitledAnalyst(state),
   );
   const query = useMemo(
     () => Lib.fromJsQuery(metadataProvider, card.dataset_query),

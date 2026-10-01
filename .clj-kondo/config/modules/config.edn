@@ -267,6 +267,7 @@
            events
            lib.schema
            models
+           premium-features
            request
            settings
            util
