@@ -19,7 +19,7 @@ export const BrowseDataHeader = () => {
           justify="space-between"
           align="center"
         >
-          <Title order={2} c="text-primary">
+          <Title order={1} c="text-primary">
             <Group gap="sm">
               <Icon size={24} c="core-brand" name="database" />
               {t`Databases`}

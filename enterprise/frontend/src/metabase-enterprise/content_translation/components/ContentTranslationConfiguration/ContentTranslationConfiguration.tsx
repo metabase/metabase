@@ -11,8 +11,7 @@ import {
 } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
 import { UploadInput } from "metabase/common/components/upload";
@@ -24,6 +23,7 @@ import {
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
+import { SettingsSection } from "metabase/settings-components";
 import {
   Button,
   Group,
@@ -161,7 +161,6 @@ export const ContentTranslationConfiguration = () => {
                 )
               }
               miw="calc(50% - 0.5rem)"
-              fw="normal"
               style={{ flexGrow: 1 }}
               disabled={isDownloadInProgress}
             >
@@ -337,15 +336,11 @@ const UploadForm = ({
       {confirmationModal}
       <FormSubmitButton
         flex="1 1 0"
-        w="auto"
         disabled={status === "pending"}
         label={
           <Group gap="sm">
             <Icon name="upload" c="core-brand" />
-            <Text
-              c="inherit"
-              fw="normal"
-            >{t`Upload edited translation dictionary`}</Text>
+            <Text c="inherit">{t`Upload edited translation dictionary`}</Text>
           </Group>
         }
         successLabel={

@@ -13,15 +13,18 @@
    "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
    "smartscalar" "gauge" "progress" "funnel" "object" "map"])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *memory-atom*
   "Dynamic memory atom bound for tools that need access to agent state."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *metabot-id*
   "The resolved metabot ID for the current agent session. Bound during the agent loop
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *profile-id*
   "The profile keyword for the current agent session, e.g. `:nlq`. Bound during the
    agent loop so that tools can adapt their output to the active profile."
@@ -49,6 +52,15 @@
   "Returns the current charts state map from agent memory."
   []
   (get-in (current-memory) [:state :charts] {}))
+
+(defn current-client-ids
+  "Ids of the queries and charts the client supplied, as opposed to ones the agent's tools wrote.
+  They come from this request's viewing context, plus the ones earlier turns stored. A refusal to
+  present one of these is a real access attempt and gets the audited treatment; see
+  `metabase.metabot.tools.shared.content-store`."
+  []
+  (let [memory (current-memory)]
+    (into (set (get-in memory [:state :client-ids])) (:client-ids memory))))
 
 (defn current-chart-configs-state
   "Returns the current chart-configs state map from agent memory.

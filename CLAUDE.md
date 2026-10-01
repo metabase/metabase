@@ -47,7 +47,7 @@ If you do not have `clojure-eval` available to you or `clj-nrepl-eval`, do not f
 ./bin/test-agent :only '[metabase.foo-test metabase.bar-test]'  # multiple namespaces
 ```
 
-For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. The test runner resolves these to test directories: `enterprise/foo` → `enterprise/backend/test/metabase_enterprise/foo`, otherwise `test/metabase/<name>` (see `metabase.test-runner/parse-options`).
+For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. The test runner resolves each module to its test directory through its `:ns-prefix`: `lib.schema` → `test/metabase/lib/schema`, `enterprise/foo` → `enterprise/backend/test/metabase_enterprise/foo` (see `metabase.test-runner/module-folders`).
 
 ```bash
 ./bin/test-agent :module enterprise/workspaces
@@ -87,7 +87,8 @@ Run all repository-level checks, or one named suite:
 ### Nested modules
 
 Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `search` exists,
-`enterprise/search` is its child. Run `./bin/mage modules-tree` to inspect the hierarchy.
+`enterprise/search` is its child. Run `./bin/mage modules-tree` to inspect the hierarchy, or add `--html` for an
+interactive explorer with a dependency graph.
 
 - Namespace ownership uses the most specific matching prefix. Declaring `lib.schema` assigns
   `metabase.lib.schema.*` to it without moving files. Use `:ns-prefix` when namespaces do not match the

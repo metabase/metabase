@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { SidebarFeatures } from "metabase/querying/editor/types";
 
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
@@ -5,13 +7,13 @@ import { useNativeQueryEditorContext } from "../context/NativeQueryEditorContext
 
 interface SidebarProps {
   features?: SidebarFeatures;
+  promptButton?: ReactNode;
 }
 
 const DEFAULT_FEATURES: SidebarFeatures = {
   dataReference: true,
   variables: true,
   snippets: true,
-  promptInput: true,
   formatQuery: true,
 };
 
@@ -20,7 +22,10 @@ const DEFAULT_FEATURES: SidebarFeatures = {
  * auto-format, preview) shown on the right of the top bar. Renders nothing
  * while the editor is collapsed or read-only.
  */
-export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
+export function Sidebar({
+  features = DEFAULT_FEATURES,
+  promptButton,
+}: SidebarProps) {
   const {
     question,
     snippets,
@@ -30,7 +35,6 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
     isRunnable,
     isRunning,
     isResultDirty,
-    isPromptInputOpen,
     isShowingDataReference,
     isShowingTemplateTagsEditor,
     isShowingSnippetSidebar,
@@ -39,7 +43,6 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
     toggleTemplateTagsEditor,
     onOpenModal,
     onFormatQuery,
-    onTogglePromptInput,
   } = useNativeQueryEditorContext();
 
   if (!isNativeEditorOpen || readOnly) {
@@ -56,8 +59,7 @@ export function Sidebar({ features = DEFAULT_FEATURES }: SidebarProps) {
       isRunnable={isRunnable}
       isRunning={isRunning}
       isResultDirty={isResultDirty}
-      isPromptInputOpen={isPromptInputOpen}
-      onTogglePromptInput={onTogglePromptInput}
+      promptButton={promptButton}
       isShowingDataReference={isShowingDataReference}
       isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
       isShowingSnippetSidebar={isShowingSnippetSidebar}

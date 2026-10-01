@@ -15,7 +15,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,21 +30,36 @@
              (#'mongo.params/->utc-instant t))))))
 
 (mu/defn- optional :- :metabase.lib.parameters.parse.types/optional
-  [& args]
+  [& args :- [:* [:or :string :metabase.lib.parameters.parse.types/param
+                  :metabase.lib.parameters.parse.types/optional]]]
   (lib/parsed-optional-param args))
 
+(def ^:private FieldFilterValue
+  [:or ms/FieldValue [:sequential ms/FieldValue]])
+
+(def ^:private FieldFilterOptions
+  [:maybe [:map {:closed true} [:case-sensitive {:optional true} :boolean]]])
+
 (mu/defn- field-filter :- :metabase.lib.parameters.parse.types/field-filter
-  ([field-name value-type value]
+  ([field-name :- :string
+    value-type :- :keyword
+    value :- FieldFilterValue]
    (field-filter field-name nil value-type value))
-  ([field-name base-type value-type value]
+  ([field-name :- :string
+    base-type :- [:maybe :keyword]
+    value-type :- :keyword
+    value :- FieldFilterValue]
    (field-filter field-name base-type value-type value nil))
-  ([field-name base-type value-type value options]
-   (merge (lib/parsed-field-filter-param {:lib/type  :metadata/column
-                                          :name      (name field-name)
-                                          :base-type (or base-type :type/*)}
-                                         (cond-> {:type value-type, :value value}
-                                           (map? options) (assoc :options options)))
-          options)))
+  ([field-name :- :string
+    base-type :- [:maybe :keyword]
+    value-type :- :keyword
+    value :- FieldFilterValue
+    options :- FieldFilterOptions]
+   (lib/parsed-field-filter-param {:lib/type  :metadata/column
+                                   :name      (name field-name)
+                                   :base-type (or base-type :type/*)}
+                                  (cond-> {:type value-type, :value value}
+                                    (map? options) (assoc :options options)))))
 
 (defn- substitute [param->value x]
   (#'mongo.params/substitute

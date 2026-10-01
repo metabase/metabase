@@ -5,7 +5,7 @@ import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import {
   type CardQuestionBuilder,
   type MetadataSelectorOpts,
-  useQuestionFromCard,
+  useQuestionFromCardBuilder,
 } from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch } from "metabase/redux";
@@ -167,7 +167,7 @@ export function AdHocQuestionLoader({
   children,
 }: AdHocQuestionLoaderProps) {
   const dispatch = useDispatch();
-  const buildQuestion = useQuestionFromCard(
+  const buildQuestion = useQuestionFromCardBuilder(
     includeSensitiveFields ? WITH_SENSITIVE_FIELDS : undefined,
   );
 

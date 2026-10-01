@@ -143,6 +143,22 @@
         (is (some? (recent-view (mt/user->id :crowberto) document-id))
             "reading a document should record a recent view")))))
 
+(deftest post-document-records-a-recent-view-test
+  (testing "POST /api/document should record a recent view so the creator finds the document in recents (UXW-1786)"
+    ;; The command palette surfaces a freshly created document only through recents, and the only thing that
+    ;; writes that row is the `:event/document-read` handler. Creating is arguably not reading, but the two are
+    ;; carried by one event: suppressing it to keep view counts honest silently drops the document out of the
+    ;; palette. Pinned here because the only other guard is an e2e spec (onboarding/command-palette.cy.spec.js),
+    ;; which reports an empty palette without saying why.
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-model-cleanup [:model/Document]
+        (let [document (mt/user-http-request :crowberto
+                                             :post 200 "document/"
+                                             {:name "Test Document"
+                                              :document (documents.test-util/text->prose-mirror-ast "Doc 1")})]
+          (is (some? (recent-view (mt/user->id :crowberto) (:id document)))
+              "creating a document should record a recent view"))))))
+
 (deftest put-document-does-not-record-view-test
   (testing "PUT /api/document/:id should not record a view (saving is not a read)"
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
@@ -2660,6 +2676,28 @@
                                   {:document (card-embed-ast native-card-id)})
             (testing "the embedded card is cloned into the document"
               (is (t2/exists? :model/Card :document_id doc-id)))))))))
+
+(deftest put-document-create-card-without-collection-id-in-body-test
+  (testing "PUT /api/document/:id - new cards default to the document's collection when the body omits :collection_id"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Document {doc-id :id} {:name          "My Doc"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "")}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/user-http-request :rasta
+                                :put 200 (str "document/" doc-id)
+                                {:document {:type    "doc"
+                                            :content [{:type "cardEmbed" :attrs {:id -1 :name nil}}]}
+                                 :cards    {-1 {:name                   "New Card"
+                                                :type                   :question
+                                                :dataset_query          (mt/mbql-query venues)
+                                                :display                :table
+                                                :visualization_settings {}}}})
+          (testing "the card is created in the document's collection"
+            (is (=? [{:name "New Card" :collection_id coll-id}]
+                    (t2/select :model/Card :document_id doc-id)))))))))
 
 (deftest copy-document-containing-native-card-without-native-perms-test
   (testing "POST /api/document/:id/copy - user without native perms can copy a document containing a native card (UXW-5037)"

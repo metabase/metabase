@@ -115,7 +115,7 @@
   (let [process-name (mt/random-name)
         step-1-name  (mt/random-name)
         step-2-name  (mt/random-name)
-        sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
+        sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:total-tables 1}))
                       (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
         mock-db      (mi/instance :model/Database {:name "test", :id 1, :engine :h2})
         [results]    (:operation-results
@@ -133,7 +133,7 @@
       (is (=? (merge default-task-history {:task process-name, :task_details nil})
               (fetch-task-history-row process-name))))
     (testing "step 1 history"
-      (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}})
+      (is (=? (merge default-task-history {:task step-1-name, :task_details {:total-tables 1}})
               (fetch-task-history-row step-1-name))))
     (testing "step 2 history"
       (is (=? (merge default-task-history {:task step-2-name, :task_details nil})
@@ -320,12 +320,15 @@
         (mt/with-dynamic-fn-redefs [sync-metadata/make-sync-steps (fn [_]
                                                                     [(sync-util/create-sync-step
                                                                       "fake-step"
-                                                                      (fn [_] (throw (java.net.ConnectException.))))])]
+                                                                      (fn [_] (throw (java.net.ConnectException. "Connection refused"))))])]
           (sync/sync-database! db)
-          (is (= "aborted" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db)))))))
+          (is (= "aborted" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))
+          (testing "and the step's error message is recorded as the cause (GHY-3856)"
+            (is (= "Connection refused" (t2/select-one-fn :initial_sync_error :model/Database :id (:id db))))))))
     (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
                        without error"
-      (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "complete"})
+      (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "complete"
+                                                    :initial_sync_error  nil})
             db (t2/select-one :model/Database :id (mt/id))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))))))

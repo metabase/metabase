@@ -5,9 +5,11 @@
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -32,6 +34,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [model-id]} :- [:map {:closed true}
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
@@ -55,6 +58,7 @@
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
+  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
@@ -73,8 +77,9 @@
     (analytics/track-event! :snowplow/action
                             {:event     :action-deleted
                              :type      (:type action)
-                             :action_id action-id}))
-  (actions-rest.db/delete-action! action-id)
+                             :action_id action-id})
+    (actions-rest.db/delete-action! action-id)
+    (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -108,11 +113,12 @@
                              :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
-    (if action-id
-      (actions/select-action :id action-id)
-      ;; t2/insert! does not return a value when used with h2
-      ;; so we return the most recently updated http action.
-      (last (actions/select-actions nil :type action-type)))))
+    (u/prog1 (if action-id
+               (actions/select-action :id action-id)
+               ;; t2/insert! does not return a value when used with h2
+               ;; so we return the most recently updated http action.
+               (last (actions/select-actions nil :type action-type)))
+      (events/publish-event! :event/action-create {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -141,6 +147,7 @@
       (check-native-query-perms! (:database_id action) dataset-query))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
+    (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated
                              :type           type
@@ -193,6 +200,7 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
+  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]
    _query-params
@@ -235,6 +243,7 @@
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params

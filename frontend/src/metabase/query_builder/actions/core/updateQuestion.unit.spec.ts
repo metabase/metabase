@@ -1,10 +1,10 @@
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
 import * as questionActions from "metabase/questions/actions";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
@@ -138,7 +138,9 @@ async function setup({
     questions: cards,
   });
 
-  const metadata = getMetadata(createMockState({ entities: entitiesState }));
+  const metadata = createMockMetadataFromState(
+    createMockState({ entities: entitiesState }),
+  );
   const ordersTable = createOrdersTable();
   const ordersFields = ordersTable.fields ?? [];
   const question = isSavedCard

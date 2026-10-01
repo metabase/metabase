@@ -14,6 +14,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
@@ -311,11 +312,6 @@
   [magic-group-type :- :string]
   (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type))
 
-(mu/defn group-by-magic-type
-  "The PermissionsGroup of `magic-group-type`, or nil."
-  [magic-group-type :- :string]
-  (t2/select-one :model/PermissionsGroup :magic_group_type magic-group-type))
-
 (mu/defn group-id-by-magic-type
   "The ID of the PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
@@ -351,11 +347,6 @@
   [group-ids :- [:set ms/PositiveInt]]
   (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in group-ids]))
 
-(mu/defn group-names-like
-  "The set of PermissionsGroup names matching the SQL `pattern`."
-  [pattern :- :string]
-  (t2/select-fn-set :name :model/PermissionsGroup :name [:like pattern]))
-
 (mu/defn group-members
   "The active Users in the PermissionsGroups with `group-ids`. When `include-group-manager?` is true each row also
   carries the membership's `:is_group_manager` flag."
@@ -379,17 +370,6 @@
                                       [:in :pgm.group_id group-ids]]
                           :order-by  [[[:lower :u.first_name] :asc]
                                       [[:lower :u.last_name] :asc]]}))
-
-(mu/defn insert-group!
-  "Insert `group` and return the new instance."
-  [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :magic_group_type :is_tenant_group])]
-  (t2/insert-returning-instance! :model/PermissionsGroup group))
-
-(mu/defn update-group!
-  "Apply `changes` to the PermissionsGroup with `group-id`."
-  [group-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :magic_group_type :is_tenant_group])]
-  (t2/update! :model/PermissionsGroup group-id changes))
 
 (mu/defn group-member-counts
   "A map of PermissionsGroup ID to number of active members in the group. Groups with no active members have no
@@ -434,11 +414,6 @@
   [user-id-group-id->is-group-manager? :- [:map-of [:tuple ms/PositiveInt ms/PositiveInt] :boolean]]
   (t2/query-one (insert-group-memberships-from-mapping-query user-id-group-id->is-group-manager?)))
 
-(mu/defn group-membership-count
-  "The number of memberships of the PermissionsGroup with `group-id`."
-  [group-id :- ms/PositiveInt]
-  (t2/count :model/PermissionsGroupMembership :group_id group-id))
-
 (mu/defn other-active-member-count
   "The number of active Users other than `user-id` in the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
@@ -465,6 +440,19 @@
   "The PermissionsGroupMemberships of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt]
   (t2/select :model/PermissionsGroupMembership :group_id group-id))
+
+(mu/defn existing-membership-pairs :- [:set [:tuple ms/PositiveInt ms/PositiveInt]]
+  "The `[user-id group-id]` pairs among `pairs` that already have a PermissionsGroupMembership."
+  [pairs :- [:sequential [:tuple ms/PositiveInt ms/PositiveInt]]]
+  (if (empty? pairs)
+    #{}
+    (let [wanted (set pairs)]
+      (into #{}
+            (comp (map (juxt :user_id :group_id))
+                  (filter wanted))
+            (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
+                       :user_id  [:in (map first pairs)]
+                       :group_id [:in (map second pairs)])))))
 
 (mu/defn delete-memberships-for-user!
   "Delete the PermissionsGroupMemberships of the User with `user-id`."
@@ -503,8 +491,8 @@
   "Insert `revision` into CollectionPermissionGraphRevision."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :map :string]]]
-                [:after   {:optional true} [:maybe [:or :map :string]]]
+                [:before  {:optional true} ::permissions.schema/collection-permission-graph-revision.before]
+                [:after   {:optional true} ::permissions.schema/collection-permission-graph-revision.after]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (t2/insert! :model/CollectionPermissionGraphRevision revision))
@@ -513,8 +501,8 @@
   "Insert `revision` into CollectionPermissionGraphRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :map :string]]]
-                [:after   {:optional true} [:maybe [:or :map :string]]]
+                [:before  {:optional true} ::permissions.schema/collection-permission-graph-revision.before]
+                [:after   {:optional true} ::permissions.schema/collection-permission-graph-revision.after]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision revision)))
@@ -523,8 +511,8 @@
   "Insert `revision` into PermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :map :string]]]
-                [:after   {:optional true} [:maybe [:or :map :string]]]
+                [:before  {:optional true} [:maybe ::permissions.schema/permissions-revision.before]]
+                [:after   {:optional true} [:maybe ::permissions.schema/permissions-revision.after]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/PermissionsRevision revision)))
@@ -533,8 +521,8 @@
   "Insert `revision` into ApplicationPermissionsRevision and return the new instance."
   [revision :- [:map {:closed true}
                 [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe [:or :map :string]]]
-                [:after   {:optional true} [:maybe [:or :map :string]]]
+                [:before  {:optional true} [:maybe ::permissions.schema/application-permissions-revision.before]]
+                [:after   {:optional true} [:maybe ::permissions.schema/application-permissions-revision.after]]
                 [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
                 [:remark  {:optional true} [:maybe :string]]]]
   (first (t2/insert-returning-instances! :model/ApplicationPermissionsRevision revision)))
@@ -717,11 +705,6 @@
    changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
   (t2/update! :model/User :id [:in user-ids] changes))
 
-(mu/defn clear-data-analyst-flags!
-  "Unset `is_data_analyst` on every User that has it set."
-  []
-  (t2/update! :model/User {:is_data_analyst true} {:is_data_analyst false}))
-
 (mu/defn deactivate-active-tenant-users!
   "Deactivate every active tenant User, marking them as deactivated with their tenant."
   []
@@ -748,36 +731,37 @@
 (mu/defn table-location
   "The ID, Database ID, and schema of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :schema] :id table-id))
+  (t2/select-one [:model/Table :id :db_id :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table table-id))
+  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-ids
   "The ID and Database ID of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids]))
+  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn active-table-locations-for-database
   "The ID, Database ID, and schema of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :db_id :schema] :db_id database-id :active true))
+  (t2/select [:model/Table :id :db_id :schema] :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-ids-and-schemas-excluding
   "The ID and schema of the Tables of the Database with `database-id` other than `excluded-table-ids`."
   [database-id        :- ::lib.schema.id/database
    excluded-table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :schema]
-             {:where [:and
+             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+              :where [:and
                       [:= :db_id database-id]
                       [:not [:in :id excluded-table-ids]]]}))
 
 (mu/defn field-visibility-info
   "The ID, visibility type, and Table ID of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids]))
+  (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn instance-by-id
   "The instance of `model` with `id`, or nil."

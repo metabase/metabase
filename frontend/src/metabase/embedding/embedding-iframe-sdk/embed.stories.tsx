@@ -5,7 +5,7 @@ import {
   useControlledParametersPlaygroundState,
 } from "embedding-sdk-bundle/test/ParametersPlayground";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
-import { STORYBOOK_METABASE_INSTANCE_URL } from "embedding-sdk-shared/.storybook/constants";
+import { STORYBOOK_METABASE_INSTANCE_URL } from "embedding-sdk-shared/test/storybook-constants";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { SegmentedControl, Stack, Text } from "metabase/ui";
 
@@ -101,7 +101,6 @@ const ControlledParametersEmbedJsPlayground = () => {
             {STORYBOOK_METABASE_INSTANCE_URL} (logged-in session required).
           </Text>
           <SegmentedControl
-            size="xs"
             value={mode}
             // Unjustified type cast. FIXME
             onChange={(value) => setMode(value as Mode)}

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.driver.h2 :as h2]
    [metabase.permissions.validation :as validation]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
@@ -440,3 +441,18 @@
         (mt/user-http-request user-id :put 204 "setting/test-user-local-only-setting" {:value "NEW"})
         (is (= "NEW"
                (mt/user-http-request user-id :get 200 "setting/test-user-local-only-setting")))))))
+
+(deftest set-setting-read-from-app-db-test
+  (testing "PUT /api/setting/:key inserts, updates and deletes the row that GET reads back from the app DB (GHY-4589)"
+    ;; With the cache off, GET reads the row by key rather than from memory, so the filter on the key is exercised.
+    (binding [config/*disable-setting-cache* true]
+      (mt/with-temporary-setting-values [test-setting-1 nil]
+        (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value "first"})
+        (is (= "first" (fetch-setting :test-setting-1 200)))
+        (testing "a value that looks like SQL is stored and read back as a string"
+          (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value "x' OR '1'='1"})
+          (is (= "x' OR '1'='1" (fetch-setting :test-setting-1 200))))
+        (testing "clearing the value deletes the row"
+          (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value nil})
+          (is (nil? (fetch-setting :test-setting-1 204)))
+          (is (not (t2/exists? :model/Setting :key "test-setting-1"))))))))

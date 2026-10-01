@@ -24,8 +24,10 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -41,16 +43,19 @@
 ;;; from [[metabase-enterprise.sandbox.api.util/enforced-sandboxes-for-tables]] for consistency with all of the rest
 ;;; of the QP code. Or maybe add this to the Metadata Provider (or a special "Enterprise" Metadata Provider)?
 (mr/def ::sandbox
-  [:map
+  [:map {:closed true}
+   [:id                   {:optional true} [:maybe :int]]
+   [:group_id             {:optional true} [:maybe :int]]
    [:table_id             ::lib.schema.id/table]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]
    [:attribute_remappings {:optional true} [:maybe
                                             [:map-of
                                              #_attribute-name ::lib.schema.common/non-blank-string
                                              #_target         ::lib.schema.parameter/target]]]])
 
 (mu/defn- query->all-table-ids :- [:maybe [:set ::lib.schema.id/table]]
-  [query]
+  [query :- ::lib.schema/query]
   (u/prog1 (lib/all-source-table-ids query)
     (when (seq <>)
       (lib.metadata/bulk-metadata-or-throw query :metadata/table <>))))
@@ -148,15 +153,14 @@
   (try
     (lib/without-cleaning
      (fn []
-       (let [preprocess (requiring-resolve 'metabase.query-processor.preprocess/preprocess)]
-         (request/as-admin
-           ;; preprocessing normally loses metadata attached to the last stage, since legacy MBQL syntax does not
-           ;; support it and preprocessing roundtrips to legacy and back a few times... to make sure it's preserved,
-           ;; append an extra dummy stage before preprocessing and then toss it when we're done.
-           (-> query
-               lib/append-stage
-               preprocess
-               (update :stages pop))))))
+       (request/as-admin
+         ;; preprocessing normally loses metadata attached to the last stage, since legacy MBQL syntax does not
+         ;; support it and preprocessing roundtrips to legacy and back a few times... to make sure it's preserved,
+         ;; append an extra dummy stage before preprocessing and then toss it when we're done.
+         (-> query
+             lib/append-stage
+             qp.preprocess/preprocess
+             (update :stages pop)))))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing query when applying Sandbox: {0}" (ex-message e))
                       {:query query}
@@ -204,8 +208,7 @@
         ;; to a custom handler, and we don't want to accidentally terminate the stream here!
         (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
           (request/as-admin
-            ((requiring-resolve 'metabase.query-processor/process-query)
-             query)))]
+            (qp/process-query query)))]
     (when-not (= (:status result) :completed)
       (throw (ex-info "Error running query to determine metadata"
                       {:query query, :result result})))
@@ -454,8 +457,7 @@
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
   [original-metadata :- [:sequential ::mbql.s/legacy-column-metadata]
-   metadata          :- [:map
-                         [:cols [:sequential ::mbql.s/legacy-column-metadata]]]]
+   metadata          :- :metabase.query-processor.schema/metadata]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]

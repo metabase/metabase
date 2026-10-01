@@ -526,26 +526,26 @@
           deps {1 #{} 2 #{1} 3 #{}}
           ran  (atom #{})]
       (testing "a fresh pulled-in dep is not executed, but its dependent still runs"
-        (with-redefs [freshness/fresh-dep-ids (fn [_now dep-ids]
-                                                ;; only pulled-in deps are offered for gating
-                                                (is (= #{1} (set dep-ids)))
-                                                #{1})
-                      jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
+        (mt/with-dynamic-fn-redefs [freshness/fresh-dep-ids (fn [_now dep-ids]
+                                                              ;; only pulled-in deps are offered for gating
+                                                              (is (= #{1} (set dep-ids)))
+                                                              #{1})
+                                    jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
           (is (= {::jobs/status :succeeded}
                  (jobs/run-transforms! 0 #{2 3} {:order plan :deps deps} {:run-method :cron})))
           (is (= #{2 3} @ran) "transform 1 (fresh dep) was skipped; 2 and 3 ran")))
       (testing "skip-fresh-deps? false (manual run_all) force-refreshes the whole plan"
         (reset! ran #{})
-        (with-redefs [freshness/fresh-dep-ids (fn [& _] (throw (ex-info "must not gate when disabled" {})))
-                      jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
+        (mt/with-dynamic-fn-redefs [freshness/fresh-dep-ids (fn [& _] (throw (ex-info "must not gate when disabled" {})))
+                                    jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
           (is (= {::jobs/status :succeeded}
                  (jobs/run-transforms! 0 #{2 3} {:order plan :deps deps}
                                        {:run-method :manual :skip-fresh-deps? false})))
           (is (= #{1 2 3} @ran) "with skipping disabled, the dep runs too"))))
     (testing "a plan that is entirely skipped exits cleanly as succeeded with nothing run"
       (let [ran (atom #{})]
-        (with-redefs [freshness/fresh-dep-ids (fn [_now _dep-ids] #{1})
-                      jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
+        (mt/with-dynamic-fn-redefs [freshness/fresh-dep-ids (fn [_now _dep-ids] #{1})
+                                    jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
           (is (= {::jobs/status :succeeded}
                  (jobs/run-transforms! 0 #{} {:order [{:id 1}] :deps {1 #{}}} {:run-method :cron})))
           (is (= #{} @ran)))))))
@@ -633,8 +633,8 @@
             deps    {1 #{} 2 #{} 3 #{} 4 #{}}
             barrier (CyclicBarrier. 4)]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
-          (with-redefs [jobs/run-transform! (fn [_ _ _]
-                                              (.await barrier 5 TimeUnit/SECONDS))]
+          (mt/with-dynamic-fn-redefs [jobs/run-transform! (fn [_ _ _]
+                                                            (.await barrier 5 TimeUnit/SECONDS))]
             (is (= {::jobs/status :succeeded}
                    (jobs/run-transforms! 0 #{1 2 3 4} {:order plan :deps deps} {:run-method :manual}))
                 "all four independents must reach the barrier (i.e. be live simultaneously)")))))
@@ -643,19 +643,19 @@
             deps  {1 #{} 2 #{1}}
             order (atom [])]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
-          (with-redefs [jobs/run-transform! (fn [_ _ transform]
-                                              (when (= 1 (:id transform))
-                                                (Thread/sleep 100))
-                                              (swap! order conj (:id transform)))]
+          (mt/with-dynamic-fn-redefs [jobs/run-transform! (fn [_ _ transform]
+                                                            (when (= 1 (:id transform))
+                                                              (Thread/sleep 100))
+                                                            (swap! order conj (:id transform)))]
             (jobs/run-transforms! 0 #{1 2} {:order plan :deps deps} {:run-method :manual})
             (is (= [1 2] @order) "a must complete before b starts")))))
     (testing "Dependents of a failed transform are skipped transitively"
       (let [plan [{:id 1} {:id 2} {:id 3}]
             deps {1 #{} 2 #{1} 3 #{2}}]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
-          (with-redefs [jobs/run-transform! (fn [_ _ transform]
-                                              (when (= 1 (:id transform))
-                                                (throw (ex-info "boom" {}))))]
+          (mt/with-dynamic-fn-redefs [jobs/run-transform! (fn [_ _ transform]
+                                                            (when (= 1 (:id transform))
+                                                              (throw (ex-info "boom" {}))))]
             (let [result (jobs/run-transforms! 0 #{1 2 3} {:order plan :deps deps} {:run-method :manual})]
               (is (= :failed (::jobs/status result)))
               (is (= #{1 2 3} (set (map (comp :id ::jobs/transform) (::jobs/failures result))))
@@ -669,11 +669,11 @@
             live       (atom 0)
             max-live   (atom 0)]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 2]
-          (with-redefs [jobs/run-transform! (fn [_ _ _]
-                                              (let [n (swap! live inc)]
-                                                (swap! max-live max n))
-                                              (.await partner-up 5 TimeUnit/SECONDS)
-                                              (swap! live dec))]
+          (mt/with-dynamic-fn-redefs [jobs/run-transform! (fn [_ _ _]
+                                                            (let [n (swap! live inc)]
+                                                              (swap! max-live max n))
+                                                            (.await partner-up 5 TimeUnit/SECONDS)
+                                                            (swap! live dec))]
             (jobs/run-transforms! 0 (set (range 1 9)) {:order plan :deps deps} {:run-method :manual})
             (is (= 2 @max-live) "should never exceed the concurrency setting")))))
     (testing "Python transforms are serialized in their own lane (n=1)"
@@ -683,13 +683,13 @@
             live     (atom 0)
             max-live (atom 0)]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
-          (with-redefs [jobs/run-transform! (fn [_ _ _]
-                                              (let [n (swap! live inc)]
-                                                (swap! max-live max n))
-                                              ;; A short sleep gives any (hypothetical) parallel
-                                              ;; python worker a window to show up in the counter.
-                                              (Thread/sleep 50)
-                                              (swap! live dec))]
+          (mt/with-dynamic-fn-redefs [jobs/run-transform! (fn [_ _ _]
+                                                            (let [n (swap! live inc)]
+                                                              (swap! max-live max n))
+                                                            ;; A short sleep gives any (hypothetical) parallel
+                                                            ;; python worker a window to show up in the counter.
+                                                            (Thread/sleep 50)
+                                                            (swap! live dec))]
             (jobs/run-transforms! 0 #{1 2 3 4} {:order plan :deps deps} {:run-method :manual})
             (is (= 1 @max-live)
                 "python transforms must run one at a time even with concurrency=4")))))
@@ -702,13 +702,13 @@
             py-live     (atom 0)
             max-py      (atom 0)]
         (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 3]
-          (with-redefs [jobs/run-transform! (fn [_ _ transform]
-                                              (if (= :python (-> transform :source :type))
-                                                (do (let [n (swap! py-live inc)]
-                                                      (swap! max-py max n))
-                                                    (Thread/sleep 50)
-                                                    (swap! py-live dec))
-                                                (.await sql-barrier 5 TimeUnit/SECONDS)))]
+          (mt/with-dynamic-fn-redefs [jobs/run-transform! (fn [_ _ transform]
+                                                            (if (= :python (-> transform :source :type))
+                                                              (do (let [n (swap! py-live inc)]
+                                                                    (swap! max-py max n))
+                                                                  (Thread/sleep 50)
+                                                                  (swap! py-live dec))
+                                                              (.await sql-barrier 5 TimeUnit/SECONDS)))]
             (is (= {::jobs/status :succeeded}
                    (jobs/run-transforms! 0 #{1 2 3 4 5} {:order plan :deps deps} {:run-method :manual}))
                 "all three SQL transforms reach the barrier (run in parallel)")

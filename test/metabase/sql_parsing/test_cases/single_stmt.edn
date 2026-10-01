@@ -1,0 +1,42 @@
+{:cases
+ [{:name       "one select is a single read"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders"
+   :stmt-type  "read"
+   :expected   {:is-single-stmt? true :allowed-stmt-type? true}}
+
+  {:name       "two statements are not a single statement"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders; DELETE FROM people"
+   :stmt-type  "read"
+   :expected   {:is-single-stmt? false :allowed-stmt-type? false}}
+
+  {:name       "a trailing semicolon does not make a second statement"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders;"
+   :stmt-type  "read"
+   :expected   {:is-single-stmt? true :allowed-stmt-type? true}}
+
+  {:name       "a semicolon inside a literal is not a statement boundary"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders WHERE note = 'a; b'"
+   :stmt-type  "read"
+   :expected   {:is-single-stmt? true :allowed-stmt-type? true}}
+
+  {:name       "a write is a single statement, but not a read"
+   :dialect    "postgres"
+   :sql        "DELETE FROM people WHERE id = 1"
+   :stmt-type  "read"
+   :expected   {:is-single-stmt? true :allowed-stmt-type? false}}
+
+  {:name       "the same write, asked for as a write"
+   :dialect    "postgres"
+   :sql        "DELETE FROM people WHERE id = 1"
+   :stmt-type  "write"
+   :expected   {:is-single-stmt? true :allowed-stmt-type? true}}
+
+  {:name       "a CTE ahead of a select is still one read"
+   :dialect    "postgres"
+   :sql        "WITH c AS (SELECT id FROM people) SELECT * FROM c"
+   :stmt-type  "read"
+   :expected   {:is-single-stmt? true :allowed-stmt-type? true}}]}

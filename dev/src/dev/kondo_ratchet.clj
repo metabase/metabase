@@ -13,10 +13,12 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *ratchets-file*
   "Kondo budgets, relative to the repo root. Rebind to read a merge stage or test fixture."
   ".clj-kondo/ratchets.edn")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *module-ratchets-file*
   "Module-boundary budgets, relative to the repo root. Rebind to read a merge stage or test fixture."
   ".clj-kondo/config/modules/ratchets.edn")
@@ -132,6 +134,7 @@
   - `:api-any`              modules that expose every namespace
   - `:friend-edges`         individual `:friends` grants
   - `:model-imports-bypass` modules exempt from model-boundary checks
+  - `:ns-prefixes`          modules whose namespaces have not moved to match their module name
   - `:uses-any`             modules that may depend on any module"
   ([]
    (-> (edn/read-string (slurp module-config-file))
@@ -142,6 +145,7 @@
      {:api-any              (count (filter #(= :any (:api %)) values))
       :friend-edges         (transduce (map (comp count :friends)) + 0 values)
       :model-imports-bypass (count (filter #(= :bypass (:model-imports %)) values))
+      :ns-prefixes          (count (keep :ns-prefix values))
       :uses-any             (count (filter #(= :any (:uses %)) values))})))
 
 (def ^:private deps-file
@@ -285,7 +289,7 @@
 (def ^:private source-extensions
   [".clj" ".cljc" ".cljs"])
 
-;; Concatenated so this file never contains a literal ignore marker.
+;; Concatenated so the scan does not count this definition as an ignore.
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 
@@ -763,8 +767,7 @@
           linter)))
 
 (defn unexercised-unlimited-warning
-  "One informational line naming the [[unexercised-unlimited]] linters, or nil when there are none.
-  The policies stay in place; the line only makes a stale one visible."
+  "Warning for [[unexercised-unlimited]] linters, or nil. Does not remove their policies."
   [ignore-counts actual]
   (let [linters (unexercised-unlimited ignore-counts actual)]
     (when (seq linters)
@@ -772,8 +775,7 @@
            " -- delete an entry by hand once its linter no longer needs one"))))
 
 (defn stale-exemptions-warning
-  "An informational warning naming linters whose `:comment-exempt` entries are stale, or nil when there
-  are none. Does not modify the exemptions."
+  "Warning for stale `:comment-exempt` entries, or nil. Does not remove them."
   [exempt occurrences]
   (let [linters (stale-exemptions exempt occurrences)]
     (when (seq linters)

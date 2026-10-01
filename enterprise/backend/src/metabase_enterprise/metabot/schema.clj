@@ -6,10 +6,10 @@
 
 (mr/def ::metabot-group-limit
   "A MetabotGroupLimit as selected from the app DB: every column of `:metabot_group_limit`."
-  [:map {:closed true}
-   [:id        ms/PositiveInt]
-   [:group_id  ms/PositiveInt]
-   [:max_usage :int]])
+  [:merge
+   ::metabot-group-limit.update
+   [:map {:closed true}
+    [:id        ms/PositiveInt]]])
 
 (mr/def ::metabot-group-limit.update
   "What an update (or insert) of a MetabotGroupLimit accepts: every column of `:metabot_group_limit` except `id`, all optional."
@@ -19,10 +19,10 @@
 
 (mr/def ::metabot-instance-limit
   "A MetabotInstanceLimit as selected from the app DB: every column of `:metabot_instance_limit`."
-  [:map {:closed true}
-   [:id        ms/PositiveInt]
-   [:tenant_id [:maybe ms/PositiveInt]]
-   [:max_usage [:maybe :int]]])
+  [:merge
+   ::metabot-instance-limit.update
+   [:map {:closed true}
+    [:id        ms/PositiveInt]]])
 
 (mr/def ::metabot-instance-limit.update
   "What an update (or insert) of a MetabotInstanceLimit accepts: every column of `:metabot_instance_limit` except `id`, all optional."
@@ -32,11 +32,10 @@
 
 (mr/def ::metabot-permissions
   "A MetabotPermissions as selected from the app DB: every column of `:metabot_permissions`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:group_id   ms/PositiveInt]
-   [:perm_type  [:or :keyword :string]]
-   [:perm_value [:or :keyword :string]]])
+  [:merge
+   ::metabot-permissions.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::metabot-permissions.update
   "What an update (or insert) of a MetabotPermissions accepts: every column of `:metabot_permissions` except `id`, all optional."

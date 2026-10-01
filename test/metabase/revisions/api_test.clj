@@ -150,7 +150,7 @@
 (deftest transform-revisions-guard-prior-source-per-entitlement-test
   (testing "a Transform's revision history is authorized per snapshot: a prior :source is served only to callers
             entitled to the database it read from"
-    (mt/with-premium-features #{:transforms-basic :hosting}
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
       (mt/with-temp [:model/Database {x-db-id :id} {}
                      :model/Database {y-db-id :id} {}
                      :model/Transform {transform-id :id}
@@ -183,21 +183,22 @@
                 (let [revisions (list-fn :crowberto 200)]
                   (is (contains-x? revisions))
                   (is (some #(= "changed the source." (:description %)) revisions))))
-              (mt/with-data-analyst-role! (mt/user->id :rasta)
-                (mt/with-restored-data-perms!
-                  ;; rasta holds the transforms entitlement on the current source database but none on the prior one
-                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/view-data :unrestricted)
-                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :query-builder-and-native)
-                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/transforms :yes)
-                  (data-perms/set-database-permission! (perms-group/all-users) x-db-id :perms/create-queries :no)
-                  (testing "an analyst entitled only to the current source can still read the transform"
-                    (let [revisions (list-fn :rasta 200)]
-                      (is (seq revisions))
-                      (testing "but the prior source read from a database they cannot query is withheld"
-                        (is (not (contains-x? revisions))))))
-                  (testing "an analyst entitled to neither source cannot read the revision history at all"
-                    (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :no)
-                    (list-fn :rasta 403)))))))))))
+              (mt/when-ee-evailable
+               (mt/with-data-analyst-role! (mt/user->id :rasta)
+                 (mt/with-restored-data-perms!
+                   ;; rasta holds the transforms entitlement on the current source database but none on the prior one
+                   (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/view-data :unrestricted)
+                   (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :query-builder-and-native)
+                   (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/transforms :yes)
+                   (data-perms/set-database-permission! (perms-group/all-users) x-db-id :perms/create-queries :no)
+                   (testing "an analyst entitled only to the current source can still read the transform"
+                     (let [revisions (list-fn :rasta 200)]
+                       (is (seq revisions))
+                       (testing "but the prior source read from a database they cannot query is withheld"
+                         (is (not (contains-x? revisions))))))
+                   (testing "an analyst entitled to neither source cannot read the revision history at all"
+                     (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :no)
+                     (list-fn :rasta 403))))))))))))
 
 ;;; # POST /revision/revert
 
@@ -543,12 +544,14 @@
                    :model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
       (testing "Reverting a card..."
         ;; Create the revision with an extra, unknown field on the card
-        (revision/push-revision!
-         {:object       (assoc (t2/select-one :model/Card :id card-id) :unknown_field true)
-          :entity       :model/Card
-          :id           card-id
-          :user-id      (mt/user->id :crowberto)
-          :is-creation? false})
+        (t2/insert! :model/Revision
+                    {:model        "Card"
+                     :model_id     card-id
+                     :user_id      (mt/user->id :crowberto)
+                     :object       (assoc (revision/serialize-instance :model/Card card-id (t2/select-one :model/Card :id card-id))
+                                          :unknown_field true)
+                     :is_creation  false
+                     :is_reversion false})
         ;; Update the card to a new version
         (t2/update! :model/Card {:name "A card with a new name"})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field
@@ -557,12 +560,14 @@
         (is (= "A card" (t2/select-one-fn :name :model/Card :id card-id))))
       (testing "Reverting a dashboard..."
         ;; Create the revision with an extra, unknown field on the dashboard
-        (revision/push-revision!
-         {:object       (assoc (t2/select-one :model/Dashboard :id dashboard-id) :unknown_field true)
-          :entity       :model/Dashboard
-          :id           dashboard-id
-          :user-id      (mt/user->id :crowberto)
-          :is-creation? false})
+        (t2/insert! :model/Revision
+                    {:model        "Dashboard"
+                     :model_id     dashboard-id
+                     :user_id      (mt/user->id :crowberto)
+                     :object       (assoc (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard :id dashboard-id))
+                                          :unknown_field true)
+                     :is_creation  false
+                     :is_reversion false})
         ;; Update the dashboard to a new version
         (t2/update! :model/Dashboard {:name "A dashboard with a new name"})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field

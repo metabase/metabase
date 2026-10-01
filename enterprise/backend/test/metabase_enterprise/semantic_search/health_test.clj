@@ -195,32 +195,32 @@
 
 ;; Tests the raw probe (`embedding-service-reachable?` is TTL-memoized, so calling it across cases would
 ;; return a stale cached result).
-;; ^:synchronized: redefs the process-global `get-configured-model` / `get-embedding` via with-redefs, so it
-;; must not run concurrently with other tests (e.g. entity-retrieval-available? reads get-configured-model).
+;; ^:synchronized: shares the process-global probe cache with other tests, so it must not run concurrently.
 (deftest ^:synchronized probe-embedding-service-test
   (testing "a successful embed reads as reachable; the probe bypasses the breaker and silences snowplow"
     (let [seen (atom nil)]
-      ;; get-embedding is a multimethod; with-dynamic-fn-redefs can't patch those, so with-redefs is required.
-      (with-redefs [semantic.embedding/get-configured-model (constantly {:model-name "m"})
-                    semantic.embedding/get-embedding
-                    (fn [_model _text opts]
-                      (reset! seen (assoc opts :bypass semantic.embedding/*bypass-circuit-breaker*))
-                      [0.1 0.2])]
+      (mt/with-dynamic-fn-redefs
+        [semantic.embedding/get-configured-model (constantly {:model-name "m"})
+         semantic.embedding/get-embedding
+         (fn [_model _text opts]
+           (reset! seen (assoc opts :bypass semantic.embedding/*bypass-circuit-breaker*))
+           [0.1 0.2])]
         (is (=? {:reachable? true :error nil} (#'embedding-health/probe-embedding-service)))
         (is (=? {:bypass true :snowplow? false :record-tokens? false} @seen)
             "the probe runs with the breaker bypassed, snowplow silenced, and tokens unrecorded"))))
   (testing "an embedding failure reads as unreachable and captures the message"
-    (with-redefs [semantic.embedding/get-configured-model (constantly {:model-name "m"})
-                  semantic.embedding/get-embedding        (fn [& _] (throw (ex-info "connection refused" {})))]
+    (mt/with-dynamic-fn-redefs
+      [semantic.embedding/get-configured-model (constantly {:model-name "m"})
+       semantic.embedding/get-embedding        (fn [& _] (throw (ex-info "connection refused" {})))]
       (is (=? {:reachable? false :error "connection refused"}
               (#'embedding-health/probe-embedding-service))))))
 
 (deftest ^:synchronized breaker-transition-probe-cache-test
   (testing "open and half-open transitions reuse the probe; recovery clears it"
     (let [probes (atom 0)]
-      ;; get-embedding is a multimethod; with-dynamic-fn-redefs can't patch those, so with-redefs is required.
-      (with-redefs [semantic.embedding/get-configured-model (constantly {:model-name "m"})
-                    semantic.embedding/get-embedding        (fn [& _] (swap! probes inc) [0.1])]
+      (mt/with-dynamic-fn-redefs
+        [semantic.embedding/get-configured-model (constantly {:model-name "m"})
+         semantic.embedding/get-embedding        (fn [& _] (swap! probes inc) [0.1])]
         (mt/with-dynamic-fn-redefs [health-inspector/run-and-save-check! (constantly nil)]
           (memoize/memo-clear! @#'embedding-health/embedding-service-reachable?*)
           (embedding-health/embedding-service-reachable?)
@@ -242,12 +242,13 @@
           before    @state]
       (try
         (reset! state {:running? false, :last-start-ns nil})
-        (with-redefs [semantic.embedding/get-configured-model (constantly {:model-name "m"})
-                      semantic.embedding/get-embedding
-                      (fn [& _]
-                        (when (= 2 (swap! calls inc))
-                          (.countDown completed))
-                        [0.1])]
+        (mt/with-dynamic-fn-redefs
+          [semantic.embedding/get-configured-model (constantly {:model-name "m"})
+           semantic.embedding/get-embedding
+           (fn [& _]
+             (when (= 2 (swap! calls inc))
+               (.countDown completed))
+             [0.1])]
           (mt/with-dynamic-fn-redefs
             [semantic.embedding/embedder-circuit-untrusted? #(< @calls 2)
              embedding-health/schedule-recovery!            future-call]
