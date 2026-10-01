@@ -7,7 +7,6 @@ export const anchorOverrides: MantineThemeOverride["components"] = {
     defaultProps: {
       size: "md",
       fw: 400,
-      underline: "never",
     },
     classNames: {
       root: AnchorStyles.root,

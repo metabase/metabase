@@ -11,9 +11,11 @@ const WEIGHTS = [
   { value: 400, props: {} },
   { value: 700, props: { fw: 700 } },
 ] as const;
+// Loki cannot force Mantine's media-guarded underline; the unit test verifies
+// the default hover mode, while this prop captures its visual state.
 const STATES = [
-  { id: "default", label: "Default" },
-  { id: "hover", label: "Hover" },
+  { id: "default", label: "Default", underline: undefined },
+  { id: "hover", label: "Hover", underline: "always" },
 ] as const;
 
 const args = {
@@ -82,6 +84,7 @@ const OverviewTemplate: StoryFn<AnchorProps> = () => (
                   data-state-row={state.id}
                   href={sampleArgs.href}
                   size={size}
+                  underline={state.underline}
                   {...weight.props}
                 >
                   {sampleArgs.text}
