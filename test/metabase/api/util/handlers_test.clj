@@ -52,6 +52,20 @@
 
 ;;;; ------------------------------------------------ test helpers ------------------------------------------------
 
+(defn- noop-handler
+  "A no-op async Ring handler that always responds nil — used to fill the `:auth`, `:oauth`, and `:well-known` slots
+  in [[server.routes/make-routes]] when tests only care about the `/api` path."
+  [_request respond _raise]
+  (respond nil))
+
+(defn- make-test-routes
+  "Wrap an API handler in the map that [[server.routes/make-routes]] expects."
+  [api-handler]
+  (server.routes/make-routes {:api        api-handler
+                              :auth       noop-handler
+                              :oauth      noop-handler
+                              :well-known noop-handler}))
+
 (defn- handle
   "Invoke the async Ring `handler` and return its response synchronously."
   [handler request]
@@ -82,7 +96,7 @@
    (api-route-template route-map uri nil))
   ([route-map uri extra-request-keys]
    (dynamic-redefs/with-dynamic-fn-redefs [init-status/complete? (constantly true)]
-     (route-template (server.routes/make-routes (handlers/route-map-handler route-map))
+     (route-template (make-test-routes (handlers/route-map-handler route-map))
                      uri
                      extra-request-keys))))
 
@@ -94,7 +108,7 @@
   (let [carrier (volatile! nil)
         result  (promise)]
     (dynamic-redefs/with-dynamic-fn-redefs [init-status/complete? (constantly true)]
-      ((server.routes/make-routes (handlers/route-map-handler route-map))
+      ((make-test-routes (handlers/route-map-handler route-map))
        {:request-method                       :get
         :uri                                  uri
         :headers                              {}
