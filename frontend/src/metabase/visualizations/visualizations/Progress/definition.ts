@@ -91,13 +91,21 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
 
         return isGoalValue(goalSetting);
       },
-      getProps: ([{ card, data }], settings) => ({
-        data,
-        datasetQuery: card.dataset_query,
-        excludedSelfColumn: settings["progress.value"],
-        isDynamic: true,
-        placeholder: t`Enter goal value`,
-      }),
+      getProps: ([{ card, data }], settings) => {
+        const column = findProgressColumn(
+          data.cols,
+          settings["progress.value"],
+        );
+
+        return {
+          data,
+          datasetQuery: card.dataset_query,
+          excludedSelfColumn: settings["progress.value"],
+          formatOptions: column && settings.column?.(column),
+          isDynamic: true,
+          placeholder: t`Enter goal value`,
+        };
+      },
       readDependencies: ["progress.value"],
     },
     "progress.color": {

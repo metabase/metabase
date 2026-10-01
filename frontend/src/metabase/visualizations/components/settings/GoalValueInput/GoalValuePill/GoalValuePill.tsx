@@ -16,12 +16,14 @@ import { METAKEY } from "metabase/utils/browser";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
 import type { GoalValueResult } from "metabase/viz-core";
+import type { ColumnSettings } from "metabase-types/api";
 
 import { ICON_BUTTON_SIZE } from "../../constants";
 
 import S from "./GoalValuePill.module.css";
 
 type Props = HTMLAttributes<HTMLDivElement> & {
+  formatOptions: ColumnSettings | undefined;
   isMenuOpen: boolean;
   resolved: GoalValueResult;
   tooltip: string | null;
@@ -34,6 +36,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
   function GoalValuePill(
     {
       className,
+      formatOptions,
       isMenuOpen,
       resolved,
       tooltip,
@@ -108,7 +111,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
             ) : (
               <Ellipsified fw={500} showTooltip={false}>
                 {resolved.value != null
-                  ? formatValue(resolved.value)
+                  ? formatValue(resolved.value, formatOptions)
                   : EMPTY_CELL_PLACEHOLDER}
               </Ellipsified>
             )}

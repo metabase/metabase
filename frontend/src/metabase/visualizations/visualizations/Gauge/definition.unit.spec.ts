@@ -1,4 +1,8 @@
-import type { Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -15,6 +19,27 @@ const { checkRenderable } = GAUGE_CHART_DEFINITION;
 const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
 
 describe("GAUGE_CHART_DEFINITION", () => {
+  describe("gauge.segments widget", () => {
+    it("formats the bounds like the gauge's labels", () => {
+      const series = createSeries({
+        cols: [...COLS, createMockColumn({ name: "total" })],
+        rows: [[50, 80]],
+      });
+
+      const props = GAUGE_CHART_DEFINITION.settings?.[
+        "gauge.segments"
+      ]?.getProps?.(
+        series,
+        { column: getMockColumnSettings },
+        jest.fn(),
+        undefined,
+        jest.fn(),
+      );
+
+      expect(props?.formatOptions).toEqual({ prefix: "count:" });
+    });
+  });
+
   describe("checkRenderable", () => {
     it("accepts static ranges", () => {
       expect(() =>
@@ -163,6 +188,10 @@ describe("GAUGE_CHART_DEFINITION", () => {
     });
   });
 });
+
+function getMockColumnSettings(column: DatasetColumn) {
+  return { prefix: `${column.name}:` };
+}
 
 function createSeries(
   data: Partial<Parameters<typeof createMockDatasetData>[0]> = {},

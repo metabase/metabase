@@ -9,6 +9,7 @@ export const ChartSettingGoalValue = ({
   data,
   datasetQuery,
   excludedSelfColumn,
+  formatOptions,
   id,
   isDynamic = false,
   placeholder,
@@ -47,6 +48,7 @@ export const ChartSettingGoalValue = ({
       data={data}
       datasetQuery={datasetQuery}
       excludedSelfColumn={excludedSelfColumn}
+      formatOptions={formatOptions}
       id={id}
       placeholder={placeholder}
       showSelfColumns={showSelfColumns}

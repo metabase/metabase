@@ -1,4 +1,5 @@
 import type {
+  DatasetColumn,
   DatasetData,
   RawSeries,
   VisualizationSettings,
@@ -47,6 +48,22 @@ describe("PROGRESS_CHART_DEFINITION", () => {
         isDynamic: true,
         placeholder: "Enter goal value",
       });
+    });
+
+    it("formats the goal like the value it shows", () => {
+      const props = setting?.getProps?.(
+        createSeries(),
+        {
+          ...SETTINGS,
+          "progress.value": "target",
+          column: (column: DatasetColumn) => ({ prefix: `${column.name}:` }),
+        },
+        jest.fn(),
+        {},
+        jest.fn(),
+      );
+
+      expect(props?.formatOptions).toEqual({ prefix: "target:" });
     });
 
     it.each([

@@ -1,6 +1,7 @@
 import type { AccentColorOptions } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  ColumnSettings,
   DatasetColumn,
   DatasetData,
   DatasetQuery,
@@ -49,6 +50,7 @@ export type ChartSettingGoalValueProps = {
   data: DatasetData;
   datasetQuery?: DatasetQuery;
   excludedSelfColumn?: string;
+  formatOptions?: ColumnSettings;
   id: string;
   // false for visualizations that don't support dynamic goals yet
   isDynamic?: boolean;
@@ -72,6 +74,7 @@ export type ChartSettingSegmentsEditorProps = {
   canRemoveAll?: boolean;
   data?: DatasetData;
   datasetQuery?: DatasetQuery;
+  formatOptions?: ColumnSettings;
   value: GoalSegment[];
   onChange: (value: GoalSegment[]) => void;
 };

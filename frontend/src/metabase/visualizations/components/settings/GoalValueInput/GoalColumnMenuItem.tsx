@@ -1,7 +1,9 @@
 import { Menu, Text } from "metabase/ui";
 import { formatValue } from "metabase/value-formatting";
+import type { ColumnSettings } from "metabase-types/api";
 
 type Props = {
+  formatOptions: ColumnSettings | undefined;
   label: string;
   resolvedValue: number | null;
   selected: boolean;
@@ -9,6 +11,7 @@ type Props = {
 };
 
 export function GoalColumnMenuItem({
+  formatOptions,
   selected,
   label,
   resolvedValue,
@@ -21,7 +24,7 @@ export function GoalColumnMenuItem({
       rightSection={
         resolvedValue != null ? (
           <Text c="text-secondary" fz="md" lh="1rem">
-            {formatValue(resolvedValue)}
+            {formatValue(resolvedValue, formatOptions)}
           </Text>
         ) : undefined
       }

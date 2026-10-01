@@ -1,4 +1,8 @@
-import type { Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -29,6 +33,25 @@ describe("SCALAR_CHART_DEFINITION", () => {
         data,
         datasetQuery: card.dataset_query,
       });
+    });
+
+    it("formats the bounds like the number it shows", () => {
+      const series = createSeries({
+        cols: [...COLS, createMockColumn({ name: "total" })],
+        rows: [[50, 80]],
+      });
+
+      const props = SCALAR_CHART_DEFINITION.settings?.[
+        "scalar.segments"
+      ]?.getProps?.(
+        series,
+        { "scalar.field": "total", column: getMockColumnSettings },
+        jest.fn(),
+        undefined,
+        jest.fn(),
+      );
+
+      expect(props?.formatOptions).toEqual({ prefix: "total:" });
     });
   });
 
@@ -165,6 +188,10 @@ describe("SCALAR_CHART_DEFINITION", () => {
     });
   });
 });
+
+function getMockColumnSettings(column: DatasetColumn) {
+  return { prefix: `${column.name}:` };
+}
 
 function createSeries(
   data: Partial<Parameters<typeof createMockDatasetData>[0]> = {},

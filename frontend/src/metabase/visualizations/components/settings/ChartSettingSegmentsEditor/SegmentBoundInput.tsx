@@ -1,5 +1,6 @@
 import { Box } from "metabase/ui";
 import type {
+  ColumnSettings,
   DatasetData,
   DatasetQuery,
   GoalValue,
@@ -12,6 +13,7 @@ type Props = {
   "aria-label"?: string;
   data: DatasetData | undefined;
   datasetQuery: DatasetQuery | undefined;
+  formatOptions: ColumnSettings | undefined;
   id: string;
   placeholder: string;
   referencedEntities: ReferencedEntity[];
@@ -23,6 +25,7 @@ export function SegmentBoundInput({
   "aria-label": ariaLabel,
   data,
   datasetQuery,
+  formatOptions,
   id,
   placeholder,
   referencedEntities,
@@ -44,6 +47,7 @@ export function SegmentBoundInput({
           aria-label={ariaLabel}
           data={data}
           datasetQuery={datasetQuery}
+          formatOptions={formatOptions}
           id={id}
           placeholder={placeholder}
           referencedEntities={referencedEntities}

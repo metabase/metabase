@@ -80,10 +80,15 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getProps: ([{ card, data }]) => ({
-        data,
-        datasetQuery: card.dataset_query,
-      }),
+      getProps: ([{ card, data }], settings) => {
+        const column = data.cols[0];
+
+        return {
+          data,
+          datasetQuery: card.dataset_query,
+          formatOptions: column && settings.column?.(column),
+        };
+      },
     },
   },
 };
