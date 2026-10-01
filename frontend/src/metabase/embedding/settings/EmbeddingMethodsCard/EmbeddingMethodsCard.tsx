@@ -14,6 +14,7 @@ type EmbeddingMethod = {
   title: string;
   description: ReactNode;
   settingKey: EmbeddingSettingKey;
+  requiresTerms: boolean;
 };
 
 /**
@@ -39,24 +40,28 @@ export function EmbeddingMethodsCard() {
     title: t`Modular embedding`,
     description: t`Drop dashboards, charts, or the query builder into your app with a snippet of HTML. Works with any framework.`,
     settingKey: "enable-embedding-modular",
+    requiresTerms: true,
   };
 
   const sdkEmbedding: EmbeddingMethod = {
     title: t`Modular embedding React SDK`,
     description: t`Embed the full power of Metabase into your application to build custom analytics experiences and programmatically manage dashboards and data.`,
     settingKey: "enable-embedding-sdk",
+    requiresTerms: true,
   };
 
   const guestEmbeds: EmbeddingMethod = {
     title: t`Enable embedding`,
     description: t`Embed Metabase dashboards and questions into your application with modular embedding.`,
     settingKey: "enable-embedding-modular",
+    requiresTerms: false,
   };
 
   const fullAppEmbedding: EmbeddingMethod = {
     title: t`Full-app embedding`,
     description: t`A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing.`,
     settingKey: "enable-embedding-interactive",
+    requiresTerms: false,
   };
 
   const proMethods = [
@@ -83,6 +88,7 @@ function EmbeddingMethodRow({
   title,
   description,
   settingKey,
+  requiresTerms,
 }: EmbeddingMethod) {
   return (
     <Flex gap="xxl" justify="space-between" align="flex-start">
@@ -95,7 +101,11 @@ function EmbeddingMethodRow({
         </Text>
       </Box>
 
-      <EmbeddingToggle settingKey={settingKey} aria-label={`${title} toggle`} />
+      <EmbeddingToggle
+        settingKey={settingKey}
+        requiresTerms={requiresTerms}
+        aria-label={`${title} toggle`}
+      />
     </Flex>
   );
 }
