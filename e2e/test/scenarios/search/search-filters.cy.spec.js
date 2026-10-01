@@ -419,7 +419,7 @@ describe("scenarios > search", () => {
 
     describe("last_edited_by filter", () => {
       beforeEach(() => {
-        // We'll create a question as a normal user, then edit it as an admin user
+        // We'll create a question as an admin user, then edit it as a normal user
         H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signOut();
@@ -436,7 +436,7 @@ describe("scenarios > search", () => {
           },
         );
 
-        // We'll create a question as an admin user, then edit it as a normal user
+        // We'll create a question as a normal user, then edit it as an admin user
         H.createQuestion(LAST_EDITED_BY_ADMIN_QUESTION).then(
           ({ body: { id: questionId } }) => {
             cy.signInAsAdmin();
@@ -507,7 +507,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should filter last_edited results by more than user", () => {
+      it("should filter last_edited results by more than one user", () => {
         cy.visit("/");
 
         H.commandPaletteSearch("reviews");
@@ -768,7 +768,7 @@ describe("scenarios > search", () => {
 
       describe("with an edited question", () => {
         beforeEach(() => {
-          // We'll create a question as a normal user, then edit it as an admin user
+          // We'll create a question as an admin user, then edit it as a normal user
           H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
             ({ body: { id: questionId } }) => {
               cy.signOut();

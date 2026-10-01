@@ -162,7 +162,7 @@ describe("scenarios > search > snowplow", () => {
 
   describe("should send snowplow events for each filter when it is applied and removed", () => {
     describe("no filters", () => {
-      it("should send a new_search_query snowplow event", () => {
+      it("should send search_query and search_click snowplow events", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
