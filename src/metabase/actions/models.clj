@@ -97,26 +97,30 @@
       (actions.db/cards-by-id model-ids))
    :model_id))
 
+(defn- implicit?
+  "Whether `action` is an implicit action."
+  [action]
+  (= :implicit (keyword (:type action))))
+
 (defn- check-implicit-action-model
-  "Throws a 400 unless the Card with `model-id` is a model whose query supports implicit actions."
+  "Throws a 400 unless the Card with `model-id` is a model."
   [model-id]
-  (let [{card-type :type, query :dataset_query} (actions.db/card model-id)]
-    (when-not (= card-type :model)
-      (throw (ex-info (tru "Actions must be made with models, not cards.")
-                      {:status-code 400})))
-    (when-not (query/supports-implicit-actions? query)
-      (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
-                      {:status-code 400})))))
+  (when-not (= (actions.db/card-type model-id) :model)
+    (throw (ex-info (tru "Actions must be made with models, not cards.")
+                    {:status-code 400}))))
+
+(defn- check-implicit-actions-supported
+  "Throws a 400 when `action` is implicit and its model's query does not support implicit actions."
+  [{model-id :model_id, :as action}]
+  (when (and (implicit? action)
+             (not (query/supports-implicit-actions? (actions.db/card-query model-id))))
+    (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
+                    {:status-code 400}))))
 
 (defn- set-model-collection
   "`action` with the `:collection_id` of its model Card."
   [{model-id :model_id, :as action}]
   (assoc action :collection_id (actions.db/card-collection-id model-id)))
-
-(defn- implicit?
-  "Whether `action` is an implicit action."
-  [action]
-  (= :implicit (keyword (:type action))))
 
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
@@ -182,6 +186,7 @@
   (u/prog1 (and (collection-writable? action)
                 (native-query-permitted? action))
     (when <>
+      (check-implicit-actions-supported action)
       (check-action-databases-enabled action))))
 
 (defmethod mi/can-update? :model/Action

@@ -229,7 +229,7 @@
                         (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params)))))))))))))))
 
 (deftest action-query-db-differs-from-declared-db-test
-  (testing "a query action cannot execute against a database other than the one its query targets"
+  (testing "a query action cannot be created against a database other than the one its query targets"
     (mt/dataset test-data
       (let [target-db-id (mt/id)]                          ;; the DB the malicious query really targets; actions OFF here
         (mt/dataset time-test-data
@@ -247,16 +247,10 @@
                               :dataset_query {:type     "native"
                                               :database target-db-id
                                               :native   {:query "update people set source = 'pwned' where id = 1"}}
-                              :parameters    []}
-                      created (mt/user-http-request :crowberto :post 200 "action" action)]
-                  (testing "the declared database_id is overwritten with the query's real database on save"
-                    (is (= target-db-id (:database_id created))))
-                  (testing "execution is blocked because actions are disabled on the query's real DB"
-                    (is (partial= {:message "Actions are not enabled."
-                                   :data    {:database-id target-db-id}}
-                                  (mt/user-http-request :crowberto :post 400
-                                                        (format "action/%s/execute" (:id created))
-                                                        {:parameters {}})))))))))))))
+                              :parameters    []}]
+                  (testing "creating it is refused because actions are disabled on the query's real DB"
+                    (is (= "Actions are not enabled."
+                           (:cause (mt/user-http-request :crowberto :post 400 "action" action))))))))))))))
 
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
