@@ -1,8 +1,8 @@
 (ns metabase.typed-schemas.core
   "Typed schemas: TypeScript modules that describe questions, actions, tables
   and metrics to coding agents. Runtime objects
-  feed the Lib.createTestQuery DSL; `//` comments carry context for humans and
-  agents.
+  feed the Lib.createTestQuery DSL; each entry's `/* metadata: {...} */` block
+  carries context for humans and agents.
 
   The public surface is deliberately small — the schema value and its
   rendering, mirroring the module's data/print split:
@@ -22,7 +22,7 @@
   - Everything downstream of fetched items stays pure. Timestamps, site URL,
     and any other environment values enter through the `info` argument, not by
     calling out from assembly or rendering code.
-  - Which keys render as runtime data vs comments is policy in
+  - Which keys render as runtime data vs metadata is policy in
     `metabase.typed-schemas.render`; TypeScript syntax lives only in the
     `metabase.typed-schemas.javascript` printer.
   - REST query-parameter strings are decoded once, in

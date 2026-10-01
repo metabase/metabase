@@ -366,3 +366,48 @@ function waitForDataAppDevServerEnv(
     );
   });
 }
+
+/**
+ * The `/* metadata: {...} *\/` block of the generated typed-schema entry that
+ * opens with `entry` (its first match): the one at the entry's own depth, not
+ * a nested entity's.
+ */
+export function typedSchemaMetadata(
+  body: string,
+  entry: string,
+): Record<string, unknown> {
+  const lines = body.split("\n");
+  const start = lines.findIndex((line) => line.trim() === entry);
+  if (start === -1) {
+    throw new Error(`The typed schema has no entry \`${entry}\`.`);
+  }
+  const indent = lines[start].search(/\S/);
+  // The entry's closing brace, so a sibling's block is never mistaken for its own.
+  const end = lines.findIndex(
+    (line, index) =>
+      index > start &&
+      line.search(/\S/) === indent &&
+      line.trimStart().startsWith("}"),
+  );
+  const blockStart = lines.findIndex(
+    (line, index) =>
+      index > start &&
+      index < end &&
+      line.search(/\S/) === indent + 2 &&
+      line.trimStart().startsWith("/* metadata: "),
+  );
+  if (blockStart === -1) {
+    throw new Error(`The typed schema has no metadata for \`${entry}\`.`);
+  }
+  const blockEnd = lines.findIndex(
+    (line, index) => index >= blockStart && line.trimEnd().endsWith(" */"),
+  );
+  const block = lines
+    .slice(blockStart, blockEnd + 1)
+    .join("\n")
+    .trim();
+
+  return JSON.parse(
+    block.slice("/* metadata: ".length, block.length - " */".length),
+  );
+}
