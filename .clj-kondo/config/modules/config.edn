@@ -3744,11 +3744,13 @@
            models
            permissions
            premium-features
+           query-permissions
            request
            settings
            util
            warehouse-schema-overlay}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/DataPermissions
                     :model/Database
                     :model/Permissions

@@ -12,6 +12,8 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [metabase-enterprise.data-apps.query-definition :as query-definition]
+   [metabase-enterprise.data-apps.resource-export :as data-app.resource-export]
    [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
@@ -147,6 +149,38 @@
    [:user_id ms/PositiveInt]
    [:missing_tables [:sequential MissingTable]]])
 
+(def ^:private ExportResourcesRequest
+  [:map {:closed true}
+   [:queries {:default []} [:sequential [:map {:closed true}
+                                         [:export ms/NonBlankString]
+                                         [:query ::query-definition/query-definition]]]]
+   [:actions {:default []} [:sequential {:distinct true} ms/PositiveInt]]])
+
+(def ^:private ExportedQuery
+  [:or
+   [:map {:closed true}
+    [:export        :string]
+    [:dataset_query :map]
+    [:metrics       [:sequential :string]]]
+   [:map {:closed true}
+    [:export :string]
+    [:error  :string]]])
+
+(def ^:private ExportedEntity
+  [:or
+   [:map {:closed true}
+    [:id     ms/PositiveInt]
+    [:entity :map]]
+   [:map {:closed true}
+    [:id    ms/PositiveInt]
+    [:error :string]]])
+
+(def ^:private ExportResourcesResponse
+  [:map {:closed true}
+   [:queries [:sequential ExportedQuery]]
+   [:actions [:sequential ExportedEntity]]
+   [:models  [:sequential ExportedEntity]]
+   [:metrics [:sequential ExportedEntity]]])
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
 (api.macros/defendpoint :get "/repo-status" :- RepoStatusResponse
@@ -312,6 +346,15 @@
     (api/check-400 (every? (comp nil? :tenant_id) users)
                    (tru "Tenant users cannot be added to data apps."))
     (data-app.user-access/permission-warnings (:table_ids app) users)))
+
+(api.macros/defendpoint :post "/export-resources" :- ExportResourcesResponse
+  "Export what a data app's `resources/` files are written from, as serialization writes it: the query Metabase
+  builds from each `defineQuery` definition in `queries`, the actions in `actions`, the models they belong to, and
+  the metrics the queries aggregate. Each item answers on its own, with its export or the error that stops it."
+  [_route-params
+   _query-params
+   {:keys [queries actions]} :- ExportResourcesRequest]
+  (data-app.resource-export/export-resources queries actions))
 
 ;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
 ;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide
