@@ -302,7 +302,7 @@ describe("issue 39795", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    //If you comment out this post, then the test will pass.
+    // Remapping Product ID to the product title is what made the column order reset
     cy.request("post", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
       human_readable_field_id: PRODUCTS.TITLE,
       name: "Product ID",
@@ -330,8 +330,6 @@ describe("issue 39795", () => {
       useMouseEvents: true,
     });
 
-    // We are not able to re-order because the dataset will also contain values a column for Product ID
-    // This causes the isValid() check to fire, and you are always forced into the default value for table.columns
     H.getDraggableElements()
       .eq(0)
       .should("have.attr", "data-testid", "draggable-item-User ID");

@@ -93,6 +93,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
       cy.log("Opening a preview sidebar should completely cover the notebook");
       openSidebar();
+      cy.location("pathname").should("eq", "/question/notebook");
 
       cy.log(
         "It shouldn't be possible to click on any of the notebook elements",

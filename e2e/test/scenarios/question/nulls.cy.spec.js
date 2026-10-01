@@ -120,13 +120,13 @@ describe("scenarios > question > null", () => {
           });
 
           H.visitDashboard(DASHBOARD_ID);
-          const getDashcard = (title) =>
-            cy.findByText(title).closest("[data-testid=dashcard]");
           cy.log("P0 regression in v0.37.1!");
-          getDashcard("13801_Q2")
-            .findByTestId("scalar-value")
-            .should("have.text", "0");
-          getDashcard("13801_Q1").within(() => {
+          H.getDashboardCard(1).within(() => {
+            cy.findByText("13801_Q2").should("be.visible");
+            cy.findByTestId("scalar-value").should("have.text", "0");
+          });
+          H.getDashboardCard(0).within(() => {
+            cy.findByText("13801_Q1").should("be.visible");
             cy.findByTestId("scalar-value").should("exist");
             cy.findByTestId("loading-indicator").should("not.exist");
           });
