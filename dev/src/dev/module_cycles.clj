@@ -128,16 +128,28 @@
       (str "  Only if there is truly no way around it: remove all but one of the names from "
            clusters-file " and explain why in the PR.")])))
 
-(defn- unnamed-message [cluster {:keys [name anchor]}]
+(defn- requires-within
+  "The requires between members of `cluster`, as `from -> to` lines, which show why it is a cycle.
+  Nil for a cluster too large to list them usefully."
+  [graph cluster]
+  (when (<= (count cluster) 10)
+    (for [from (sort cluster)
+          to   (sort (filter cluster (get graph from)))]
+      (str "    " from " -> " to))))
+
+(defn- unnamed-message [graph cluster {:keys [name anchor]}]
   (str/join
    "\n"
-   [(format "A cluster without a name: %d modules, %s." (count cluster) (module-list cluster))
-    (str "  If your change split a cluster in two, that is a real improvement: thank you."
-         " You get to name the new one.")
-    (str "  Names follow a space theme, with some link to what the cluster does. For ideas, ask your agent to use"
-         " the name-module-cycle skill in .claude/skills/name-module-cycle.")
-    (format "  Then add a line like `%s %s` to %s, anchored on any of its modules." name anchor clusters-file)
-    "  If this is a brand new cycle instead, break it rather than naming it."]))
+   (concat
+    [(format "A cluster without a name: %d modules, %s." (count cluster) (module-list cluster))]
+    (when-let [lines (seq (requires-within graph cluster))]
+      (cons "  It is a cycle through these requires:" lines))
+    [(str "  If your change split a cluster in two, that is a real improvement: thank you."
+          " You get to name the new one.")
+     (str "  Names follow a space theme, with some link to what the cluster does. For ideas, ask your agent to use"
+          " the name-module-cycle skill in .claude/skills/name-module-cycle.")
+     (format "  Then add a line like `%s %s` to %s. Any member can be the anchor." name anchor clusters-file)
+     "  If this is a brand new cycle instead, break it rather than naming it."])))
 
 (defn- dissolved-message [cluster-name anchor]
   (str/join
@@ -166,7 +178,7 @@
            :when   (< 1 (count named))]
        (merge-message graph cluster named))
      (for [[cluster proposal] proposals]
-       (unnamed-message cluster proposal))
+       (unnamed-message graph cluster proposal))
      (for [[cluster-name anchor] (sort-by key anchors)
            :when (not (contains? in-any anchor))]
        (if (contains? modules anchor)
@@ -195,7 +207,8 @@
         graph     (deps-graph/module-dependencies (deps-graph/dependencies))
         anchors   (read-anchors)
         anchor->n (into {} (map (juxt val key)) anchors)]
-    (doseq [cluster (deps-graph/cyclic-components graph)
+    ;; Unnamed clusters first: they are the ones someone is here to name.
+    (doseq [cluster (sort-by #(boolean (some anchor->n %)) (deps-graph/cyclic-components graph))
             :let    [named (sort (keep (fn [m] (when-let [n (anchor->n m)] [n m])) cluster))]]
       (println (if (seq named)
                  (str/join " + " (map (fn [[n m]] (format "%s (anchor %s)" n m)) named))
@@ -205,4 +218,7 @@
                        (str/join ", " (sort (distinct (keep #(get-in config [% :team]) cluster))))))
       (doseq [module (sort cluster)]
         (println (str "  " module)))
+      (when-let [lines (and (empty? named) (seq (requires-within graph cluster)))]
+        (println "  requires:")
+        (run! println lines))
       (println))))

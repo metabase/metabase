@@ -44,8 +44,11 @@
             (str/split-lines msg)))))
 
 (deftest ^:parallel an-unnamed-cluster-fails-with-a-proposed-name-test
-  (testing "the anchor proposed is the member with the most edges inside the cluster"
+  (testing "a tie for the most requires inside the cluster proposes the alphabetically first member"
     (is (=? [#"A cluster without a name: 2 modules, qp, sync\."
+             #"  It is a cycle through these requires:"
+             #"    qp -> sync"
+             #"    sync -> qp"
              #".*thank you\. You get to name the new one\."
              #".*name-module-cycle skill.*"
              #"  Then add a line like `qp-knot qp` to .*"
