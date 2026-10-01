@@ -2511,6 +2511,7 @@
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
+           appearance
            channel
            events
            lib.schema
