@@ -11,12 +11,12 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  type RenderWithProvidersOptions,
   act,
   fireEvent,
   renderWithProviders,
   screen,
   settlePendingUpdates,
-  type RenderWithProvidersOptions,
   waitFor,
   within,
 } from "__support__/ui";
