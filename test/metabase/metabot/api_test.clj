@@ -91,12 +91,66 @@
                             :role         :user
                             :data         [{:type "text" :text (:content question)}]
                             :data_version 2}
-                           {:total_tokens pos-int?
-                            :role         :assistant
-                            :data         [{:type "step-start"}
-                                           {:type "text" :text "Hello from native agent!" :state "done"}]
-                            :data_version 2}]
+                           {:total_tokens  pos-int?
+                            :role          :assistant
+                            :data          [{:type "step-start"}
+                                            {:type "text" :text "Hello from native agent!" :state "done"}]
+                            :data_version  2
+                            ;; the provider truncated this turn, so the row records why it stopped
+                            :finished      true
+                            :finish_reason "length"}]
                           messages)))))))))))
+
+(def ^:private openrouter-error-chunks
+  "Raw OpenRouter chunks for a generation the upstream model abandoned: OpenRouter reports that as
+  `finish_reason \"error\"` rather than as an error event."
+  [{:id      "gen-error-1"
+    :model   "anthropic/claude-haiku-4-5"
+    :choices [{:index 0 :delta {:role "assistant" :content "Here's what I fou"} :finish_reason nil}]}
+   {:choices [{:index 0 :delta {} :finish_reason "error"}]}
+   {:choices [] :usage {:prompt_tokens 12 :completion_tokens 3}}])
+
+(deftest native-agent-streaming-openrouter-error-finish-persists-errored-turn-test
+  (testing "a provider failure reported as a finish reason ends the stream as an error and persists as one"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (with-redefs [config/is-dev? true]
+          (let [conversation-id (str (random-uuid))]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                                (eduction (openrouter/openrouter->aisdk-chunks-xf)
+                                                                          openrouter-error-chunks))
+                                        metabot.self/context-window-tokens (constantly 1000)
+                                        conversation-title/ensure-title! (constantly {:status :ready
+                                                                                      :title  "Orders by Month"})]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (let [response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                      {:message         "Test provider failure"
+                                                       :context         {}
+                                                       :conversation_id conversation-id
+                                                       :state           {}})
+                      events    (->> (str/split-lines response)
+                                     (filter #(str/starts-with? % "data: "))
+                                     (remove #(= "data: [DONE]" %))
+                                     (mapv #(json/decode+kw (subs % 6))))
+                      messages  (t2/select :model/MetabotMessage :conversation_id conversation-id)
+                      assistant (u/seek #(= :assistant (:role %)) messages)]
+                  (testing "the SSE stream carries an error event and finishes as an error"
+                    (is (= 1 (count (filterv #(= "error" (:type %)) events))))
+                    (is (=? {:type "finish" :finishReason "error"}
+                            (u/seek #(= "finish" (:type %)) events))))
+                  (testing "so the turn is persisted as errored, not as a clean stop"
+                    ;; the error column is filled by api.clj's own seek over the finalized parts
+                    (is (some? (:error assistant)))
+                    (is (=? {:message string?} (json/decode+kw (:error assistant))))
+                    (is (true? (:finished assistant)))
+                    (is (nil? (:finish_reason assistant))
+                        "an errored turn is not also an incomplete one"))
+                  (testing "and the conversation endpoint drops the errored pair"
+                    (is (= []
+                           (:messages (mt/user-http-request :rasta :get 200
+                                                            (str "metabot/conversations/" conversation-id)))))))))))))))
 
 (deftest emits-title-event-inline-when-ready-during-stream-test
   (testing "when the title becomes ready while streaming, the real title event is injected inline before the finish event"
