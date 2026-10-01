@@ -2402,6 +2402,11 @@
   (and (string-cross-stage-field-clause? node)
        (not (contains? (nth node 1) "base-type"))))
 
+(defn- join-alias-ref?
+  "True if the string-named field ref `clause` carries a `join-alias`."
+  [clause]
+  (contains? (nth clause 1) "join-alias"))
+
 (defn- types-from-column
   "Pull `\"base-type\"` (and optionally `\"effective-type\"`) off a `lib/returned-columns`
   metadata map, in the string-keyed form that matches the rest of the repair pipeline.
@@ -2661,10 +2666,9 @@
           (let [stage     (get-in q ["stages" i])
                 untyped   (when (map? stage)
                             (filterv unstamped-cross-stage-ref? (stage-refs stage)))
-                joined?   #(contains? (nth % 1) "join-alias")
-                cols      (when (and (get stage "source-card") (some (complement joined?) untyped))
+                cols      (when (and (get stage "source-card") (some (complement join-alias-ref?) untyped))
                             (mini-resolved-columns-for-source-card mp q i content-store))
-                join-cols (when (some joined? untyped)
+                join-cols (when (some join-alias-ref? untyped)
                             (join-columns-by-alias mp q stage content-store))
                 q'        (if (or cols (seq join-cols))
                             (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols join-cols)
@@ -2759,12 +2763,18 @@
                               _ nil))]
     (doseq [[idx stage] (map-indexed vector stages)
             :when        (and (map? stage) (stage-has-unstamped-cross-stage-ref? stage))]
+      ;; A join's columns are resolved only to check its own `join-alias` refs, or to list them in
+      ;; the message once a ref is known to be bad.
       (let [cols      (cond
                         (get stage "source-card") (mini-resolved-columns-for-source-card mp query idx content-store)
                         (pos? idx)                (mini-resolved-columns mp query idx content-store))
-            join-cols (join-columns-by-alias mp query stage content-store)]
-        (when-let [bad (first-unresolved-cross-stage-ref stage cols join-cols)]
-          (let [available (ref-columns bad cols join-cols)]
+            join-cols (delay (join-columns-by-alias mp query stage content-store))]
+        (when-let [bad (first-unresolved-cross-stage-ref
+                        stage cols (when (some #(and (unstamped-cross-stage-ref? %) (join-alias-ref? %))
+                                               (stage-refs stage))
+                                     @join-cols))]
+          (let [join-cols @join-cols
+                available (ref-columns bad cols join-cols)]
             (throw (ex-info
                     (unresolved-ref-message bad cols join-cols)
                     {:agent-error? true
