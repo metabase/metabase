@@ -47,14 +47,15 @@
   (testing "the anchor proposed is the member with the most edges inside the cluster"
     (is (=? [#"A cluster without a name: 2 modules, qp, sync\."
              #".*thank you\. You get to name the new one\."
-             #"  Add `qp-knot qp` to .*"
+             #".*name-module-cycle skill.*"
+             #"  Then add a line like `qp-knot qp` to .*"
              #".*break it rather than naming it\."]
             (str/split-lines (first (module-cycles/problems graph modules '{foundation app-db}))))))
   (testing "a proposal never reuses a taken name"
-    (is (=? [#".*Add `qp-knot-2 qp`.*"]
-            (filter #(str/includes? % "Add") (str/split-lines (first (module-cycles/problems
-                                                                      graph modules
-                                                                      '{foundation app-db, qp-knot lib})))))))
+    (is (=? [#".*`qp-knot-2 qp`.*"]
+            (filter #(str/includes? % "line like") (str/split-lines (first (module-cycles/problems
+                                                                            graph modules
+                                                                            '{foundation app-db, qp-knot lib})))))))
   (testing "dots and slashes in a module name become dashes"
     (is (= 'enterprise-transforms-python-knot
            (:name (module-cycles/propose '{enterprise/transforms.python #{x}, x #{enterprise/transforms.python}}
