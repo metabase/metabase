@@ -244,6 +244,35 @@ describe("SettingsLdapForm", () => {
     );
   });
 
+  it("keeps the saved host when the settings refetch after a save fails", async () => {
+    await setup({ settingValues: ATTRS });
+    // a failed refetch leaves the pre-save settings in the cache
+    fetchMock.removeRoute("settings-list");
+    fetchMock.get("path:/api/setting", 500, { name: "settings-list" });
+
+    const hostInput = screen.getByLabelText(/LDAP host/);
+    await userEvent.clear(hostInput);
+    await userEvent.type(hostInput, "ldap.new.example.org");
+    await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Success|Save/ }),
+      ).toBeDisabled(),
+    );
+
+    const bindDnInput = screen.getByLabelText(/Username or DN/);
+    await userEvent.clear(bindDnInput);
+    await userEvent.type(bindDnInput, "cn=admin,dc=example,dc=org");
+    await userEvent.click(screen.getByRole("button", { name: /Success|Save/ }));
+
+    await waitFor(async () =>
+      expect(await findRequests("PUT")).toHaveLength(2),
+    );
+    const [, { body }] = await findRequests("PUT");
+    expect(body["ldap-host"]).toBe("ldap.new.example.org");
+    expect(hostInput).toHaveValue("ldap.new.example.org");
+  });
+
   it("does not offer user provisioning on OSS", async () => {
     await setup();
 

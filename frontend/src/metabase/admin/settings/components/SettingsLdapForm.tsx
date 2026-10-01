@@ -136,7 +136,7 @@ export const SettingsLdapForm = () => {
         "ldap-port": Number(values["ldap-port"] ?? defaultPort),
         "ldap-enabled": true,
       }).unwrap();
-      // the saved values become the baseline, so the form is clean before the refetch lands
+      // the form ignores refetches, which can still hold old values, so the saved values become its baseline
       helpers.resetForm({ values });
     },
     [updateLdapSettings, defaultPort],
@@ -163,7 +163,6 @@ export const SettingsLdapForm = () => {
         initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={handleSubmit}
         validationSchema={schema}
-        enableReinitialize
       >
         {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>

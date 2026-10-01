@@ -33,10 +33,21 @@ const setup = async (
   const settings = createMockSettings(settingValues ?? {});
   setupSettingsEndpoints(settingDefinitions);
   // the switches and the mappings read their values back after saving, so the properties mock has to remember writes
-  setupStatefulSettingsEndpoints(settings, { updateDelay, readDelay });
+  const settingsStore = setupStatefulSettingsEndpoints(settings, {
+    updateDelay,
+    readDelay,
+  });
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
-  fetchMock.put("path:/api/saml/settings", { status: 204 });
+  // the page save lands in the same store, and the backend reports SAML as configured once the URL and certificate are saved
+  fetchMock.put("path:/api/saml/settings", ({ options }) => {
+    Object.assign(settingsStore, JSON.parse(String(options.body)));
+    settingsStore["saml-configured"] = Boolean(
+      settingsStore["saml-identity-provider-uri"] &&
+      settingsStore["saml-identity-provider-certificate"],
+    );
+    return { status: 204 };
+  });
 
   renderWithProviders(<SettingsSAMLForm />, { withUndos: true });
 
@@ -135,6 +146,39 @@ describe("SettingsSAMLForm", () => {
     expect(body["saml-identity-provider-uri"]).toBe("www.sad.sandwich");
     expect(body["saml-identity-provider-certificate"]).toBe(fields[1].value);
     expect(body["saml-identity-provider-issuer"]).toBe(fields[2].value);
+  });
+
+  it("keeps the saved URL when the settings refetch after a save fails", async () => {
+    await setupConfigured(IDP_SETTINGS);
+    // a failed refetch leaves the pre-save settings in the cache
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get("path:/api/session/properties", 500, {
+      name: "get-session-properties",
+    });
+
+    const urlInput = screen.getByLabelText(/SAML identity provider URL/);
+    await userEvent.clear(urlInput);
+    await userEvent.type(urlInput, "https://sso.example.org/saml");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Success|Save/ }),
+      ).toBeDisabled(),
+    );
+
+    const issuerInput = screen.getByLabelText(/SAML identity provider issuer/);
+    await userEvent.clear(issuerInput);
+    await userEvent.type(issuerInput, "https://sso.example.org/entity");
+    await userEvent.click(screen.getByRole("button", { name: /Success|Save/ }));
+
+    await waitFor(async () =>
+      expect(await findRequests("PUT")).toHaveLength(2),
+    );
+    const [, { body }] = await findRequests("PUT");
+    expect(body["saml-identity-provider-uri"]).toBe(
+      "https://sso.example.org/saml",
+    );
+    expect(urlInput).toHaveValue("https://sso.example.org/saml");
   });
 
   it("lays the cards out in the designed order", async () => {
@@ -334,6 +378,7 @@ describe("SettingsSAMLForm", () => {
       expect(toggle).toBeEnabled();
       expect(toggle).not.toHaveAttribute("aria-disabled");
       expect(groupMappingSwitch()).toBeEnabled();
+      expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled");
     });
   });
 
@@ -354,6 +399,24 @@ describe("SettingsSAMLForm", () => {
       expect(
         screen.queryByRole("textbox", { name: /Group attribute name/ }),
       ).not.toBeInTheDocument();
+    });
+
+    it("unlocks the group mapping card after the first save", async () => {
+      await setup();
+      expect(groupMappingSwitch()).toBeDisabled();
+
+      for (const { label, value } of fields) {
+        await userEvent.type(screen.getByLabelText(label), value);
+      }
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save and enable" }),
+      );
+
+      // the card's lock is native disabled, while a refetch holds the switch with aria-disabled
+      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
     });
 
     it("turns group mapping on right away and reveals the mappings and the group attribute", async () => {

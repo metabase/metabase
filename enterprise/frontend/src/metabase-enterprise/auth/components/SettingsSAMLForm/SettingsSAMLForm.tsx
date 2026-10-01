@@ -84,7 +84,7 @@ export function SettingsSAMLForm() {
       helpers: FormikHelpers<SAMLFormSettings>,
     ) => {
       await updateSamlSettings({ ...values, "saml-enabled": true }).unwrap();
-      // the saved values become the baseline, so the form is clean before the refetch lands
+      // the form ignores refetches, which can still hold old values, so the saved values become its baseline
       helpers.resetForm({ values });
     },
     [updateSamlSettings],
@@ -124,7 +124,6 @@ export function SettingsSAMLForm() {
         initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={handleSubmit}
         validationSchema={SAML_FORM_SCHEMA}
-        enableReinitialize
       >
         {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
