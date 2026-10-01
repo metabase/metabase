@@ -111,7 +111,7 @@ export function useModelsAndOption(
   // Fold before layout: the fold decides which category labels get measured.
   const chartModel = useMemo(
     () =>
-      card.display === "row"
+      baseChartModel.isRowChart
         ? foldRowChartModel(
             // Row charts always produce a plain cartesian model.
             baseChartModel as CartesianChartModel,
@@ -119,7 +119,7 @@ export function useModelsAndOption(
             settings,
           )
         : baseChartModel,
-    [baseChartModel, card.display, height, settings],
+    [baseChartModel, height, settings],
   );
 
   const chartLayout = useMemo(

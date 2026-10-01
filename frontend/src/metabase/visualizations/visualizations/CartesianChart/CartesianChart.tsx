@@ -19,6 +19,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import {
   type TimelineEventGroup,
   getLegendItems,
+  isRowChartSeries,
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
@@ -36,7 +37,7 @@ function CartesianChartInner(props: VisualizationProps) {
   // Row charts don't offer timeline events (UXW-4833).
   const { timelineEvents } = useTimelineEvents({
     ...props,
-    skip: props.card.display === "row",
+    skip: isRowChartSeries(props.rawSeries),
   });
 
   const containerRef = useRef<HTMLDivElement>(null);

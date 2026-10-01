@@ -11,7 +11,7 @@ import {
   X_AXIS_DATA_KEY,
 } from "../constants/dataset";
 
-import { refitYAxisExtents } from "./axis";
+import { getYAxisExtent } from "./axis";
 import type { CartesianChartModel, ChartDataset, Datum } from "./types";
 import { getBarSeriesDataLabelKey } from "./util";
 
@@ -126,6 +126,15 @@ export const foldRowChartModel = (
     ...chartModel,
     dataset: foldDataset(chartModel.dataset, budget, seriesKeys),
     transformedDataset,
-    ...refitYAxisExtents(chartModel, transformedDataset, settings),
+    // "Other" can exceed every row's range; row charts only have a left axis.
+    leftAxisModel: chartModel.leftAxisModel && {
+      ...chartModel.leftAxisModel,
+      extent: getYAxisExtent(
+        chartModel.leftAxisModel.seriesKeys,
+        chartModel.stackModels,
+        transformedDataset,
+        settings["stackable.stack_type"] ?? null,
+      ),
+    },
   };
 };

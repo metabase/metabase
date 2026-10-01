@@ -305,6 +305,7 @@ export {
   getSeriesWithDisplay,
   getVisualizerSeriesCardId,
   getVisualizerSeriesCardIndex,
+  isRowChartSeries,
   updateSeriesColor,
 } from "./lib/series";
 export {

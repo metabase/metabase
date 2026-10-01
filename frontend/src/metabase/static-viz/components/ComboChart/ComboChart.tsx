@@ -35,8 +35,6 @@ export const ComboChart = ({
   hasDevWatermark = false,
   fitWithinBounds = false,
 }: StaticChartProps) => {
-  const isRowChart = rawSeries[0]?.card.display === "row";
-
   const baseChartModel = getCartesianChartModel(
     rawSeries,
     settings,
@@ -58,7 +56,7 @@ export const ComboChart = ({
   const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
 
   // Fold before layout, off the plot height, as the interactive path does.
-  const chartModel = isRowChart
+  const chartModel = baseChartModel.isRowChart
     ? foldRowChartModel(baseChartModel, chartHeight, settings)
     : baseChartModel;
 

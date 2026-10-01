@@ -523,19 +523,15 @@ function getDataLabelSeriesOption(
   formatter: (params: CallbackDataParams) => string,
   position: LabelOption["position"],
   renderingContext: RenderingContext,
+  isRowChart: boolean,
   showInBlur = true,
 ) {
   const stackName = seriesOption.stack;
 
-  // The label series must encode like its parent; the parent's `y` mapping
-  // tells whether it was rotated (ECharts types `encode` as a broad union).
-  const parentEncode = seriesOption.encode as { y?: string } | undefined;
-  const isRotated = parentEncode?.y === X_AXIS_DATA_KEY;
-
   // Callers pass upright positions; rotated, top/bottom become right/left.
   const rotatedPosition =
     position === "top" ? "right" : position === "bottom" ? "left" : position;
-  const labelPosition = isRotated ? rotatedPosition : position;
+  const labelPosition = isRowChart ? rotatedPosition : position;
 
   const dataLabelSeriesOption = {
     xAxisIndex: seriesOption.xAxisIndex,
@@ -547,7 +543,7 @@ function getDataLabelSeriesOption(
     },
     id: `${stackName}_${dataKey}`,
     stack: stackName,
-    encode: isRotated
+    encode: isRowChart
       ? { x: dataKey, y: X_AXIS_DATA_KEY }
       : { y: dataKey, x: X_AXIS_DATA_KEY },
     label: {
@@ -719,6 +715,7 @@ const buildEChartsBarSeries = (
           // Negative rotated bars grow leftward, so their labels go on the left.
           isRowChart ? (sign === "+" ? "right" : "left") : ["50%", 0],
           renderingContext,
+          isRowChart,
           false,
         ),
         labelLayout: isRowChart
@@ -1050,6 +1047,7 @@ export const getStackTotalsSeries = (
           ),
         "top",
         renderingContext,
+        isRowChart,
       ),
       getDataLabelSeriesOption(
         NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -1070,6 +1068,7 @@ export const getStackTotalsSeries = (
           ),
         "bottom",
         renderingContext,
+        isRowChart,
       ),
     ];
   });

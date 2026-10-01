@@ -44,7 +44,6 @@ import { getDatasetExtents, getSeriesExtent } from "./dataset";
 import { getAxisTransforms } from "./transforms";
 import type {
   AxisFormatter,
-  BaseCartesianChartModel,
   ChartDataset,
   DataKey,
   DateRange,
@@ -485,7 +484,7 @@ function findWidestRange(extents: Extent[]): Extent | null {
   return [min, max];
 }
 
-function getYAxisExtent(
+export function getYAxisExtent(
   seriesKeys: DataKey[],
   stackModels: StackModel[],
   dataset: ChartDataset,
@@ -586,41 +585,6 @@ export function getYAxisModel(
         : gridSize?.height && gridSize.height <= 5
           ? 2 // Use fewer ticks for small dashboard charts
           : 5, // Default to 5 ticks for consistent behavior between single and multiple series
-  };
-}
-
-// Only called when row chart rows fold into "Other", which can exceed every
-// extent computed before the fold.
-export function refitYAxisExtents(
-  { leftAxisModel, rightAxisModel, stackModels }: BaseCartesianChartModel,
-  transformedDataset: ChartDataset,
-  settings: ComputedVisualizationSettings,
-): Pick<BaseCartesianChartModel, "leftAxisModel" | "rightAxisModel"> {
-  const stackType = settings["stackable.stack_type"] ?? null;
-  const [leftStackModels, rightStackModels] = _.partition(
-    stackModels,
-    (stackModel) => stackModel.axis === "left",
-  );
-
-  return {
-    leftAxisModel: leftAxisModel && {
-      ...leftAxisModel,
-      extent: getYAxisExtent(
-        leftAxisModel.seriesKeys,
-        leftStackModels,
-        transformedDataset,
-        stackType,
-      ),
-    },
-    rightAxisModel: rightAxisModel && {
-      ...rightAxisModel,
-      extent: getYAxisExtent(
-        rightAxisModel.seriesKeys,
-        rightStackModels,
-        transformedDataset,
-        stackType === "normalized" ? null : stackType,
-      ),
-    },
   };
 }
 

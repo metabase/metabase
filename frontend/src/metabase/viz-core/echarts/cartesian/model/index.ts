@@ -6,6 +6,7 @@ import {
   getCartesianChartColumns,
   getReferencedColumns,
 } from "../../../lib/graph/columns";
+import { isRowChartSeries } from "../../../lib/series";
 import { getSingleSeriesDimensionsAndMetrics } from "../../../lib/utils";
 import { getAreDimensionsAndMetricsValid } from "../../../shared/settings/cartesian-chart";
 import type {
@@ -124,7 +125,7 @@ export const getChartSeriesModels = (
     : getSortedSeriesModels(
         unsortedSeriesModels,
         settings,
-        rawSeries[0]?.card.display === "row",
+        isRowChartSeries(rawSeries),
       );
 
   const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
@@ -153,7 +154,7 @@ export const getCartesianChartModel = (
   showWarning?: ShowWarning,
   gridSize?: VisualizationGridSize,
 ): CartesianChartModel => {
-  const isRowChart = rawSeries[0]?.card.display === "row";
+  const isRowChart = isRowChartSeries(rawSeries);
   const cardsColumns = getCardsColumns(rawSeries, settings);
   const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);

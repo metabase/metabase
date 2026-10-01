@@ -124,8 +124,12 @@ export function getGoalLineSeriesOption(
       // Rotated, the label sits above the line and flips left near the right
       // edge, as the legacy renderer did.
       const labelMargin = CHART_STYLE.goalLine.label.margin;
-      const labelWidth =
-        (settings["graph.goal_label"] ?? "").length * fontSize * 0.6;
+      const labelText = settings["graph.goal_label"] ?? "";
+      const labelWidth = renderingContext.measureText(labelText, {
+        family: renderingContext.fontFamily,
+        size: fontSize,
+        weight: CHART_STYLE.goalLine.label.weight,
+      });
       const flipLabel = isRowChart && goalX + labelWidth > xEnd;
 
       const align: "left" | "right" = isRowChart
@@ -151,7 +155,7 @@ export function getGoalLineSeriesOption(
         },
         style: {
           align,
-          text: settings["graph.goal_label"] ?? "",
+          text: labelText,
           fontFamily: renderingContext.fontFamily,
           fontSize,
           fontWeight: CHART_STYLE.goalLine.label.weight,
