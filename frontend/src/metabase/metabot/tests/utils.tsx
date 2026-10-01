@@ -11,11 +11,12 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
-  type RenderWithProvidersOptions,
   act,
   fireEvent,
   renderWithProviders,
   screen,
+  settlePendingUpdates,
+  type RenderWithProvidersOptions,
   waitFor,
   within,
 } from "__support__/ui";
@@ -189,6 +190,9 @@ export const enterChatMessage = async (message: string, send = true) => {
   if (send) {
     await userEvent.type(await input(), "{Enter}");
   }
+  // The editor picks up these DOM changes through a MutationObserver, so the
+  // state it sets lands a microtask after this returns.
+  await settlePendingUpdates();
 };
 export const sendMessageButton = () =>
   screen.findByTestId("metabot-send-message");
