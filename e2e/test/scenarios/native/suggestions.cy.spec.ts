@@ -52,8 +52,7 @@ describe("scenarios > question > native > suggestions", () => {
     H.NativeEditor.type("acc");
 
     H.NativeEditor.completions().within(() => {
-      cy.get(".cm-completionLabel")
-        .filter((_, element) => element.textContent === "ACCOUNT_ID")
+      H.NativeEditor.completionLabels("ACCOUNT_ID")
         .should("have.length", 1)
         .and("be.visible");
     });
@@ -74,8 +73,7 @@ describe(
 
       H.NativeEditor.type('[{ "$grou');
       H.NativeEditor.completions().within(() => {
-        cy.get(".cm-completionLabel")
-          .filter((_, element) => element.textContent === "$group")
+        H.NativeEditor.completionLabels("$group")
           .should("have.length", 1)
           .and("be.visible");
         H.NativeEditor.completion("$group").should("contain.text", "keyword");

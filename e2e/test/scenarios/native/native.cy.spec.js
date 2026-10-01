@@ -528,7 +528,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("should use two-space indentation for mongo", () => {
+  it("should switch an SQL question to mongo and use two-space indentation (metabase#53299)", () => {
     H.startNewNativeQuestion();
     cy.findByTestId("gui-builder-data").click();
     cy.findByLabelText(MONGO_DB_NAME).click();

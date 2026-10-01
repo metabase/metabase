@@ -254,31 +254,6 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
-  describe("static list source (dropdown)", () => {
-    it("should be able to use a static list source in the query builder", () => {
-      H.startNewNativeQuestion();
-      SQLFilter.enterParameterizedQuery("SELECT {{ x }}");
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Number");
-
-      H.setDropdownFilterType();
-      H.setFilterListSource({
-        values: [["10", "Ten"], ["20", "Twenty"], "30"],
-      });
-      H.saveQuestion("SQL filter", undefined, {
-        path: ["Our analytics"],
-      });
-
-      FieldFilter.openEntryForm();
-      checkFilterValueInList("Twenty");
-      checkFilterValueNotInList("10");
-      FieldFilter.selectFilterValueFromList("Twenty");
-      cy.findByLabelText("X").should("contain.text", "Twenty");
-      SQLFilter.runQuery("cardQuery");
-      H.assertQueryBuilderRowCount(1);
-    });
-  });
-
   describe("static list source with custom labels (search box)", () => {
     it("should be able to use a static list source in the query builder", () => {
       H.startNewNativeQuestion();
@@ -316,9 +291,9 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
   });
 
-  it("should show the values when picking the default value", () => {
+  it("should show the values when picking the default value and use a static list source in the query builder", () => {
     H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery("SELECT {{ x }}");
+    SQLFilter.enterParameterizedQuery("SELECT {{ x }} AS V");
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Number");
 
@@ -343,6 +318,20 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     cy.findByLabelText("X").should("contain.text", "Twenty");
     SQLFilter.runQuery("cardQuery");
     H.assertQueryBuilderRowCount(1);
+    H.queryBuilderMain().findByText("20").should("be.visible");
+
+    cy.log("static list source (dropdown)");
+    H.clearFilterWidget();
+    cy.findByLabelText("X").should("not.contain.text", "Twenty");
+
+    FieldFilter.openEntryForm();
+    checkFilterValueInList("Ten");
+    checkFilterValueNotInList("10");
+    FieldFilter.selectFilterValueFromList("Ten");
+    cy.findByLabelText("X").should("contain.text", "Ten");
+    SQLFilter.runQuery("cardQuery");
+    H.assertQueryBuilderRowCount(1);
+    H.queryBuilderMain().findByText("10").should("be.visible");
   });
 
   it("should clear the value type and config when changing the template tag type and restore them when changing the type back", () => {
@@ -390,7 +379,7 @@ const checkFilterValueInList = (value) => {
   H.popover()
     .last()
     .within(() => {
-      cy.findByText(value).should("exist");
+      cy.findByText(value).should("be.visible");
     });
 };
 

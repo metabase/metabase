@@ -129,8 +129,10 @@ describe("issue 11580", () => {
     cy.log(
       "should be able to select 'Field Filter' category in native query (metabase#15700)",
     );
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByTestId("variable-type-select").last().click();
+    cy.findAllByTestId("variable-type-select")
+      .should("have.length", 2)
+      .last()
+      .click();
     SQLFilter.chooseType("Field Filter");
 
     FieldFilter.mapTo({
@@ -396,21 +398,6 @@ describe("issue 15981", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 51 rows");
     cy.icon("play").should("not.exist");
-  });
-
-  it('"Number" filter should work (metabase#15981-2)', () => {
-    SQLFilter.enterParameterizedQuery(
-      "select * from ORDERS where QUANTITY = {{number_filter}}",
-    );
-
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Number");
-
-    SQLFilter.setWidgetValue("20");
-
-    SQLFilter.runQuery();
-
-    cy.findByTestId("query-visualization-root").contains("23.54");
   });
 });
 
@@ -847,12 +834,13 @@ describe("issue 44665", () => {
     H.filterWidget().click();
 
     H.popover().within(() => {
+      cy.findByPlaceholderText("Search").should("be.visible");
       cy.findByText("foo").should("not.exist");
       cy.findByText("bar").should("not.exist");
       cy.findByText("baz").should("not.exist");
       cy.findByText("foobar").should("not.exist");
 
-      cy.findByPlaceholderText("Search").should("be.visible").type("fo");
+      cy.findByPlaceholderText("Search").type("fo");
 
       cy.findByText("foo").should("be.visible");
     });

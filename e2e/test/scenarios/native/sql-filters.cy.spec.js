@@ -66,7 +66,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       SQLFilter.chooseType("Number");
     });
 
-    it("when set through the filter widget", () => {
+    it("should work when set through the filter widget and handle a required tag (metabase#15981)", () => {
+      cy.log("when set through the filter widget");
       SQLFilter.setWidgetValue("4.3");
 
       SQLFilter.runQuery();
@@ -75,9 +76,11 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       H.tableInteractive()
         .findByText("Aerodynamic Linen Coat")
         .should("be.visible");
-    });
 
-    it("should handle a required tag", () => {
+      H.filterWidget().find("input").clear();
+      H.filterWidget().find("input").blur();
+      H.filterWidget().find("input").should("have.value", "");
+
       cy.log("does not need a default value to run and save the query");
       SQLFilter.toggleRequired();
       SQLFilter.getRunQueryButton().should("not.be.disabled");
@@ -123,7 +126,16 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       SQLFilter.chooseType("Date");
     });
 
-    it("when set through the filter widget", () => {
+    function setDefaultDate(year = "2024", month = "01", day = "22") {
+      cy.findByTestId("sidebar-content")
+        .findByText("Select a default value…")
+        .click();
+      DateFilter.setSingleDate(`${month}/${day}/${year}`);
+      H.popover().findByText("Add filter").click();
+    }
+
+    it("should work when set through the filter widget and handle a required tag", () => {
+      cy.log("when set through the filter widget");
       H.filterWidget().click();
       // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
@@ -138,17 +150,10 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("No results");
       });
-    });
 
-    function setDefaultDate(year = "2024", month = "01", day = "22") {
-      cy.findByTestId("sidebar-content")
-        .findByText("Select a default value…")
-        .click();
-      DateFilter.setSingleDate(`${month}/${day}/${year}`);
-      H.popover().findByText("Add filter").click();
-    }
+      H.filterWidget().icon("close").click();
+      H.filterWidget().icon("close").should("not.exist");
 
-    it("should handle a required tag", () => {
       cy.log("does not need a default value to run and save the query");
       SQLFilter.toggleRequired();
       SQLFilter.getRunQueryButton().should("not.be.disabled");
