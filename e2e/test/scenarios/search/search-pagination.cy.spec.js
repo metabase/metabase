@@ -14,17 +14,6 @@ describe("scenarios > search", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not search on an empty string", () => {
-    cy.intercept("/api/search", (req) => {
-      expect("Unexpected call to /api/search").to.be.false;
-    });
-    H.visitFullAppEmbeddingUrl({
-      url: "/",
-      qs: { top_nav: true, search: true },
-    });
-    H.getSearchBar().type(" ");
-  });
-
   describe("multiple pages of results", () => {
     before(() => {
       cy.signInAsAdmin();

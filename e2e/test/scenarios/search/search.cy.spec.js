@@ -1,4 +1,5 @@
 const { H } = cy;
+import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -27,6 +28,17 @@ describe("scenarios > search", () => {
   describe("universal search", () => {
     it("should work for admin (metabase#20018)", () => {
       visitEmbeddingWithSearch("/");
+
+      H.getSearchBar().type("pers");
+      cy.wait("@search");
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByTestId("search-results-list").within(() => {
+        cy.findAllByText(/personal collection$/i).should(
+          "have.length",
+          Object.entries(USERS).length,
+        );
+      });
+
       H.getSearchBar().as("searchBox").clear().type("orders count").blur();
 
       H.expectSearchResultContent({
@@ -73,7 +85,15 @@ describe("scenarios > search", () => {
     it("should work for user with permissions (metabase#12332)", () => {
       cy.signInAsNormalUser();
       visitEmbeddingWithSearch("/");
-      H.getSearchBar().type("product{enter}");
+
+      H.getSearchBar().type("pers");
+      cy.wait("@search");
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByTestId("search-results-list").within(() => {
+        cy.findAllByText(/personal collection$/i).should("have.length", 1);
+      });
+
+      H.getSearchBar().clear().type("product{enter}");
       cy.wait("@search");
       cy.findByTestId("search-app").within(() => {
         cy.findByText("Products");
@@ -148,48 +168,7 @@ describe("scenarios > search", () => {
         .should("not.exist");
     });
 
-    it("should not overflow container if results contain descriptions with large unbroken strings", () => {
-      H.createQuestion({
-        name: "Description Test",
-        query: { "source-table": ORDERS_ID },
-        description:
-          "testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting",
-      }).then(() => {
-        cy.signInAsNormalUser();
-        visitEmbeddingWithSearch("/");
-        H.getSearchBar().type("Test");
-      });
-
-      cy.findByTestId("search-results-floating-container")
-        .as("parentContainer")
-        .invoke("outerWidth")
-        .then((parentWidth) => {
-          cy.findByTestId("result-description")
-            .invoke("outerWidth")
-            .should(
-              "be.lessThan",
-              parentWidth,
-              "Result description width should not exceed parent container width",
-            );
-        });
-    });
-
-    it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
-      visitEmbeddingWithSearch(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-
-      // Type as soon as possible, before the dashboard has finished loading
-      H.getSearchBar().type("ord");
-
-      // Once the dashboard is visible, the search results should not be dismissed
-      H.main()
-        .findByRole("heading", { name: "Loading..." })
-        .should("not.exist");
-      cy.findByTestId("search-results-floating-container").should("exist");
-    });
-
-    it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
-      H.updateSetting("custom-homepage", true);
-      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
+    it("should not dismiss when a dashboard finishes loading, when visited directly or after a homepage redirect (metabase#35099, metabase#34226)", () => {
       cy.intercept(
         {
           url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -203,6 +182,18 @@ describe("scenarios > search", () => {
           });
         },
       );
+
+      visitEmbeddingWithSearch(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+      // Type as soon as possible, before the dashboard has finished loading
+      H.getSearchBar().type("ord");
+
+      // Once the dashboard is visible, the search results should not be dismissed
+      cy.findByTestId("dashboard-parameters-and-cards").should("exist");
+      cy.findByTestId("search-results-floating-container").should("exist");
+
+      H.updateSetting("custom-homepage", true);
+      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
       visitEmbeddingWithSearch("/");
 
       // Type as soon as possible, before the dashboard has finished loading
@@ -216,7 +207,7 @@ describe("scenarios > search", () => {
   });
 
   describe("accessing full page search with `Enter`", () => {
-    it("should not render full page search if user has not entered a text query", () => {
+    it("should not search or render full page search if user has not entered a text query", () => {
       cy.intercept("GET", "/api/activity/recents?*").as("getRecentViews");
 
       visitEmbeddingWithSearch("/");
@@ -229,6 +220,14 @@ describe("scenarios > search", () => {
         cy.findByText("Recently viewed").should("exist");
       });
       cy.location("pathname").should("eq", "/");
+
+      H.getSearchBar().type(" ").should("have.value", " ");
+      cy.findByTestId("search-results-floating-container").within(() => {
+        cy.findByText("Recently viewed").should("exist");
+      });
+      H.getSearchBar().type("{enter}");
+      cy.location("pathname").should("eq", "/");
+      cy.get("@search.all").should("have.length", 0);
     });
 
     it("should render full page search when search text is present and user clicks 'Enter'", () => {
@@ -258,7 +257,16 @@ describe("issue 28788", () => {
     cy.intercept("GET", "/api/search*").as("search");
   });
 
-  it("search results container should not be scrollable horizontally (metabase#28788)", () => {
+  it("search results should not overflow or scroll horizontally with long names and descriptions (metabase#28788)", () => {
+    cy.signInAsAdmin();
+    H.createQuestion({
+      name: "Description Test",
+      query: { "source-table": ORDERS_ID },
+      description:
+        "testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting",
+    });
+    cy.signInAsNormalUser();
+
     const questionDetails = {
       name: `28788-${LONG_STRING}`,
       type: "model",
@@ -288,5 +296,19 @@ describe("issue 28788", () => {
     cy.findByTestId("search-bar-results-container").then(($container) => {
       expect(H.isScrollableHorizontally($container[0])).to.be.false;
     });
+
+    cy.findByPlaceholderText("Search…").clear().type("Test");
+    cy.findByTestId("search-results-floating-container")
+      .invoke("outerWidth")
+      .then((parentWidth) => {
+        cy.contains("[data-testid=search-result-item]", "Description Test")
+          .findByTestId("result-description")
+          .invoke("outerWidth")
+          .should(
+            "be.lessThan",
+            parentWidth,
+            "Result description width should not exceed parent container width",
+          );
+      });
   });
 });

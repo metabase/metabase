@@ -1,33 +1,4 @@
 const { H } = cy;
-import { USERS } from "e2e/support/cypress_data";
-
-["admin", "normal"].forEach((user) => {
-  describe(`search > ${user} user`, () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signIn(user);
-      H.visitFullAppEmbeddingUrl({
-        url: "/",
-        qs: { top_nav: true, search: true },
-      });
-    });
-
-    // There was no issue for this, but it was implemented in pull request #15614
-    it("should be able to use typeahead search functionality", () => {
-      const personalCollectionsLength =
-        user === "admin" ? Object.entries(USERS).length : 1;
-
-      cy.findByPlaceholderText("Search…").type("pers");
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByTestId("search-results-list").within(() => {
-        cy.findAllByText(/personal collection$/i).should(
-          "have.length",
-          personalCollectionsLength,
-        );
-      });
-    });
-  });
-});
 
 describe("command palette", () => {
   beforeEach(() => {

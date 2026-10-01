@@ -40,28 +40,33 @@ describe("search > recently viewed", () => {
     cy.findByTestId("loading-indicator").should("not.exist");
   });
 
-  it("shows list of recently viewed items", () => {
+  it("shows an up-to-date list of recently viewed items, and allows to select an item from keyboard (metabase#36868)", () => {
+    cy.findByTestId("recents-list-container").findByText("Recently viewed");
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
-  });
 
-  it("allows to select an item from keyboard", () => {
-    cy.findByTestId("recents-list-container").findByText("Recently viewed");
-    cy.get("body").trigger("keydown", { key: "ArrowDown" });
-    cy.get("body").trigger("keydown", { key: "ArrowDown" });
-    cy.get("body").trigger("keydown", { key: "Enter" });
-
-    cy.url().should("match", /\/question\/\d+-orders$/);
-  });
-
-  it("shows up-to-date list of recently viewed items after another page is visited (metabase#36868)", () => {
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
     cy.findByTestId("loading-indicator").should("not.exist");
 
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
+    assertRecentlyViewedItem(2, "People", "Table");
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    advanceServerClockBy(100);
+    cy.get("body").trigger("keydown", { key: "ArrowDown" });
+    cy.get("body").trigger("keydown", { key: "ArrowDown" });
+    cy.get("body").trigger("keydown", { key: "Enter" });
+
+    cy.url().should("match", /\/question\/\d+-orders$/);
+    cy.wait("@cardQuery");
+
+    cy.findByPlaceholderText("Search…").click();
+    cy.wait("@recent");
+
+    assertRecentlyViewedItem(0, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
 
     cy.intercept("/api/dataset").as("dataset");
