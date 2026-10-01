@@ -98,7 +98,7 @@
   [value]
   (if (nil? value)
     ""
-    (-> (llm-shape/truncate value max-cell-chars)
+    (-> (llm-shape/truncate (str value) max-cell-chars)
         (str/replace #"(?U)\s+" " ")
         llm-shape/escape-xml-content
         (str/replace "\\" "\\\\")
