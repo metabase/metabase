@@ -27,12 +27,15 @@ describe("scenarios > auth > signin", () => {
     cy.location("pathname").should("eq", "/auth/login");
     cy.findByLabelText("Email address").should("be.focused");
 
+    cy.log("reject invalid credentials");
     [
       { email: admin.email, password: "INVALID" + admin.password },
       { email: "INVALID" + admin.email, password: admin.password },
     ].forEach(({ email, password }) => {
-      cy.findByLabelText("Email address").clear().type(email);
-      cy.findByLabelText("Password").clear().type(password);
+      cy.findByLabelText("Email address").clear();
+      cy.findByLabelText("Password").clear();
+      cy.findByLabelText("Email address").type(email);
+      cy.findByLabelText("Password").type(password);
       cy.button("Sign in").click();
       cy.wait("@signIn").its("response.statusCode").should("eq", 401);
       cy.findByRole("alert")
@@ -40,11 +43,14 @@ describe("scenarios > auth > signin", () => {
         .should("be.visible");
     });
 
-    cy.findByLabelText("Email address").clear().type(admin.email.toUpperCase());
+    cy.log("allow login regardless of email case");
+    cy.findByLabelText("Email address").clear();
+    cy.findByLabelText("Password").clear();
+    cy.findByLabelText("Email address").type(admin.email.toUpperCase());
+    cy.findByLabelText("Password").type(admin.password);
     cy.findByRole("checkbox", { name: "Remember me" }).should("be.checked");
     cy.findByLabelText("Remember me").click();
     cy.findByRole("checkbox", { name: "Remember me" }).should("not.be.checked");
-    cy.findByLabelText("Password").clear().type(admin.password);
     cy.button("Sign in").click();
     cy.wait("@signIn").its("response.statusCode").should("eq", 200);
     cy.findByTestId("greeting-message").should("contain.text", "Bobby");
