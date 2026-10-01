@@ -21,6 +21,15 @@
       [:a :b]    [:a "-" :b]
       [:a :b :c] [:a "-" :b "-" :c])))
 
+(deftest ^:parallel sequences-test
+  (testing "Support compiling different types of sequences"
+    (are [xs] (= ["SELECT (1, 2) AS \"ONE\""]
+                 (funnysql/format {:select [[xs :one]]} :h2))
+      [1 2]
+      (list 1 2)
+      (lazy-seq [1 2])
+      #{1 2})))
+
 (deftest ^:parallel equals-test
   (are [value expected] (= expected
                            (funnysql/format {:where [:= :field value]} :postgres))
@@ -78,6 +87,9 @@
 (deftest ^:parallel in-test
   (is (= ["WHERE \"table\".\"field\" IN (1, 2, 3)"]
          (funnysql/format {:where [:in :table.field [1 2 3]]} :postgres)))
+  (is (= ["WHERE \"table\".\"field\" IN (3)"]
+         (funnysql/format {:where [:in :table.field [[:inline 3]]]} :postgres)
+         (funnysql/format {:where [:in :table.field [:inline [3]]]} :postgres)))
   (testing "multiple sequences (used in combination with `:composite`)"
     (is (= ["WHERE \"table\".\"field\" IN ((1, 2, 3), (4, 5, 6))"]
            (funnysql/format {:where [:in :table.field [[1 2 3] [4 5 6]]]} :postgres)))))

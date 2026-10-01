@@ -34,6 +34,10 @@
   (and (map? x)
        (:allow-subquery (meta x))))
 
+(defn- fn-call-form? [x]
+  (and (vector? x)
+       (keyword? (first x))))
+
 (defn- object! [x context]
   (append-sql! context "?")
   (append-arg! context x))
@@ -504,6 +508,7 @@
                 :in     false
                 :not-in true)
               context)
+    ;; non-empty values
     (do
       (compile! lhs context)
       (append-sql! context (case f
@@ -514,7 +519,8 @@
         (-parens! vs context)
 
         ;; sequence of sequences
-        (sequential? (first vs))
+        (and (sequential? (first vs))
+             (not (fn-call-form? (first vs))))
         (do
           (append-sql! context "(")
           (interpose-fn
@@ -522,6 +528,10 @@
            #(-list! % context)
            #(append-sql! context ", "))
           (append-sql! context ")"))
+
+        ;; Handle nonsense like`[:in :field [:inline [3]]]`
+        (fn-call-form? vs)
+        (compile! vs context)
 
         :else
         (-list! vs context)))))
@@ -564,8 +574,14 @@
   (append-sql! context ")"))
 
 (defn- inline! [x context]
-  (when-not ((some-fn number? boolean?) x)
-    (throw (ex-info ":inline is only allowed for numbers and booleans" {:x x})))
+  (letfn [(inlineable-atomic-value? [x]
+            ((some-fn number? boolean?) x))
+          (inlineable? [x]
+            (or (inlineable-atomic-value? x)
+                (and ((some-fn sequential? set?) x)
+                     (every? inlineable-atomic-value? x))))]
+    (when-not (inlineable? x)
+      (throw (ex-info ":inline is only allowed for numbers and booleans" {:x x}))))
   (compile! x context))
 
 (defn- check-valid-unit [unit]
@@ -781,21 +797,22 @@
     (throw (ex-info "Function is not currently supported; add it to metabase.funnysql.core/-fn-call! if it should be"
                     {:f f, :args args}))))
 
-(defn- vector! [xs context]
-  (if (keyword? (first xs))
+(defn- sequence! [xs context]
+  (if (fn-call-form? xs)
     (-fn-call! xs context)
-    (-commas! xs context)))
+    (-list! xs context)))
 
 (extend-protocol Compile
-  Object                         (compile! [this context] (object! this context))
-  nil                            (compile! [this context] (null! this context))
-  Boolean                        (compile! [this context] (boolean! this context))
-  Number                         (compile! [this context] (number! this context))
-  clojure.lang.Keyword           (compile! [this context] (keyword! this context))
-  clojure.lang.IPersistentMap    (compile! [this context] ((if (:allow-subquery (meta this))
-                                                             map!
-                                                             object!) this context))
-  clojure.lang.IPersistentVector (compile! [this context] (vector! this context)))
+  Object                      (compile! [this context] (object! this context))
+  nil                         (compile! [this context] (null! this context))
+  Boolean                     (compile! [this context] (boolean! this context))
+  Number                      (compile! [this context] (number! this context))
+  clojure.lang.Keyword        (compile! [this context] (keyword! this context))
+  clojure.lang.IPersistentMap (compile! [this context] ((if (:allow-subquery (meta this))
+                                                          map!
+                                                          object!) this context))
+  clojure.lang.IPersistentSet (compile! [this context] (sequence! this context))
+  clojure.lang.Sequential     (compile! [this context] (sequence! this context)))
 
 (mu/defn format :- [:cat :string [:* :any]]
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`."
