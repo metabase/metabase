@@ -157,13 +157,11 @@ function verifyMetricDefinitionScalar({ aggregation, value }) {
 describe("scenarios > metrics > editing", () => {
   beforeEach(() => {
     H.restore();
-    H.resetSnowplow();
     cy.signInAsNormalUser();
   });
 
   describe("organization", () => {
     it("should be able to change the query definition of a metric", () => {
-      cy.intercept("PUT", "/api/card/*").as("updateCard");
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
         H.setMetricDefaultDimension(card.id, "Created At");
         cy.visit(`/metric/${card.id}/query`);

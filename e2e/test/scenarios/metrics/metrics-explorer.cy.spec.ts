@@ -265,7 +265,6 @@ const selectBreakout = (
  */
 const interceptDatasetQuery = () => {
   cy.intercept("POST", "/api/metric/dataset").as("dataset");
-  cy.intercept("POST", "/api/metric/breakout-values").as("breakoutValues");
 };
 
 /**
@@ -508,8 +507,6 @@ describe("scenarios > metrics > explorer", () => {
 
     interceptDatasetQuery();
     cy.intercept("GET", "/api/metric/*").as("getMetric");
-    cy.intercept("GET", "/api/measure/*").as("getMeasure");
-    cy.intercept("GET", "/api/search*").as("search");
     H.resetSnowplow();
     H.enableTracking();
   });
@@ -1340,13 +1337,8 @@ describe("scenarios > metrics > explorer", () => {
       it("should configure per-metric dimensions for a shared category", () => {
         addMetric("Count of products");
 
-        H.MetricsViewer.openDimensionPickerSidebar()
-          .findByRole("button", { name: "Time" })
-          .realHover();
-
-        H.MetricsViewer.dimensionPickerSidebar()
-          .findByRole("button", { name: "Configure Time" })
-          .click();
+        H.MetricsViewer.openDimensionPickerSidebar();
+        openTimeDimensionConfiguration();
 
         H.MetricsViewer.dimensionPickerSidebar()
           .findByLabelText("Select dimension for Count of orders")
@@ -1363,10 +1355,7 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       it("should render column labels as static text", () => {
-        H.MetricsViewer.getMetricControls()
-          .findByLabelText("Column label options")
-          .click();
-        cy.findByRole("switch", { name: "Show column labels" }).click();
+        showColumnLabels();
 
         H.MetricsViewer.getDimensionPillBarContainer().within(() => {
           cy.findByText("Created At").should("be.visible").click();
@@ -1992,7 +1981,6 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Dimension filters", () => {
     beforeEach(() => {
-      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
     });
 
@@ -2025,7 +2013,6 @@ describe("scenarios > metrics > explorer", () => {
   describe("Responsive viewer controls", () => {
     const setupTimeControls = (width: number) => {
       cy.viewport(1280, 900);
-      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       H.MetricsViewer.searchInput().type("{end}, Count of orders", {
         waitForAnimations: true,
@@ -2075,7 +2062,6 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Metric math", () => {
     beforeEach(() => {
-      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
     });
@@ -2720,7 +2706,5 @@ function createTestMeasure(
         aggregation: [aggregation],
       },
     },
-  }).then(({ body }) => {
-    cy.wrap(body.id).as("measureId");
   });
 }

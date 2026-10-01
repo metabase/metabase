@@ -383,7 +383,6 @@ describe("scenarios > metrics > metric page", () => {
   });
 
   it("should restrict editing controls and definition tab for read-only users", () => {
-    cy.signInAsAdmin();
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
       cy.signIn("readonly");
       H.visitMetric(metric.id);

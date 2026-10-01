@@ -90,7 +90,6 @@ describe("scenarios > metrics > dashboard", () => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/search?*").as("search");
   });
 
@@ -338,9 +337,6 @@ describe("scenarios > metrics > dashboard default dimension", () => {
           );
 
           expect(totalDimension, "Total metric dimension").not.to.be.undefined;
-          if (!totalDimension) {
-            return;
-          }
 
           return cy.request(
             "POST",

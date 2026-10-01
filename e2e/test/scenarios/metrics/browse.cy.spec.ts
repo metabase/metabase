@@ -90,7 +90,6 @@ describe("scenarios > browse > metrics", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   describe("no metrics", () => {
@@ -407,7 +406,6 @@ describe("scenarios > browse > metrics", () => {
       cy.get<{ request: Request }>("@setSetting").should((xhr) => {
         expect(xhr.request.body).to.deep.equal({ value: true });
       });
-      cy.wait("@setSetting");
 
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");

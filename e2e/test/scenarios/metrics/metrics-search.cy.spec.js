@@ -17,8 +17,6 @@ describe("scenarios > metrics > search", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
     cy.intercept("GET", "/api/search?q=*").as("search");
   });
 

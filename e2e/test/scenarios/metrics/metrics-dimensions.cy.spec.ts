@@ -192,7 +192,6 @@ describe("scenarios > metrics > dimensions", () => {
       .scrollIntoView()
       .findByText("Default")
       .should("be.visible");
-    dimensionRow("Created At").findByText("Default").should("not.exist");
     settingsPanel().findByText("Default dimension").should("be.visible");
     dimensionList().findAllByText("Default").should("have.length", 1);
 
