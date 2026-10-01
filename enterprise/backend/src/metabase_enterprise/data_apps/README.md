@@ -110,8 +110,7 @@ Administrators assign existing internal permission groups through `/api/apps/:sl
 
 Membership in any assigned group grants app access. Administrators can access every app. The list API hides
 unassigned apps from other users, and metadata, bundle, and HTML entry-point requests check the same assignment.
-Collection access alone does not grant app access. An authorized request for an app without a resource collection
-returns HTTP 409 so the frontend can show its unpublished state.
+Collection access alone does not grant app access.
 
 Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
 access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
