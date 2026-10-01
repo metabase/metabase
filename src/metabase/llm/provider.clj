@@ -829,10 +829,9 @@
 (defn- with-implied-ollama-hosting
   "An Ollama overlay whose base URL selects a self-hosted deployment. The URL applies to nothing else, so a variable
   setting it would otherwise sit inert under a stored Cloud connection. `MB_LLM_OLLAMA_HOSTING`, where set, still
-  decides. The implied `:hosting` is attributed to the URL's variable, the one the operator actually set.
-
-  Its ugly and ollama-specific but doing this in generic way was even uglier."
+  decides. The implied `:hosting` is attributed to the URL's variable, the one the operator actually set."
   [{:keys [config vars] :as supplied}]
+  ;; Ugly and Ollama-specific, but doing this in a generic way was even uglier.
   (if (and (:base-url config) (not (:hosting config)))
     (-> supplied
         (assoc-in [:config :hosting] ollama-self-hosted)
