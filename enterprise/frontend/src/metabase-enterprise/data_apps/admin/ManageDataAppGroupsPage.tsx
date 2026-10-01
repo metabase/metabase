@@ -20,25 +20,28 @@ import { DataAppGroupList } from "./components/DataAppGroupList/DataAppGroupList
 
 export const ManageDataAppGroupsPage = () => {
   const { slug = "" } = useParams<{ slug: string }>();
-  const appRequest = useListDataAppsQuery();
-  const app = appRequest.data?.find((app) => app.name === slug);
 
-  const groupRequest = useGetDataAppGroupsQuery(slug);
+  const listQuery = useListDataAppsQuery();
+  const listGroupsQuery = useGetDataAppGroupsQuery(slug);
+
+  const app = listQuery.data?.find((app) => app.name === slug);
+  const isAppMissing = listQuery.isSuccess && !app;
 
   const error =
-    appRequest.error ??
-    groupRequest.error ??
-    (appRequest.isSuccess && !app ? t`Data app not found.` : undefined);
-  const isLoading = appRequest.isLoading || groupRequest.isLoading;
+    listQuery.error ??
+    listGroupsQuery.error ??
+    (isAppMissing ? t`Data app not found.` : undefined);
+
+  const isLoading = listQuery.isLoading || listGroupsQuery.isLoading;
 
   return (
     <SettingsPageWrapper>
       <LoadingAndErrorWrapper error={error} loading={isLoading}>
-        {app && groupRequest.data && (
+        {app && listGroupsQuery.data && (
           <DataAppGroups
             appName={slug}
             appTitle={app.display_name}
-            groups={groupRequest.data}
+            groups={listGroupsQuery.data}
           />
         )}
       </LoadingAndErrorWrapper>
@@ -70,6 +73,7 @@ const DataAppGroups = ({
     }
 
     setIsAdding(false);
+
     return true;
   };
 
