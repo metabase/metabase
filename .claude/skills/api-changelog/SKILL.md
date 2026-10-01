@@ -65,10 +65,12 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
    ```
 
    `--refs` checks each ref out into a throwaway worktree and runs that ref's own
-   `generate-openapi-spec`, so it works on any ref and never touches your checkout.
-   Prefer it: `--committed` reports "0 findings" between v63 and master, which is
-   an artifact of both refs carrying the same stale blob, not an API that did not
-   change.
+   `generate-openapi-spec`, so it is not limited to refs that carry a committed spec
+   and never touches your checkout. Very old refs may not build with the current
+   toolchain; it falls back to the committed spec and says so when that happens.
+   Prefer it. `--committed` compares whatever blob each ref happens to carry, and
+   when a release branch and master share a stale one it reports far fewer findings
+   than the API actually changed - an artifact of the spec, not of the API.
 
 ### Start from the grouped view
 
@@ -109,11 +111,11 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
    (a public Stripe-spec diff found 663 of 679 changes additive); reading the
    full diff to find the breaking few is how entries get missed.
 
-   **Identical committed specs do not mean the API did not change.** Two refs can
-   carry the same stale blob: `--committed origin/release-x.63.x master` reports 0
-   findings, while generating from source reports 10 removed endpoints for the same
-   pair. Before reporting "no API surface changes", re-run without `--committed`.
-   Only a clean generated diff supports that conclusion.
+   **Identical or near-identical committed specs do not mean the API did not
+   change.** Two refs often carry the same stale blob, so `--committed` can report
+   zero findings for a pair that generating from source shows has removed endpoints.
+   Before reporting "no API surface changes", re-run without `--committed`. Only a
+   clean generated diff supports that conclusion.
 
 3. Review the classification. The tool decides severity structurally, but two
    cases still need your judgement:

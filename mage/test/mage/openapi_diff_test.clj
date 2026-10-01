@@ -188,9 +188,10 @@
           new-spec (spec {"/api/x" {"put" (op :body (scim "integer"))}})]
       (is (map? (openapi-diff/diff old-spec old-spec)) "resolves without throwing")
       (is (breaking? old-spec new-spec) "string -> integer under a $ref-named property still narrows")))
-  (testing "a deeply nested change is still compared, not collapsed to <deep>"
-    ;; The depth guard counts $ref hops, not nesting levels: 52 of 637 real operations hold a
-    ;; subtree deeper than 12 levels, and collapsing both sides to "<deep>" hid every change in them.
+  (testing "a deeply nested change is still compared, not collapsed"
+    ;; Deep nesting is ordinary and must be compared field by field. A hop or depth limit would
+    ;; replace deep nodes with the same placeholder on both sides, which compares equal and reports
+    ;; nothing; `resolve-refs` terminates via `seen` instead, so no limit is needed.
     (let [nest (fn [leaf] (obj {"a" (obj {"b" (obj {"c" (obj {"d" (obj {"e" (obj {"f" leaf})})})})})}))
           old-spec (spec {"/api/x" {"post" (op :body (nest {"enum" ["a" "b" "c"]}))}})
           new-spec (spec {"/api/x" {"post" (op :body (nest {"enum" ["a"]}))}})]

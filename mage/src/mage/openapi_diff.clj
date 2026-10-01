@@ -18,9 +18,8 @@
   Response coverage is partial: only endpoints that declare a response schema can be compared. Most
   emit description-only 2XX/4XX/5XX stubs."
   (:require
-   ;; mage runs under babashka, which bundles cheshire; metabase.util.json isn't on its classpath
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [cheshire.core :as json]
+   ;; mage runs under babashka; metabase.util.json isn't on its classpath
+   [babashka.json :as json]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -50,7 +49,6 @@
                target (get-in spec path {})
                rest'  (dissoc node "$ref")
                merged (if (seq rest') (merge target rest') target)]
-           ;; Only a $ref hop advances depth. Walking into a map or vector does not.
            (resolve-refs merged spec (conj seen ref))))
        (update-vals node #(resolve-refs % spec seen)))
 
@@ -87,8 +85,8 @@
   [node]
   (when (map? node)
     (cond
-      (contains? node "const") #{(json/generate-string (get node "const"))}
-      (sequential? (get node "enum")) (set (map json/generate-string (get node "enum")))
+      (contains? node "const") #{(json/write-str (get node "const"))}
+      (sequential? (get node "enum")) (set (map json/write-str (get node "enum")))
       :else nil)))
 
 (defn- widening?
@@ -175,16 +173,16 @@
    (if (map? value)
      (let [truncate #(cond-> % (> (count %) limit) (-> (subs 0 limit) (str "...")))]
        (cond
-         (contains? value "const") (str "const=" (truncate (json/generate-string (get value "const"))))
-         (contains? value "enum") (str "enum=" (truncate (json/generate-string (get value "enum"))))
+         (contains? value "const") (str "const=" (truncate (json/write-str (get value "const"))))
+         (contains? value "enum") (str "enum=" (truncate (json/write-str (get value "enum"))))
          (seq (concat (get value "oneOf") (get value "anyOf")))
          (str/join " | " (map #(brief % 60) (take 4 (concat (get value "oneOf") (get value "anyOf")))))
          (and (= "object" (get value "type")) (map? (get value "properties")))
          (str "object{" (truncate (str/join "," (sort (keys (get value "properties"))))) "}")
          (= "array" (get value "type")) (str "array<" (brief (get value "items" {}) 60) ">")
          (get value "type") (str (get value "type"))
-         :else (truncate (json/generate-string value))))
-     (let [s (json/generate-string value)]
+         :else (truncate (json/write-str value))))
+     (let [s (json/write-str value)]
        (cond-> s (> (count s) limit) (-> (subs 0 limit) (str "...")))))))
 
 (def ^:private breaking :breaking)
@@ -570,9 +568,9 @@
 (def ^:private api-source-pathspecs
   "Everything that can declare an endpoint.
 
-  `src/metabase/**/api.clj` alone matches 66 files while 158 contain `defendpoint`: endpoints also
+  `src/metabase/**/api.clj` alone matches 65 files while 160 contain `defendpoint`: endpoints also
   live under `src/metabase/*/api/*.clj` and throughout `enterprise/backend/src`, and the spec
-  carries 238 `/api/ee/` paths. Watching only the narrow pathspec lets the check report
+  carries 106 `/api/ee/` paths. Watching only the narrow pathspec lets the check report
   `OK: spec is current` while dozens of newer endpoint files sit on disk, which is the exact
   failure it exists to prevent."
   ["src/metabase/**/api.clj"
@@ -671,8 +669,8 @@
                   [op np (cond-> [] ostale (conj old-arg) nstale (conj new-arg))]))
               [old-arg new-arg []])]
         (when (:refs options) (println))
-        (let [d (diff (json/parse-string (slurp old-path))
-                      (json/parse-string (slurp new-path)))]
+        (let [d (diff (json/read-str (slurp old-path) {:key-fn identity})
+                      (json/read-str (slurp new-path) {:key-fn identity}))]
           (if (:grouped options)
             (print-grouped d min-severity)
             (print-diff d min-severity)))
