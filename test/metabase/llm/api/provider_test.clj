@@ -1747,6 +1747,32 @@
               (is (= "http://second.internal:11434/v1" (:base-url (last @probed)))
                   "a key no per-provider variable names is nobody's but the admin's"))))))))
 
+(deftest create-does-not-send-an-environment-key-to-an-address-the-admin-typed-test
+  (testing "a key the environment supplies goes only where the environment points, so a create naming its own address is refused before anything is probed"
+    (let [probed (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (swap! probed conj credentials)
+                                                             {:models [{:id "m" :display_name "m"}]})]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "sk-operator"]
+            (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                  {:type "vllm" :config {:base-url "https://elsewhere.example.com/v1"}})
+            (is (not (str/includes? (pr-str @probed) "sk-operator")))
+            (is (empty? (llm.provider/stored-connections)))))))))
+
+(deftest create-selects-the-model-the-environment-leaves-test
+  (testing "Metabot is pointed at the deployment the connection runs on, not the one the form named"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+          (mt/with-temp-env-var-value! [mb-llm-azure-deployment-name "prod"]
+            (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                  {:type   "azure"
+                                   :config {:api-key         "azure-key"
+                                            :base-url        "https://r.services.ai.azure.com/openai"
+                                            :deployment-name "dev"}})
+            (is (= "azure/openai/prod" (metabot.settings/llm-metabot-provider)))))))))
+
 (deftest create-answers-for-the-connection-the-admin-will-have-test
   (testing "creating runs the same way: what is validated and answered with is what the app DB keeps"
     (mt/with-temporary-setting-values [llm-providers []]

@@ -451,19 +451,22 @@
           ;; its fields has a say in
           effective (llm.provider/effective-config conn env-config)]
       (llm.provider/assert-credentials-not-captured! conn submitted env-config)
+      ;; a secret the environment supplies may only go where the environment points, as on update
+      (llm.provider/assert-destination-change-authorized! type env-config effective submitted (keys env-config))
       (llm.provider/validate-config! type effective)
       (let [{:keys [connection-info] :as listed} (verify-credentials! conn effective model)
             conn              (update conn :config merge connection-info)
             had-usable-model? (metabot-has-a-usable-model?)]
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
-        (when-not had-usable-model?
-          ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
-          ;; the probe exercised, so connecting one leaves the instance working rather than model-less
-          (select-model-for-new-connection! conn (or model (:probed-model connection-info))))
-        (seed-models-cache! conn listed)
-        ;; read back rather than answer from what was submitted: the environment has a say in this
-        ;; connection, and the admin should not have to reload the page to find out what it was
-        (connection-response (llm.provider/connection conn-key))))))
+        ;; read back rather than go on what was submitted: the environment has a say in this connection, and
+        ;; the model Metabot is pointed at, the cached listing and the answer all have to be about what it runs on
+        (let [live (llm.provider/connection conn-key)]
+          (when-not had-usable-model?
+            ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
+            ;; the probe exercised, so connecting one leaves the instance working rather than model-less
+            (select-model-for-new-connection! live (or model (:probed-model connection-info))))
+          (seed-models-cache! live listed)
+          (connection-response live))))))
 
 (api.macros/defendpoint :put "/providers/:key"
   :- connection-response-schema
