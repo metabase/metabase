@@ -161,12 +161,15 @@ describe("PublicLinkPopover", () => {
   describe("when creating public links", () => {
     it("should call createPublicLink when uuid is null and isOpen is true", async () => {
       const { createPublicLink } = setup({ hasUUID: false });
+      // `useAsync` in the popover resolves after this render.
+      await settlePendingUpdates();
 
       expect(createPublicLink).toHaveBeenCalledTimes(1);
     });
 
-    it("should not call createPublicLink when isOpen is false", () => {
+    it("should not call createPublicLink when isOpen is false", async () => {
       const { createPublicLink } = setup({ isOpen: false, hasUUID: false });
+      await settlePendingUpdates();
 
       expect(createPublicLink).not.toHaveBeenCalled();
     });
