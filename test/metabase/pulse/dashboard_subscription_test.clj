@@ -1234,6 +1234,9 @@
                                          :table.cell_column  "count"}}
       ;; Slack rasterizes the rendered hiccup; wrap the rasterizer to see what it was given
       :fixture (fn [_ thunk]
+                 ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
+                 ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
+                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                  (with-redefs [channel.render/png-from-render-info
                                (pulse.test-util/wrap-function @#'channel.render/png-from-render-info)]
                    (thunk)))
@@ -1719,13 +1722,13 @@
   (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
     (let [render-args (atom nil)]
       ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
-      (with-redefs [channel.render/render-dashboard-to-pdf
-                    (fn [dashboard-id user-id parameters & [_paper-key parts]]
-                      (reset! render-args {:dashboard-id dashboard-id
-                                           :user-id      user-id
-                                           :parameters   parameters
-                                           :parts        parts})
-                      (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+      (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                  (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                                    (reset! render-args {:dashboard-id dashboard-id
+                                                         :user-id      user-id
+                                                         :parameters   parameters
+                                                         :parts        parts})
+                                    (.getBytes "%PDF-1.4 stub" "UTF-8"))]
         (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
                                                            :dataset_query (mt/mbql-query orders {:limit 1})}
                        :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
@@ -1761,8 +1764,8 @@
 (deftest dashboard-sub-no-pdf-by-default-test
   (testing "Without :include_pdf, the renderer is not invoked and no PDF is attached"
     (let [called? (atom false)]
-      (with-redefs [channel.render/render-dashboard-to-pdf
-                    (fn [& _] (reset! called? true) (byte-array 0))]
+      (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                  (fn [& _] (reset! called? true) (byte-array 0))]
         (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
                                                            :dataset_query (mt/mbql-query orders {:limit 1})}
                        :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
@@ -1801,11 +1804,11 @@
                                              :channel_type "slack"
                                              :details      {:channel "#general" :include_pdf true}}]
         (let [render-args (atom nil)]
-          (with-redefs [channel.render/render-dashboard-to-pdf
-                        (fn [dashboard-id user-id parameters & [_paper-key parts]]
-                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id
-                                               :parameters parameters :parts parts})
-                          (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+          (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                      (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                                        (reset! render-args {:dashboard-id dashboard-id :user-id user-id
+                                                             :parameters parameters :parts parts})
+                                        (.getBytes "%PDF-1.4 stub" "UTF-8"))]
             (pulse.test-util/slack-test-setup!
              (let [results (pulse.test-util/with-captured-channel-send-messages!
                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
