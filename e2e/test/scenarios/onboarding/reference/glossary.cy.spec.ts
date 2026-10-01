@@ -27,67 +27,42 @@ function executeCreateGlossaryTermFlow() {
   });
 }
 
-function executeUpdateGlossaryTermFlow(visitPageFn: VoidFunction) {
-  cy.request("POST", "/api/glossary", {
-    term: "Cat",
-    definition: "Meows",
-  }).then(({ body }) => {
-    const { id } = body;
-
-    cy.intercept("PUT", `/api/glossary/${id}`, (req) => {
-      expect(req.body).to.deep.equal({
-        term: "Kitten",
-        definition: "Young cat",
-      });
-    }).as("updateGlossary");
-
-    visitPageFn();
-
-    cy.get("table").within(() => {
-      cy.findByText("Cat").click();
+function executeUpdateGlossaryTermFlow() {
+  cy.intercept("PUT", "/api/glossary/*", (req) => {
+    expect(req.body).to.deep.equal({
+      term: "Kitten",
+      definition: "Young cat",
     });
+  }).as("updateGlossary");
 
-    cy.findByPlaceholderText(/boat/i).clear().type("Kitten");
-    cy.findByPlaceholderText(/a small vessel.*/i)
-      .clear()
-      .type("Young cat");
+  cy.get("table").findByText("Boat").click();
+  cy.findByPlaceholderText(/boat/i).clear().type("Kitten");
+  cy.findByPlaceholderText(/a small vessel.*/i)
+    .clear()
+    .type("Young cat");
+  cy.findByRole("button", { name: /save/i }).click();
+  cy.wait("@updateGlossary");
 
-    cy.findByRole("button", { name: /save/i }).click();
-
-    cy.wait("@updateGlossary");
-
-    cy.get("table").within(() => {
-      cy.findByText("Kitten").should("be.visible");
-      cy.findByText("Young cat").should("be.visible");
-    });
+  cy.get("table").within(() => {
+    cy.findByText("Kitten").should("be.visible");
+    cy.findByText("Young cat").should("be.visible");
   });
 }
 
-function executeDeleteGlossaryTermFlow(visitPageFn: VoidFunction) {
-  cy.request("POST", "/api/glossary", {
-    term: "DeleteMe",
-    definition: "To be removed",
-  }).then(({ body }) => {
-    const { id } = body;
-    cy.intercept("DELETE", `/api/glossary/${id}`).as("deleteGlossary");
+function executeDeleteGlossaryTermFlow() {
+  cy.intercept("DELETE", "/api/glossary/*").as("deleteGlossary");
 
-    visitPageFn();
-
-    cy.get("table").within(() => {
-      cy.findByText("DeleteMe").should("be.visible").realHover();
-      cy.findByRole("button", { name: /delete/i }).click();
-    });
-
-    cy.findByRole("dialog").within(() => {
-      cy.findByRole("button", { name: /delete/i }).click();
-    });
-
-    cy.wait("@deleteGlossary");
-
-    cy.get("table").within(() => {
-      cy.findByText("DeleteMe").should("not.exist");
-    });
+  cy.get("table").within(() => {
+    cy.findByText("Kitten").should("be.visible").realHover();
+    cy.findByRole("button", { name: /delete/i }).click();
   });
+
+  cy.findByRole("dialog").within(() => {
+    cy.findByRole("button", { name: /delete/i }).click();
+  });
+
+  cy.wait("@deleteGlossary");
+  cy.get("table").findByText("Kitten").should("not.exist");
 }
 
 describe("data reference > glossary", () => {
@@ -125,9 +100,9 @@ describe("data reference > glossary", () => {
     visitGlossary();
     executeCreateGlossaryTermFlow();
 
-    executeUpdateGlossaryTermFlow(visitGlossary);
+    executeUpdateGlossaryTermFlow();
 
-    executeDeleteGlossaryTermFlow(visitGlossary);
+    executeDeleteGlossaryTermFlow();
   });
 });
 
@@ -152,12 +127,12 @@ describe("data studio > glossary", () => {
       event: "data_studio_glossary_term_created",
     });
 
-    executeUpdateGlossaryTermFlow(visitDataStudioGlossary);
+    executeUpdateGlossaryTermFlow();
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_glossary_term_updated",
     });
 
-    executeDeleteGlossaryTermFlow(visitDataStudioGlossary);
+    executeDeleteGlossaryTermFlow();
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_glossary_term_deleted",
     });

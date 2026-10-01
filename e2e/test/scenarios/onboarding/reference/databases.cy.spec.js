@@ -79,8 +79,6 @@ describe("scenarios > reference > databases", () => {
         "getXrayDashboard",
       );
       H.resetSnowplow();
-      H.restore();
-      cy.signInAsAdmin();
       H.enableTracking();
     });
 
@@ -88,7 +86,7 @@ describe("scenarios > reference > databases", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    it("should x-ray a table in a data reference page", () => {
+    it("should x-ray a table and a field in data reference pages", () => {
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}`);
       cy.findAllByRole("listitem")
         .filter(":contains(X-ray this table)")
@@ -100,9 +98,7 @@ describe("scenarios > reference > databases", () => {
         event_detail: "table",
         triggered_from: "data_reference",
       });
-    });
 
-    it("should x-ray a field in a data reference page", () => {
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}/fields/${PEOPLE.EMAIL}`,
       );

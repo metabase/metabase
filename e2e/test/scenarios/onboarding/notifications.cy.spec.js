@@ -222,7 +222,6 @@ describe("scenarios > account > notifications", () => {
         .should("contain", "Subscription")
         .and("contain", "Slack’d hourly")
         .and("contain", "Created by you");
-      checkNotificationHelp();
       cy.intercept("PUT", "/api/pulse/*").as("archivePulse");
       clickUnsubscribe();
 

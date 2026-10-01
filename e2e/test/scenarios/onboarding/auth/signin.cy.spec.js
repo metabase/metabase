@@ -21,40 +21,32 @@ describe("scenarios > auth > signin", () => {
     H.getProfileLink().should("exist");
   });
 
-  [
-    {
-      name: "should display an error for incorrect passwords",
-      email: admin.email,
-      password: "INVALID" + admin.password,
-    },
-    {
-      name: "should display same error for unknown users (to avoid leaking the existence of accounts)",
-      email: "INVALID" + admin.email,
-      password: admin.password,
-    },
-  ].forEach(({ name, email, password }) => {
-    it(name, () => {
-      cy.visit("/");
-      cy.location("pathname").should("eq", "/auth/login");
-      cy.findByLabelText("Email address").type(email);
-      cy.findByLabelText("Password").type(password);
+  it("should reject invalid credentials and allow login regardless of email case", () => {
+    cy.intercept("POST", "/api/session").as("signIn");
+    cy.visit("/");
+    cy.location("pathname").should("eq", "/auth/login");
+    cy.findByLabelText("Email address").should("be.focused");
+
+    [
+      { email: admin.email, password: "INVALID" + admin.password },
+      { email: "INVALID" + admin.email, password: admin.password },
+    ].forEach(({ email, password }) => {
+      cy.findByLabelText("Email address").clear().type(email);
+      cy.findByLabelText("Password").clear().type(password);
       cy.button("Sign in").click();
+      cy.wait("@signIn").its("response.statusCode").should("eq", 401);
       cy.findByRole("alert")
         .filter(':contains("did not match stored password")')
         .should("be.visible");
     });
-  });
 
-  it("should allow login regardless of login email case", () => {
-    cy.visit("/auth/login");
-    cy.findByLabelText("Email address")
-      .should("be.focused")
-      .type(admin.email.toUpperCase());
+    cy.findByLabelText("Email address").clear().type(admin.email.toUpperCase());
     cy.findByRole("checkbox", { name: "Remember me" }).should("be.checked");
     cy.findByLabelText("Remember me").click();
     cy.findByRole("checkbox", { name: "Remember me" }).should("not.be.checked");
-    cy.findByLabelText("Password").type(admin.password);
+    cy.findByLabelText("Password").clear().type(admin.password);
     cy.button("Sign in").click();
+    cy.wait("@signIn").its("response.statusCode").should("eq", 200);
     cy.findByTestId("greeting-message").should("contain.text", "Bobby");
   });
 

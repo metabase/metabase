@@ -14,21 +14,7 @@ describe("user > settings", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to remove first name and last name (metabase#22754)", () => {
-    cy.visit("/account/profile");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(fullName);
-    cy.findByLabelText("First name").clear();
-    cy.findByLabelText("Last name").clear();
-    cy.button("Update").click();
-
-    cy.reload();
-
-    cy.findByLabelText("First name").should("be.empty");
-    cy.findByLabelText("Last name").should("be.empty");
-  });
-
-  it("should show user details and update the user without fetching memberships", () => {
+  it("should show, update, and clear user details without fetching memberships (metabase#22754)", () => {
     cy.intercept("GET", "/api/permissions/membership").as("membership");
     cy.intercept("PUT", "/api/user/*").as("updateUser");
     cy.visit("/account/profile");
@@ -47,6 +33,14 @@ describe("user > settings", () => {
     cy.findByTestId("account-header").should("contain", `John ${last_name}`);
     cy.findByDisplayValue("John").should("be.visible");
     cy.get("@membership.all").should("have.length", 0);
+
+    cy.findByLabelText("First name").clear();
+    cy.findByLabelText("Last name").clear();
+    cy.button("Update").click();
+    cy.wait("@updateUser").its("response.statusCode").should("eq", 200);
+    cy.reload();
+    cy.findByLabelText("First name").should("be.empty");
+    cy.findByLabelText("Last name").should("be.empty");
   });
 
   it("should redirect to the login page when the user has signed out but tries to visit `/account/profile` (metabase#15471)", () => {
@@ -57,25 +51,7 @@ describe("user > settings", () => {
     cy.findByText("Sign in to Metabase");
   });
 
-  it("should redirect to the login page when the user has changed the password and logged out (metabase#18151)", () => {
-    cy.visit("/account/password");
-
-    cy.findByLabelText("Current password").type(password);
-    cy.findByLabelText("Create a password").type(password);
-    cy.findByLabelText("Confirm your password").type(password);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Success");
-
-    H.getProfileLink().click();
-    H.popover().findByText("Sign out").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sign in to Metabase");
-  });
-
-  it("should validate form values (metabase#23259)", () => {
-    cy.signInAsNormalUser();
+  it("should validate passwords and redirect after saving and signing out (metabase#23259, metabase#18151)", () => {
     cy.visit("/account/password");
 
     // Validate common passwords
@@ -99,6 +75,17 @@ describe("user > settings", () => {
     cy.button("Save").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Invalid password");
+
+    cy.findByLabelText("Current password").clear().type(password);
+    cy.findByLabelText("Create a password").clear().type(password);
+    cy.findByLabelText("Confirm your password").clear().type(password);
+    cy.button("Save").click();
+    H.main().findByText("Success").should("be.visible");
+    H.getProfileLink().click();
+    H.popover().findByText("Sign out").click();
+    cy.findByRole("heading", { name: "Sign in to Metabase" }).should(
+      "be.visible",
+    );
   });
 
   it("should be able to change a language (metabase#22192)", () => {
@@ -119,24 +106,6 @@ describe("user > settings", () => {
 
     // We need some UI element other than a string, and cannot get by labels as they could be translated
     H.getProfileLink().should("exist");
-  });
-
-  it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
-    cy.request("GET", "/api/user/current").then(({ body: user }) => {
-      cy.intercept("GET", "/api/user/current").as("getUser");
-
-      cy.request("GET", "/api/session/properties").then(
-        ({ body: settings }) => {
-          cy.wrap(settings["available-locales"]).each(([locale]) => {
-            cy.log(`Using ${locale} locale`);
-            cy.request("PUT", `/api/user/${user.id}`, { locale });
-            cy.visit("/");
-            cy.wait("@getUser");
-            H.getProfileLink().should("exist");
-          });
-        },
-      );
-    });
   });
 
   it("should show correct translations when a user logs in with a locale that is different from the site locale", () => {

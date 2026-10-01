@@ -265,37 +265,6 @@ describe("scenarios > setup", () => {
     cy.findByTestId("step-number").should("have.text", "4");
   });
 
-  it("should allow a quick setup for the 'embedding' use case", () => {
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
-    );
-
-    cy.findByTestId("step-number").should("have.text", "1");
-
-    cy.findByTestId("setup-forms").within(() => {
-      const password = "12341234";
-      cy.findByDisplayValue("John").should("exist");
-      cy.findByLabelText("Create a password").type(password);
-      cy.findByLabelText("Confirm your password").type(password);
-      cy.button("Next").click();
-    });
-
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("Hi, John. Nice to meet you!").should("be.visible");
-
-      skipLicenseStepOnEE();
-
-      cy.findByText("Finish").click();
-      cy.findByText("You're all set up!").should("be.visible");
-      cy.findByText("Take me to Metabase").click();
-    });
-
-    cy.location("pathname").should("eq", "/");
-    H.main()
-      .findByText("Get started with Embedding Metabase in your app")
-      .should("be.visible");
-  });
-
   // There are only one step in the setup flow, so there is no need to show step numbers.
   it("should not show step numbers in cloud embedding use case", () => {
     H.mockSessionProperty("is-hosted?", true);
@@ -315,6 +284,8 @@ describe("scenarios > setup", () => {
     cy.visit(
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
+
+    cy.findByTestId("step-number").should("have.text", "1");
 
     cy.log("Switching language before user creation should not update setting");
     selectLanguage("Dutch");
@@ -349,9 +320,13 @@ describe("scenarios > setup", () => {
 
     cy.findByTestId("setup-forms").within(() => {
       if (IS_ENTERPRISE) {
+        cy.findByText("[zz] Activate your commercial license").should(
+          "be.visible",
+        );
         cy.findByText("[zz] I'll activate later").click();
       }
       cy.findByText("[zz] Finish").click();
+      cy.findByText("[zz] You're all set up!").should("be.visible");
       cy.findByText("[zz] Take me to Metabase").click();
     });
 

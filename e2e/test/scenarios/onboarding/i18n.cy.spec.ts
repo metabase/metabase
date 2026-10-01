@@ -1,3 +1,6 @@
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import type { LocaleData } from "metabase-types/api";
+
 const { H } = cy;
 
 const paths = [
@@ -29,7 +32,22 @@ describe("Pages accessible within one click from the homepage should work in pop
 
   beforeEach(() => {
     cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
+  });
+
+  it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
+    cy.intercept("GET", "/api/user/current").as("getUser");
+    cy.request<{ "available-locales": LocaleData[] }>(
+      "GET",
+      "/api/session/properties",
+    ).then(({ body: settings }) => {
+      settings["available-locales"].forEach(([locale]) => {
+        cy.log(`Using ${locale} locale`);
+        cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, { locale });
+        cy.visit("/");
+        cy.wait("@getUser");
+        H.getProfileLink().should("exist");
+      });
+    });
   });
 
   locales.forEach((localeName) => {
@@ -53,12 +71,16 @@ describe("Pages accessible within one click from the homepage should work in pop
 });
 
 const selectLocale = (localeName: string) => {
-  cy.visit("/account/profile");
-  cy.findByTestId("user-locale-select").findByRole("textbox").click();
-  H.popover().within(() => cy.findByText(localeName).click());
-
-  cy.get("[type=submit]").click();
-  cy.wait("@updateUserSettings");
+  cy.request<{ "available-locales": LocaleData[] }>(
+    "GET",
+    "/api/session/properties",
+  ).then(({ body: settings }) => {
+    const locale = settings["available-locales"].find(
+      ([, name]) => name === localeName,
+    )?.[0];
+    expect(locale, localeName).to.be.a("string");
+    cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, { locale });
+  });
 };
 
 function assertPageContent(path: string) {

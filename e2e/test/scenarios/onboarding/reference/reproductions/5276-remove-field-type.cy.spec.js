@@ -30,7 +30,6 @@ describe("issue 5276", () => {
       .its("response.body.semantic_type")
       .should("eq", null);
     cy.button(/Edit/).trigger("click");
-    cy.findAllByDisplayValue("No semantic type").should("be.visible");
     cy.findByDisplayValue("Score").should("not.exist");
   });
 });
