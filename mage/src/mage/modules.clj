@@ -149,6 +149,7 @@
      explorations.contextual-interestingness
      custom-viz-plugin
      dashboards
+     data-apps
      documents
      api.eid-translation
      embedding
