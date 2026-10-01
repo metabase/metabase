@@ -1,5 +1,5 @@
 (ns metabase.lib.query.test-spec
-  (:refer-clojure :exclude [mapv name])
+  (:refer-clojure :exclude [mapv name not-empty])
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -33,7 +34,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.performance :refer [mapv not-empty]]))
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
   [metadata-providerable         :- ::lib.schema.metadata/metadata-providerable
@@ -45,9 +46,10 @@
 (mu/defn- matches-column? :- :boolean
   [query                                   :- ::lib.schema/query
    _stage-number                           :- :int
+   name-key                                :- :keyword
    {:keys [name table-id source-name source-field-id display-name]} :- ::lib.schema.test-spec/test-order-by-spec
    column                     :- ::lib.schema.metadata/column]
-  (cond-> (= name (:name column))
+  (cond-> (= name (name-key column))
     (some? table-id) (and (= table-id (:table-id column)))
     (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
     (some? source-field-id) (and (= source-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) column)))
@@ -58,7 +60,12 @@
    stage-number      :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
    column-spec       :- ::lib.schema.test-spec/test-order-by-spec]
-  (let [columns (filterv (partial matches-column? query stage-number column-spec) available-columns)]
+  (let [matching (fn [name-key]
+                   (filterv (partial matches-column? query stage-number name-key column-spec) available-columns))
+        ;; A saved card stores repeated names deduplicated (`ID`, `ID_2`), so a spec naming the column as its table
+        ;; does matches nothing; the name it had before deduplication still finds it.
+        columns  (or (not-empty (matching :name))
+                     (matching :lib/original-name))]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
       1 (first columns)
@@ -305,9 +312,12 @@
     (if-let [aggregation (saved-aggregation query aggregation-spec)]
       (lib.aggregation/aggregate query stage-number aggregation)
       (throw (ex-info "No saved aggregation found" {:aggregation-spec aggregation-spec})))
-    (->> (lib.aggregation/aggregable-columns query stage-number)
-         (expression-spec->expression-clause query stage-number aggregation-spec)
-         (lib.aggregation/aggregate query stage-number))))
+    (let [clause (->> (lib.aggregation/aggregable-columns query stage-number)
+                      (expression-spec->expression-clause query stage-number aggregation-spec))]
+      (lib.aggregation/aggregate query stage-number
+                                 (cond-> clause
+                                   ;; Only the name a later stage refers to; the display name stays derived.
+                                   (:name aggregation-spec) (lib.options/update-options assoc :name (:name aggregation-spec)))))))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query
