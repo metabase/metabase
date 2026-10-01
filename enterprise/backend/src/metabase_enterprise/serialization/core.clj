@@ -25,6 +25,7 @@
   make-targets-of-type
   extract]
  [metabase-enterprise.serialization.v2.ingest
+  entity-file-path?
   legal-top-level-paths
   replaced-top-level-paths
   shared-top-level-paths

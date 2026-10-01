@@ -118,8 +118,10 @@
 (deftest export-keeps-files-serialization-does-not-own-test
   (testing "an export rewrites an app's manifest and bundle but leaves the app's source next to them alone"
     (with-data-apps-sync
-      (let [source {"data_apps/sales/src/App.tsx" "export const App = () => null;"
-                    "data_apps/sales/package.json" "{}"}
+      (let [source {"data_apps/sales/src/App.tsx"    "export const App = () => null;"
+                    "data_apps/sales/package.json"   "{}"
+                    "data_apps/sales/pnpm-lock.yaml" "lockfileVersion: '9.0'\n"
+                    "data_apps/sales/deploy/k8s.yaml" "a: 1\n---\nb: [unterminated\n"}
             mock   (test-helpers/create-mock-source
                     :initial-files {"main" (merge (app-tree sales-eid "sales" "BUNDLE-V1") source)})
             repo   #(get @(:files-atom mock) "main")]
@@ -137,3 +139,16 @@
           (is (= :success (:status (export! mock))))
           (is (= (into #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js"} (keys source))
                  (into #{} (filter #(re-find #"^data_apps/" %)) (keys (repo))))))))))
+
+(deftest pull-refuses-to-delete-an-unpushed-app-test
+  (testing "a pull whose repo lacks an app created here but not pushed yet is a conflict, not a silent delete"
+    (with-data-apps-sync
+      (let [app (app-tree sales-eid "sales" "BUNDLE")
+            src (test-helpers/versioned-source :trees {"v0" app "v1" (assoc app "README.md" "x")} :current "v0")]
+        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
+                                                           :display_name "Ops"
+                                                           :bundle_path  "app.js"
+                                                           :bundle       "OPS"})
+        (is (=? {:status :conflict} (import-at! src "v1")))
+        (is (t2/exists? :model/DataApp :name "ops"))))))

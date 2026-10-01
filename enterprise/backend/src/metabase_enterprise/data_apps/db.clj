@@ -9,25 +9,39 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(def non-blob-columns
+  "Every DataApp column except the raw bundle blob."
+  [:id :entity_id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
+   :resource_collection_id :permission_group_id :table_ids :draft :bundle_hash :created_at :updated_at])
+
+(def ^:private non-blob-model
+  (into [:model/DataApp] non-blob-columns))
+
 (mu/defn data-app
   "The DataApp with `data-app-id` without its bundle, or nil."
   [data-app-id :- ms/PositiveInt]
-  (t2/select-one :model/DataApp :id data-app-id))
+  (t2/select-one non-blob-model :id data-app-id))
 
 (mu/defn data-app-by-slug
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
-  (t2/select-one :model/DataApp :name slug))
+  (t2/select-one non-blob-model :name slug))
+
+(mu/defn draft-by-slug
+  "The draft DataApp named `slug` without its bundle, or nil."
+  [slug :- :string]
+  (t2/select-one non-blob-model :name slug :draft true))
 
 (mu/defn enabled-data-app-by-slug
   "The enabled DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
-  (t2/select-one :model/DataApp :name slug :enabled true))
+  (t2/select-one non-blob-model :name slug :enabled true))
 
 (mu/defn data-apps
-  "Every DataApp without its bundle, ordered by display name; only the enabled, error-free ones when `available?`."
+  "Every DataApp without its bundle, ordered by display name; only the enabled ones that aren't drafts when
+  `available?`."
   [available? :- [:maybe :boolean]]
-  (t2/select :model/DataApp
+  (t2/select non-blob-model
              (cond-> {:order-by [[:display_name :asc]]}
                available? (assoc :where [:and
                                          [:= :enabled true]

@@ -42,7 +42,7 @@
   [:and
    {:error/message "must be lowercase letters, numbers, and dashes"}
    :string
-   [:re #"^[a-z0-9]+(?:-[a-z0-9]+)*$"]
+   [:re #"\A[a-z0-9]+(?:-[a-z0-9]+)*\z"]
    [:fn {:error/message "must not be a reserved slug"} (complement reserved-slugs)]])
 
 (mr/def ::display-name
@@ -64,7 +64,9 @@
    ms/NonBlankString
    [:fn {:error/message "must be relative to the app's directory and stay inside it"}
     #(and (not (str/starts-with? % "/"))
-          (not-any? #{"" "." ".."} (str/split % #"/" -1)))]])
+          (not (str/includes? % "\\"))
+          (not-any? #{"" "." ".."} (str/split % #"/" -1)))]
+   [:fn {:error/message "must not be the app's data_app.yaml"} #(not= "data_app.yaml" %)]])
 
 (mr/def ::allowed-host
   "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an
@@ -72,7 +74,7 @@
   [:re
    (merge {:error/message "must be an origin like https://api.example.com or https://*.example.com"}
           (decoders origin))
-   #"^https?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?$"])
+   #"\Ahttps?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?\z"])
 
 (mr/def ::allowed-hosts
   "The origins a data app's sandboxed bundle may fetch, `[]` when nil."

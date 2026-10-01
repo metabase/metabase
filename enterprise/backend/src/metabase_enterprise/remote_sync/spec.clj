@@ -762,29 +762,30 @@
    ({:type :category :model :count :names :message}), one per affected model type."
   [{:keys [by-entity-id]}]
   (let [synced-collection-ids (all-syncable-collection-ids)]
-    (cond-> []
-      (seq synced-collection-ids)
-      (into (for [[model-key spec] (specs-for-deletion)
-                  :when (and (not (get-in spec [:removal :all-on-setting-disable]))
-                             (not= :model/Collection model-key))
-                  :let [model-type   (:model-type spec)
-                        imported-ids (get by-entity-id model-type #{})
-                        ;; Same base restriction remove-unsynced! deletes by, plus an anti-join keeping only the
-                        ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
-                        ;; collection's worth of rows just to count/sample them.
-                        opts         (removal-opts spec synced-collection-ids imported-ids)
-                        n            (remote-sync.db/unsynced-instance-count model-key model-type opts)
-                        name-col     (get-in spec [:tracking :field-mappings :model_name])]
-                  :when (pos? n)]
-              {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
-               :category model-type
-               :model    model-type
-               :count    n
-               ;; A bounded sample of names for the UI; :count above is the true total.
-               :names    (remote-sync.db/unsynced-instance-names model-key model-type name-col opts
-                                                                 max-conflict-names)
-               :message  (format "Import would delete %d unsynced local %s %s"
-                                 n model-type (if (= 1 n) "entity" "entities"))})))))
+    (into []
+          (for [[model-key spec] (specs-for-deletion)
+                :when (and (not (get-in spec [:removal :all-on-setting-disable]))
+                           (not= :model/Collection model-key)
+                           (or (seq synced-collection-ids)
+                               (nil? (get-in spec [:removal :scope-key]))))
+                :let [model-type   (:model-type spec)
+                      imported-ids (get by-entity-id model-type #{})
+                      ;; Same base restriction remove-unsynced! deletes by, plus an anti-join keeping only the
+                      ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
+                      ;; collection's worth of rows just to count/sample them.
+                      opts         (removal-opts spec synced-collection-ids imported-ids)
+                      n            (remote-sync.db/unsynced-instance-count model-key model-type opts)
+                      name-col     (get-in spec [:tracking :field-mappings :model_name])]
+                :when (pos? n)]
+            {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
+             :category model-type
+             :model    model-type
+             :count    n
+             ;; A bounded sample of names for the UI; :count above is the true total.
+             :names    (remote-sync.db/unsynced-instance-names model-key model-type name-col opts
+                                                               max-conflict-names)
+             :message  (format "Import would delete %d unsynced local %s %s"
+                               n model-type (if (= 1 n) "entity" "entities"))}))))
 
 (defn- object-matches-conditions?
   "True if `object` satisfies every column-value pair in `conditions` (or if no conditions are set).

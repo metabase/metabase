@@ -172,9 +172,6 @@
   (when-let [idx (str/index-of path "/")]
     (contains? serialization/shared-top-level-paths (subs path 0 idx))))
 
-(defn- yaml-path? [^String path]
-  (str/ends-with? path ".yaml"))
-
 (defn- parent-dir [^String path]
   (when-let [idx (str/last-index-of path "/")]
     (subs path 0 idx)))
@@ -183,7 +180,7 @@
   "The paths of the resource files that the entity YAML files directly in directory `dir` of `snapshot` declare."
   [snapshot dir]
   (into #{}
-        (comp (filter yaml-path?)
+        (comp (filter serialization/entity-file-path?)
               (mapcat (fn [path]
                         (try
                           (let [entity (yaml/parse-string (source.p/read-file snapshot path)
@@ -200,7 +197,7 @@
   (let [resources (memoize #(declared-resources snapshot %))]
     (filterv (fn [path]
                (and (managed-path? path)
-                    (or (yaml-path? path)
+                    (or (serialization/entity-file-path? path)
                         (some #(contains? (resources %) path)
                               (take-while some? (iterate parent-dir (parent-dir path)))))))
              paths)))

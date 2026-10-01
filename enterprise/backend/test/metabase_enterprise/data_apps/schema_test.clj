@@ -76,7 +76,7 @@
   (testing "a slug is used verbatim"
     (is (= "inventory-2" (normalize ::data-apps.schema/slug "inventory-2"))))
   (testing "a slug that can't appear in a URL as-is, or collides with an API sub-route, is rejected"
-    (doseq [bad [nil "" "Sales" "my_app" "sales app" "-sales" "sales-" "repo-status" "sandbox-host"]]
+    (doseq [bad [nil "" "Sales" "my_app" "sales app" "-sales" "sales-" "sales\n" "repo-status" "sandbox-host"]]
       (is (not (valid? ::data-apps.schema/slug bad)) (str "should reject: " (pr-str bad))))))
 
 (deftest display-name-test
@@ -94,14 +94,15 @@
   (testing "a non-list value is rejected"
     (is (not (valid? ::data-apps.schema/allowed-hosts "https://api.example.com"))))
   (testing "invalid entries (bare *, path, non-http scheme, no scheme) are rejected"
-    (doseq [bad ["*" "https://example.com/path" "ftp://example.com" "example.com"]]
+    (doseq [bad ["*" "https://example.com/path" "ftp://example.com" "example.com" "https://a.com\nx"]]
       (is (not (valid? ::data-apps.schema/allowed-hosts [bad])) (str "should reject: " bad)))))
 
 (deftest bundle-path-test
   (testing "a leading ./ is dropped"
     (is (= "dist/app.js" (normalize ::data-apps.schema/bundle-path "./dist/app.js"))))
   (testing "a missing path, or one leaving the app's directory, is rejected"
-    (doseq [bad [nil "" "  " "../other/dist/index.js" "dist/../../escape.js" "/etc/passwd" "dist//index.js"]]
+    (doseq [bad [nil "" "  " "../other/dist/index.js" "dist/../../escape.js" "/etc/passwd" "dist//index.js"
+                 "..\\..\\escape.js" "data_app.yaml"]]
       (is (not (valid? ::data-apps.schema/bundle-path bad)) (str "should reject: " (pr-str bad))))))
 
 (deftest bundle-test

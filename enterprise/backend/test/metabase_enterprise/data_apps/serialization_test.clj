@@ -5,6 +5,7 @@
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
@@ -153,10 +154,26 @@
                      (ex-message (ex-cause e))))))))
       (is (not (t2/exists? :model/DataApp))))))
 
-(deftest import-requires-the-data-apps-feature-test
-  (mt/with-premium-features #{}
+(deftest import-clears-an-omitted-description-test
+  (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (ts/with-random-dump-dir [dump-dir "data-app-feature-"]
-        (write-app-files! dump-dir "x" (app-yaml "pZrj7PDuz3vSWYYi0QFhd" "x") {"dist/index.js" "BUNDLE"})
-        (import! dump-dir)
-        (is (not (t2/exists? :model/DataApp)))))))
+      (ts/with-random-dump-dir [dump-dir "data-app-description-"]
+        (let [app (insert-app! :description "Pipeline health")]
+          (write-app-files! dump-dir "sales_ops" (app-yaml (:entity_id app) "sales-ops") {"dist/index.js" "B"})
+          (import! dump-dir)
+          (is (nil? (t2/select-one-fn :description :model/DataApp :id (:id app)))))))))
+
+(deftest import-does-not-take-over-an-app-that-is-not-a-draft-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]
+        (let [app (insert-app!)]
+          (write-app-files! dump-dir "sales_ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
+          (is (=? {:entity_id (:entity_id app)} (t2/select-one :model/DataApp :id (:id app)))))))))
+
+(deftest export-includes-data-apps-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [app (insert-app!)]
+      (is (some #(= [{:model "DataApp" :id (:entity_id app)}] (map (fn [m] (dissoc m :label)) (:serdes/meta %)))
+                (into [] (extract/extract {:no-collections true :no-data-model true :no-settings true})))))))

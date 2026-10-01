@@ -393,8 +393,7 @@
 (defn- legal-yaml-path?
   "True for a managed-directory `.yaml` entity file — the only changed paths the importer acts on."
   [^String path]
-  (and (str/ends-with? path ".yaml")
-       (managed-path? path)))
+  (serialization/entity-file-path? path))
 
 (defn- pulled-change-count
   "Total number of entities applied by a pull, across entity-id- and path-identified models in `imported-data`."

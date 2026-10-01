@@ -40,8 +40,7 @@
   [snapshot]
   (let [errors (atom [])]
     {:entities (into {} (for [path (source.p/list-files snapshot)
-                              :when (and (not (str/starts-with? path "."))
-                                         (str/ends-with? path ".yaml"))
+                              :when (serialization/entity-file-path? path)
                               :let [content (try
                                               (source.p/read-file snapshot path)
                                               (catch Exception e

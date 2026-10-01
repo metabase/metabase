@@ -9,7 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -48,9 +48,7 @@
   (derive :hook/timestamped?))
 
 (t2.default-fields/define-default-fields :model/DataApp
-  [:id :entity_id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
-   :resource_collection_id :permission_group_id :table_ids :draft
-   :bundle_hash :created_at :updated_at])
+  data-apps.db/non-blob-columns)
 
 (events/derive! ::event :metabase/event)
 (doseq [e [:event/data-app-create :event/data-app-update :event/data-app-delete]]
@@ -159,7 +157,7 @@
                                                         (or (get files path)
                                                             (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
                                                                             {:status-code 400}))))))}}
-   :defaults  {:version 1 :allowed_hosts []}})
+   :defaults  {:description nil :version 1 :allowed_hosts []}})
 
 (defmethod serdes/extract-query "DataApp"
   [model-name {:keys [filter-column filter-ids] :as opts}]
@@ -175,13 +173,12 @@
 
 (defmethod serdes/load-one! "DataApp"
   [ingested maybe-local]
-  (when (premium-features/enable-data-apps?)
-    (let [local (or maybe-local (data-apps.db/data-app-by-slug (:slug ingested)))
-          app   (serdes/default-load-one! ingested local)]
-      (data-apps.db/update-data-app! (:id app) {:draft false})
-      (when local
-        (data-app.resources/ensure-resources! app))
-      app)))
+  (let [local (or maybe-local (data-apps.db/draft-by-slug (:slug ingested)))
+        app   (serdes/default-load-one! ingested local)]
+    (data-apps.db/update-data-app! (:id app) {:draft false})
+    (when local
+      (data-app.resources/ensure-resources! app))
+    app))
 
 (defenterprise data-app-group-ids
   "The data-app permission groups (those flagged `is_data_app_group`). SSO group sync must never touch

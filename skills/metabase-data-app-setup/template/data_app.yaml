@@ -15,9 +15,9 @@ path: ./dist/index.js
 #   - https://api.example.com
 #   - https://*.internal.acme.com
 
-entity_id: replace-with-entity-id
+entity_id: replace-entity-id-xxx
 
 serdes/meta:
 - model: DataApp
-  id: replace-with-entity-id
+  id: replace-entity-id-xxx
   label: data_app_template
