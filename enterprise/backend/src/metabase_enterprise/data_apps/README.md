@@ -140,8 +140,8 @@ Assignments grant read-only access to the resource collection. Sync restores the
 access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
 collection and assignments, but preserves the assigned groups.
 
-Only administrators can manage assignments. Group listing and removal remain available after the feature token
-expires; additions still require the Data Apps feature.
+Only administrators can manage assignments. The Data Apps feature is required for all app API endpoints, including
+group listing and removal.
 
 ## Namespace map
 
