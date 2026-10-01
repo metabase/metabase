@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { act, screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -198,10 +198,8 @@ describe("StrategyEditorForDatabases", () => {
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
-    await act(async () => {
-      await changeInput(/minimum query duration/i, 1, 5);
-      await changeInput(/multiplier/i, 10, 3);
-    });
+    await changeInput(/minimum query duration/i, 1, 5);
+    await changeInput(/multiplier/i, 10, 3);
 
     await userEvent.click(
       await screen.findByTestId("strategy-form-submit-button"),
