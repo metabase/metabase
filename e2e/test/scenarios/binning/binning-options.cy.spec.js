@@ -54,7 +54,6 @@ const LONGITUDE_BUCKETS = [
 
 describe("scenarios > binning > binning options", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     H.restore();
     cy.signInAsAdmin();
   });
@@ -66,8 +65,9 @@ describe("scenarios > binning > binning options", () => {
 
       openBinningListForDimension("Total", "Auto binned");
       getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+      cy.intercept("POST", "/api/dataset").as("rerun");
       selectOption("50 bins");
-      cy.wait("@dataset");
+      cy.wait("@rerun");
 
       getTitle("Count by Total: 50 bins");
       H.chartPathWithFillColor("#509EE3");
@@ -85,8 +85,9 @@ describe("scenarios > binning > binning options", () => {
         isSelected: "Month",
         shouldExpandList: true,
       });
+      cy.intercept("POST", "/api/dataset").as("rerun");
       selectOption("Quarter");
-      cy.wait("@dataset");
+      cy.wait("@rerun");
 
       getTitle("Count by Created At: Quarter");
       H.cartesianChartCircle();
@@ -104,14 +105,16 @@ describe("scenarios > binning > binning options", () => {
         isSelected: "Auto bin",
         shouldExpandList: true,
       });
+      cy.intercept("POST", "/api/dataset").as("rerun");
       selectOption("Bin every 20 degrees");
-      cy.wait("@dataset");
+      cy.wait("@rerun");
 
       getTitle("Count by Longitude: 20°");
       H.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
+
     it("should apply a number bucket picked from an unselected column", () => {
       H.openTable({ table: ORDERS_ID });
       H.summarize();
