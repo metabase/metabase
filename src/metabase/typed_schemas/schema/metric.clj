@@ -306,10 +306,10 @@
   [database-ids collection-ids]
   (for [metric (remove source-card-id
                        (schema.common/select-schema-cards :metric database-ids collection-ids))
-        ;; Sync only supports metrics that resolve entirely from tables, and the CLI aborts
-        ;; `sync-resources` on one that does not. `source-card-id` sees only stage 0, so a
-        ;; table-sourced metric joining a saved question reached the CLI and failed there;
-        ;; check the whole query for saved-card dependencies to match what sync accepts.
+        ;; A data app can copy only metrics that resolve entirely from tables: a copy reading a
+        ;; saved question references a card outside the app's resources, which the pull refuses.
+        ;; `source-card-id` sees only stage 0, so a table-sourced metric joining a saved question
+        ;; would get through; check the whole query for saved-card dependencies instead.
         :when (not (references-saved-card? metric))
         :let [details (metric-details metric)]
         :when details]
