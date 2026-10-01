@@ -86,6 +86,9 @@
     (testing "cell text cannot break the table"
       (is (= ["| A\\|B |" "| --- |" "| x\\|y z |"]
              (data-lines (output [{:display_name "A|B"}] [["x|y\nz"]])))))
+    (testing "truncating a cell does not split a surrogate pair"
+      (let [out (output [{:display_name "A"}] [[(str (apply str (repeat 199 "x")) "\uD83D\uDE00 tail")]])]
+        (is (not (re-find #"\p{Cs}" out)))))
     (testing "rows past the character budget are dropped and reported as truncated"
       (let [out (output [{:display_name "A"}] (repeat 100 [(apply str (repeat 300 "x"))]))]
         (is (str/includes? out "truncated=\"true\""))
