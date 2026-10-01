@@ -277,9 +277,9 @@
    carries; it is nil when the turn also produced an `:error` part."
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
-           request-prompt team-id thread-ts]}]
+           request-prompt team-id thread-ts model-selection]}]
   (let [message         (metabot.envelope/user-message prompt)
-        model-ref       (metabot.settings/llm-metabot-provider)
+        model-ref       (:model-ref model-selection)
         ai-proxy?       (llm.provider/managed-model-ref? model-ref)
         ;; Read with `ai-proxy?`, before the loop, so the row's verdict uses the model the turn ran on.
         window          (metabot.self/context-window-tokens model-ref)
@@ -364,6 +364,7 @@
                    :conversation-id conversation-id
                    :context         context
                    :memory-atom     memory-atom
+                   :model-selection model-selection
                    :tracking-opts   {:source     "slackbot"
                                      :session-id conversation-id}}))
       (catch Throwable t
@@ -699,7 +700,8 @@
      :conversation-id conversation-id}))
 
 (defn- send-dm-response
-  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}]
+  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id
+                                      model-selection]}]
   (let [{:keys [on-text on-tool-start on-tool-end on-data
                 request-flush! start-with-thinking! stream-state slack-writer prefetched-viz
                 dismiss-thinking! text-streamed? tools-streamed?]}
@@ -726,7 +728,8 @@
               :team-id              (:team_id auth-info)
               :thread-ts            thread-ts
               :req-slack-msg-id     (:ts event)
-              :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
+              :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))
+              :model-selection      model-selection})]
         (request-flush! true)
         ;; With no text there was nothing to drain, so at most a tool update has taken the placeholder
         ;; down; deleting it again is a no-op.
@@ -790,8 +793,9 @@
   ([client event extra-history]
    (let [message-ctx (slackbot.events/event->reply-context event)]
      (try
-       (metabot.usage/check-metabase-managed-free-limit!)
-       (let [ctx (prepare-response-context client event)]
+       (let [selection (metabot.settings/metabot-model-selection)
+             _         (metabot.usage/check-metabase-managed-free-limit! (:model-ref selection))
+             ctx       (assoc (prepare-response-context client event) :model-selection selection)]
          (if (slackbot.events/dm? event)
            (send-dm-response client event extra-history ctx)
            (slackbot.channel/send-channel-response client

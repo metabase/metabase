@@ -8,6 +8,7 @@
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.usage :as metabot.usage]
@@ -61,6 +62,24 @@
              (mt/user-http-request :crowberto
                                    :post 402 "metabot/document/generate-content"
                                    {:instructions "Show me sales data"}))))))
+
+(deftest generate-content-resolves-the-serving-model-once-test
+  (testing "the usage check and the agent loop share one resolution of the model serving the request, so a
+            provider's health changing mid-request cannot split them across providers"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (mt/with-temporary-raw-setting-values [llm-provider-fallback-enabled? "false"]
+        (let [resolutions (atom 0)
+              original    (mt/original-fn #'metabot.settings/metabot-model-selection)]
+          (mt/with-dynamic-fn-redefs [metabot.settings/metabot-model-selection (fn []
+                                                                                 (swap! resolutions inc)
+                                                                                 (original))
+                                      openrouter/openrouter (fn [_]
+                                                              (mut/mock-llm-response
+                                                               [{:type :text :text "No chart available"}]))]
+            (mt/user-http-request :crowberto :post 200 "metabot/document/generate-content"
+                                  {:instructions "Show me sales data"})
+            (is (= 1 @resolutions))))))))
 
 (deftest generate-content-prometheus-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections

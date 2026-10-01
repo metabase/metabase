@@ -5,6 +5,8 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
+   [metabase.llm.health :as llm.health]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as metabot.scope]
@@ -795,6 +797,38 @@
       (is (str/includes? appended "You do not have permission to use the AI assistant."))
       (is (empty? (context-texts blocks))
           "the error is the whole story; web reload treats such a turn as errored too"))))
+
+(deftest ^:synchronized slackbot-streaming-records-the-fallback-provider-test
+  (testing "a turn that falls back off a failing managed selection is persisted and run as the BYOK turn it is"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            start-opts (atom [])]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls ai-request-calls]}]
+            (mt/with-premium-features #{:ai-controls}
+              (llm.tu/with-connections [(llm.tu/connection "metabase") (llm.tu/connection "anthropic")]
+                (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+                  (llm.health/record-failure! "metabase" "invalid x-api-key" true)
+                  (try
+                    (mt/with-dynamic-fn-redefs [metabot.persistence/start-turn!
+                                                (fn [_conv-id _profile-id _user-message & {:as opts}]
+                                                  (swap! start-opts conj opts)
+                                                  {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                                metabot.persistence/finalize-assistant-turn!
+                                                (fn [& _] nil)]
+                      (mt/client :post 200 "metabot/slack/events"
+                                 (tu/slack-request-options event-body)
+                                 event-body)
+                      (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                               :done?      true?
+                               :timeout-ms 5000}))
+                    (finally
+                      (llm.health/record-success! "metabase"))))))
+            (is (=? [{:ai-proxy? false}] @start-opts))
+            (is (=? [{:model-selection {:model-ref          #(str/starts-with? % "anthropic/")
+                                        :selected-model-ref "metabase/anthropic/claude-sonnet-4-6"}}]
+                    @ai-request-calls))))))))
 
 ;;; ------------------------------------------------ Flush throttle tests ------------------------------------------------
 

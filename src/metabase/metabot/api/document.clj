@@ -9,6 +9,7 @@
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli.schema :as ms]))
@@ -95,8 +96,9 @@
    {:keys [instructions references]} :- generate-content-body-schema]
   (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)]
     (metabot.config/check-metabot-enabled! metabot-id)
-    (metabot.usage/check-metabase-managed-free-limit!)
-    (let [context      (assoc
+    (let [selection    (metabot.settings/metabot-model-selection)
+          _            (metabot.usage/check-metabase-managed-free-limit! (:model-ref selection))
+          context      (assoc
                         ;; a request, not a grant: `enforce-permissions` drops it unless the user
                         ;; really can write native queries
                         (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}}
@@ -104,13 +106,14 @@
                                                          :profile-id :document-generate-content})
                         :references references)
           parts        (into [] (metabot.agent/run-agent-loop
-                                 {:messages      [{:role    :user
-                                                   :content instructions}]
-                                  :metabot-id    metabot-id
-                                  :profile-id    :document-generate-content
-                                  :state         {}
-                                  :context       context
-                                  :tracking-opts {:source "document_generate_content"}}))
+                                 {:messages        [{:role    :user
+                                                     :content instructions}]
+                                  :metabot-id      metabot-id
+                                  :profile-id      :document-generate-content
+                                  :state           {}
+                                  :context         context
+                                  :model-selection selection
+                                  :tracking-opts   {:source "document_generate_content"}}))
           chart-output (latest-chart-structured-output parts)
           draft-card   (draft-card-from-chart-output chart-output)
           description  (or (:description chart-output)
