@@ -132,7 +132,12 @@ export const TIME_OPTIONS = {
   },
 };
 
+// "Bin every 20 degrees" comes first so it is picked from the unselected column.
 export const LONGITUDE_OPTIONS = {
+  "Bin every 20 degrees": {
+    selected: "20°",
+    representativeValues: ["180° W", "160° W", "100° W", "80° W", "60° W"],
+  },
   "Auto bin": {
     selected: "Auto binned",
     representativeValues: ["170° W", "100° W", "60° W"],
@@ -149,20 +154,19 @@ export const LONGITUDE_OPTIONS = {
     selected: "10°",
     representativeValues: ["170° W", "100° W", "60° W"],
   },
-  "Bin every 20 degrees": {
-    selected: "20°",
-    representativeValues: ["180° W", "160° W", "100° W", "80° W", "60° W"],
-  },
   "Bin every 0.05 degrees": {
     selected: "0.05°",
     representativeValues: null,
+    isHiddenByDefault: true,
   },
   "Bin every 0.01 degrees": {
     selected: "0.01°",
     representativeValues: null,
+    isHiddenByDefault: true,
   },
   "Bin every 0.005 degrees": {
     selected: "0.005°",
     representativeValues: null,
+    isHiddenByDefault: true,
   },
 };
