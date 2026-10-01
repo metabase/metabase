@@ -327,7 +327,9 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     FieldFilter.openEntryForm();
     checkFilterValueInList("Ten");
     checkFilterValueNotInList("10");
-    FieldFilter.selectFilterValueFromList("Ten");
+    FieldFilter.selectFilterValueFromList("Ten", {
+      buttonLabel: "Update filter",
+    });
     cy.findByLabelText("X").should("contain.text", "Ten");
     SQLFilter.runQuery("cardQuery");
     H.assertQueryBuilderRowCount(1);

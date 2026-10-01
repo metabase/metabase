@@ -46,8 +46,7 @@ describe("issue 9357", () => {
 
       H.popover().findByText("Add filter").as("popoverElement");
       H.moveDnDKitElementByAlias("@popoverElement", {
-        vertical: 50,
-        useMouseEvents: true,
+        horizontal: 300,
       });
 
       H.filterWidget()
