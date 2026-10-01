@@ -8,13 +8,15 @@ redirect_from:
 
 # Segments
 
-_Data studio > Connected data > Segments_
+_Data Studio > Connected data > Segments_
 
 Segments are saved filters on tables. You can use segments to create official definitions of a subset of customers, users, or products that everyone on your team can refer to consistently (for example what constitutes an "active user").
 
 People will see segments as options in the Filter block of the [query builder](../../questions/query-builder/editor.md).
 
 ![Segment in the query builder](./images/segment.png)
+
+You can define segments on any table. Segments on [published tables](published-tables.md) are part of your [semantic layer](library.md#semantic-layer).
 
 For now, in addition to Data Studio, segments can also be managed through **Admin > Table Metadata**, see [Segments in table metadata](./legacy-segments.md).
 
