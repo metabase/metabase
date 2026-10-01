@@ -5,7 +5,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.expljsona
+      id: v64.expljsona
       author: nvoxland
       comment: Clear exploration_thread.query_plan_transcript, now that it holds JSON
       changes:
@@ -18,7 +18,7 @@ databaseChangeLog:
       rollback: # the EDN this held is gone; there is nothing to restore
 
   - changeSet:
-      id: v65.expljsonb
+      id: v64.expljsonb
       author: nvoxland
       comment: Clear exploration_thread.data_access_token, now that it holds JSON
       changes:
@@ -31,7 +31,7 @@ databaseChangeLog:
       rollback: # the EDN this held is gone; there is nothing to restore
 
   - changeSet:
-      id: v65.expljsonc
+      id: v64.expljsonc
       author: nvoxland
       comment: Clear exploration_query.data_access_token, now that it holds JSON
       changes:
@@ -44,7 +44,7 @@ databaseChangeLog:
       rollback: # the EDN this held is gone; there is nothing to restore
 
   - changeSet:
-      id: v65.expljsond
+      id: v64.expljsond
       author: nvoxland
       comment: Clear stored_result.data_access_token, now that it holds JSON
       changes:
@@ -57,7 +57,7 @@ databaseChangeLog:
       rollback: # the EDN this held is gone; there is nothing to restore
 
   - changeSet:
-      id: v65.expljsone
+      id: v64.expljsone
       author: nvoxland
       comment: Clear exploration_query_result.chart_stats, now that it holds JSON
       changes:
@@ -70,7 +70,7 @@ databaseChangeLog:
       rollback: # the EDN this held is gone; there is nothing to restore
 
   - changeSet:
-      id: v65.expljsonf
+      id: v64.expljsonf
       author: nvoxland
       comment: Correct the exploration_query_result.chart_stats remarks, which still said EDN
       changes:
@@ -82,7 +82,7 @@ databaseChangeLog:
       rollback: # a column comment; there is nothing to restore
 
   - changeSet:
-      id: v65.expljsong
+      id: v64.expljsong
       author: nvoxland
       comment: Correct the stored_result.data_access_token remarks, which still said EDN
       changes:
@@ -94,7 +94,7 @@ databaseChangeLog:
       rollback: # a column comment; there is nothing to restore
 
   - changeSet:
-      id: v65.expljsonh
+      id: v64.expljsonh
       author: nvoxland
       comment: Correct the exploration_thread.query_plan_transcript remarks, which still said EDN
       changes:
