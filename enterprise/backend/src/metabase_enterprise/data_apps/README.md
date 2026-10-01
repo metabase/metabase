@@ -68,6 +68,10 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
+- `POST /api/apps/export-resources` — what an app's `resources/` are written from: the query Metabase builds
+  from each `defineQuery` definition, and the actions, models, and metrics it copies, all as serialization
+  exports them (`resource_export.clj`). Permissions are the typed schema's: the caller must be able to read
+  each source.
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
 `display_name` only. The bundle blob is never serialized into JSON, and metadata reads go through
@@ -99,6 +103,8 @@ data from it — their own groups' permissions and sandboxes apply unchanged. Be
 nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
 
 **Managing is superuser-only** — enabling, disabling, deleting, and repo status.
+Exporting what an app's resources are written from needs only read access to the sources, as generating
+the typed schema does.
 
 ## Namespace map
 
@@ -110,5 +116,8 @@ nothing, it can never lift another group's sandbox, so sandboxing needs no data-
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
 | `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
+| `resource_export.clj` | The export an app's resource files are written from: built queries, actions, models, metrics.     |
+| `query_definition.clj`| The closed schema of a `defineQuery` definition the export accepts.                                 |
+| `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
