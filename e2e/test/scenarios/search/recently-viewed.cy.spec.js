@@ -88,28 +88,42 @@ describe("Recently Viewed > Entity Picker", () => {
     cy.findByTestId("collection-picker-button").click();
 
     H.entityPickerModal().within(() => {
-      cy.findByText("Select a collection").click();
-      cy.findByText("My Fresh Collection");
+      cy.findByText("Select a collection").should("be.visible");
+      cy.findByText("Recent items").click();
+      cy.findAllByTestId("result-item").should(
+        "contain.text",
+        "My Fresh Collection",
+      );
     });
   });
 
   it("shows recently visited dashboard in entity picker", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.createDashboard({ name: "My Fresh Dashboard" }).then(
+      ({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTestId("qb-header").icon("ellipsis").click();
-    H.popover().findByText("Add to dashboard").click();
+        cy.findByTestId("qb-header").icon("ellipsis").click();
+        H.popover().findByText("Add to dashboard").click();
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("Add this question to a dashboard").click();
-      cy.findByText("Our analytics").click();
-      cy.findByText("Orders in a dashboard").click();
-      cy.button("Select").click();
-    });
+        H.entityPickerModal().within(() => {
+          cy.findByText("Add this question to a dashboard").should(
+            "be.visible",
+          );
+          cy.button("Select").should("be.enabled");
+          cy.findByText("Recent items").click();
+          cy.contains(
+            "[data-testid=result-item]",
+            "My Fresh Dashboard",
+          ).click();
+          cy.button("Select").click();
+        });
 
-    cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}-`);
-    cy.findByTestId("dashboard-header-container").findByText(
-      /You're editing this dashboard/,
+        cy.url().should("contain", `/dashboard/${dashboardId}-`);
+        cy.findByTestId("dashboard-header-container").findByText(
+          /You're editing this dashboard/,
+        );
+      },
     );
   });
 });

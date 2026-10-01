@@ -703,6 +703,12 @@ describe("scenarios > search", () => {
           cy.findByText("Today").click();
         });
 
+        cy.location("search").should("include", "created_at=thisday");
+        cy.findByTestId("created_at-search-filter").within(() => {
+          cy.findByText("Today").should("exist");
+          cy.findByLabelText("close icon").should("exist");
+        });
+
         H.expectSearchResultContent({
           expectedSearchResults: [
             {
@@ -802,6 +808,13 @@ describe("scenarios > search", () => {
         H.popover().within(() => {
           cy.findByText("Today").click();
         });
+
+        cy.location("search").should("include", "last_edited_at=thisday");
+        cy.findByTestId("last_edited_at-search-filter").within(() => {
+          cy.findByText("Today").should("exist");
+          cy.findByLabelText("close icon").should("exist");
+        });
+        cy.findAllByTestId("search-result-item").should("have.length", 1);
 
         H.expectSearchResultContent({
           expectedSearchResults: [
@@ -1067,7 +1080,10 @@ describe("scenarios > search", () => {
         cy.findByTestId("archived-search-filter")
           .findByLabelText("Search items in trash")
           .click();
-        cy.findAllByTestId("search-result-item").should("have.length", 0);
+        cy.location("search").should("include", "archived=true");
+        cy.findByTestId("search-app")
+          .findByText("Didn't find anything")
+          .should("be.visible");
 
         H.archiveCollection(FIRST_COLLECTION_ID);
         cy.reload();

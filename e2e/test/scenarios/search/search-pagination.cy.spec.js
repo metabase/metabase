@@ -15,14 +15,27 @@ describe("scenarios > search", () => {
   });
 
   it("should not search on an empty string", () => {
-    cy.intercept("/api/search", (req) => {
-      expect("Unexpected call to /api/search").to.be.false;
-    });
+    cy.intercept("GET", "/api/search?q=*").as("search");
     H.visitFullAppEmbeddingUrl({
       url: "/",
       qs: { top_nav: true, search: true },
     });
-    H.getSearchBar().type(" ");
+
+    H.getSearchBar().type(" ").should("have.value", " ");
+    cy.findByTestId("search-results-floating-container")
+      .findByText("Recently viewed")
+      .should("be.visible");
+
+    H.getSearchBar().clear().type("ord");
+    cy.wait("@search");
+    cy.findByTestId("search-bar-results-container").should("be.visible");
+
+    H.getSearchBar().clear().type(" ").should("have.value", " ");
+    cy.findByTestId("search-results-floating-container")
+      .findByText("Recently viewed")
+      .should("be.visible");
+    cy.findByTestId("search-bar-results-container").should("not.exist");
+    cy.get("@search.all").should("have.length", 1);
   });
 
   describe("multiple pages of results", () => {

@@ -242,7 +242,7 @@ describe("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
-          content_type: [],
+          content_type: null,
         });
       });
     });

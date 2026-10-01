@@ -58,15 +58,17 @@ describe("scenarios > search", () => {
       cy.get("@searchBox").type("{enter}");
       cy.wait("@search");
 
-      H.expectSearchResultContent({
-        expectedSearchResults: [
-          {
-            name: "Products",
-            description:
-              "Includes a catalog of all the products ever sold by the famed Sample Company.",
-          },
-        ],
-        strict: false,
+      cy.findByTestId("search-app").within(() => {
+        H.expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: "Products",
+              description:
+                "Includes a catalog of all the products ever sold by the famed Sample Company.",
+            },
+          ],
+          strict: false,
+        });
       });
     });
 
@@ -255,7 +257,6 @@ describe("issue 28788", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/search*").as("search");
   });
 
   it("search results container should not be scrollable horizontally (metabase#28788)", () => {
@@ -282,11 +283,12 @@ describe("issue 28788", () => {
       qs: { top_nav: true, search: true },
     });
     cy.findByPlaceholderText("Search…").type(questionDetails.name);
-    cy.wait("@search");
-    cy.icon("hourglass").should("not.exist");
 
-    cy.findByTestId("search-bar-results-container").then(($container) => {
-      expect(H.isScrollableHorizontally($container[0])).to.be.false;
-    });
+    cy.findByTestId("search-results-list")
+      .should("contain.text", questionDetails.name)
+      .find("ul")
+      .should(($list) => {
+        expect(H.isScrollableHorizontally($list[0])).to.be.false;
+      });
   });
 });
