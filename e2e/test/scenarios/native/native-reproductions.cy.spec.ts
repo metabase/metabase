@@ -641,41 +641,6 @@ describe("issue 56570", () => {
   });
 });
 
-describe("issue 53649", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
-    H.startNewNativeModel();
-
-    // If the app freezes, this won't work
-    H.NativeEditor.type("select 1");
-    H.NativeEditor.get().should("contain", "select 1");
-  });
-});
-
-describe("issue 57441", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be possible to create a new snippet from the sidebar (metabase#57441)", () => {
-    H.startNewNativeQuestion();
-
-    H.createSnippet({ name: "snippet 1", content: "select 1" });
-
-    cy.findByTestId("native-query-editor-action-buttons")
-      .icon("snippet")
-      .click();
-    H.rightSidebar().icon("add").click();
-    H.popover().findByText("New snippet").click();
-    H.modal().findByText("Create your new snippet").should("be.visible");
-  });
-});
-
 describe("issue 56905", () => {
   beforeEach(() => {
     H.restore();

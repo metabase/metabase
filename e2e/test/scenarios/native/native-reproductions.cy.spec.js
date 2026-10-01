@@ -247,9 +247,19 @@ describe("issue 19451", () => {
     H.createNativeQuestion(question, { visitQuestion: true });
   });
 
-  it("question field filter shows all tables from a selected database (metabase#19451)", () => {
+  it("question field filter shows all tables from a selected database (metabase#19451, metabase#23510)", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Open Editor").click();
+
+    cy.log("The data reference loads uncached metadata (metabase#23510)");
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("ORDERS");
+      cy.findByText("PRODUCTS");
+      cy.findByText("REVIEWS");
+      cy.findByText("PEOPLE");
+      cy.findByText("Sample Database");
+    });
+
     cy.icon("variable").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Products").click();
@@ -312,45 +322,6 @@ describe("issue 21034", () => {
     cy.wait(1000);
 
     cy.get("@suggestions").its("callCount").should("equal", 1);
-  });
-});
-
-describe("issue 21550", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
-    cy.intercept("GET", "/api/native-query-snippet/**").as("snippet");
-  });
-
-  it("should not show scrollbars for very short snippet (metabase#21550)", () => {
-    H.startNewNativeQuestion();
-
-    cy.icon("snippet").click();
-    cy.wait("@rootCollection");
-    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
-
-    H.modal().within(() => {
-      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        "select * from people",
-      );
-      cy.findByLabelText("Give your snippet a name").type("people");
-      cy.findByText("Save").click();
-      cy.wait("@rootCollection");
-    });
-
-    cy.findByTestId("sidebar-content").within(() => {
-      cy.findByText("people").realHover();
-      cy.icon("chevrondown").click({ force: true });
-    });
-
-    cy.get("pre").then(($pre) => {
-      const preWidth = $pre[0].getBoundingClientRect().width;
-      const clientWidth = $pre[0].clientWidth;
-      const BORDERS = 2; // 1px left and right
-      expect(clientWidth).to.be.gte(preWidth - BORDERS);
-    });
   });
 });
 
@@ -461,58 +432,19 @@ describe("issue 21597", { tags: "@external" }, () => {
   });
 });
 
-describe("issue 23510", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("loads metadata when it is not cached (metabase#23510)", () => {
-    H.createNativeQuestion(
-      {
-        database: 1,
-        name: "Q23510",
-        native: {
-          query:
-            "select count(*) from orders left join products on products.id=orders.product_id where {{category}}",
-          "template-tags": {
-            ID: {
-              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-              name: "Category",
-              display_name: "Category",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
-              "widget-type": "category",
-              default: null,
-            },
-          },
-        },
-        display: "scalar",
-      },
-      { visitQuestion: true },
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Open Editor").click();
-
-    cy.findByTestId("sidebar-content").within(() => {
-      cy.findByText("ORDERS");
-      cy.findByText("PRODUCTS");
-      cy.findByText("REVIEWS");
-      cy.findByText("PEOPLE");
-      cy.findByText("Sample Database");
-    });
-  });
-});
-
 describe("issue 30680", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("should not render native editor buttons when 'Columns' tab is open (metabase#30680)", () => {
-    H.startNewNativeModel({ query: "select 1" });
+  it("should not render native editor buttons when 'Columns' tab is open (metabase#30680, metabase#53649)", () => {
+    H.startNewNativeModel();
+
+    cy.log("The native editor does not freeze (metabase#53649)");
+    H.NativeEditor.type("select 1");
+    H.NativeEditor.get().should("contain", "select 1");
+
     cy.findByTestId("editor-tabs-columns").should("be.disabled");
 
     H.runNativeQuery();

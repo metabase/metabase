@@ -45,6 +45,21 @@ describe("scenarios > question > snippets", () => {
     cy.log("Run the query and check the value");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.findByTestId("scalar-value").should("have.text", "stuff");
+
+    cy.log(
+      "A short snippet preview should not show scrollbars (metabase#21550)",
+    );
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("stuff-snippet").realHover();
+      cy.icon("chevrondown").click({ force: true });
+      cy.get("pre").should(($pre) => {
+        expect($pre).to.contain("'stuff'");
+        const preWidth = $pre[0].getBoundingClientRect().width;
+        const clientWidth = $pre[0].clientWidth;
+        const BORDERS = 2; // 1px left and right
+        expect(clientWidth).to.be.gte(preWidth - BORDERS);
+      });
+    });
   });
 
   it("should let you edit snippet", () => {
@@ -61,6 +76,18 @@ describe("scenarios > question > snippets", () => {
 
     // 2. snippet
     cy.icon("snippet").click();
+
+    cy.log(
+      "The add icon should be visible with existing snippets (metabase#57441)",
+    );
+    H.rightSidebar().icon("add").should("be.visible").click();
+    H.popover().findByText("New snippet").click();
+    H.modal().within(() => {
+      cy.findByText("Create your new snippet").should("be.visible");
+      cy.button("Cancel").click();
+    });
+    H.modal().should("not.exist");
+
     cy.findByTestId("sidebar-right").within(() => {
       cy.findByText("stuff-snippet").click();
 

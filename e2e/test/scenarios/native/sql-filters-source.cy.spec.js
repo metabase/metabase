@@ -95,22 +95,6 @@ describe("scenarios > filters > sql filters > values source", () => {
       });
     });
 
-    it("should be able to use a structured question source without saving the question", () => {
-      H.createQuestion(structuredSourceQuestion);
-
-      H.startNewNativeQuestion();
-      SQLFilter.enterParameterizedQuery(
-        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
-      );
-      H.setDropdownFilterType();
-      H.setFilterQuestionSource({ question: "MBQL source", field: "Category" });
-
-      FieldFilter.openEntryForm();
-      checkFilterValueNotInList("Doohickey");
-      FieldFilter.selectFilterValueFromList("Gizmo");
-      SQLFilter.runQuery("dataset");
-    });
-
     it("should properly cache parameter values api calls", () => {
       H.createQuestion(structuredSourceQuestion);
       H.startNewNativeQuestion();
@@ -127,6 +111,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
       checkFilterValueInList("Gizmo");
       cy.get("@parameterValues.all").should("have.length", 1);
+      checkFilterValueNotInList("Doohickey");
+      FieldFilter.selectFilterValueFromList("Gizmo");
+      SQLFilter.runQuery("dataset");
+      H.assertQueryBuilderRowCount(51);
       H.setFilterListSource({ values: ["A", "B"] });
       FieldFilter.openEntryForm();
       cy.wait("@parameterValues");
@@ -172,27 +160,6 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
   });
 
-  describe("static list source (dropdown)", () => {
-    it("should be able to use a static list source in the query builder", () => {
-      H.startNewNativeQuestion();
-      SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Field Filter");
-      FieldFilter.mapTo({ table: "Products", field: "Ean" });
-      FieldFilter.setWidgetType("String");
-      H.setFilterListSource({ values: ["1018947080336", "7663515285824"] });
-      H.saveQuestion("SQL filter", undefined, {
-        path: ["Our analytics"],
-      });
-
-      FieldFilter.openEntryForm();
-      checkFilterValueNotInList("0001664425970");
-      FieldFilter.selectFilterValueFromList("1018947080336");
-      cy.findByLabelText("Tag").should("contain.text", "1018947080336");
-      SQLFilter.runQuery("cardQuery");
-    });
-  });
-
   describe("static list source with custom labels (dropdown)", () => {
     it("should be able to use a static list source in the query builder", () => {
       H.startNewNativeQuestion();
@@ -214,37 +181,14 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.selectFilterValueFromList("Custom Label");
       cy.findByLabelText("Tag").should("contain.text", "Custom Label");
       SQLFilter.runQuery("cardQuery");
-    });
-  });
-
-  describe("static list source (search box)", () => {
-    it("should be able to use a static list source in the query builder", () => {
-      H.startNewNativeQuestion();
-      SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Field Filter");
-      FieldFilter.mapTo({ table: "Products", field: "Ean" });
-      FieldFilter.setWidgetType("String");
-
-      H.setSearchBoxFilterType();
-      H.setFilterListSource({
-        values: ["1018947080336", "7663515285824"],
-      });
-      H.saveQuestion("SQL filter", undefined, {
-        path: ["Our analytics"],
-      });
 
       FieldFilter.openEntryForm();
-
-      H.fieldValuesCombobox().type("101");
-      H.popover().findByText("1018947080336").click();
-
-      H.fieldValuesValue(0)
-        .should("be.visible")
-        .should("contain", "1018947080336");
-      H.popover().button("Add filter").click();
-
-      cy.findByLabelText("Tag").should("contain.text", "1018947080336");
+      H.popover().findByText("Custom Label").click();
+      FieldFilter.selectFilterValueFromList("7663515285824", {
+        buttonLabel: "Update filter",
+      });
+      cy.findByLabelText("Tag").should("contain.text", "7663515285824");
+      SQLFilter.runQuery("cardQuery");
     });
   });
 
@@ -278,6 +222,18 @@ describe("scenarios > filters > sql filters > values source", () => {
       H.popover().button("Add filter").click();
 
       cy.findByLabelText("Tag").should("contain.text", "Custom Label");
+
+      FieldFilter.openEntryForm();
+      H.removeFieldValuesValue(0);
+      H.fieldValuesCombobox().type("766");
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      H.popover().last().findByText("7663515285824").click();
+      H.fieldValuesValue(0)
+        .should("be.visible")
+        .should("contain", "7663515285824");
+      H.popover().button("Update filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "7663515285824");
     });
   });
 });
@@ -342,42 +298,13 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       checkFilterValueNotInList("20");
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Twenty").click();
-      H.popover().button("Add filter").click();
-
-      cy.findByLabelText("Tag").should("contain.text", "Twenty");
-      SQLFilter.runQuery("cardQuery");
-    });
-  });
-
-  describe("static list source (search box)", () => {
-    it("should be able to use a static list source in the query builder", () => {
-      H.startNewNativeQuestion();
-      SQLFilter.enterParameterizedQuery("SELECT {{ tag }}");
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Number");
-
-      H.setSearchBoxFilterType();
-      H.setFilterListSource({
-        values: [["10", "Ten"], ["20", "Twenty"], "30"],
-      });
-      H.saveQuestion("SQL filter", undefined, {
-        path: ["Our analytics"],
-      });
-
-      FieldFilter.openEntryForm();
-
-      H.dashboardParametersPopover().within(() => {
-        H.multiAutocompleteInput().type("Tw");
-      });
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      H.popover().last().findByText("Twenty").click();
-
       H.multiAutocompleteValue(0)
         .should("be.visible")
         .should("contain", "Twenty");
       H.popover().button("Add filter").click();
 
       cy.findByLabelText("Tag").should("contain.text", "Twenty");
+      SQLFilter.runQuery("cardQuery");
     });
   });
 
