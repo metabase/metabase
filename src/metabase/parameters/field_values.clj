@@ -91,9 +91,10 @@
        (default-field-id->field-values-for-current-user
         (map u/the-id normal-fields)))
      ;; for sandboxed (or otherwise advanced) fields, fetch the sandboxed values individually.
-     (into {} (for [{field-id :id, :as field} advanced-fields]
-                [field-id (select-keys (get-or-create-field-values! field)
-                                       [:values :human_readable_values :field_id])])))))
+     (into {} (for [{field-id :id, :as field} advanced-fields
+                    :let [fv (get-or-create-field-values! field)]
+                    :when fv]
+                [field-id (select-keys fv [:values :human_readable_values :field_id])])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Advanced FieldValues                                               |
@@ -138,30 +139,31 @@
      :values                values}))
 
 (defn get-or-create-field-values!
-  "Gets or creates field values."
+  "Gets or creates the FieldValues for `field`, or returns nil if `field` shouldn't have any."
   ([field] (get-or-create-field-values! field nil))
   ([field constraints]
-   (let [hash-input (hash-input-for-field-values field constraints)
-         advanced-field-value? (not= hash-input {:field-id (u/the-id field)})]
-     (if advanced-field-value?
-       (let [hash-key (str (hash hash-input))
-             ;; look first on this thread: a hit is one SELECT, and handing that to a background
-             ;; thread costs more than it saves. Only a miss is worth detaching, because only a
-             ;; miss scans the warehouse.
-             fv (or (parameters.db/advanced-field-values (:id field) hash-key)
-                    (field-values/detached-fetch!
-                     [:advanced (:id field) hash-key]
-                     (fn []
-                       (parameters.db/find-or-insert-advanced-field-values!
-                        (:id field) hash-key #(prepare-advanced-field-values field hash-key constraints)))))]
-         ;; If it's expired, delete then try to re-create it
-         (if (some-> fv field-values/advanced-field-values-expired?)
-           (do
-             ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
-             (parameters.db/delete-field-values! (:id fv))
-             (recur field constraints))
-           fv))
-       (field-values/get-or-create-full-field-values! field)))))
+   (when (field-values/field-should-have-field-values? field)
+     (let [hash-input (hash-input-for-field-values field constraints)
+           advanced-field-value? (not= hash-input {:field-id (u/the-id field)})]
+       (if advanced-field-value?
+         (let [hash-key (str (hash hash-input))
+               ;; look first on this thread: a hit is one SELECT, and handing that to a background
+               ;; thread costs more than it saves. Only a miss is worth detaching, because only a
+               ;; miss scans the warehouse.
+               fv (or (parameters.db/advanced-field-values (:id field) hash-key)
+                      (field-values/detached-fetch!
+                       [:advanced (:id field) hash-key]
+                       (fn []
+                         (parameters.db/find-or-insert-advanced-field-values!
+                          (:id field) hash-key #(prepare-advanced-field-values field hash-key constraints)))))]
+           ;; If it's expired, delete then try to re-create it
+           (if (some-> fv field-values/advanced-field-values-expired?)
+             (do
+               ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
+               (parameters.db/delete-field-values! (:id fv))
+               (recur field constraints))
+             fv))
+         (field-values/get-or-create-full-field-values! field))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Public functions                                                 |
