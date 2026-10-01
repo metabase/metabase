@@ -53,7 +53,8 @@
     result))
 
 (defn- bundle-text [slug]
-  (some-> (t2/select-one-fn :bundle [:model/DataApp :bundle] :name slug) (String. "UTF-8")))
+  (when-let [^bytes bundle (t2/select-one-fn :bundle [:model/DataApp :bundle] :name slug)]
+    (String. bundle "UTF-8")))
 
 (defmacro ^:private with-data-apps-sync [& body]
   `(search.tu/with-index-disabled
