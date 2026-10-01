@@ -196,22 +196,27 @@ export function getColors(
   }
 
   // historically we used "null" rather than NULL_DIMENSION_KEY in `getColorsForValues`
-  // to avoid changing existing charts, we'll convert NULL_DIMENSION_KEY to "null"
+  // to avoid changing existing charts, we'll convert NULL_DIMENSION_KEY to "null".
+  // When the string "null" is itself a dimension value the conversion can't be
+  // reversed, so we skip it (metabase#81868)
+  const useLegacyNullKey = !dimensionValues.includes("null");
+  const toColorKey = (key: string) =>
+    useLegacyNullKey && key === NULL_DIMENSION_KEY ? "null" : key;
+  const fromColorKey = (key: string) =>
+    useLegacyNullKey && key === "null" ? NULL_DIMENSION_KEY : key;
+
   const colors = getColorsForValues(
-    dimensionValues.map((value) =>
-      value === NULL_DIMENSION_KEY ? "null" : value,
-    ),
+    dimensionValues.map(toColorKey),
     Object.fromEntries(
       Object.entries(existingColorMapping).map(([key, value]) => [
-        key === NULL_DIMENSION_KEY ? "null" : key,
+        toColorKey(key),
         value,
       ]),
     ),
   );
-  // then flip it back
   return Object.fromEntries(
     Object.entries(colors).map(([key, value]) => [
-      key === "null" ? NULL_DIMENSION_KEY : key,
+      fromColorKey(key),
       getHexColor(value),
     ]),
   );
