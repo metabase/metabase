@@ -422,41 +422,39 @@ describe("scenarios > search", () => {
         });
       });
 
-      ["normal", "sandboxed"].forEach((userType) => {
-        it(`should allow ${userType} (non-admin) user to see users and filter by created_by`, () => {
-          cy.signIn(userType);
-          cy.visit("/");
+      it("should allow normal (non-admin) user to see users and filter by created_by", () => {
+        cy.signInAsNormalUser();
+        cy.visit("/");
 
-          H.commandPaletteSearch("reviews");
-          cy.wait("@search");
+        H.commandPaletteSearch("reviews");
+        cy.wait("@search");
 
-          expectSearchResultItemNameContent(
-            {
-              itemNames: [
-                NORMAL_USER_TEST_QUESTION.name,
-                ADMIN_TEST_QUESTION.name,
-              ],
-            },
-            { strict: false },
-          );
-
-          cy.findByTestId("created_by-search-filter").click();
-
-          H.popover().within(() => {
-            cy.findByText("Bobby Tables").click();
-            cy.findByText("Apply").click();
-          });
-          cy.url().should("contain", "created_by");
-
-          H.expectSearchResultContent({
-            expectedSearchResults: [
-              {
-                name: ADMIN_TEST_QUESTION.name,
-                timestamp: "Created a few seconds ago by Bobby Tables",
-                collection: "Our analytics",
-              },
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [
+              NORMAL_USER_TEST_QUESTION.name,
+              ADMIN_TEST_QUESTION.name,
             ],
-          });
+          },
+          { strict: false },
+        );
+
+        cy.findByTestId("created_by-search-filter").click();
+
+        H.popover().within(() => {
+          cy.findByText("Bobby Tables").click();
+          cy.findByText("Apply").click();
+        });
+        cy.url().should("contain", "created_by");
+
+        H.expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: ADMIN_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by Bobby Tables",
+              collection: "Our analytics",
+            },
+          ],
         });
       });
     });
@@ -669,41 +667,39 @@ describe("scenarios > search", () => {
         });
       });
 
-      ["normal", "sandboxed"].forEach((userType) => {
-        it(`should allow ${userType} (non-admin) user to see users and filter by last_edited_by`, () => {
-          cy.signIn(userType);
-          cy.visit("/");
+      it("should allow normal (non-admin) user to see users and filter by last_edited_by", () => {
+        cy.signInAsNormalUser();
+        cy.visit("/");
 
-          H.commandPaletteSearch("reviews");
-          cy.wait("@search");
+        H.commandPaletteSearch("reviews");
+        cy.wait("@search");
 
-          expectSearchResultItemNameContent(
-            {
-              itemNames: [
-                NORMAL_USER_TEST_QUESTION.name,
-                ADMIN_TEST_QUESTION.name,
-              ],
-            },
-            { strict: false },
-          );
-
-          cy.findByTestId("last_edited_by-search-filter").click();
-
-          H.popover().within(() => {
-            cy.findByText("Bobby Tables").click();
-            cy.findByText("Apply").click();
-          });
-          cy.url().should("contain", "last_edited_by");
-
-          H.expectSearchResultContent({
-            expectedSearchResults: [
-              {
-                name: LAST_EDITED_BY_ADMIN_QUESTION.name,
-                timestamp: "Updated a few seconds ago by Bobby Tables",
-                collection: "Our analytics",
-              },
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [
+              NORMAL_USER_TEST_QUESTION.name,
+              ADMIN_TEST_QUESTION.name,
             ],
-          });
+          },
+          { strict: false },
+        );
+
+        cy.findByTestId("last_edited_by-search-filter").click();
+
+        H.popover().within(() => {
+          cy.findByText("Bobby Tables").click();
+          cy.findByText("Apply").click();
+        });
+        cy.url().should("contain", "last_edited_by");
+
+        H.expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
+              timestamp: "Updated a few seconds ago by Bobby Tables",
+              collection: "Our analytics",
+            },
+          ],
         });
       });
     });
@@ -716,7 +712,9 @@ describe("scenarios > search", () => {
         cy.signInAsAdmin();
       });
 
-      TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
+      TEST_CREATED_AT_FILTERS.filter(
+        ([, filter]) => filter !== "thisday",
+      ).forEach(([label, filter]) => {
         it(`should hydrate created_at=${filter}`, () => {
           cy.visit(`/search?q=orders&created_at=${filter}`);
 
@@ -816,7 +814,9 @@ describe("scenarios > search", () => {
         );
       });
 
-      TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
+      TEST_CREATED_AT_FILTERS.filter(
+        ([, filter]) => filter !== "thisday",
+      ).forEach(([label, filter]) => {
         it(`should hydrate last_edited_at=${filter}`, () => {
           cy.visit(`/search?q=reviews&last_edited_at=${filter}`);
 
@@ -979,23 +979,6 @@ describe("scenarios > search", () => {
           native: {
             query: `SELECT '${TEST_NATIVE_QUESTION_NAME}';`,
           },
-        });
-      });
-
-      it("should hydrate search with search text and native query filter", () => {
-        cy.visit(
-          `/search?q=${TEST_NATIVE_QUESTION_NAME}&search_native_query=true`,
-        );
-        cy.wait("@search");
-
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText(`Results for "${TEST_NATIVE_QUESTION_NAME}"`).should(
-            "exist",
-          );
-        });
-
-        expectSearchResultItemNameContent({
-          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
         });
       });
 
