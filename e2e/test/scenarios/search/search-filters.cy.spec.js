@@ -228,7 +228,6 @@ describe("scenarios > search", () => {
 
     describe("created_by filter", () => {
       beforeEach(() => {
-        H.restore();
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
@@ -420,7 +419,6 @@ describe("scenarios > search", () => {
 
     describe("last_edited_by filter", () => {
       beforeEach(() => {
-        cy.signInAsAdmin();
         // We'll create a question as a normal user, then edit it as an admin user
         H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
           ({ body: { id: questionId } }) => {
@@ -456,8 +454,6 @@ describe("scenarios > search", () => {
       });
 
       it("should hydrate last_edited_by filter", () => {
-        cy.intercept("GET", "/api/user").as("getUsers");
-
         cy.visit(`/search?q=reviews&last_edited_by=${NORMAL_USER_ID}`);
 
         cy.wait("@search");
@@ -757,28 +753,6 @@ describe("scenarios > search", () => {
     });
 
     describe("last_edited_at filter", () => {
-      beforeEach(() => {
-        cy.signInAsAdmin();
-        // We'll create a question as a normal user, then edit it as an admin user
-        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
-          ({ body: { id: questionId } }) => {
-            cy.signOut();
-            cy.signInAsNormalUser();
-            cy.visit(`/question/${questionId}`);
-            H.summarize();
-            cy.findByTestId("sidebar-right").findByText("Done").click();
-            cy.findByTestId("qb-header-action-panel")
-              .findByText("Save")
-              .click();
-            cy.findByTestId("save-question-modal").within((modal) => {
-              cy.findByText("Save").click();
-            });
-            cy.signOut();
-            cy.signInAsAdmin();
-          },
-        );
-      });
-
       TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
         it(`should hydrate last_edited_at=${filter}`, () => {
           cy.visit(`/search?q=reviews&last_edited_at=${filter}`);
@@ -792,73 +766,96 @@ describe("scenarios > search", () => {
         });
       });
 
-      // we can only test the 'today' filter since we currently
-      // can't edit the last_edited_at column of a question in our database
-      it("should filter results by Today (last_edited_at=thisday)", () => {
-        cy.visit("/search?q=Reviews");
-
-        expectSearchResultItemNameContent({
-          itemNames: [
-            REVIEWS_TABLE_NAME,
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-          ],
-        });
-
-        cy.findByTestId("last_edited_at-search-filter").click();
-        H.popover().within(() => {
-          cy.findByText("Today").click();
-        });
-
-        cy.location("search").should("include", "last_edited_at=thisday");
-        cy.findByTestId("last_edited_at-search-filter").within(() => {
-          cy.findByText("Today").should("exist");
-          cy.findByLabelText("close icon").should("exist");
-        });
-        cy.findAllByTestId("search-result-item").should("have.length", 1);
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              collection: "Our analytics",
-              timestamp: "Updated a few seconds ago by Robert Tableton",
+      describe("with an edited question", () => {
+        beforeEach(() => {
+          // We'll create a question as a normal user, then edit it as an admin user
+          H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
+            ({ body: { id: questionId } }) => {
+              cy.signOut();
+              cy.signInAsNormalUser();
+              cy.visit(`/question/${questionId}`);
+              H.summarize();
+              cy.findByTestId("sidebar-right").findByText("Done").click();
+              cy.findByTestId("qb-header-action-panel")
+                .findByText("Save")
+                .click();
+              cy.findByTestId("save-question-modal").within((modal) => {
+                cy.findByText("Save").click();
+              });
+              cy.signOut();
+              cy.signInAsAdmin();
             },
-          ],
-          strict: false,
-        });
-      });
-
-      it("should hydrate last_edited_at=thisday and remove the filter when `X` is clicked", () => {
-        cy.visit("/search?q=Reviews&last_edited_at=thisday");
-        cy.wait("@search");
-
-        H.expectSearchResultContent({
-          expectedSearchResults: [
-            {
-              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-              collection: "Our analytics",
-              timestamp: "Updated a few seconds ago by Robert Tableton",
-            },
-          ],
-          strict: false,
+          );
         });
 
-        cy.findByTestId("last_edited_at-search-filter").within(() => {
-          cy.findByText("Today").should("exist");
+        // we can only test the 'today' filter since we currently
+        // can't edit the last_edited_at column of a question in our database
+        it("should filter results by Today (last_edited_at=thisday)", () => {
+          cy.visit("/search?q=Reviews");
 
-          cy.findByLabelText("close icon").click();
+          expectSearchResultItemNameContent({
+            itemNames: [
+              REVIEWS_TABLE_NAME,
+              LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+            ],
+          });
 
-          cy.findByText("Today").should("not.exist");
-          cy.findByText("Last edit date").should("exist");
+          cy.findByTestId("last_edited_at-search-filter").click();
+          H.popover().within(() => {
+            cy.findByText("Today").click();
+          });
+
+          cy.location("search").should("include", "last_edited_at=thisday");
+          cy.findByTestId("last_edited_at-search-filter").within(() => {
+            cy.findByText("Today").should("exist");
+            cy.findByLabelText("close icon").should("exist");
+          });
+          cy.findAllByTestId("search-result-item").should("have.length", 1);
+
+          H.expectSearchResultContent({
+            expectedSearchResults: [
+              {
+                name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+                collection: "Our analytics",
+                timestamp: "Updated a few seconds ago by Robert Tableton",
+              },
+            ],
+            strict: false,
+          });
         });
 
-        cy.url().should("not.contain", "last_edited_at");
+        it("should hydrate last_edited_at=thisday and remove the filter when `X` is clicked", () => {
+          cy.visit("/search?q=Reviews&last_edited_at=thisday");
+          cy.wait("@search");
 
-        expectSearchResultItemNameContent({
-          itemNames: [
-            REVIEWS_TABLE_NAME,
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-          ],
+          H.expectSearchResultContent({
+            expectedSearchResults: [
+              {
+                name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+                collection: "Our analytics",
+                timestamp: "Updated a few seconds ago by Robert Tableton",
+              },
+            ],
+            strict: false,
+          });
+
+          cy.findByTestId("last_edited_at-search-filter").within(() => {
+            cy.findByText("Today").should("exist");
+
+            cy.findByLabelText("close icon").click();
+
+            cy.findByText("Today").should("not.exist");
+            cy.findByText("Last edit date").should("exist");
+          });
+
+          cy.url().should("not.contain", "last_edited_at");
+
+          expectSearchResultItemNameContent({
+            itemNames: [
+              REVIEWS_TABLE_NAME,
+              LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+            ],
+          });
         });
       });
     });
@@ -931,7 +928,6 @@ describe("scenarios > search", () => {
 
     describe("native query filter", () => {
       beforeEach(() => {
-        cy.signInAsAdmin();
         H.createNativeQuestion({
           name: TEST_NATIVE_QUESTION_NAME,
           native: {

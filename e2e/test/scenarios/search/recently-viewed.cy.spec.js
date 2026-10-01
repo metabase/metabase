@@ -75,10 +75,10 @@ describe("Recently Viewed > Entity Picker", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.visit("/");
   });
 
   it("shows recently created collection in entity picker", () => {
+    cy.visit("/");
     H.createCollection({
       name: "My Fresh Collection",
     });
