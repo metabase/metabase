@@ -28,6 +28,10 @@
 (defprotocol ^:private Compile
   (^:private compile! [x context]))
 
+(defn- subquery? [x]
+  (and (map? x)
+       (:allow-subquery (meta x))))
+
 (defn- object! [x context]
   (append-sql! context "?")
   (append-arg! context x))
@@ -126,8 +130,6 @@
     (recur (first identifier))
     identifier))
 
-(declare map!)
-
 (defn- with! [sql ctes context]
   (append-sql! context sql)
   (letfn [(-cte [[identifier subquery]]
@@ -139,9 +141,8 @@
               (when columns
                 (append-sql! context \space)
                 (-identifier-list! columns context)))
-            (append-sql! context " AS (")
-            (map! subquery context)
-            (append-sql! context ")"))]
+            (append-sql! context " AS ")
+            (-parens! subquery context))]
     (interpose-fn ctes -cte #(append-sql! context ", "))))
 
 (defn- create-table! [identifier context]
@@ -223,7 +224,7 @@
         (-identifier-list! columns context)))
     (when subquery
       (append-sql! context \space)
-      (map! subquery context))))
+      (compile! subquery context))))
 
 (defn- values! [rows context]
   (when-not (and (coll? rows)
@@ -272,18 +273,9 @@
             (let [[lhs rhs] (if (vector? subclause)
                               subclause
                               [subclause])]
-              ;; support subqueries in `:from` clauses. I don't think we really need to require people to mark these
-              ;; as `^:allow-subquery`, since I generally don't think `:from` will be getting passed in based on user
-              ;; input... at any rate the existing Honey SQL Guard code will require it anyway
-              ;;
-              ;; TODO (Cam 2026-10-01) ask Bryan and Dan what they think about this. Maybe it makes sense to be extra
-              ;; pedantic anyway
-              (if (map? lhs)
-                (do
-                  (append-sql! context "(")
-                  (map! lhs context)
-                  (append-sql! context ")"))
-                (compile! lhs context))
+              ((if (subquery? lhs)
+                 -parens!
+                 compile!) lhs context)
               (when rhs
                 (append-sql! context " AS ")
                 (compile! rhs context))))]
@@ -390,17 +382,6 @@
   (append-sql! context "RETURNING ")
   (-commas! cols context))
 
-(defn- union! [sql subqueries context]
-  (interpose-fn subqueries #(map! % context) #(append-sql! context sql)))
-
-(defn- nest! [x context]
-  (append-sql! context "(")
-  (if (and (map? x)
-           (:allow-subquery (meta x)))
-    (map! x context)
-    (compile! x context))
-  (append-sql! context ")"))
-
 (def ^:private clause-fns
   (ordered-map/ordered-map
    :with            (partial with! "WITH ")
@@ -432,9 +413,9 @@
    :do-update-set   do-update-set!
    :for             for!
    :returning       returning!
-   :union           (partial union! " UNION ")
-   :union-all       (partial union! " UNION ALL ")
-   :nest            nest!))
+   :union           (partial -interpose! " UNION ")
+   :union-all       (partial -interpose! " UNION ALL ")
+   :nest            -parens!))
 
 (def ^:private clause-rank
   (into {}
@@ -514,8 +495,7 @@
   (when-not (or (empty? vs)
                 (sequential? vs)
                 (set? vs)
-                (and (map? vs)
-                     (:allow-subquery (meta vs))))
+                (subquery? vs))
     (throw (ex-info "Invalid sequence of values (maps must be marked with ^:allow-subquery)" {:vs vs})))
   (if (empty? vs)
     (compile! (case f
@@ -528,11 +508,8 @@
                              :in     " IN "
                              :not-in " NOT IN "))
       (cond
-        (map? vs)
-        (do
-          (append-sql! context "(")
-          (map! vs context)
-          (append-sql! context ")"))
+        (subquery? vs)
+        (-parens! vs context)
 
         ;; sequence of sequences
         (sequential? (first vs))
@@ -801,15 +778,15 @@
     (-fn-call! xs context)
     (-commas! xs context)))
 
-;; note that `clojure.lang.IPersistentMap` is not supported here; this is intentional, as we don't want to
-;; accidentally support nested query injection. Treat maps as normal objects (i.e., parameterized with `?`) unless
-;; explicitly passed to the top-level entry point, [[compile]].
 (extend-protocol Compile
   Object                         (compile! [this context] (object! this context))
   nil                            (compile! [this context] (null! this context))
   Boolean                        (compile! [this context] (boolean! this context))
   Number                         (compile! [this context] (number! this context))
   clojure.lang.Keyword           (compile! [this context] (keyword! this context))
+  clojure.lang.IPersistentMap    (compile! [this context] ((if (:allow-subquery (meta this))
+                                                             map!
+                                                             object!) this context))
   clojure.lang.IPersistentVector (compile! [this context] (vector! this context)))
 
 (mu/defn format :- [:cat :string [:* :any]]
@@ -819,7 +796,7 @@
                      vector?]
    engine :- [:enum :h2 :postgres :mysql]]
   (let [context (default-context engine)]
-    ;; [[compile!]] doesn't support compiling maps recursively on purpose
+    ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
     ((if (map? honeysql-form)
        map!
        compile!) honeysql-form context)

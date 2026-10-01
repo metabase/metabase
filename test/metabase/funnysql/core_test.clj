@@ -224,6 +224,15 @@
 
 (deftest ^:parallel with-test
   (is (= ["WITH \"cte\" AS (SELECT \"id\" FROM \"table\"), \"cte2\" AS (SELECT * FROM \"cte\") SELECT \"id\" FROM \"cte\""]
+         (funnysql/format {:with   [[:cte  ^:allow-subquery {:select [:id] :from [:table]}]
+                                    [:cte2 ^:allow-subquery {:select [:*] :from [:cte]}]]
+                           :select [:id]
+                           :from   [:cte]} :postgres))))
+
+(deftest ^:parallel with-not-marked-allow-subquery-test
+  (is (= ["WITH \"cte\" AS (?), \"cte2\" AS (?) SELECT \"id\" FROM \"cte\""
+          {:select [:id], :from [:table]}
+          {:select [:*], :from [:cte]}]
          (funnysql/format {:with   [[:cte  {:select [:id] :from [:table]}]
                                     [:cte2 {:select [:*] :from [:cte]}]]
                            :select [:id]
@@ -231,6 +240,12 @@
 
 (deftest ^:parallel with-recursive-test
   (is (= ["WITH RECURSIVE \"cte\" AS (SELECT \"id\" FROM \"table\") SELECT \"id\" FROM \"cte\""]
+         (funnysql/format {:with-recursive [[:cte ^:allow-subquery {:select [:id] :from [:table]}]]
+                           :select         [:id]
+                           :from           [:cte]} :postgres))))
+
+(deftest ^:parallel with-recursive-not-marked-allow-subquery-test
+  (is (= ["WITH RECURSIVE \"cte\" AS (?) SELECT \"id\" FROM \"cte\"" {:select [:id], :from [:table]}]
          (funnysql/format {:with-recursive [[:cte {:select [:id] :from [:table]}]]
                            :select         [:id]
                            :from           [:cte]} :postgres))))
@@ -239,26 +254,40 @@
   (is (= [(str "WITH RECURSIVE \"parents\" (\"id\", \"name\") AS (SELECT \"id\", \"name\" FROM \"metabase_field\")"
                " SELECT \"id\" FROM \"parents\"")]
          (funnysql/format {:with-recursive [[[:parents {:columns [:id :name]}]
-                                             {:select [:id :name]
-                                              :from   [:metabase_field]}]]
+                                             ^:allow-subquery {:select [:id :name]
+                                                                 :from   [:metabase_field]}]]
                            :select         [:id]
                            :from           [:parents]}
                           :postgres))))
 
 (deftest ^:parallel union-test
   (is (= ["SELECT \"id\" FROM \"a\" UNION SELECT \"id\" FROM \"b\""]
+         (funnysql/format {:union [^:allow-subquery {:select [:id] :from [:a]}
+                                   ^:allow-subquery {:select [:id] :from [:b]}]}
+                          :postgres))))
+
+(deftest ^:parallel union-not-marked-allow-subquery-test
+  (is (= ["? UNION ?" {:select [:id], :from [:a]} {:select [:id], :from [:b]}]
          (funnysql/format {:union [{:select [:id] :from [:a]}
-                                   {:select [:id] :from [:b]}]} :postgres))))
+                                   {:select [:id] :from [:b]}]}
+                          :postgres))))
 
 (deftest ^:parallel union-all-test
   (is (= ["SELECT \"id\" FROM \"a\" UNION ALL SELECT \"id\" FROM \"b\""]
+         (funnysql/format {:union-all [^:allow-subquery {:select [:id] :from [:a]}
+                                       ^:allow-subquery {:select [:id] :from [:b]}]} :postgres))))
+
+(deftest ^:parallel union-all-not-marked-allow-subquery-test
+  (is (= ["? UNION ALL ?" {:select [:id], :from [:a]} {:select [:id], :from [:b]}]
          (funnysql/format {:union-all [{:select [:id] :from [:a]}
-                                       {:select [:id] :from [:b]}]} :postgres))))
+                                       {:select [:id] :from [:b]}]}
+                          :postgres))))
 
 (deftest ^:parallel insert-into-values-test
   (are [table] (= ["INSERT INTO \"my_table\" (\"a\", \"b\") VALUES (?, ?)" "x" "y"]
                   (funnysql/format {:insert-into table
-                                    :values      [{:a "x" :b "y"}]} :postgres))
+                                    :values      [{:a "x" :b "y"}]}
+                                   :postgres))
     :my_table
     [:my_table]
     [[:my_table]]))
@@ -291,10 +320,21 @@
                  " JOIN \"core_user\" AS \"u\" ON \"u\".\"id\" = 1")]
            (funnysql/format {:insert-into
                              [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
+                              ^:allow-subquery
                               {:select [:g.id :u.id]
                                :from   [[:permissions_group :g]]
                                :join   [[:core_user :u] [:= :u.id [:inline 1]]]}]}
                             :postgres)))))
+
+(deftest ^:parallel insert-from-select-not-marked-allow-subquery-test
+  (is (= ["INSERT INTO \"permissions_group_membership\" (\"group_id\", \"user_id\", \"is_group_manager\") ?"
+          {:from [[:permissions_group :g]], :join [[:core_user :u] [:= :u.id [:inline 1]]], :select [:g.id :u.id]}]
+         (funnysql/format {:insert-into
+                           [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
+                            {:select [:g.id :u.id]
+                             :from   [[:permissions_group :g]]
+                             :join   [[:core_user :u] [:= :u.id [:inline 1]]]}]}
+                          :postgres))))
 
 (deftest ^:parallel degenerate-insert-test
   (testing "an INSERT with nothing to insert must fail closed rather than emit invalid SQL"
