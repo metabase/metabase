@@ -14,6 +14,7 @@ export const ChartSettingGoalValue = ({
   placeholder,
   showSelfColumns = true,
   value,
+  visualizationSettings,
   onChange,
 }: ChartSettingGoalValueProps) => {
   const handleChange = (newValue: GoalValue | null | undefined) => {
@@ -51,6 +52,7 @@ export const ChartSettingGoalValue = ({
       placeholder={placeholder}
       showSelfColumns={showSelfColumns}
       value={value ?? null}
+      visualizationSettings={visualizationSettings}
       onChange={handleChange}
     />
   );

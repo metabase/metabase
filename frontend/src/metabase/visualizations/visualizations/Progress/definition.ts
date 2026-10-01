@@ -97,6 +97,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
         excludedSelfColumn: settings["progress.value"],
         isDynamic: true,
         placeholder: t`Enter goal value`,
+        visualizationSettings: card.visualization_settings,
       }),
       readDependencies: ["progress.value"],
     },

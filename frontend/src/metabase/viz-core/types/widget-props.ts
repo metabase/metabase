@@ -55,6 +55,7 @@ export type ChartSettingGoalValueProps = {
   placeholder?: string;
   showSelfColumns?: boolean;
   value: GoalValue | null | undefined;
+  visualizationSettings?: VisualizationSettings;
   onChange: (value: GoalValue | undefined) => void;
 };
 

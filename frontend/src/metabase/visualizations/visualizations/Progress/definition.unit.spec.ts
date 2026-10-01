@@ -46,6 +46,7 @@ describe("PROGRESS_CHART_DEFINITION", () => {
         excludedSelfColumn: "count",
         isDynamic: true,
         placeholder: "Enter goal value",
+        visualizationSettings: series[0].card.visualization_settings,
       });
     });
 
