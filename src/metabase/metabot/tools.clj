@@ -20,6 +20,7 @@
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.resources :as tools.resources]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared :as shared]
@@ -48,6 +49,8 @@
   retrieve-library-entities-tool]
  [tools.construct
   construct-notebook-query-tool]
+ [tools.run-query
+  run-query-tool]
  [tools.document
   document-schema-collect-tool
   document-construct-sql-chart-tool
@@ -120,7 +123,7 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource"})
+    "read_resource" "run_query"})
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks

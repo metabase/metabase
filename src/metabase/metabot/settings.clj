@@ -99,6 +99,13 @@
   :default    true
   :export?    false)
 
+(defsetting metabot-query-execution-enabled?
+  (deferred-tru "Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.")
+  :type       :boolean
+  :visibility :admin
+  :default    false
+  :export?    false)
+
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def default-llm-metabot-provider
