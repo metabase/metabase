@@ -719,9 +719,9 @@ function(bin) {
                         java.time.ZonedDateTime  (t/offset-date-time t report-zone)))
         t           (normalize-t t)]
     (letfn [(extract [unit]
-              (u.date/extract t unit))
+              (driver-api/date-extract t unit))
             (bucket [unit]
-              ($date-from-string (u.date/bucket t unit)))]
+              ($date-from-string (driver-api/date-bucket t unit)))]
       (case (or unit :default)
         :default         ($date-from-string t)
         :minute          (bucket :minute)
@@ -759,7 +759,7 @@ function(bin) {
         t
         (-> t
             (u.date/add unit amount)
-            (u.date/bucket unit)))))))
+            (driver-api/date-bucket unit)))))))
 
 ;;; ---------------------------------------------------- functions ---------------------------------------------------
 
@@ -1308,7 +1308,7 @@ function(bin) {
 
 (mu/defmethod negate :default :- ::lib.schema.mbql-clause/clause
   [expr :- ::lib.schema.expression/boolean]
-  (lib/negate-boolean-expression expr))
+  (driver-api/negate-boolean-expression expr))
 
 (mu/defmethod negate :and :- ::lib.schema.mbql-clause/clause
   [[_ opts & subclauses] :- :mbql.clause/and]

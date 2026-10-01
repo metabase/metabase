@@ -1,6 +1,7 @@
 (ns metabase.models.interface-test
   {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
@@ -9,6 +10,8 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.registry-test-macro :as registry-test-macro]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -36,6 +39,53 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Error decrypting secret\.value: Expected an encrypted value"
                             ((:out (mi/transform-secret-value "secret.value")) (.getBytes "plaintext-sekret")))))))
+
+(mr/def ::interface-test.thing
+  "A schema with one field of each kind JSON cannot carry on its own."
+  [:map
+   [:kind  {:optional true} [:maybe :keyword]]
+   [:tag   {:optional true} [:enum :a :b]]
+   [:by-id {:optional true} [:map-of :int :string]]
+   [:note  {:optional true} :string]])
+
+(def ^:private a-thing
+  {:kind :time-series, :tag :b, :by-id {10 "x", 20 "y"}, :note "plain"})
+
+(deftest transform-json-with-schema-test
+  (let [{:keys [in out]} (mi/transform-json-with-schema "test_table.thing" ::interface-test.thing)]
+    (testing "the stored value is plain JSON -- every keyword, and every integer map key, is a string"
+      (is (= {"kind" "time-series", "tag" "b", "by-id" {"10" "x", "20" "y"}, "note" "plain"}
+             (json/decode (in a-thing)))))
+    (testing "the schema is what puts the keywords and the integer keys back on the way out"
+      (is (= a-thing (out (in a-thing)))))
+    (testing "nil is SQL NULL rather than the string \"null\", and an empty map stays an empty map"
+      (is (nil? (in nil)))
+      (is (nil? (out nil)))
+      (is (= {} (out (in {})))))
+    (testing "an unreadable blob reads as nil rather than breaking the whole select"
+      (is (nil? (out "{not json ]["))))))
+
+(deftest transform-json-with-schema-caches-its-codec-test
+  (testing "the encoder and decoder are built once per schema, not rebuilt for every row -- these run
+           on every read of every row of a table, and building a transformer for a nested schema is
+           not cheap (see metabase.api.macros, which caches the same way at the HTTP boundary)"
+    (let [{:keys [in out]} (mi/transform-json-with-schema "test_table.thing" ::interface-test.thing)]
+      (out (in a-thing))
+      (is (zero? (registry-test-macro/with-returning-cache-miss-count
+                   (dotimes [_ 10]
+                     (out (in a-thing)))))))))
+
+(deftest transform-encrypted-json-with-schema-test
+  (encryption-test/with-secret-key "0123456789abcdef"
+    (let [{:keys [in out]} (mi/transform-encrypted-json-with-schema "test_table.thing" ::interface-test.thing)]
+      (testing "the value round-trips through encryption with its keywords intact"
+        (let [stored (in a-thing)]
+          (is (not (str/includes? stored "time-series")))
+          (is (= a-thing (out stored)))))
+      (testing "a decrypt failure names the column, like every other encrypted transform"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Error decrypting test_table\.thing: Expected an encrypted value"
+                              (out "plaintext-sekret")))))))
 
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"

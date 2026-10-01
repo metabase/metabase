@@ -24,8 +24,8 @@ Define custom columns inside a stage using `expressions` and reference by name w
 ```json
 "expressions": {
   "Subtotal": ["+", {},
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]],
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TAX"]]]
+               ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]],
+               ["field", {}, ["Sample Database", null, "ORDERS", "TAX"]]]
 },
 "aggregation": [["sum", {}, ["expression", {}, "Subtotal"]]]
 ```
@@ -39,14 +39,14 @@ A sequential form is also accepted, but the name must live in the defining claus
   "alias": "Products",
   "strategy": "left-join",
   "stages": [{"lib/type": "mbql.stage/mbql",
-              "source-table": ["Sample Database", "PUBLIC", "PRODUCTS"]}],
+              "source-table": ["Sample Database", null, "PRODUCTS"]}],
   "conditions": [["=", {},
-    ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
+    ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
     ["field", {"join-alias": "Products"},
-     ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]]
+     ["Sample Database", null, "PRODUCTS", "ID"]]]]
 }],
 "breakout": [["field", {"join-alias": "Products"},
-              ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+              ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - `alias` is a free-choice string; use it consistently in conditions, breakout, aggregation, order-by.
@@ -59,9 +59,9 @@ A sequential form is also accepted, but the name must live in the defining claus
 Reference a field on a related table directly — when the source has exactly one FK to that target, the tool auto-fills `source-field` and performs the implicit join:
 
 ```json
-"source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+"source-table": ["Sample Database", null, "ORDERS"],
 "aggregation": [["count", {}]],
-"breakout": [["field", {}, ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+"breakout": [["field", {}, ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - **Multiple FKs** to the target → `:ambiguous-fk` lists them. Retry with explicit `{"source-field": ["DB", "SCH", "SRC", "FK_COL"]}` on the field.
@@ -81,9 +81,9 @@ Post-aggregation filter — count orders per product, keep only those with > 10:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+   "source-table": ["Sample Database", null, "ORDERS"],
    "aggregation": [["count", {}]],
-   "breakout": [["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]]]},
+   "breakout": [["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]]]},
   {"lib/type": "mbql.stage/mbql",
    "filters": [[">", {}, ["field", {}, "count"], 10]]}
 ]
@@ -94,10 +94,10 @@ Re-aggregate — average daily total by month:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+   "source-table": ["Sample Database", null, "ORDERS"],
+   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]]],
    "breakout": [["field", {"temporal-unit": "day"},
-                 ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]},
+                 ["Sample Database", null, "ORDERS", "CREATED_AT"]]]},
   {"lib/type": "mbql.stage/mbql",
    "aggregation": [["avg", {}, ["field", {}, "sum"]]],
    "breakout": [["field", {"temporal-unit": "month"}, ["field", {}, "CREATED_AT"]]]}
@@ -117,13 +117,13 @@ A rate like **open rate**, **bounce rate**, **conversion rate**, or **% of total
 ```json
 {"lib/type": "mbql/query",
  "stages": [{"lib/type": "mbql.stage/mbql",
-             "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+             "source-table": ["Sample Database", null, "ORDERS"],
              "aggregation": [["/", {},
                               ["count-where", {},
-                               ["<", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 50]],
+                               ["<", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 50]],
                               ["count", {}]]],
              "breakout": [["field", {"temporal-unit": "month"},
-                           ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]}]}
+                           ["Sample Database", null, "ORDERS", "CREATED_AT"]]]}]}
 ```
 
 **Two stages** — use this when you also want the numerator and denominator as their own columns, or when the ratio needs further post-aggregation work. Compute them as separate aggregations in **stage 1**, then divide in **stage 2**.
@@ -134,12 +134,12 @@ Worked example — share of small orders per month (`count of orders under $50 �
 {"lib/type": "mbql/query",
  "stages": [
    {"lib/type": "mbql.stage/mbql",
-    "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+    "source-table": ["Sample Database", null, "ORDERS"],
     "aggregation": [
-      ["count-where", {}, ["<", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 50]],
+      ["count-where", {}, ["<", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 50]],
       ["count", {}]],
     "breakout": [["field", {"temporal-unit": "month"},
-                  ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]},
+                  ["Sample Database", null, "ORDERS", "CREATED_AT"]]]},
    {"lib/type": "mbql.stage/mbql",
     "expressions": {
       "Small Order Rate": ["/", {}, ["field", {}, "count_where"], ["field", {}, "count"]]},
@@ -178,9 +178,9 @@ A metric is a pre-defined aggregation attached to a base table. To use one:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
- "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+ "source-table": ["Sample Database", null, "ORDERS"],
  "filters": [[">", {}, ["field", {},
-                        ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 0]],
+                        ["Sample Database", null, "ORDERS", "TOTAL"]], 0]],
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
@@ -192,18 +192,18 @@ To group a metric by a field that lives on a **different** table, add an explici
 
 ```json
 {"lib/type": "mbql.stage/mbql",
- "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+ "source-table": ["Sample Database", null, "ORDERS"],
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]],
  "joins": [{"alias": "Products",
             "strategy": "left-join",
             "stages": [{"lib/type": "mbql.stage/mbql",
-                        "source-table": ["Sample Database", "PUBLIC", "PRODUCTS"]}],
+                        "source-table": ["Sample Database", null, "PRODUCTS"]}],
             "conditions": [["=", {},
-                            ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
+                            ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
                             ["field", {"join-alias": "Products"},
-                             ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]]}],
+                             ["Sample Database", null, "PRODUCTS", "ID"]]]]}],
  "breakout": [["field", {"join-alias": "Products"},
-               ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]}
+               ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]}
 ```
 
 When the breakout dimension lives on the metric's **own** base table, no join is needed — just break out on a portable FK as in the example above.
