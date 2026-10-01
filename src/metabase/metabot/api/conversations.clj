@@ -164,7 +164,7 @@
   because the client uses it to judge whether the *next* message will fit. Whether a past turn
   filled its own window is stored on that turn's row instead, so this window does not change it."
   [detail]
-  (let [window (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))]
+  (let [window (metabot.self/context-window-tokens (:model-ref (metabot.settings/metabot-model-selection)))]
     (cond-> detail
       (and detail window) (assoc :context_window_tokens window))))
 
