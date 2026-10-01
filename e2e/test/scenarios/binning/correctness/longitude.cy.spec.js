@@ -53,11 +53,13 @@ describe("scenarios > binning > correctness > longitude", () => {
     cy.findByText("Done").click();
 
     getTitle("Count by Longitude");
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "Longitude")
-      .should("contain", "Count")
-      .and("contain", "166.54257260° W")
-      .and("contain", "1");
+    H.assertTableData({
+      columns: ["Longitude", "Count"],
+      firstRows: [
+        ["166.54257260° W", "1"],
+        ["166.09897770° W", "1"],
+      ],
+    });
   });
 });
 
@@ -66,8 +68,8 @@ function getTitle(title) {
 }
 
 function assertOnXYAxisLabels() {
-  H.echartsContainer().get("text").contains("Count");
-  H.echartsContainer().get("text").contains("Longitude");
+  H.echartsContainer().find("text").should("contain", "Count");
+  H.echartsContainer().find("text").should("contain", "Longitude");
 }
 
 function assertOnXAxisTicks(values) {

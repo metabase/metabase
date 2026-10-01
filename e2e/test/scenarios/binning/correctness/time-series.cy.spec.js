@@ -33,7 +33,7 @@ describe("scenarios > binning > correctness > time series", () => {
   });
 
   Object.entries(TIME_OPTIONS).forEach(
-    ([bucketSize, { selected, isHiddenByDefault, representativeValues }]) => {
+    ([bucketSize, { selected, isHiddenByDefault, firstRows }]) => {
       it(`should return correct values for ${bucketSize}`, () => {
         H.popover().within(() => {
           if (isHiddenByDefault) {
@@ -52,8 +52,10 @@ describe("scenarios > binning > correctness > time series", () => {
 
         getTitle(`Count by Created At: ${bucketSize}`);
 
-        assertOnHeaderCells(bucketSize);
-        assertOnTableValues(representativeValues);
+        H.assertTableData({
+          columns: [`Created At: ${bucketSize}`, "Count"],
+          firstRows,
+        });
 
         assertOnTimeSeriesFooter(bucketSize);
       });
@@ -69,17 +71,6 @@ function openPopoverFromDefaultBucketSize(name, bucket) {
 
 function getTitle(title) {
   cy.findByText(title);
-}
-
-function assertOnHeaderCells(bucketSize) {
-  cy.get("[data-testid=cell-data]").eq(0).contains(`Created At: ${bucketSize}`);
-  cy.get("[data-testid=cell-data]").eq(1).contains("Count");
-}
-
-function assertOnTableValues(values) {
-  values.map((v) => {
-    cy.get("[data-testid=cell-data]").contains(v).scrollIntoView();
-  });
 }
 
 function assertOnTimeSeriesFooter(str) {
