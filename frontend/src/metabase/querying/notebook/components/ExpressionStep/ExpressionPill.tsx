@@ -81,12 +81,13 @@ export function ExpressionPill({
       readOnly={readOnly}
       selected={isActive}
       onClick={isRenaming ? undefined : handleClick}
-      data-testid="expression-pill"
+      data-testid={isActive ? "selected-expression-pill" : "expression-pill"}
     >
       {isRenaming ? (
         <TextInput
           ref={inputRef}
           value={draftName}
+          data-testid="expression-name"
           autoFocus
           variant="unstyled"
           aria-label={name}

@@ -78,7 +78,7 @@ export function InlineExpressionEditor({
     <Layout
       inline
       className={S.panel}
-      data-testid="inline-expression-editor"
+      data-testid="expression-editor"
       data-ignore-editor-clicks="true"
     >
       <Editor
