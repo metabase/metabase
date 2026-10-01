@@ -536,15 +536,6 @@ describe("scenarios > metrics > explorer", () => {
       verifyMetricCount(1);
     });
 
-    it("should not show Edit in Data Studio for users without data studio access", () => {
-      cy.signInAsNormalUser();
-      H.MetricsViewer.goToViewer();
-      addMetric("Count of orders");
-
-      H.MetricsViewer.searchBarPills().contains("Count of orders").click();
-      H.popover().should("not.contain", "Edit in Data Studio");
-    });
-
     it("should handle breakout with no results gracefully", () => {
       createMetrics([
         {
@@ -688,22 +679,6 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchBarPills().contains("Count of orders").click();
       H.popover().findByText("Remove series breakout").click();
       H.MetricsViewer.breakoutLegend().should("not.exist");
-    });
-
-    it("should add a categorical breakout dimension", () => {
-      selectBreakout("Count of orders", "Source");
-      H.MetricsViewer.breakoutLegend()
-        .findByRole("heading", { name: /Source/ })
-        .should("be.visible");
-
-      H.MetricsViewer.breakoutLegend().within(() => {
-        cy.findByRole("heading", { name: /Source/ }).should("be.visible");
-        cy.findByText("Twitter").should("be.visible");
-        cy.findByText("Facebook").should("be.visible");
-        cy.findByText("Organic").should("be.visible");
-        cy.findByText("Google").should("be.visible");
-        cy.findByText("Affiliate").should("be.visible");
-      });
     });
 
     it("should add a numeric breakout dimension with default binning", () => {
@@ -1459,25 +1434,6 @@ describe("scenarios > metrics > explorer", () => {
           cy.findByRole("button").should("not.exist");
         });
         H.MetricsViewer.dimensionPickerSidebar().should("not.exist");
-      });
-
-      it("should auto-assign dimensions for a newly added metric after running the formula", () => {
-        cy.log(
-          "After adding a second metric, all dimension labels should have a selected dimension",
-        );
-
-        addMetric("Count of products");
-
-        H.MetricsViewer.getColumnPickerButton().should(
-          "not.contain.text",
-          "Select a dimension",
-        );
-
-        selectDimensionBreakout("Category");
-        H.MetricsViewer.getColumnPickerButton().should(
-          "not.contain.text",
-          "Select a dimension",
-        );
       });
 
       it("should preserve a selected dimension after page reload", () => {

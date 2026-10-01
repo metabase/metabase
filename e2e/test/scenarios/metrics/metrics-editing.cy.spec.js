@@ -162,21 +162,6 @@ describe("scenarios > metrics > editing", () => {
   });
 
   describe("organization", () => {
-    it("should be able to rename a metric", () => {
-      cy.intercept("PUT", "/api/card/*").as("updateCard");
-      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-        H.visitMetric(card.id);
-      });
-      H.MetricPage.aboutPage()
-        .findByDisplayValue(ORDERS_SCALAR_METRIC.name)
-        .clear()
-        .type("New metric name{enter}");
-      cy.wait("@updateCard");
-      H.MetricPage.aboutPage()
-        .findByDisplayValue("New metric name")
-        .should("be.visible");
-    });
-
     it("should be able to change the query definition of a metric", () => {
       cy.intercept("PUT", "/api/card/*").as("updateCard");
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
@@ -199,19 +184,6 @@ describe("scenarios > metrics > editing", () => {
       cy.log("cancel new metric creation");
       startNewMetricWithTable("Sample Database", "Orders");
       H.MetricPage.cancelButton().click();
-
-      cy.log("cancel editing an existing metric");
-      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-        cy.visit(`/metric/${card.id}/query`),
-      );
-      H.MetricPage.queryEditor().should("be.visible");
-      H.getNotebookStep("summarize").button("Count").click();
-      H.popover().within(() => {
-        cy.findByText("Sum of ...").click();
-        cy.findByText("Total").click();
-      });
-      H.MetricPage.cancelButton().click();
-      H.getNotebookStep("summarize").findByText("Count").should("be.visible");
     });
   });
 

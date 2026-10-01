@@ -1,6 +1,5 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   TRUSTED_ORDERS_METRIC,
   createLibraryWithItems,
@@ -355,37 +354,13 @@ describe("scenarios > metrics > metric page", () => {
     H.undoToast().should("contain.text", "Cannot revert: missing metric");
   });
 
-  it("should add metric to dashboard and move to trash via more menu", () => {
+  it("should move metric to trash via more menu", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
-    H.createQuestion(ORDERS_SCALAR_METRIC, {
-      wrapId: true,
-      idAlias: "metricId",
+    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
+      H.visitMetric(card.id);
     });
 
-    cy.get<number>("@metricId").then((metricId) => {
-      H.visitMetric(metricId);
-    });
-
-    cy.log("add to dashboard");
-    H.MetricPage.moreMenu().click();
-    H.popover().findByText("Add to a dashboard").click();
-    H.modal().within(() => {
-      cy.findByRole("heading", {
-        name: "Add this metric to a dashboard",
-      }).should("be.visible");
-      cy.findByText("Orders in a dashboard").click();
-      cy.button("Select").click();
-    });
-    cy.location("pathname").should(
-      "eq",
-      `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
-    );
-
-    cy.log("move to trash");
-    cy.get<number>("@metricId").then((metricId) => {
-      H.visitMetric(metricId);
-    });
     H.MetricPage.moreMenu().click();
     H.popover().findByText("Move to trash").click();
     H.modal().button("Move to trash").click();

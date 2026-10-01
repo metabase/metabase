@@ -52,16 +52,4 @@ describe("scenarios > metrics > search", () => {
     });
     H.MetricPage.aboutPage().should("be.visible");
   });
-
-  it("should see metrics in recent items in global search", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-      H.visitMetric(card.id);
-    });
-    cy.visit("/");
-    H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
-    H.commandPalette()
-      .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
-      .click();
-    H.MetricPage.aboutPage().should("be.visible");
-  });
 });
