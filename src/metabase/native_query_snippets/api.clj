@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
+   [metabase.proof.core :as proof]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -80,12 +81,12 @@
                  :description   description
                  :name          name
                  :collection_id collection_id}]
-    (api/create-check :model/NativeQuerySnippet snippet)
-    (api/check-500 (native-query-snippets.db/insert-snippet! snippet))))
+    (api/check-500 (native-query-snippets.db/insert-snippet!
+                    (proof/authorize-create :model/NativeQuerySnippet snippet)))))
 
 (defn- check-perms-and-update-snippet!
-  "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
-  updated/hydrated NativeQuerySnippet"
+  "Check that the current user may apply the values in `body` that differ from the NativeQuerySnippet with `id` (403
+  if not, 404 if there is no such snippet), then apply them. Returns the updated, hydrated NativeQuerySnippet."
   [id body]
   (let [snippet     (native-query-snippets.db/snippet id)
         body-fields (u/select-keys-when body
@@ -93,12 +94,12 @@
                                         :non-nil #{:archived :content :name})
         [changes]   (data/diff body-fields snippet)]
     (when (seq changes)
-      (api/update-check snippet changes)
-      (when-let [new-name (:name changes)]
-        (check-snippet-name-is-unique new-name))
-      (t2/with-transaction [_conn]
-        (native-query-snippets.db/update-snippet! id changes)
-        (collections/check-for-remote-sync-update snippet)))
+      (let [proof (proof/authorize-update :model/NativeQuerySnippet id changes)]
+        (when-let [new-name (:name changes)]
+          (check-snippet-name-is-unique new-name))
+        (t2/with-transaction [_conn]
+          (native-query-snippets.db/update-snippet! proof)
+          (collections/check-for-remote-sync-update snippet))))
     (get-native-query-snippet id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.proof.core :as proof]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -66,10 +67,9 @@
   library family — see `collection/library-collection-types`), and `:is_remote_synced` from the
   parent collection."
   [coll-data :- CreateCollectionArguments]
-  (let [parent-coll (parent-or-root coll-data)]
-    ;; `api/write-check` handles both branches - a real collection and the root sentinel
-    ;; returned by `parent-or-root` when no parent_id is given.
-    (api/write-check parent-coll)
+  (let [parent-coll (api/check-404 (parent-or-root coll-data))]
+    ;; whether the current user may create a Collection under the parent is the issuing check's business: see
+    ;; `can-create?` for Collection and [[create-collection!]]
     (-> (cond-> coll-data
           (and (:namespace parent-coll)
                (nil? (:namespace coll-data))) (assoc :namespace (:namespace parent-coll))
@@ -90,8 +90,9 @@
   callers both go through here."
   [coll-data :- CreateCollectionArguments]
   (u/prog1 (collections.db/insert-collection!
-            (-> (apply-defaults-to-collection coll-data)
-                write-check-authority-level
-                validate-new-tenant-collection!))
+            (proof/authorize-create :model/Collection
+                                    (-> (apply-defaults-to-collection coll-data)
+                                        write-check-authority-level
+                                        validate-new-tenant-collection!)))
     (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))

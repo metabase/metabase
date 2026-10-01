@@ -480,7 +480,8 @@
   ([deps]
    (let [kondo-config (kondo-config)]
      (-> (ddiff/diff
-          (update-vals kondo-config #(dissoc % :team :friends :model-imports :model-exports :module-exports :ns-prefix))
+          (update-vals kondo-config #(dissoc % :team :friends :model-imports :model-exports :module-exports :ns-prefix
+                                              :proof-gated))
           (generate-config deps kondo-config))
          ddiff/minimize
          kondo-config-diff-ignore-any

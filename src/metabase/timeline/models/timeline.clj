@@ -3,6 +3,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
+   [metabase.proof.core :as proof]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema]
@@ -10,6 +11,10 @@
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
+
+(defmethod proof/cascade-parents :model/Timeline
+  [_model]
+  {:model/Collection :collection_id})
 
 (doto :model/Timeline
   (derive :metabase/model)

@@ -20,6 +20,7 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
+   [metabase.proof.core :as proof]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
@@ -40,6 +41,10 @@
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
+
+(defmethod proof/cascade-parents :model/Dashboard
+  [_model]
+  {:model/Collection :collection_id})
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :dashboard]
   [_original-model _k]

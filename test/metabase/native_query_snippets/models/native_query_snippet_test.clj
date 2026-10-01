@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
+   [metabase.proof.core :as proof]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -16,6 +17,20 @@
            (t2/update! :model/NativeQuerySnippet snippet-id {:creator_id (mt/user->id :rasta)})))
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id snippet-id))))))
+
+(deftest ^:parallel cascade-parents-test
+  (testing "A Collection's proof cascades to the snippets in it, so the collections module can write them under it"
+    (let [collection-proof (proof/test-only {:model     :model/Collection
+                                             :operation :update
+                                             :subject   10
+                                             :changes   {:archived true}})
+          cascaded         (proof/cascade collection-proof :model/NativeQuerySnippet
+                                          [:= :collection_id 10] {:archived true})]
+      (is (= {:model     :model/NativeQuerySnippet
+              :operation :update
+              :subject   [:= :collection_id 10]
+              :changes   {:archived true}}
+             (proof/verify cascaded {:model :model/NativeQuerySnippet, :operation :update, :subject-kind :where}))))))
 
 (deftest snippet-collection-test
   (testing "Should be allowed to create snippets in a Collection in the :snippets namespace"

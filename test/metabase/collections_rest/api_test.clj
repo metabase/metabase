@@ -267,7 +267,8 @@
 (deftest collections-tree-exclude-other-user-collections-test
   (let [personal-collection (collection/user->personal-collection (mt/user->id :lucky))]
     (with-collection-hierarchy! [a b c d e f g]
-      (collection/move-collection! a (collection/children-location personal-collection))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (collection/move-collection! a (collection/children-location personal-collection)))
       (let [ids                 (set (map :id (cons personal-collection [a b c d e f g])))
             response-rasta      (mt/user-http-request :rasta :get 200 "collection/tree" :exclude-other-user-collections true)
             response-lucky      (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)
@@ -3932,6 +3933,58 @@
       (is (not (t2/exists? :model/Dashboard da-id)))
       (is (not (t2/exists? :model/Dashboard db-id)))
       (is (t2/exists? :model/Dashboard dc-id)))))
+
+(deftest proof-gated-archive-and-move-test
+  (testing "the archive, move and delete writes run only under a proof issued by the collection's own check"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {writable-id :id, :as writable} {}
+                     :model/Collection {readonly-id :id} {}]
+        (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable-id)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) readonly-id)
+        (mt/with-temp [:model/Collection {sub-id :id} {:location (collection/children-location writable)}
+                       :model/Card {card-id :id} {:collection_id sub-id}
+                       :model/Dashboard {dashboard-id :id} {:collection_id writable-id}
+                       :model/Timeline {timeline-id :id} {:collection_id writable-id}
+                       :model/Card {other-card-id :id} {:collection_id readonly-id}]
+          (testing "archiving a collection the user cannot write is a 403 that changes nothing"
+            (mt/user-http-request :rasta :put 403 (str "collection/" readonly-id) {:archived true})
+            (is (=? {:archived false} (t2/select-one :model/Collection :id readonly-id)))
+            (is (false? (t2/select-one-fn :archived :model/Card :id other-card-id))))
+          (testing "moving a collection under a parent the user cannot write is a 403 with the row unchanged"
+            (mt/user-http-request :rasta :put 403 (str "collection/" writable-id) {:parent_id readonly-id})
+            (is (= "/" (t2/select-one-fn :location :model/Collection :id writable-id))))
+          (testing "archiving a collection the user can write archives it and everything inside it"
+            (mt/user-http-request :rasta :put 200 (str "collection/" writable-id) {:archived true})
+            (is (=? {:archived true, :archived_directly true} (t2/select-one :model/Collection :id writable-id)))
+            (is (=? {:archived true, :archived_directly false} (t2/select-one :model/Collection :id sub-id)))
+            (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+            (is (true? (t2/select-one-fn :archived :model/Dashboard :id dashboard-id)))
+            (is (true? (t2/select-one-fn :archived :model/Timeline :id timeline-id)))
+            (is (false? (t2/select-one-fn :archived :model/Card :id other-card-id))))
+          (testing "deleting it is for admins, and deletes everything inside it"
+            (mt/user-http-request :rasta :delete 403 (str "collection/" writable-id))
+            (is (t2/exists? :model/Card :id card-id))
+            (mt/user-http-request :crowberto :delete 200 (str "collection/" writable-id))
+            (is (not (t2/exists? :model/Collection :id sub-id)))
+            (is (not (t2/exists? :model/Card :id card-id)))
+            (is (not (t2/exists? :model/Dashboard :id dashboard-id)))
+            (is (not (t2/exists? :model/Timeline :id timeline-id)))
+            (is (t2/exists? :model/Card :id other-card-id))))))))
+
+(deftest unarchive-leaves-separately-trashed-children-test
+  (testing "restoring a collection restores only what was trashed with it: a child trashed on its own, and its
+            contents, stay in the trash"
+    (mt/with-temp [:model/Collection {parent-id :id, :as parent} {}
+                   :model/Collection {child-id :id} {:location (collection/children-location parent)}
+                   :model/Card {parent-card-id :id} {:collection_id parent-id}
+                   :model/Card {child-card-id :id} {:collection_id child-id}]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" child-id) {:archived true})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" parent-id) {:archived true})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" parent-id) {:archived false})
+      (is (false? (t2/select-one-fn :archived :model/Collection :id parent-id)))
+      (is (false? (t2/select-one-fn :archived :model/Card :id parent-card-id)))
+      (is (true? (t2/select-one-fn :archived :model/Collection :id child-id)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id child-card-id))))))
 
 (deftest collection-deletion-prohibitions
   (mt/with-temp [:model/Collection {a-id :id} {}]

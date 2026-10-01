@@ -3,6 +3,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.proof.core :as proof]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -16,6 +17,10 @@
 (set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
+
+(defmethod proof/cascade-parents :model/TableUserSettings
+  [_model]
+  {:model/Collection :collection_id})
 
 (t2/deftransforms :model/TableUserSettings
   {:entity_type     mi/transform-keyword

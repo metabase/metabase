@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.proof.core :as proof]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -18,6 +19,9 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each th/clean-remote-sync-state)
+
+(defn- clear-remote-synced-collection! []
+  (collection/clear-remote-synced-collection! (proof/test-only collection/clear-remote-synced-write)))
 
 (defn- capture-async-import! []
   (let [calls (atom [])]
@@ -85,7 +89,7 @@
         (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly false)
                                     impl/async-import! capture]
           ;; Make sure no remote-synced collection exists for the test
-          (collection/clear-remote-synced-collection!)
+          (clear-remote-synced-collection!)
           (#'init/remote-sync-init)
           (is (= [["develop" true {}]] @calls)))))))
 
@@ -97,7 +101,7 @@
       (let [[calls capture] (capture-async-import!)]
         (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly false)
                                     impl/async-import! capture]
-          (collection/clear-remote-synced-collection!)
+          (clear-remote-synced-collection!)
           (#'init/remote-sync-init)
           (is (empty? @calls)))))))
 

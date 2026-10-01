@@ -73,6 +73,8 @@
   :metabase/namespace-name                                   {:level :warning}
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
+  :metabase/proof-constructor                                {:level :warning}
+  :metabase/proof-gated-mutator                              {:level :warning} ; modules opt in with `:proof-gated` in `.clj-kondo/config/modules/config.edn`
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/table-or-field-query                             {:level :warning}
   ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
@@ -88,6 +90,17 @@
   :metabase/validate-mb-app-db-migrations-test               {:level :warning}
   :metabase/validate-mb-driver-tests                         {:level :warning}
   :metabase/validate-mb-once                                 {:level :warning}
+
+  ;; Each system issuer in [[metabase.proof.impl]] hands out proofs with no user check, so the namespaces
+  ;; allowed to call it are enumerated here: this list is the residual ambient authority and should only shrink. An
+  ;; entry is a namespace symbol (exact) or a string (a regex on the namespace name).
+  :metabase/proof-system-issuer
+  {:level :warning
+   :allowed-callers {provisioning #{metabase.collections.models.collection
+                                    metabase-enterprise.data-apps.resources}
+                     serdes-load  #{metabase-enterprise.remote-sync.impl
+                                    metabase-enterprise.remote-sync.init}
+                     test-only    #{"(?:-test(?:\\..*)?$)|(?:^metabase\\.test(?:\\.|$))"}}}
 
   :metabase/validate-deftest
   {:level :warning
@@ -725,6 +738,13 @@
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
+   metabase.proof.core/provisioning                                                                                          hooks.metabase.proof/lint-system-issuer-call
+   metabase.proof.core/serdes-load                                                                                           hooks.metabase.proof/lint-system-issuer-call
+   metabase.proof.core/test-only                                                                                             hooks.metabase.proof/lint-system-issuer-call
+   metabase.proof.impl/->Proof                                                                                               hooks.metabase.proof/lint-constructor-call
+   metabase.proof.impl/provisioning                                                                                          hooks.metabase.proof/lint-system-issuer-call
+   metabase.proof.impl/serdes-load                                                                                           hooks.metabase.proof/lint-system-issuer-call
+   metabase.proof.impl/test-only                                                                                             hooks.metabase.proof/lint-system-issuer-call
    metabase.public-sharing-rest.api-test/with-required-param-card!                                                           hooks.common/with-one-binding
    metabase.public-sharing-rest.api-test/with-temp-public-card                                                               hooks.common/let-one-with-optional-value
    metabase.public-sharing-rest.api-test/with-temp-public-dashboard                                                          hooks.common/let-one-with-optional-value

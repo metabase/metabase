@@ -17,6 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.proof.core :as proof]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -178,13 +179,28 @@
                    :model/Collection c2 {:name "my_favorite Cards"}]
       (is (not= (:entity_id c1) (:entity_id c2))))))
 
+(defn- do-as-editor!
+  "Run `thunk` as an admin for whom remote-synced Collections are editable: the mutators below run the issuing check
+  for the current user before they write."
+  [thunk]
+  (mt/with-temporary-setting-values [remote-sync-type :read-write]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (thunk))))
+
 (defn- archive-collection! [col]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (collection/archive-or-unarchive-collection! col {:archived true})))
+  (do-as-editor! #(collection/archive-or-unarchive-collection! col {:archived true})))
 
 (defn- unarchive-collection! [col]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (collection/archive-or-unarchive-collection! col {:archived false})))
+  (do-as-editor! #(collection/archive-or-unarchive-collection! col {:archived false})))
+
+(defn- move-collection! [& args]
+  (do-as-editor! #(apply collection/move-collection! args)))
+
+(defn- delete-collection! [collection-id]
+  (do-as-editor! #(collection/delete-collection! (proof/authorize-delete :model/Collection collection-id))))
+
+(defn- clear-remote-synced-collection! []
+  (collection/clear-remote-synced-collection! (proof/test-only collection/clear-remote-synced-write)))
 
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"
@@ -522,7 +538,7 @@
     ;;           +-> F -> G
     (with-collection-hierarchy! [{:keys [a b c d e f g]}]
       (is (= 1
-             (t2/delete! :model/Collection :id (u/the-id a))))
+             (delete-collection! (u/the-id a))))
       (is (= 0
              (t2/count :model/Collection :id [:in (map u/the-id [a b c d e f g])])))))
   (testing "parents & siblings should be untouched"
@@ -534,7 +550,7 @@
     ;;           |
     ;;           +-> F -> G
     (with-collection-hierarchy! [{:keys [a b c d e f g]}]
-      (t2/delete! :model/Collection :id (u/the-id c))
+      (delete-collection! (u/the-id c))
       (is (= 2
              (t2/count :model/Collection :id [:in (map u/the-id [a b c d e f g])]))))))
 
@@ -1008,7 +1024,7 @@
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
     (with-collection-hierarchy! [{:keys [b e], :as collections}]
-      (collection/move-collection! e (collection/children-location b))
+      (move-collection! e (collection/children-location b))
       (is (= {"A" {"B" {"E" {}}
                    "C" {"D" {}
                         "F" {"G" {}}}}}
@@ -1023,7 +1039,7 @@
     ;;           |                           |
     ;;           +-> F -> G                  +-> F -> G
     (with-collection-hierarchy! [{:keys [b d], :as collections}]
-      (collection/move-collection! d (collection/children-location b))
+      (move-collection! d (collection/children-location b))
       (is (= {"A" {"B" {"D" {"E" {}}}
                    "C" {"F" {"G" {}}}}}
              (collection-locations (vals collections)))))))
@@ -1037,7 +1053,7 @@
     ;;           |
     ;;           +-> F -> G         F -> G
     (with-collection-hierarchy! [{:keys [f], :as collections}]
-      (collection/move-collection! f (collection/children-location collection/root-collection))
+      (move-collection! f (collection/children-location collection/root-collection))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}}}
               "F" {"G" {}}}
@@ -1052,8 +1068,8 @@
     ;;           |                     |
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy! [{:keys [a f], :as collections}]
-      (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (t2/select-one :model/Collection :id (u/the-id f))))
+      (move-collection! f (collection/children-location collection/root-collection))
+      (move-collection! a (collection/children-location (t2/select-one :model/Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1521,7 +1537,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Collection must be in the same namespace as its parent"
-               (collection/move-collection! collection-2 (format "/%d/" (:id parent-collection)))))))
+               (move-collection! collection-2 (format "/%d/" (:id parent-collection)))))))
       (testing (format "You should not be able to change the namespace of a Collection from %s to %s"
                        (pr-str parent-namespace) (pr-str child-namespace))
         (is (thrown-with-msg?
@@ -1564,13 +1580,13 @@
                    :model/Card       {card-id :id}      {:collection_id coll-id}
                    :model/Dashboard  {dashboard-id :id} {:collection_id coll-id}
                    :model/Pulse      {pulse-id :id}     {:collection_id coll-id}]
-      (t2/delete! :model/Collection :id coll-id)
+      (delete-collection! coll-id)
       (is (not (t2/exists? :model/Card :id card-id)))
       (is (not (t2/exists? :model/Dashboard :id dashboard-id)))
       (is (not (t2/exists? :model/Pulse :id pulse-id))))
     (mt/with-temp [:model/Collection         {coll-id :id}    {:namespace "snippets"}
                    :model/NativeQuerySnippet {snippet-id :id} {:collection_id coll-id}]
-      (t2/delete! :model/Collection :id coll-id)
+      (delete-collection! coll-id)
       (is (not (t2/exists? :model/NativeQuerySnippet :id snippet-id))
           "Snippet"))))
 
@@ -1771,14 +1787,14 @@
 
 (deftest has-remote-synced-collection?-test
   (testing "Returns false when no remote-synced collections exist"
-    (collection/clear-remote-synced-collection!)
+    (clear-remote-synced-collection!)
     (is (false? (collection/has-remote-synced-collection?))))
   (testing "Returns true when at least one remote-synced collection exists"
     (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
       (is (true? (collection/has-remote-synced-collection?)))))
   (testing "Returns false after clearing remote-synced collections"
     (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
-      (collection/clear-remote-synced-collection!)
+      (clear-remote-synced-collection!)
       (is (false? (collection/has-remote-synced-collection?))))))
 
 (deftest non-remote-synced-dependencies-no-dependencies-test
@@ -2074,7 +2090,7 @@
                                                           :location (format "/%d/%d/" coll-id child-id)
                                                           :type nil}]
       ;; Move collection to parent with into-remote-synced? true
-      (collection/move-collection! coll (format "/%d/" parent-id) true)
+      (move-collection! coll (format "/%d/" parent-id) true)
       ;; Check that the moved collection became remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (true? (:is_remote_synced moved-coll))
@@ -2097,7 +2113,7 @@
                                                      :location (format "/%d/" coll-id)
                                                      :type nil}]
       ;; Move collection to parent with into-remote-synced? false
-      (collection/move-collection! coll (format "/%d/" parent-id) false)
+      (move-collection! coll (format "/%d/" parent-id) false)
       ;; Check that collection types remain nil
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
@@ -2116,7 +2132,7 @@
                                                      :location (format "/%d/" coll-id)
                                                      :is_remote_synced true}]
       ;; Move remote-synced collection with into-remote-synced? true
-      (collection/move-collection! coll (format "/%d/" parent-id))
+      (move-collection! coll (format "/%d/" parent-id))
       ;; Check that collections remain remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
@@ -2139,7 +2155,7 @@
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       ;; This should succeed because the dependency (remote-synced-card) is in a remote-synced collection
-      (collection/move-collection! coll (format "/%d/" parent-id) true)
+      (move-collection! coll (format "/%d/" parent-id) true)
       ;; Verify the collection was moved and became remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (true? (:is_remote_synced moved-coll))
@@ -2163,7 +2179,7 @@
       ;; This should throw an exception because the dependency (non-remote-synced-card) is not in a remote-synced collection
       (let [ex (is (thrown-with-msg? Exception
                                      #"Uses content that is not remote synced."
-                                     (collection/move-collection! coll (format "/%d/" parent-id) true))
+                                     (move-collection! coll (format "/%d/" parent-id) true))
                    "Should throw exception for non-remote-synced dependencies")
             ex-data (ex-data ex)]
         (is (= 400 (:status-code ex-data))
@@ -2195,7 +2211,7 @@
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
       ;; This should throw an exception after updates are made but before transaction commits
       (is (thrown? Exception
-                   (collection/move-collection! coll (format "/%d/" parent-id) true))
+                   (move-collection! coll (format "/%d/" parent-id) true))
           "Should throw exception for non-remote-synced dependencies")
       ;; Verify the transaction was completely rolled back
       (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
@@ -2223,7 +2239,7 @@
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
       ;; This should succeed because we're not converting to remote-synced
-      (collection/move-collection! coll (format "/%d/" parent-id))
+      (move-collection! coll (format "/%d/" parent-id))
       ;; Verify the collection was moved but did not become remote-synced type
       (let [moved-coll (t2/select-one :model/Collection :id coll-id)]
         (is (false? (:is_remote_synced moved-coll))
@@ -2681,7 +2697,7 @@
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       (testing "Throws exception when trying to move collection with remote-synced dependents"
         (let [ex (is (thrown? Exception
-                              (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
+                              (move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
                      "Should throw exception when moving collection with remote-synced dependents")]
           (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
@@ -2719,7 +2735,7 @@
                                            :size_x 4 :size_y 4}]
       (testing "Throws exception when trying to move collection with dashboard dependents"
         (let [ex (is (thrown? Exception
-                              (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
+                              (move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
                      "Should throw exception when moving collection with dashboard dependents")]
           (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
@@ -2750,7 +2766,7 @@
                                   :collection_id child-remote-synced-id
                                   :dataset_query (mt/native-query {:query "SELECT 1"})}]
       (testing "Successfully moves collection when no dependents exist"
-        (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id))
+        (move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id))
         (let [moved-coll (t2/select-one :model/Collection :id child-remote-synced-id)]
           (is (false? (:is_remote_synced moved-coll))
               "Collection type should be cleared when moved out of remote-synced collection")
@@ -2777,7 +2793,7 @@
                                   :collection_id regular-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       (testing "allows moving a collection from one remote-synced collection to another"
-        (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
+        (move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
         (is (= (format "/%d/" remote-synced-parent2-id)
                (:location (t2/select-one :model/Collection :id child-remote-synced-id))))))))
 
@@ -2802,7 +2818,7 @@
                                   :collection_id remote-synced-parent1-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       (testing "Allows moving collection from one remote-synced collection to another"
-        (collection/move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
+        (move-collection! child-remote-synced-collection (format "/%d/" remote-synced-parent2-id))
         (is (= (format "/%d/" remote-synced-parent2-id)
                (:location (t2/select-one :model/Collection :id child-remote-synced-id))))))))
 
@@ -2828,7 +2844,7 @@
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
       (testing "Throws exception when trying to move collection with nested dependents"
         (let [ex (is (thrown? Exception
-                              (collection/move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
+                              (move-collection! child-remote-synced-collection (format "/%d/" regular-parent-id)))
                      "Should throw exception when moving collection with nested dependents")]
           (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
@@ -3117,8 +3133,7 @@
                                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (testing "Throws exception when parent has items depending on child collection items"
         (let [ex (is (thrown? Exception
-                              (mt/with-current-user (mt/user->id :crowberto)
-                                (collection/archive-collection! child-coll)))
+                              (archive-collection! child-coll))
                      "Should throw exception when parent has dependents on child items")]
           (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
@@ -3147,8 +3162,7 @@
                                   :collection_id remote-synced-parent-id
                                   :dataset_query (mt/native-query {:query "SELECT 2"})}]
       (testing "Successfully archives child collection when parent has no dependents on it"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (collection/archive-collection! child-coll)))
+        (archive-collection! child-coll))
       (testing "Child collection is archived"
         (let [archived-child (t2/select-one :model/Collection :id child-id)]
           (is (true? (:archived archived-child))
@@ -3166,8 +3180,7 @@
                                   :collection_id remote-synced-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (testing "Successfully archives root collection (internal dependencies don't matter)"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (collection/archive-collection! remote-synced-coll)))
+        (archive-collection! remote-synced-coll))
       (testing "Collection is archived"
         (let [archived-coll (t2/select-one :model/Collection :id remote-synced-id)]
           (is (true? (:archived archived-coll))
@@ -3190,8 +3203,7 @@
                                   :collection_id regular-parent-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (testing "Successfully archives regular collection even with parent dependents"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (collection/archive-collection! regular-child-coll)))
+        (archive-collection! regular-child-coll))
       (testing "Collection is archived"
         (let [archived-coll (t2/select-one :model/Collection :id regular-child-id)]
           (is (true? (:archived archived-coll))
@@ -3216,8 +3228,7 @@
                                            :size_x 4 :size_y 4}]
       (testing "Throws exception when parent dashboard depends on child collection card"
         (let [ex (is (thrown? Exception
-                              (mt/with-current-user (mt/user->id :crowberto)
-                                (collection/archive-collection! child-coll)))
+                              (archive-collection! child-coll))
                      "Should throw exception when parent dashboard depends on child items")]
           (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")))
@@ -3242,8 +3253,7 @@
                                   :archived true
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
       (testing "Successfully archives when parent dependents are already archived"
-        (mt/with-current-user (mt/user->id :crowberto)
-          (collection/archive-collection! child-coll)))
+        (archive-collection! child-coll))
       (testing "Child collection is archived"
         (let [archived-child (t2/select-one :model/Collection :id child-id)]
           (is (true? (:archived archived-child))

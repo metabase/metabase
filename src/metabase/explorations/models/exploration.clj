@@ -4,6 +4,7 @@
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
+   [metabase.proof.core :as proof]
    [metabase.search.spec :as search.spec]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -24,6 +25,10 @@
    (deferred-tru "value must be a non-blank string between 1 and 254 characters.")))
 
 (methodical/defmethod t2/table-name :model/Exploration [_model] :exploration)
+
+(defmethod proof/cascade-parents :model/Exploration
+  [_model]
+  {:model/Collection :collection_id})
 
 (doto :model/Exploration
   (derive :metabase/model)

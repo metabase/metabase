@@ -31,6 +31,7 @@
    [metabase.permissions.models.permissions-group-membership :as pgm]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
+   [metabase.proof.core :as proof]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
@@ -479,6 +480,22 @@
 
   Tests that create no Dimension keep running in parallel alongside these."
   (Object.))
+
+;; A temporary Collection is torn down through the collections module's gated deleter, under a test-only proof, so its
+;; contents go with it as they would for a user's delete; a raw delete of the row does not cascade.
+(methodical/defmethod t2.with-temp/do-with-temp* :model/Collection
+  [model explicit-attributes f]
+  (let [collection (first (t2/insert-returning-instances! model (merge (t2.with-temp/with-temp-defaults model)
+                                                                       explicit-attributes)))]
+    (try
+      (testing (format "\nwith temporary %s\n" (pr-str model))
+        (f collection))
+      (finally
+        ;; the test may have deleted it already
+        (when (t2/exists? :model/Collection :id (:id collection))
+          (collection/delete-collection! (proof/test-only {:model     :model/Collection
+                                                           :operation :delete
+                                                           :subject   (:id collection)})))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Dimension
   [model explicit-attributes f]

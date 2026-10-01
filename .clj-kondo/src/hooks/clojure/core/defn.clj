@@ -3,7 +3,8 @@
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]
    [hooks.clojure.core.def]
-   [hooks.common]))
+   [hooks.common]
+   [hooks.metabase.proof :as proof]))
 
 (defn- end-with-exclamation?
   [s]
@@ -54,6 +55,7 @@
 (defn lint-defn [x]
   (non-thread-safe-form-should-end-with-exclamation x)
   (hooks.clojure.core.def/lint-def* x)
+  (proof/lint-proof-gated-mutator x)
   x)
 
 (comment

@@ -13,8 +13,8 @@
    ;; back into this module. `notification.card` requires only events, the notification models,
    ;; and toucan.
    [metabase.notification.card :as notification.card]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.proof.core :as proof]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -58,12 +58,9 @@
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
       (when (not= orig-location new-location)
-        ;; Check that we have write perms on the new parent collection
+        ;; 404 when the new parent does not exist, 403 when we cannot write it; the move itself issues the proof
+        ;; covering the destination and every descendant
         (api/write-check new-parent)
-        ;; ok, make sure we have perms to do this operation
-        (api/check-403
-         (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                                  (collection/perms-for-moving collection-before-update new-parent)))
         (api/check
          (not (collection/shared-tenant-collection? new-parent)))
         ;; ok, we're good to move!
@@ -119,7 +116,7 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
-        (collections.db/update-collection! id updates)))
+        (collections.db/update-collection! (proof/authorize-update :model/Collection id updates))))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (u/prog1 (collections.db/collection id)

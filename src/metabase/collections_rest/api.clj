@@ -20,6 +20,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.proof.core :as proof]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
@@ -632,7 +633,7 @@
       (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
         (collection/move-collection! child new-children-location))
       ;; Now we can safely delete this collection and anything left under it.
-      (collections-rest.db/delete-collection! id))))
+      (collections/delete-collection! (proof/authorize-delete :model/Collection id)))))
 
 (api.macros/defendpoint :get "/:id/items" :- ::ItemsResponse
   "Fetch a specific Collection's items with the following options:

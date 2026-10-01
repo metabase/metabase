@@ -89,6 +89,8 @@
   namespace-clause
   can-read-audit-helper
   can-read-via-parent-collection?
+  copy-collection-permissions!
+  delete-permissions-by-collection-id!
   collection-based-visibility-search-models
   collection-id-only-read-method
   collection-id-only-read-models
@@ -100,6 +102,7 @@
   grant-collection-readwrite-permissions!
   grant-permissions!
   perms-objects-set-for-parent-collection
+  revoke-all-collection-permissions!
   revoke-application-permissions!
   revoke-collection-permissions!
   set-has-application-permission-of-type?

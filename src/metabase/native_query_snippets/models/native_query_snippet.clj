@@ -9,6 +9,7 @@
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.native-query-snippets.schema]
+   [metabase.proof.core :as proof]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -36,6 +37,10 @@
 (defmethod collection/allowed-namespaces :model/NativeQuerySnippet
   [_]
   #{:snippets})
+
+(defmethod proof/cascade-parents :model/NativeQuerySnippet
+  [_model]
+  {:model/Collection :collection_id})
 
 (events/derive! ::event :metabase/event)
 (doseq [e [:event/snippet-create :event/snippet-update :event/snippet-delete]]

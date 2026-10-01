@@ -605,6 +605,49 @@
         (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
+(defn copy-collection-permissions!
+  "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
+  and write perms for every Group with write perms for the source Collection. Used when a Collection is created (it
+  copies its parent's permissions) and when one moves out of a Personal Collection."
+  [source-collection-or-id dest-collections-or-ids]
+  ;; figure out who has permissions for the source Collection...
+  (let [group-ids-with-read-perms  (permissions.db/group-ids-with-permission-objects
+                                    [(permissions.path/collection-read-path source-collection-or-id)])
+        group-ids-with-write-perms (permissions.db/group-ids-with-permission-objects
+                                    [(permissions.path/collection-readwrite-path source-collection-or-id)])]
+    ;; ...and insert corresponding rows for each destination Collection
+    (permissions.db/insert-permissions!
+     (concat
+      ;; insert all the new read-perms records
+      (for [dest     dest-collections-or-ids
+            :let     [read-path (permissions.path/collection-read-path dest)]
+            group-id group-ids-with-read-perms]
+        {:group_id group-id, :object read-path})
+      ;; ...and all the new write-perms records
+      (for [dest     dest-collections-or-ids
+            :let     [readwrite-path (permissions.path/collection-readwrite-path dest)]
+            group-id group-ids-with-write-perms]
+        {:group_id group-id, :object readwrite-path})))
+    ;; update the perms graph revision number so that editors of the permissions graph are forced to be aware
+    ;; of the new permissions/collections.
+    (perms.u/increment-implicit-perms-revision!
+     :model/CollectionPermissionGraphRevision
+     "Automatically updated permissions due to collection creation or move")))
+
+(defn revoke-all-collection-permissions!
+  "Delete every Group's read and readwrite Permissions rows for `collections-or-ids`. Used when a Collection is deleted
+  or moves into a Personal Collection, where Group permissions do not apply."
+  [collections-or-ids]
+  (permissions.db/delete-permissions-with-objects! (for [collection collections-or-ids
+                                                         path-fn    [permissions.path/collection-read-path
+                                                                     permissions.path/collection-readwrite-path]]
+                                                     (path-fn collection))))
+
+(defn delete-permissions-by-collection-id!
+  "Delete the Permissions rows attached to the Collection with `collection-id` by its `collection_id` column."
+  [collection-id]
+  (permissions.db/delete-permissions-by-collection-id! collection-id))
+
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`.
   This is a paid feature so it's `false` for OSS instances."

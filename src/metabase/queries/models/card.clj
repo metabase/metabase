@@ -31,6 +31,7 @@
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.proof.core :as proof]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.pulse.core :as pulse]
    [metabase.queries.card-schema :as card-schema]
@@ -58,6 +59,10 @@
 (set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/Card [_model] :report_card)
+
+(defmethod proof/cascade-parents :model/Card
+  [_model]
+  {:model/Collection :collection_id})
 
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]

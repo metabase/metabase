@@ -3,7 +3,8 @@
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]
    [hooks.common]
-   [hooks.common.modules :as modules]))
+   [hooks.common.modules :as modules]
+   [hooks.metabase.proof :as proof]))
 
 (defn- ns-form-node->require-node [ns-form-node]
   (some (fn [node]
@@ -152,6 +153,13 @@
                                      :message "Don't import net.sf.jsqlparser classes directly. This code should be agnostic to the parsing library. [:metabase/no-jsqlparser-imports]"
                                      :type    :metabase/no-jsqlparser-imports)))))))
 
+(defn- lint-proof-imports [ns-form-node]
+  (when-let [import-node (ns-form-node->import-node ns-form-node)]
+    (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
+      (doseq [node (rest (:children import-node))
+              :when (not (contains? (hooks.common/ignored-linters node) :metabase/proof-constructor))]
+        (proof/lint-import-node node ns-symb)))))
+
 (defn lint-ns [x]
   (doto (:node x)
     lint-require-shapes
@@ -159,7 +167,8 @@
     (lint-modules (modules/config x))
     lint-namespace-name
     lint-test-parallel-metadata
-    lint-jsqlparser-imports)
+    lint-jsqlparser-imports
+    lint-proof-imports)
   x)
 
 (comment
