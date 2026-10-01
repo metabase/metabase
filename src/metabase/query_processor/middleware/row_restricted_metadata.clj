@@ -19,10 +19,21 @@
   [query]
   (boolean (match/match-one query {:query-permissions/sandboxed-table &truthy} true)))
 
-(defn- row-restricted?
-  "Whether the current user sees only a subset of the rows the query's tables hold."
+(defn- impersonated?
+  "Whether the query runs under a connection-impersonation role, which hands the database a role that filters rows.
+  [[metabase-enterprise.impersonation.middleware/apply-impersonation]] attaches the key for non-admin users only."
   [query]
-  (sandboxed? query))
+  (some? (:impersonation/role query)))
+
+(defn- row-restricted?
+  "Whether the current user sees only a subset of the rows the query's tables hold.
+
+  Every signal is read from the preprocessed query rather than from the dynamic vars the execution middleware binds
+  (`*impersonation-role*` and friends): cached results are replayed from outside those bindings, and the keys are
+  what the execution middleware itself dispatches on, so they are the more reliable source."
+  [query]
+  (or (sandboxed? query)
+      (impersonated? query)))
 
 (defn- remove-fingerprints [metadata]
   (update metadata :cols (fn [cols] (perf/mapv #(dissoc % :fingerprint) cols))))
@@ -30,11 +41,9 @@
 (defn strip-row-restricted-fingerprints
   "Post-processing middleware. Removes `:fingerprint` from every result col when the current user's row access is
   restricted. Must run after every middleware that can add a fingerprint to the cols, which means it goes directly
-  above [[metabase.query-processor.middleware.enterprise/merge-sandboxing-metadata]] in the post-processing list.
-
-  The restriction check runs when the result metadata arrives, not when the middleware is built, so that it sees the
-  state the execution middleware binds around the query."
+  above [[metabase.query-processor.middleware.enterprise/merge-sandboxing-metadata]] in the post-processing list."
   [query rff]
-  (fn strip-row-restricted-fingerprints-rff* [metadata]
-    (rff (cond-> metadata
-           (row-restricted? query) remove-fingerprints))))
+  (if (row-restricted? query)
+    (fn strip-row-restricted-fingerprints-rff* [metadata]
+      (rff (remove-fingerprints metadata)))
+    rff))
