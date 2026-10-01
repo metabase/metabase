@@ -39,3 +39,8 @@
   (testing "a connection-impersonation role on the query strips the fingerprint from every col (BOT-2115)"
     (is (= stripped-metadata
            (strip (assoc query :impersonation/role "restricted_role"))))))
+
+(deftest db-routed-query-loses-fingerprints-test
+  (testing "a destination database on the query strips the fingerprint from every col (BOT-2115)"
+    (is (= stripped-metadata
+           (strip (assoc query :destination-database/id 2))))))
