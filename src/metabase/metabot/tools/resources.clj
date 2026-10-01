@@ -884,9 +884,9 @@
     (boolean (seq (curation/curated-ids [[model id]])))))
 
 (defn check-curated-subject!
-  "Reject `subject` — a `[model id]` pair — unless it's curated (see [[subject-curated?]]), naming it by `label` (a URI
-  or a short description) rather than by the entity's own name. Callers decide whether the session is curated-only.
-  Exported for [[metabase.metabot.tools.metadata]]."
+  "Reject `subject` — a `[model id]` pair — unless it's curated (see [[subject-curated?]]), naming it by `label` (a
+  URI or a short description) rather than by the entity's own name. Callers decide whether the session is
+  curated-only. Exported for [[metabase.metabot.tools.metadata]]."
   [label subject]
   (when (and subject (not (subject-curated? subject)))
     (throw (ex-info (tru (str "`{0}` is not available: this Metabot only uses curated content (verified, official, or "

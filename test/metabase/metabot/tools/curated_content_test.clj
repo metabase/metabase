@@ -335,7 +335,9 @@
                     (testing "get_field_values rejects uncurated tables"
                       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
                                             (metadata-tools/get-field-values-tool
-                                             {:data_source "table" :source_id (mt/id :orders) :field_id (mt/id :orders :total)}))))
+                                             {:data_source "table"
+                                              :source_id   (mt/id :orders)
+                                              :field_id    (mt/id :orders :total)}))))
                     (testing "curated tables are readable"
                       (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
                         (is (=? {:structured-output {:tables [{:id (mt/id :orders)}]}}
@@ -344,4 +346,6 @@
                           (is (=? {:structured-output {:metrics [{:id plain-metric}]}}
                                   (metadata-tools/get-metadata {:metric-ids [plain-metric]}))))
                         (is (some? (metadata-tools/get-field-values-tool
-                                    {:data_source "table" :source_id (mt/id :orders) :field_id (mt/id :orders :total)}))))))))))
+                                    {:data_source "table"
+                                     :source_id   (mt/id :orders)
+                                     :field_id    (mt/id :orders :total)}))))))))))
