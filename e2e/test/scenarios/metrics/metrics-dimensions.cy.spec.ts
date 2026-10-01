@@ -83,6 +83,9 @@ describe("scenarios > metrics > dimensions", () => {
       .and("contain", "Quantity")
       .and("not.contain", "Vendor");
 
+    cy.log("seeding leaves the metric without a default dimension");
+    dimensionList().findByText("Default").should("not.exist");
+
     cy.log("search filters the added dimensions");
     dimensionList().findByPlaceholderText("Search…").type("Disc");
     allDimensionRows().should("have.length", 1);
@@ -176,9 +179,6 @@ describe("scenarios > metrics > dimensions", () => {
       },
       2,
     );
-
-    cy.log("seeding leaves the metric without a default dimension");
-    dimensionList().findByText("Default").should("not.exist");
 
     cy.log("make it the default dimension");
     settingsPanel().findByRole("button", { name: "Set as default" }).click();

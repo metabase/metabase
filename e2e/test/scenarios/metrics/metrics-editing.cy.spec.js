@@ -168,6 +168,15 @@ describe("scenarios > metrics > editing", () => {
       });
       H.MetricPage.queryEditor().should("be.visible");
       H.getNotebookStep("summarize").findByText("Formula").should("be.visible");
+
+      cy.log("summarize step copy stays reachable at a small viewport");
+      cy.viewport(800, 600);
+      H.getNotebookStep("summarize")
+        .findByText("Formula")
+        .should("be.visible")
+        .scrollIntoView();
+      cy.viewport(1280, 800);
+
       H.getNotebookStep("summarize").button("Count").click();
       H.popover().within(() => {
         cy.findByText("Sum of ...").click();

@@ -1493,6 +1493,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("line chart with multiple series should show chart layout picker");
       H.MetricsViewer.assertVizType("Line");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
       cy.findByTestId("chart-layout-picker").should("be.visible");
       cy.findByLabelText("Stack layout").click();
       H.expectUnstructuredSnowplowEvent({
@@ -1678,6 +1679,7 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of products");
       selectDimensionBreakout("Category");
       H.MetricsViewer.assertVizType("Bar");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
       H.MetricsViewer.changeVizType("line");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
