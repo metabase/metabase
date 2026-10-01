@@ -502,7 +502,9 @@ describe("SettingsJWTForm", () => {
       expect(submitButton).toBeEnabled();
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
 
-      toggle.focus();
+      act(() => {
+        toggle.focus();
+      });
       await user.keyboard("{Enter}");
 
       // give a submission time to reach the network before ruling it out
@@ -556,7 +558,9 @@ describe("SettingsJWTForm", () => {
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
 
-      toggle.focus();
+      act(() => {
+        toggle.focus();
+      });
       await userEvent.keyboard(" ");
 
       expect(toggle).not.toBeChecked();
