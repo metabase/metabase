@@ -642,3 +642,14 @@
                                                                         :where  [:= :db_id 415]}]}]
                              :exists]]}
                           :postgres))))
+
+(deftest ^:parallel param-test
+  (is (= ["UPDATE \"SETTING\" SET \"VALUE\" = ?, \"VALUE_WITH_AAD\" = ? WHERE \"KEY\" = ?"
+          "2026-10-01 18:37:49.894829"
+          "2026-10-01 18:37:49.894829"
+          :p17uc4hjfp068j]
+         (funnysql/format {:update [:setting]
+                           :set    {:value          "2026-10-01 18:37:49.894829"
+                                    :value_with_aad "2026-10-01 18:37:49.894829"}
+                           :where  [:= :key [:param :p17uc4hjfp068j]]}
+                          :h2))))

@@ -533,6 +533,9 @@
 (defn- current-timestamp! [context]
   (append-sql! context "current_timestamp"))
 
+(defn- param-fn-call! [x context]
+  (object! x context))
+
 (defn- -binary-operator! [f args context]
   (let [f-str (case f
                 :like     " LIKE "
@@ -643,6 +646,7 @@
     :inline                 (inline! (first args) context)
     :timestampdiff          (timestamp-diff! args context)
     :current-timestamp      (current-timestamp! context)
+    :param                  (param-fn-call! (first args) context)
 
     ;; TODO (Cam 2026-09-29) confirm this is the correct way to implement `:lift`
     :lift
