@@ -104,14 +104,11 @@
         "2016-01-02T00:00:00"   2 "day-of-month"
         "2016-01-31T00:00:00"  31 "day-of-month"
 
-        ;; week-of-year 1 means the first week, which is the week that contains Jan 1, even if it's in December.
-        ;; Note that the first day of the week differs by locale!
-        ;; But since we force "en" locale in our dev environment, Sunday is the start of the week.
-        ;; In 2022 the first week starts on Sunday, Dec. 26, 2021.
-        "2021-12-26T00:00:00"  1 "week-of-year"
-        "2022-01-02T00:00:00"  2 "week-of-year"
-        "2022-12-18T00:00:00" 52 "week-of-year"
-        "2022-12-25T00:00:00" 53 "week-of-year"
+        ;; Week 1 is the first week that starts on or after Jan 1.
+        ;; Weeks start on Sunday here, so 2022's week 1 starts on Sunday, Jan. 2.
+        "2022-01-02T00:00:00"  1 "week-of-year"
+        "2022-01-09T00:00:00"  2 "week-of-year"
+        "2022-12-25T00:00:00" 52 "week-of-year"
 
         "2022-01-01T00:00:00"  1 "month-of-year"
         "2022-02-01T00:00:00"  2 "month-of-year"
@@ -303,44 +300,43 @@
   (is (= "12 AM" (format-unit 0 :hour-of-day)))
   (is (= "1" (format-unit 1 :week-of-year)))
   (testing "week-of-year respects start-of-week"
-    (is (= "1" (shared.ut/format-unit {:start-of-week :sunday} "2023-01-02" :week-of-year)))
-    (is (= "2" (shared.ut/format-unit {:start-of-week :monday} "2023-01-02" :week-of-year)))))
+    (is (= "1" (shared.ut/format-unit {:start-of-week :sunday} "2023-01-01" :week-of-year)))
+    (is (= "52" (shared.ut/format-unit {:start-of-week :monday} "2023-01-01" :week-of-year)))))
 
 (deftest ^:parallel week-of-year-numbering-test
   (testing "a week number formats as itself, including week 53"
     (is (= "53" (format-unit 53 :week-of-year))))
   (testing "the locale does not change the number"
-    (is (= "1" (shared.ut/format-unit {:start-of-week :monday} "2021-01-01" :week-of-year {:locale "de"}))))
-  ;; The week containing Jan 1 is week 1, so a late-December date whose week reaches into January is still the last
-  ;; week of its own year. The same table runs on the JVM, where `extract` is the backend's, so both agree.
+    (is (= "52" (shared.ut/format-unit {:start-of-week :monday} "2021-01-01" :week-of-year {:locale "de"}))))
+  ;; Weeks are numbered by the day of year they start on, as the query processor buckets `:week-of-year`.
+  ;; Early January dates in a week that started in December get the previous year's last week.
   (testing "weeks around the year boundary"
     (are [start-of-week date week]
          (= (str week) (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year))
-      :sunday   "2019-12-28" 52
-      :sunday   "2019-12-29" 53
-      :sunday   "2019-12-31" 53
-      :sunday   "2020-01-01" 1
-      :sunday   "2020-01-04" 1
-      :sunday   "2020-01-05" 2
-      :sunday   "2020-12-31" 53
-      :sunday   "2021-01-02" 1
-      :sunday   "2021-01-03" 2
-      :monday   "2019-12-29" 52
-      :monday   "2019-12-30" 53
-      :monday   "2020-01-01" 1
-      :monday   "2020-01-05" 1
-      :monday   "2020-01-06" 2
-      :monday   "2021-01-03" 1
-      :monday   "2021-01-04" 2
-      :saturday "2019-12-28" 53
-      :saturday "2020-01-01" 1
-      :saturday "2020-01-04" 2
-      :saturday "2021-01-01" 1
-      :saturday "2021-01-02" 2)))
+      :sunday   "2018-12-30" 52
+      :sunday   "2019-01-01" 52
+      :sunday   "2019-12-28" 51
+      :sunday   "2019-12-29" 52
+      :sunday   "2020-01-04" 52
+      :sunday   "2020-01-05" 1
+      :sunday   "2020-12-31" 52
+      :sunday   "2021-01-03" 1
+      :monday   "2018-12-31" 53
+      :monday   "2019-01-01" 53
+      :monday   "2019-12-29" 51
+      :monday   "2019-12-30" 52
+      :monday   "2020-01-05" 52
+      :monday   "2020-01-06" 1
+      :monday   "2021-01-03" 52
+      :monday   "2021-01-04" 1
+      :saturday "2016-12-31" 53
+      :saturday "2019-12-28" 52
+      :saturday "2020-01-01" 52
+      :saturday "2020-01-04" 1
+      :saturday "2021-01-01" 52
+      :saturday "2021-01-02" 1)))
 
 (deftest week-of-year-number->timestamp-test
-  ;; Week n starts n - 1 weeks after the start of the week containing Jan 1. When Jan 1 falls mid-week, week 1
-  ;; starts in the previous December, so extracting from that date gives the last week of the previous year.
   (with-redefs [internal/now (fn [] (from test-epoch))] ; in 2022, where Jan 1 is a Saturday
     (letfn [(round-trip [start-of-week week]
               (let [config {:start-of-week start-of-week}]
@@ -350,9 +346,9 @@
       (testing "every week round-trips when weeks start on Jan 1"
         (doseq [week (range 1 54)]
           (is (= week (round-trip :saturday week)))))
-      (testing "week 1 starts in the previous December when Jan 1 falls mid-week"
-        (is (= 53 (round-trip :sunday 1)))
-        (doseq [week (range 2 54)]
+      ;; The last Sunday of 2022 is Dec 25, so that year has no week 53 when weeks start on Sunday.
+      (testing "every week round-trips when Jan 1 falls mid-week"
+        (doseq [week (range 1 53)]
           (is (= week (round-trip :sunday week))))))))
 
 (deftest parse-unit-test
@@ -587,7 +583,7 @@
       :day-of-week-iso  5
       :day-of-month     6
       :day-of-year      341
-      :week-of-year     49
+      :week-of-year     48
       :month-of-year    12
       :quarter-of-year  4
       :year             2024)))

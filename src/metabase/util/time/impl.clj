@@ -70,6 +70,12 @@
       (throw (ex-info "Week-based time operations require :start-of-week"
                       {:time-config time-config}))))
 
+;; Numbers weeks the way the query processor buckets `:week-of-year`: by the day of year the week starts on.
+;; A week that starts in late December keeps that year's number, even when it holds Jan 1.
+(defn- week-of-year [time-config t]
+  (let [week-start (t/adjust t :previous-or-same-day-of-week (start-of-week time-config))]
+    (-> (t/as week-start :day-of-year) (+ 6) (quot 7))))
+
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- minus-ms [value]
   (t/minus value (t/millis 1)))
@@ -207,8 +213,8 @@
   (-> (now)
       (t/truncate-to :days)
       (t/adjust :first-day-of-year)
-      (t/adjust :previous-or-same-day-of-week (start-of-week options))
-      (t/plus (t/weeks (dec value)))))
+      (t/plus (t/weeks (dec value)))
+      (t/adjust :next-or-same-day-of-week (start-of-week options))))
 
 (defmethod common/number->timestamp :month-of-year [value _]
   (t/offset-date-time (t/year (now)) value 1))
@@ -353,7 +359,7 @@
   If unit is not supported, returns nil."
   [time-config t unit {:keys [locale]}]
   (if (= unit :week-of-year)
-    (str (u.date/extract (select-keys time-config [:start-of-week]) t unit))
+    (str (week-of-year time-config t))
     (when-let [^DateTimeFormatter formatter (some-> unit
                                                     unit-formats
                                                     t/formatter
@@ -560,4 +566,6 @@
 (defn extract
   "Extract a field such as `:minute-of-hour` from a temporal value `t`."
   [time-config t unit]
-  (u.date/extract time-config t unit))
+  (if (= unit :week-of-year)
+    (week-of-year time-config t)
+    (u.date/extract time-config t unit)))

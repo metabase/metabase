@@ -133,10 +133,10 @@
         ^dayjs shifted   (.subtract value days-since-start "day")]
     (.startOf shifted "day")))
 
+;; Numbers weeks the way the query processor buckets `:week-of-year`: by the day of year the week starts on.
+;; A week that starts in late December keeps that year's number, even when it holds Jan 1.
 (defn- week-of-year [time-config ^dayjs value]
-  (let [^dayjs first-week (truncate-to-week time-config (.startOf value "year"))
-        ^dayjs this-week  (truncate-to-week time-config value)]
-    (inc (quot (.diff this-week first-week "day") 7))))
+  (-> (.dayOfYear (truncate-to-week time-config value)) (+ 6) (quot 7)))
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- apply-offset
@@ -246,10 +246,8 @@
   (-> (magic-base-date) (.dayOfYear value) (.startOf "day")))
 
 (defmethod common/number->timestamp :week-of-year [value options]
-  (-> (now)
-      (.startOf "year")
-      (#(truncate-to-week options %))
-      (.add (dec value) "week")))
+  (let [^dayjs earliest-start (-> (now) (.startOf "year") (.add (dec value) "week"))]
+    (.add earliest-start (mod (- (start-of-week-index options) (.day earliest-start)) 7) "day")))
 
 (defmethod common/number->timestamp :month-of-year [value _]
   ;; Day.js uses 0-based months, so we need to subtract 1
