@@ -2729,7 +2729,9 @@
         (stage-refs stage)))
 
 (def ^:private max-listed-column-names
-  "Most column names one list in an unresolved-ref message carries; wide sources are truncated."
+  "Most column names one list in an unresolved-ref message carries; wide sources are truncated.
+  Matches `metabase.metabot.agent.user-context/max-listed-columns`, the cap on the viewed query's
+  column list."
   100)
 
 (defn- column-names [cols]
