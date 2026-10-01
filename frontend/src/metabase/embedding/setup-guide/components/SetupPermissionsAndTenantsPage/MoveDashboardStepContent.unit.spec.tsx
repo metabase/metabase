@@ -2,7 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+  waitFor,
+} from "__support__/ui";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -123,6 +128,7 @@ describe("MoveDashboardStepContent", () => {
     await waitFor(() => {
       expect(onCompleted).toHaveBeenCalled();
     });
+    await settlePendingUpdates();
   });
 
   it("creates a sample dashboard when Create button is clicked", async () => {
@@ -171,5 +177,6 @@ describe("MoveDashboardStepContent", () => {
     await waitFor(() => {
       expect(onCompleted).toHaveBeenCalled();
     });
+    await settlePendingUpdates();
   });
 });
