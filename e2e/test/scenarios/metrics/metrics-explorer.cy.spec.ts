@@ -2180,10 +2180,11 @@ describe("scenarios > metrics > explorer", () => {
       );
       addMetricInputSequence(["+ 123"]);
 
-      H.MetricsViewer.getMetricVisualization().should("be.visible");
-      H.MetricsViewer.searchBarPills()
-        .eq(0)
-        .should("contain", "123 + 123 + 123");
+      cy.log("2 × 18,760 orders + the literal 123");
+      H.MetricsViewer.getMetricVisualization()
+        .should("be.visible")
+        .and("contain.text", "123 + 123 + 123")
+        .and("contain.text", "37,643");
 
       cy.log("Append metric '123' as standalone — selected from dropdown");
       addMetricInputSequence([
@@ -2194,9 +2195,9 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Verify final pill layout");
       H.MetricsViewer.searchBarPills().should("have.length", 2);
-      H.MetricsViewer.searchBarPills()
+      H.MetricsViewer.getAllMetricVisualizations()
         .eq(0)
-        .should("contain", "123 + 123 + 123");
+        .should("contain.text", "37,643");
       H.MetricsViewer.searchBarPills().eq(1).should("contain", "123");
     });
   });

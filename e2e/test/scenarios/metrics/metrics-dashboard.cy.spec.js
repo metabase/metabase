@@ -87,10 +87,10 @@ function curateMetricDimension(metricId, displayName) {
 
 function assertDashboardHasTwoScalarMetricsAndATimeseriesMetric() {
   H.getDashboardCards().should("have.length", 4);
-  H.getDashboardCards()
+  H.dashboardGrid()
     .findAllByText(ORDERS_SCALAR_METRIC.name)
     .should("have.length", 2);
-  H.getDashboardCards()
+  H.dashboardGrid()
     .findAllByTestId("scalar-value")
     .should("have.length", 2)
     .each(($value) => {
@@ -110,6 +110,7 @@ describe("scenarios > metrics > dashboard", () => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/search?*").as("search");
   });
 

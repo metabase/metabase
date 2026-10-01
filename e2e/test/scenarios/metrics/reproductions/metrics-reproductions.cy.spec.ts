@@ -109,6 +109,7 @@ describe("issue 44171", () => {
   it("should not save viz settings on metrics", () => {
     cy.intercept("PUT", "/api/card/*").as("saveCard");
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.get<number>("@metricBId").then((metricBId) => {
       cy.visit(`/metric/${metricBId}/query`);
