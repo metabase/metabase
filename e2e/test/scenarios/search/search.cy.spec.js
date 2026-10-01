@@ -216,7 +216,16 @@ describe("scenarios > search", () => {
   describe("accessing full page search with `Enter`", () => {
     it("should only search and open full page search when a text query is entered", () => {
       cy.intercept("GET", "/api/activity/recents?*").as("getRecentViews");
-      cy.intercept("GET", "/api/search*").as("anySearch");
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/search",
+        query: { context: "search-bar" },
+      }).as("searchBarSearch");
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/search",
+        query: { context: "search-app" },
+      }).as("searchAppSearch");
 
       visitEmbeddingWithSearch("/");
 
@@ -237,11 +246,11 @@ describe("scenarios > search", () => {
       });
       H.getSearchBar().type("{enter}");
       cy.location("pathname").should("eq", "/");
-      cy.get("@anySearch.all").should("have.length", 0);
+      cy.get("@searchBarSearch.all").should("have.length", 0);
 
       H.getSearchBar().clear().type("ord").should("have.value", "ord");
       cy.tick(SEARCH_DEBOUNCE_DURATION);
-      cy.wait("@anySearch");
+      cy.wait("@searchBarSearch");
       cy.findByTestId("search-bar-results-container").should("be.visible");
 
       H.getSearchBar().clear().type(" ").should("have.value", " ");
@@ -250,11 +259,11 @@ describe("scenarios > search", () => {
         .findByText("Recently viewed")
         .should("be.visible");
       cy.findByTestId("search-bar-results-container").should("not.exist");
-      cy.get("@anySearch.all").should("have.length", 1);
+      cy.get("@searchBarSearch.all").should("have.length", 1);
       cy.clock().invoke("restore");
 
       H.getSearchBar().clear().type("orders{enter}");
-      cy.wait("@anySearch");
+      cy.wait("@searchAppSearch");
 
       cy.findByTestId("search-app").within(() => {
         cy.findByText('Results for "orders"').should("exist");
