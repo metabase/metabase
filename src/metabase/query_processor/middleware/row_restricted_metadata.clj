@@ -25,6 +25,14 @@
   [query]
   (some? (:impersonation/role query)))
 
+(defn- db-routed?
+  "Whether the query runs against a destination database swapped in by DB routing. The fingerprint was synced from the
+  router database, so it describes rows of a database the user does not query at all.
+  [[metabase-enterprise.database-routing.middleware/attach-destination-db-middleware]] attaches the key only when a
+  destination is resolved for the user."
+  [query]
+  (some? (:destination-database/id query)))
+
 (defn- row-restricted?
   "Whether the current user sees only a subset of the rows the query's tables hold.
 
@@ -33,7 +41,8 @@
   what the execution middleware itself dispatches on, so they are the more reliable source."
   [query]
   (or (sandboxed? query)
-      (impersonated? query)))
+      (impersonated? query)
+      (db-routed? query)))
 
 (defn- remove-fingerprints [metadata]
   (update metadata :cols (fn [cols] (perf/mapv #(dissoc % :fingerprint) cols))))
