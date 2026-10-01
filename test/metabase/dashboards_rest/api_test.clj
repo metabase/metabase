@@ -701,13 +701,13 @@
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Bird Dashboard"}]
       (let [calls    (atom [])
             fake-pdf (.getBytes "%PDF-1.4 fake")]
-        (with-redefs [channel.render/render-dashboard-to-pdf
-                      (fn [dashboard-id user-id parameters paper-key]
-                        (swap! calls conj {:dashboard-id dashboard-id
-                                           :user-id      user-id
-                                           :parameters   parameters
-                                           :paper-key    paper-key})
-                        fake-pdf)]
+        (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                    (fn [dashboard-id user-id parameters paper-key]
+                                      (swap! calls conj {:dashboard-id dashboard-id
+                                                         :user-id      user-id
+                                                         :parameters   parameters
+                                                         :paper-key    paper-key})
+                                      fake-pdf)]
           (testing "defaults to empty parameters and A4, streaming a non-empty PDF body"
             (reset! calls [])
             (let [resp (mt/user-http-request :rasta :post 200 (format "dashboard/%d/pdf" dash-id)
@@ -746,7 +746,7 @@
 
 (deftest dashboard-pdf-permissions-test
   (testing "POST /api/dashboard/:id/pdf requires read permission on the dashboard"
-    (with-redefs [channel.render/render-dashboard-to-pdf (fn [& _] (.getBytes "x"))]
+    (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf (fn [& _] (.getBytes "x"))]
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection {coll-id :id} {:name "No-read Collection"}
                        :model/Dashboard  {dash-id :id} {:collection_id coll-id}]
