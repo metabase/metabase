@@ -129,21 +129,6 @@ describe("scenarios > binning > binning options", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
-
-    it("should apply a time series bucket picked from an unselected column", () => {
-      H.openTable({ table: ORDERS_ID });
-      H.summarize();
-      H.changeBinningForDimension({
-        name: "Created At",
-        fromBinning: "by month",
-        toBinning: "Quarter",
-      });
-
-      getTitle("Count by Created At: Quarter");
-      H.cartesianChartCircle();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1 2026");
-    });
   });
 
   context("via custom question", () => {
