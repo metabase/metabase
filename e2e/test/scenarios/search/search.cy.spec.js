@@ -118,9 +118,9 @@ describe("scenarios > search", () => {
       cy.get("@search.all").should("have.length", 1);
     });
 
-    it("should render a preview of markdown descriptions", () => {
+    it("should render a preview of markdown descriptions and not overflow the container on large unbroken strings", () => {
       H.createQuestion({
-        name: "Description Test",
+        name: "Markdown Description Test",
         query: { "source-table": ORDERS_ID },
         description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
 
@@ -133,40 +133,41 @@ describe("scenarios > search", () => {
         This is a [link](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg).
 
         Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
-      }).then(() => {
-        cy.signInAsNormalUser();
-        visitEmbeddingWithSearch("/");
-        H.getSearchBar().type("Test");
       });
-
-      //Enseure that text is ellipsified
-      cy.findByTestId("result-description")
-        .findByText(/Lorem ipsum dolor sit amet./)
-        .then((el) => H.assertIsEllipsified(el[0]));
-
-      //Ensure that images are not being rendered in the descriptions
-      cy.findByTestId("result-description")
-        .findByRole("img")
-        .should("not.exist");
-    });
-
-    it("should not overflow container if results contain descriptions with large unbroken strings", () => {
       H.createQuestion({
-        name: "Description Test",
+        name: "Unbroken Description Test",
         query: { "source-table": ORDERS_ID },
         description:
           "testingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting testingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtestingtesting",
-      }).then(() => {
-        cy.signInAsNormalUser();
-        visitEmbeddingWithSearch("/");
-        H.getSearchBar().type("Test");
+      });
+
+      cy.signInAsNormalUser();
+      visitEmbeddingWithSearch("/");
+      H.getSearchBar().type("Test");
+
+      cy.contains(
+        "[data-testid=search-result-item]",
+        "Markdown Description Test",
+      ).within(() => {
+        //Enseure that text is ellipsified
+        cy.findByTestId("result-description")
+          .findByText(/Lorem ipsum dolor sit amet./)
+          .then((el) => H.assertIsEllipsified(el[0]));
+
+        //Ensure that images are not being rendered in the descriptions
+        cy.findByTestId("result-description")
+          .findByRole("img")
+          .should("not.exist");
       });
 
       cy.findByTestId("search-results-floating-container")
-        .as("parentContainer")
         .invoke("outerWidth")
         .then((parentWidth) => {
-          cy.findByTestId("result-description")
+          cy.contains(
+            "[data-testid=search-result-item]",
+            "Unbroken Description Test",
+          )
+            .findByTestId("result-description")
             .invoke("outerWidth")
             .should(
               "be.lessThan",
