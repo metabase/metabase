@@ -730,8 +730,8 @@ export function buildDataAppHostApp() {
   });
 }
 
-/** Create and assign an ordinary group for access control tests. */
-export function assignDataAppTestGroup(slug: string) {
+/** Create a group and assign it to a data app by slug. */
+export function assignTestGroupToDataApp(slug: string) {
   cy.request<GroupInfo>("POST", "/api/permissions/group", {
     name: `Data app test group: ${slug}`,
   })
