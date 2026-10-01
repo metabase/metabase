@@ -105,7 +105,7 @@ describe(
 
     it("executes the app's copy rather than the authored action, for a member of the app's group", () => {
       publishApp().then(({ app, actionCopy }) => {
-        H.assignDataAppTestGroup(app.name).then((groupId) => {
+        H.assignTestGroupToDataApp(app.name).then((groupId) => {
           H.addUserToGroup(groupId, USERS.normal.email);
         });
 

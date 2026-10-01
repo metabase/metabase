@@ -130,7 +130,7 @@
                           {:collection "goodAppCollection0000" :queries [] :actions []})))
 
 
-(deftest data-app-group-reaches-only-copied-actions-test
+(deftest assigned-group-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -152,7 +152,7 @@
                                :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}
                     source-id (actions/insert! (assoc action :collection_id source-collection-id))
                     copied-id (actions/insert! (assoc action :collection_id resource_collection_id))]
-                (testing "the app's group reads the action copied into its collection"
+                (testing "the assigned group reads the action copied into the app collection"
                   (is (=? {:id copied-id}
                           (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
                 (testing "the same group cannot read the source action it was copied from"

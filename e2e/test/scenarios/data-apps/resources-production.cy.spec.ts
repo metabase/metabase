@@ -166,7 +166,7 @@ describe("scenarios > data apps > resources in production", () => {
 
   it("serves the app to a member of its permission group", () => {
     publishApp().then(({ app }) => {
-      H.assignDataAppTestGroup(app.name).then((groupId) => {
+      H.assignTestGroupToDataApp(app.name).then((groupId) => {
         H.addUserToGroup(groupId, USERS.normal.email);
       });
 
