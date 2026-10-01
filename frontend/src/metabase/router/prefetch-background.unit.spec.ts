@@ -53,7 +53,14 @@ beforeEach(async () => {
   prefetch = await import("./prefetch");
 });
 
-const flush = () => Promise.resolve().then().then().then();
+/**
+ * Let everything pending settle, however many turns it takes.
+ *
+ * A macrotask, so it drains the whole microtask queue. Counting `then` hops
+ * instead would tie the tests to how many `await`s the queue happens to use
+ * between an idle callback firing and the next one being asked for.
+ */
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /** One turn of the tab being idle. */
 async function idleOnce(): Promise<void> {
