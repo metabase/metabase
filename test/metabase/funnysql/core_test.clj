@@ -619,3 +619,26 @@
                                            :not-null]
                                           [:model [:varchar 32] :not-null]]}
                           :postgres))))
+
+(deftest ^:parallel from-subquery-test
+  (is (= [(str "SELECT EXISTS ("
+               "SELECT 1 FROM ("
+               "SELECT * FROM \"metabase_field\" AS \"f\""
+               ") AS \"metabase_field\" "
+               "WHERE \"table_id\" IN ("
+               "SELECT \"id\" FROM \"metabase_table\" WHERE \"db_id\" = 415"
+               ")) AS \"exists\"")]
+         (funnysql/format {:select
+                           [[[:exists
+                              ^:allow-subquery
+                              {:select [[[:inline 1]]]
+                               :from
+                               [[^:allow-subquery
+                                 {:select [:*]
+                                  :from   [[:metabase_field :f]]}
+                                 :metabase_field]]
+                               :where  [:in :table_id ^:allow-subquery {:select [:id]
+                                                                        :from   [:metabase_table]
+                                                                        :where  [:= :db_id 415]}]}]
+                             :exists]]}
+                          :postgres))))

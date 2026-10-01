@@ -239,9 +239,28 @@
 
 (defn- from! [from context]
   (append-sql! context "FROM ")
-  (if (keyword? from)
-    (-identifier-with-optional-as! from context)
-    (interpose-fn from #(-identifier-with-optional-as! % context) #(append-sql! context ", "))))
+  (letfn [(from-subclause! [subclause]
+            (let [[lhs rhs] (if (vector? subclause)
+                              subclause
+                              [subclause])]
+              ;; support subqueries in `:from` clauses. I don't think we really need to require people to mark these
+              ;; as `^:allow-subquery`, since I generally don't think `:from` will be getting passed in based on user
+              ;; input... at any rate the existing Honey SQL Guard code will require it anyway
+              ;;
+              ;; TODO (Cam 2026-10-01) ask Bryan and Dan what they think about this. Maybe it makes sense to be extra
+              ;; pedantic anyway
+              (if (map? lhs)
+                (do
+                  (append-sql! context "(")
+                  (map! lhs context)
+                  (append-sql! context ")"))
+                (compile! lhs context))
+              (when rhs
+                (append-sql! context " AS ")
+                (compile! rhs context))))]
+    (if (keyword? from)
+      (from-subclause! from)
+      (interpose-fn from from-subclause! #(append-sql! context ", ")))))
 
 (defn- join!
   [join-type joins context]
