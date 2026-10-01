@@ -29,6 +29,13 @@
       {:output (ex-message e) :status-code status-code}
       (handle-agent-error e))))
 
+(defn non-terminal-when-warned
+  "Mark a tool's success `result` `:non-terminal?` when `warnings` is non-empty, so a profile that ends its turn on
+  that tool still gives the model a turn to act on them."
+  [result warnings]
+  (cond-> result
+    (seq warnings) (assoc :non-terminal? true)))
+
 (defn convert-field-type
   "Return tool type for `column`."
   [column]

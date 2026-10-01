@@ -107,6 +107,7 @@
     [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
     [:structured_output {:optional true} [:maybe ::schema.v2/tool-io]]
     [:terminal-error?   {:optional true} :boolean]
+    [:non-terminal?     {:optional true} :boolean]
     [:data-parts        {:optional true} [:sequential DataPart]]
     [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
     [:instructions      {:optional true} [:maybe :string]]
