@@ -114,8 +114,5 @@
        :structured-output {:query-id   query_id
                            :returned   (:returned page)
                            :truncated? (:truncated? page)}})
-    (catch clojure.lang.ExceptionInfo e
-      (let [{:keys [error query-error]} (ex-data e)]
-        (if (= :query-failed error)
-          {:output (str "Query failed: " (or query-error "unknown error"))}
-          (tools.u/handle-agent-or-api-error e))))))
+    (catch Exception e
+      (tools.u/handle-agent-or-api-error e))))
