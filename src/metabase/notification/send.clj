@@ -108,22 +108,24 @@
         {:message (ex-message e)}))))
 
 (defn- handler-failure
-  "One entry of `:failed-handlers`: the handler that did not deliver, and the error."
-  [handler {:keys [message]}]
-  {:handler_id   (:id handler)
-   :channel_type (:channel_type handler)
-   :channel_id   (:channel_id handler)
-   :message      message})
+  "One entry of `:failed-handlers`: the handler and the error. A handler can render several messages, for
+  example one email for all users and one per external address; each message that did not go out gets its own entry.
+  The entry has no recipients. Its `:message` is the raw reason, which can still quote an email address."
+  [handler error]
+  (merge {:handler_id   (:id handler)
+          :channel_type (:channel_type handler)
+          :channel_id   (:channel_id handler)}
+         error))
 
 (defn- throw-when-handlers-failed
   "Throws when at least one handler did not deliver. The exception has `:error-code :notification/delivery-failed`,
-  `:status-code 502` and the entries under `:failed-handlers`; its message names each failure, with its reason.
+  `:status-code 502` and the entries under `:failed-handlers`; its message names each failure once, with its reason.
   The send replaces it with [[delivery-failure-for-caller]] before it leaves."
   [notification-id failures]
   (when (seq failures)
     (throw (ex-info (tru "Failed to deliver to {0}"
-                         (str/join ", " (for [{:keys [message] :as failure} failures]
-                                          (str (handler->channel-name failure) ": " message))))
+                         (str/join ", " (distinct (for [{:keys [message] :as failure} failures]
+                                                    (str (handler->channel-name failure) ": " message)))))
                     {:status-code     502
                      :error-code      :notification/delivery-failed
                      :notification-id notification-id

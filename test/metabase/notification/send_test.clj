@@ -281,6 +281,30 @@
             (is (=? {:status :failed}
                     (t2/select-one :model/TaskRun :notification_id (:id n))))))))))
 
+(deftest notification-send-failure-entry-per-message-test
+  (testing "each message that did not go out gets its own entry, without its recipients (GDGT-3144)"
+    (notification.tu/with-notification-testing-setup!
+      (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+        (notification.tu/with-card-notification
+          [n {:handlers [{:channel_type notification.tu/test-channel-type
+                          :channel_id   (:id chn)
+                          :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}]
+          ;; like email: one message for all users, one per external address
+          (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)]
+            (with-redefs [channel/render-notification (fn [& _]
+                                                        [{:recipients ["crowberto@metabase.com"]}
+                                                         {:recipients ["ext@example.com"]}])
+                          channel/send!               (fn [& _] (throw (ex-info "SMTP is down" {})))]
+              (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                   (notification/send-notification! n :notification/sync? true)))]
+                (is (=? {:failed-handlers [{:channel_id (:id chn)} {:channel_id (:id chn)}]}
+                        (ex-data e)))
+                (is (= 2 (count (:failed-handlers (ex-data e)))))
+                (testing "no email address is in the exception or in its cause"
+                  (is (not (str/includes? (pr-str [(ex-data e) (ex-data (ex-cause e))]) "@"))))
+                (testing "the exception message names the channel once"
+                  (is (re-matches #"Failed to deliver to channel/metabase-test \d+" (ex-message e))))))))))))
+
 (def ^:private fake-email-notification
   {:subject      "test-message"
    :recipients   ["whoever@example.com"]
