@@ -13,7 +13,6 @@
    [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util :as u]
    [metabase.util.performance :refer [mapv not-empty some]]))
