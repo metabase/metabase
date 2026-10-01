@@ -2376,8 +2376,9 @@
 ;;;   * Walk stages left-to-right.
 ;;;   * Before processing stage `i` (i ≥ 1), build a mini-query consisting of stages[0..i-1]
 ;;;     and resolve it. Call `lib/returned-columns` on the result; index by `:name`.
-;;;   * Walk stage[i] (skipping descent into `joins` subtrees - those have their own
-;;;     resolution context). For every `["field" opts <string>]` clause:
+;;;   * Walk stage[i], including its joins' `conditions` and `fields` but not their own `stages`
+;;;     (a join's source is a separate query; see [[walk-stage-refs]]). For every
+;;;     `["field" opts <string>]` clause:
 ;;;       - If `opts` already has `"base-type"`, leave it alone (idempotent).
 ;;;       - If the name is unknown to the previous stage, leave it alone (the resolver will
 ;;;         report the real error with a better message).
