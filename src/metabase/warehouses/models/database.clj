@@ -512,7 +512,8 @@
           (let [details (cond->> details
                           (not= k :details) (merge (:details database)))]
             (driver.u/validate-connection-hosts! engine details)
-            (driver.u/validate-connection-parameters! engine details)))))))
+            (when (driver.impl/registered? engine)
+              (driver.u/validate-connection-parameters! engine details))))))))
 
 (t2/define-before-update :model/Database
   [database]

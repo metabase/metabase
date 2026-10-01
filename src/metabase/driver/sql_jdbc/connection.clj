@@ -519,7 +519,6 @@
 (defn do-with-connection-spec-for-testing-connection
   "Impl for [[with-connection-spec-for-testing-connection]]."
   [driver details f]
-  ;; `can-connect?` implementations run this through `validate-db-details!` too, but not every caller goes through one
   (driver.u/validate-connection-parameters! driver details)
   (let [details (-> details
                     (update :port #(or % (default-ssh-tunnel-target-port driver)))

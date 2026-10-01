@@ -817,7 +817,12 @@
     (mt/with-temp [:model/Database db {:engine :postgres :details {:host "db.example.com"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"dangerous"
-           (t2/update! :model/Database (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}}))))))
+           (t2/update! :model/Database (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}})))))
+  (testing "a database whose driver isn't registered (e.g. an uninstalled plugin) can still be saved"
+    (mt/with-temp [:model/Database db {:engine "not-a-registered-driver" :details {:host "db.example.com"}}]
+      (t2/update! :model/Database (:id db) {:details {:host "db2.example.com"}})
+      (is (=? {:details {:host "db2.example.com"}}
+              (t2/select-one :model/Database (:id db)))))))
 
 (deftest audit-db-is-not-subject-to-the-network-policy-test
   ;; The Audit DB is a clone of the *application* database, not a warehouse an admin pointed somewhere: it carries no

@@ -17,10 +17,6 @@ title: Driver interface changelog
     (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
   ```
 
-  The `:sql-jdbc` list replaces the private denylist behind `metabase.driver.sql-jdbc/reject-dangerous-additional-options!`,
-  which has been removed. Call `metabase.driver.util/validate-connection-parameters!` from a `validate-db-details!`
-  override instead.
-
 - `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.
