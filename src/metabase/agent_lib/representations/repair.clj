@@ -3215,19 +3215,24 @@
 ;;; ============================================================
 
 (defn- text-column-names
-  "Names of the text-typed columns `clause` references as bare, uncast arguments."
+  "Names of the text-typed columns `clause` references as bare, uncast arguments. Only feeds a hint
+  on an error being raised, so a failure to compute it yields nil rather than masking that error."
   [query stage-idx clause]
-  (into []
-        (comp (filter #(isa? (lib/type-of query stage-idx %) :type/Text))
-              (map #(let [id-or-name (nth % 2)]
-                      (if (string? id-or-name)
-                        id-or-name
-                        (:name (lib.metadata.protocols/field (lib/->metadata-provider query) id-or-name)))))
-              (remove nil?)
-              (distinct))
-        (match/match-many clause
-          [(_ :guard #{:integer :float}) _opts [:field & _]] nil
-          [:field & _]                                         &match)))
+  (try
+    (into []
+          (comp (filter #(isa? (lib/type-of query stage-idx %) :type/Text))
+                (map #(let [id-or-name (nth % 2)]
+                        (if (string? id-or-name)
+                          id-or-name
+                          (:name (lib.metadata.protocols/field (lib/->metadata-provider query) id-or-name)))))
+                (remove nil?)
+                (distinct))
+          (match/match-many clause
+            [(_ :guard #{:integer :float}) _opts [:field & _]] nil
+            [:field & _]                                         &match))
+    (catch Exception e
+      (log/debug e "[repr-repair] could not list the text columns of a rejected expression")
+      nil)))
 
 (defn assert-editor-accepts-expressions!
   "Run the FE expression editor's own validation, [[metabase.lib.expression/diagnose-expression]],
