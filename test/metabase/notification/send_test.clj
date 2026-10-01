@@ -305,6 +305,52 @@
                 (testing "the exception message names the channel once"
                   (is (re-matches #"Failed to deliver to channel/metabase-test \d+" (ex-message e))))))))))))
 
+(deftest notification-send-failure-without-message-test
+  (testing "an exception without a message is named by its class, not by its ex-data (GDGT-3144)"
+    (notification.tu/with-notification-testing-setup!
+      (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+        (notification.tu/with-card-notification
+          [n {:handlers [{:channel_type notification.tu/test-channel-type
+                          :channel_id   (:id chn)
+                          :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}]
+          (testing "when sending"
+            (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)]
+              (with-redefs [channel/render-notification (constantly [{:message "stub"}])
+                            channel/send!               (fn [& _] (throw (NullPointerException.)))]
+                (mt/with-log-messages-for-level [messages :warn]
+                  (is (=? {:failed-handlers [{:message "java.lang.NullPointerException"}]}
+                          (try (notification/send-notification! n :notification/sync? true)
+                               (catch clojure.lang.ExceptionInfo e (ex-data (ex-cause e))))))
+                  (testing "and the log line names the class too"
+                    (is (some #{"Failed to send: java.lang.NullPointerException"}
+                              (map :message (messages)))))))))
+          (testing "the caller gets the error type and not the message"
+            (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)]
+              (with-redefs [channel/render-notification (constantly [{:message "stub"}])]
+                (letfn [(caller-entry [thrown]
+                          (with-redefs [channel/send! (fn [& _] (throw thrown))]
+                            (try (notification/send-notification! n :notification/sync? true)
+                                 (catch clojure.lang.ExceptionInfo e (-> e ex-data :failed-handlers first)))))]
+                  (testing "the :error-type of the exception when the channel sets one"
+                    (is (= "slack/invalid-token"
+                           (:error_type (caller-entry (ex-info "token xoxb-1 is invalid"
+                                                               {:error-type :slack/invalid-token}))))))
+                  (testing "else the exception class"
+                    (is (= {:error_type "java.lang.IllegalStateException"}
+                           (select-keys (caller-entry (IllegalStateException. "smtp.internal:587 refused"))
+                                        [:error_type :message]))))))))
+          (testing "when building the message"
+            (with-redefs [channel/render-notification (fn [& _] (throw (ex-info nil {:token "secret"})))]
+              (mt/with-log-messages-for-level [messages :error]
+                (let [data (try (notification/send-notification! n :notification/sync? true)
+                                (catch clojure.lang.ExceptionInfo e (ex-data (ex-cause e))))]
+                  (is (=? {:failed-handlers [{:message "clojure.lang.ExceptionInfo"}]}
+                          data))
+                  (is (not (str/includes? (pr-str (:failed-handlers data)) "secret")))
+                  (testing "and the log line names the class too"
+                    (is (some #(re-matches #"Error sending to channel .*: clojure\.lang\.ExceptionInfo" %)
+                              (map :message (messages))))))))))))))
+
 (def ^:private fake-email-notification
   {:subject      "test-message"
    :recipients   ["whoever@example.com"]

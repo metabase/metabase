@@ -564,7 +564,8 @@
                                                                    :cron_schedule "0 0 0 * * ?"}]})]
               (is (=? {:message         "Failed to deliver to channel/email"
                        :error-code      "notification/delivery-failed"
-                       :failed-handlers [{:channel_type "channel/email"}]} response))
+                       :failed-handlers [{:channel_type "channel/email"
+                                          :error_type   "clojure.lang.ExceptionInfo"}]} response))
               (is (not-any? :message (:failed-handlers response))))))))))
 
 (deftest send-unsaved-notification-api-test
