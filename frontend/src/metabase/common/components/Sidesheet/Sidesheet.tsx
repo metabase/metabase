@@ -11,6 +11,8 @@ import Styles from "./sidesheet.module.css";
 
 export type SidesheetSize = "xs" | "sm" | "md" | "lg" | "xl" | "auto";
 
+export const SIDESHEET_HORIZONTAL_PADDING = "xl";
+
 interface SidesheetProps {
   title?: React.ReactNode;
   isOpen: boolean;
@@ -75,7 +77,12 @@ export function Sidesheet({
         }}
         aria-labelledby={titleId}
       >
-        <Modal.Header bg="background_surface-primary" px="xl" pt="xl" pb="lg">
+        <Modal.Header
+          bg="background_surface-primary"
+          px={SIDESHEET_HORIZONTAL_PADDING}
+          pt="xl"
+          pb="lg"
+        >
           {title && (
             <Modal.Title pr="sm" id={titleId} fz="h4" lh="h4">
               {title}
@@ -100,7 +107,7 @@ export function Sidesheet({
         >
           <Stack
             gap="xl"
-            px={removeBodyPadding ? 0 : "xl"}
+            px={removeBodyPadding ? 0 : SIDESHEET_HORIZONTAL_PADDING}
             pb={removeBodyPadding ? 0 : "xl"}
             mt={title ? 0 : "lg"}
             h="100%"

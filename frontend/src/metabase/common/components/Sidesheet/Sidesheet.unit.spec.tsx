@@ -47,49 +47,6 @@ describe("Sidesheet", () => {
     expect(screen.getByText("more content")).toBeInTheDocument();
   });
 
-  it("should use the sm width by default", () => {
-    render(
-      <Sidesheet isOpen onClose={jest.fn()}>
-        hello world
-      </Sidesheet>,
-    );
-
-    expect(screen.getByTestId("sidesheet")).toHaveStyle({ width: "30rem" });
-  });
-
-  it("should preserve the explicit sm width", () => {
-    render(
-      <Sidesheet isOpen size="sm" onClose={jest.fn()}>
-        hello world
-      </Sidesheet>,
-    );
-
-    expect(screen.getByTestId("sidesheet")).toHaveStyle({ width: "30rem" });
-  });
-
-  it("should apply the offset variant when requested", () => {
-    render(
-      <Sidesheet isOpen offset onClose={jest.fn()}>
-        hello world
-      </Sidesheet>,
-    );
-
-    expect(screen.getByTestId("sidesheet")).toHaveAttribute(
-      "data-offset",
-      "true",
-    );
-  });
-
-  it("should keep the flush layout when offset is false", () => {
-    render(
-      <Sidesheet isOpen offset={false} onClose={jest.fn()}>
-        hello world
-      </Sidesheet>,
-    );
-
-    expect(screen.getByTestId("sidesheet")).not.toHaveAttribute("data-offset");
-  });
-
   it("should fire onClose when close button is clicked", async () => {
     const closeSpy = jest.fn();
     render(

@@ -24,6 +24,7 @@
 }
 
 .SidesheetCloseButton {
+  /* Modal.module.css uses !important for the close color and icon size. */
   color: var(--mb-color-text-primary) !important;
 
   &:hover {
