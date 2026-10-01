@@ -94,30 +94,43 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("no metrics", () => {
-    it("should show the empty metrics page", () => {
+    it("should show the empty metrics page, discard a new metric on cancel (metabase#48024), and hide create actions without data access", () => {
+      const emptyStateText =
+        "Create Metrics to define the official way to calculate important numbers for your team";
+
       cy.visit("/");
       H.navigationSidebar().findByText("Metrics").should("be.visible").click();
       cy.location("pathname").should("eq", "/browse/metrics");
+      cy.findByTestId("browse-metrics-header")
+        .findByLabelText("Create a new metric")
+        .should("be.visible");
       H.main().within(() => {
-        cy.findByText(
-          "Create Metrics to define the official way to calculate important numbers for your team",
-        ).should("be.visible");
+        cy.findByText(emptyStateText).should("be.visible");
         cy.findByText("Create metric").should("be.visible").click();
       });
       cy.location("pathname").should("eq", "/metric/new");
-    });
 
-    it("should not show the create metric button if the user does not have data access", () => {
+      cy.log("cancelling a new metric asks to discard it");
+      H.MetricPage.queryEditor().should("be.visible");
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
+      });
+      H.MetricPage.cancelButton().click();
+      H.modal().within(() => {
+        cy.findByText("Discard your changes?").should("be.visible");
+        cy.button("Discard changes").click();
+      });
+      cy.location("pathname").should("eq", "/browse/metrics");
+      H.main().findByText(emptyStateText).should("be.visible");
+
+      cy.log("create actions are hidden without data access");
       cy.signInAsSandboxedUser();
       cy.visit("/browse/metrics");
       H.main().within(() => {
-        cy.findByText(
-          "Create Metrics to define the official way to calculate important numbers for your team",
-        ).should("be.visible");
+        cy.findByText(emptyStateText).should("be.visible");
         cy.findByText("Create metric").should("not.exist");
       });
-
-      cy.log("New metric header button should not show either");
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
         .should("not.exist");
@@ -154,25 +167,7 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("multiple metrics", () => {
-    it("should navigate to the metric when clicking a metric title", () => {
-      createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.visit("/browse/metrics");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click();
-      cy.location("pathname").should("match", /^\/metric\//);
-      H.MetricPage.aboutPage().should("be.visible");
-    });
-
-    it("should navigate to that collection when clicking a collection title", () => {
-      createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.visit("/browse/metrics");
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
-
-      metricsTable().findByText("Our analytics").should("be.visible").click();
-
-      cy.location("pathname").should("eq", "/collection/root");
-    });
-
-    it("should open the collections in a new tab when alt-clicking a metric", () => {
+    it("should open a metric in a new tab on meta-click, and navigate to its collection and to the metric on click", () => {
       cy.on("window:before:load", (win) => {
         // prevent Cypress opening in a new window/tab and spy on this method
         cy.stub(win, "open").as("open");
@@ -181,6 +176,7 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
 
+      cy.log("meta-click opens the metric in a new tab");
       findMetric(ORDERS_SCALAR_METRIC.name)
         .should("be.visible")
         .click(H.holdMetaKey);
@@ -194,6 +190,16 @@ describe("scenarios > browse > metrics", () => {
 
       // the page did not navigate on this page
       cy.location("pathname").should("eq", "/browse/metrics");
+
+      cy.log("clicking the collection navigates to it");
+      metricsTable().findByText("Our analytics").should("be.visible").click();
+      cy.location("pathname").should("eq", "/collection/root");
+
+      cy.log("clicking the metric navigates to it");
+      cy.visit("/browse/metrics");
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click();
+      cy.location("pathname").should("match", /^\/metric\//);
+      H.MetricPage.aboutPage().should("be.visible");
     });
 
     it("should render truncated name and markdown in the table", () => {
@@ -271,28 +277,6 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("dot menu", () => {
-    it("should be possible to bookmark a metrics from the dot menu", () => {
-      createMetrics([ORDERS_SCALAR_METRIC]);
-
-      cy.visit("/browse/metrics");
-
-      metricsTable().findByLabelText("Metric options").click();
-      H.popover().findByText("Bookmark").should("be.visible").click();
-
-      shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
-
-      metricsTable().findByLabelText("Metric options").click();
-      H.popover()
-        .findByText("Remove from bookmarks")
-        .should("be.visible")
-        .click();
-
-      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
-
-      metricsTable().findByLabelText("Metric options").click();
-      H.popover().findByText("Bookmark").should("be.visible");
-    });
-
     it("should be possible to navigate to the collection from the dot menu", () => {
       createMetrics([ORDERS_SCALAR_MODEL_METRIC]);
 
@@ -307,12 +291,28 @@ describe("scenarios > browse > metrics", () => {
       );
     });
 
-    it("should be possible to trash a metric from the dot menu when the user has write access", () => {
+    it("should be possible to bookmark, trash, and restore a metric from the dot menu when the user has write access", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
 
       cy.visit("/browse/metrics");
 
+      cy.log("bookmark and unbookmark");
       metricsTable().findByLabelText("Metric options").click();
+      H.popover().findByText("Bookmark").should("be.visible").click();
+
+      shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      metricsTable().findByLabelText("Metric options").click();
+      H.popover()
+        .findByText("Remove from bookmarks")
+        .should("be.visible")
+        .click();
+
+      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      cy.log("trash and restore");
+      metricsTable().findByLabelText("Metric options").click();
+      H.popover().findByText("Bookmark").should("be.visible");
       H.popover().findByText("Move to trash").should("be.visible").click();
 
       H.main()
@@ -334,36 +334,21 @@ describe("scenarios > browse > metrics", () => {
     });
 
     describe("when the user does not have write access", () => {
-      it("should not be possible to trash a metric from the dot menu when the user does not have write access", () => {
+      it("should be possible to bookmark a metric and navigate to its collection, but not trash it, from the dot menu", () => {
         createMetrics([ORDERS_SCALAR_METRIC]);
         cy.signIn("readonly");
 
         cy.visit("/browse/metrics");
 
+        cy.log("trash is not offered");
         metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Move to trash").should("not.exist");
-      });
+        H.popover().within(() => {
+          cy.findByText("Bookmark").should("be.visible");
+          cy.findByText("Move to trash").should("not.exist");
+        });
 
-      it("should be possible to navigate to the collection from the dot menu", () => {
-        createMetrics([ORDERS_SCALAR_METRIC]);
-        cy.signIn("readonly");
-
-        cy.visit("/browse/metrics");
-
-        metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Open collection").should("be.visible").click();
-
-        cy.location("pathname").should("eq", "/collection/root");
-      });
-
-      it("should be possible to bookmark a metrics from the dot menu", () => {
-        createMetrics([ORDERS_SCALAR_METRIC]);
-        cy.signIn("readonly");
-
-        cy.visit("/browse/metrics");
-
-        metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Bookmark").should("be.visible").click();
+        cy.log("bookmark and unbookmark");
+        H.popover().findByText("Bookmark").click();
 
         shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
@@ -375,8 +360,12 @@ describe("scenarios > browse > metrics", () => {
 
         shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
+        cy.log("open collection");
         metricsTable().findByLabelText("Metric options").click();
         H.popover().findByText("Bookmark").should("be.visible");
+        H.popover().findByText("Open collection").should("be.visible").click();
+
+        cy.location("pathname").should("eq", "/collection/root");
       });
     });
   });

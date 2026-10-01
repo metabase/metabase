@@ -70,13 +70,14 @@ describe("scenarios > metrics > collection", () => {
       .should("be.visible");
   });
 
-  it("should be possible to add and remove a metric from bookmarks", () => {
+  it("should be possible to bookmark, archive, unarchive, and delete a metric", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion({
       ...ORDERS_TIMESERIES_METRIC,
       collection_position: null,
     });
 
+    cy.log("add and remove bookmarks");
     cy.visit("/collection/root");
 
     H.getPinnedSection().should("contain", ORDERS_SCALAR_METRIC.name);
@@ -103,16 +104,8 @@ describe("scenarios > metrics > collection", () => {
     H.navigationSidebar()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
-  });
 
-  it("should be possible to archive, unarchive, and delete a metric", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.createQuestion({
-      ...ORDERS_TIMESERIES_METRIC,
-      collection_position: null,
-    });
-    cy.visit("/collection/root");
-
+    cy.log("archive, unarchive, and delete");
     H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Move to trash").click();
     H.getPinnedSection().should("not.exist");

@@ -291,14 +291,42 @@ describe("scenarios > metrics > metric page", () => {
     });
   });
 
-  it("should edit, save, and cancel metric definition changes", () => {
+  it("should discard unsaved changes on leaving, and edit, save, and cancel metric definition changes (metabase#32037)", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
-      cy.visit(`/metric/${metric.id}/query`);
+    H.createQuestion(ORDERS_SCALAR_METRIC, {
+      wrapId: true,
+      idAlias: "metricId",
+    });
+    cy.get<number>("@metricId").then((metricId) => {
+      cy.visit(`/metric/${metricId}/query`);
     });
 
     H.MetricPage.queryEditor().should("be.visible");
+    H.MetricPage.saveButton().should("not.exist");
+
+    cy.log("leaving with unsaved changes asks to discard them");
+    H.getNotebookStep("summarize").button("Count").click();
+    H.popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Total").click();
+    });
+    H.MetricPage.saveButton().should("be.visible");
+
+    H.MetricPage.aboutTab().click();
+    H.modal().within(() => {
+      cy.findByText("Discard your changes?").should("be.visible");
+      cy.findByText("Discard changes").click();
+    });
+
+    H.MetricPage.aboutPage().should("be.visible");
+    cy.get<number>("@metricId").then((metricId) => {
+      cy.location("pathname").should("eq", `/metric/${metricId}`);
+    });
+
+    H.MetricPage.definitionTab().click();
+    H.MetricPage.queryEditor().should("be.visible");
+    H.getNotebookStep("summarize").findByText("Count").should("be.visible");
 
     cy.log("cancel reverts changes");
     H.getNotebookStep("summarize").button("Count").click();

@@ -22,18 +22,18 @@ describe("scenarios > metrics > search", () => {
     cy.intercept("GET", "/api/search?q=*").as("search");
   });
 
-  it("should be able to search for metrics in global search", () => {
+  it("should be able to search for metrics in global search and on the search page", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
+
+    cy.log("command palette");
     cy.visit("/");
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
     H.commandPalette()
       .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
     H.MetricPage.aboutPage().should("be.visible");
-  });
 
-  it("should be able to search for metrics on the search page", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
+    cy.log("search page");
     cy.visit("/");
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, true);
     cy.wait("@search");

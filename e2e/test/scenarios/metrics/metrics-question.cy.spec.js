@@ -111,27 +111,12 @@ describe("scenarios > metrics > question", () => {
     H.echartsContainer().findByText("Expression").should("be.visible");
   });
 
-  it("should be able to add a breakout to a question that uses a metric", () => {
+  it("should be able to change the temporal unit and then replace the breakout when consuming a timeseries metric", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
       createQuestionWithMetric(metric.id, { breakout: MONTH_BREAKOUT });
     });
-    H.openNotebook();
-    H.getNotebookStep("summarize")
-      .findByTestId("breakout-step")
-      .findByText("Created At: Month")
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Product").click();
-      cy.findByText("Category").click();
-    });
-    H.visualize();
-    H.echartsContainer().findByText("Product → Category").should("be.visible");
-  });
 
-  it("should be able to change the temporal unit when consuming a timeseries metric", () => {
-    H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
-      createQuestionWithMetric(metric.id, { breakout: MONTH_BREAKOUT });
-    });
+    cy.log("change the temporal unit");
     H.openNotebook();
     H.getNotebookStep("summarize")
       .findByTestId("breakout-step")
@@ -144,6 +129,19 @@ describe("scenarios > metrics > question", () => {
     });
     H.visualize();
     H.assertQueryBuilderRowCount(5);
+
+    cy.log("replace the breakout");
+    H.openNotebook();
+    H.getNotebookStep("summarize")
+      .findByTestId("breakout-step")
+      .findByText("Created At: Year")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Product").click();
+      cy.findByText("Category").click();
+    });
+    H.visualize();
+    H.echartsContainer().findByText("Product → Category").should("be.visible");
   });
 
   it("should be able to drill-thru with a metric", () => {

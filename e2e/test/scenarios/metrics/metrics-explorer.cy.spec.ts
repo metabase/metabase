@@ -912,13 +912,28 @@ describe("scenarios > metrics > explorer", () => {
         .children()
         .should("have.length.greaterThan", 1);
     });
+  });
 
-    it("cannot breakout a metric math expression", () => {
+  describe("Expression custom names", () => {
+    beforeEach(() => {
+      H.MetricsViewer.goToViewer();
+      addMetric("Count of orders");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
+    });
+
+    it("should rename an expression pill without breakout options or a color change, and revert to formula text when the name is cleared", () => {
       addMetricInputSequence([
         { nameOrPath: "Count of orders" },
         "+",
         { nameOrPath: testMeasurePath },
       ]);
+
+      cy.log("Capture the expression pill color before renaming");
+      H.MetricsViewer.searchBarPills()
+        .should("have.length", 2)
+        .eq(1)
+        .should("contain.text", "Count of orders");
+      getPillColors(1).as("colorsBefore");
 
       cy.log("Expression pill menu only offers Rename, no breakout options");
       H.MetricsViewer.searchBarPills().eq(1).click();
@@ -929,42 +944,27 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText(/Add a series breakout/).should("not.exist");
         cy.findByText(/Change series breakout/).should("not.exist");
         cy.findByText(/Remove series breakout/).should("not.exist");
+        cy.findByRole("menuitem", { name: "rename icon Rename" }).click();
       });
-    });
-  });
-
-  describe("Expression custom names", () => {
-    beforeEach(() => {
-      H.MetricsViewer.goToViewer();
-      addMetric("Count of orders");
-      H.MetricsViewer.getMetricVisualization().should("be.visible");
-    });
-
-    it("should allow setting a custom name on an expression pill", () => {
-      addMetricInputSequence([
-        { nameOrPath: "Count of orders" },
-        "+",
-        { nameOrPath: testMeasurePath },
-      ]);
-
-      cy.log("Click the expression pill to open name editor");
-      H.MetricsViewer.searchBarPills()
-        .should("have.length", 2)
-        .eq(1)
-        .should("contain.text", "Count of orders");
-      openExpressionRename(1);
 
       cy.log("Type a custom name");
       cy.findByTestId("expression-name-input")
         .should("be.focused")
         .clear()
-        .type("My Custom Expression{enter}");
+        .type("My Custom Expression{enter}", { waitForAnimations: true });
 
       cy.log("Pill should display the custom name");
       H.MetricsViewer.searchBarPills()
         .should("have.length", 2)
         .eq(1)
         .should("contain.text", "My Custom Expression");
+
+      cy.log("Verify the pill color has not changed after renaming");
+      cy.get<string[]>("@colorsBefore").then((colorsBefore) => {
+        getPillColors(1).then((colorsAfter) => {
+          expect(colorsAfter).to.deep.equal(colorsBefore);
+        });
+      });
 
       cy.log("Add breakout on the first metric to trigger the legend");
       selectBreakout("Count of orders", "Source");
@@ -986,31 +986,8 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText("My Custom Expression").should("be.visible");
         cy.findByText(/Test Measure/).should("not.exist");
       });
-    });
-
-    it("should revert to formula text when custom name is cleared", () => {
-      addMetricInputSequence([
-        { nameOrPath: "Count of orders" },
-        "+",
-        {
-          nameOrPath: testMeasurePath,
-        },
-      ]);
-
-      cy.log("Set a custom name");
-      H.MetricsViewer.searchBarPills().should("have.length", 2);
-      openExpressionRename(1);
-      cy.findByTestId("expression-name-input")
-        .clear()
-        .type("Temporary Name{enter}");
-
-      H.MetricsViewer.searchBarPills()
-        .should("have.length", 2)
-        .eq(1)
-        .should("contain.text", "Temporary Name");
 
       cy.log("Clear the custom name");
-      H.MetricsViewer.searchBarPills().should("have.length", 2);
       openExpressionRename(1);
       cy.findByTestId("expression-name-input").clear().type("{enter}");
 
@@ -1020,17 +997,14 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchBarPills()
         .should("have.length", 2)
         .eq(1)
-        .should("not.contain.text", "Temporary Name")
+        .should("not.contain.text", "My Custom Expression")
         .should("contain.text", "Count of orders");
-
-      cy.log("Add breakout on the first metric to trigger the legend");
-      selectBreakout("Count of orders", "Source");
 
       cy.log(
         "Legend should use the formula-derived name, not the old custom name",
       );
       H.MetricsViewer.breakoutLegend().within(() => {
-        cy.findByText("Temporary Name").should("not.exist");
+        cy.findByText("My Custom Expression").should("not.exist");
         cy.findAllByText("Count of orders + Test Measure")
           .should("be.visible")
           .should("have.length", 2);
@@ -1040,11 +1014,11 @@ describe("scenarios > metrics > explorer", () => {
         "Tooltip should use the formula-derived name, not the old custom name",
       );
       H.cartesianChartCircle()
-        .should("have.length.at.least", 4)
-        .eq(4)
+        .should("have.length.at.least", 6)
+        .eq(5)
         .trigger("mousemove", { force: true });
       H.echartsTooltip().within(() => {
-        cy.findByText("Temporary Name").should("not.exist");
+        cy.findByText("My Custom Expression").should("not.exist");
         cy.findByText("Count of orders + Test Measure").should("be.visible");
       });
     });
@@ -1085,35 +1059,6 @@ describe("scenarios > metrics > explorer", () => {
       H.echartsTooltip().within(() => {
         cy.findByText("My Stable Name").should("be.visible");
         cy.findByText(/Test Measure/).should("not.exist");
-      });
-    });
-
-    it("should not change expression pill color when renaming", () => {
-      addMetricInputSequence([
-        { nameOrPath: "Count of orders" },
-        "+",
-        { nameOrPath: testMeasurePath },
-      ]);
-
-      cy.log("Capture the expression pill color before renaming");
-      const expressionPillIndex = 1;
-      getPillColors(expressionPillIndex).then((colorsBefore) => {
-        cy.log("Set a custom name on the expression pill");
-        H.MetricsViewer.searchBarPills().should("have.length", 2);
-        openExpressionRename(1);
-        cy.findByTestId("expression-name-input")
-          .clear()
-          .type("Renamed Expression{enter}", { waitForAnimations: true });
-
-        H.MetricsViewer.searchBarPills()
-          .should("have.length", 2)
-          .eq(1)
-          .should("contain.text", "Renamed Expression");
-
-        cy.log("Verify the pill color has not changed after renaming");
-        getPillColors(expressionPillIndex).then((colorsAfter) => {
-          expect(colorsAfter).to.deep.equal(colorsBefore);
-        });
       });
     });
 
@@ -1241,7 +1186,7 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.getMetricVisualization().should("be.visible");
       });
 
-      it("should show all curated dimensions for a standalone metric", () => {
+      it("should show all curated dimensions for a standalone metric and replace the selected one", () => {
         H.MetricsViewer.getMetricVisualization().should("be.visible");
         H.MetricsViewer.getColumnPickerButton()
           .should("contain.text", "Time")
@@ -1264,6 +1209,41 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.closeDimensionPickerSidebar();
         H.MetricsViewer.dimensionPickerSidebar().should("not.exist");
         H.MetricsViewer.getMetricVisualization().should("be.visible");
+
+        cy.log("replace the selected curated dimension");
+        H.MetricsViewer.openDimensionPickerSidebar().within(() => {
+          cy.findByRole("button", { name: "Category" }).should("be.visible");
+          cy.findByRole("button", { name: "Source" }).should("be.visible");
+          cy.findByRole("button", { name: "Category" }).click();
+        });
+        cy.wait("@dataset");
+
+        H.MetricsViewer.dimensionPickerSidebar().within(() => {
+          cy.findByRole("button", { name: "Category" })
+            .scrollIntoView()
+            .should("be.visible")
+            .and("have.attr", "aria-pressed", "true");
+          cy.findByRole("button", { name: "Source" })
+            .scrollIntoView()
+            .should("be.visible")
+            .and("have.attr", "aria-pressed", "false");
+          cy.findByRole("button", { name: "Source" }).click();
+        });
+        cy.wait("@dataset");
+        H.MetricsViewer.getColumnPickerButton()
+          .should("contain.text", "Source")
+          .and("not.contain.text", "Category");
+
+        H.MetricsViewer.dimensionPickerSidebar().within(() => {
+          cy.findByRole("button", { name: "Category" })
+            .scrollIntoView()
+            .should("be.visible")
+            .and("have.attr", "aria-pressed", "false");
+          cy.findByRole("button", { name: "Source" })
+            .scrollIntoView()
+            .should("be.visible")
+            .and("have.attr", "aria-pressed", "true");
+        });
       });
 
       it("should select and reopen the No breakout state from the viewer controls", () => {
@@ -1333,42 +1313,6 @@ describe("scenarios > metrics > explorer", () => {
         cy.log("should allow changing display types");
         H.MetricsViewer.changeVizType("line");
         H.MetricsViewer.assertVizType("Line");
-      });
-
-      it("should replace the selected curated dimension", () => {
-        H.MetricsViewer.openDimensionPickerSidebar().within(() => {
-          cy.findByRole("button", { name: "Category" }).should("be.visible");
-          cy.findByRole("button", { name: "Source" }).should("be.visible");
-          cy.findByRole("button", { name: "Category" }).click();
-        });
-        cy.wait("@dataset");
-
-        H.MetricsViewer.dimensionPickerSidebar().within(() => {
-          cy.findByRole("button", { name: "Category" })
-            .scrollIntoView()
-            .should("be.visible")
-            .and("have.attr", "aria-pressed", "true");
-          cy.findByRole("button", { name: "Source" })
-            .scrollIntoView()
-            .should("be.visible")
-            .and("have.attr", "aria-pressed", "false");
-          cy.findByRole("button", { name: "Source" }).click();
-        });
-        cy.wait("@dataset");
-        H.MetricsViewer.getColumnPickerButton()
-          .should("contain.text", "Source")
-          .and("not.contain.text", "Category");
-
-        H.MetricsViewer.dimensionPickerSidebar().within(() => {
-          cy.findByRole("button", { name: "Category" })
-            .scrollIntoView()
-            .should("be.visible")
-            .and("have.attr", "aria-pressed", "false");
-          cy.findByRole("button", { name: "Source" })
-            .scrollIntoView()
-            .should("be.visible")
-            .and("have.attr", "aria-pressed", "true");
-        });
       });
 
       it("should only show shared dimensions by default for multiple metric sources", () => {
