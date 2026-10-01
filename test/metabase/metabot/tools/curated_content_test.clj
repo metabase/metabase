@@ -135,7 +135,7 @@
 
 (deftest ^:parallel curation-subject-test
   (testing "transforms can never be curated"
-    (is (= :metabase.metabot.tools.resources/never
+    (is (= ["transform" 1]
            (#'read-resource/curation-subject ["transform" "1" "sources"]))))
   (testing "navigation, dashboards, and table dependents aren't gated per entity"
     (is (nil? (#'read-resource/curation-subject ["databases"])))
@@ -258,6 +258,17 @@
           (let [[resource] (read-uris metabot-id :internal "metabase://table/2147483647")]
             (is (some? (:error resource)))
             (is (not (denied? resource)))))
+        (testing "a missing transform reads as missing, not as uncurated"
+          (let [[resource] (read-uris metabot-id :internal "metabase://transform/2147483647")]
+            (is (some? (:error resource)))
+            (is (not (denied? resource)))))
+        (testing "a card on a routing destination database reads as missing, not as uncurated"
+          (mt/with-temp [:model/Database {router-id :id}      {}
+                         :model/Database {destination-id :id} {:router_database_id router-id}
+                         :model/Card     {card-id :id}        {:type :model :database_id destination-id}]
+            (let [[resource] (read-uris metabot-id :internal (str "metabase://model/" card-id))]
+              (is (some? (:error resource)))
+              (is (not (denied? resource))))))
         (testing "a denied URI does none of its handler's work (field values and fingerprints aren't computed)"
           (mt/with-dynamic-fn-redefs [field-stats/field-values
                                       (fn [& _] (throw (ex-info "handler ran for a denied URI" {})))]
