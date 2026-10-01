@@ -152,8 +152,8 @@
 
 (deftest metric-schemas-excludes-metrics-that-join-a-saved-question-test
   ;; Metric 258 is table-sourced and joins a saved question, so `source-card-id` — which only reads
-  ;; stage 0's source — passes it. The CLI checks the whole query and rejects it, aborting
-  ;; `sync-resources` for any app that uses it, so codegen has to drop it here as well.
+  ;; stage 0's source — passes it. A data app's copy of it would reference a saved question outside
+  ;; the app's resources, which the pull refuses, so codegen has to drop it here as well.
   (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
                               (constantly [{:id 247
                                             :dataset_query {:lib/type :mbql/query
