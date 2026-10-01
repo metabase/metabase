@@ -127,6 +127,23 @@
 
 (declare uncurated-query-sources)
 
+(defn- metric-definitions
+  "Map of metric id -> its definition query, for `metric-ids` and every metric their definitions reference,
+  transitively, so curated metrics count toward coverage at any depth. Metrics whose Card no longer exists are left
+  out."
+  [mp metric-ids]
+  (loop [acc  {}
+         seen #{}
+         todo (set metric-ids)]
+    (if-let [id (first todo)]
+      (let [q      (some->> (lib.metadata/card mp id) :dataset-query (lib/query mp))
+            nested (when q (:metric (lib/all-referenced-entity-ids [q])))
+            seen   (conj seen id)]
+        (recur (cond-> acc q (assoc id q))
+               seen
+               (into (disj todo id) (remove seen) nested)))
+      acc)))
+
 (defn- metric-ok?
   "Whether the metric `id`, whose definition query is `definition` (nil when its Card no longer exists), may be used:
   it's curated, or its definition passes [[uncurated-query-sources]] on its own. `seen` holds the metrics being
@@ -160,15 +177,9 @@
    (let [{:keys [table card metric]} (lib/all-referenced-entity-ids [query])
          ;; `:card` also lists the metrics the query references; judge those as metrics, not as source Cards
          card            (set/difference card metric)
-         id->definition  (into {}
-                               (keep (fn [id]
-                                       (when-let [q (some->> (lib.metadata/card query id)
-                                                             :dataset-query
-                                                             (lib/query query))]
-                                         [id q])))
-                               metric)
+         id->definition  (metric-definitions query metric)
          curated         (curated-ids (concat (for [id table] ["table" id])
-                                              (for [id (concat card metric)] ["card" id])))
+                                              (for [id (concat card (keys id->definition))] ["card" id])))
          curated?        (fn [model id] (contains? curated [model id]))
          curated-metric-queries (keep (fn [[id q]] (when (curated? "card" id) q)) id->definition)
          {:keys [covered metric-sources]} (query-coverage query curated? table card curated-metric-queries)
