@@ -1,7 +1,8 @@
 (ns metabase-enterprise.data-sensitivity.api
-  "`/api/ee/data-sensitivity` routes. Both endpoints run the LLM data-sensitivity classifier and return the diff;
-  neither writes a label. The caller needs write access to the database; the Metabot instance gates (enabled,
-  provider configured, usage limit) are reported as a 400 before any work starts."
+  "`/api/ee/data-sensitivity` routes. Both endpoints run the LLM data-sensitivity classifier and return the diff. A
+  dry run by default; `?commit=true` also writes the proposed labels and requires a superuser. The caller needs
+  write access to the database; the Metabot instance gates (enabled, provider configured, usage limit) are reported
+  as a 400 before any work starts."
   (:require
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.db :as db]
@@ -26,6 +27,14 @@
   (when-let [reason (core/unavailable-reason)]
     (throw (unavailable-ex reason))))
 
+(def ^:private CommitParams
+  [:map {:closed true}
+   [:commit {:default false} [:maybe ms/BooleanValue]]])
+
+(defn- check-commit! [commit]
+  (when commit
+    (api/check-superuser)))
+
 (defn- classify
   "Run `thunk` and translate a failure the classifier could not work around. A provider rejection becomes a 502
   carrying the vendor's message so the caller sees why instead of a stack trace; a usage limit reached mid-run
@@ -49,28 +58,34 @@
 
 (api.macros/defendpoint :post "/table/:id" :- ::core/table-result
   "Classify every active field of the active table with the LLM and diff the proposal against the current
-  `data_sensitivity` labels. Nothing is written; the response is the proposal."
+  `data_sensitivity` labels. With `commit`, write the proposed label of every new or differing field that no human
+  labeled; semantic types are never written."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   {:keys [commit]} :- CommitParams]
   (let [table (api/check-404 (db/active-table id))]
     (api/write-check :model/Database (:db_id table))
+    (check-commit! commit)
     (check-available!)
-    (classify #(core/classify-table! table))))
+    (classify #(core/classify-table! table :commit? commit))))
 
 (api.macros/defendpoint :post "/database/:id" :- ::core/database-result
   "Classify every active table of the database, or only those in `schema` when given, with the LLM and diff the
-  proposals against the current `data_sensitivity` labels. Nothing is written. A `schema` with no active tables is
-  a 404. Synchronous: the whole scan runs within the request, so classify a large database one schema at a time."
+  proposals against the current `data_sensitivity` labels. With `commit`, write the proposed label of every new or
+  differing field that no human labeled, table by table; semantic types are never written. A `schema` with no active
+  tables is a 404. Synchronous: the whole scan runs within the request, so classify a large database one schema at a
+  time."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params
+   {:keys [commit]} :- CommitParams
    {:keys [schema]} :- [:maybe [:map {:closed true}
                                 [:schema {:optional true} [:maybe ms/NonBlankString]]]]]
   (let [database (api/write-check :model/Database id)]
     (when schema
       (api/check-404 (db/active-schema? id schema)))
+    (check-commit! commit)
     (check-available!)
-    (classify #(core/classify-database! database :schema schema))))
+    (classify #(core/classify-database! database :schema schema :commit? commit))))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the data-sensitivity API."

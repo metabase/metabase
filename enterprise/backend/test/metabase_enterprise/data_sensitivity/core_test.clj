@@ -10,6 +10,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
@@ -135,13 +136,16 @@
                  :semantic_changed false}
                 (result-field result "ds_keep"))))
       (testing "counts match the per-field statuses"
-        (let [{:keys [fields agree disagree new abstain dropped semantic_changed]} (:counts result)]
+        (let [{:keys [fields agree disagree new abstain dropped semantic_changed committed]} (:counts result)]
           (is (= (count (:fields result)) fields))
           (is (= fields (+ agree disagree new abstain dropped)))
           (is (= 1 disagree))
           (is (= 1 abstain))
           (is (= 1 dropped))
-          (is (= 1 semantic_changed)))))))
+          (is (= 1 semantic_changed))
+          (is (= 0 committed))))
+      (testing "a dry run marks no field committed"
+        (is (not-any? :committed (:fields result)))))))
 
 (deftest classify-table-usage-test
   (testing "requests and usage total over chunks"
@@ -468,3 +472,86 @@
       (is (= (count tables) (:requests result))))
     (testing "no more than parallelism tables are in flight"
       (is (<= @peak 2)))))
+
+(defn- labels-by-name [table-id]
+  (t2/select-fn->fn :name :data_sensitivity :model/Field :table_id table-id))
+
+(deftest classify-table-commit-test
+  (mt/with-temp [:model/Table table {:db_id (mt/id) :name "ds_commit" :active true}
+                 :model/Field _     {:table_id (:id table) :name "ds_new" :base_type :type/Text}
+                 :model/Field _     {:table_id (:id table) :name "ds_disagree" :base_type :type/Text
+                                     :data_sensitivity :PUBLIC}
+                 :model/Field _     {:table_id (:id table) :name "ds_agree" :base_type :type/Text
+                                     :data_sensitivity :PII}
+                 :model/Field _     {:table_id (:id table) :name "ds_abstain" :base_type :type/Text
+                                     :data_sensitivity :PUBLIC}
+                 :model/Field _     {:table_id (:id table) :name "ds_dropped" :base_type :type/Text}
+                 :model/Field human {:table_id (:id table) :name "ds_human" :base_type :type/Text
+                                     :data_sensitivity :PUBLIC}
+                 :model/Field _     {:table_id (:id table) :name "ds_semantic" :base_type :type/Text
+                                     :semantic_type :type/Name}]
+    (field-user-settings/upsert-user-settings human {:data_sensitivity :PUBLIC})
+    (let [entries {"ds_new"      {:data_sensitivity "PII"}
+                   "ds_disagree" {:data_sensitivity "PII"}
+                   "ds_agree"    {:data_sensitivity "PII"}
+                   "ds_abstain"  {:data_sensitivity llm/unsure}
+                   "ds_dropped"  nil
+                   "ds_human"    {:data_sensitivity "PII"}
+                   "ds_semantic" {:data_sensitivity "PCI_FIN" :semantic_type "type/Email"}}
+          result  (do-with-llm! (canned-llm #(get entries %))
+                                #(core/classify-table! table :include-values? false :commit? true))]
+      (testing "new and disagreeing labels are written; agreeing, abstained, dropped, and human-set fields are not"
+        (is (= {"ds_new"      :PII
+                "ds_disagree" :PII
+                "ds_agree"    :PII
+                "ds_abstain"  :PUBLIC
+                "ds_dropped"  nil
+                "ds_human"    :PUBLIC
+                "ds_semantic" :PCI_FIN}
+               (labels-by-name (:id table)))))
+      (testing "the semantic type is reported but not written"
+        (is (= :type/Email (get-in (result-field result "ds_semantic") [:proposed :semantic_type])))
+        (is (= :type/Name (t2/select-one-fn :semantic_type :model/Field :table_id (:id table) :name "ds_semantic"))))
+      (testing "each field reports whether it was committed, and the counts total them"
+        (is (= {"ds_new" true "ds_disagree" true "ds_agree" false "ds_abstain" false "ds_dropped" false
+                "ds_human" false "ds_semantic" true}
+               (into {} (map (juxt :name :committed)) (:fields result))))
+        (is (= 3 (get-in result [:counts :committed]))))
+      (testing "a data-sensitivity sync scan leaves committed labels alone"
+        (sync/scan-data-sensitivity! table)
+        (is (=? {"ds_new" :PII "ds_disagree" :PII "ds_semantic" :PCI_FIN}
+                (labels-by-name (:id table))))))))
+
+(deftest classify-table-commit-failure-test
+  (mt/with-temp [:model/Table table {:db_id (mt/id) :name "ds_commit_failure" :active true}
+                 :model/Field _     {:table_id (:id table) :name "ds_pii" :base_type :type/Text}
+                 :model/Field _     {:table_id (:id table) :name "ds_public" :base_type :type/Text}]
+    (testing "a write that fails partway through the table writes nothing"
+      (let [update! t2/update!
+            updates (atom 0)]
+        (with-redefs [t2/update! (fn [& args]
+                                   (if (= 2 (swap! updates inc))
+                                     (throw (ex-info "write failed" {}))
+                                     (apply update! args)))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"write failed"
+                                (do-with-llm! (canned-llm {"ds_pii" {:data_sensitivity "PII"} "ds_public" {}})
+                                              #(core/classify-table! table :include-values? false :commit? true)))))
+        (is (= 2 @updates))
+        (is (= {"ds_pii" nil "ds_public" nil} (labels-by-name (:id table))))))))
+
+(deftest classify-database-commit-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table    a  {:db_id (:id db) :schema "S" :name "ds_a" :active true}
+                 :model/Table    b  {:db_id (:id db) :schema "S" :name "ds_b" :active true}
+                 :model/Table    c  {:db_id (:id db) :schema "S" :name "ds_c" :active true}
+                 :model/Field    _  {:table_id (:id a) :name "ds_a_field" :base_type :type/Text}
+                 :model/Field    _  {:table_id (:id b) :name "ds_b_field" :base_type :type/Text}
+                 :model/Field    _  {:table_id (:id c) :name "ds_c_field" :base_type :type/Text}]
+    (testing "tables committed before a fatal failure stay written; the failed and skipped tables write nothing"
+      (let [result (do-with-llm! (failing-llm #{"ds_b"} provider-rejection)
+                                 #(core/classify-database! db :include-values? false :parallelism 1 :commit? true))]
+        (is (= [nil "provider-api-error" "skipped"] (map :error_code (:tables result))))
+        (is (= {"ds_a_field" :PUBLIC} (labels-by-name (:id a))))
+        (is (= {"ds_b_field" nil} (labels-by-name (:id b))))
+        (is (= {"ds_c_field" nil} (labels-by-name (:id c))))
+        (is (= 1 (get-in result [:counts :committed])) "committed is summed over the tables")))))

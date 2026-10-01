@@ -3,6 +3,7 @@
   with no additional logic."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -64,3 +65,10 @@
               :where    (cond-> [:and [:= :db_id database-id] [:= :active true]]
                           schema (conj [:= :schema schema]))
               :order-by [[:schema :asc] [:name :asc]]}))
+
+(mu/defn commit-labels!
+  "In one transaction, set the `data_sensitivity` of every Field in `field-ids-by-label` to its label."
+  [field-ids-by-label :- [:map-of ::lib.schema.metadata/column.data-sensitivity [:sequential ::lib.schema.id/field]]]
+  (t2/with-transaction [_conn]
+    (doseq [[label field-ids] field-ids-by-label]
+      (t2/update! :model/Field :id [:in field-ids] {:data_sensitivity label}))))

@@ -1,7 +1,8 @@
 (ns metabase-enterprise.data-sensitivity.core
   "Public surface of the LLM data-sensitivity classifier. [[classify-table!]] builds the packet, calls the model, and
   diffs the proposal against the current `data_sensitivity` of every field; [[classify-database!]] runs it over the
-  active tables of a database. Nothing is written: the result is a proposal the caller renders or evaluates.
+  active tables of a database. The result is a proposal the caller renders or evaluates; labels are written only
+  when the caller asks to commit.
 
   The Metabot group permissions are bypassed for the call because the trigger is gated on database write access
   instead; the instance gates (Metabot enabled, provider configured, usage limits) still apply and are reported by
@@ -49,7 +50,8 @@
    [:new              :int]
    [:abstain          :int]
    [:dropped          :int]
-   [:semantic_changed :int]])
+   [:semantic_changed :int]
+   [:committed        :int]])
 
 (mr/def ::parse-counts
   "Model output the parse discarded: entries naming a field the table does not have, fields with an invalid
@@ -77,7 +79,8 @@
                         [:semantic_type    [:maybe :keyword]]
                         [:reasoning        [:maybe :string]]]]
    [:status            [:enum :agree :disagree :new :abstain :dropped]]
-   [:semantic_changed :boolean]])
+   [:semantic_changed :boolean]
+   [:committed        :boolean]])
 
 (mr/def ::table-result
   [:map
@@ -120,7 +123,8 @@
    [:map {:closed true}
     [:model             {:optional true} [:maybe :string]]
     [:chunk-size        {:optional true} [:maybe pos-int?]]
-    [:chunk-parallelism {:optional true} [:maybe pos-int?]]]])
+    [:chunk-parallelism {:optional true} [:maybe pos-int?]]
+    [:commit?           {:optional true} [:maybe :boolean]]]])
 
 (mr/def ::database-options
   [:merge
@@ -134,7 +138,7 @@
   {:input_tokens 0 :output_tokens 0 :cache_read_tokens 0 :cache_creation_tokens 0 :total_tokens 0})
 
 (def ^:private zero-counts
-  {:fields 0 :agree 0 :disagree 0 :new 0 :abstain 0 :dropped 0 :semantic_changed 0})
+  {:fields 0 :agree 0 :disagree 0 :new 0 :abstain 0 :dropped 0 :semantic_changed 0 :committed 0})
 
 (def ^:private zero-parse-counts
   {:dropped_unknown 0 :dropped_invalid 0 :dropped_missing 0 :semantic_dropped 0})
@@ -189,7 +193,8 @@
                                      (nil? current-label)               :new
                                      (= proposed-label current-label)   :agree
                                      :else                              :disagree))
-     :semantic_changed (boolean (and proposed-st (not= proposed-st semantic_type)))}))
+     :semantic_changed (boolean (and proposed-st (not= proposed-st semantic_type)))
+     :committed        false}))
 
 (defn- field-counts [fields]
   (let [by-status (frequencies (map :status fields))]
@@ -199,13 +204,34 @@
      :new              (get by-status :new 0)
      :abstain          (get by-status :abstain 0)
      :dropped          (get by-status :dropped 0)
-     :semantic_changed (count (filter :semantic_changed fields))}))
+     :semantic_changed (count (filter :semantic_changed fields))
+     :committed        (count (filter :committed fields))}))
 
 (defn- parse-counts [{:keys [dropped-unknown dropped-invalid dropped-missing semantic-dropped]}]
   {:dropped_unknown  dropped-unknown
    :dropped_invalid  dropped-invalid
    :dropped_missing  dropped-missing
    :semantic_dropped semantic-dropped})
+
+;;; Commit
+
+(defn- committable?
+  "Whether committing writes the field's proposal: a label that is new or differs from the current one, which no
+  human set."
+  [{:keys [status current]}]
+  (and (contains? #{:new :disagree} status)
+       (not (:human_set current))))
+
+(defn- commit-fields!
+  "Write the proposed label of every [[committable?]] field of one table in one transaction, and mark those fields
+  `:committed`."
+  [table fields]
+  (let [committed (filter committable? fields)]
+    (when (seq committed)
+      (db/commit-labels! (update-vals (group-by #(get-in % [:proposed :data_sensitivity]) committed)
+                                      #(mapv :field_id %)))
+      (log/infof "Committed %d data-sensitivity labels for table %d" (count committed) (:id table)))
+    (mapv #(assoc % :committed (committable? %)) fields)))
 
 ;;; Connection pre-flight
 
@@ -237,12 +263,13 @@
    opts  :- [:maybe ::table-options]]
   (let [packet         (request/as-admin
                          (database-routing/with-database-routing-off
-                           (context/table-packet table (dissoc opts :model :chunk-size :chunk-parallelism))))
+                           (context/table-packet table (dissoc opts :model :chunk-size :chunk-parallelism :commit?))))
         classification (metabot/do-with-all-metabot-permissions
                         #(llm/classify-packet packet (select-keys opts [:model :chunk-size :chunk-parallelism])))
-        fields         (mapv (fn [field]
-                               (diff-field field (get-in classification [:fields (:name field)])))
-                             (:fields packet))]
+        fields         (cond->> (mapv (fn [field]
+                                        (diff-field field (get-in classification [:fields (:name field)])))
+                                      (:fields packet))
+                         (:commit? opts) (commit-fields! table))]
     {:table_id     (:id table)
      :table_name   (:name table)
      :schema       (:schema table)
@@ -260,7 +287,10 @@
   [[context/table-packet]] plus `:model`, `:chunk-size`, and `:chunk-parallelism` for [[llm/classify-packet]]. When
   values are requested the database connection is tested first; if it fails, fields are classified on metadata
   alone and `:sample_error` carries the connection error. The row sample runs as admin with database routing off;
-  the LLM call runs with all Metabot permissions granted. Writes nothing."
+  the LLM call runs with all Metabot permissions granted.
+
+  Writes nothing unless `:commit?`. Then every `:new` or `:disagree` field whose label no human set gets the proposed
+  `data_sensitivity`, in one transaction, and is marked `:committed`. Semantic types are never written."
   [table :- (ms/InstanceOf :model/Table)
    & {:as opts} :- [:maybe ::table-options]]
   (let [error (sample-connection-error (db/database (:db_id table)) opts)]
@@ -388,8 +418,9 @@
   unless the failure is one every later table would repeat ([[fatal-error?]]): then no further table starts, the
   remaining tables are reported as skipped, and when no table succeeded at all the fatal exception is rethrown.
   Rate-limited tables ([[rate-limited?]]) get one more try, one at a time, once the rest have finished.
-  `parallelism` tables are in flight at a time. Synchronous; intended for small and medium databases until an async
-  job exists."
+  `parallelism` tables are in flight at a time. With `:commit?` each table commits on its own as it finishes, so a
+  run stopped by a fatal failure keeps the labels of the tables before it. Synchronous; intended for small and
+  medium databases until an async job exists."
   [database :- (ms/InstanceOf :model/Database)
    & {:keys [schema parallelism requeue-delay-ms] :as opts} :- [:maybe ::database-options]]
   (let [sample-error (sample-connection-error database opts)

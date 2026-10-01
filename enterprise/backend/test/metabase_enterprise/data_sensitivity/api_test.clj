@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.core-test :as core-test]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -175,3 +176,44 @@
                         #(mt/user-http-request :crowberto :post 200 (database-url (mt/id)) {:schema schema}))]
           (is (= schema (:schema response)))
           (is (= (map :id expected) (map :table_id (:tables response)))))))))
+
+(deftest commit-requires-superuser-test
+  (mt/with-premium-features #{:data-sensitivity :advanced-permissions}
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/manage-database :yes)
+      (core-test/do-with-llm!
+       (core-test/canned-llm (constantly {}))
+       (fn []
+         (testing "a user with database write access can run a dry run"
+           (let [before (field-rows [(mt/id :people)])]
+             (is (=? {:table_id (mt/id :people)}
+                     (mt/user-http-request :rasta :post 200 (table-url (mt/id :people)))))
+             (is (= before (field-rows [(mt/id :people)])))))
+         (testing "committing needs a superuser"
+           (let [before (field-rows [(mt/id :people)])]
+             (is (= "You don't have permissions to do that."
+                    (mt/user-http-request :rasta :post 403 (str (table-url (mt/id :people)) "?commit=true"))))
+             (is (= "You don't have permissions to do that."
+                    (mt/user-http-request :rasta :post 403 (str (database-url (mt/id)) "?commit=true"))))
+             (is (= before (field-rows [(mt/id :people)]))))))))))
+
+(deftest commit-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (mt/with-temp [:model/Database db    {:engine :h2 :details (:details (mt/db))}
+                   :model/Table    table {:db_id (:id db) :schema "PUBLIC" :name "ds_api_commit" :active true}
+                   :model/Field    _     {:table_id (:id table) :name "ds_api_new" :base_type :type/Text}
+                   :model/Field    _     {:table_id (:id table) :name "ds_api_agree" :base_type :type/Text
+                                          :data_sensitivity :PII}]
+      (let [llm    (core-test/canned-llm {"ds_api_new" {:data_sensitivity "PII"} "ds_api_agree" {:data_sensitivity "PII"}})
+            labels #(t2/select-fn->fn :name :data_sensitivity :model/Field :table_id (:id table))]
+        (testing "a superuser commit on the table endpoint writes the new label"
+          (let [response (core-test/do-with-llm!
+                          llm #(mt/user-http-request :crowberto :post 200 (str (table-url (:id table)) "?commit=true")))]
+            (is (=? {:counts {:committed 1}} response))
+            (is (= {"ds_api_new" :PII "ds_api_agree" :PII} (labels))))
+          (t2/update! :model/Field :table_id (:id table) :name "ds_api_new" {:data_sensitivity nil}))
+        (testing "a superuser commit on the database endpoint writes the new label"
+          (let [response (core-test/do-with-llm!
+                          llm #(mt/user-http-request :crowberto :post 200 (str (database-url (:id db)) "?commit=true")))]
+            (is (=? {:counts {:committed 1} :tables [{:counts {:committed 1}}]} response))
+            (is (= {"ds_api_new" :PII "ds_api_agree" :PII} (labels)))))))))
