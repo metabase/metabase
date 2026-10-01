@@ -298,6 +298,8 @@
                      :help        (deferred-tru "The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve.")}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
+    ;; `:region` only picks an AWS endpoint, and there is no base URL. See [[destination-fields]].
+    :destination-fields []
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
     ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one

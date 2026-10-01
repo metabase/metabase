@@ -887,7 +887,7 @@
             ;; cannot follow them anywhere else, and dropping them would move requests out of the chosen region
             "google"     [:base-url]
             "azure"      [:base-url]
-            "bedrock"    [:base-url]
+            "bedrock"    []
             "vllm"       [:base-url]
             "ollama"     [:base-url :hosting]
             "metabase"   [:base-url]}
