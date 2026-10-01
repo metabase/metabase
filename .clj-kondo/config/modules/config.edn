@@ -140,6 +140,7 @@
            api-scope
            api.eid-translation
            collections
+           events
            lib
            lib.schema
            permissions
@@ -992,7 +993,8 @@
    :api  #{metabase.events.core metabase.events.impl metabase.events.init}
    :uses #{models
            util}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
@@ -2138,7 +2140,8 @@
            search
            util
            warehouse-schema-overlay}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/CardBookmark
                     :model/Collection
                     :model/Dashboard
@@ -4117,7 +4120,8 @@
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
