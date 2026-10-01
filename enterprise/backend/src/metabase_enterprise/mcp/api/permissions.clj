@@ -8,6 +8,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.api :as mcp.v2.api]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -55,7 +56,7 @@
 (defn- permissions-response
   "The policy of every group, defaults filled in for groups without a row, with the tool catalog and the mode."
   []
-  (let [by-group (u/index-by :group_id (mcp.db/all-group-permissions))
+  (let [by-group (u/index-by :group_id (filter mi/can-read? (mcp.db/all-group-permissions)))
         renamed  (mcp.v2.api/renamed-tool-names)]
     {:advanced    (mcp.db/advanced-mode?)
      :tools       (mcp.v2.api/tool-catalog)
@@ -72,18 +73,17 @@
   (api/check-superuser)
   (permissions-response))
 
-(defn- check-known-tools!
-  "Throw a 400 naming the first tool in `permissions` that is neither a registered tool, a former name of one, nor
-  already stored for its group."
+(defn- check-writable
+  "Throw a 403 unless the current user may write the row of each group in `permissions`, or create one for a group
+  that has none."
   [permissions]
-  (let [known    (into (set (keys (mcp.v2.api/renamed-tool-names))) (map :name) (mcp.v2.api/tool-catalog))
-        by-group (u/index-by :group_id (mcp.db/all-group-permissions))]
-    (doseq [{:keys [group_id tool_access]} permissions
-            :let                           [stored (set (keys (:tool_access (by-group group_id))))]
-            tool-name                      (keys tool_access)]
-      (api/check-400 (or (known tool-name) (stored tool-name)) (tru "Unknown MCP tool: {0}" tool-name)))))
+  (let [by-group (u/index-by :group_id (mcp.db/all-group-permissions))]
+    (doseq [{:keys [group_id] :as permission} permissions]
+      (if-let [row (by-group group_id)]
+        (api/write-check row)
+        (api/create-check :model/McpGroupPermission permission)))))
 
-(defn- check-visible-groups!
+(defn- check-visible-groups
   "Throw a 400 naming the first `group_id` in `permissions` that is not a group the current mode shows, since such a
   row would take effect unseen on the next mode switch."
   [permissions]
@@ -100,8 +100,8 @@
                              [:permissions [:sequential group-permission-schema]]]]
   (api/check-superuser)
   (cluster-lock/with-cluster-lock policy-lock
-    (check-known-tools! permissions)
-    (check-visible-groups! permissions)
+    (check-writable permissions)
+    (check-visible-groups permissions)
     (t2/with-transaction [_conn]
       (doseq [{:keys [group_id] :as permission} permissions]
         (mcp.db/upsert-group-permission! group_id (select-keys permission [:mcp_enabled :tool_access])))))
@@ -112,6 +112,8 @@
   groups it enables on entry that have no row yet."
   [advanced?]
   (cluster-lock/with-cluster-lock policy-lock
+    (run! api/write-check (mcp.db/hidden-group-permissions advanced?))
+    (api/create-check :model/McpGroupPermission seeded-permission)
     (t2/with-transaction [_conn]
       (mcp.db/delete-hidden-group-permissions! advanced?)
       (doseq [group-id (mcp.db/seeded-group-ids advanced?)]

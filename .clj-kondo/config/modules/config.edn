@@ -3935,6 +3935,7 @@
               lib.schema
               mcp
               metabot
+              models
               permissions
               premium-features
               task

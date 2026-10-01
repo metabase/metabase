@@ -2,6 +2,7 @@
   "Helpers for tests that change the `mcp_group_permission` rows, which also record the permission mode."
   (:require
    [metabase-enterprise.mcp.db :as mcp.db]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -15,8 +16,10 @@
       (finally
         (t2/delete! :model/McpGroupPermission)
         (when (seq snapshot)
-          (t2/insert! :model/McpGroupPermission
-                      (map #(select-keys % [:group_id :mcp_enabled :tool_access]) snapshot)))))))
+          (t2/insert! :mcp_group_permission
+                      (map #(-> (select-keys % [:group_id :mcp_enabled :tool_access :created_at :updated_at])
+                                (update :tool_access json/encode))
+                           snapshot)))))))
 
 (defmacro with-mcp-group-permissions-snapshot
   "Run `body`, then restore every `mcp_group_permission` row to its prior state."
@@ -29,3 +32,9 @@
   `(with-mcp-group-permissions-snapshot
      (mcp.db/delete-hidden-group-permissions! true)
      ~@body))
+
+(defn store-stale-tool-access!
+  "Give the row of the group with `group-id` the `tool-access` of a row saved before some of its tools were removed,
+  writing past the model's check that every name is a registered tool."
+  [group-id tool-access]
+  (t2/update! :mcp_group_permission {:group_id group-id} {:tool_access (json/encode tool-access)}))

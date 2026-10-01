@@ -23,15 +23,16 @@
   []
   (into #{} (map :name) (registry/list-tools)))
 
-(deftest ^:parallel without-ai-controls-feature-rows-are-ignored-test
+(deftest without-ai-controls-feature-rows-are-ignored-test
   (mt/with-premium-features #{}
-    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
-                   :model/PermissionsGroupMembership _              {:group_id group-id
-                                                                     :user_id  (mt/user->id :rasta)}
-                   :model/McpGroupPermission         _              {:group_id    group-id
-                                                                     :mcp_enabled false
-                                                                     :tool_access {"test_echo" "no"}}]
-      (is (= mcp.perms/unrestricted-policy (mcp.perms/effective-policy (mt/user->id :rasta)))))))
+    (mcp.tu/with-group-level-mode
+      (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                     :model/PermissionsGroupMembership _              {:group_id group-id
+                                                                       :user_id  (mt/user->id :rasta)}
+                     :model/McpGroupPermission         _              {:group_id    group-id
+                                                                       :mcp_enabled false
+                                                                       :tool_access {"test_echo" "no"}}]
+        (is (= mcp.perms/unrestricted-policy (mcp.perms/effective-policy (mt/user->id :rasta))))))))
 
 (deftest stored-entries-override-defaults-test
   (mt/with-premium-features #{:ai-controls}
@@ -41,9 +42,10 @@
                                                                        :user_id  (mt/user->id :rasta)}
                      :model/McpGroupPermission         _              {:group_id    group-id
                                                                        :mcp_enabled true
-                                                                       :tool_access {"search"              "no"
-                                                                                     "test_off_by_default" "yes"
-                                                                                     "dodo"                "no"}}]
+                                                                       :tool_access {}}]
+        (mcp.tu/store-stale-tool-access! group-id {"search"              "no"
+                                                   "test_off_by_default" "yes"
+                                                   "dodo"                "no"})
         (mt/with-current-user (mt/user->id :rasta)
           (testing "the row's map is the policy, string keys and values as stored"
             (is (= [{"search" "no" "test_off_by_default" "yes" "dodo" "no"}] (mcp.perms/policy-for-current-user))))

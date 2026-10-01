@@ -36,6 +36,20 @@ databaseChangeLog:
                   remarks: JSON object from MCP tool name to yes or no; an absent tool takes the author's default
                   constraints:
                     nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this row was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this row was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
 
   ## The unique constraint doubles as the index behind the FK: MySQL/MariaDB reuse it, and Postgres has no
   ## auto-indexed FKs (fks-are-indexed-test checks).
