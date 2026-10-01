@@ -293,7 +293,6 @@ function verifyHelptextPosition(text) {
   H.CustomExpressionEditor.get()
     .findByText(text)
     .then(($text) => {
-      // The popover repositions after the cursor moves, so retry until it settles.
       H.CustomExpressionEditor.helpText().should(($helpText) => {
         const { left: textLeft } = $text[0].getBoundingClientRect();
         const { left: helpTextLeft } = $helpText[0].getBoundingClientRect();
