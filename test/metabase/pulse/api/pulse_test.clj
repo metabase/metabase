@@ -153,6 +153,18 @@
       (is (=? expected-error
               (mt/user-http-request :rasta :post 400 "pulse" input))))))
 
+(deftest create-pulse-rejects-card-without-export-flags-test
+  (testing "POST /api/pulse rejects a card entry missing `include_csv` and `include_xls`"
+    (is (=? {:errors {:cards {:include_csv #".*valid boolean.*"
+                              :include_xls #".*valid boolean.*"}}}
+            (mt/user-http-request :rasta :post 400 "pulse" {:name     "abc"
+                                                            :cards    [{:id 100}]
+                                                            :channels [{:channel_type  "email"
+                                                                        :schedule_type "daily"
+                                                                        :schedule_hour 12
+                                                                        :enabled       true
+                                                                        :recipients    []}]})))))
+
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
     (-> channel
@@ -1068,7 +1080,7 @@
 (deftest send-test-alert-with-http-channel-test
   (testing "POST /api/pulse/test send test alert to a http channel"
     (notification.tu/with-send-notification-sync
-      (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
+      (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
         (let [requests (atom [])
               endpoint (channel.http-test/make-route
                         :post "/test"

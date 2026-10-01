@@ -51,6 +51,7 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :entity_id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+                         :default_schema
                          :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
                          :uploads_table_prefix])
    {:engine                      "h2"
@@ -469,7 +470,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details :initial_sync_error])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"

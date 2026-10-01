@@ -702,16 +702,6 @@ LIMIT
         cy.findByText("Count").should("be.visible");
       });
     });
-
-    it("should show the metabot button", () => {
-      H.setupAnthropicLlmProvider();
-      visitTransformListPage();
-      cy.button("Create a transform").click();
-      H.popover().findByText("Query builder").click();
-      cy.findByRole("button", { name: /Chat with Metabot/ }).should(
-        "be.visible",
-      );
-    });
   });
 
   describe("name", () => {
@@ -1081,7 +1071,7 @@ LIMIT
       }).as("updateTransformError");
 
       cy.log("Toggle incremental on");
-      getIncrementalSwitch().click();
+      getIncrementalSwitch().findByRole("switch").should("be.enabled").click();
 
       cy.log("Wait for the failed request");
       cy.wait("@updateTransformError");

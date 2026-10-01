@@ -63,6 +63,13 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     priority: 90,
   },
   {
+    id: "glossary",
+    models: new Set(["glossary"]),
+    icon: "glossary",
+    pathPrefixGroupId: "library",
+    priority: 80,
+  },
+  {
     id: "tables",
     models: new Set(["table", "field", "segment", "measure"]),
     icon: "synced_collection",
@@ -170,7 +177,7 @@ const getGroupKeyInfo = (
   if (entity.collection_id != null) {
     return { groupKey: entity.collection_id, spec };
   }
-  if (spec.id === "snippets" && libraryCollectionId != null) {
+  if (spec.pathPrefixGroupId === "library" && libraryCollectionId != null) {
     return { groupKey: libraryCollectionId, spec };
   }
   return { groupKey: 0, spec };

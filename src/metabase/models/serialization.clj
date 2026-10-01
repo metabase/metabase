@@ -61,11 +61,10 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   ;; legacy usages -- do not use in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.db :as models.db]
@@ -74,6 +73,7 @@
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.default :as resolve.default]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.parameters.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -81,6 +81,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -299,6 +300,7 @@
 
 (defmethod make-spec :default [_ _] nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *make-spec*
   "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
   [model-name opts]
@@ -648,7 +650,7 @@
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
-    (models.db/update-entity! model id ingested)
+    (models.db/update-entity! id (lib/normalize :metabase.models.db/model-row {:model model :row ingested}))
     (models.db/entity-by-pk model pk id)))
 
 (defmulti load-insert!
@@ -670,7 +672,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (models.db/insert-entity! (t2.model/resolve-model (symbol model-name)) ingested))
+  (models.db/insert-entity! (lib/normalize :metabase.models.db/model-row {:model (t2.model/resolve-model (symbol model-name)) :row ingested})))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -816,6 +818,7 @@
 
 ;;; ## General foreign keys
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-fk*
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
@@ -838,6 +841,7 @@
          (throw e#))
        nil)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-fk*
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
   entity and gets its primary key.
@@ -849,10 +853,11 @@
   Throws if the corresponding entity cannot be found.
 
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
-  [eid
+  [eid   :- [:maybe [:or :string [:sequential :string]]]
    model :- :metabase.models.serialization.path/model-keyword-or-symbol]
   (resolve/import-fk (import-resolver) eid model))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-fk-keyed*
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
@@ -860,11 +865,12 @@
   Unusual parameter order lets this be called as, for example, `(update x :db_id *export-fk-keyed* :model/Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
-  [id
+  [id    :- [:maybe ms/PositiveInt]
    model :- :metabase.models.serialization.path/model-keyword-or-symbol
-   field]
+   field :- :keyword]
   (resolve/export-fk-keyed (export-resolver) id model field))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *import-fk-keyed*
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
@@ -876,6 +882,7 @@
   (resolve/import-fk-keyed (import-resolver) portable model field))
 
 ;;; ## Users
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-user*
   "Exports a user as the email address.
   This just calls [[*export-fk-keyed*]], but the counterpart [[*import-user*]] is more involved. This is a unique function
@@ -883,6 +890,7 @@
   [id :- [:maybe ::lib.schema.id/user]]
   (resolve/export-user (export-resolver) id))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-user*
   "Imports a user by their email address.
   If a user with that email address exists, returns its primary key.
@@ -893,6 +901,7 @@
 
 ;;; ## Databases
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
@@ -900,6 +909,7 @@
   (when id
     (resolve/export-fk-keyed (export-resolver) id :model/Database :name)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
   [[*export-database-fk*]] is the inverse."
@@ -908,6 +918,7 @@
 
 ;;; ## Tables
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
@@ -917,6 +928,7 @@
   (when table-id
     (resolve/export-table-fk (export-resolver) table-id)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-table-fk*
   "Given a `table_id` as exported by [[*export-table-fk*]], resolve it back into a numeric `table_id`.
   The input might be nil, in which case so is the output. This is legal for a native question."
@@ -967,6 +979,7 @@
 ;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
 ;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
 ;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
@@ -977,6 +990,7 @@
           [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
       (into [db-name schema table-name] (map :name fields)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-field-fk*
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
   [[_db-name _schema _table-name & _fields :as field-id] :- [:maybe [:cat string? [:maybe string?] string? #_fields [:+ string?]]]]
@@ -993,9 +1007,16 @@
 
 ;;; ## MBQL Fields
 
+(mr/def ::mbql-node
+  "Any node reached while walking an MBQL form being exported or imported, which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
+
+(def ^:private MBQLNode
+  [:ref ::mbql-node])
+
 (mu/defn- mbql-ref? :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
-  [form]
+  [form :- MBQLNode]
   (when (and (vector? form)
              (#{:field :field-id :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
@@ -1011,11 +1032,7 @@
   (let [tag    (mbql-ref? mbql)
         schema (case tag
                  :field-id  ::mbql-3-field-id-ref
-                 :field     [:multi
-                             {:dispatch #(and (vector? %)
-                                              (map? (second %)))}
-                             [true  :mbql.clause/field]
-                             [false ::mbql.s/field]] ; legacy MBQL clause
+                 :field     ::resolve/field-ref
                  :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment
@@ -1024,10 +1041,11 @@
     (cond->> mbql
       schema (lib/normalize schema mbql))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *required-lib-uuids-for-export* nil)
 
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
-  [x]
+  [x :- MBQLNode]
   (set
    (match/match-many x
      [:aggregation (_opts :guard map?) (uuid :guard string?)]
@@ -1198,6 +1216,7 @@
     (import-mbql-map m)))
 
 ;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-schema-validation?*
   "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
   false)
@@ -1266,9 +1285,25 @@
            (lib/all-template-tags x)))
     x))
 
+(defn- legacy-mbql-query->mbql5
+  "Converts an imported legacy MBQL query to MBQL 5, returning `x` unchanged if it isn't one or conversion fails.
+
+  Export writes every Field ID as a portable path, so a raw integer left in an imported query is a literal. Converting
+  here with `{:legacy-int-field-ids? false}` keeps it one; the legacy normalization models apply on save would treat
+  it as an MBQL 2 Field ID."
+  [x]
+  (if (and (map? x) (= (lib/normalized-query-type x) :query))
+    (try
+      (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+        (lib/->mbql5 (lib/normalize :metabase.legacy-mbql.schema/Query x {:legacy-int-field-ids? false})))
+      (catch Throwable e
+        (log/warnf "Error converting imported legacy MBQL query: %s" (ex-message e))
+        x))
+    x))
+
 (defn import-mbql
   "Given an MBQL expression (or any structure that may contain portable references) as an EDN structure with portable
-  IDs embedded, convert the IDs back to raw numeric IDs.
+  IDs embedded, convert the IDs back to raw numeric IDs. Legacy MBQL queries are converted to MBQL 5.
 
   Throws if an MBQL 5 expression doesn't match the schema."
   [x]
@@ -1276,7 +1311,8 @@
           import-mbql*
           normalize-imported
           (cond-> (not *skip-schema-validation?*) validate-imported-query!)
-          repair-card-template-tag-names))
+          repair-card-template-tag-names
+          legacy-mbql-query->mbql5))
 
 (declare ^:private mbql-deps-map)
 
@@ -1429,9 +1465,11 @@
 (mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
-  Parameters are sorted by `:id` for stable serialization output. A `:position` field is added
-  to preserve display order through the sort."
-  [parameters :- [:maybe [:sequential :map]]]
+  Parameters are sorted by `:id` for stable serialization output (a nil `:id` sorts first). A `:position` field
+  is added to preserve display order through the sort."
+  [parameters :- [:maybe [:sequential
+                          [:merge :metabase.parameters.schema/parameter-with-optional-type
+                           [:map [:id {:optional true} [:maybe :metabase.lib.schema.parameter/id]]]]]]]
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)

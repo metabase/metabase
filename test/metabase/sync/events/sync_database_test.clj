@@ -13,9 +13,9 @@
   (testing "The :event/database-create handler kicks off a sync on a new thread by default"
     (mt/with-temp [:model/Database {:as db} {:is_full_sync true}]
       (let [calls (atom 0)]
-        (with-redefs [quick-task/submit-task!         (fn [task] (task))
-                      sync/sync-database!             (fn [_] (swap! calls inc))
-                      sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task!         (fn [task] (task))
+                                    sync/sync-database!             (fn [_] (swap! calls inc))
+                                    sync-metadata/sync-db-metadata! (fn [_] (swap! calls inc))]
           (testing "default (disable-auto-sync=false): a sync entry point is invoked"
             (reset! calls 0)
             (events/publish-event! :event/database-create {:object db :user-id (mt/user->id :crowberto)})

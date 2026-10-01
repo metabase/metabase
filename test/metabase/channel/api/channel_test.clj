@@ -156,7 +156,7 @@
                                                                        :return-value {:errors {:email "Invalid email"}}}))))))
 
 (deftest test-channel-http-test
-  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
+  (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
     (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
       (testing "status-code=200 endpoint"
         (is (= {:ok true}
@@ -205,7 +205,7 @@
                (:message
                 (channel-test "http://169.254.1.100/api/health" 400))))))
     (testing "allow-private strategy"
-      (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-private]
+      (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-private"]
         (testing "still blocks localhost addresses"
           (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
                  (:message
@@ -214,7 +214,7 @@
           (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
                  (:message
                   (channel-test "http://169.254.1.100/api/health" 400)))))))
-    (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
       (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
         (testing "allow-all strategy allows localhost"
           (channel-test (str url (:path channel.http-test/post-200)) 200))))))

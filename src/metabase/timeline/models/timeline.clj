@@ -5,6 +5,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

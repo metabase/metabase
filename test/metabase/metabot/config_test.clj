@@ -35,7 +35,12 @@
     (testing "single arity version uses dynamic metabot resolution"
       (mt/with-temporary-setting-values [metabot.settings/metabot-id metabot.config/embedded-metabot-id]
         (is (= "embedding_next"
-               (metabot.config/resolve-dynamic-profile-id nil)))))))
+               (metabot.config/resolve-dynamic-profile-id nil)))))
+    (testing "the retired transforms_codegen profile is rejected whether named as a string or a keyword"
+      (doseq [profile-id ["transforms_codegen" :transforms_codegen]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Transform code generation is no longer supported"
+             (metabot.config/resolve-dynamic-profile-id profile-id "any-metabot-id")))))))
 
 (deftest check-metabot-enabled-test
   (testing "0-arity throws when both are disabled, passes when either is enabled"

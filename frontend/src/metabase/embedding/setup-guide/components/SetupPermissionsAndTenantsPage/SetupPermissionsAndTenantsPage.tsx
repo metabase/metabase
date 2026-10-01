@@ -13,7 +13,6 @@ import { Group, Icon, Stack, Text, Title } from "metabase/ui";
 import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { useGetSetupGuideChecklistQuery } from "../../api/setup-guide";
-import { useSetupGuideReturnPath } from "../../hooks";
 
 import { ConnectionImpersonationStepContent } from "./ConnectionImpersonationStepContent";
 import { DataSegregationStrategyPicker } from "./DataSegregationStrategyPicker";
@@ -31,9 +30,9 @@ import {
 import S from "./SetupPermissionsAndTenantsPage.module.css";
 import { useLastXrayDashboard } from "./hooks/use-xray-dashboards";
 import { createEmptyTenantDraft } from "./utils";
+const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
-  const returnPath = useSetupGuideReturnPath();
   const stepperRef = useRef<OnboardingStepperHandle>(null);
 
   const { data: checklistResponse } = useGetSetupGuideChecklistQuery();
@@ -135,7 +134,7 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   return (
     <Stack mx="auto" gap="sm" maw={680}>
-      <Link to={returnPath} className={S.backLink}>
+      <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
         <Group gap="xxs">
           <Icon name="chevronleft" size={12} />
           <Text size="sm" c="text-secondary">{t`Back to the setup guide`}</Text>

@@ -27,6 +27,7 @@ export function PublishedTableMeasureDetailPage() {
   return (
     <MeasureDetailPage
       measure={measure}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <PublishedTableMeasureBreadcrumbs table={table} measure={measure} />

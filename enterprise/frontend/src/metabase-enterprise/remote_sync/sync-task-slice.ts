@@ -34,6 +34,7 @@ export const remoteSyncSlice = createSlice({
         started_at: new Date().toISOString(),
         ended_at: null,
         last_progress_report_at: null,
+        last_heartbeat_at: null,
         error_message: null,
         initiated_by: 0,
       };

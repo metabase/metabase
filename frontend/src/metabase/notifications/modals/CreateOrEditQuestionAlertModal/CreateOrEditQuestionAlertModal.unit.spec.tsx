@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -12,7 +13,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import { checkNotNull } from "metabase/utils/types";
 import type {
@@ -724,7 +724,7 @@ function setup({
   });
   const storeConfig = { storeInitialState };
 
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   // The modal takes `question` as a prop. In production it comes from the `getQuestion` selector
   // which composes metrics and models into runnable ad-hoc questions.
   // Matching that behavior here.

@@ -133,12 +133,13 @@ export function BreakoutColumnListItem({
               : onAddBreakout(column)
           }
         />
+        {/* TODO: replace with ActionIcon (GDGT-2457) */}
         {isSelected && (
           <Button
-            className={BreakoutColumnListItemS.RemoveButton}
-            variant="subtle"
-            size="xs"
-            leftSection={<Icon name="close" />}
+            variant="transparent"
+            size="compact-md"
+            w="2rem"
+            leftSection={<Icon c="icon-primary-inverse" name="close" />}
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
           />
@@ -146,10 +147,12 @@ export function BreakoutColumnListItem({
       </Flex>
       {!isSelected && (
         <Tooltip label={t`Add grouping`}>
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            className={BreakoutColumnListItemS.AddButton}
             variant="subtle"
+            color="neutral"
             size="sm"
+            className={BreakoutColumnListItemS.AddButton}
             leftSection={<Icon name="add" />}
             aria-label={t`Add dimension`}
             onClick={handleAddClick}

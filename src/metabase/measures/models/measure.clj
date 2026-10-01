@@ -10,6 +10,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
+   [metabase.measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -33,7 +34,8 @@
   Throws an exception with 'Invalid measure definition' if the definition is not valid MBQL5."
   [definition]
   (when (seq definition)
-    (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
+    (when-not (= :mbql-version/mbql5 (when (map? definition)
+                                       (u/ignore-exceptions (lib/normalized-mbql-version definition))))
       (throw (ex-info (tru "Invalid measure definition: expected MBQL5 format")
                       {:definition definition})))
     (mu/validate-throw ::lib.schema.measure/definition definition)))
@@ -69,7 +71,7 @@
    (let [table (or (:table instance)
                    (measures.db/table (:table_id instance)))]
      (and (or api/*is-superuser?*
-              (and api/*is-data-analyst?*
+              (and (api/entitled-data-analyst?)
                    (perms/user-has-permission-for-table?
                     api/*current-user-id*
                     :perms/view-data
@@ -87,7 +89,7 @@
   (let [table (or (:table instance)
                   (measures.db/table (:table_id instance)))]
     (and (or api/*is-superuser?*
-             (and api/*is-data-analyst?*
+             (and (api/entitled-data-analyst?)
                   (perms/user-has-permission-for-table?
                    api/*current-user-id*
                    :perms/view-data

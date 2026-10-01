@@ -48,7 +48,7 @@
 (defn enabled-source-types-for-user
   "Returns set of enabled source types for WHERE clause filtering."
   []
-  (when (api/is-data-analyst?)
+  (when (api/entitled-data-analyst?)
     (transforms.gating/enabled-source-types)))
 
 (defn- source-query-permissions-ok?

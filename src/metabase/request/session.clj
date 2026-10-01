@@ -14,6 +14,7 @@
     (some-> (request.db/current-user user-id)
             user/add-attributes)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
   calls to [[with-current-user]] if it is already bound, as this can mess things up since things
@@ -26,14 +27,14 @@
   ::none)
 
 (mu/defn- current-user-info->permissions-set :- [:maybe [:set :string]]
-  [{:keys [permissions-set metabase-user-id]} :- ::request.schema/current-user-info]
+  [{:keys [permissions-set metabase-user-id]} :- [:or ::request.schema/current-user-info ::request.schema/request]]
   (or permissions-set
       (some-> metabase-user-id perms/user-permissions-set)))
 
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
-  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
-   thunk]
+  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe [:or ::request.schema/current-user-info ::request.schema/request]]
+   thunk :- ifn?]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)

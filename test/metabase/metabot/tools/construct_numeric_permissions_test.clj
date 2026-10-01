@@ -214,10 +214,10 @@
       (mt/with-temp [:model/Database other     {:engine :h2 :name "OtherDB-qcheck-test"}
                      :model/Table    other-tbl {:db_id (:id other) :name "OTHER_TBL" :active true}]
         (let [checked (atom [])
-              orig    api/query-check]
-          (with-redefs [api/query-check (fn [& args]
-                                          (swap! checked conj (vec args))
-                                          (apply orig args))]
+              orig    (mt/original-fn #'api/query-check)]
+          (mt/with-dynamic-fn-redefs [api/query-check (fn [& args]
+                                                        (swap! checked conj (vec args))
+                                                        (apply orig args))]
             (attempt-as-rasta
              {:lib/type "mbql/query"
               :database (db-name)
@@ -427,7 +427,7 @@
                                   (throw (ex-info "You don't have permissions to do that."
                                                   {:status-code 403}))
                                   {:model entity :id id})))]
-        (with-redefs [api/query-check deny-query-check]
+        (mt/with-dynamic-fn-redefs [api/query-check deny-query-check]
           (let [forbidden   (attempt-as-rasta
                              {:lib/type "mbql/query"
                               :database (db-name)
@@ -463,7 +463,7 @@
                         ([obj] obj)
                         ([entity id] (rec entity id nil))
                         ([entity id & _] (swap! checked conj [entity id]) {:model entity :id id}))]
-          (with-redefs [api/query-check record]
+          (mt/with-dynamic-fn-redefs [api/query-check record]
             (attempt-as-rasta
              {:lib/type "mbql/query"
               :database (db-name)

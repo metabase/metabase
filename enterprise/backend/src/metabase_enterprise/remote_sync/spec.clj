@@ -34,9 +34,12 @@
    - :model-key      - Toucan2 model keyword (e.g., :model/Card)
    - :identity       - Identity strategy: :entity-id, :path, or :hybrid
    - :path-keys      - For :path or :hybrid identity: vector of path components [:database :schema :table :field]
-   - :parent-model   - For :parent-table eligibility: the parent model key to check eligibility against
-                       (e.g., :model/Table for Field, Segment, Measure)
+   - :parent-model   - For :parent-table and :parent eligibility: the parent model key to check eligibility against
+                       (e.g., :model/Table for Field, Segment, Measure; :model/Card for Action)
    - :parent-fk      - For child models: the FK column pointing to the parent (e.g., :table_id)
+   - :parent-rso-key - Optional, for child models whose RemoteSyncObject rows record their parent's id: the
+                       RemoteSyncObject column that holds it (e.g., :model_table_id for Field). A cascade from the
+                       parent then finds the child rows by this column instead of through :parent-fk.
    - :cascade-filter  - Optional map of additional filter conditions for cascade queries.
                        Only needed when the filter differs from {archived-key false}.
                        E.g., Field needs {:active true} since it has no :archived-key.
@@ -47,7 +50,8 @@
                        :prefix - Event keyword prefix (e.g., :event/card)
                        :types  - Vector of event types to handle [:create :update :delete]
    - :eligibility    - Eligibility configuration:
-                       :type       - :collection, :published-table, :parent-table, :setting, or :library-synced
+                       :type       - :collection, :published-table, :parent-table, :parent, :setting, or
+                                     :library-synced (:parent follows :parent-fk to a :parent-model instance)
                        :collection - For :collection type: :remote-synced, :transforms-namespace, :snippets-namespace, or :any
                        :setting    - For :setting type: setting keyword to check
                        (Note: :library-synced type uses the library-is-remote-synced? setting to determine eligibility)
@@ -56,7 +60,7 @@
                        :select-fields  - Fields to select for hydration
                        :hydrate-query? - When true, hydrate via the model's
                                          `metabase-enterprise.remote-sync.db` tracking-join query instead of
-                                         :select-fields (Field, Segment, Measure)
+                                         :select-fields (Field, Segment, Measure, Action)
                        :field-mappings - Map of RemoteSyncObject column -> source field or [field transform-fn]
    - :conditions     - Optional map of conditions for filtering syncable entities.
                        Only entities matching these conditions are eligible for sync
@@ -68,12 +72,14 @@
                        :statuses   - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
                        :scope-key  - Optional key for scoping deletions (e.g., :collection_id, :id).
                                      If nil, deletions are global (by entity_id only).
+                                     :scope-table - Optional table that :scope-key points into; the rows are
+                                     then scoped to that table's rows in the synced collections (Action)
                        :all-on-setting-disable - Optional setting keyword; when this setting's sentinel
                                      RSO exists with 'delete' status, remove ALL entities of this type
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
-                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet)
+                       :all              - Query all instances (TransformTag, PythonLibrary, NativeQuerySnippet, Glossary)
                        nil/:derived      - No root query; derived from other models via serdes/descendants
    - :enabled?       - true, or setting keyword (e.g., :remote-sync-transforms, :library-synced).
                        When :library-synced, uses the library-is-remote-synced? setting."
@@ -83,7 +89,7 @@
     :identity       :entity-id
     :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/card
-                     :types  [:create :update :delete]}
+                     :types  [:create :update :delete :public-link-created :public-link-deleted]}
     :eligibility    {:type       :collection
                      :collection :remote-synced}
     :archived-key   :archived
@@ -95,13 +101,32 @@
                      :scope-key :collection_id}
     :enabled?       true}
 
+   :model/Action
+   {:model-type     "Action"
+    :model-key      :model/Action
+    :identity       :entity-id
+    :delete-after   [:model/Card]  ; has model_id FK
+    :parent-model   :model/Card
+    :parent-fk      :model_id
+    :events         {:prefix :event/action
+                     :types  [:create :update :delete]}
+    :eligibility    {:type :parent}
+    :archived-key   :archived
+    :tracking       {:hydrate-query? true
+                     :field-mappings {:model_name          :name
+                                      :model_collection_id :collection_id}}
+    :removal        {:statuses    #{"removed" "delete"}
+                     :scope-key   :model_id
+                     :scope-table :report_card}
+    :enabled?       true}
+
    :model/Dashboard
    {:model-type     "Dashboard"
     :model-key      :model/Dashboard
     :identity       :entity-id
     :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/dashboard
-                     :types  [:create :update :delete]}
+                     :types  [:create :update :delete :public-link-created :public-link-deleted]}
     :eligibility    {:type       :collection
                      :collection :remote-synced}
     :archived-key   :archived
@@ -145,6 +170,22 @@
     :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
     :export-scope   :all  ; export all snippets
     :enabled?       :library-synced}
+
+   :model/Glossary
+   {:model-type     "Glossary"
+    :model-key      :model/Glossary
+    :identity       :entity-id
+    :events         {:prefix :event/glossary
+                     :types  [:create :update :delete]}
+    :eligibility    {:type :library-synced}  ; sync every glossary entry when Library is remote-synced
+    :archived-key   nil
+    :tracking       {:select-fields  [:term]
+                     :field-mappings {:model_name :term}}
+    :removal        {:statuses #{"removed" "delete"}}  ; no scope-key = global deletion
+    :export-scope   :all  ; export all glossary entries
+    :enabled?       :library-synced
+    ;; files exported before `entity_id` existed are keyed by term; resolve those paths through load-find-local
+    :natural-key-paths? true}
 
    :model/Timeline
    {:model-type     "Timeline"
@@ -204,6 +245,7 @@
     :path-keys      [:database :schema :table :field]
     :parent-model   :model/Table
     :parent-fk      :table_id
+    :parent-rso-key :model_table_id
     :cascade-filter {:active true}
     :events         {:prefix :event/field
                      :types  [:create :update :delete]}
@@ -283,6 +325,25 @@
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
     :conditions     {:built_in_type nil}  ; exclude built-in tags from sync
+    :removal        {:statuses #{"removed" "delete"}  ; no scope-key = global deletion
+                     :all-on-setting-disable :remote-sync-transforms}
+    :export-scope   :all  ; query for all instances
+    :enabled?       :remote-sync-transforms}
+
+   :model/TransformTest
+   {:model-type     "TransformTest"
+    :model-key      :model/TransformTest
+    :identity       :entity-id
+    :delete-after   [:model/Transform]  ; has transform_id FK
+    :parent-model   :model/Transform
+    :parent-fk      :transform_id
+    :events         {:prefix :event/transform-test
+                     :types  [:create :update :delete]}
+    :eligibility    {:type    :setting
+                     :setting :remote-sync-transforms}
+    :archived-key   nil  ; no archived field
+    :tracking       {:select-fields  [:name]
+                     :field-mappings {:model_name :name}}
     :removal        {:statuses #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
@@ -442,6 +503,14 @@
     :library-synced         "Snippets"
     (str/capitalize (name setting-kw))))
 
+(defn- setting->content-label
+  "Describes the content a feature setting governs, for conflict messages. The Library groups several models
+   under one category, so name them rather than the category."
+  [setting-kw]
+  (case setting-kw
+    :library-synced "Library content (snippets, glossary)"
+    (setting->category setting-kw)))
+
 (defn- setting->namespace
   "Converts a setting keyword to the corresponding collection namespace keyword, or nil."
   [setting-kw]
@@ -533,11 +602,11 @@
                           (and feature-namespace
                                (contains? import-namespace-collections (name feature-namespace))))
                 :when (has-unsynced-entities-for-feature? specs-for-feature)
-                :let [category (setting->category setting-kw)]]
+                :let [category (setting->category setting-kw)
+                      label    (setting->content-label setting-kw)]]
             {:type     (keyword (str (u/lower-case-en category) "-conflict"))
              :category category
-             :message  (format "Import contains %s but local instance has unsynced %s"
-                               category category)}))))
+             :message  (format "Import contains %s but local instance has unsynced %s" label label)}))))
 
 (defn check-namespace-collection-conflicts
   "Checks if import contains namespace collections (transforms/snippets) that conflict with local
@@ -572,12 +641,13 @@
              :message  (format "Import contains %s but local instance has unsynced %s namespace collections"
                                category category)}))))
 
-(defn- removal-opts
-  "The `metabase-enterprise.remote-sync.db` removal-opts (`:scope-key`, `:synced-collection-ids`, `:entity-ids`,
-  `:removal-conditions`) for removing the entity-id `spec`'s rows not in the import, scoped to
+(defn removal-opts
+  "The `metabase-enterprise.remote-sync.db` removal-opts (`:scope-key`, `:scope-table`, `:synced-collection-ids`,
+  `:entity-ids`, `:removal-conditions`) for removing the entity-id `spec`'s rows not in the import, scoped to
   `synced-collection-ids` when the spec has a `:scope-key`, minus the imported `entity-ids`."
   [spec synced-collection-ids entity-ids]
   {:scope-key              (get-in spec [:removal :scope-key])
+   :scope-table            (get-in spec [:removal :scope-table])
    :synced-collection-ids  synced-collection-ids
    :entity-ids             entity-ids
    :removal-conditions     (removal-conditions spec)})
@@ -683,14 +753,16 @@
                         ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
                         ;; collection's worth of rows just to count/sample them.
                         opts         (removal-opts spec synced-collection-ids imported-ids)
-                        n            (remote-sync.db/unsynced-instance-count model-key model-type opts)]
+                        n            (remote-sync.db/unsynced-instance-count model-key model-type opts)
+                        name-col     (get-in spec [:tracking :field-mappings :model_name])]
                   :when (pos? n)]
               {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
                :category model-type
                :model    model-type
                :count    n
                ;; A bounded sample of names for the UI; :count above is the true total.
-               :names    (remote-sync.db/unsynced-instance-names model-key model-type opts max-conflict-names)
+               :names    (remote-sync.db/unsynced-instance-names model-key model-type name-col opts
+                                                                 max-conflict-names)
                :message  (format "Import would delete %d unsynced local %s %s"
                                  n model-type (if (= 1 n) "entity" "entities"))})))))
 
@@ -757,6 +829,12 @@
   (when table_id
     (when-let [table (remote-sync.db/instance parent-model table_id)]
       (check-eligibility (spec-for-model-key parent-model) table))))
+
+(defmethod check-eligibility-by-type :parent
+  [{:keys [parent-model parent-fk]} object]
+  (when-let [parent-id (get object parent-fk)]
+    (when-let [parent (remote-sync.db/instance parent-model parent-id)]
+      (check-eligibility (spec-for-model-key parent-model) parent))))
 
 (defmethod check-eligibility-by-type :setting
   [{:keys [eligibility]} _object]
@@ -885,17 +963,37 @@
   "Extracts identity data from a serdes path based on the spec's identity strategy. For entity-id
    and hybrid models, returns the entity_id string from the last path element. For path-based models
    like Table and Field, returns a map with database, schema, and table/field names that can be used
-   to look up the entity."
-  {:arglists '([spec serdes-path])}
-  (fn [spec _path] (:identity spec))
+   to look up the entity. A spec with `:natural-key-paths?` may also be keyed on a natural key (files
+   exported before the model had an entity_id); its paths are resolved through `serdes/load-find-local`, and
+   through the entity's natural key when `ingest-one` (path -> ingested entity, or nil) is given."
+  {:arglists '([spec serdes-path ingest-one])}
+  (fn [spec _path _ingest-one] (:identity spec))
   :hierarchy #'serdes-path-identity-hierarchy)
 
+(defn- natural-key-entity-id
+  "The entity_id of the local row whose natural-key column (the spec's tracked name column) equals `ingested`'s,
+  or nil."
+  [{:keys [model-key] :as spec} ingested]
+  (let [column (get-in spec [:tracking :field-mappings :model_name])]
+    (when-some [value (get ingested column)]
+      (remote-sync.db/entity-id-where model-key column value))))
+
 (defmethod extract-identity-from-serdes-path ::entity-id-extractor
-  [_ serdes-path]
-  (:id (last serdes-path)))
+  [{:keys [natural-key-paths?] :as spec} serdes-path ingest-one]
+  (let [id (:id (last serdes-path))]
+    (if natural-key-paths?
+      ;; The path id may be a natural key (a glossary term, before `entity_id` existed) naming whichever local row
+      ;; the loader matches it to, so use that row's entity_id. Before the load there may be no row with that id
+      ;; yet; the loader then matches the entity on its natural key, so resolve the same way when the entity can
+      ;; be read. Failing both, the raw id is kept, since it matches no local row (harmless to the removal
+      ;; anti-join) and still counts as an imported entity.
+      (or (:entity_id (serdes/load-find-local serdes-path))
+          (when ingest-one (natural-key-entity-id spec (ingest-one serdes-path)))
+          id)
+      id)))
 
 (defmethod extract-identity-from-serdes-path :path
-  [_ serdes-path]
+  [_ serdes-path _ingest-one]
   (let [path-map (into {} (map (fn [elem] [(keyword (u/lower-case-en (:model elem))) (:id elem)]) serdes-path))]
     (cond-> {}
       (contains? path-map :database) (assoc :db_name (:database path-map))
@@ -904,34 +1002,39 @@
       (contains? path-map :field)    (assoc :field_name (:field path-map)))))
 
 (defmethod extract-identity-from-serdes-path :default
-  [_ _]
+  [_ _ _]
   nil)
 
 (defn extract-imported-entities
   "Processes serdes paths from an import and extracts entity identities grouped by how they should be looked up.
    Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
-   path lookup maps for models like Table and Field that use path-based identity."
-  [seen-paths]
-  (reduce
-   (fn [acc path]
-     (let [model-type (-> path last :model)]
-       (if-let [spec (spec-for-model-type model-type)]
-         (let [identity-type (:identity spec)
-               identity-data (extract-identity-from-serdes-path spec path)]
-           (if identity-data
-             (case identity-type
-               (:entity-id :hybrid)
-               (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
+   path lookup maps for models like Table and Field that use path-based identity.
 
-               :path
-               (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+   `ingest-one` (path -> ingested entity) is for the pre-load conflict check: a `:natural-key-paths?` path whose
+   id matches no local row yet resolves to the row the loader will match on the entity's natural key."
+  ([seen-paths]
+   (extract-imported-entities seen-paths nil))
+  ([seen-paths ingest-one]
+   (reduce
+    (fn [acc path]
+      (let [model-type (-> path last :model)]
+        (if-let [spec (spec-for-model-type model-type)]
+          (let [identity-type (:identity spec)
+                identity-data (extract-identity-from-serdes-path spec path ingest-one)]
+            (if identity-data
+              (case identity-type
+                (:entity-id :hybrid)
+                (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
 
-               acc)
-             acc))
-         acc)))
-   {:by-entity-id {}
-    :by-path {}}
-   seen-paths))
+                :path
+                (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+
+                acc)
+              acc))
+          acc)))
+    {:by-entity-id {}
+     :by-path {}}
+    seen-paths)))
 
 ;;; -------------------------------------------- Event Helper Functions ------------------------------------------------
 
@@ -992,7 +1095,9 @@
   (when (seq entity-ids)
     (let [;; Get select fields from spec, with :id always included
           select-fields (into [:id] (or (:select-fields tracking) [:name :collection_id]))
-          entities (remote-sync.db/instances-with-columns-by-entity-ids model-key select-fields entity-ids)]
+          entities (if (:hydrate-query? tracking)
+                     (remote-sync.db/tracking-details-by-entity-ids model-key entity-ids)
+                     (remote-sync.db/instances-with-columns-by-entity-ids model-key select-fields entity-ids))]
       (map (fn [entity]
              (let [;; Apply field mappings
                    field-mappings (:field-mappings tracking)
@@ -1159,22 +1264,34 @@
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
     (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
 
+(defn exportable-entity-count
+  "Number of entities `targets` (a map as returned by [[exportable-entities]]) names. An upper bound on what
+  [[extract-entities-for-export]] yields, suitable for progress reporting."
+  [targets]
+  (transduce (map count) + 0 (vals targets)))
+
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
 
-   Returns a lazy sequence of serialized entities ready for storage.
+   Returns an eduction of serialized entities ready for storage. Every traversal re-runs the extraction, so
+   callers must reduce it once.
+
+   `targets` defaults to [[exportable-entities]]; pass it explicitly when the same map is needed for
+   [[exportable-entity-count]] so the dependency walk runs once.
 
    Only extracts models that:
    1. Have a spec in remote-sync-specs
    2. Are currently enabled (based on :enabled? field)
    3. Are in one of the provided collections (or descendants)"
-  []
-  (eduction (map (fn [[model ids]]
-                   (serdes/extract-all model (merge git-sync-extract-opts
-                                                    {:filter-column (serdes/primary-key model)
-                                                     :filter-ids    (vec ids)}))))
-            cat
-            (exportable-entities)))
+  ([]
+   (extract-entities-for-export (exportable-entities)))
+  ([targets]
+   (eduction (map (fn [[model ids]]
+                    (serdes/extract-all model (merge git-sync-extract-opts
+                                                     {:filter-column (serdes/primary-key model)
+                                                      :filter-ids    (vec ids)}))))
+             cat
+             targets)))
 
 (defn extract-entities-for-rows
   "Serializes the entities named by `rows`, grouped by model type. Each row is a map with a

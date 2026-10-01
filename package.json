@@ -51,7 +51,7 @@
     "@modelcontextprotocol/ext-apps": "^1.3.2",
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^2.12.0",
-    "@snowplow/browser-tracker": "3.2.0",
+    "@snowplow/browser-tracker": "4.10.2",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.2",
     "@tiptap/core": "^3.31.3",
@@ -303,6 +303,7 @@
     "inquirer-file-selector": "^0.2.1",
     "jest": "^30.0.0",
     "jest-canvas-mock": "2.5.2",
+    "jest-circus": "30.2.0",
     "jest-environment-jsdom": "^30.0.0",
     "jest-junit": "^16.0.0",
     "jest-watch-typeahead": "^3.0.0",
@@ -373,7 +374,7 @@
     "webpack-notifier": "1.15.0",
     "webpack-stats-plugin": "^1.1.3",
     "yaml-lint": "~1.6.0",
-    "zrender": "^6.0.0"
+    "zrender": "6.1.0"
   },
   "resolutions": {
     "@codemirror/autocomplete": "^6.18.6",
@@ -426,6 +427,7 @@
     "build-static-viz:watch-wait": "bun run wait:cljs; bun run build-static-viz:watch",
     "build-stats": "bun install && rspack --json > stats.json",
     "build-storybook": "NODE_OPTIONS=--max-old-space-size=8192 storybook build",
+    "build-storybook:test": "bun run build-storybook --test",
     "build-watch": "bun run concurrently -n 'cljs,js' 'bun run build-watch:cljs' 'bun run build-watch:js'",
     "build-watch:cljs": "bun install && shadow-cljs watch app",
     "build-watch:js": "bun install && NODE_OPTIONS=--max-old-space-size=8192 rspack serve --watch",
@@ -488,6 +490,7 @@
     "storybook-pure": "storybook dev -p 6006",
     "storybook-embedding-sdk": "IS_EMBEDDING_SDK=true storybook dev -c frontend/src/embedding-sdk-shared/.storybook -p 6006",
     "test": "bun run test-unit && bun run test-timezones && bun run test-cypress",
+    "test-ci-scripts": "jest --selectProjects ci-scripts --maxWorkers=4",
     "test-cljs": "bun install && shadow-cljs compile test && node target/node-tests.js",
     "test-cypress": "tsx ./e2e/runner/run_cypress_local.ts",
     "test-cypress-host-sample-apps": "tsx ./e2e/runner/run_cypress_host_sample_apps.ts",
@@ -495,12 +498,12 @@
     "test-timezones": "bun install && ./frontend/test/__runner__/run_timezone_tests",
     "test-memory": "node --expose-gc ./node_modules/.bin/jest --runInBand --config jest.memory.conf.js",
     "test-timezones-unit": "jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js",
-    "test-unit": "bun run build:cljs && jest --maxWorkers=4",
-    "test-unit-keep-cljs": "jest --maxWorkers=4",
+    "test-unit": "bun run build:cljs && jest --ignoreProjects ci-scripts --maxWorkers=4",
+    "test-unit-keep-cljs": "jest --ignoreProjects ci-scripts --maxWorkers=4",
     "test-unit-watch": "bun run test-unit --watch",
     "test-unit-watch:cljs": "bun run concurrently -n 'cljs,tests' 'bun run build-watch:cljs' 'bun run test-unit-keep-cljs --watch'",
     "test-visual:loki": "NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu' ",
-    "test-visual:loki:ci": "bun run build-storybook && bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer",
+    "test-visual:loki:ci": "bun run build-storybook:test && bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer",
     "test-visual:loki-approve-diff": "ls .loki/difference | xargs -I _ find .loki/current -name _ | xargs -I _ cp _ .loki/reference/",
     "test-visual:loki-prune": "ls .loki/reference | grep -v \"$(ls .loki/current)\" | xargs -I {} rm .loki/reference/{}",
     "test-visual:loki-report": "node frontend/test/generate-loki-report-json.js && reg-cli --from .loki/report.json --report .loki/report.html",
@@ -516,7 +519,11 @@
     "cloud:dev": "bun install && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && bun run concurrently -n 'FE,BE' -c 'blue,green' 'bun run build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'"
   },
   "browserslist": [
-    "defaults"
+    "chrome >= 120",
+    "edge >= 120",
+    "firefox >= 121",
+    "safari >= 18.2",
+    "ios_saf >= 18.2"
   ],
   "packageManager": "bun@1.3.14"
 }

@@ -307,7 +307,7 @@
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
-   [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
+   [:weights                             {:optional true} [:maybe ::search.config/weights]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -460,9 +460,7 @@
                         (filter #(contains? #{"card" "metric" "dataset"} (:model %)))
                         (map :id))
                        search-results)
-        card-metadata (if (empty? card-ids)
-                        {}
-                        (search.db/card-result-metadata card-ids))]
+        card-metadata (search.db/card-result-metadata card-ids)]
     (map (fn [{:keys [model id] :as item}]
            (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))

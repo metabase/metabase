@@ -6,6 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *steps*
   "Vector of all the parent steps/substeps we're currently in the process of working on. (See [[metabuild-common.steps]]
   for more info."

@@ -40,7 +40,8 @@
 
 (mu/defn- job-context->database-id :- [:maybe ::lib.schema.id/database]
   "Get the Database ID referred to in `job-context`."
-  [job-context]
+  [job-context :- [:fn {:error/message "satisfies clojurewerkz.quartzite.conversion/JobDataMapConversion"}
+                   #(satisfies? qc/JobDataMapConversion %)]]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
 
 ;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will

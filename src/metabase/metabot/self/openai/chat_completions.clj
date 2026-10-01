@@ -171,7 +171,7 @@
   Emits the same internal chunk types as claude.clj and openai.clj:
     :start, :text-start, :text-delta, :text-end,
     :tool-input-start, :tool-input-delta, :tool-input-available,
-    :usage
+    :usage, :error
 
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
@@ -183,7 +183,8 @@
   would lose their arguments, since neither the start branch (needs `:name`) nor
   the argument-delta branch (needs no `:id`) would fire.
 
-  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
+  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]]. A reason the table maps to
+  \"error\" (Mistral's `error`, Z.AI's `network_error`) fails the response the same way an error object does.
 
   `opts` may carry `:forward-reasoning?`, which additionally translates reasoning
   deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
@@ -202,25 +203,32 @@
            model-name   (volatile! nil)
            payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
            stop-reason  (volatile! nil)
+           clear!       (fn []
+                          (vreset! current-type nil)
+                          (vreset! current-id nil)
+                          (vreset! payload {}))
            close!       (fn [result]
                           (u/prog1 (rf result (merge {:type (case @current-type
                                                               :text          :text-end
                                                               :reasoning     :reasoning-end
                                                               :function_call :tool-input-available)}
                                                      @payload))
-                            (vreset! current-type nil)
-                            (vreset! current-id nil)
-                            (vreset! payload {})))]
+                            (clear!)))]
        (fn
          ([result]
           (cond-> result
             @current-type (close!)
             true          (rf)))
 
-         ([result {:keys [id model choices usage] :as _chunk}]
+         ([result {:keys [id model choices usage error] :as _chunk}]
           (let [choice        (first choices)
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
+                error-text    (when (or (some? error)
+                                        (= "error" (core/stop-reason->finish-reason stop-reasons finish-reason)))
+                                (or (:message error)
+                                    (some-> error pr-str)
+                                    (tru "The model provider failed to complete the response")))
                 tool-call     (first (:tool_calls delta))
                 reasoning-md  (:reasoning_metadata delta)
                 ;; Determine what kind of content this chunk carries.
@@ -312,6 +320,9 @@
                    (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
                                                                     :toolCallId     (:toolCallId @payload)
                                                                     :inputTextDelta (:arguments (:function tool-call))})
+              ;; Closing a tool call runs it, so drop one that an error cuts off
+              (and error-text
+                   (= @current-type :function_call))           (u/prog1 (clear!))
               ;; Finish reason — close whatever is open
               (some? finish-reason)                            (-> (u/prog1
                                                                      (vreset! stop-reason finish-reason))
@@ -324,9 +335,17 @@
                                                                             :model @model-name}
                                                                      @stop-reason
                                                                      (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
-                                                                            :raw-finish-reason @stop-reason)))))))))))
+                                                                            :raw-finish-reason @stop-reason)))
+              ;; An error in the stream, e.g. a failure partway through generation
+              error-text                                       (-> (cond-> @current-type (close!))
+                                                                   (rf {:type :error :errorText error-text}))))))))))
 
 ;;; Request body
+
+(def ^:private CCOpts
+  "Dialect hooks for [[request-body]] that are not request options."
+  [:maybe [:map {:closed true}
+           [:reasoning-part->message {:optional true} [:maybe [:fn fn?]]]]])
 
 (mu/defn request-body
   "Build the Chat Completions request body for an LLM request.
@@ -334,9 +353,9 @@
   The optional `cc-opts` map holds dialect hooks that are not request options —
   today only `:reasoning-part->message`, threaded to [[parts->cc-messages]]. A
   fn-valued hook stays out of the traced and logged `LLMRequestOpts` on purpose."
-  ([opts] (request-body opts nil))
+  ([opts :- core/LLMRequestOpts] (request-body opts nil))
   ([{:keys [model system input tools temperature max-tokens tool_choice schema]} :- core/LLMRequestOpts
-    cc-opts]
+    cc-opts :- CCOpts]
    (let [messages  (cond-> (parts->cc-messages input cc-opts)
                      system (as-> msgs (into [{:role "system" :content system}] msgs)))
          all-tools (or (when schema
@@ -369,9 +388,11 @@
   never actually reached and leaves an empty model picker with no diagnostic. Throw instead.
 
   `provider-name` is the display name, used in the message. The exception is tagged `:api-error` so the
-  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and carries
-  no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
-  renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
+  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and
+  `:status-code 400` so it reaches the admin as their misconfiguration. Without it `metabase.llm.api.provider`'s
+  `provider-client-error?` does not recognise it, and the Connect path rethrows it as an unhandled 500:
+  the admin still sees the sentence, but it bumps the unhandled-error counter and collapses to \"Something
+  went wrong\" under `MB_HIDE_STACKTRACES=true`, losing the diagnostic for the operators who enabled that.
 
   A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
 
@@ -382,6 +403,7 @@
      (when-not (sequential? data)
        (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
                          detail (str ". " detail))
-                       {:api-error  true
-                        :error-code :malformed-model-catalog})))
+                       {:api-error   true
+                        :status-code 400
+                        :error-code  :malformed-model-catalog})))
      data)))

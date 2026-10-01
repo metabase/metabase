@@ -20,6 +20,7 @@ import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
+import { useTimeConfig } from "../use-time-config";
 import {
   formatDateRange,
   getInterval,
@@ -49,10 +50,11 @@ export function DateIntervalPicker({
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
+  const timeConfig = useTimeConfig();
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
-  const dateRangeText = formatDateRange(value);
-  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
+  const dateRangeText = formatDateRange(timeConfig, value);
+  const outOfBounds = isOutOfBounds(timeConfig, value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -101,10 +103,13 @@ export function DateIntervalPicker({
           }}
         />
         <Tooltip label={t`Starting from…`} position="bottom">
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            aria-label={t`Starting from…`}
-            c="text-secondary"
             variant="subtle"
+            color="neutral"
+            size="sm"
+            ml="sm"
+            aria-label={t`Starting from…`}
             leftSection={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
           />

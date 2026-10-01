@@ -1,11 +1,13 @@
 (ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -134,8 +136,7 @@
   and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  ;; Not gated on `enable-embedding-static`: an admin who turned guest embeds off still needs to see what is already
-  ;; published. Publishing itself stays gated.
+  (embedding.validation/check-embedding-enabled)
   (queries-rest.db/embeddable-cards))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -226,6 +227,7 @@
 
   As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
   instead, you can specify `?legacy-mbql=true`."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
@@ -264,7 +266,7 @@
   (map #(update-keys % u/->kebab-case-en) cols))
 
 (mu/defn- source-cols
-  [card
+  [card   :- ::queries.schema/card
    source :- [:enum ::breakouts ::aggregations]]
   (if-let [names (get-in card [:visualization_settings (case source
                                                          ::breakouts    :graph.dimensions
@@ -342,7 +344,7 @@
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card    :- :map
+  [card    :- ::queries.schema/card
    {:keys [query last-cursor page-size exclude-ids] :as _options}
    :- [:map {:closed true}
        [:query       {:optional true} [:maybe ms/NonBlankString]]
@@ -550,8 +552,8 @@
                                 (contains? card-updates :dashboard_id))
                         (queries/actual-collection-id card-updates))]
     (cond-> card-updates
-      (or (api/column-will-change? :dashboard_id card-before-update card-updates)
-          (api/column-will-change? :collection_id card-before-update card-updates))
+      (or (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
+          (api/column-will-change? (:collection_id card-before-update) (get card-updates :collection_id ::api/not-provided)))
       (assoc :collection_id collection-id))))
 
 (mu/defn update-card!
@@ -589,9 +591,8 @@
                                                                  (not (= :list (keyword (get card-updates :display)))))
                                                         {:display :table})
                                                       (when (and
-                                                             (api/column-will-change? :dashboard_id
-                                                                                      card-before-update
-                                                                                      card-updates)
+                                                             (api/column-will-change? (:dashboard_id card-before-update)
+                                                                                      (get card-updates :dashboard_id ::api/not-provided))
                                                              (:dashboard_id card-updates))
                                                         (api/check-400
                                                          (not (:archived card-updates)))
@@ -648,6 +649,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
@@ -663,9 +665,13 @@
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [card (api/write-check :model/Card id)]
+  (let [card    (api/write-check :model/Card id)
+        ;; the database deletes the card's actions through the foreign key, with no events of their own
+        actions (queries-rest.db/actions-for-model id)]
     (queries-rest.db/delete-card! id)
-    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
+    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*})
+    (doseq [action actions]
+      (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
@@ -783,6 +789,7 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query
   and optionally re-sorts the rows via the `sort` body param."
+  {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
@@ -830,6 +837,7 @@
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
+  {:scope api-scope/data-app}
   [{:keys [card-id export-format]} :- [:map {:closed true}
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
@@ -880,12 +888,15 @@
   (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/card-public-link-created
-                                          {:object-id card-id
-                                           :user-id api/*current-user-id*})
-                   (queries-rest.db/update-card! card-id
-                                                 {:public_uuid       <>
-                                                  :made_public_by_id api/*current-user-id*})))]
+                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                   (t2/with-transaction [_conn]
+                     (queries-rest.db/update-card! card-id
+                                                   {:public_uuid       <>
+                                                    :made_public_by_id api/*current-user-id*})
+                     (events/publish-event! :event/card-public-link-created
+                                            {:object    (queries-rest.db/card card-id)
+                                             :object-id card-id
+                                             :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -901,13 +912,15 @@
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
-  (queries-rest.db/update-card! card-id
-                                {:public_uuid       nil
-                                 :made_public_by_id nil})
-  (events/publish-event! :event/card-public-link-deleted
-                         {:object-id card-id
-                          :user-id api/*current-user-id*})
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
+  (t2/with-transaction [_conn]
+    (queries-rest.db/update-card! card-id
+                                  {:public_uuid       nil
+                                   :made_public_by_id nil})
+    (events/publish-event! :event/card-public-link-deleted
+                           {:object    (queries-rest.db/card card-id)
+                            :object-id card-id
+                            :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -916,6 +929,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
+  {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]
    _query-params
@@ -944,6 +958,7 @@
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/queries/1/params/abc/values"
+  {:scope api-scope/data-app}
   [{:keys [card-id param-key]} :- [:map {:closed true}
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
@@ -961,6 +976,7 @@
      GET /api/queries/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
+  {:scope api-scope/data-app}
   [{:keys [card-id param-key query]} :- [:map {:closed true}
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
@@ -977,6 +993,7 @@
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/queries/1/params/abc/remapping?value=100"
+  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]

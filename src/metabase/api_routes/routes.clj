@@ -27,8 +27,8 @@
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
-   [metabase.embedding-hub.api]
    [metabase.embedding-rest.api]
+   [metabase.explorations.api]
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
@@ -57,7 +57,7 @@
    [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
-   [metabase.segments.api]
+   [metabase.segments.rest.api]
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
@@ -98,6 +98,7 @@
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
@@ -118,7 +119,7 @@
          metabase.public-sharing-rest.api/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
-         metabase.segments.api/keep-me
+         metabase.segments.rest.api/keep-me
          metabase.settings-rest.api/keep-me
          metabase.setup-rest.api/keep-me
          metabase.task-history.api/keep-me
@@ -189,11 +190,13 @@
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
-   ;; The MCP Apps iframe credential is accepted for `/dataset` and is stamped unrestricted, so the endpoint
-   ;; scope middleware cannot hold the `agent:sql:run` line here — the guard is what stops a credential lifted
-   ;; out of the resource HTML from POSTing raw SQL. The spec-generation wrapper keeps the guard transparent
-   ;; to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here fails openapi.json generation
-   ;; for the whole /api tree.
+   ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
+   ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
+   ;; token's scopes as a signed claim (unrestricted only when minted from an unrestricted session: a cookie or
+   ;; API-key session, or an `mb:full` bearer token), and the guard
+   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL. The spec-generation
+   ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
+   ;; fails openapi.json generation for the whole /api tree.
    "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
                                     agent-api.query-guards/+refuse-unscoped-native-sql)
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
@@ -204,10 +207,8 @@
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
-   "/embedding-hub"        metabase.embedding-hub.api/routes
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
-   ;; Explorations are intentionally disabled on the v64 release branch. do not uncomment this
-   ;; "/exploration"          (+auth metabase.explorations.api/routes)
+   "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
@@ -241,7 +242,7 @@
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
-   "/segment"              (+auth 'metabase.segments.api)
+   "/segment"              (+auth 'metabase.segments.rest.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api

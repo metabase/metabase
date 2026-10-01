@@ -69,26 +69,18 @@
     :else (str d)))
 
 (defn- trend-direction-text
-  "Convert trend direction keyword to readable text."
+  "Convert a trend direction keyword to readable text."
   [direction]
   (case direction
     :strongly-increasing "strongly increasing"
-    :increasing "increasing"
-    :flat "flat"
-    :decreasing "decreasing"
     :strongly-decreasing "strongly decreasing"
-    :no-clear-trend "no clear trend"
+    :no-clear-trend      "no clear trend"
     (name direction)))
 
 (defn- volatility-level-text
-  "Convert volatility level keyword to readable text."
+  "Convert a volatility level keyword to readable text."
   [level]
-  (case level
-    :low "low"
-    :moderate "moderate"
-    :high "high"
-    :extreme "extreme"
-    (name level)))
+  (name level))
 
 (defn- render-axis-range
   "Render '**<label> Range**: min to max' from a summary map with :min/:max."
@@ -115,7 +107,7 @@
   [{:keys [downsampled-series correlations-capped]}]
   (let [parts (cond-> []
                 (seq downsampled-series)
-                (conj (let [entries (for [[name {:keys [original-count sampled-count]}] downsampled-series]
+                (conj (let [entries (for [{:keys [name original-count sampled-count]} downsampled-series]
                                       (str name " (" original-count " → " sampled-count " points)"))]
                         (str "Data was downsampled for statistical analysis: "
                              (str/join ", " entries)
@@ -376,10 +368,10 @@
                          ", range=" (format-number data-range))
         p-str       (when (seq estimated-percentiles)
                       (str "**Estimated Percentiles**: "
-                           "P25≈" (format-number (get estimated-percentiles 25))
-                           ", P50≈" (format-number (get estimated-percentiles 50))
-                           ", P75≈" (format-number (get estimated-percentiles 75))
-                           ", P90≈" (format-number (get estimated-percentiles 90))))
+                           "P25≈" (format-number (:p25 estimated-percentiles))
+                           ", P50≈" (format-number (:p50 estimated-percentiles))
+                           ", P75≈" (format-number (:p75 estimated-percentiles))
+                           ", P90≈" (format-number (:p90 estimated-percentiles))))
         iqr-str     (when estimated-quartiles
                       (str "**Estimated IQR**: " (format-number (:iqr estimated-quartiles))
                            " (Q1≈" (format-number (:q1 estimated-quartiles))
@@ -422,8 +414,8 @@
                              "**Series Count**: " series-count)
         limits-note     (when limits (render-limits-note limits))
         series-sections (str/join "\n\n"
-                                  (for [[sname s] series]
-                                    (render-series-fn sname s)))]
+                                  (for [s series]
+                                    (render-series-fn (:name s) s)))]
     (str/join "\n\n"
               (remove str/blank?
                       (concat [header limits-note]

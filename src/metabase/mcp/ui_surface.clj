@@ -20,8 +20,9 @@
    scope-checked, and `ensure-scopes-checked` refuses it. Adding a route is therefore a decision about which
    scope pays for it, and a route reached by mistake — a routing change, a new alias — fails closed.
 
-   `agent:query:run` is the scope that already bought the iframe: the v2 shell resources in
-   [[metabase.mcp.v2.resources]] declare it, so a client that can mount the iframe at all holds it."
+   `agent:query:run` is the scope the iframe's tools cost. Any token can read the v2 shell resources in
+   [[metabase.mcp.v2.resources]], so mounting the iframe proves nothing: the `refresh_ui_credential` tool and
+   the route costs below are what require it."
   {[:get  "/api/embed-mcp/bootstrap"]         nil
    [:post "/api/embed-mcp/feedback"]          nil
    [:post "/api/embed-mcp/drills"]            metabot.scope/agent-query-run
@@ -65,8 +66,8 @@
 
    `::scope/unrestricted` in the claim satisfies every route, matching `enforce-scope` and
    `ensure-scopes-checked` rather than making this table the one place the sentinel means less. It only
-   appears when the minting MCP session was itself unrestricted — a cookie-authenticated caller — so the
-   credential reaches nothing its holder could not already reach with their own session."
+   appears when the minting MCP session was itself unrestricted (a cookie or API-key session, or a bearer token
+   carrying `mb:full`), so the credential reaches nothing its holder could not already reach with that session."
   [method uri {:keys [token-scopes]}]
   (when-let [entry (surface-entry method uri)]
     (boolean (or (nil? (val entry))
