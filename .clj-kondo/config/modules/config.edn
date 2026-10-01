@@ -106,6 +106,7 @@
            model-persistence
            models
            parameters
+           parameters.schema
            permissions
            public-sharing
            queries
@@ -268,7 +269,7 @@
            lib.schema
            models
            premium-features
-           request
+           request.schema
            settings
            util
            util.config}
@@ -448,7 +449,7 @@
    :api  #{metabase.batch-processing.core
            metabase.batch-processing.init}
    :uses #{app-db
-           parameters
+           parameters.schema
            query-processor.cache-backend
            settings
            util}
@@ -769,6 +770,7 @@
            lib.schema
            models
            parameters
+           parameters.schema
            permissions
            public-sharing
            pulse
@@ -816,6 +818,7 @@
            lib.schema
            models
            parameters
+           parameters.schema
            permissions
            public-sharing
            pulse
@@ -884,6 +887,7 @@
            lib.schema
            models
            parameters
+           parameters.schema
            public-sharing
            queries
            query-permissions
@@ -981,6 +985,7 @@
            models
            notification
            parameters
+           parameters.schema
            public-sharing.rest
            queries
            query-processor
@@ -1470,6 +1475,7 @@
               native-query-snippets
               notification
               parameters
+              parameters.schema
               permissions
               premium-features
               pulse
@@ -1477,6 +1483,7 @@
               query-permissions
               query-processor
               request
+              request.schema
               search
               search.entity-retrieval
               server
@@ -1682,7 +1689,7 @@
            lib.legacy-mbql
            lib.metadata
            lib.schema
-           parameters
+           parameters.schema
            util
            util.classloader
            warehouse-schema-overlay}
@@ -1781,6 +1788,7 @@
            lib.schema
            models
            parameters
+           parameters.schema
            permissions
            premium-features
            queries
@@ -1829,6 +1837,7 @@
   ;; TODO -- too many API namespaces
   parameters
   {:team "Graphy"
+   :module-exports #{parameters.schema}
    :api  #{metabase.parameters.chain-filter
            metabase.parameters.core
            metabase.parameters.custom-values
@@ -1838,7 +1847,6 @@
            metabase.parameters.init
            metabase.parameters.mapping-targets
            metabase.parameters.params
-           metabase.parameters.schema
            metabase.parameters.shared}
    :uses #{api
            app-db
@@ -1848,6 +1856,7 @@
            lib.metadata
            lib.schema
            models
+           parameters.schema
            query-processor
            util
            util.classloader
@@ -1858,6 +1867,14 @@
                     :model/Field
                     :model/FieldValues
                     :model/Table}}
+
+  parameters.schema
+  {:team "Graphy"
+   :api  #{metabase.parameters.schema}
+   :uses #{lib
+           lib.schema
+           models
+           util}}
 
   permissions
   {:team "UX West"
@@ -1929,16 +1946,12 @@
 
   premium-features
   {:team "UX West"
-   :api  #{metabase.premium-features.api
-           metabase.premium-features.core
-           metabase.premium-features.defenterprise
-           metabase.premium-features.init}
+   :module-exports #{premium-features.api}
+   :api  #{metabase.premium-features.core metabase.premium-features.defenterprise metabase.premium-features.init}
    :uses #{analytics.interface
            analytics.internal-stats
-           api
            app-db
            events
-           metabot.llm
            settings
            startup
            task
@@ -1947,6 +1960,15 @@
            util.classloader
            util.config}
    :model-imports #{:model/User}}
+
+  premium-features.api
+  {:team "UX West"
+   :api  #{metabase.premium-features.api}
+   :uses #{api
+           metabot.llm
+           premium-features
+           settings
+           util}}
 
   product-feedback
   {:team "UX West"
@@ -1995,6 +2017,7 @@
            lib.schema
            models
            parameters
+           parameters.schema
            public-sharing
            queries
            query-processor
@@ -2024,7 +2047,7 @@
            lib.schema
            models
            notification
-           parameters
+           parameters.schema
            permissions
            premium-features
            query-processor
@@ -2078,6 +2101,7 @@
            metrics
            models
            parameters
+           parameters.schema
            permissions
            premium-features
            public-sharing
@@ -2132,6 +2156,7 @@
            lib.schema
            models
            parameters
+           parameters.schema
            permissions
            public-sharing
            queries
@@ -2229,6 +2254,7 @@
            model-persistence
            models
            parameters
+           parameters.schema
            permissions
            premium-features
            queries
@@ -2309,10 +2335,10 @@
 
   request
   {:team "UX West"
+   :module-exports #{request.schema}
    :api  #{metabase.request.core
            metabase.request.current
            metabase.request.init
-           metabase.request.schema
            metabase.request.user-agent}
    :uses #{analytics.interface
            api
@@ -2320,13 +2346,18 @@
            lib.schema
            permissions
            premium-features
-           server
+           request.schema
            session
            settings
            users
            util
            util.config}
    :model-imports #{:model/User}}
+
+  request.schema
+  {:team "UX West"
+   :api  #{metabase.request.schema}
+   :uses #{util}}
 
   revisions
   {:team "UX West"
@@ -2513,6 +2544,7 @@
            premium-features
            query-processor
            request
+           request.schema
            session
            settings
            system
@@ -2575,8 +2607,7 @@
            models
            premium-features
            util
-           util.config
-           enterprise/permissions}
+           util.config}
    :model-exports #{:model/Setting}
    :model-imports #{:model/User}}
 
@@ -2677,6 +2708,7 @@
            notification
            premium-features
            request
+           request.schema
            session.login-history
            users
            util}
@@ -2832,7 +2864,7 @@
            lib.be
            lib.legacy-mbql
            lib.schema
-           parameters
+           parameters.schema
            premium-features
            query-processor
            settings
@@ -3288,7 +3320,7 @@
            lib.metadata
            lib.schema
            models
-           parameters
+           parameters.schema
            permissions
            premium-features
            query-processor
@@ -3789,7 +3821,7 @@
            measures
            model-persistence
            models
-           parameters
+           parameters.schema
            queries
            segments
            task
