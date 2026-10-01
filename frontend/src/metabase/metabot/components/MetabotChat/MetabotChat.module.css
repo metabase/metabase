@@ -128,7 +128,7 @@
   width: fit-content;
 }
 
-.messageUser :global([data-smart-link="token"]) {
+.messageUser [data-smart-link="token"] {
   background: var(--mb-color-background_surface-secondary);
 
   &:hover,
@@ -137,11 +137,11 @@
   }
 }
 
-.messageUser :global([data-smart-link-icon]) {
+.messageUser [data-smart-link-icon] {
   color: var(--mb-color-text-secondary);
 }
 
-.messageUser :global([data-smart-link="link"]) {
+.messageUser [data-smart-link="link"] {
   color: var(--mb-color-text-primary);
 
   &:hover,

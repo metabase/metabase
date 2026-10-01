@@ -1,4 +1,4 @@
-.sources :global([data-smart-link="link"]) {
+.sources [data-smart-link="link"] {
   color: var(--mb-color-text-primary);
 
   &:hover,
