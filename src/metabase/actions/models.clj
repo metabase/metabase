@@ -93,7 +93,8 @@
   [_model k actions]
   (mi/instances-with-hydrated-data
    actions k
-   #(actions.db/cards-by-id (map :model_id actions))
+   #(when-let [model-ids (seq (keep :model_id actions))]
+      (actions.db/cards-by-id model-ids))
    :model_id))
 
 (defn- check-model-is-not-a-saved-question

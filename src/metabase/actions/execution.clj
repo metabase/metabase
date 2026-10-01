@@ -93,7 +93,7 @@
 (defn- execute-custom-action! [action request-parameters opts]
   (let [{action-type :type, action-id :id} action]
     (actions/check-actions-enabled! action)
-    (let [model (actions.db/card (:model_id action))
+    (let [model (some-> (:model_id action) actions.db/card)
           ;; the query executes against its own :database; fall back to the derived column if absent
           action-db-id (or (:database (:dataset_query action)) (:database_id action))]
       (when (and (= action-type :query) (not= (:database_id model) action-db-id))

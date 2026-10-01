@@ -82,11 +82,18 @@
     (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
+(defn- check-collection-write-perms!
+  "Throws a 403 unless the current user can write to the Collection with `collection-id`, the root when nil."
+  [collection-id]
+  (api/check-403
+   (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
+                                            (perms/perms-objects-set-for-parent-collection collection-id :write))))
+
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
   "Create a new action."
   [_route-params
    _query-params
-   {:keys [model_id parameters database_id]
+   {:keys [collection_id model_id parameters database_id]
     action-type :type
     :as action} :- ::actions.schema/action.for-insert]
   (when (= action-type :http)
@@ -99,12 +106,15 @@
                     {:type        action-type
                      :status-code 400})))
   (check-native-query-perms! database_id (:dataset_query action))
-  (let [model (api/write-check :model/Card model_id)]
+  (let [model (when model_id
+                (api/write-check :model/Card model_id))]
+    (when-not model
+      (check-collection-write-perms! collection_id))
     (when (and (= action-type :implicit)
                (not (queries/model-supports-implicit-actions? model)))
       (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                       {:status-code 400})))
-    (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
+    (doseq [db-id (cond-> [] model (conj (:database_id model)) database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
        (actions-rest.db/database db-id))))
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
@@ -135,17 +145,23 @@
                     {:type        :http
                      :status-code 400})))
   (actions/check-actions-enabled! id)
-  (let [existing-action (api/write-check :model/Action id)]
+  (let [existing-action (api/write-check :model/Action id)
+        model-id        (get action :model_id (:model_id existing-action))]
     (when (= (:type existing-action) :http)
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http
                        :status-code 400})))
-    (when-let [model-id (:model_id action)]
-      (when (not= model-id (:model_id existing-action))
-        (api/write-check :model/Card model-id)))
+    (when (and model-id (not= model-id (:model_id existing-action)))
+      (api/write-check :model/Card model-id))
+    (when (and (nil? model-id)
+               (contains? action :collection_id)
+               (not= (:collection_id action) (:collection_id existing-action)))
+      (check-collection-write-perms! (:collection_id action)))
     (when-let [dataset-query (:dataset_query action)]
       (check-native-query-perms! (:database_id action) dataset-query))
-    (actions/update! (assoc action :id id) existing-action))
+    (actions/update! (cond-> (assoc action :id id)
+                       model-id (dissoc :collection_id))
+                     existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/action

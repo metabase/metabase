@@ -11,14 +11,19 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(def ^:private action-database-joins
+  "The joins from `action` to the Database `db` of its model Card, or of its QueryAction when it has no model."
+  [[:report_card :card]     [:= :card.id :action.model_id]
+   [:query_action :qa]      [:= :qa.action_id :action.id]
+   [:metabase_database :db] [:= :db.id [:coalesce :card.database_id :qa.database_id]]])
+
 (mu/defn database-for-action
-  "The Database of the model Card of the Action with `action-id`, or nil."
+  "The Database of the model Card of the Action with `action-id`, or of its query when it has no model, or nil."
   [action-id :- ::lib.schema.id/action]
-  (t2/select-one :model/Database {:select [:db.*]
-                                  :from   :action
-                                  :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                           [:metabase_database :db] [:= :db.id :card.database_id]]
-                                  :where  [:= :action.id action-id]}))
+  (t2/select-one :model/Database {:select    [:db.*]
+                                  :from      :action
+                                  :left-join action-database-joins
+                                  :where     [:and [:= :action.id action-id] [:not= :db.id nil]]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
@@ -228,11 +233,10 @@
 (mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/query {:select [:action.id :db.settings]
-             :from   :action
-             :join   [[:report_card :card] [:= :card.id :action.model_id]
-                      [:metabase_database :db] [:= :db.id :card.database_id]]
-             :where  [:in :action.id action-ids]}))
+  (t2/query {:select    [:action.id :db.settings]
+             :from      :action
+             :left-join action-database-joins
+             :where     [:and [:in :action.id action-ids] [:not= :db.id nil]]}))
 
 (mu/defn card-scope-columns
   "The query-relevant columns of the Card with `card-id`, plus its Collection id and display, or nil."

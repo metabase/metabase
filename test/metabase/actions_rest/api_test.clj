@@ -475,6 +475,65 @@
                                                     {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                       "update users set name = 'baz' where id = {{x}}")}))))))))))))))
 
+(defn- model-less-query-action
+  "A POST body for a query action on the categories table with no model, in the Collection with `collection-id`."
+  [collection-id]
+  {:name          "Rename Category"
+   :type          "query"
+   :collection_id collection-id
+   :database_id   (mt/id)
+   :dataset_query {:database (mt/id)
+                   :type     "native"
+                   :native   {:query         "UPDATE categories SET name = {{name}} WHERE id = {{id}}"
+                              :template-tags {"id"   {:name "id" :display-name "ID" :type "number" :required true}
+                                              "name" {:name "name" :display-name "Name" :type "text" :required true}}}}
+   :parameters    [{:id "id" :slug "id" :type "number" :target [:variable [:template-tag "id"]]}
+                   {:id "name" :slug "name" :type "text" :target [:variable [:template-tag "name"]]}]})
+
+(deftest action-without-model-test
+  (testing "a query action without a model can be created, moved between collections, and executed"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Collection {coll-id :id}  {}
+                       :model/Collection {other-id :id} {}]
+          (let [created (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id))
+                path    (str "action/" (:id created))]
+            (is (=? {:model_id nil :collection_id coll-id :database_id (mt/id)} created))
+            (is (=? {:name "Renamed" :model_id nil :collection_id other-id}
+                    (mt/user-http-request :crowberto :put 200 path {:name "Renamed" :collection_id other-id})))
+            (is (=? {:rows-affected 1}
+                    (mt/user-http-request :crowberto :post 200 (str path "/execute")
+                                          {:parameters {:id 1 :name "Renamed Category"}})))
+            (is (= "Renamed Category"
+                   (-> (mt/run-mbql-query categories {:fields [$name] :filter [:= $id 1]})
+                       mt/rows
+                       ffirst)))))))))
+
+(deftest action-without-model-collection-perms-test
+  (testing "creating or moving an action without a model requires write permission on its collection"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/Action]
+          (mt/with-temp [:model/Collection {locked-id :id} {}]
+            (let [personal-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "action" (model-less-query-action locked-id))))
+              (let [created (mt/user-http-request :rasta :post 200 "action" (model-less-query-action personal-id))]
+                (is (=? {:collection_id personal-id} created))
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :put 403 (str "action/" (:id created)) {:collection_id locked-id})))
+                (is (= personal-id (t2/select-one-fn :collection_id :model/Action :id (:id created))))))))))))
+
+(deftest attached-action-keeps-model-collection-test
+  (testing "an action with a model stays in the model's collection whatever collection_id an update sends"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-temp [:model/Collection {coll-id :id}  {}
+                     :model/Collection {other-id :id} {}]
+        (mt/with-actions [{:keys [action-id]} {:public_uuid nil :made_public_by_id nil :collection_id coll-id}]
+          (let [model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)]
+            (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:collection_id other-id})
+            (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))
+
 (deftest remap-parameter-keys-test
   (testing "remap-parameter-keys translates incoming parameter keys to the destination parameter's :id"
     (let [action {:parameters [{:id "d800e41d-edde-49cb-b63b-2386aba34334"
