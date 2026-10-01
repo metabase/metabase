@@ -7,7 +7,7 @@ redirect_from:
 
 # Library
 
-{% include plans-blockquote.html feature="Library" %}
+{% include plans-blockquote.html feature="Some features of the library" is_plural=true%}
 
 "I have always imagined that Paradise will be a kind of library."
 
@@ -15,13 +15,34 @@ redirect_from:
 
 ![Library in the main navigation sidebar](./images/library-in-sidebar.png)
 
-The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. Use the Library to separate authoritative, reusable components from ad-hoc analyses.
+The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content and shared definitions. Use the Library to separate authoritative, reusable components from ad-hoc analyses and definitions.
 
 ## How the Library works
 
 ![The Library in Data Studio](./images/library-in-data-studio.png)
 
-The Library is a special section in the navigation sidebar of the main Metabase app that you curate in [Data Studio](../data-studio.md) (and only in Data Studio). It has three root sections — **Data**, **Metrics**, and **Snippets** — each of which restricts the type of content it contains. You can create subcollections within Data and Metrics to further organize content - for example, you can group together tables useful for Marketing or Sales.
+If you set up the Library in your Metabase, here's what's going to happen:
+
+- A new section "Library" will appear in the navigation sidebar in the main app, listing the tables and metrics you added to the Library.
+- The data picker that's used when creating questions with the query builder will default to showing tables and metrics from the Library. This enncourages people to use stuff in the Library as the starting point for their explorations
+- (if enabled in admin settings) AI will prioritize Library items when searching for data sources.
+- You can use Library remote sync to
+
+Library has two components: semantic layer and glossary.
+
+### Semantic layer
+
+**Semantic layer** ia collection of curated tables (together with their [segments](segments.md) and [measures](measures.md)), [metrics](metrics.md), and [SQL snippets](../../questions/native-editor/snippets.md) that people and AI can use to build authoritative questions and dashboards.
+
+Semantic layer is what shows up in the main app under the **Library** navigation section, and in the data picker.
+
+See [Semantic layer overview](overview.md).
+
+### Glossary
+
+Glossary is a place for your team to define common business terminology (literally, the words) - like, for example, that MRR stands for Monthly Recurring Revenue. Glossary is used by [Metabot](../..)
+
+See [Glossary](glossary.md)
 
 ## Adding items to the Library
 
@@ -29,7 +50,7 @@ To add items to the Library:
 
 1. Click the grid icon in the upper right.
 2. Select **Data Studio**.
-3. In the **Library** tab, click **+ New**.
+3. In the **Semantic layer** tab, click **+ New**.
 
 You can:
 
@@ -37,6 +58,8 @@ You can:
 - [Create a metric](#metrics)
 - [Create a SQL snippet or folder](#sql-snippets)
 - [Create a subcollection or snippet folder](#library-organization)
+
+For managing the glossary, see [Glossary](glossary.md)
 
 ## Library organization
 
@@ -58,7 +81,7 @@ People will see the Library structure in the navigation sidebar and in the data 
 
 To create a new subcollection for one of the Library's special collections:
 
-1. Go to **Data Studio > Library**.
+1. Go to **Data Studio > Semantic layer**.
 2. Click **+ New** in the top right corner.
 3. Under **Collection it's saved in**, select the parent collection.
 4. Add the name and description for the collection and click **Create**.
@@ -71,47 +94,6 @@ Tables published to the Library appear first in the Data section when people cho
 
 You must explicitly publish tables to the Library. We use the word "publish" to suggest that the tables you include in your Library are meant to be finished, polished tables. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](../transforms/transforms-overview.md).
 
-Tables published to the Library remain available via the data browser as well.
-
-To publish a table to the library:
-
-1. Go to **Data Studio > Library**
-
-### Managing tables
-
-Once a table is published, you can view and manage its metadata, and more.
-
-- Overview
-- Fields
-- [Segments](segments.md)
-- [Measures](measures.md)
-- [Dependencies](../tools/graph.md)
-
-To query a table from the Library in Data Studio:
-
-1. Click the table.
-2. Click the three-dot menu.
-3. Select **View**.
-
-### Published tables can't have dependencies outside of the Library
-
-Tables published to the Library can't depend on any tables outside of the Library. If, for example, you want to publish a table that includes data from another table, such as a [foreign-key remapping](../../questions/visualizations/table.md#foreign-key-remapping), Metabase will publish those tables as well.
-
-### Unpublishing tables
-
-![Unpublishing a table from the Library](./images/library-unpublish.png)
-
-To unpublish a table from the Library:
-
-1. Visit the table in Data Studio in the Library tab.
-2. Click on the three-dot menu next to the table's name.
-3. Click **Unpublish**.
-
-If other tables depend on the table you want to unpublish, Metabase will unpublish those tables as well. You'll get a confirmation message explaining which tables Metabase would unpublish.
-
-Unpublishing a table just removes the table from the Library. That table will still be available via the data browser and data pickers.
-
-> **Archiving a subcollection unpublishes its tables.** If you archive a Data subcollection, Metabase will automatically unpublish all tables inside it, including tables in any nested subcollections.
 
 ## Metrics
 

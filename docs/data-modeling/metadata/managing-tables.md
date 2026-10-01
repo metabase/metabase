@@ -9,11 +9,11 @@ redirect_from:
 
 # Managing tables
 
-_Data Studio > Tables_
+_Data Studio > Connected data_
 
 ![Data structure](../images/data-structure.png)
 
-You can manage table settings metadata to make it easier for people to work with your data in **Data Studio > Tables**.
+You can manage table settings and metadata to make it easier for people to work with your data in **Data Studio > Connected data**.
 
 You can do things like:
 
@@ -26,17 +26,11 @@ You can do things like:
 - Set data formatting settings
 - Create measures and segments
 
-## Permissions for managing tables in Data Studio
-
-To access the Tables area of Data Studio, you need to be a member of the Admin group or the Data Analyst group (Data Analyst group is only available on Pro/Enterprise plans).
-
-People in the Data Analyst group will have table metadata and data structure access to _all_ tables in your Metabase, even if they have limited View Data permissions for those tables. If you only want to give someone access to table metadata for some - but not all - tables, use the table metadata permissions and access the Table Metadata through Admin > Table metadata instead of Data Studio.
-
 ## Browse tables
 
-_Data Studio > Tables_
+_Data Studio > Connected data_
 
-You can see all tables in all databases connected to your Metabase in **Data Studio > Tables**, together with their owner, visibility layer, row count, and published state. For now, Metabase only displays row counts for PostgreSQL tables.
+You can see all tables in all databases connected to your Metabase in **Data Studio > Connected data**, together with their owner, visibility layer, row count, and published state. For now, Metabase only displays row counts for PostgreSQL tables.
 
 You can search for table names, but the search will only match beginnings of words in table names. So for example, if you search for "base", results will include names like "Baseball stats" and "All your base are belong to us", but the results won't include tables like "Metabase secrets".
 
@@ -46,7 +40,7 @@ You can set [table attributes](#table-attributes), [edit metadata](#table-and-fi
 
 ## Publishing and unpublishing tables
 
-_Data Studio > Tables > Details_
+_Data Studio > Connected data > Details_
 
 ![Publishing a table from Data structure](../images/data-structure-publish.png)
 
@@ -62,9 +56,9 @@ You can replace every occurrence of a table as a data source with another table.
 
 ## Sync settings
 
-_Data Studio > Tables > Details_
+_Data Studio > Connected data > Details_
 
-You can trigger manual re-sync of the table schema in **Data Studio > Tables** in the **Details** tab. Re-syncing can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
+You can trigger manual re-sync of the table schema in **Data Studio > Connected data** in the **Details** tab. Re-syncing can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
 
 You can also re-scan field values for the table or discard cached field values, which is useful if you need to retrieve updated values for dropdown filters.
 
@@ -72,9 +66,9 @@ See [syncs and scans](../../databases/sync-scan.md) for more information.
 
 ## Table attributes
 
-_Data Studio > Tables > Details_
+_Data Studio > Connected data > Details_
 
-You can configure table attributes in **Data Studio > Tables** in the **Details** tab.
+You can configure table attributes in **Data Studio > Connected data** in the **Details** tab.
 
 ### Owner
 
@@ -108,7 +102,7 @@ Metabase will automatically assign the source "Metabase transforms" to tables cr
 
 ## Table and field metadata
 
-_Data Studio > Tables > Fields_
+_Data Studio > Connected data > Fields_
 
 You can edit field descriptions, types, visibility settings, and formatting. For example, you can choose to display a filter on a field as a dropdown, or display days as `21.03.2026` instead of `03/21/2026`.
 
@@ -121,6 +115,14 @@ Segments are saved filters on a table that people can use in the query builder. 
 ## Measures
 
 Measures are saved aggregations on a table that people can use in the query builder. See [Measures](../semantic-layer/measures.md).
+
+## Permissions for managing tables
+
+You need to be a member of the Admin group or the Data Analyst group (Data Analyst group is only available on Pro/Enterprise plans) to be able to manage table attributes, publish tables, or create measures and segments.
+
+People in the Data Analyst group will have table metadata and data structure access to _all_ tables in your Metabase, even if they have limited View Data permissions for those tables.
+
+If you only want to give someone access to table metadata for some - but not all - tables, use the table metadata permissions and access the Table Metadata through Admin > Table metadata instead of Data Studio.
 
 ## Further reading
 

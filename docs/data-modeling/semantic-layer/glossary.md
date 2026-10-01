@@ -5,6 +5,8 @@ summary: Define terms to help your team and Metabot understand your data.
 
 # Glossary
 
+_Data Studio > Glossary_
+
 The glossary is a place where anyone can define terms relevant to your data.
 
 ## Use the glossary to give Metabot context

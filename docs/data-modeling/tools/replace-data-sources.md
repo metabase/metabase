@@ -7,6 +7,8 @@ redirect_from:
 
 # Replace data sources
 
+_Data Studio > Dependency graph_
+
 {% include plans-blockquote.html feature="Replacing data sources" %}
 
 Admins can swap out a table, model, or question and replace it with a different one across your entire Metabase.

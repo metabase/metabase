@@ -8,6 +8,8 @@ redirect_from:
 
 # Dependency graph
 
+_Data Studio > Dependency graph_
+
 {% include plans-blockquote.html feature="Dependency graph" %}
 
 ![Dependency graph](../images/dependency-graph.png)
