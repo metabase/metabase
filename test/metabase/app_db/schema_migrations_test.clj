@@ -3852,7 +3852,7 @@
           (is (not (contains? (message) :context_window_full)))
           (is (true? (:finished (message)))))))))
 
-(deftest data-app-group-assignments-migration-test
+(deftest data-app-group-assignment-migration-test
   (impl/test-migrations ["v65.2026-09-16T00:00:00" "v65.2026-09-16T00:00:08"] [migrate!]
     (let [legacy-group (t2/insert-returning-pk! :permissions_group {:name "Data App: birds" :is_data_app_group true :entity_id "legacy-app-group"})
           ordinary-group (t2/insert-returning-pk! :permissions_group {:name "Finches" :entity_id "ordinary-group"})
@@ -3868,7 +3868,7 @@
       (is (not (t2/exists? :permissions :group_id legacy-group)))
       (is (t2/exists? :permissions_group :id ordinary-group))
       (is (t2/exists? :data_app :id app-id))
-      (is (empty? (t2/select :data_app_group)))
+      (is (empty? (t2/select :data_app_group_assignment)))
       (is (not (contains? (t2/select-one :data_app :id app-id) :permission_group_id)))
       (is (not (contains? (t2/select-one :permissions_group :id ordinary-group) :is_data_app_group)))
       (testing "rollback restores the old columns without deleting apps or ordinary groups"
@@ -3879,4 +3879,4 @@
         (migrate!)
         (is (t2/exists? :data_app :id app-id))
         (is (t2/exists? :permissions_group :id ordinary-group))
-        (is (empty? (t2/select :data_app_group)))))))
+        (is (empty? (t2/select :data_app_group_assignment)))))))

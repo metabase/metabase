@@ -5,4 +5,4 @@
    [metabase-enterprise.data-apps.config]
    [metabase-enterprise.data-apps.csp]
    [metabase-enterprise.data-apps.models.data-app]
-   [metabase-enterprise.data-apps.models.data-app-group]))
+   [metabase-enterprise.data-apps.models.data-app-group-assignment]))

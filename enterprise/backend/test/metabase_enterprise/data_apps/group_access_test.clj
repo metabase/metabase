@@ -68,7 +68,7 @@
         (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
         ;; A stale assignment must not admit tenant users.
         (perms/add-user-to-group! (:id tenant-user) (:id tenant-group))
-        (t2/insert! :model/DataAppGroup {:data_app_id (:id app) :permission_group_id (:id tenant-group)})
+        (t2/insert! :model/DataAppGroupAssignment {:data_app_id (:id app) :permission_group_id (:id tenant-group)})
         (doseq [[user-id admin? allowed?] [[(mt/user->id :crowberto) true true]
                                            [(mt/user->id :rasta) false true]
                                            [(mt/user->id :lucky) false false]
@@ -92,7 +92,7 @@
     (resources/ensure-resources! app)
     (is (thrown? clojure.lang.ExceptionInfo
                  (group-access/add-groups! app [(:id group) (:id (perms/admin-group))])))
-    (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))))
+    (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))))
 
 (deftest group-api-test
   (mt/with-premium-features #{:data-apps}
@@ -108,7 +108,7 @@
                    []
                    (vec (range 1 102))]]
         (mt/user-http-request :crowberto :post 400 "apps/birds/groups" {:group_ids ids})
-        (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app)))))
+        (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app)))))
       (mt/user-http-request :crowberto :post 404 "apps/birds/groups" {:group_ids [(:id finches) Integer/MAX_VALUE]})
       (is (=? [{:id (:id finches) :name "Finches" :member_count 0}
                {:id (:id owls) :name "Owls" :member_count 0}]
@@ -128,7 +128,7 @@
                    :model/PermissionsGroup group {}]
       (mt/user-http-request :crowberto :post 400 "apps/birds/groups"
                             {:group_ids [(:id group)] :user_ids [(mt/user->id :rasta)]})
-      (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))
+      (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
       (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app)))))))
 
 (deftest assigned-group-display-name-test
@@ -152,7 +152,7 @@
            (t2/select-one :model/Collection :id collection-id) {:archived true}))
         (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id group))))
-        (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))
+        (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
         (is (empty? (t2/select :model/Permissions :group_id (:id group)
                                :object [:in [(perms/collection-read-path collection-id)
                                              (perms/collection-readwrite-path collection-id)]])))
@@ -169,7 +169,7 @@
                                                                 (throw (ex-info "Failed after collection setup" {})))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed after collection setup"
                               (group-access/add-groups! app [(:id group)])))))
-    (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))
+    (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
     (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))))))
 
 (deftest assignments-preserve-data-permissions-test
@@ -186,7 +186,7 @@
                  :model/PermissionsGroup group {}]
     (group-access/add-groups! app [(:id group)])
     (t2/delete! :model/PermissionsGroup :id (:id group))
-    (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))
+    (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
     (is (t2/exists? :model/DataApp :id (:id app)))))
 
 (deftest all-users-assignment-test
@@ -210,8 +210,8 @@
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                  :model/PermissionsGroup group {}]
     (let [assignment {:data_app_id (:id app) :permission_group_id (:id group)}]
-      (t2/insert! :model/DataAppGroup assignment)
-      (is (thrown? Exception (t2/insert! :model/DataAppGroup assignment))))))
+      (t2/insert! :model/DataAppGroupAssignment assignment)
+      (is (thrown? Exception (t2/insert! :model/DataAppGroupAssignment assignment))))))
 
 (deftest revoke-assignment-after-group-becomes-ineligible-test
   (mt/with-premium-features #{:data-apps}
@@ -233,7 +233,7 @@
     (resources/ensure-resources! app)
     (let [admin-id (:id (perms/admin-group))
           permissions (t2/select :model/Permissions :group_id admin-id)]
-      (t2/insert! :model/DataAppGroup {:data_app_id (:id app) :permission_group_id admin-id})
+      (t2/insert! :model/DataAppGroupAssignment {:data_app_id (:id app) :permission_group_id admin-id})
       (mt/with-premium-features #{}
         (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" admin-id))
         (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))

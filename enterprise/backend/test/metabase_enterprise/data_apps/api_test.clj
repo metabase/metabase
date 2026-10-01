@@ -338,7 +338,7 @@
             (is (not (t2/exists? :model/DataApp :id (:id app))))
             (is (not (t2/exists? :model/Collection :id collection-id)))
             (is (not (t2/exists? :model/Card :id card-id)))
-            (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))
+            (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
             (is (t2/exists? :model/PermissionsGroup :id (:id group)))))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------

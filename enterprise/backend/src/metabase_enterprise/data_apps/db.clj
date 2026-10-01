@@ -44,9 +44,9 @@
   (if (= scope :all)
     [:= 1 1]
     [:in :id ^:allow-subquery
-     {:select [:dag.data_app_id]
-      :from [[:data_app_group :dag]]
-      :join [[:permissions_group_membership :pgm] [:= :pgm.group_id :dag.permission_group_id]
+     {:select [:assignment.data_app_id]
+      :from [[:data_app_group_assignment :assignment]]
+      :join [[:permissions_group_membership :pgm] [:= :pgm.group_id :assignment.permission_group_id]
              [:core_user :u] [:= :u.id :pgm.user_id]]
       :where [:and [:= :u.id (:user-id scope)] [:= :u.tenant_id nil]]}]))
 
@@ -246,16 +246,16 @@
   "Assignments for the requested apps."
   [app-ids]
   (if (seq app-ids)
-    (t2/select :model/DataAppGroup :data_app_id [:in app-ids])
+    (t2/select :model/DataAppGroupAssignment :data_app_id [:in app-ids])
     []))
 
 (defn insert-assignments!
   "Assign groups to an app. The unique constraint rejects concurrent duplicates."
   [app-id group-ids]
-  (t2/insert! :model/DataAppGroup
+  (t2/insert! :model/DataAppGroupAssignment
               (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
 
 (defn delete-assignment!
   "Remove one group assignment."
   [app-id group-id]
-  (t2/delete! :model/DataAppGroup :data_app_id app-id :permission_group_id group-id))
+  (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id group-id))
