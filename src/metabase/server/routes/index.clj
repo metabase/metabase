@@ -8,6 +8,7 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
+   [metabase.data-apps.core :as data-apps]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -144,12 +145,6 @@
                  (seq query-string) (str "?" query-string))]
     (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
 
-(premium-features/defenterprise check-data-app-access!
-  "Authorize the data app before serving its HTML entry point."
-  metabase-enterprise.data-apps.entry-point
-  [_request]
-  nil)
-
 (defn data-app
   "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
@@ -162,7 +157,7 @@
     (not (premium-features/enable-data-apps?)) (respond nil)
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
     :else (try
-            (check-data-app-access! request)
+            (data-apps/check-data-app-access! request)
             (data-app-shell request respond raise)
             (catch Throwable e
               (raise e)))))

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.data-apps.core :as data-apps]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]))
@@ -38,7 +39,7 @@
             responds nil so routing falls through to the generic embed handler — exactly as if data
             apps did not exist"
     ;; Stub authorization and HTML rendering to isolate the feature gate.
-    (with-redefs [index/check-data-app-access! (constantly nil)
+    (with-redefs [data-apps/check-data-app-access! (constantly nil)
                   index/data-app-shell (fn [_req respond _raise] (respond {:status 200 :body "DATA-APP"}))]
       (let [request {:uri "/embed/apps/sales" :metabase-user-id (mt/user->id :rasta)}]
         ;; `enable-data-apps?` also requires the EE code to be present (`config/ee-available?`), so the
