@@ -737,7 +737,7 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *check-pivot-parity?*
   "Controls whether [[run-pivot-query]] runs both the native and multi-query pivot paths whenever both are
-  applicable and reports disagreement via [[*on-parity-mismatch*]]. Left at the default sentinel
+  applicable and reports disagreement via [[on-parity-mismatch]]. Left at the default sentinel
   `::default`, parity is on whenever a `clojure.test` test is currently running. Bind to `true` or
   `false` to override; the [[without-pivot-parity-check]] helper does exactly that for tests whose
   queries intentionally diverge between the two paths."
@@ -804,13 +804,13 @@
                (pr-str divergent-pairs)
                (pr-str (update-vals outcomes outcome->reportable)))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *on-parity-mismatch*
+(def on-parity-mismatch
   "Called with `{:outcomes {<flow> <outcome-map> ...} :divergent-pairs [[<flow-a> <flow-b>] ...]}` when the
   parity checker sees any divergence across the pivot flows it ran (a subset of `:grouping-sets`,
   `:union-all`, `:multi-query`). Each outcome is a `{:outcome ...}` on success or `{:throwable ...}` on
   failure. `:divergent-pairs` preserves the order of [[pivot-flow-comparison-pairs]]. Defaults to
-  [[default-on-parity-mismatch!]]."
+  [[default-on-parity-mismatch!]]; override via
+  [[metabase.test.util.dynamic-redefs/with-dynamic-fn-redefs]] in tests."
   default-on-parity-mismatch!)
 
 (defn- query-has-window-fn-aggregation?
@@ -854,7 +854,7 @@
 (defn- run-with-parity-check
   "Run every applicable pivot flow — `:multi-query` always, `:union-all` on every SQL driver, and
   `:grouping-sets` when the driver supports `:native-pivot-tables` and the query has no window-function
-  aggregation — and report any pairwise divergence via [[*on-parity-mismatch*]]. The primary flow (per
+  aggregation — and report any pairwise divergence via [[on-parity-mismatch]]. The primary flow (per
   `sql-primary?` + GS applicability) uses the caller's `rff`; other flows use the default rff for
   comparison only. Returns the primary flow's success value or rethrows its exception.
 
@@ -887,7 +887,7 @@
                                                   throwable (assoc :cause (cause-chain throwable)))))
                         :divergent-pairs divergent-pairs}))
     (when (seq divergent-pairs)
-      (*on-parity-mismatch* {:outcomes outcomes, :divergent-pairs divergent-pairs}))
+      (on-parity-mismatch {:outcomes outcomes, :divergent-pairs divergent-pairs}))
     (let [{:keys [outcome throwable]} (get outcomes primary-flow)]
       (if throwable (throw throwable) outcome))))
 
@@ -901,7 +901,7 @@
 
   When [[*check-pivot-parity?*]] is on and the SQL path is applicable, both run (primary via the caller's
   rff, secondary via the default rff for comparison) and disagreement is reported via
-  [[*on-parity-mismatch*]]. Parity checking is on by default in clojure.test tests.
+  [[on-parity-mismatch]]. Parity checking is on by default in clojure.test tests.
 
   Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query :- ::qp.schema/any-query]
