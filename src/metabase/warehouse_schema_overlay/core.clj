@@ -145,6 +145,22 @@
         [:case [:= [:coalesce settings-column table-column] true] true :else false]
         [:coalesce settings-column table-column]))))
 
+(mu/defn table-user-visibility-type
+  "Honey SQL expression for the `visibility_type` users see for the Table aliased `table-alias`: the user value
+  when set, else the Table's. Correlated rather than joined, so a query can filter on it while reading
+  `metabase_table` as sync wrote it."
+  [table-alias :- :keyword]
+  (let [settings-where (fn [& conditions]
+                         (into [:and [:= :uv.table_id (u/qualified-key table-alias :id)]] conditions))]
+    [:case
+     [:exists ^:allow-subquery {:select [1]
+                                :from   [[(t2/table-name :model/TableUserSettings) :uv]]
+                                :where  (settings-where (table-user-set-condition :visibility_type :uv))}]
+     ^:allow-subquery {:select [:uv.visibility_type]
+                       :from   [[(t2/table-name :model/TableUserSettings) :uv]]
+                       :where  (settings-where)}
+     :else (u/qualified-key table-alias :visibility_type)]))
+
 (mu/defn table-query :- [:tuple :any :keyword]
   "The source a query over Tables reads from: `metabase_table` merged with the user values, with the options of
   [[field-query]]."
