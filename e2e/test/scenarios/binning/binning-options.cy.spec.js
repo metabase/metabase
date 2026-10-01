@@ -251,6 +251,13 @@ describe("scenarios > binning > binning options", () => {
       H.cartesianChartCircle();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("January 2026");
+
+      cy.log("time series footer highlights the current bucket (metabase#11183)");
+      cy.findByTestId("timeseries-bucket-button").click();
+      H.popover()
+        .findByText("Month")
+        .parent()
+        .should("have.attr", "aria-selected", "true");
     });
 
     it("should work for longitude/latitude", () => {
@@ -263,20 +270,6 @@ describe("scenarios > binning > binning options", () => {
       H.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
-    });
-  });
-  context("via time series footer (metabase#11183)", () => {
-    it("should render time series binning options correctly", () => {
-      H.openTable({ table: ORDERS_ID });
-      H.tableHeaderClick("Created At");
-      H.popover().findByText("Distribution").click();
-      getTitle("Count by Created At: Month");
-      cy.findByTestId("timeseries-bucket-button").click();
-      H.popover().within(() => {
-        cy.findByText("Month")
-          .parent()
-          .should("have.attr", "aria-selected", "true");
-      });
     });
   });
 });
