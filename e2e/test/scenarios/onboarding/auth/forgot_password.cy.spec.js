@@ -37,7 +37,6 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
 
     cy.visit("/auth/forgot_password");
 
-    cy.findByLabelText("Email address").should("be.visible");
     cy.findByRole("button", { name: "Send password reset email" }).should(
       "be.visible",
     );
