@@ -162,6 +162,8 @@ When you enable **Stack series**, the **Stacking** options are hidden.
 
 ![Goal line on chart](../images/goal-line.png)
 
+Hover over the target icon on the goal line to see the goal's label and value. In charts sent by email or Slack, like [dashboard subscriptions](../../dashboards/subscriptions.md), the goal label appears next to the line instead.
+
 Goal lines can be used in conjunction with [alerts](../alerts.md) to send an email or a Slack message when your metric crosses this line.
 
 ### Trend lines

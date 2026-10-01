@@ -137,6 +137,7 @@ export const StaticRowChart = ({
           xScaleType={settings["graph.y_axis.scale"]}
           xValueRange={xValueRange}
           labelledSeries={labelledSeries}
+          isStatic
         />
       </Group>
       {hasDevWatermark && (

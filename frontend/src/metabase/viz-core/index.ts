@@ -67,7 +67,10 @@ export type {
 } from "./echarts/cartesian/model/types";
 export { getFormattingOptionsWithoutScaling } from "./echarts/cartesian/model/util";
 export { createAxisVisibilityOption } from "./echarts/cartesian/option/axis";
-export { GOAL_LINE_DASH } from "./echarts/cartesian/option/goal-line";
+export {
+  GOAL_LINE_DASH,
+  isGoalLineSeriesId,
+} from "./echarts/cartesian/option/goal-line";
 export {
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
@@ -449,6 +452,7 @@ export type {
 export type { HoveredData } from "./shared/types/events";
 export type { ChartTicksFormatters } from "./shared/types/format";
 export type { ContinuousDomain, Range } from "./shared/types/scale";
+export type { ChartGoal } from "./shared/types/settings";
 export { getGroupedDataset, getSeries, trimData } from "./shared/utils/data";
 export {
   getLabelsMetricColumn,

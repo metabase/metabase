@@ -31,6 +31,7 @@ export interface RenderingContext {
   /** Defaults to "light" when not provided. */
   colorScheme?: "light" | "dark";
   cartesianSize?: CartesianChartSize;
+  isStatic?: boolean;
 
   theme: VisualizationTheme;
 }

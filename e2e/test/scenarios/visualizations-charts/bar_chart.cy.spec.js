@@ -837,7 +837,7 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");

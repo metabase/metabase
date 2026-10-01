@@ -670,11 +670,13 @@ export const getCartesianChartPadding = (
 
   // 1. Top Padding
 
+  const hasGoalLabel =
+    renderingContext.isStatic &&
+    settings["graph.show_goal"] &&
+    !!settings["graph.goal_label"];
+
   // Prevent data labels from being rendered outside the chart
-  if (
-    settings["graph.show_values"] ||
-    (settings["graph.show_goal"] && settings["graph.goal_label"])
-  ) {
+  if (settings["graph.show_values"] || hasGoalLabel) {
     padding.top += seriesLabelFontSize + CHART_STYLE.seriesLabels.offset;
   }
 
@@ -698,6 +700,16 @@ export const getCartesianChartPadding = (
   padding.right += ticksDimensions.yTicksWidthRight;
   if (rightAxisModel?.label) {
     padding.right += yAxisNameTotalWidth;
+  }
+
+  const hasGoalMarker =
+    settings["graph.show_goal"] &&
+    settings["graph.goal_value"] != null &&
+    !renderingContext.isStatic; // Static renders show a label instead.
+
+  if (hasGoalMarker) {
+    const { backgroundRadius, shadowSpread } = CHART_STYLE.goalLine.marker;
+    padding.right = Math.max(padding.right, backgroundRadius + shadowSpread);
   }
 
   const { firstTickOverflow, lastTickOverflow } = getTicksOverflow(

@@ -38,6 +38,10 @@ export function goalLine() {
   );
 }
 
+export function goalLineMarker() {
+  return echartsContainer().find("path[fill-opacity='0']");
+}
+
 export function trendLine() {
   return echartsContainer().find(`path[stroke-width='${TREND_LINE_WIDTH}']`);
 }
