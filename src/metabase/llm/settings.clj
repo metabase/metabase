@@ -410,7 +410,7 @@
   :export?    false
   :getter     (connection-field-getter :llm-ollama-api-base-url)
   :setter     (connection-field-setter :llm-ollama-api-base-url)
-  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+  :doc        "Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL and implies the self-hosted deployment.")
 
 (defsetting llm-ollama-api-key
   (deferred-tru (str "The API key for Ollama Cloud. Also set MB_LLM_OLLAMA_HOSTING=cloud. "

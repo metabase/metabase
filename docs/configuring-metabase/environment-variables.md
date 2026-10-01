@@ -1594,7 +1594,7 @@ Backed by the moonshot connection in the admin AI settings provider list: reads 
 
 The base URL of your Ollama server's OpenAI-compatible API, e.g. `http://localhost:11434/v1`.
 
-Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL and implies the self-hosted deployment.
 
 ### `MB_LLM_OLLAMA_API_KEY`
 
