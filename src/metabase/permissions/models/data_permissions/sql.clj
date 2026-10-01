@@ -201,8 +201,8 @@
      (perm-type-to-int-inline perm-type required-level)]))
 
 (mu/defn- permitted-tables-query-parts :- [:maybe [:map
-                                                    [:branches [:sequential :map]]
-                                                    [:having :any]]]
+                                                   [:branches [:sequential :map]]
+                                                   [:having :any]]]
   "The pieces of the permitted-table-ids query shared by [[visible-table-filter-with-cte]] and
   [[visible-table-filter-subquery-clause]]: the UNION ALL `:branches` collecting every permission grant that applies
   to a table, and the `:having` condition that keeps the tables whose grants satisfy `permission-mapping`. nil when
