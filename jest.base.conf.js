@@ -1,6 +1,13 @@
 // @ts-check
 // eslint-disable-next-line import/no-commonjs
+const path = require("node:path");
+// eslint-disable-next-line import/no-commonjs
 const esmPackages = require("./jest.esm-packages.js");
+
+// jest defaults this to a temp directory, which CI discards between jobs. Inside the
+// checkout it can be restored from a cache, so a job transforms only the files whose
+// contents changed since the cache was written.
+const cacheDirectory = path.join(__dirname, "target", "jest-cache");
 
 const swcJestTransform = [
   "@swc/jest",
@@ -138,6 +145,7 @@ const baseConfig = {
   ],
   testEnvironment: "jest-environment-jsdom",
   testRunner: "<rootDir>/frontend/test/jest-test-runner.js",
+  cacheDirectory,
 };
 
 // eslint-disable-next-line import/no-commonjs

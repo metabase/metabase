@@ -118,6 +118,20 @@ jobs:
         # Resolve JOB_ID before the long test step so the ci-conductor reporter
         # below can link failures to this exact job. Best-effort.
         uses: ./.github/actions/resolve-job-id
+      - name: Cache spec
+        id: cache-spec
+        env:
+          JEST_CACHE_SHARD: ${{ matrix.shard }}
+        run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
+      # jest transforms every file a test loads and keys each entry by that file's contents, so a
+      # restored entry is either reused or ignored, never stale. This job reads and writes its own
+      # cache rather than waiting on cache-warm, like the ESLint cache above.
+      - name: Jest transform cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.cache-spec.outputs.jest-path }}
+          key: ${{ steps.cache-spec.outputs.jest-key }}
+          restore-keys: ${{ steps.cache-spec.outputs.jest-restore-key }}
       - name: Prepare unit test selection
         id: unit-selection
         if: ${{ inputs.test-plan-artifact-id != '' }}

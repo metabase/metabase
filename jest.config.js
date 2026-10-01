@@ -9,6 +9,7 @@ const nodeProject = {
   testEnvironment: "node",
   transform: baseConfig.transform,
   transformIgnorePatterns: baseConfig.transformIgnorePatterns,
+  cacheDirectory: baseConfig.cacheDirectory,
 };
 
 /** @type {import('jest').Config} */

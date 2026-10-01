@@ -82,6 +82,12 @@ CLOJURE_VERSION="1.12.0.1488"
 # to the newest entry on the prefix. The exact key never pre-exists, which keeps the entry current.
 ESLINT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}"
 
+# The unit test job runs in shards, and jest sends a file to the same shard every run, so each
+# shard caches the files it actually transforms. Without this they would share one key, the first
+# shard to finish would claim it, and every later shard would restore a tree with none of its own
+# files in it. A caller outside that matrix gets one entry named "all".
+JEST_SHARD="${JEST_CACHE_SHARD:-all}"
+
 emit_multiline() {
   local name="$1"; shift
   printf '%s<<CACHE_KEYS_EOF\n' "$name"
@@ -120,6 +126,16 @@ spec() {
   echo "eslint-path=.eslintcache"
   echo "eslint-key=eslint-$OS-$ESLINT_SHA"
   echo "eslint-restore-key=eslint-$OS-"
+
+  # jest's transform cache. Each entry is keyed inside jest by the file's contents, the transform
+  # options and the jest version, so an entry that no longer applies is ignored rather than wrong.
+  # That makes the key coarse on purpose: one entry per dependency set, not per commit. The tree
+  # holds 28000 files and 353MB for 621 specs, about 99MB compressed, and a per-commit key would
+  # write a new copy of it on every push and evict the dependency caches that cannot be rebuilt as
+  # cheaply.
+  echo "jest-path=target/jest-cache"
+  echo "jest-key=jest-$OS-shard$JEST_SHARD-$LOCK_HASH"
+  echo "jest-restore-key=jest-$OS-shard$JEST_SHARD-"
 }
 
 # Print one output's value, including the multiline form, and fail on a name that does not exist. A
