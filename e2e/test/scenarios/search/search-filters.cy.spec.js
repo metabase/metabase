@@ -313,6 +313,7 @@ describe("scenarios > search", () => {
           cy.findByText("Robert Tableton").should("exist");
           cy.findByLabelText("close icon").click();
         });
+        cy.url().should("not.contain", "created_by");
 
         expectSearchResultItemNameContent({
           itemNames: [
@@ -358,6 +359,7 @@ describe("scenarios > search", () => {
             .click();
           cy.findByText("Apply").click();
         });
+        cy.url().should("not.contain", `created_by=${NORMAL_USER_ID}`);
 
         expectSearchResultItemNameContent({
           itemNames: [ADMIN_TEST_QUESTION.name],
@@ -545,6 +547,7 @@ describe("scenarios > search", () => {
             .click();
           cy.findByText("Apply").click();
         });
+        cy.url().should("not.contain", `last_edited_by=${NORMAL_USER_ID}`);
 
         H.expectSearchResultContent({
           expectedSearchResults: [
@@ -581,6 +584,7 @@ describe("scenarios > search", () => {
           cy.findByText("2 users selected").should("exist");
           cy.findByLabelText("close icon").click();
         });
+        cy.url().should("not.contain", "last_edited_by");
 
         expectSearchResultItemNameContent({
           itemNames: [
@@ -667,6 +671,10 @@ describe("scenarios > search", () => {
         H.popover().within(() => {
           cy.findByText("Today").click();
         });
+        cy.url().should("contain", "created_at=thisday");
+        cy.findByTestId("created_at-search-filter")
+          .findByText("Today")
+          .should("exist");
 
         H.expectSearchResultContent({
           expectedSearchResults: [
@@ -768,6 +776,7 @@ describe("scenarios > search", () => {
         H.popover().within(() => {
           cy.findByText("Today").click();
         });
+        cy.url().should("contain", "last_edited_at=thisday");
 
         H.expectSearchResultContent({
           expectedSearchResults: [
@@ -777,7 +786,6 @@ describe("scenarios > search", () => {
               timestamp: "Updated a few seconds ago by Robert Tableton",
             },
           ],
-          strict: false,
         });
 
         cy.intercept("GET", "/api/search?q=*").as("hydratedSearch");
@@ -792,7 +800,6 @@ describe("scenarios > search", () => {
               timestamp: "Updated a few seconds ago by Robert Tableton",
             },
           ],
-          strict: false,
         });
 
         cy.findByTestId("last_edited_at-search-filter").within(() => {
@@ -871,7 +878,7 @@ describe("scenarios > search", () => {
           .findByLabelText("Verified items only")
           .click();
 
-        cy.wait("@search");
+        cy.url().should("include", "verified=true");
 
         cy.findAllByTestId("search-result-item").each((result) => {
           cy.wrap(result).within(() => {
@@ -930,6 +937,7 @@ describe("scenarios > search", () => {
         cy.findByTestId("search_native_query-search-filter")
           .findByLabelText("Search the contents of native queries")
           .click();
+        cy.url().should("not.contain", "search_native_query");
 
         expectSearchResultItemNameContent({
           itemNames: [TEST_NATIVE_QUESTION_NAME],
@@ -1073,8 +1081,22 @@ describe("scenarios > search", () => {
         ],
       });
 
-      //getSearchBar().clear().type("count{enter}");
       H.commandPaletteSearch("count");
+
+      cy.location("search")
+        .should("contain", "q=count")
+        .and("contain", "created_by=")
+        .and("contain", "last_edited_by=")
+        .and("contain", "type=card");
+      cy.findByTestId("created_by-search-filter")
+        .findByText("Bobby Tables")
+        .should("exist");
+      cy.findByTestId("last_edited_by-search-filter")
+        .findByText("Bobby Tables")
+        .should("exist");
+      cy.findByTestId("type-search-filter")
+        .findByText("Question")
+        .should("exist");
 
       expectSearchResultItemNameContent({
         itemNames: [

@@ -70,6 +70,10 @@ describe("scenarios > search", () => {
       cy.get("@searchBox").type("{enter}");
       cy.wait("@search");
 
+      cy.location("pathname").should("eq", "/search");
+      cy.findByTestId("search-app")
+        .findByText('Results for "product"')
+        .should("exist");
       H.expectSearchResultContent({
         expectedSearchResults: [
           {

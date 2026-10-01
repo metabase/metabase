@@ -58,6 +58,7 @@ describe("scenarios > search", () => {
     it("should reset the page when filters change (metabase#65501)", () => {
       cy.visit("/search?q=");
       cy.findByLabelText("Next page").click();
+      cy.location("search").should("contain", "page=1");
       cy.findByTestId("type-search-filter").click();
       H.popover().findByText("Table").click();
       H.popover().findByText("Apply").click();
