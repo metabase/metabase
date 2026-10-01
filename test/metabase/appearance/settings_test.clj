@@ -104,6 +104,20 @@
       (mt/with-temporary-raw-setting-values [application-logo-url (image-data-uri "image/png" "logo")]
         (is (nil? (appearance.settings/illustration-image :application-logo-url)))))))
 
+(deftest parsed-illustration-cache-reload-test
+  (let [setting-key :login-page-illustration-custom
+        raw         (image-data-uri "image/png" "first")
+        reloaded    (String. ^String raw)
+        cache       (atom {})]
+    (with-redefs [appearance.settings/parsed-illustrations cache]
+      (let [parsed (#'appearance.settings/parsed-illustration setting-key raw)]
+        (is (some? parsed))
+        (is (= raw reloaded))
+        (is (not (identical? raw reloaded)))
+        (is (identical? parsed
+                        (#'appearance.settings/parsed-illustration setting-key reloaded)))
+        (is (identical? reloaded (first (get @cache setting-key))))))))
+
 (deftest help-link-setting-test
   (mt/discard-setting-changes [help-link]
     (mt/with-premium-features #{:whitelabel}

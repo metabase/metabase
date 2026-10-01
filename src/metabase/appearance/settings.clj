@@ -256,12 +256,16 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defn- parsed-illustration
   [setting-key raw]
-  (let [[cached-raw parsed] (get @parsed-illustrations setting-key)]
-    (if (identical? raw cached-raw)
-      parsed
-      (let [parsed (some-> raw parse-image-data-uri)]
-        (swap! parsed-illustrations assoc setting-key [raw parsed])
-        parsed))))
+  (let [[cached-raw cached] (get @parsed-illustrations setting-key)
+        ;; `raw` is usually the same String instance, but any setting change reloads all settings and gives a new
+        ;; instance. with only `=`, the cache would keep the old instance (same content, different reference), so
+        ;; every later read would do a content comparison. that's why we also use `identical?` to store the new
+        ;; instance: it costs one content comparison per reload (~0.4ms for a 13MB image), then reads only compare
+        ;; references. with only `identical?`, every reload would parse the image again (~44ms for a 13MB image).
+        parsed              (if (= raw cached-raw) cached (some-> raw parse-image-data-uri))]
+    (when-not (identical? raw cached-raw)
+      (swap! parsed-illustrations assoc setting-key [raw parsed]))
+    parsed))
 
 ;; keep uploaded images out of the bootstrap and session properties, they are served by
 ;; `GET /api/session/illustration/:key`
