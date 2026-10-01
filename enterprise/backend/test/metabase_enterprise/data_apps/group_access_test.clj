@@ -1,11 +1,11 @@
 (ns metabase-enterprise.data-apps.group-access-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.entry-point :as entry-point]
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.resources :as resources]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collection]
+   [metabase.data-apps.core :as data-apps]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.sso.core :as sso]
@@ -82,9 +82,9 @@
               (is (= allowed? (boolean (mi/can-read? app)))))
             (let [request {:route-params {:name "birds"} :metabase-user-id user-id :is-superuser? admin?}]
               (if allowed?
-                (is (true? (entry-point/check-data-app-access! request)))
+                (is (true? (data-apps/check-data-app-access! request)))
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
-                                      (entry-point/check-data-app-access! request)))))))))))
+                                      (data-apps/check-data-app-access! request)))))))))))
 
 (deftest batch-add-is-atomic-test
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
@@ -261,10 +261,10 @@
     (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
       (let [request {:route-params {:name "birds"} :metabase-user-id (mt/user->id :rasta)}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
-                              (entry-point/check-data-app-access! request)))
-        (is (true? (entry-point/check-data-app-access! (assoc request :is-superuser? true))))
+                              (data-apps/check-data-app-access! request)))
+        (is (true? (data-apps/check-data-app-access! (assoc request :is-superuser? true))))
         (group-access/add-groups! app [(:id (perms/all-users-group))])
-        (is (true? (entry-point/check-data-app-access! request)))))))
+        (is (true? (data-apps/check-data-app-access! request)))))))
 
 (deftest assignment-remains-canonical-after-collection-drift-test
   (mt/with-premium-features #{:data-apps}
