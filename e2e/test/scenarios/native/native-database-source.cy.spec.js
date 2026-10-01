@@ -211,7 +211,7 @@ describe(
   },
 );
 
-describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
+describe("scenarios > question > native > mysql", { tags: "@external" }, () => {
   const MYSQL_DB_NAME = "QA MySQL8";
 
   beforeEach(() => {

@@ -63,7 +63,7 @@ describe("scenarios > question > native subquery", () => {
         type: "model",
         collection_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body: { id: questionId2 } }) => {
-        // Move question 2 to personal collection
+        // Move question 2 from the personal collection to Our analytics
         cy.visit(`/question/${questionId2}`);
         H.openQuestionActions();
         cy.findByTestId("move-button").click();

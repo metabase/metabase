@@ -279,7 +279,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
   });
 
-  describe("static list source with custom labels (dropdown)", () => {
+  describe("static list source with custom labels (search box)", () => {
     it("should be able to use a static list source in the query builder", () => {
       H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT {{ tag }} AS V");

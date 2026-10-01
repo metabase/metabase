@@ -120,7 +120,7 @@ describe("scenarios > question > native", () => {
   });
 
   describe("template tags", () => {
-    it("should modify parameters accordingly when tags are modified", () => {
+    it("should save a required tag's default value as the parameter default", () => {
       H.startNewNativeQuestion();
       H.NativeEditor.type("select * from PRODUCTS where CATEGORY = {{cat}}");
 

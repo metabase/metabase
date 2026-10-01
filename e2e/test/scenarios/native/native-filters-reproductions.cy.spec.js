@@ -24,7 +24,7 @@ describe("issue 9357", () => {
         "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
       );
 
-      // Drag the firstparameter to last position
+      // Drag the firstparameter below the nextparameter
       H.filterWidget().findAllByRole("listitem").first().as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
@@ -186,14 +186,12 @@ describe("issue 12581", () => {
       .findByText(/open editor/i)
       .should("not.exist");
 
-    // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
-    // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
     H.NativeEditor.clear().type("SELECT 1");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.findByTestId("save-question-modal").within((modal) => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByText("Save").click();
     });
 
@@ -597,7 +595,7 @@ describe("issue 31606", () => {
     cy.signInAsAdmin();
   });
 
-  it("should clear values on UI for Text, Number, Date and Field Filter Types (metabase#31606)", () => {
+  it("should clear values on UI for Text, Number and Field Filter Types (metabase#31606)", () => {
     H.startNewNativeQuestion();
 
     SQLFilter.enterParameterizedQuery(SQL_QUERY);

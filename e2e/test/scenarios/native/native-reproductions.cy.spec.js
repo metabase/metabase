@@ -243,7 +243,7 @@ describe("issue 31926", { tags: "@external" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("display the relevant error message in save question modal (metabase#21597)", () => {
+  it("should disable running and saving after switching a field filter query to another database (metabase#31926)", () => {
     // Second DB (copy)
     H.addPostgresDatabase(databaseCopyName);
 

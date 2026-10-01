@@ -901,7 +901,7 @@ describe("issue 66745", () => {
   });
 
   ["row", "bar"].forEach((vizType) => {
-    it(`should not break visualization on native query column rename (metabase#63711) - ${vizType}`, () => {
+    it(`should not break visualization on native query column rename (metabase#66745) - ${vizType}`, () => {
       H.createNativeQuestion(
         {
           name: `66745 - ${vizType}`,

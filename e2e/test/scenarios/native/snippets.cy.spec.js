@@ -421,7 +421,7 @@ describe("scenarios > question > snippets (EE)", () => {
       });
     });
 
-    it("should not allow you to move a snippet collection into a itself or a child (metabase#44930)", () => {
+    it("should not allow you to move a snippet collection into itself (metabase#44930)", () => {
       H.startNewNativeQuestion();
       cy.icon("snippet").click();
 
