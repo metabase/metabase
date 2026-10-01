@@ -16,6 +16,7 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
@@ -45,6 +46,7 @@
 (def ^:private supported-models-by-provider-type
   {"anthropic"  #'self.claude/supported-models
    "bedrock"    #'bedrock/supported-models
+   "deepseek"   #'deepseek/supported-models
    "mistral"    #'mistral/supported-models
    "moonshot"   #'moonshot/supported-models
    "openai"     #'openai/supported-models

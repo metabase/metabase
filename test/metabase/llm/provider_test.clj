@@ -739,7 +739,7 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
-            "deepseek"   "deepseek-v4-flash"
+            "deepseek"   "deepseek-flash"
             "xai"        "grok-4.3"
             "google"     nil
             "azure"      nil

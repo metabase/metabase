@@ -161,7 +161,7 @@
    {:type          "deepseek"
     :label         (deferred-tru "DeepSeek")
     :default-model "deepseek-v4-pro"
-    :mini-model    "deepseek-v4-flash"
+    :mini-model    "deepseek-flash"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
