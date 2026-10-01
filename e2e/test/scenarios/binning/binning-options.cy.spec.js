@@ -46,6 +46,7 @@ const LONGITUDE_BUCKETS = [
  * Makes sure that all binning options (bucket sizes) are rendered correctly for the regular table.
  *  1. no option should be rendered multiple times
  *  2. the selected option should be highlighted when the popover with all options opens
+ *  3. choosing another option re-runs the query with the new bucket size
  *
  * This spec covers the following issues:
  *  - metabase#15574
@@ -59,15 +60,22 @@ describe("scenarios > binning > binning options", () => {
   });
 
   context("via simple question", () => {
-    it("should render number binning options correctly", () => {
+    it("should render and apply number binning options", () => {
       chooseInitialBinningOption({ table: ORDERS_ID, column: "Total" });
       getTitle("Count by Total: Auto binned");
 
       openBinningListForDimension("Total", "Auto binned");
       getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+      selectOption("50 bins");
+      cy.wait("@dataset");
+
+      getTitle("Count by Total: 50 bins");
+      H.chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("70");
     });
 
-    it("should render time series binning options correctly", () => {
+    it("should render and apply time series binning options", () => {
       chooseInitialBinningOption({ table: ORDERS_ID, column: "Created At" });
       getTitle("Count by Created At: Month");
 
@@ -77,9 +85,16 @@ describe("scenarios > binning > binning options", () => {
         isSelected: "Month",
         shouldExpandList: true,
       });
+      selectOption("Quarter");
+      cy.wait("@dataset");
+
+      getTitle("Count by Created At: Quarter");
+      H.cartesianChartCircle();
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q1 2026");
     });
 
-    it("should render longitude/latitude binning options correctly", () => {
+    it("should render and apply longitude/latitude binning options", () => {
       chooseInitialBinningOption({ table: PEOPLE_ID, column: "Longitude" });
       getTitle("Count by Longitude: Auto binned");
 
@@ -89,11 +104,47 @@ describe("scenarios > binning > binning options", () => {
         isSelected: "Auto bin",
         shouldExpandList: true,
       });
+      selectOption("Bin every 20 degrees");
+      cy.wait("@dataset");
+
+      getTitle("Count by Longitude: 20°");
+      H.chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("180° W");
+    });
+    it("should apply a number bucket picked from an unselected column", () => {
+      H.openTable({ table: ORDERS_ID });
+      H.summarize();
+      H.changeBinningForDimension({
+        name: "Total",
+        fromBinning: "Auto bin",
+        toBinning: "50 bins",
+      });
+
+      getTitle("Count by Total: 50 bins");
+      H.chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("70");
+    });
+
+    it("should apply a time series bucket picked from an unselected column", () => {
+      H.openTable({ table: ORDERS_ID });
+      H.summarize();
+      H.changeBinningForDimension({
+        name: "Created At",
+        fromBinning: "by month",
+        toBinning: "Quarter",
+      });
+
+      getTitle("Count by Created At: Quarter");
+      H.cartesianChartCircle();
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q1 2026");
     });
   });
 
   context("via custom question", () => {
-    it("should render number binning options correctly", () => {
+    it("should render and apply number binning options", () => {
       chooseInitialBinningOption({
         table: ORDERS_ID,
         mode: "notebook",
@@ -107,9 +158,18 @@ describe("scenarios > binning > binning options", () => {
       openBinningListForDimension("Total", "Auto binned");
 
       getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+      selectOption("50 bins");
+
+      H.getNotebookStep("summarize").findByText("Total: 50 bins");
+      H.visualize();
+
+      getTitle("Count by Total: 50 bins");
+      H.chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("70");
     });
 
-    it("should render time series binning options correctly", () => {
+    it("should render and apply time series binning options", () => {
       chooseInitialBinningOption({
         table: ORDERS_ID,
         mode: "notebook",
@@ -127,9 +187,18 @@ describe("scenarios > binning > binning options", () => {
         isSelected: "Month",
         shouldExpandList: true,
       });
+      selectOption("Quarter");
+
+      H.getNotebookStep("summarize").findByText("Created At: Quarter");
+      H.visualize();
+
+      getTitle("Count by Created At: Quarter");
+      H.cartesianChartCircle();
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q1 2026");
     });
 
-    it("should render longitude/latitude binning options correctly", () => {
+    it("should render and apply longitude/latitude binning options", () => {
       chooseInitialBinningOption({
         table: PEOPLE_ID,
         mode: "notebook",
@@ -147,9 +216,55 @@ describe("scenarios > binning > binning options", () => {
         isSelected: "Auto bin",
         shouldExpandList: true,
       });
+      selectOption("Bin every 20 degrees");
+
+      H.getNotebookStep("summarize").findByText("Longitude: 20°");
+      H.visualize();
+
+      getTitle("Count by Longitude: 20°");
+      H.chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("180° W");
     });
   });
 
+  context("via column popover", () => {
+    it("should work for number", () => {
+      H.openTable({ table: ORDERS_ID });
+      H.tableHeaderClick("Total");
+      H.popover().findByText("Distribution").click();
+
+      getTitle("Count by Total: Auto binned");
+
+      H.chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("60");
+    });
+
+    it("should work for time series", () => {
+      H.openTable({ table: ORDERS_ID });
+      H.tableHeaderClick("Created At");
+      H.popover().findByText("Distribution").click();
+
+      getTitle("Count by Created At: Month");
+
+      H.cartesianChartCircle();
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("January 2026");
+    });
+
+    it("should work for longitude/latitude", () => {
+      H.openTable({ table: PEOPLE_ID });
+      H.tableHeaderClick("Longitude");
+      H.popover().findByText("Distribution").click();
+
+      getTitle("Count by Longitude: Auto binned");
+
+      H.chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("170° W");
+    });
+  });
   context("via time series footer (metabase#11183)", () => {
     it("should render time series binning options correctly", () => {
       H.openTable({ table: ORDERS_ID });
@@ -215,4 +330,9 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
           .should("have.attr", "aria-selected", "true");
       }
     });
+}
+
+function selectOption(option) {
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
+  H.popover().last().findByText(option).click();
 }
