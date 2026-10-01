@@ -957,14 +957,12 @@
                   (get (connection-env-vars type) field "the matching environment variable"))))))
 
 (defn- destination-choice
-  "Where a connection points on one field, as far as it ever decided.
+  "Where a connection points on one field: the stored value, or the field's default when it stores none.
 
-  Leaving an optional address blank decides nothing — the vendor's own will do — while a deployment
-  the form makes you pick is a decision even at its preselected value. Not `with-field-defaults`,
-  which fills in every default and so would have the blank address deciding too."
-  [{:keys [key default normalize required?]} config]
-  (when-let [chosen (or (u/trimmed-string (get config key))
-                        (when required? default))]
+  A blank address still goes somewhere — the vendor's own — so an overlay replacing it moves the
+  connection just as replacing a typed one does. Normalized, so a trailing slash is not a move."
+  [{:keys [key default normalize]} config]
+  (when-let [chosen (or (u/trimmed-string (get config key)) default)]
     (cond-> chosen normalize normalize)))
 
 (defn- moved-destination-field
@@ -990,9 +988,11 @@
 
   A secret and the address it reaches have to come from the same place. [[drop-captured-destination]]
   holds that line when the environment brings the secret; this holds it when the environment brings the
-  address — `MB_LLM_OLLAMA_HOSTING=cloud` over a key an admin typed for a server of their own. Only an
-  address the environment *changes*: filling in one the connection never chose moves nothing, and is
-  the shadowing every other field gets.
+  address — `MB_LLM_OLLAMA_HOSTING=cloud` over a key an admin typed for a server of their own, or an
+  `MB_LLM_ANTHROPIC_API_BASE_URL` over a key typed for Anthropic's own API. A key is entered for the
+  address it will be sent to, so an overlay pointing elsewhere moves the connection whether the address
+  was typed or left at the vendor's default. Only an overlay naming where the connection already points
+  moves nothing.
 
   A connection the `MB_LLM_PROVIDERS` JSON supplies is the operator's own, so nothing is taken from it."
   [{conn-key :key :keys [type source config] :as conn} env-config]
@@ -1346,7 +1346,8 @@
   it will be sent. The connection settings submit the whole connection, base URL included, so they are where a
   connection on a custom URL takes its credentials.
 
-  A base URL the environment supplies needs no such treatment: the operator chose it."
+  A base URL the environment supplies is not this check's to judge: [[assert-credentials-not-captured!]]
+  refuses a credential typed for a connection the environment points elsewhere."
   [type-name field {:keys [config env-fields]}]
   (when (contains? (secret-field-keys type-name) field)
     (let [filled   (with-field-defaults type-name config)
@@ -1405,9 +1406,13 @@
                                                      (:env-fields live) {:legacy-setting? true}))
             (when value
               (assert-credential-write-authorized! group-type field live)
-              (when idx
-                (assert-credentials-not-captured! (nth stored idx) {field value}
-                                                  (env-overlay-config conn-key group-type))))))
+              ;; with nothing stored yet, the connection this write creates: a blank address is still the
+              ;; vendor's own, which a variable can move
+              (assert-credentials-not-captured! (if idx
+                                                  (nth stored idx)
+                                                  {:key conn-key :type group-type :config {}})
+                                                {field value}
+                                                (env-overlay-config conn-key group-type)))))
         (when value
           ;; against the whole connection, not the one value: a field is only worth judging — and only
           ;; worth keeping — in the deployment its own controller puts it in

@@ -92,7 +92,9 @@ A connection that's missing a required setting shows a warning icon, and Metabot
 
 If you're self-hosting, you can configure a provider with [environment variables](../configuring-metabase/environment-variables.md) instead of the admin UI. These connections will show up in the list as read-only, along with the variable that set the connection.
 
-An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, the base URL comes from the environment, and the rest of the connection stays editable.
+An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_KEY`, the API key comes from the environment, and the rest of the connection stays editable.
+
+A connection's credentials and its address have to come from the same place. If an environment variable like `MB_LLM_ANTHROPIC_API_BASE_URL` points a connection at a different server, Metabase won't send an API key entered in the UI there: set the key with an environment variable too, like `MB_LLM_ANTHROPIC_API_KEY`.
 
 To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 

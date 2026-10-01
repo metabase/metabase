@@ -229,12 +229,12 @@
   (testing "a stored connection with an env-shadowed field stays editable, with just that field marked"
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
                                                                   {:api-key "sk-ant-stored"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
         (is (=? [{:key        "anthropic"
                   :source     "db"
-                  :env_vars   ["MB_LLM_ANTHROPIC_API_BASE_URL"]
-                  :env_fields ["base-url"]
-                  :config     {:api-key "**********ed" :base-url "https://env.example.com"}}]
+                  :env_vars   ["MB_LLM_ANTHROPIC_API_KEY"]
+                  :env_fields ["api-key"]
+                  :config     {:api-key "**********nv"}}]
                 (mt/user-http-request :crowberto :get 200 "llm/providers")))))))
 
 (deftest create-verifies-credentials-before-saving-test
@@ -931,11 +931,12 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
       (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))
-  (testing "so is a base URL the environment supplies, which the operator chose"
+  (testing "a base URL the environment supplies takes the key from the environment too, even before anything is stored"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
-        (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))))
+        (is (=? {:message #".*MB_LLM_ANTHROPIC_API_BASE_URL.*MB_LLM_ANTHROPIC_API_KEY.*"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})))
+        (is (empty? (llm.provider/stored-connections)))))))
 (deftest update-preserves-a-masked-service-account-key-test
   (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
                 "that ends in a newline — the stored key has to survive it rather than be replaced by the mask")
