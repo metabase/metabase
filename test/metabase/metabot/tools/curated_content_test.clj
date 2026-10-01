@@ -278,6 +278,58 @@
           (is (accepted? (query {:source-card verified-eid})))
           (is (rejected? metabot-id :internal (query {:source-card plain-eid}))))))))
 
+(defn- metric-chain!
+  "Insert `n` metric Cards on ORDERS, each aggregating the previous one (the first counts rows), and return them
+  innermost first."
+  [n]
+  (reduce (fn [cards i]
+            (let [query (if-let [inner (peek cards)]
+                          {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :orders)
+                                      :aggregation  [["metric" (:id inner)]]}}
+                          (count-metric-query (orders-query)))]
+              (conj cards (t2/insert-returning-instance! :model/Card
+                                                         (merge (mt/with-temp-defaults :model/Card)
+                                                                {:type          :metric
+                                                                 :name          (str "chain metric " i)
+                                                                 :dataset_query query})))))
+          []
+          (range n)))
+
+(deftest metric-nesting-limit-test
+  (testing "a chain of metric references deeper than the limit fails closed on both sides"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (mt/with-model-cleanup [:model/Card]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (let [limit     @#'curation/max-metric-nesting
+                  chain     (metric-chain! (inc limit))
+                  within    (nth chain (dec limit))
+                  beyond    (peek chain)
+                  db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
+                  query-on  (fn [{:keys [entity_id]}]
+                              {:lib/type "mbql/query"
+                               :stages   [{:lib/type     "mbql.stage/mbql"
+                                           :source-table [db-name "PUBLIC" "ORDERS"]
+                                           :aggregation  [["metric" {} entity_id]]}]})
+                  construct (fn [q] (as-metabot metabot-id :internal #(construct/execute-representations-query q)))
+                  rejected? (fn [q]
+                              (try
+                                (construct q)
+                                false
+                                (catch clojure.lang.ExceptionInfo e
+                                  (if (= :uncurated-source (:error (ex-data e)))
+                                    true
+                                    (throw e)))))
+                  read      (fn [{:keys [id]}] (first (read-uris metabot-id :internal (str "metabase://metric/" id))))]
+              (testing "a chain at the limit is accepted"
+                (is (not (rejected? (query-on within))))
+                (is (not (denied? (read within)))))
+              (testing "one deeper is rejected"
+                (is (rejected? (query-on beyond)))
+                (is (denied? (read beyond)))))))))))
+
 (deftest read-resource-curated-check-ordering-test
   (testing "the curation check runs after the entity's existence and read checks, but before its handler"
     (mt/with-current-user (mt/user->id :crowberto)
