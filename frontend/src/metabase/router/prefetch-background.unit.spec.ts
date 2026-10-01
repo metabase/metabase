@@ -71,9 +71,15 @@ async function idleOnce(): Promise<void> {
   await flush();
 }
 
-/** Idle for as long as there is anything waiting on it. */
+// Enough turns for every page a test registers, plus the turns the queue spends
+// asking whether it is wanted. It is also what stops a test where `shouldStart`
+// never says yes: that queue keeps asking on every idle turn, so there is no
+// settled state to wait for.
+const MAX_IDLE_TURNS = 20;
+
+/** Idle until nothing is waiting on it, or `MAX_IDLE_TURNS` have passed. */
 async function idleUntilSettled(): Promise<void> {
-  for (let turn = 0; turn < 20; turn++) {
+  for (let turn = 0; turn < MAX_IDLE_TURNS; turn++) {
     await idleOnce();
     if (idleCallbacks.length === 0) {
       return;
