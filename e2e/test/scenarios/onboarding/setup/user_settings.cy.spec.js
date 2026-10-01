@@ -28,8 +28,13 @@ describe("user > settings", () => {
     cy.findByDisplayValue(email).should("be.visible");
     cy.button("Update").should("be.disabled");
     cy.findByLabelText("First name").clear().type("John");
+    cy.clock(Date.now(), ["setTimeout", "clearTimeout"]);
     cy.button("Update").click();
     cy.wait("@updateUser").its("response.statusCode").should("eq", 200);
+    cy.button("Success").should("be.visible");
+    cy.tick(5000);
+    cy.button("Update").should("be.visible");
+    cy.clock().then((clock) => clock.restore());
     cy.findByTestId("account-header").should("contain", `John ${last_name}`);
     cy.findByDisplayValue("John").should("be.visible");
     cy.get("@membership.all").should("have.length", 0);
