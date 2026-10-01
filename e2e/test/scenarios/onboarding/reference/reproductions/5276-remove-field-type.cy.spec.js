@@ -26,7 +26,11 @@ describe("issue 5276", () => {
     cy.findByDisplayValue("Score").click();
     H.popover().findByText("No semantic type").click();
     cy.button("Save").click();
-    cy.wait("@updateField");
+    cy.wait("@updateField")
+      .its("response.body.semantic_type")
+      .should("eq", null);
+    cy.button(/Edit/).trigger("click");
+    cy.findAllByDisplayValue("No semantic type").should("be.visible");
     cy.findByDisplayValue("Score").should("not.exist");
   });
 });

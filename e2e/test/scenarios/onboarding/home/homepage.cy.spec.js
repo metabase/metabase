@@ -344,6 +344,12 @@ describe("scenarios > home > custom homepage", () => {
       cy.signInAsAdmin();
       cy.intercept("GET", "/api/search*").as("search");
       cy.intercept("PUT", "/api/setting").as("putSettings");
+      H.resetSnowplow();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
     });
 
     it("should give you the option to set a custom home page in settings", () => {
@@ -372,6 +378,11 @@ describe("scenarios > home > custom homepage", () => {
         "contain",
         "Orders in a dashboard",
       );
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "homepage_dashboard_enabled",
+        source: "admin",
+      });
 
       cy.log(
         "switching to Default Metabase home should hide the dashboard picker but keep the persisted id",
@@ -458,6 +469,10 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       H.modal().findByRole("button", { name: "Done" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "homepage_dashboard_enabled",
+        source: "homepage",
+      });
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -512,6 +527,8 @@ describe("scenarios > home > custom homepage", () => {
       cy.signIn("nocollection");
       cy.visit("/");
 
+      cy.findByTestId("home-page").should("be.visible");
+      cy.findByTestId("greeting-message").should("be.visible");
       cy.location("pathname").should("equal", "/");
     });
 
@@ -647,43 +664,6 @@ describe("scenarios > setup", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-  });
-
-  it("should send snowplow events through admin settings", () => {
-    cy.intercept("PUT", "/api/setting").as("putSettings");
-    cy.visit("/admin/settings/general");
-    cy.findByTestId("homepage-setting")
-      .findByRole("radio", { name: "Dashboard" })
-      .click();
-    cy.wait("@putSettings");
-    H.undoToast().icon("close").click();
-
-    cy.findByTestId("custom-homepage-dashboard-setting")
-      .findByRole("button")
-      .should("be.visible")
-      .click();
-
-    H.entityPickerModal().findByText("Orders in a dashboard").click();
-
-    H.undoToast().findByText("Changes saved").should("be.visible");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "homepage_dashboard_enabled",
-      source: "admin",
-    });
-  });
-
-  it("should send snowplow events through homepage", () => {
-    cy.visit("/");
-    cy.get("main").findByText("Customize").click();
-    H.modal().findByText("Pick a dashboard").click();
-
-    H.entityPickerModal().findByText("Orders in a dashboard").click();
-    H.modal().findByText("Done").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "homepage_dashboard_enabled",
-      source: "homepage",
-    });
   });
 
   it("should track when 'New' button is clicked", () => {

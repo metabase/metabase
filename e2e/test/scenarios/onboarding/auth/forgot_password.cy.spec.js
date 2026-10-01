@@ -37,7 +37,11 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
 
     cy.visit("/auth/forgot_password");
 
-    cy.icon("gear").should("not.exist");
+    cy.findByLabelText("Email address").should("be.visible");
+    cy.findByRole("button", { name: "Send password reset email" }).should(
+      "be.visible",
+    );
+    H.getProfileLink().should("not.exist");
   });
 });
 

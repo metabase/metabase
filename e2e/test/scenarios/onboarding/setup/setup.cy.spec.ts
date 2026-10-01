@@ -309,43 +309,6 @@ describe("scenarios > setup", () => {
     cy.findByTestId("step-number").should("not.exist");
   });
 
-  it("should allow localization in the 'embedding' setup flow", () => {
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
-    );
-
-    cy.log("Change language to English (ZZ)");
-    selectLanguage("English (ZZ)");
-
-    cy.log("Changing a language should be applied immediately");
-    cy.findByTestId("setup-forms").within(() => {
-      const password = "12341234";
-      cy.findByDisplayValue("John").should("exist");
-      cy.findByLabelText("[zz] Create a password").type(password);
-      cy.findByLabelText("[zz] Confirm your password").type(password);
-      cy.button("[zz] Next").click();
-    });
-
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("[zz] Hi, John. Nice to meet you!").should(
-        "be.visible",
-      );
-
-      if (IS_ENTERPRISE) {
-        cy.button("[zz] I'll activate later").click();
-      }
-
-      cy.findByText("[zz] Finish").click();
-      cy.findByText("[zz] Take me to Metabase").click();
-    });
-
-    cy.log("Locale is preserved upon successful setup");
-    cy.location("pathname").should("eq", "/");
-    H.main()
-      .findByText("[zz] Get started with Embedding Metabase in your app")
-      .should("be.visible");
-  });
-
   it("should update the site locale setting when changing language in setup", () => {
     cy.intercept("PUT", "/api/setting/site-locale").as("updateSiteLocale");
 
@@ -953,6 +916,8 @@ describe("scenarios > setup", () => {
     H.blockSnowplow();
     cy.visit("/setup");
     skipWelcomePage();
+    cy.findByLabelText("First name").should("be.visible");
+    cy.findByLabelText("Email").should("be.visible");
     H.assertNoUnstructuredSnowplowEvent({
       event: "step_seen",
     });

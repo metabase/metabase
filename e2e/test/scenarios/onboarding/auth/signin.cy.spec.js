@@ -14,11 +14,6 @@ describe("scenarios > auth > signin", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("should redirect to /auth/login", () => {
-    cy.visit("/");
-    cy.url().should("contain", "auth/login");
-  });
-
   it("should redirect to / when logged in", () => {
     cy.signInAsAdmin();
     cy.visit("/auth/login");
@@ -28,6 +23,7 @@ describe("scenarios > auth > signin", () => {
 
   it("should display an error for incorrect passwords", () => {
     cy.visit("/");
+    cy.location("pathname").should("eq", "/auth/login");
     cy.findByLabelText("Email address").type(admin.email);
     cy.findByLabelText("Password").type("INVALID" + admin.password);
     cy.button("Sign in").click();
@@ -46,30 +42,17 @@ describe("scenarios > auth > signin", () => {
       .should("be.visible");
   });
 
-  it("should greet users after successful login", () => {
-    cy.visit("/auth/login");
-    cy.findByLabelText("Email address").should("be.focused").type(admin.email);
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByTestId("greeting-message").should("contain.text", "Bobby");
-  });
-
   it("should allow login regardless of login email case", () => {
     cy.visit("/auth/login");
-    cy.findByLabelText("Email address").type(admin.email.toUpperCase());
+    cy.findByLabelText("Email address")
+      .should("be.focused")
+      .type(admin.email.toUpperCase());
+    cy.findByRole("checkbox", { name: "Remember me" }).should("be.checked");
+    cy.findByLabelText("Remember me").click();
+    cy.findByRole("checkbox", { name: "Remember me" }).should("not.be.checked");
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
     cy.findByTestId("greeting-message").should("contain.text", "Bobby");
-  });
-
-  it("should allow toggling of Remember Me", () => {
-    cy.visit("/auth/login");
-
-    // default initial state
-    cy.findByRole("checkbox").should("be.checked");
-
-    cy.findByLabelText("Remember me").click();
-    cy.findByRole("checkbox").should("not.be.checked");
   });
 
   it("should redirect to an unsaved question after login", () => {

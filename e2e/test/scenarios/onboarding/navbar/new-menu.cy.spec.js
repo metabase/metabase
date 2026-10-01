@@ -15,7 +15,8 @@ describe("metabase > scenarios > navbar > new menu", () => {
       cy.findByText("Question").click();
     });
 
-    cy.url("should.contain", "/question/notebook#");
+    cy.location("pathname").should("eq", "/question/notebook");
+    H.miniPicker().should("be.visible");
   });
 
   it("question item opens SQL query editor", () => {
@@ -23,7 +24,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
       cy.findByText("SQL query").click();
     });
 
-    cy.url("should.contain", "/question#");
+    cy.location("pathname").should("eq", "/question");
     H.NativeEditor.get().should("be.visible");
   });
 });

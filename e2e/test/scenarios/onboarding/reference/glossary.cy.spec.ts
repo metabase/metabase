@@ -121,16 +121,12 @@ describe("data reference > glossary", () => {
     });
   });
 
-  it("creates a new definition and makes POST /api/glossary with trimmed values", () => {
+  it("creates, updates, and deletes definitions with trimmed API values", () => {
     visitGlossary();
     executeCreateGlossaryTermFlow();
-  });
 
-  it("updates an existing definition and makes PUT /api/glossary/:id", () => {
     executeUpdateGlossaryTermFlow(visitGlossary);
-  });
 
-  it("deletes an existing definition and makes DELETE /api/glossary/:id", () => {
     executeDeleteGlossaryTermFlow(visitGlossary);
   });
 });
@@ -149,22 +145,18 @@ describe("data studio > glossary", () => {
     cy.findByRole("heading", { name: "Glossary" }).should("be.visible");
   }
 
-  it("should allow creating a new definition and trigger tracking event", () => {
+  it("should create, update, and delete definitions and track each operation", () => {
     visitDataStudioGlossary();
     executeCreateGlossaryTermFlow();
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_glossary_term_created",
     });
-  });
 
-  it("should allow updating an existing definition and trigger tracking event", () => {
     executeUpdateGlossaryTermFlow(visitDataStudioGlossary);
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_glossary_term_updated",
     });
-  });
 
-  it("should allow deleting an existing definition and trigger tracking event", () => {
     executeDeleteGlossaryTermFlow(visitDataStudioGlossary);
     H.expectUnstructuredSnowplowEvent({
       event: "data_studio_glossary_term_deleted",
