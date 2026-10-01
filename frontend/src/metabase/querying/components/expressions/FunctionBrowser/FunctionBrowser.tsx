@@ -1,6 +1,7 @@
 import {
   type ChangeEvent,
   Children,
+  Fragment,
   type MouseEvent,
   type ReactNode,
   useCallback,
@@ -95,7 +96,7 @@ export function FunctionBrowser({
           <EmptyState message={t`Didn't find any results`} icon="search" />
         )}
         {filteredClauses.map((group) => (
-          <>
+          <Fragment key={group.displayName}>
             <Text size="sm" p="lg" pb="sm" c="text-secondary" fw="bold">
               {group.displayName}
             </Text>
@@ -106,7 +107,7 @@ export function FunctionBrowser({
                 clause={clause}
               />
             ))}
-          </>
+          </Fragment>
         ))}
       </Flex>
     </Flex>

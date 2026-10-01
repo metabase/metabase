@@ -3,6 +3,7 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -24,6 +25,10 @@ import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import {
+  ExpressionSidebarPanel,
+  useExpressionSidebarHost,
+} from "../ExpressionSidebar";
 import { FunctionBrowser } from "../FunctionBrowser";
 import { LayoutMain, LayoutSidebar } from "../Layout";
 
@@ -58,6 +63,10 @@ export type EditorProps = {
   /** Off outside a popover: the guard swallows clicks page-wide. */
   withPopoverExitGuard?: boolean;
 
+  /** Put the sidebar in the host's slot when it offers one, not in the layout. */
+  withHostedSidebar?: boolean;
+  initialSource?: string;
+
   onChange: (
     clause: Lib.ExpressionClause | null,
     error: ExpressionError | null,
@@ -69,6 +78,8 @@ export type EditorProps = {
 export type EditorChangeMeta = {
   /** False for the initial format pass, so autosaving callers can skip it. */
   hasSourceChanged: boolean;
+  /** The raw text, which a caller can stash to restore later. */
+  source: string;
 };
 
 const EDITOR_WIDGET_HEIGHT = 220;
@@ -91,6 +102,7 @@ export function Editor(props: EditorProps) {
     onCloseEditor,
     initialExpressionClause,
     withPopoverExitGuard = true,
+    withHostedSidebar = false,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -98,8 +110,24 @@ export function Editor(props: EditorProps) {
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
-  const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
-    useDisclosure();
+  const [isLocalBrowserOpen, { toggle: toggleLocalBrowser }] = useDisclosure();
+
+  const sidebarHost = useExpressionSidebarHost();
+  const host = withHostedSidebar ? sidebarHost : null;
+
+  const isFunctionBrowserOpen = host
+    ? host.openSidebar === "functions"
+    : isLocalBrowserOpen;
+
+  const toggleFunctionBrowser = useCallback(() => {
+    if (host) {
+      host.setOpenSidebar(
+        host.openSidebar === "functions" ? null : "functions",
+      );
+    } else {
+      toggleLocalBrowser();
+    }
+  }, [host, toggleLocalBrowser]);
 
   const {
     source,
@@ -175,6 +203,15 @@ export function Editor(props: EditorProps) {
     setIsSnippetActive(hasActiveSnippet(update.state));
   }, []);
 
+  const functionBrowser = (
+    <FunctionBrowser
+      expressionMode={expressionMode}
+      reportTimezone={reportTimezone}
+      query={query}
+      onClauseClick={handleFunctionBrowserClauseClick}
+    />
+  );
+
   return (
     <>
       <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>
@@ -240,16 +277,22 @@ export function Editor(props: EditorProps) {
         {portal}
       </LayoutMain>
 
-      {isFunctionBrowserOpen && (
-        <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
-          <FunctionBrowser
-            expressionMode={expressionMode}
-            reportTimezone={reportTimezone}
-            query={query}
-            onClauseClick={handleFunctionBrowserClauseClick}
-          />
-        </LayoutSidebar>
-      )}
+      {isFunctionBrowserOpen &&
+        (host?.container ? (
+          createPortal(
+            <ExpressionSidebarPanel
+              title={t`Custom expression functions`}
+              onClose={() => host.setOpenSidebar(null)}
+            >
+              {functionBrowser}
+            </ExpressionSidebarPanel>,
+            host.container,
+          )
+        ) : (
+          <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
+            {functionBrowser}
+          </LayoutSidebar>
+        ))}
 
       {showModal && (
         <CloseModal
@@ -263,6 +306,7 @@ export function Editor(props: EditorProps) {
 
 function useExpression({
   clause,
+  initialSource: seedSource,
   expressionMode,
   stageIndex,
   expressionIndex,
@@ -330,7 +374,10 @@ function useExpression({
       setSource(source);
       setIsValidated(false);
 
-      const meta = { hasSourceChanged: source !== initialSourceRef.current };
+      const meta = {
+        hasSourceChanged: source !== initialSourceRef.current,
+        source,
+      };
 
       if (source.trim() === "") {
         debouncedOnChange.cancel();
@@ -369,7 +416,15 @@ function useExpression({
   );
 
   useMount(() => {
-    // format the source when the component mounts
+    if (seedSource != null) {
+      // Restored text may not compile; validate so its errors show at once.
+      setIsFormatting(false);
+      setInitialSource(seedSource);
+      initialSourceRef.current = seedSource;
+      handleUpdate(seedSource, true);
+      return;
+    }
+
     formatExpression({
       initial: clause === initialClause,
     });
