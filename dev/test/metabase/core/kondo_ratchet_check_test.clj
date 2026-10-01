@@ -18,24 +18,19 @@
 
 (defn- report-lines
   "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
-  [[kondo-ratchet/read-ratchets]] adds to a partial file. `ratchets` may carry `:discouraged-var-actual` /
-  `:discouraged-namespace-actual` (default `{}`) as a test-only convenience, the same way it carries
-  `:module-counts` for the module ratchets."
+  [[kondo-ratchet/read-ratchets]] adds to a partial file. `ratchets` may also carry the module ratchets as
+  `:module-counts` and the `:attribute` result as `:attribution`."
   ([ratchets occurrences text]
    (report-lines ratchets occurrences {} text))
   ([ratchets occurrences config-actual text]
    (report-lines ratchets occurrences config-actual {} text))
   ([ratchets occurrences config-actual module-actual text]
-   (let [module-ratchets               (:module-counts ratchets {})
-         discouraged-var-actual        (:discouraged-var-actual ratchets {})
-         discouraged-namespace-actual  (:discouraged-namespace-actual ratchets {})]
+   (let [module-ratchets (:module-counts ratchets {})
+         attribution     (merge {:actual {}, :unresolved []} (:attribution ratchets))]
      (vec (kondo-ratchet/check-report (-> {:config-counts {}, :comment-exempt #{}}
                                           (merge ratchets)
-                                          (dissoc :module-counts :discouraged-var-actual :discouraged-namespace-actual))
-                                      module-ratchets occurrences
-                                      {:discouraged-var-actual       discouraged-var-actual
-                                       :discouraged-namespace-actual discouraged-namespace-actual}
-                                      config-actual module-actual text
+                                          (dissoc :module-counts :attribution))
+                                      module-ratchets occurrences attribution config-actual module-actual text
                                       (kondo-ratchet/render-module-ratchets module-ratchets))))))
 
 (deftest ^:parallel clean-test
@@ -92,19 +87,25 @@
         "a lowered config count passes; growth and new entries are reported")))
 
 (deftest ^:parallel discouraged-counts-over-budget-test
-  (let [ratchets {:ignore-counts                 {}
-                  :discouraged-var-counts        {:a/x 1}
-                  :discouraged-namespace-counts  {:some.ns 1}
-                  :discouraged-var-actual        {:a/x 2, :a/new 1}
-                  :discouraged-namespace-actual  {:some.ns 3}}]
-    (is (= ["discouraged-var symbols over budget -- remove an ignore, or accept them all with `./bin/mage kondo-ratchets-shrink --seed :discouraged-var` and explain the increase in the PR:"
-            "  :a/new: 0 recorded, 1 actual"
-            "  :a/x: 1 recorded, 2 actual"
-            "discouraged-namespace symbols over budget -- remove an ignore, or accept them all with `./bin/mage kondo-ratchets-shrink --seed :discouraged-namespace` and explain the increase in the PR:"
-            "  :some.ns: 1 recorded, 3 actual"]
+  (let [ratchets {:ignore-counts                {}
+                  :discouraged-var-counts       {:a/x 1}
+                  :discouraged-namespace-counts {:some.ns 1}
+                  :attribution                  {:actual {:discouraged-var       {:a/x 2, :a/new 1}
+                                                          :discouraged-namespace {:some.ns 3}}}}]
+    (is (= ["discouraged-namespace symbols over budget -- remove an ignore, or seed the symbol's budget with `./bin/mage kondo-ratchets-shrink --seed <name below>` and explain the increase in the PR:"
+            "  :discouraged-namespace/some.ns: 1 recorded, 3 actual"
+            "discouraged-var symbols over budget -- remove an ignore, or seed the symbol's budget with `./bin/mage kondo-ratchets-shrink --seed <name below>` and explain the increase in the PR:"
+            "  :discouraged-var/a/new: 0 recorded, 1 actual"
+            "  :discouraged-var/a/x: 1 recorded, 2 actual"]
            (report-lines ratchets [] (kondo-ratchet/render ratchets)))
-        "each field reports over-budget symbols separately, suggesting a bulk re-seed of the whole linter
-         rather than one specific symbol")))
+        "each field reports its over-budget symbols by their own seed name")))
+
+(deftest ^:parallel unresolved-discouraged-finding-test
+  (let [ratchets {:ignore-counts {}
+                  :attribution   {:unresolved [{:file "f.clj", :line 3, :linters [:discouraged-var]}]}}]
+    (is (= ["ignored discouraged-var/namespace findings with no per-symbol budget -- they can't be budgeted, so remove the ignore or the usage:"
+            "  f.clj:3: :discouraged-var finding not resolved to a configured symbol"]
+           (report-lines ratchets [] (kondo-ratchet/render ratchets))))))
 
 (deftest ^:parallel module-over-budget-test
   (let [ratchets {:ignore-counts {}, :module-counts {:api-any 1, :friend-edges 3}}]
@@ -120,9 +121,10 @@
 
 (defn- check-with!
   "Output lines of [[kondo-ratchet/check]] against `ratchets` written to a temp file, with `occurrences`
-  standing in for the tree scan; `:thrown?` says whether it failed. `:test-counts` stands in for the test
-  ratchets file, defaulting to an empty (clean) budget; `{:disabled true}` there is honored."
-  [ratchets occurrences]
+  standing in for the tree scan and `opts` passed to it; `:thrown?` says whether it failed. `:test-counts`
+  stands in for the test ratchets file, defaulting to an empty (clean) budget; `{:disabled true}` there is
+  honored."
+  [ratchets occurrences & [opts]]
   (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
                                "kondo-ratchet-check-test"
                                (make-array java.nio.file.attribute.FileAttribute 0)))
@@ -149,7 +151,7 @@
         {:lines   (str/split-lines
                    (with-out-str
                      (try
-                       (kondo-ratchet/check)
+                       (kondo-ratchet/check opts)
                        (catch clojure.lang.ExceptionInfo _
                          (reset! thrown? true)))))
          :thrown? @thrown?}))))
@@ -215,6 +217,30 @@
            (check-with! ratchets occurrences))
         "a disabled test-ratchets file opts the test tree out of enforcement, even with an unbudgeted
          test-only linter")))
+
+(deftest check-discouraged-attribution-test
+  (let [ratchets    {:ignore-counts {}}
+        occurrences [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}]
+        attribution {:actual {}, :unattributed [], :unresolved []}
+        ;; check attributes the prod and test occurrences separately; only the prod ones carry anything here
+        attribute   (fn [m] {:attribute #(if (seq %) (merge attribution m) attribution)})]
+    (testing "without an :attribute, a discouraged-var ignore fails instead of counting as zero"
+      (is (=? {:lines   [#"attributing :discouraged-var/:discouraged-namespace ignores needs a kondo run.*"]
+               :thrown? true}
+              (check-with! ratchets occurrences))))
+    (testing "an ignore covering no finding warns without failing"
+      (is (= {:lines   ["WARNING: f.clj:1 ignores :discouraged-var but kondo reports no such finding under it -- probably stale (or in a reader branch kondo skips)"
+                        "ok -- 1 ignore forms within 0 policies"
+                        "ok -- 0 test ignore forms within 0 test policies"]
+              :thrown? false}
+             (check-with! ratchets occurrences
+                          (attribute {:unattributed [{:file "f.clj", :line 1, :linters [:discouraged-var]}]})))))
+    (testing "a finding with no configured symbol fails"
+      (is (=? {:lines   ["ignored discouraged-var/namespace findings with no per-symbol budget -- they can't be budgeted, so remove the ignore or the usage:"
+                         "  f.clj:2: :discouraged-var finding not resolved to a configured symbol"]
+               :thrown? true}
+              (check-with! ratchets occurrences
+                           (attribute {:unresolved [{:file "f.clj", :line 2, :linters [:discouraged-var]}]})))))))
 
 (deftest ^:parallel stale-test
   (let [ratchets {:ignore-counts {:a 5, :gone 2}}]

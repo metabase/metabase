@@ -1,21 +1,19 @@
 ;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts), and
 ;; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).
-;; :discouraged-var-counts / :discouraged-namespace-counts budget those two linters per symbol instead
-;; of per linter -- keyed by the symbol's own namespace/name, not the linter (`ee.` marks an enterprise
-;; namespace, so it can't collide with its OSS counterpart of the same shape).
+;; :discouraged-var-counts and :discouraged-namespace-counts budget those linters' inline ignores per
+;; symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened to `ee.`.
 ;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other
-;; budget is a plain non-negative integer.
+;; budget is a non-negative integer.
 ;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
-;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line;
-;; this is a per-linter policy, so it stays keyed by the plain linter name even for the two split above.
-;; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one; a bare
-;; `--seed :discouraged-var`/`:discouraged-namespace` seeds every symbol configured under it at once.
+;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
+;; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one;
+;; `--seed :discouraged-var/clojure.core/println` seeds one symbol; `--seed :discouraged-var` seeds all.
 ;; The workflow runs it on master, so feature branches do not need to record reductions.
 ;; Raising or adding a budget (`--seed` for inline ignores, a manual edit otherwise) or widening the
 ;; exemptions must be explained in the PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 ;;
-;; Test code's :ignore-counts has its own budget in .clj-kondo/ratchets-test.edn.
+;; Test code's inline ignores have their own budgets in .clj-kondo/ratchets-test.edn.
 ;; :config-counts stays here either way -- config.edn's scoping doesn't cleanly split.
 {:ignore-counts                {:aliased-namespace-symbol                                  3
                                 :clojure-lsp/unused-public-var                             7
@@ -49,21 +47,19 @@
                                 :unused-namespace                                          2
                                 :unused-private-var                                        5
                                 :unused-value                                              1}
- :discouraged-namespace-counts {:cheshire.core         4
+ :discouraged-namespace-counts {:cheshire.core         5
                                 :clojure.tools.logging 3
-                                :driver                2
                                 :grouper.core          1
                                 :legacy-mbql.normalize 14
                                 :legacy-mbql.schema    14
                                 :legacy-mbql.util      2
                                 :query-processor.store 8
-                                :toucan2.core          4
+                                :toucan2.core          3
                                 :util.malli.schema     2}
- :discouraged-var-counts       {:clojure.core/empty?                                   1
-                                :clojure.core/eval                                     6
-                                :clojure.core/printf                                   2
-                                :clojure.core/println                                  20
-                                :clojure.core/prn                                      3
+ :discouraged-var-counts       {:clojure.core/eval                                     7
+                                :clojure.core/print                                    1
+                                :clojure.core/println                                  10
+                                :clojure.core/prn                                      4
                                 :clojure.core/tap>                                     5
                                 :clojure.core/update-keys                              1
                                 :clojure.java.jdbc/get-connection                      2
@@ -71,15 +67,17 @@
                                 :clojure.string/lower-case                             2
                                 :clojure.string/upper-case                             1
                                 :clojurewerkz.quartzite.jobs/defjob                    1
-                                :compojure.core/context                                1
-                                :compojure.core/defroutes                              3
+                                :compojure.core/context                                2
+                                :compojure.core/defroutes                              4
                                 :compojure.core/routes                                 2
                                 :ee.transform-testing.expectations.empty/->Empty       1
                                 :ee.transform-testing.expectations.equals/->EqualsRows 1
+                                :ee.transform-testing.expectations.equals/->EqualsSql  1
                                 :entity-retrieval.core/search-unfiltered               1
                                 :entity-retrieval.mirror/search-unfiltered             1
                                 :lib.core/->legacy-MBQL                                10
                                 :lib.equality/find-column-indexes-for-refs             1
+                                :malli.core/explain                                    1
                                 :malli.core/explainer                                  1
                                 :malli.core/validate                                   1
                                 :malli.core/validator                                  1

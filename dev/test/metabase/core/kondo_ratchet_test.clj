@@ -325,13 +325,7 @@
         "seeding a linter with no ignores adds nothing")
     (is (= {}
            (kondo-ratchet/lowered-counts {:empty :unlimited} {} [:empty]))
-        "seeding an unlimited linter with no ignores converts it to a count, which is zero, so it goes"))
-  (testing "a bulk-zero seed writes even with no ignores, unlike an ordinary seed"
-    (is (= {:has-none 0, :has-some 3}
-           (kondo-ratchet/lowered-counts {} {:has-some 3} [:has-none :has-some] #{:has-none :has-some})))
-    (is (= {:has-some 3}
-           (kondo-ratchet/lowered-counts {} {:has-some 3} [:has-none :has-some] #{:has-some}))
-        "bulk-zero applies per linter -- :has-none isn't in it here, so it's dropped like an ordinary seed")))
+        "seeding an unlimited linter with no ignores converts it to a count, which is zero, so it goes")))
 
 (deftest ^:parallel unexercised-unlimited-test
   (let [ignore-counts {:z-empty :unlimited, :a-empty :unlimited, :used :unlimited, :bounded-empty 3}]
@@ -485,6 +479,73 @@
                (run!))
             "a second run changes nothing and still reports")))))
 
+(def ^:private no-findings
+  {:actual {}, :unattributed [], :unresolved []})
+
+(deftest ^:synchronized fix-refuses-without-attribution-test
+  (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
+                              "kondo-ratchet-test"
+                              (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets     (doto (io/file dir "ratchets.edn")
+                      (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules     (doto (io/file dir "module-ratchets.edn")
+                      (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)
+        occurrences [{:file "f.clj", :line 1, :linters [:discouraged-var]}]
+        before      (slurp budgets)]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:discouraged-var})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (testing "a discouraged-var ignore with no :attribute throws rather than reading as zero"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs a kondo run"
+                                (kondo-ratchet/fix!))))
+        (testing "an unresolved finding throws before writing"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"f.clj:1: :discouraged-var finding not resolved"
+                                (kondo-ratchet/fix! {:attribute (constantly
+                                                                 (assoc no-findings :unresolved occurrences))}))))
+        (is (= before (slurp budgets)))))))
+
+(deftest ^:synchronized fix-splits-discouraged-counts-by-file-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)
+        occurrences  [{:file "src/f.clj", :line 1, :linters [:discouraged-var]}
+                      {:file "test/g.clj", :line 1, :linters [:discouraged-var]}]
+        ;; stands in for kondo: one finding per prod occurrence, two per test occurrence
+        attribute    (fn [occs]
+                       (assoc no-findings :actual {:discouraged-var {:a/x (reduce + (for [{:keys [file]} occs]
+                                                                                      (if (str/starts-with? file "test/")
+                                                                                        2
+                                                                                        1)))}}))]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters          (constantly #{:discouraged-var})
+                                  kondo-ratchet/discouraged-count-keys (constantly #{:a/x})
+                                  kondo-ratchet/scan                   (constantly occurrences)
+                                  kondo-ratchet/config-suppressions    (constantly {})
+                                  kondo-ratchet/module-escape-hatches  (constantly {})]
+        (is (= ["seeded :a/x at 1"
+                "seeded :a/x at 2"
+                (str "wrote " (.getPath budgets))
+                (str "wrote " (.getPath test-budgets))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed      ":discouraged-var/a/x"
+                                                                   :attribute attribute}))))
+            "each file's symbol budget comes from attributing that file's own occurrences")
+        (is (=? {:discouraged-var-counts {:a/x 1}} (kondo-ratchet/read-ratchets)))
+        (is (=? {:discouraged-var-counts {:a/x 2}}
+                (binding [kondo-ratchet/*ratchets-file* (.getPath test-budgets)]
+                  (kondo-ratchet/read-ratchets))))))))
+
 (deftest ^:synchronized fix-drops-stale-flat-discouraged-entry-test
   (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
                               "kondo-ratchet-test"
@@ -511,9 +572,8 @@
         (is (= [(str "dropped stale :ignore-counts entry for :discouraged-var in " (.getPath budgets)
                      " (tracked per-symbol in :discouraged-var-counts now)")
                 (str "wrote " (.getPath budgets))]
-               (str/split-lines (with-out-str (kondo-ratchet/fix!))))
-            "the stale flat entry is dropped without needing --seed; no real attribution ran, so the
-             per-symbol field stays empty rather than being guessed at")
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:attribute (constantly no-findings)}))))
+            "the stale flat entry is dropped without needing --seed")
         (is (= {:ignore-counts                {:a 1}
                 :discouraged-var-counts       {}
                 :discouraged-namespace-counts {}
@@ -711,22 +771,31 @@
          (kondo-ratchet/discouraged-in-ignore-counts {:discouraged-var 132, :a 1, :discouraged-namespace 68})))
   (is (= #{} (kondo-ratchet/discouraged-in-ignore-counts {:a 1, :b 2}))))
 
-(deftest ^:parallel resolve-seed-test
-  (testing "an ordinary linter seeds just itself in :ignore-counts, never at zero"
-    (is (= {:field :ignore-counts, :seeded [:some-linter], :bulk-zero #{}}
-           (#'kondo-ratchet/resolve-seed ":some-linter"))))
-  (testing "a bare discouragement-linter name targets its own count field and expands to every configured
-            symbol, all bulk-zero"
-    (let [{:keys [field seeded bulk-zero]} (#'kondo-ratchet/resolve-seed ":discouraged-var")]
-      (is (= :discouraged-var-counts field))
-      (is (= (set seeded) bulk-zero))
-      (is (= (kondo-ratchet/discouraged-count-keys :discouraged-var) bulk-zero)))
-    (let [{:keys [field seeded bulk-zero]} (#'kondo-ratchet/resolve-seed ":discouraged-namespace")]
-      (is (= :discouraged-namespace-counts field))
-      (is (= (set seeded) bulk-zero))
-      (is (= (kondo-ratchet/discouraged-count-keys :discouraged-namespace) bulk-zero))))
-  (testing "nil seeds nothing, targeting :ignore-counts"
-    (is (= {:field :ignore-counts, :seeded [], :bulk-zero #{}} (#'kondo-ratchet/resolve-seed nil)))))
+(deftest resolve-seed-test
+  (mt/with-dynamic-fn-redefs [kondo-ratchet/discouraged-count-keys (constantly #{:a/x :ee.b/y})]
+    (testing "an ordinary linter seeds itself in :ignore-counts"
+      (is (= {:ignore-counts [:some-linter]}
+             (#'kondo-ratchet/resolve-seed ":some-linter"))))
+    (testing "a bare discouragement linter seeds every configured symbol in its own field"
+      (is (= {:discouraged-var-counts [:a/x :ee.b/y]}
+             (#'kondo-ratchet/resolve-seed ":discouraged-var"))))
+    (testing "a symbol suffix seeds that symbol, named either way"
+      (is (= {:discouraged-var-counts [:ee.b/y]}
+             (#'kondo-ratchet/resolve-seed ":discouraged-var/metabase-enterprise.b/y")
+             (#'kondo-ratchet/resolve-seed ":discouraged-var/ee.b/y"))))
+    (testing "an unconfigured or empty symbol suffix throws instead of seeding"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"a/nope\" is not a symbol configured under :discouraged-var"
+                            (#'kondo-ratchet/resolve-seed ":discouraged-var/a/nope")))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"\" is not a symbol configured under :discouraged-var"
+                            (#'kondo-ratchet/resolve-seed ":discouraged-var/"))))
+    (testing "nil seeds nothing"
+      (is (= {} (#'kondo-ratchet/resolve-seed nil))))))
+
+(deftest ^:parallel discouraged-count-keys-collision-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #":discouraged-var symbols a/x, metabase.a/x share the ratchet key :a/x"
+                        (kondo-ratchet/discouraged-count-keys
+                         :discouraged-var
+                         '{:linters {:discouraged-var {a/x {}, metabase.a/x {}}}}))))
 
 (defn- git-in
   "Run git in `dir`, failing the test on a nonzero exit."
@@ -1006,57 +1075,65 @@
                                   i          (range n)]
                               {:file "f.clj", :line (inc i), :linters [linter], :justified? false})
                             [{:file "g.clj", :line 1, :linters [:polite], :justified? true}])
-        unattributed [{:file "h.clj", :line 9, :linters [:discouraged-var]}]]
+        attribution {:actual       {:discouraged-var       {:dv-lower 2, :dv-over 4, :dv-same 3, :dv-new 1}
+                                    :discouraged-namespace {:dn-over 3}}
+                     :unattributed [{:file "h.clj", :line 9, :linters [:discouraged-var]}]}]
     (is (= ["seeded :new at 9"
             "WARNING: :void has no inline ignores -- nothing to seed"
-            "seeded :bulk at 0"
             "dropped :gone (no ignores left)"
             "lowered :lower 5 -> 3"
             "WARNING: :over is over budget (5 recorded, 7 actual) -- remove ignores, or accept them all with `--seed :over`"
             "dropped :zero (no ignores left)"
             "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
+            "WARNING: :dn-over is over budget (1 recorded, 3 actual) -- remove ignores, or accept them all with `--seed :discouraged-namespace/dn-over`"
             "dropped :dv-gone (no ignores left)"
             "lowered :dv-lower 5 -> 2"
-            "WARNING: :dv-over is over budget (1 recorded, 4 actual) -- remove ignores, or accept them all with `--seed :discouraged-var`"
-            "WARNING: :dn-over is over budget (1 recorded, 3 actual) -- remove ignores, or accept them all with `--seed :discouraged-namespace`"
-            "WARNING: h.clj:9 names [:discouraged-var] but no configured symbol's usage matches -- probably a stale ignore, check with `./bin/mage kondo-redundant-ignores`"
+            "WARNING: :dv-over is over budget (1 recorded, 4 actual) -- remove ignores, or accept them all with `--seed :discouraged-var/dv-over`"
+            "WARNING: :dv-new has 1 ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed :discouraged-var/dv-new`"
+            "WARNING: h.clj:9 ignores :discouraged-var but kondo reports no such finding under it -- probably stale (or in a reader branch kondo skips)"
             "dropped config :cfg-gone (no suppressions left)"
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
             "lowered module :api-any 2 -> 1"
             "WARNING: module :uses-any is over budget (1 recorded, 2 actual) -- remove one from .clj-kondo/config/modules/config.edn or raise the budget by hand"
             "WARNING: :comment-exempt is no longer needed for these linters: :polite -- delete the stale entries by hand"]
-           (kondo-ratchet/change-report {:ignore-counts  {:empty  :unlimited
-                                                          :free   :unlimited
-                                                          :gone   5
-                                                          :lower  5
-                                                          :over   5
-                                                          :polite 1
-                                                          :same   4
-                                                          :zero   0}
-                                         :discouraged-var-counts       {:dv-gone 2, :dv-lower 5, :dv-over 1, :dv-same 3}
+           (kondo-ratchet/change-report {:ignore-counts                {:empty  :unlimited
+                                                                        :free   :unlimited
+                                                                        :gone   5
+                                                                        :lower  5
+                                                                        :over   5
+                                                                        :polite 1
+                                                                        :same   4
+                                                                        :zero   0}
+                                         :discouraged-var-counts       {:dv-gone  2
+                                                                        :dv-lower 5
+                                                                        :dv-over  1
+                                                                        :dv-same  3}
                                          :discouraged-namespace-counts {:dn-over 1}
-                                         :config-counts  {:cfg-gone  2
-                                                          :cfg-lower 4
-                                                          :cfg-over  1
-                                                          :cfg-same  6}
-                                         :comment-exempt #{:lower :polite}}
+                                         :config-counts                {:cfg-gone  2
+                                                                        :cfg-lower 4
+                                                                        :cfg-over  1
+                                                                        :cfg-same  6}
+                                         :comment-exempt               #{:lower :polite}}
                                         {:api-any 2, :uses-any 1}
                                         occurrences
-                                        {:discouraged-var-actual       {:dv-lower 2, :dv-over 4, :dv-same 3}
-                                         :discouraged-namespace-actual {:dn-over 3}
-                                         :unattributed                 unattributed}
+                                        attribution
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
                                         {:api-any 1, :uses-any 2}
-                                        :ignore-counts
-                                        [:new :void :bulk]
-                                        #{:bulk}))
+                                        {:ignore-counts [:new :void]}))
         "untouched budgets (:same, :cfg-same, :dv-same), a used unlimited policy (:free), and a still-needed
          exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
-         ignores left; the empty unlimited policy (:empty) is kept and warned about; a bulk-zero seed
-         (:bulk) reports as seeded even with no ignores, unlike an ordinary seed (:void); discouraged-var
-         and discouraged-namespace report the same shape as :ignore-counts but suggest re-seeding the whole
-         linter, never one specific symbol; an unattributed occurrence gets its own warning")))
+         ignores left; the empty unlimited policy (:empty) is kept and warned about; per-symbol fields report
+         like :ignore-counts, suggesting a per-symbol seed; an unattributed ignore gets its own warning"))
+  (testing "a per-symbol seed reports under its own field only"
+    (is (= ["seeded :dv-new at 1"]
+           (kondo-ratchet/change-report {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
+                                        {}
+                                        []
+                                        {:actual {:discouraged-var {:dv-new 1}}}
+                                        {}
+                                        {}
+                                        {:discouraged-var-counts [:dv-new]})))))
 
 (deftest ^:parallel shrink-summary-test
   (is (= (str "{:a                      2 => 1\n"

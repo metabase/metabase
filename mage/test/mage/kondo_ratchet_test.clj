@@ -426,65 +426,90 @@
 ;;;; Per-symbol attribution
 ;;;; ---------------------------------------------------------------------------
 
-(def ^:private claim-nearest' #'kondo-ratchet/claim-nearest)
-(def ^:private usage-candidates' #'kondo-ratchet/usage-candidates)
-(def ^:private attribute-linter' #'kondo-ratchet/attribute-linter)
+(deftest disable-ignores-test
+  (let [content  (str "(ns a)\n"
+                      "#_ ;; why\n"
+                      "{:clj-kondo/ignore [:discouraged-var]}\n"
+                      "(eval 1)\n"
+                      "(defn f #^{:clj-kondo/ignore [:discouraged-var], :a {:b 1}} [] (eval 2))\n")
+        disabled (kondo-ratchet/disable-ignores content (dev-ratchet/ignore-matches content))]
+    (testing "only the ignore key changes, so every other character keeps its offset"
+      (is (= (str "(ns a)\n"
+                  "#_ ;; why\n"
+                  "{:ratchet/unignore [:discouraged-var]}\n"
+                  "(eval 1)\n"
+                  "(defn f #^{:ratchet/unignore [:discouraged-var], :a {:b 1}} [] (eval 2))\n")
+             disabled)))
+    (testing "the result no longer contains any ignore"
+      (is (empty? (dev-ratchet/ignore-matches disabled))))))
 
-(deftest claim-nearest-test
-  (testing "each occurrence claims the nearest candidate at or after its line, in order"
-    (is (= [[{:line 1} [1 'a]] [{:line 5} [7 'b]]]
-           (claim-nearest' [{:line 1} {:line 5}] [[1 'a] [7 'b]]))))
-  (testing "a claimed candidate can't be reused, even by a closer later occurrence"
-    (is (= [[{:line 1} [2 'a]] [{:line 2} [3 'b]]]
-           (claim-nearest' [{:line 1} {:line 2}] [[2 'a] [3 'b]]))))
-  (testing "an occurrence with no remaining candidate at or after its line is left unpaired"
-    (is (= [[{:line 10} nil]]
-           (claim-nearest' [{:line 10}] [[1 'a]]))))
-  (testing "no occurrences, no candidates"
-    (is (= [] (claim-nearest' [] [[1 'a]])))
-    (is (= [[{:line 1} nil]] (claim-nearest' [{:line 1}] [])))))
+(def ^:private eval-and-println
+  "Kondo's JSON output, as [[kondo-ratchet/attribute-discouraged]] takes it, for `a.clj` below with its ignores
+  disabled: `println` and `eval` flagged on line 3, and `eval` again on line 5."
+  {:findings [{:filename "a.clj", :row 3, :col 1, :type "discouraged-var"}
+              {:filename "a.clj", :row 3, :col 10, :type "discouraged-var"}
+              {:filename "a.clj", :row 5, :col 1, :type "discouraged-var"}
+              {:filename "a.clj", :row 5, :col 1, :type "unused-binding"}]
+   :analysis {:var-usages       [{:filename "a.clj", :row 3, :col 1, :to "clojure.core", :name "println"}
+                                 {:filename "a.clj", :row 3, :col 10, :to "clojure.core", :name "eval"}
+                                 {:filename "a.clj", :row 5, :col 1, :to "clojure.core", :name "eval"}]
+              :namespace-usages []}})
 
-(deftest usage-candidates-test
-  (let [usages-by-file {"f.clj" [{:to 'a.b, :name 'x, :row 3}
-                                 {:to 'a.b, :name 'y, :row 5}
-                                 {:to 'a.b, :name 'z, :row 1}]}]
-    (testing "only usages resolving to a known symbol count, sorted by row"
-      (is (= [[1 'a.b/z] [3 'a.b/x]]
-             (usage-candidates' usages-by-file "f.clj" #{'a.b/z 'a.b/x}))))
-    (testing "an unknown file or an empty known set yields no candidates"
-      (is (= [] (usage-candidates' usages-by-file "other.clj" #{'a.b/z})))
-      (is (= [] (usage-candidates' usages-by-file "f.clj" #{}))))
-    (testing "a namespace-usage (no :name) resolves by :to alone"
-      (is (= [[2 'clojure.tools.logging]]
-             (usage-candidates' {"f.clj" [{:to 'clojure.tools.logging, :row 2}]}
-                                "f.clj" #{'clojure.tools.logging}))))))
+(def ^:private a-clj
+  (str "(ns a)\n"
+       "#_{:clj-kondo/ignore [:discouraged-var]}\n"
+       "(println (eval 1))\n"
+       "#_{:clj-kondo/ignore [:discouraged-var :unused-binding]}\n"
+       "(eval 2)\n"
+       "#_{:clj-kondo/ignore [:discouraged-var]}\n"
+       "(inc 3)\n"))
 
-(deftest attribute-linter-test
-  (testing "a matched occurrence contributes 1 to its resolved symbol's per-symbol count; other linters on
-            the same occurrence don't matter"
-    (let [occurrences [{:file "f.clj", :line 3, :linters [:discouraged-var :unused-binding], :justified? true}]
-          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [[3 'a.b/x]])]
-      (is (= {:a.b/x 1} actual))
-      (is (= [] unattributed))))
-  (testing "an occurrence with no matching candidate contributes nothing and is reported unattributed"
-    (let [occurrences [{:file "f.clj", :line 3, :linters [:discouraged-var], :justified? false}]
-          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [])]
-      (is (= {} actual))
-      (is (= occurrences unattributed))))
-  (testing "occurrences not naming the linter aren't candidates for a claim"
-    (let [occurrences [{:file "f.clj", :line 1, :linters [:unused-binding], :justified? true}]
-          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [[1 'a.b/x]])]
-      (is (= {} actual))
-      (is (= [] unattributed))))
-  (testing "two occurrences of the same linter in one file each claim their own nearest candidate"
-    (let [occurrences [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}
-                       {:file "f.clj", :line 10, :linters [:discouraged-var], :justified? true}]
-          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [[2 'a.b/x] [12 'a.b/y]])]
-      (is (= {:a.b/x 1, :a.b/y 1} actual))
-      (is (= [] unattributed))))
-  (testing "two occurrences resolving to the same symbol both count toward it"
-    (let [occurrences [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}
-                       {:file "f.clj", :line 10, :linters [:discouraged-var], :justified? true}]
-          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [[2 'a.b/x] [12 'a.b/x]])]
-      (is (= {:a.b/x 2} actual))
-      (is (= [] unattributed)))))
+(def ^:private known
+  {:discouraged-var       #{'clojure.core/eval 'clojure.core/println}
+   :discouraged-namespace #{'clojure.tools.logging}})
+
+(deftest attribute-discouraged-test
+  (testing "each ignore counts once per distinct symbol it covers; one covering nothing is unattributed"
+    (is (= {:actual       {:discouraged-var       {:clojure.core/eval 2, :clojure.core/println 1}
+                           :discouraged-namespace {}}
+            :unattributed [{:file "a.clj", :line 6, :linters [:discouraged-var]}]
+            :unresolved   []}
+           (kondo-ratchet/attribute-discouraged {"a.clj" a-clj} eval-and-println known))))
+  (testing "two findings of one symbol under one ignore count once"
+    (is (= {:clojure.core/eval 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"b.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(do (eval 1) (eval 2))\n"}
+                {:findings [{:filename "b.clj", :row 2, :col 5, :type "discouraged-var"}
+                            {:filename "b.clj", :row 2, :col 14, :type "discouraged-var"}]
+                 :analysis {:var-usages [{:filename "b.clj", :row 2, :col 5, :to "clojure.core", :name "eval"}
+                                         {:filename "b.clj", :row 2, :col 14, :to "clojure.core", :name "eval"}]}}
+                known)
+               (get-in [:actual :discouraged-var])))))
+  (testing "the same ignore at the same place in two files counts once in each"
+    (is (= {:clojure.core/eval 2}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"b.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(eval 1)\n"
+                 "c.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(eval 1)\n"}
+                {:findings [{:filename "b.clj", :row 2, :col 1, :type "discouraged-var"}
+                            {:filename "c.clj", :row 2, :col 1, :type "discouraged-var"}]
+                 :analysis {:var-usages [{:filename "b.clj", :row 2, :col 1, :to "clojure.core", :name "eval"}
+                                         {:filename "c.clj", :row 2, :col 1, :to "clojure.core", :name "eval"}]}}
+                known)
+               (get-in [:actual :discouraged-var])))))
+  (testing "a namespace finding resolves through its namespace usage"
+    (is (= {:clojure.tools.logging 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"c.clj" "(ns c\n  (:require\n   #_{:clj-kondo/ignore [:discouraged-namespace]}\n   [clojure.tools.logging]))\n"}
+                {:findings [{:filename "c.clj", :row 4, :col 5, :type "discouraged-namespace"}]
+                 :analysis {:namespace-usages [{:filename "c.clj", :row 4, :col 5, :to "clojure.tools.logging"}]}}
+                known)
+               (get-in [:actual :discouraged-namespace])))))
+  (testing "a finding whose usage isn't a configured symbol is unresolved"
+    (is (= [{:file "a.clj", :line 3, :linters [:discouraged-var]}]
+           (:unresolved
+            (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
+                                                 eval-and-println
+                                                 (assoc known :discouraged-var #{'clojure.core/eval}))))))
+  (testing "findings in files outside `contents` are ignored"
+    (is (= {}
+           (get-in (kondo-ratchet/attribute-discouraged {} eval-and-println known) [:actual :discouraged-var])))))
