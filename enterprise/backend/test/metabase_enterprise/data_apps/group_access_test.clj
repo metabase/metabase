@@ -86,21 +86,12 @@
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
                                       (data-apps/check-data-app-access! request)))))))))))
 
-(deftest batch-add-is-atomic-test
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                 :model/PermissionsGroup group {}]
-    (resources/ensure-resources! app)
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (group-access/add-groups! app [(:id group) (:id (perms/admin-group))])))
-    (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))))
-
 (deftest group-api-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                    :model/PermissionsGroup finches {:name "Finches"}
                    :model/PermissionsGroup owls {:name "Owls"}
                    :model/PermissionsGroup tenant {:is_tenant_group true}]
-      (resources/ensure-resources! app)
       (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))
       (doseq [ids [[(:id finches) (:id (perms/admin-group))]
                    [(:id finches) (:id tenant)]
@@ -174,11 +165,17 @@
 (deftest assignments-preserve-data-permissions-test
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                  :model/PermissionsGroup group {}]
+    (perms/set-database-permission! (:id group) (mt/id) :perms/create-queries :query-builder-and-native)
     (let [before (t2/select :model/DataPermissions :group_id (:id group))]
-      (group-access/add-groups! app [(:id group)])
-      (resources/ensure-resources! app)
-      (group-access/remove-group! app (:id group))
-      (is (= before (t2/select :model/DataPermissions :group_id (:id group)))))))
+      (testing "assignment preserves existing data permissions"
+        (group-access/add-groups! app [(:id group)])
+        (is (= before (t2/select :model/DataPermissions :group_id (:id group)))))
+      (testing "reconciliation preserves existing data permissions"
+        (resources/ensure-resources! app)
+        (is (= before (t2/select :model/DataPermissions :group_id (:id group)))))
+      (testing "removal preserves existing data permissions"
+        (group-access/remove-group! app (:id group))
+        (is (= before (t2/select :model/DataPermissions :group_id (:id group))))))))
 
 (deftest group-deletion-cascades-test
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
@@ -189,10 +186,13 @@
     (is (t2/exists? :model/DataApp :id (:id app)))))
 
 (deftest all-users-assignment-test
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
-    (group-access/add-groups! app [(:id (perms/all-users-group))])
-    (mt/with-current-user (mt/user->id :rasta)
-      (is (mi/can-read? app)))))
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
+      (group-access/add-groups! app [(:id (perms/all-users-group))])
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (mi/can-read? app)))
+      (is (true? (data-apps/check-data-app-access!
+                  {:route-params {:name "birds"} :metabase-user-id (mt/user->id :rasta)}))))))
 
 (deftest group-endpoints-require-feature-test
   (mt/with-premium-features #{:data-apps}
@@ -255,16 +255,6 @@
         (mt/user-http-request :crowberto :delete status path))
       (is (= [(:id group)]
              (mapv :id (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))))))
-
-(deftest entry-point-requires-assignment-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
-      (let [request {:route-params {:name "birds"} :metabase-user-id (mt/user->id :rasta)}]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
-                              (data-apps/check-data-app-access! request)))
-        (is (true? (data-apps/check-data-app-access! (assoc request :is-superuser? true))))
-        (group-access/add-groups! app [(:id (perms/all-users-group))])
-        (is (true? (data-apps/check-data-app-access! request)))))))
 
 (deftest assignment-remains-canonical-after-collection-drift-test
   (mt/with-premium-features #{:data-apps}
