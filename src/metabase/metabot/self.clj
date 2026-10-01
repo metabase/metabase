@@ -360,8 +360,11 @@
           (and (= status 400) (re-find #"credit balance|API usage limits" (str message))))
       :billing
 
-      (= status 429)      :rate-limit
-      (#{401 403} status) :auth)))
+      (= status 429)
+      :rate-limit
+
+      (or (= status 401) (= "permission_error" error-type))
+      :auth)))
 
 (defn byok-provider-error
   "A user-facing `{:message :error-code}` for a provider failure that the customer can fix on their side, or nil.

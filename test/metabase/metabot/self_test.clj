@@ -2294,7 +2294,11 @@
         "ai_provider_rate_limit" "anthropic"  429 {:error {:type "rate_limit_error" :message "Too many requests."}}
         "ai_provider_rate_limit" "openai"     429 {:error {:code "rate_limit_exceeded" :message "Rate limit reached."}}
         "ai_provider_auth"       "anthropic"  401 {:error {:type "authentication_error" :message "invalid x-api-key"}}
-        "ai_provider_auth"       "openai"     403 {:error {:message "Country, region, or territory not supported"}}
+        "ai_provider_auth"       "anthropic"  403 {:error {:type    "permission_error"
+                                                           :message "Your API key does not have permission to use the specified resource."}}
+        nil                      "openai"     403 {:error {:type    "request_forbidden"
+                                                           :code    "unsupported_country_region_territory"
+                                                           :message "Country, region, or territory not supported"}}
         nil                      "anthropic"  400 {:error {:type    "invalid_request_error"
                                                            :message "max_tokens: Input should be greater than 0"}}
         nil                      "anthropic"  529 {:error {:type "overloaded_error" :message "Overloaded"}}))
