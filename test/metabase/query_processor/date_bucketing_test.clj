@@ -1023,6 +1023,20 @@
                       (map first)
                       (take 3)))))))))
 
+(deftest week-of-year-label-matches-query-test
+  (mt/test-driver :h2
+    (doseq [start-of-week [:sunday :monday]
+            date          ["2018-12-30" "2019-01-01"]]
+      (mt/with-temporary-setting-values [start-of-week start-of-week]
+        (testing (str start-of-week " " date)
+          (let [mp         (mt/metadata-provider)
+                query      (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                created-at (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :week-of-year)
+                filter     (lib/= created-at date)
+                query      (-> query (lib/filter filter) (lib/breakout created-at))]
+            (is (= [(lib/filter-args-display-name query -1 filter)]
+                   (map (comp str first) (mt/rows (qp/process-query query)))))))))))
+
 ;;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;;; difference is how the beginning of hte month is represented, since we always return times with our dates
 
