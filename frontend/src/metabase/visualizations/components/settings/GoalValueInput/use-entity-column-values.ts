@@ -1,16 +1,12 @@
 import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
-import {
-  type GoalValueResult,
-  resolveGoalValue,
-  toReferencedEntity,
-} from "metabase/viz-core";
+import { resolveGoalValue, toReferencedEntity } from "metabase/viz-core";
 import type {
   DatasetData,
   DatasetQuery,
   GoalForeignEntityRef,
 } from "metabase-types/api";
 
-type ResolveColumnValue = (column: string) => GoalValueResult;
+type ResolveColumnValue = (column: string) => number | null;
 
 export function useEntityColumnValues(
   datasetQuery: DatasetQuery | undefined,
@@ -32,9 +28,9 @@ export function useEntityColumnValues(
 
   return (column) => {
     if (entity == null) {
-      return { value: null };
+      return null;
     }
 
-    return resolveGoalValue(sourceData, { ...entity, column });
+    return resolveGoalValue(sourceData, { ...entity, column }).value;
   };
 }

@@ -14,11 +14,10 @@ import {
 } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import { formatValue } from "metabase/value-formatting";
 import type { GoalValueResult } from "metabase/viz-core";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import { ICON_BUTTON_SIZE } from "../../constants";
-import { formatGoalValue } from "../utils";
 
 import S from "./GoalValuePill.module.css";
 
@@ -26,7 +25,6 @@ type Props = HTMLAttributes<HTMLDivElement> & {
   isMenuOpen: boolean;
   resolved: GoalValueResult;
   tooltip: string | null;
-  visualizationSettings: VisualizationSettings | undefined;
   onOpenMenu: () => void;
   onOpenSource?: () => void;
   onRemove: () => void;
@@ -39,7 +37,6 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
       isMenuOpen,
       resolved,
       tooltip,
-      visualizationSettings,
       onOpenMenu,
       onOpenSource,
       onRemove,
@@ -110,8 +107,9 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
               <Loader size="xs" />
             ) : (
               <Ellipsified fw={500} showTooltip={false}>
-                {formatGoalValue(resolved, visualizationSettings) ??
-                  EMPTY_CELL_PLACEHOLDER}
+                {resolved.value != null
+                  ? formatValue(resolved.value)
+                  : EMPTY_CELL_PLACEHOLDER}
               </Ellipsified>
             )}
           </UnstyledButton>

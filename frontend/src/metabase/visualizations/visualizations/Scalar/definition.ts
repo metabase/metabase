@@ -61,7 +61,6 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
         canRemoveAll: true,
         data,
         datasetQuery: card.dataset_query,
-        visualizationSettings: card.visualization_settings,
       }),
     },
     ...columnSettings({

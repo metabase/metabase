@@ -41,8 +41,5 @@ export function useReferencedEntity(
     return [];
   }, [entity?.type, card, measure]);
 
-  const visualizationSettings =
-    entity?.type === "card" ? card?.visualization_settings : undefined;
-
-  return { name, url, columns, visualizationSettings, isLoading, hasError };
+  return { name, url, columns, isLoading, hasError };
 }

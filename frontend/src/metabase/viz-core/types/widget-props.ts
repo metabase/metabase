@@ -55,7 +55,6 @@ export type ChartSettingGoalValueProps = {
   placeholder?: string;
   showSelfColumns?: boolean;
   value: GoalValue | null | undefined;
-  visualizationSettings?: VisualizationSettings;
   onChange: (value: GoalValue | undefined) => void;
 };
 
@@ -74,7 +73,6 @@ export type ChartSettingSegmentsEditorProps = {
   data?: DatasetData;
   datasetQuery?: DatasetQuery;
   value: GoalSegment[];
-  visualizationSettings?: VisualizationSettings;
   onChange: (value: GoalSegment[]) => void;
 };
 

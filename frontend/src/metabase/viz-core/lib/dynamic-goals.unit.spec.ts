@@ -52,7 +52,7 @@ describe("resolveGoalValue", () => {
     const data = createMockDatasetData({ cols, rows });
     const goalValue = resolveGoalValue(data, "goal");
 
-    expect(goalValue).toEqual({ value: 42, column: cols[1] });
+    expect(goalValue).toEqual({ value: 42 });
   });
 
   it.each([
@@ -99,7 +99,6 @@ describe("resolveGoalValue", () => {
 
     expect(goalValue).toEqual({
       value: 123,
-      column: expect.objectContaining({ name: "total" }),
     });
   });
 
@@ -122,7 +121,6 @@ describe("resolveGoalValue", () => {
 
     expect(goalValue).toEqual({
       value: 55,
-      column: expect.objectContaining({ name: "avg" }),
     });
   });
 

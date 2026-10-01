@@ -1,13 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  act,
-  fireEvent,
-  renderWithProviders,
-  screen,
-  within,
-} from "__support__/ui";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
@@ -17,11 +10,10 @@ import {
 
 import { ChartSettingGoalValue } from "./ChartSettingGoalValue";
 
-const COUNT_COLUMN = createMockColumn({
-  name: "count",
-  base_type: "type/Integer",
+const DATA = createMockDatasetData({
+  cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+  rows: [[10]],
 });
-const DATA = createMockDatasetData({ cols: [COUNT_COLUMN], rows: [[10]] });
 
 const DYNAMIC_TRIGGER = { name: "Pick a dynamic value" };
 
@@ -143,26 +135,6 @@ describe("ChartSettingGoalValue", () => {
       expect(
         screen.getByRole("menuitem", { name: /Value from another question/ }),
       ).toBeInTheDocument();
-    });
-
-    it("formats a self reference with the question's column settings", () => {
-      renderWithProviders(
-        <ChartSettingGoalValue
-          data={DATA}
-          id="goal"
-          isDynamic
-          value="count"
-          visualizationSettings={{
-            column_settings: {
-              [getColumnKey(COUNT_COLUMN)]: { prefix: "~" },
-            },
-          }}
-          onChange={jest.fn()}
-        />,
-      );
-
-      const pill = screen.getByRole("button", { name: "Change value source" });
-      expect(within(pill).getByText("~10")).toBeInTheDocument();
     });
   });
 });

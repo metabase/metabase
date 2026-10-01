@@ -32,7 +32,6 @@ export const ChartSettingSegmentsEditor = ({
   data,
   datasetQuery,
   value: segments,
-  visualizationSettings,
   onChange,
   canRemoveAll = false,
 }: ChartSettingSegmentsEditorProps) => {
@@ -100,7 +99,6 @@ export const ChartSettingSegmentsEditor = ({
                   placeholder={t`Min`}
                   referencedEntities={referencedEntities}
                   value={segment.min}
-                  visualizationSettings={visualizationSettings}
                   onChange={(min) => updateSegment(index, { min })}
                 />
 
@@ -116,7 +114,6 @@ export const ChartSettingSegmentsEditor = ({
                   placeholder={t`Max`}
                   referencedEntities={referencedEntities}
                   value={segment.max}
-                  visualizationSettings={visualizationSettings}
                   onChange={(max) => updateSegment(index, { max })}
                 />
               </Group>

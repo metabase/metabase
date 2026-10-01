@@ -65,7 +65,6 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
       datasetQuery: card.dataset_query,
       isDynamic: isDynamicGoalSetting(card.display, "graph.goal_value"),
       showSelfColumns: false,
-      visualizationSettings: card.visualization_settings,
     }),
   },
   "graph.goal_label": {

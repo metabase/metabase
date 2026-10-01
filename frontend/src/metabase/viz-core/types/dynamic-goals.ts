@@ -1,7 +1,6 @@
 import type {
   Card,
   CardId,
-  DatasetColumn,
   DatasetData,
   MeasureId,
   ReferencedEntityType,
@@ -48,7 +47,6 @@ export type GoalRefError =
 
 export type GoalValueResult = {
   value: number | null;
-  column?: DatasetColumn;
   error?: GoalRefError;
   isUnanswered?: boolean;
 };
