@@ -7,7 +7,7 @@ databaseChangeLog:
       comment: Assign existing permission groups to data apps
       changes:
         - createTable:
-            tableName: data_app_group
+            tableName: data_app_group_assignment
             remarks: Permission group assignments for data apps
             columns:
               - column:
@@ -17,7 +17,7 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
                     nullable: false
-                    primaryKeyName: pk_data_app_group
+                    primaryKeyName: pk_data_app_group_assignment
               - column:
                   name: data_app_id
                   remarks: Data app receiving access through the assigned group
@@ -37,9 +37,9 @@ databaseChangeLog:
       comment: Prevent duplicate data app group assignments
       changes:
         - addUniqueConstraint:
-            tableName: data_app_group
+            tableName: data_app_group_assignment
             columnNames: data_app_id, permission_group_id
-            constraintName: uq_data_app_group
+            constraintName: uq_data_app_group_assignment
 
   - changeSet:
       id: v65.2026-09-16T00:00:02
@@ -47,8 +47,8 @@ databaseChangeLog:
       comment: Index data app assignments by permission group
       changes:
         - createIndex:
-            tableName: data_app_group
-            indexName: idx_data_app_group_group
+            tableName: data_app_group_assignment
+            indexName: idx_data_app_group_assignment_group
             columns:
               - column:
                   name: permission_group_id
@@ -59,11 +59,11 @@ databaseChangeLog:
       comment: Remove group assignments when a data app is deleted
       changes:
         - addForeignKeyConstraint:
-            baseTableName: data_app_group
+            baseTableName: data_app_group_assignment
             baseColumnNames: data_app_id
             referencedTableName: data_app
             referencedColumnNames: id
-            constraintName: fk_data_app_group_app
+            constraintName: fk_data_app_group_assignment_app
             onDelete: CASCADE
 
   - changeSet:
@@ -72,11 +72,11 @@ databaseChangeLog:
       comment: Remove app assignments when a permission group is deleted
       changes:
         - addForeignKeyConstraint:
-            baseTableName: data_app_group
+            baseTableName: data_app_group_assignment
             baseColumnNames: permission_group_id
             referencedTableName: permissions_group
             referencedColumnNames: id
-            constraintName: fk_data_app_group_group
+            constraintName: fk_data_app_group_assignment_group
             onDelete: CASCADE
 
   - changeSet:

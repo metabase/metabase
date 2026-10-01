@@ -129,7 +129,7 @@ middleware's lookup doesn't pull in route code.
 
 Each app owns a resource collection containing its saved questions, action models, and table-sourced metrics.
 Administrators assign existing internal permission groups through `/api/apps/:slug/groups`. Assignments live in
-`data_app_group` and stay local to the instance. Repository sync preserves them while the app row exists.
+`data_app_group_assignment` and stay local to the instance. Repository sync preserves them while the app row exists.
 
 Membership in any assigned group grants app access. Administrators can access every app. The list API hides
 unassigned apps from other users, and metadata, bundle, and HTML entry-point requests check the same assignment.
@@ -155,4 +155,4 @@ expires; additions still require the Data Apps feature.
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                             |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                       |
 
-`group_access.clj` manages assignments. `models/data_app_group.clj` defines the local association model.
+`group_access.clj` manages assignments. `models/data_app_group_assignment.clj` defines the local association model.

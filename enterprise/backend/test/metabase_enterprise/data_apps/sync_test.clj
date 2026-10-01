@@ -71,10 +71,10 @@
       (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
         (data-app.sync/import-from-snapshot! (snapshot files))
         (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp :name "sales")
-              assignment (t2/insert-returning-instance! :model/DataAppGroup
+              assignment (t2/insert-returning-instance! :model/DataAppGroupAssignment
                                                         {:data_app_id id :permission_group_id (:id group)})]
           (data-app.sync/import-from-snapshot! (snapshot files))
-          (is (= assignment (t2/select-one :model/DataAppGroup :id (:id assignment))))
+          (is (= assignment (t2/select-one :model/DataAppGroupAssignment :id (:id assignment))))
           (is (= resource_collection_id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
           (is (t2/exists? :model/Permissions :group_id (:id group)
                           :object (perms/collection-read-path resource_collection_id))))))))
@@ -85,11 +85,11 @@
       (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
         (data-app.sync/import-from-snapshot! (snapshot files))
         (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp :name "sales")
-              assignment (t2/insert-returning-instance! :model/DataAppGroup
+              assignment (t2/insert-returning-instance! :model/DataAppGroupAssignment
                                                         {:data_app_id id :permission_group_id (:id group)})]
           (t2/delete! :model/Collection :id resource_collection_id)
           (data-app.sync/import-from-snapshot! (snapshot files))
-          (is (= assignment (t2/select-one :model/DataAppGroup :id (:id assignment))))
+          (is (= assignment (t2/select-one :model/DataAppGroupAssignment :id (:id assignment))))
           (let [restored-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)]
             (is (pos-int? restored-id))
             (is (not= resource_collection_id restored-id))
@@ -102,12 +102,12 @@
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})))
       (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp :name "sales")
-            assignment (t2/insert-returning-instance! :model/DataAppGroup
+            assignment (t2/insert-returning-instance! :model/DataAppGroupAssignment
                                                       {:data_app_id id :permission_group_id (:id group)})]
         (data-app.sync/import-from-snapshot! (snapshot {}))
         (is (not (t2/exists? :model/DataApp :id id)))
         (is (not (t2/exists? :model/Collection :id resource_collection_id)))
-        (is (not (t2/exists? :model/DataAppGroup :id (:id assignment))))
+        (is (not (t2/exists? :model/DataAppGroupAssignment :id (:id assignment))))
         (is (t2/exists? :model/PermissionsGroup :id (:id group)))))))
 
 (deftest changed-count-tracks-content-not-sha-bumps-test
