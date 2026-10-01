@@ -7,9 +7,9 @@ import { useState } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 import * as domUtils from "metabase/utils/dom";
-import { loadVisualizationComponents } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 import {

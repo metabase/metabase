@@ -6,9 +6,9 @@ import {
   setupDatabaseEndpoints,
   setupDatabaseUsageInfoEndpoint,
 } from "__support__/server-mocks/database";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
@@ -175,6 +175,33 @@ describe("DatabaseConnectionInfoSection", () => {
           ).toBe(1);
         });
       });
+    });
+  });
+
+  describe("sync failure cause", () => {
+    it("shows why the initial sync aborted (GHY-3856)", () => {
+      setup({
+        database: createMockDatabase({
+          initial_sync_status: "aborted",
+          initial_sync_error:
+            "User is not authorized to perform: glue:GetDatabases",
+        }),
+      });
+
+      expect(screen.getByText("Sync failed")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "User is not authorized to perform: glue:GetDatabases",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("isn't shown when the database has no recorded sync error", () => {
+      setup({
+        database: createMockDatabase({ initial_sync_status: "aborted" }),
+      });
+
+      expect(screen.queryByText("Sync failed")).not.toBeInTheDocument();
     });
   });
 

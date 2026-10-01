@@ -12,6 +12,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
@@ -51,12 +52,9 @@
 
 (defmethod post-deps-cleanup! :transform [_ {:keys [id target] :as transform}]
   (let [db-id                (transforms/transform-source-database transform)
-        downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
-                                               :from_entity_type :table
-                                               :to_entity_type   :transform
-                                               :to_entity_id     id)
+        downstream-table-ids (dependencies.db/downstream-table-ids-of-transform id)
         downstream-tables    (when (seq downstream-table-ids)
-                               (t2/select :model/Table :id [:in downstream-table-ids]))
+                               (dependencies.db/tables downstream-table-ids))
         outdated-tables      (remove (fn [table]
                                        (and (= (:schema table) (:schema target))
                                             (= (:name   table) (:name   target))
@@ -67,11 +65,7 @@
                                      downstream-table-ids)]
     (when-let [outdated-downstream-table-ids (seq (into (set not-found-table-ids)
                                                         (map :id) outdated-tables))]
-      (t2/delete! :model/Dependency
-                  :from_entity_type :table
-                  :from_entity_id   [:in outdated-downstream-table-ids]
-                  :to_entity_type   :transform
-                  :to_entity_id     id))))
+      (dependencies.db/delete-table-dependencies-on-transform! outdated-downstream-table-ids id))))
 
 ;;; ------------------------------ Backfill orchestration ------------------------------
 
@@ -109,9 +103,7 @@
                            (deps.dependency-status/record-failure!
                             entity-type id max-retries
                             (deps.settings/dependency-backfill-delay-minutes))
-                           (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
-                                                                              :entity_type entity-type
-                                                                              :entity_id id)]
+                           (let [{:keys [fail_count terminal]} (dependencies.db/dependency-status entity-type id)]
                              (if terminal
                                (log/errorf "Entity %s %s failed %d times, marking as terminally broken: %s"
                                            type-name id fail_count (ex-message e))

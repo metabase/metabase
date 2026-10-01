@@ -1,11 +1,10 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
-import { useConfirmation } from "metabase/common/hooks";
+import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Badge, Group, Icon } from "metabase/ui";
 import { useRevokeSupportAccessGrantMutation } from "metabase-enterprise/api";
 import type { SupportAccessGrant } from "metabase-types/api";
@@ -26,7 +25,7 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
       title: t`Revoke access grant?`,
       message: t`This will immediately revoke the support agent's access to your instance.`,
       confirmButtonText: t`Revoke`,
-      confirmButtonProps: { color: "feedback-negative" },
+      confirmButtonProps: { color: "negative" },
       size: "sm",
       onConfirm: async () => {
         try {

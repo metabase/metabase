@@ -3,21 +3,21 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
 import { isNotNull } from "metabase/utils/types";
-import { extractRemappings } from "metabase/visualizations";
 import { ChartWithLegend } from "metabase/visualizations/components/ChartWithLegend";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
-import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
-import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
-import { getArrayFromMapValues } from "metabase/visualizations/echarts/pie/util";
-import {
-  useCloseTooltipOnScroll,
-  usePieChartValuesColorsClasses,
-} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
+import {
+  extractRemappings,
+  getArrayFromMapValues,
+  getPieChartFormatters,
+  getPieChartModel,
+  getPieChartOption,
+  useCloseTooltipOnScroll,
+  usePieChartValuesColorsClasses,
+} from "metabase/viz-core";
 
 import S from "./PieChart.module.css";
 import { PIE_CHART_DEFINITION } from "./definition";

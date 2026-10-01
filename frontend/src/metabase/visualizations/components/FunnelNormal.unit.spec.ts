@@ -1,4 +1,4 @@
-import { calculateFunnelSteps } from "metabase/visualizations/lib/funnel/utils";
+import { calculateFunnelSteps } from "metabase/viz-core";
 import type { RowValues } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
 

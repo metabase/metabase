@@ -11,6 +11,14 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *text-wrapping-fallback-width*
+  "The CSS width given to a text-wrapping column that has no explicit `table.column_widths` entry. Email and Slack
+  clients won't wrap a cell without an explicit width, so this defaults to a wide value. Renderers that lay the table
+  out at a known width and auto-wrap (the PDF, via CSSBox) bind this to `nil`, so a wrapping column sizes to the table
+  and its text wraps within the real column width instead of overflowing the narrower page."
+  "780px")
+
 (defn- bar-th-style []
   (merge
    (style/font-style)
@@ -177,6 +185,12 @@
                  [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]])
     (h val)))
 
+(defn- image-url?
+  "Whether a `view_as: \"image\"` cell may become an `<img src>`: only http(s), never an attacker-supplied
+  `file:`/`javascript:`/`data:`. Matches `(str cell)`, which is what `h` puts in the attribute."
+  [cell]
+  (boolean (re-matches #"(?i)https?://\S+" (str cell))))
+
 (defn- render-table-body
   "Renders the body (<tbody>) of an HTML table as a Hiccup data structure.
 
@@ -218,7 +232,8 @@
              (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]) (get col->styles (:name column)))
 
              ;; View as image
-             (= (get col-settings ::mb.viz/view-as) "image")
+             (and (= (get col-settings ::mb.viz/view-as) "image")
+                  (image-url? cell))
              [:img {:src (h cell)
                     :style (style/style style/view-as-img-style)}]
 
@@ -268,12 +283,16 @@
            ;; text wrapping
            (::mb.viz/text-wrapping col-setting)
            (assoc column-name (merge {:white-space "normal"}
-                                     (if (column-has-width column-widths column-index)
+                                     (cond
+                                       (column-has-width column-widths column-index)
                                        {:min-width (format "%spx" (get-min-width column-widths column-index))}
-                                       ;; Text wrapping enabled but conditions not met, fall back to 780px
-                                       ;; Email clients respond to `min-width`, but slack responds to `width`
-                                       {:max-width "780px !important"
-                                        :width "780px"})))
+
+                                       ;; No explicit width: email clients respond to `min-width`, slack to `width`,
+                                       ;; so fall back to a fixed width. Renderers that auto-wrap bind
+                                       ;; [[*text-wrapping-fallback-width*]] to nil to opt out (no fixed width).
+                                       *text-wrapping-fallback-width*
+                                       {:max-width (str *text-wrapping-fallback-width* " !important")
+                                        :width     *text-wrapping-fallback-width*})))
 
            ;; text alignment
            (::mb.viz/text-align col-setting)

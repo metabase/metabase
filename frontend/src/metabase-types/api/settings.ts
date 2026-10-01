@@ -206,11 +206,19 @@ export interface VersionInfoRecord {
   announcement_url?: string;
 }
 
+export interface AlertUpgradeVersion {
+  min: string;
+  fixed: string;
+  message: string;
+  id?: string;
+}
+
 export interface VersionInfo {
   nightly?: VersionInfoRecord;
   beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
+  alert_upgrade_versions?: AlertUpgradeVersion[];
 }
 
 export type LocaleData = [string, string];
@@ -286,6 +294,7 @@ const tokenStatusFeatures = [
   "sso",
   "transforms-basic",
   "transforms-python",
+  "transforms-testing",
   "upload-management",
   "whitelabel",
 ] as const;
@@ -369,6 +378,7 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms-python",
   "transforms-basic",
+  "transforms-testing",
   "library",
   "library_retrieval",
   "support-users",
@@ -390,6 +400,8 @@ export type PasswordComplexity = {
 };
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
+
+export type MfaEnforcement = "off" | "optional" | "required";
 
 export interface SettingDefinition<
   Key extends EnterpriseSettingKey = EnterpriseSettingKey,
@@ -462,7 +474,6 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
-  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -588,7 +599,8 @@ interface PublicSettings {
   "llm-metabot-supports-reasoning?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
-  "mfa-enforcement"?: "off" | "optional";
+  "mfa-enforcement": MfaEnforcement;
+  "mfa-requirement-deadline": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;
@@ -619,7 +631,7 @@ interface PublicSettings {
   "ldap-group-sync": boolean;
   "ldap-group-base": string | null;
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
-  "ldap-group-membership-filter"?: string;
+  "ldap-group-membership-filter"?: string | null;
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
@@ -774,6 +786,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-openai-model"?: string;
   "llm-metabot-configured?"?: boolean | null;
   "llm-metabot-supports-reasoning?"?: boolean | null;
+  "llm-metabot-supports-fast-mode?"?: boolean | null;
   "llm-openrouter-api-key"?: string | null;
   "llm-zai-api-key"?: string | null;
   "llm-mistral-api-key"?: string | null;
@@ -837,8 +850,8 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
   "llm-mini-model"?: string | null;
+  "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
-  "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;
   "metabot-slack-signing-secret"?: string | null;
   "slack-connect-enabled"?: boolean | null;

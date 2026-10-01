@@ -63,11 +63,11 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
     <ConfirmModal
       opened
       title={t`${user.common_name} has been added`}
-      padding="xl"
+      padding="xxl"
       onClose={handleClose}
       onConfirm={handleClose}
       closeButtonText={null}
-      confirmButtonProps={{ color: "core-brand" }}
+      confirmButtonProps={{ color: "brand" }}
       confirmButtonText={t`Done`}
       message={
         temporaryPassword ? (

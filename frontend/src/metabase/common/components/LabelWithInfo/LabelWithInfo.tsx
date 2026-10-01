@@ -15,12 +15,12 @@ export function LabelWithInfo({ label, info, htmlFor }: LabelWithInfoProps) {
     <label className={S.LabelWithInfo} htmlFor={htmlFor}>
       {label}
       {info && (
-        <HoverCard shadow="xs">
+        <HoverCard shadow="xs_outline">
           <HoverCard.Target>
             <Icon name="info" />
           </HoverCard.Target>
           <HoverCard.Dropdown maw="24rem">
-            <Stack p="md" gap="sm">
+            <Stack p="lg" gap="sm">
               {info}
             </Stack>
           </HoverCard.Dropdown>

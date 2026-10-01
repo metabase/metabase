@@ -55,7 +55,7 @@ export const NotebookStepPreview = ({
   );
 
   return (
-    <Box pt="md" data-testid="preview-root">
+    <Box pt="lg" data-testid="preview-root">
       <Flex justify="space-between" align="center" mb="sm">
         <span className={CS.textBold}>{t`Preview`}</span>
         <Flex align="flex-end">

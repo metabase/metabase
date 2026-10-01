@@ -150,7 +150,6 @@ export const LookAndFeelSettings = ({
             <Switch
               label={t`Dashboard background`}
               labelPosition="left"
-              size="sm"
               variant="stretch"
               checked={displayOptions.background}
               onChange={(e) =>
@@ -165,7 +164,6 @@ export const LookAndFeelSettings = ({
           <Switch
             label={getBorderLabel(resourceType)}
             labelPosition="left"
-            size="sm"
             variant="stretch"
             checked={displayOptions.bordered}
             onChange={(e) =>
@@ -179,7 +177,6 @@ export const LookAndFeelSettings = ({
           <Switch
             label={getTitleLabel(resourceType)}
             labelPosition="left"
-            size="sm"
             variant="stretch"
             checked={displayOptions.titled}
             onChange={(e) =>

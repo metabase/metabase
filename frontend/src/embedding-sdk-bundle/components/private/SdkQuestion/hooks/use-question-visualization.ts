@@ -1,4 +1,4 @@
-import { useQuestionVisualizationState } from "metabase/query_builder/components/chart-type-selector";
+import { useQuestionVisualizationState } from "metabase/query_builder";
 
 import { useSdkQuestionContext } from "../context";
 

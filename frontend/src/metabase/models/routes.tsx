@@ -11,7 +11,9 @@ import {
 // opens once the editor is ready, instead of opening around a loading state.
 const actionCreatorModal = () =>
   Promise.all([
-    import("./containers/ActionCreatorModal/ActionCreatorModal"),
+    import(
+      /* webpackChunkName: "action-creator-modal" */ "./containers/ActionCreatorModal/ActionCreatorModal"
+    ),
     loadActionCreator(),
   ]).then(([{ default: ActionCreatorModal }]) => ActionCreatorModal);
 

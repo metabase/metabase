@@ -22,7 +22,7 @@ export function QuarterYearPicker({ value, onChange }: QuarterYearPickerProps) {
   };
 
   return (
-    <Box p="md">
+    <Box p="lg">
       <QuarterPicker value={date} defaultDate={date} onChange={handleChange} />
     </Box>
   );

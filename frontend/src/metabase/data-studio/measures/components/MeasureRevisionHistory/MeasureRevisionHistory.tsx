@@ -15,7 +15,6 @@ export function MeasureRevisionHistory({
     <RevisionHistoryTimeline
       entityType="measure"
       entityId={measure.id}
-      tableId={measure.table_id}
       getActionDescription={getMeasureActionDescription}
       definitionLabel={t`Aggregation`}
       definitionType="aggregations"

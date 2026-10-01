@@ -5,7 +5,7 @@ import type {
   OptionsFilter,
 } from "@mantine/core";
 import { Select as MantineSelect, defaultOptionsFilter } from "@mantine/core";
-import mergeRefs from "merge-refs";
+import { mergeRefs } from "@mantine/hooks";
 import { type Ref, forwardRef, useCallback, useMemo, useRef } from "react";
 
 import type { IconName } from "metabase-types/api";
@@ -60,9 +60,9 @@ function SelectWrapper<Value extends string | null>(
   }, [searchable, onDropdownOpen]);
 
   return (
+    // @ts-expect-error -- our tighter types are better
     <MantineSelect
       {...props}
-      // @ts-expect-error -- our tighter types are better
       ref={combinedRef}
       filter={filterWithoutEmptyGroups}
       // A bit confusing prop name but it actually means "on change of search input", not Select's value

@@ -1,13 +1,14 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { QuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover";
+import { useSelector } from "metabase/redux";
+
 import {
   getFirstQueryResult,
   getQuestion,
   getVisualizationSettings,
-} from "metabase/query_builder/selectors";
-import { useSelector } from "metabase/redux";
+} from "../../../store/selectors";
+import { QuestionDownloadPopover } from "../../QuestionDownloadPopover";
 
 export const ViewFooterDownloadWidget = () => {
   const question = useSelector(getQuestion);

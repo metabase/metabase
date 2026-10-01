@@ -24,7 +24,7 @@ export function MonthYearPicker({ value, onChange }: MonthYearPickerProps) {
   };
 
   return (
-    <Box p="md">
+    <Box p="lg">
       <MonthPicker value={date} defaultDate={date} onChange={handleChange} />
     </Box>
   );

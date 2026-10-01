@@ -2,8 +2,7 @@ import { t } from "ttag";
 
 import { useRescanTablesFieldValuesMutation } from "metabase/api";
 import { trackDataStudioTableFieldsRescanStarted } from "metabase/common/data-studio/analytics";
-import { useTemporaryState } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
@@ -45,7 +44,7 @@ export const RescanTableFieldsButton = ({
   };
 
   return (
-    <Button variant="default" onClick={handleClick}>
+    <Button onClick={handleClick}>
       {started
         ? t`Scan triggered!`
         : isSingleTable

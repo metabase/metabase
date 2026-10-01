@@ -44,7 +44,7 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
       }}
       data-testid="table-picker-filter"
     >
-      <Stack gap="xl" p="lg">
+      <Stack gap="xxl" p="xl">
         <LayerInput
           clearable
           value={form.dataLayer}
@@ -78,6 +78,7 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
         <DataSourceInput
           clearable
           showMetabaseTransform
+          showUnknown={false}
           value={form.dataSource}
           onChange={(dataSource) => {
             setForm((form) => ({ ...form, dataSource }));
@@ -109,7 +110,7 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
         <Group justify="space-between" wrap="nowrap">
           <Button flex={1} onClick={handleReset}>{t`Clear filters`}</Button>
 
-          <Button flex={1} variant="primary" type="submit">
+          <Button flex={1} variant="filled" type="submit">
             {t`Apply`}
           </Button>
         </Group>

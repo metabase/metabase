@@ -1,1 +1,1 @@
-export { DataAppRouter } from "./DataAppRouter";
+export { DataAppRouter, type DataAppRouterProps } from "./DataAppRouter";

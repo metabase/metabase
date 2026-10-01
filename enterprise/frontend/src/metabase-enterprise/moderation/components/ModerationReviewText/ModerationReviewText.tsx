@@ -75,7 +75,7 @@ const ModerationReviewText = ({
         name={iconName}
         c={iconColor}
         size={ICON_BUTTON_SIZE}
-        mt="xs"
+        mt="xxs"
       />
       <Text>
         {bannerText} {relativeCreationTime}

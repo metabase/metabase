@@ -8,6 +8,8 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase-enterprise.semantic-search.appdb-scoring :as appdb-scoring]
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
@@ -46,6 +48,7 @@
   [honey-sql & {:as opts}]
   (sql/format honey-sql (merge opts {:quoted true})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *batch-size*
   "The number of documents to process per batch when updating the index."
   150)
@@ -134,8 +137,7 @@
    Uses at most 2 queries regardless of the number of collection-ids."
   [collection-ids]
   (when-let [collection-ids (not-empty (set (remove nil? collection-ids)))]
-    (let [colls                (t2/select [:model/Collection :id :personal_owner_id :location]
-                                          :id [:in collection-ids])
+    (let [colls                (semantic-search.db/collection-owners-and-locations collection-ids)
           {personal     true
            non-personal false} (group-by (comp some? :personal_owner_id) colls)
           direct               (into {} (map (juxt :id :personal_owner_id)) personal)
@@ -147,9 +149,7 @@
           root-id->owner       (into direct
                                      (map (juxt :id :personal_owner_id))
                                      (when (seq unknown-roots)
-                                       (t2/select [:model/Collection :id :personal_owner_id]
-                                                  :id [:in unknown-roots]
-                                                  :personal_owner_id [:not= nil])))]
+                                       (semantic-search.db/personal-collection-owners unknown-roots)))]
       (into direct
             (keep (fn [[coll-id root-id]]
                     (when-let [owner (get root-id->owner root-id)]
@@ -397,6 +397,7 @@
             opts)))
        (merge-with + stats)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *retrying* false)
 
 (defonce ^:private
@@ -997,7 +998,7 @@
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model docs] (group-by doc->t2-model slow-docs)
-                                 t2-instance (t2/select t2-model :id [:in (map :id docs)])]
+                                 t2-instance (semantic-search.db/instances t2-model (map :id docs))]
                              t2-instance))
         doc->t2 (comp (u/index-by (juxt :id t2/model) slow-t2-instances)
                       (juxt :id doc->t2-model))
@@ -1018,8 +1019,7 @@
   [docs collection-id]
   (let [collection-ids (keep :collection_id docs)
         collections-map (when (seq collection-ids)
-                          (->> (t2/select [:collection :id :location]
-                                          :id [:in collection-ids])
+                          (->> (semantic-search.db/collection-locations collection-ids)
                                (into {} (map (juxt :id identity)))))]
     (filterv (fn [doc]
                (let [doc-collection-id (:collection_id doc)]
@@ -1264,7 +1264,7 @@
                                       (mapv search/collapse-id)))
               filter-time-ms (u/since-ms filter-timer)
 
-              appdb-scorers (scoring/appdb-scorers search-context)
+              appdb-scorers (appdb-scoring/appdb-scorers search-context)
               appdb-scores-timer (u/start-timer)
               final-results (->> filtered-results
                                  (scoring/with-appdb-scores search-context appdb-scorers weights))
@@ -1415,7 +1415,8 @@
   ;; no user
   (query-index db index {:search-string "Copper knife"})
 
-  #_:clj-kondo/ignore
+  ;; REPL scratch; metabase.test is off-limits to this module's real code
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
     (doall (query-index db index {:search-string "Copper knife"}))))
@@ -1467,13 +1468,15 @@
   ;; Code to test the custom thread pool. The transduction should process batches in parallel and new batches should
   ;; only be realized in memory once a thread is available.
   (defn process-batch [batch]
-    #_:clj-kondo/ignore
+    ;; REPL scratch; println shows batch progress on stdout
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (println "Processing batch starting with " (first batch))
     (Thread/sleep 2000)
     {:count (count batch)})
 
   (defn logging-range [n]
-    #_:clj-kondo/ignore
+    ;; REPL scratch; println shows lazy realization on stdout
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (map #(do (println "Realizing item" %) %)
          (range n)))
 

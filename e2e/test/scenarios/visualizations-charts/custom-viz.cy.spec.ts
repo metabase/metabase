@@ -621,6 +621,17 @@ describe("admin > custom visualizations", () => {
 
       H.saveSavedQuestion();
 
+      cy.log("plugin settings are stored under the plugin's namespace");
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            42,
+          );
+          expect(body.visualization_settings).not.to.have.property("threshold");
+        });
+      });
+
       H.interceptPluginBundle();
       cy.reload();
       cy.wait("@pluginBundle");
@@ -629,6 +640,100 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
       H.main().findByText("Threshold: 42").should("be.visible");
+    });
+
+    it("reads and migrates plugin settings saved before namespacing", () => {
+      H.createQuestion(
+        {
+          name: "Legacy Custom Viz Settings",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+          visualization_settings: { threshold: 42 },
+        },
+        { visitQuestion: true, wrapId: true, idAlias: "legacyQuestionId" },
+      );
+      H.main().findByText("Threshold: 42").should("be.visible");
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByPlaceholderText("Set threshold")
+        .clear()
+        .type("43")
+        .blur();
+      H.main().findByText("Threshold: 43").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.log("the first edit moves the bare key under the plugin's namespace");
+      cy.get("@legacyQuestionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            43,
+          );
+          expect(body.visualization_settings).not.to.have.property("threshold");
+        });
+      });
+    });
+
+    it("keeps plugin writes to Metabase settings inside the plugin's namespace", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Rename question from plugin" })
+        .click();
+      H.main().findByText("Threshold: 7").should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            7,
+          );
+          expect(body.visualization_settings).to.have.property(
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:card.title`,
+            "Plugin title",
+          );
+          expect(body.visualization_settings).not.to.have.property(
+            "card.title",
+          );
+        });
+      });
+    });
+
+    it("hands the plugin its own array-valued settings, including edits made in the session", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.log("the default the plugin computes is an array");
+      cy.findByTestId("demo-viz-columns").should("have.text", "Columns: count");
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Add column from plugin" })
+        .click();
+      cy.findByTestId("demo-viz-columns").should(
+        "have.text",
+        "Columns: count, extra",
+      );
+      cy.findByTestId("chartsettings-sidebar")
+        .findByRole("button", { name: "Add column from plugin" })
+        .should("be.visible");
+      H.saveSavedQuestion();
+
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.deep.property(
+            `custom:${H.CUSTOM_VIZ_IDENTIFIER}:columns`,
+            ["count", "extra"],
+          );
+        });
+      });
     });
 
     it("keeps an unsaved question's custom viz after a browser reload (metabase#76065)", () => {
@@ -1476,9 +1581,7 @@ describe("admin > custom visualizations", () => {
       H.navigationSidebar().findByText("Home").click();
 
       cy.log("Home recently-viewed section");
-      H.main()
-        .findByText("Pick up where you left off")
-        .parent()
+      cy.findByTestId("recent-items-section")
         .findByRole("link", { name: new RegExp(ICON_QUESTION_NAME) })
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
@@ -1553,23 +1656,24 @@ describe("admin > custom visualizations", () => {
     const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
     let devServerPid: number | null = null;
 
-    before(() => {
-      cy.exec(`mkdir -p ${tmpDir}`);
-      cy.log("Build the SDK so we can use the repo-local CLI");
-      cy.exec(
-        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
-        {
-          timeout: TIMEOUT,
-        },
-      );
-    });
-
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
+
+      // The SDK build lives in `beforeEach` rather than `before` on purpose:
+      // Cypress never retries a failed `before all` hook, so a slow install
+      // there fails the whole suite with no second attempt.
+      cy.log("Build the SDK so we can use the repo-local CLI");
+      cy.exec(`mkdir -p ${tmpDir}`);
+      cy.exec(
+        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
+        {
+          timeout: TIMEOUT,
+        },
+      );
 
       cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
       cy.exec(
@@ -1597,8 +1701,7 @@ describe("admin > custom visualizations", () => {
         );
       });
 
-      // Install dependencies in the tmp plugin folder.
-      cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
+      cy.exec(`cd "${projectDir}" && bun install`, { timeout: TIMEOUT });
 
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,
@@ -1703,9 +1806,11 @@ describe("admin > custom visualizations", () => {
       cy.log(
         "When the dev server is stopped, the visualization should revert to the default",
       );
-      cy.task("stopCustomVizDevServer", devServerPid);
+      cy.task("stopCustomVizDevServer", devServerPid).then(() => {
+        devServerPid = null;
+      });
       cy.reload();
-      H.main().findByText("18,760").should("be.visible");
+      H.main().findByText("18,760", { timeout: 15000 }).should("be.visible");
     });
   });
 });
@@ -1799,6 +1904,45 @@ describe("sandbox", () => {
       payload: 'window.addEventListener("storage", function(){});',
       errorPattern: blockedPattern(
         /addEventListener for global event type: storage/,
+      ),
+    },
+    {
+      // The `on*` IDL setters reach the same global event types as
+      // addEventListener, so they are gated on the property path too.
+      name: "document.onkeydown setter",
+      payload: "document.onkeydown = function () {};",
+      errorPattern: blockedPattern(/API call: Document\.set onkeydown/),
+    },
+    {
+      name: "document.onpaste setter",
+      payload: "document.onpaste = function () {};",
+      errorPattern: blockedPattern(/API call: Document\.set onpaste/),
+    },
+    {
+      name: "window.onstorage setter",
+      payload: "window.onstorage = function () {};",
+      errorPattern: blockedPattern(/API call: window\.set onstorage/),
+    },
+    {
+      name: "window.onkeydown setter",
+      payload: "window.onkeydown = function () {};",
+      errorPattern: blockedPattern(/API call: window\.set onkeydown/),
+    },
+    {
+      name: "document.body.onstorage setter",
+      payload: "document.body.onstorage = function () {};",
+      errorPattern: blockedPattern(/API call: HTMLBodyElement\.set onstorage/),
+    },
+    {
+      name: "detached body.onstorage setter",
+      payload: 'document.createElement("body").onstorage = function () {};',
+      errorPattern: blockedPattern(/API call: HTMLBodyElement\.set onstorage/),
+    },
+    {
+      name: "detached frameset.onstorage setter",
+      payload: 'document.createElement("frameset").onstorage = function () {};',
+      errorPattern: blockedPattern(
+        /API call: HTMLFrameSetElement\.set onstorage/,
       ),
     },
     {
@@ -2388,7 +2532,7 @@ describe("sandbox", () => {
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin treewalker(document) saw non-empty nodes:",
-      25,
+      27,
     );
   });
 

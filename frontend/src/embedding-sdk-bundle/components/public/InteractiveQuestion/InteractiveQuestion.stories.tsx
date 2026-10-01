@@ -33,7 +33,7 @@ export default {
 
 const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
   return (
-    <Box p="md">
+    <Box p="lg">
       <InteractiveQuestion {...args} />
     </Box>
   );

@@ -1,10 +1,12 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 
+import { actionApi } from "metabase/api/action";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
 import { documentApi } from "metabase/api/document";
 import { fieldApi } from "metabase/api/field";
+import { glossaryApi } from "metabase/api/glossary";
 import { measureApi } from "metabase/api/measure";
 import { segmentApi } from "metabase/api/segment";
 import { snippetApi } from "metabase/api/snippet";
@@ -75,6 +77,16 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     createEndpoints: [documentApi.endpoints.createDocument.matchFulfilled],
     updateEndpoints: [documentApi.endpoints.updateDocument.matchFulfilled],
     deleteEndpoints: [documentApi.endpoints.deleteDocument.matchFulfilled],
+    invalidation: {
+      type: InvalidationType.Always,
+    },
+  },
+
+  {
+    modelType: "action",
+    createEndpoints: [actionApi.endpoints.createAction.matchFulfilled],
+    updateEndpoints: [actionApi.endpoints.updateAction.matchFulfilled],
+    deleteEndpoints: [actionApi.endpoints.deleteAction.matchFulfilled],
     invalidation: {
       type: InvalidationType.Always,
     },
@@ -158,6 +170,13 @@ export const MODEL_MUTATION_CONFIGS: ModelMutationConfig[] = [
     modelType: "snippet",
     createEndpoints: [snippetApi.endpoints.createSnippet.matchFulfilled],
     updateEndpoints: [snippetApi.endpoints.updateSnippet.matchFulfilled],
+    invalidation: { type: InvalidationType.Always },
+  },
+  {
+    modelType: "glossary",
+    createEndpoints: [glossaryApi.endpoints.createGlossary.matchFulfilled],
+    updateEndpoints: [glossaryApi.endpoints.updateGlossary.matchFulfilled],
+    deleteEndpoints: [glossaryApi.endpoints.deleteGlossary.matchFulfilled],
     invalidation: { type: InvalidationType.Always },
   },
   {

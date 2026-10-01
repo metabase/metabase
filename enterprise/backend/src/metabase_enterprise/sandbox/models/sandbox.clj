@@ -7,6 +7,7 @@
   system."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
@@ -18,7 +19,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -45,7 +48,7 @@
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
   (into {} (for [col (request/as-admin
-                       ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
+                       (qp.preprocess/query->expected-cols
                         {:database (database/table-id->database-id table-id)
                          :type     :query
                          :query    {:source-table table-id}}))]
@@ -88,11 +91,7 @@
         ;; If perms were set at the database or schema-level before, we might need to add granular values for all tables
         ;; in the database or schema, so they show correctly in the UI.
         tables (when (or (keyword? db-perm) (keyword? schema-perm))
-                 (t2/select [:model/Table :id :db_id :schema]
-                            {:where [:and
-                                     [:= :db_id db-id]
-                                     (when (keyword? schema-perm)
-                                       [:= :schema schema])]}))
+                 (sandbox.db/tables-of-database db-id (keyword? schema-perm) schema))
         ;; Remove the overarching database or schema permission so that we can add the granular table-level permissions
         graph (cond
                 (and tables (keyword? db-perm))
@@ -119,15 +118,7 @@
   "Augments a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
   [graph & {:keys [group-ids group-id db-id audit?]}]
-  (let [sandboxes (t2/select :model/Sandbox
-                             {:select [:s.group_id :s.table_id :t.db_id :t.schema]
-                              :from [[:sandboxes :s]]
-                              :join [[:metabase_table :t] [:= :s.table_id :t.id]]
-                              :where [:and
-                                      (when group-id [:= :s.group_id group-id])
-                                      (when group-ids [:in :s.group_id group-ids])
-                                      (when db-id [:= :t.db_id db-id])
-                                      (when-not audit? [:not [:= :t.db_id audit/audit-db-id]])]})]
+  (let [sandboxes (sandbox.db/sandboxes-with-table-info group-id group-ids db-id (when-not audit? audit/audit-db-id))]
     ;; Incorporate each sandbox policy into the permissions graph.
     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
               (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))
@@ -138,14 +129,15 @@
   "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
   that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
   the Table itself, but you cannot return an entirely different type. Extra columns in the sandboxing Card are ignored."
-  ([{card-id :card_id, table-id :table_id}]
+  ([{card-id :card_id, table-id :table_id} :- [:or ::sandbox.schema/sandbox ::sandbox.schema/sandbox.update]]
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (not-empty (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+     (when-let [result-metadata (not-empty (sandbox.db/card-result-metadata card-id))]
        (check-columns-match-table table-id result-metadata))))
 
-  ([table-id :- ::lib.schema.id/table result-metadata-columns]
+  ([table-id :- ::lib.schema.id/table
+    result-metadata-columns :- [:maybe ::queries.schema/card.result-metadata]]
    (let [table-cols (table-field-names->cols table-id)]
      (doseq [col   result-metadata-columns
              :let  [table-col (get table-cols (:name col))]
@@ -155,12 +147,7 @@
 (defn- sandboxing-card-ids
   "Every Card a sandbox is built out of: the Cards sandboxes name directly, plus every Card those read at any depth."
   []
-  (let [cards (t2/select :model/Card
-                         {:select [:c.id :c.dataset_query :c.database_id :c.card_schema]
-                          :from   [[(t2/table-name :model/Card) :c]]
-                          :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                                             :from   [[(t2/table-name :model/Sandbox) :s]]
-                                                             :where  [:= :s.card_id :c.id]}]})]
+  (let [cards (sandbox.db/sandboxing-cards)]
     (into (into #{} (map :id) cards)
           (mapcat (fn [{:keys [dataset_query database_id]}]
                     (when (seq dataset_query)
@@ -181,8 +168,8 @@
   "Throws if `new-result-metadata` would stop matching the Tables the sandboxes built out of this Card sandbox: the
   Card cannot add fields or change types vs. the original Table."
   [card-id new-result-metadata]
-  (when-let [gtaps-using-this-card (not-empty (t2/select [:model/Sandbox :id :table_id] :card_id card-id))]
-    (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+  (when-let [gtaps-using-this-card (not-empty (sandbox.db/sandboxes-using-card card-id))]
+    (let [original-result-metadata (sandbox.db/card-result-metadata card-id)]
       (when-not (= original-result-metadata new-result-metadata)
         (doseq [{table-id :table_id} gtaps-using-this-card]
           (try
@@ -223,19 +210,25 @@
        ;; This allows existing values to be "cleared" by being set to nil
        (do
          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-           (t2/update! :model/Sandbox
-                       id
-                       (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (let [updated-sandbox (t2/select-one :model/Sandbox :id id)]
+           (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
+         (let [updated-sandbox (sandbox.db/sandbox id)]
            (events/publish-event! :event/sandbox-update
                                   {:object updated-sandbox
                                    :user-id api/*current-user-id*})
            updated-sandbox))
-       (let [inserted-sandbox (first (t2/insert-returning-instances! :model/Sandbox sandbox))]
+       (let [inserted-sandbox (sandbox.db/insert-sandbox! sandbox)]
          (events/publish-event! :event/sandbox-create
                                 {:object inserted-sandbox
                                  :user-id api/*current-user-id*})
          inserted-sandbox)))))
+
+(defn- normalize-sandbox-attribute-remappings
+  "Normalize `:attribute_remappings` on a Sandbox map, if present. `before-insert`/`before-update` hooks see this
+  column in whatever raw, not-yet-normalized shape the caller supplied it in."
+  [sandbox-like]
+  (cond-> sandbox-like
+    (contains? sandbox-like :attribute_remappings)
+    (update :attribute_remappings sandbox.schema/normalize-attribute-remappings)))
 
 (t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]
@@ -244,7 +237,7 @@
     (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
       (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
-    (check-columns-match-table gtap)))
+    (check-columns-match-table (normalize-sandbox-attribute-remappings gtap))))
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
@@ -256,4 +249,4 @@
                         {:id          id
                          :status-code 400})))
       (when (:card_id updates)
-        (check-columns-match-table updated)))))
+        (check-columns-match-table (normalize-sandbox-attribute-remappings updated))))))

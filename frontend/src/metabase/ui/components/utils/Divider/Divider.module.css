@@ -4,4 +4,12 @@
 
 .label {
   color: var(--mb-color-text-primary);
+
+  &::before {
+    margin-inline-end: var(--mantine-spacing-xxs);
+  }
+
+  &::after {
+    margin-inline-start: var(--mantine-spacing-xxs);
+  }
 }

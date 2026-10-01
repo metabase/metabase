@@ -44,6 +44,7 @@ export type CartesianVisualizationSettings = Pick<
   | "graph.x_axis.scale"
   | "graph.x_axis.axis_enabled"
   | "graph.y_axis.title_text"
+  | "graph.y_axis.right.title_text"
   | "graph.y_axis.scale"
   | "graph.y_axis.auto_range"
   | "graph.y_axis.min"
@@ -123,13 +124,15 @@ export type PieVisualizationSettings = Pick<
 /**
  * Settings for scalar, smart scalar, gauge, and progress displays. Use these to
  * select the main value column, compact the number, reverse comparison meaning,
- * configure smart-scalar comparisons, or format columns.
+ * configure smart-scalar comparisons and whether their absolute values are
+ * shown, or format columns.
  */
 export type ScalarVisualizationSettings = Pick<
   VisualizationSettings,
   | "scalar.field"
   | "scalar.switch_positive_negative"
   | "scalar.compact_primary_number"
+  | "scalar.show_comparison_value"
   | "scalar.comparisons"
   | "column_settings"
 >;

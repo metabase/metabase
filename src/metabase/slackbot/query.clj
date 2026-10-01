@@ -8,8 +8,8 @@
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.slackbot.db :as slackbot.db]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -80,10 +80,12 @@
   "Maximum number of columns Slack table blocks support."
   20)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *slack-table-max-cell-length*
   "Maximum text length per cell. Longer values are truncated with ellipsis."
   128)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *slack-table-max-chars*
   "Undocumented Slack limit: table blocks exceeding 10,000 characters are rejected with
    `table_character_count_must_not_exceed_10000`. We use 9,500 as a budget for cell text content
@@ -263,7 +265,7 @@
    - `table` and display types not supported by static viz render as native Slack table blocks
    - static viz chart types render as PNG"
   [card-id]
-  (let [card      (t2/select-one :model/Card :id card-id)
+  (let [card      (slackbot.db/card card-id)
         _         (when-not card
                     (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
         card-name (:name card)

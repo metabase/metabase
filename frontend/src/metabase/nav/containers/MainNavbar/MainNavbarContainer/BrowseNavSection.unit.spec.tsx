@@ -4,6 +4,8 @@ import {
   setupDatabaseListEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
+import { createMockEmbeddingDataPickerState } from "__support__/state/embedding-data-picker";
 import {
   getIcon,
   renderWithProviders,
@@ -12,8 +14,6 @@ import {
   within,
 } from "__support__/ui";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
-import { createMockState } from "metabase/redux/store/mocks";
-import { createMockEmbeddingDataPickerState } from "metabase/redux/store/mocks/embedding-data-picker";
 import * as iframeUtils from "metabase/utils/iframe";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 

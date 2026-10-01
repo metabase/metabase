@@ -142,7 +142,15 @@ describe("document comments", () => {
       H.documentContent().click();
       cy.realType("{leftarrow}".repeat("lor sit amet.".length));
       cy.realType("{enter}");
+      cy.intercept("PUT", "/api/document/*").as("updateDocument");
       cy.findByRole("button", { name: "Save" }).click();
+      // Wait for the save to fully persist. On success the page schedules a
+      // navigation back to /document/:id; if that navigation resolves late
+      // (e.g. under network throttling) it clobbers the comments route opened
+      // below and the sidebar never mounts. Waiting for the request + the
+      // "Document saved" toast forces that navigation to settle first.
+      cy.wait("@updateDocument");
+      H.undoToast().findByText("Document saved").should("be.visible");
       cy.findByRole("button", { name: "Save" }).should("not.exist");
 
       Comments.getDocumentNodeButton({
@@ -160,7 +168,7 @@ describe("document comments", () => {
         .should("have.length", 2)
         .last()
         .should("not.contain.text", "1")
-        .click();
+        .realClick();
 
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
@@ -252,6 +260,7 @@ describe("document comments", () => {
       Comments.getCommentInputs().should("have.length", 7).last().click();
       cy.realType("Reply B");
       cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
+      Comments.getCommentInputs().should("have.length", 8);
 
       cy.log("allows to delete a comment");
       Comments.getCommentByText("Reply A").realHover();
@@ -290,7 +299,11 @@ describe("document comments", () => {
 
     H.popover().findByText("Edit").click();
     cy.log("editor should be autofocused when editing");
-    cy.realType("My ");
+    Comments.getCommentByText("Reply 1")
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "true")
+      .and("be.focused")
+      .realType("My ");
     cy.realPress([META_KEY, "Enter"]);
 
     Comments.getSidebar().within(() => {
@@ -727,6 +740,12 @@ describe("document comments", () => {
     });
 
     it("supports mentions and can mention yourself", () => {
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/search",
+        query: { q: "tAbLes" },
+      }).as("searchTables");
+
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("@");
@@ -745,6 +764,7 @@ describe("document comments", () => {
       });
 
       cy.realType("s");
+      cy.wait("@searchTables").its("response.statusCode").should("eq", 200);
       H.documentMentionDialog().within(() => {
         cy.findByText("Bobby Tables").should("be.visible");
         cy.findByText("Bobby Tables's Personal Collection").should(

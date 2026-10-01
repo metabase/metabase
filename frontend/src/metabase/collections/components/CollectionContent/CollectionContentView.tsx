@@ -5,7 +5,6 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   Api,
   useCreateBookmarkMutation,
@@ -28,6 +27,7 @@ import type {
   OnFileUpload,
 } from "metabase/common/collections/types";
 import { isTrashedCollection } from "metabase/common/collections/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useSetCollection, useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
@@ -277,7 +277,7 @@ export const CollectionContentView = ({
         />
       )}
 
-      <Box className={S.main} mx="auto" mah="100%" px="5%" py="md">
+      <Box className={S.main} mx="auto" mah="100%" px="5%" py="lg">
         <ErrorBoundary>
           <CollectionHeader
             collection={collection}

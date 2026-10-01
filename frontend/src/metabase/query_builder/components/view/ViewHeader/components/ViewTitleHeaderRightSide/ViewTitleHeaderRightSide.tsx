@@ -5,11 +5,14 @@ import { t } from "ttag";
 
 import { getUserCanWriteToCollections } from "metabase/current-user";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
 import { useSelector } from "metabase/redux";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import MetabaseSettings from "metabase/utils/settings";
@@ -18,6 +21,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import { canExploreResults } from "../../utils";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
@@ -240,8 +244,6 @@ export function ViewTitleHeaderRightSide({
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
-            px="md"
-            py="sm"
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}
             data-disabled={isSaveDisabled || undefined}

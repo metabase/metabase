@@ -1,2 +1,3 @@
 export { Loader, setCustomLoader } from "./Loader";
-export type { LoaderProps } from "@mantine/core";
+export type { LoaderProps } from "./Loader";
+export { loaderOverrides } from "./Loader.config";

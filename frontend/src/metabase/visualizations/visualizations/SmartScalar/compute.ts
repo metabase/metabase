@@ -2,19 +2,19 @@ import { t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
 import type { ColorGetter } from "metabase/ui/colors/types";
+import { formatNumber } from "metabase/utils/formatting";
 import { isNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
 import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/value-formatting";
-import { computeChange } from "metabase/visualizations/lib/numeric";
+import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import {
+  computeChange,
   findPreviousNonEmptyRowIndex,
   formatPreviousPeriodOptionName,
-} from "metabase/visualizations/lib/trend-helpers";
-import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
-import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+} from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -35,11 +35,15 @@ import type {
 import type { Insight } from "metabase-types/api/insight";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
+import { COMPARISON_TYPES, VIZ_SETTINGS_DEFAULTS } from "./constants";
+
 export type ComparisonResult = {
   changeArrowIconName: ChangeArrowType | undefined;
   changeColor: string | undefined;
+  changeColorName: ChangeColorName | undefined;
   changeType: ChangeType;
   comparisonDescStr: string | undefined;
+  comparisonDescShortStr: string | undefined;
   comparisonValue: RowValue | undefined;
   display: {
     percentChange: string;
@@ -180,15 +184,35 @@ function buildComparisonObject({
       )
     : undefined;
 
+  const changeColorName = changeArrowIconName
+    ? getArrowColorName(
+        changeArrowIconName,
+        settings["scalar.switch_positive_negative"],
+      )
+    : undefined;
+
+  const showComparisonValue =
+    settings["scalar.show_comparison_value"] ??
+    VIZ_SETTINGS_DEFAULTS["scalar.show_comparison_value"];
+  // "(No data)" is a status rather than a number, so it stays visible when the value is hidden.
+  const isComparisonValueHidden =
+    !showComparisonValue &&
+    changeType !== CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE;
+
   return {
     changeArrowIconName,
     changeColor,
+    changeColorName,
     changeType,
     comparisonDescStr,
-    comparisonValue,
+    comparisonDescShortStr: getComparisonDescShortStr({
+      comparison,
+      currentMetricData,
+    }),
+    comparisonValue: isComparisonValueHidden ? undefined : comparisonValue,
     display: {
       percentChange: percentChangeStr,
-      comparisonValue: comparisonValueStr,
+      comparisonValue: isComparisonValueHidden ? "" : comparisonValueStr,
     },
     percentChange,
   };
@@ -735,7 +759,10 @@ export const CHANGE_TYPE_OPTIONS = {
   get SAME() {
     return {
       CHANGE_TYPE: "PREVIOUS_VALUE_SAME" as const,
-      PERCENT_CHANGE_STR: t`No change`,
+      PERCENT_CHANGE_STR: formatNumber(0, {
+        number_style: "percent",
+        decimals: 2,
+      }),
       COMPARISON_VALUE_STR: "",
     };
   },
@@ -774,7 +801,9 @@ function computeChangeTypeWithOptions({
     };
   }
 
-  if (percentChange === 0) {
+  const roundsToZero =
+    percentChange != null && formatChange(percentChange) === formatChange(0);
+  if (roundsToZero) {
     return {
       changeType: CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE,
       percentChangeStr: CHANGE_TYPE_OPTIONS.SAME.PERCENT_CHANGE_STR,
@@ -798,15 +827,101 @@ function getArrowColor(
   shouldSwitchPositiveNegative: boolean | undefined,
   { getColor }: { getColor: ColorGetter },
 ) {
-  const arrowIconColorNames = shouldSwitchPositiveNegative
-    ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-positive"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-negative"),
-      }
-    : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-negative"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-positive"),
-      };
+  return getColor(
+    getArrowColorName(changeArrowIconName, shouldSwitchPositiveNegative),
+  );
+}
+
+export type ChangeColorName = "feedback-positive" | "feedback-negative";
+
+function getArrowColorName(
+  changeArrowIconName: ChangeArrowType,
+  shouldSwitchPositiveNegative: boolean | undefined,
+): ChangeColorName {
+  const arrowIconColorNames: Record<ChangeArrowType, ChangeColorName> =
+    shouldSwitchPositiveNegative
+      ? {
+          [CHANGE_ARROW_ICONS.ARROW_DOWN]: "feedback-positive",
+          [CHANGE_ARROW_ICONS.ARROW_UP]: "feedback-negative",
+        }
+      : {
+          [CHANGE_ARROW_ICONS.ARROW_DOWN]: "feedback-negative",
+          [CHANGE_ARROW_ICONS.ARROW_UP]: "feedback-positive",
+        };
 
   return arrowIconColorNames[changeArrowIconName];
+}
+
+// "Month over month" style abbreviations for the compact comparison line
+const getPeriodAbbreviation = (dateUnit: DateTimeAbsoluteUnit) => {
+  switch (dateUnit) {
+    case "day":
+      return t`DoD`;
+    case "week":
+      return t`WoW`;
+    case "month":
+      return t`MoM`;
+    case "quarter":
+      return t`QoQ`;
+    case "year":
+      return t`YoY`;
+    default:
+      return undefined;
+  }
+};
+
+function getComparisonDescShortStr({
+  comparison,
+  currentMetricData,
+}: {
+  comparison: SmartScalarComparison;
+  currentMetricData: MetricData;
+}) {
+  const { dateUnit } = currentMetricData.dateUnitSettings;
+  if (comparison.type !== COMPARISON_TYPES.PREVIOUS_PERIOD || !dateUnit) {
+    return undefined;
+  }
+  return getPeriodAbbreviation(dateUnit);
+}
+
+export const getChangeSign = (percentChange: number | undefined) => {
+  if (percentChange == null || percentChange === 0) {
+    return "";
+  }
+  return percentChange < 0 ? "-" : "+";
+};
+
+export interface ComparisonDisplay {
+  isChanged: boolean;
+  isMissing: boolean;
+  signedPercent: string;
+  valueDisplay: SmartScalarDisplayValue;
+  sentimentColor: `${ChangeColorName}-strong` | null;
+  symbolDirection: ChangeArrowType | "no_change" | null;
+}
+
+export function getComparisonDisplay(
+  comparison: ComparisonResult,
+  formatOptions: ColumnSettings,
+  { compact = true }: { compact?: boolean } = {},
+): ComparisonDisplay {
+  const { changeType, changeArrowIconName, changeColorName } = comparison;
+  const isChanged = changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE;
+  const isMissing = changeType === CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE;
+  const isSame = changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE;
+  const sign = isChanged ? getChangeSign(comparison.percentChange) : "";
+
+  return {
+    isChanged,
+    isMissing,
+    signedPercent: `${sign}${comparison.display.percentChange}`,
+    valueDisplay: isChanged
+      ? formatValue(comparison.comparisonValue, { ...formatOptions, compact })
+      : isMissing
+        ? comparison.display.comparisonValue
+        : null,
+    sentimentColor:
+      changeColorName != null ? (`${changeColorName}-strong` as const) : null,
+    symbolDirection: changeArrowIconName ?? (isSame ? "no_change" : null),
+  };
 }

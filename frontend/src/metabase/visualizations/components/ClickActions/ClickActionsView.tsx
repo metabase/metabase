@@ -32,8 +32,8 @@ export const ClickActionsView = ({
     <Stack
       data-testid="click-actions-view"
       gap="sm"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       fw={700}
       {...divProps}
     >
@@ -64,7 +64,7 @@ export const ClickActionsView = ({
                 }}
               />
             ))}
-            {withBottomDivider && <Divider mx="-lg" my="sm" />}
+            {withBottomDivider && <Divider mx="-xl" my="sm" />}
           </ClickActionsViewSection>
         );
       })}

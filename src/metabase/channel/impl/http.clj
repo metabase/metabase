@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.schema :as channel.schema]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
@@ -21,21 +22,20 @@
   many columns) is truncated."
   1200)
 
-(def HTTPDetails
-  "Schema for the connection `:details` of a `:channel/http` channel."
-  [:map {:closed true}
-   [:url                           ms/Url]
-   [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
-   [:auth-info    {:optional true} ms/Map]
-   ;; used by the frontend to display the auth info properly
-   [:fe-form-type {:optional true} [:enum "api-key" "bearer" "basic" "none"]]
-   ;; request method
-   [:method       {:optional true} [:enum "get" "post" "put"]]])
-
 (def ^:private HTTPChannel
-  [:map
-   [:type    [:= :channel/http]]
-   [:details HTTPDetails]])
+  "What [[channel/send!]] receives: a Channel hydrated from its row, or in a test just the `:type` and `:details` this
+  implementation reads."
+  [:merge
+   [:map {:closed true}
+    [:type                         [:= :channel/http]]
+    [:id          {:optional true} ms/PositiveInt]
+    [:name        {:optional true} :string]
+    [:description {:optional true} [:maybe :string]]
+    [:active      {:optional true} :boolean]
+    [:created_at  {:optional true} :any]
+    [:updated_at  {:optional true} :any]]
+   [:map {:closed true}
+    [:details ::channel.schema/http-details]]])
 
 (defn- check-url!
   [strategy url]
@@ -55,7 +55,7 @@
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (let [strategy (channel.settings/http-channel-host-strategy)
+  (let [strategy (channel.settings/http-channel-allowed-networks)
         resolver (u.http/network-policy-dns-resolver strategy)]
     (check-url! strategy url)
     (let [req (-> (merge
@@ -87,7 +87,7 @@
 
 (defmethod channel/can-connect? :channel/http
   [_channel-type details]
-  (channel.shared/validate-channel-details HTTPDetails details)
+  (channel.shared/validate-channel-details ::channel.schema/http-details details)
   (try
     (channel/send! {:type :channel/http :details details} {})
     true

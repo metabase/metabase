@@ -7,11 +7,11 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,7 +20,7 @@
   ([{:keys [id source target owner_user_id creator_id] :as transform}
     {:keys [run-method on-start user-id parent-run]}]
    (try
-     (let [db          (t2/select-one :model/Database (get-in source [:query :database]))
+     (let [db          (transforms.db/database (get-in source [:query :database]))
            driver      (:engine db)
            _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
            run-user-id (if (and (= run-method :manual) user-id)

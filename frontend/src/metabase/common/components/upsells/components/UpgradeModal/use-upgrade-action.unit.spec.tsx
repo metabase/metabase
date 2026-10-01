@@ -1,12 +1,9 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderHookWithProviders } from "__support__/ui";
 import {
   DATA_STUDIO_UPGRADE_URL,
   UPGRADE_URL,
 } from "metabase/common/components/upsells/constants";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 
 import { useUpgradeAction } from "./use-upgrade-action";
 

@@ -4,7 +4,8 @@
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay])
   (:import
    (clojure.lang PersistentVector)))
 
@@ -92,7 +93,7 @@
   [user-id          :- pos-int?
    perm-type        :- :keyword
    required-level   :- :keyword
-   & [most-or-least :- [:maybe [:enum :most :least]]]]
+   & [most-or-least] :- [:* [:enum :most :least]]]
   [:exists ^:allow-subquery
    {:select [1]
     :from   [[:data_permissions :dp]]
@@ -108,7 +109,7 @@
 
 (def UserInfo
   "The user-id to use in the visibility query and their superuser status."
-  [:map
+  [:map {:closed true}
    [:user-id          pos-int?]
    [:is-superuser?    :boolean]
    [:is-data-analyst? {:optional true} :boolean]])
@@ -121,6 +122,25 @@
    ::permissions.schema/data-permission-type
    [:or ::permissions.schema/data-permission-value [:tuple ::permissions.schema/data-permission-value [:enum :most :least]]]])
 
+(def ^:private ColumnOrExp
+  "A HoneySQL column reference (or composite-key vector of columns) to filter on."
+  [:or :keyword [:vector :keyword]])
+
+(def ^:private VisibleTableFilterSelectOptions
+  [:map {:closed true}
+   [:active-only? {:optional true} :boolean]])
+
+(def ^:private VisibleTableFilterWithCteOptions
+  [:map {:closed true}
+   [:active-only? {:optional true} :boolean]
+   [:include-published-via-collection? {:optional true} :boolean]])
+
+(defn- table-source
+  "The plain `metabase_table`, aliased `mt`: permission queries read only sync-owned columns, and the overlay's
+  derived table is costly here and breaks on MariaDB."
+  []
+  (warehouse-schema-overlay/table-query {:alias :mt, :user-settings? false}))
+
 (mu/defn visible-table-filter-select
   "Selects a column from tables that are visible to the provided user given a mapping of permission types to the required value or the required
   value and a directive if we should test against the most or least permissive permission the user has.
@@ -130,12 +150,12 @@
   [select-column                                    :- [:enum :id :db_id]
    {:keys [user-id is-superuser? is-data-analyst?]} :- UserInfo
    permission-mapping                               :- PermissionMapping
-   & [{:keys [active-only?] :or {active-only? false}}]]
+   & [{:keys [active-only?] :or {active-only? false}}] :- [:* VisibleTableFilterSelectOptions]]
   ^:allow-subquery
   {:select [(case select-column
               :id :mt.id
               :db_id :mt.db_id)]
-   :from   [[:metabase_table :mt]]
+   :from   [(table-source)]
    :where  (if (or is-superuser?
                    (and is-data-analyst?
                         (contains? permission-mapping :perms/manage-table-metadata)))
@@ -197,11 +217,11 @@
        published tables in collections the user can read as a source of `:perms/create-queries
        :query-builder` grants by adding a third UNION ALL branch to the table_permissions CTE.
        View-data is intentionally not synthesized; it must still come from real data_permissions."
-  [column-or-exp                                    :- :any
+  [column-or-exp                                    :- ColumnOrExp
    {:keys [user-id is-superuser? is-data-analyst?] :as user-info} :- UserInfo
    permission-mapping                               :- PermissionMapping
    & [{:keys [active-only? include-published-via-collection?]
-       :or {active-only? false include-published-via-collection? false}}]]
+       :or {active-only? false include-published-via-collection? false}}] :- [:* VisibleTableFilterWithCteOptions]]
   ;; Superusers see all tables. Data analysts see all tables when checking manage-table-metadata.
   (if (or is-superuser?
           (and is-data-analyst?
@@ -227,7 +247,7 @@
                                        ^:allow-subquery
                                        {:select [:mt.id :dp.perm_type :dp.perm_value]
                                         :from   [[:data_permissions :dp]]
-                                        :join   [[:metabase_table :mt] [:= :mt.id :dp.table_id]]
+                                        :join   [(table-source) [:= :mt.id :dp.table_id]]
                                         :where  (into [:and
                                                        [:not= :dp.table_id nil]
                                                        user-groups-clause
@@ -237,7 +257,7 @@
                                        ^:allow-subquery
                                        {:select [:mt.id :dp.perm_type :dp.perm_value]
                                         :from   [[:data_permissions :dp]]
-                                        :join   [[:metabase_table :mt] [:= :mt.db_id :dp.db_id]]
+                                        :join   [(table-source) [:= :mt.db_id :dp.db_id]]
                                         :where  (into [:and
                                                        [:= :dp.table_id nil]
                                                        user-groups-clause
@@ -262,7 +282,7 @@
    permission-mapping              :- PermissionMapping]
   ^:allow-subquery
   {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
-   :from   [[:metabase_table :mt]]
+   :from   [(table-source)]
    :join   [[:data_permissions :dp] [:or
                                      [:and
                                       [:= :mt.db_id :dp.db_id]
@@ -293,7 +313,7 @@
   [user-id :- pos-int?
    perm-type :- :keyword
    required-level :- :keyword
-   & [most-or-least :- [:maybe [:enum :most :least]]]]
+   & [most-or-least] :- [:* [:enum :most :least]]]
   [:exists ^:allow-subquery
    {:select [1]
     :from [[:data_permissions :dp]]

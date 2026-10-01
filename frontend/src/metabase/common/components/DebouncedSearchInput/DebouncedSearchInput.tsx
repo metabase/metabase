@@ -51,7 +51,7 @@ export const DebouncedSearchInput = ({
     <TextInput
       flex={1}
       value={query}
-      radius="md"
+      radius="sm"
       onChange={(event) => setQuery(event.currentTarget.value)}
       leftSection={<Icon c="text-secondary" name="search" size={16} />}
       rightSectionPointerEvents="all"

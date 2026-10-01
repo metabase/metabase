@@ -1,11 +1,21 @@
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
+import fetchMock from "fetch-mock";
 
+import {
+  createMockMetabotConversationDetail,
+  createMockMetabotMessage,
+  createMockMetabotTextMessage,
+  setupGetMetabotConversationEndpoint,
+} from "__support__/server-mocks/metabot";
 import { act, waitFor } from "__support__/ui";
 import {
   attachAgentToConversation,
+  fetchConversationSnapshot,
+  getIsConversationProcessing,
+  getMessages,
   getMetabotConversation,
   getMetabotRequestState,
+  loadConversation,
 } from "metabase/metabot/state";
 
 import {
@@ -189,13 +199,14 @@ describe("metabot > convo state", () => {
 
     await enterChatMessage("Who is your favorite?");
     await waitFor(() => expect(agentSpy).toHaveBeenCalledTimes(1));
+    const firstReqBody = await lastReqBody(agentSpy);
 
     hideMetabot(store.dispatch);
     showMetabot(store.dispatch);
     await enterChatMessage("Hi!");
     const reqBody = await lastReqBody(agentSpy);
     // the thread survives hide/show: the next request still points at the prior turn
-    expect(reqBody.parent_message_id).toBe("msg_test_favorite");
+    expect(reqBody.parent_message_id).toBe(firstReqBody.assistant_message_id);
   });
 
   it("should start a new conversation when the new conversation button is clicked", async () => {
@@ -210,18 +221,16 @@ describe("metabot > convo state", () => {
     ]);
 
     const beforeResetState = getState();
-    expect(_.omit(beforeResetState.messages[0], ["id"])).toStrictEqual({
-      role: "user",
-      type: "text",
-      message: "Who is your favorite?",
-    });
-    expect(
-      _.omit(beforeResetState.messages[1], ["id", "externalId"]),
-    ).toStrictEqual({
-      role: "agent",
-      type: "text",
-      message: "You, but don't tell anyone.",
-    });
+    expect(beforeResetState.messages).toMatchObject([
+      {
+        role: "user",
+        parts: [{ type: "text", message: "Who is your favorite?" }],
+      },
+      {
+        role: "agent",
+        parts: [{ type: "text", message: "You, but don't tell anyone." }],
+      },
+    ]);
 
     await userEvent.click(await newConversationButton());
 
@@ -230,5 +239,82 @@ describe("metabot > convo state", () => {
       beforeResetState.conversationId,
     );
     expect(afterResetState.messages).toStrictEqual([]);
+  });
+
+  it("should refuse to load a conversation that is currently streaming", async () => {
+    const { store } = setup();
+    const [pause] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "text-delta", id: "t1", delta: "live reply" };
+          await pause.promise;
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("hello");
+    await assertConversation([
+      ["user", "hello"],
+      ["agent", "live reply"],
+    ]);
+    const { conversationId } = getMetabotConversation(
+      store.getState(),
+      "omnibot",
+    );
+    setupGetMetabotConversationEndpoint(
+      createMockMetabotConversationDetail({
+        conversation_id: conversationId,
+        messages: [
+          createMockMetabotTextMessage("user", "hello"),
+          createMockMetabotMessage({ status: { type: "in_progress" } }),
+        ],
+      }),
+    );
+    const expectedError = {
+      message: `Cannot load conversation ${conversationId} while it is streaming`,
+    };
+
+    try {
+      await expect(
+        store.dispatch(fetchConversationSnapshot(conversationId)).unwrap(),
+      ).rejects.toMatchObject(expectedError);
+
+      act(() => {
+        store.dispatch(
+          attachAgentToConversation({
+            agentId: "omnibot",
+            conversationId: "some-other-conversation",
+          }),
+        );
+      });
+
+      await expect(
+        store
+          .dispatch(loadConversation({ agentId: "omnibot", conversationId }))
+          .unwrap(),
+      ).rejects.toMatchObject(expectedError);
+      expect(
+        getMetabotConversation(store.getState(), "omnibot").conversationId,
+      ).toBe("some-other-conversation");
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/metabot/conversations/${conversationId}`,
+        ),
+      ).toHaveLength(0);
+    } finally {
+      pause.resolve();
+    }
+
+    await waitFor(() => {
+      expect(
+        getIsConversationProcessing(store.getState(), conversationId),
+      ).toBe(false);
+    });
+    expect(getMessages(store.getState(), conversationId).at(-1)).toMatchObject({
+      status: { type: "done" },
+      parts: [{ type: "text", message: "live reply" }],
+    });
   });
 });

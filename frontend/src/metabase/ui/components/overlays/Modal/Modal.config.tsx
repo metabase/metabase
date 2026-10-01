@@ -6,7 +6,7 @@ import Animation from "metabase/css/core/animation.module.css";
 import Layout from "metabase/css/core/layout.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 
-const DEFAULT_MODAL_SPACING = "lg";
+const DEFAULT_MODAL_SPACING = "xl";
 
 import Styles from "./Modal.module.css";
 
@@ -30,8 +30,9 @@ export const modalOverrides = {
     defaultProps: {
       centered: true,
       size: "lg",
-      shadow: "md",
-      radius: "sm",
+      shadow: "lg_outline",
+      radius: "xs",
+      padding: "lg",
       withinPortal: true,
     },
   }),
@@ -44,8 +45,9 @@ export const modalOverrides = {
 
   ModalCloseButton: Modal.CloseButton.extend({
     defaultProps: {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      "aria-label": t`Close`,
+      get "aria-label"() {
+        return t`Close`;
+      },
     },
   }),
 };

@@ -1,5 +1,10 @@
 import { hostRealmElementGuard } from "./host-element-guard";
 
+function asStringArg(value: object): string {
+  // type helper to pass non-string values as string in tests
+  return value as unknown as string;
+}
+
 // The guard patches the realm's shared prototypes/document, so install it once
 // against jsdom's globals and exercise the two host-side materialization paths.
 describe("HostRealmElementGuard", () => {
@@ -34,6 +39,33 @@ describe("HostRealmElementGuard", () => {
       expect(() => document.createElement("IFRAME")).toThrow(
         /blocked host createElement/,
       );
+    });
+
+    it("blocks a realm-creating tag supplied as a non-string value", () => {
+      const tag = {
+        indexOf: () => -1,
+        slice: () => "div",
+        toString: () => "iframe",
+      };
+
+      expect(() => document.createElement(asStringArg(tag))).toThrow(
+        /blocked host createElement/,
+      );
+    });
+
+    it("blocks a realm-creating tag supplied as a non-string qualified name via createElementNS", () => {
+      const qualifiedName = {
+        indexOf: () => -1,
+        slice: () => "div",
+        toString: () => "iframe",
+      };
+
+      expect(() =>
+        document.createElementNS(
+          "http://www.w3.org/1999/xhtml",
+          asStringArg(qualifiedName),
+        ),
+      ).toThrow(/blocked host createElementNS/);
     });
 
     it("blocks a namespaced realm tag via createElementNS", () => {

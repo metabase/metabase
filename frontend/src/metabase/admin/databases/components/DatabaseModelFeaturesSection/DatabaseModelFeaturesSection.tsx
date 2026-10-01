@@ -55,7 +55,7 @@ export const DatabaseModelFeaturesSection = ({
       description={t`Choose whether to enable features related to Metabase models. These will often require a write connection.`}
       data-testid="database-model-features-section"
     >
-      <Flex direction="column" gap="md">
+      <Flex direction="column" gap="lg">
         {contentVisibility.showModelActions && (
           <ModelActionsSection
             hasModelActionsEnabled={hasActionsEnabled(database)}

@@ -113,7 +113,7 @@ const EventForm = ({
               placeholder={t`Product launch`}
               data-autofocus
             />
-            <Flex align="end" gap="md">
+            <Flex align="end" gap="lg">
               <FormDateInput
                 name="timestamp"
                 title={t`Date`}
@@ -134,7 +134,7 @@ const EventForm = ({
                 }}
               />
               {values.time_matters ? (
-                <Flex gap="xs" align="end">
+                <Flex gap="xxs" align="end">
                   <TimeInput
                     value={dayjs.tz(values.timestamp).toDate()}
                     name="date"
@@ -149,15 +149,20 @@ const EventForm = ({
                       setFieldValue("timestamp", date.toISOString());
                     }}
                   />
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
+                    size="sm"
+                    mb="sm"
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
                     variant="subtle"
+                    color="neutral"
                     leftSection={<Icon name="close" />}
                   />
                 </Flex>
               ) : (
                 <Button
+                  size="lg"
                   onClick={() => setFieldValue("time_matters", true)}
                 >{t`Add time`}</Button>
               )}
@@ -190,7 +195,7 @@ const EventForm = ({
                 data={timelineOptions}
               />
             )}
-            <Flex gap="md" justify="end">
+            <Flex gap="lg" justify="end">
               <FormErrorMessage inline />
               {!isNew && (
                 <FormArchiveButton onClick={onArchive}>

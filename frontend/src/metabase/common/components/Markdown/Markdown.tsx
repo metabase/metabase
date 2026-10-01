@@ -15,7 +15,7 @@ import remarkGfm from "remark-gfm";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
-import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
+import { DATA_IMAGE_URI_PATTERN } from "metabase/viz-core";
 
 import S from "./Markdown.module.css";
 

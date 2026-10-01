@@ -1,12 +1,12 @@
 import _ from "underscore";
 
 import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
+import type { CardQuestionBuilder } from "metabase/metadata-store";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import { getCardAfterVisualizationClick } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Question from "metabase-lib/v1/Question";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -16,6 +16,7 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   QuestionDashboardCard,
+  SeriesCard,
   TemplateTag,
   VirtualCard,
 } from "metabase-types/api";
@@ -26,7 +27,7 @@ import type {
  * into the new card / URL parameters.
  */
 export const getNewCardUrl = ({
-  metadata,
+  buildQuestion,
   dashboard,
   parameterValues,
   nextCard,
@@ -34,20 +35,20 @@ export const getNewCardUrl = ({
   dashcard,
   objectId,
 }: {
-  metadata: Metadata;
+  buildQuestion: CardQuestionBuilder;
   dashboard: Dashboard | StoreDashboard;
   parameterValues: Record<
     ParameterId,
     ParameterValueOrArray | undefined | null
   >;
-  nextCard: Card | VirtualCard;
-  previousCard: Card | VirtualCard;
+  nextCard: SeriesCard;
+  previousCard: Card;
   dashcard: QuestionDashboardCard;
   objectId?: number | string;
 }): string | undefined => {
   const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
 
-  const previousQuestion = new Question(previousCard, metadata);
+  const previousQuestion = buildQuestion(previousCard);
   const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());
   const parametersMappedToCard = getParametersMappedToCard(
     dashboard.parameters,
@@ -58,12 +59,12 @@ export const getNewCardUrl = ({
   let nextQuestion: Question | undefined = undefined;
 
   if (isEditable) {
-    nextQuestion = new Question(cardAfterClick, metadata)
+    nextQuestion = buildQuestion(cardAfterClick)
       .setDisplay(cardAfterClick.display || previousCard.display)
       .setSettings(dashcard.card.visualization_settings)
       .lockDisplay();
   } else {
-    nextQuestion = new Question(dashcard.card, metadata).setDashboardProps({
+    nextQuestion = buildQuestion(dashcard.card).setDashboardProps({
       dashboardId: dashboard.id,
       dashcardId: dashcard.id,
     });

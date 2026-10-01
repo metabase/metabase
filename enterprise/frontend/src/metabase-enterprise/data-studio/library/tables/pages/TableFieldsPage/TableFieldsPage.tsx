@@ -63,7 +63,7 @@ export function TableFieldsPage() {
   }
 
   return (
-    <PageContainer data-testid="table-fields-page" gap="md" px={0} pb={0}>
+    <PageContainer data-testid="table-fields-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
       <Flex
         className={S.body}
@@ -84,7 +84,7 @@ export function TableFieldsPage() {
             }
             onSyncOptionsClick={openSyncModal}
             pl="3.5rem"
-            pr="lg"
+            pr="xl"
           />
         </Stack>
         {field != null && (
@@ -94,14 +94,14 @@ export function TableFieldsPage() {
             miw={320}
             maw={680}
             mih={0}
-            px="lg"
+            px="xl"
             gap="0"
             pos="relative"
           >
             <Group
               justify="space-between"
-              pt="lg"
-              pb="md"
+              pt="xl"
+              pb="lg"
               data-testid="field-section-header"
               pos="sticky"
               top={0}
@@ -109,14 +109,15 @@ export function TableFieldsPage() {
               bg="background_page-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="compact-sm"
-                p="sm"
+                leftSection={<Icon name="close" />}
               />
             </Group>
             <FieldSection
@@ -137,7 +138,7 @@ export function TableFieldsPage() {
           </Stack>
         )}
         {isPreviewOpen && field != null && (
-          <Box flex="10 1 0" miw={504} maw={734} p="lg">
+          <Box flex="10 1 0" miw={504} maw={734} p="xl">
             <PreviewSection
               className={S.preview}
               field={field}

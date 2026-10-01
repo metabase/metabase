@@ -130,7 +130,7 @@ function FormFieldEditor({
               // Unjustified type cast. FIXME
               onChange={(value) => handleChangeFieldType(value as FieldType)}
             >
-              <Group gap="lg">
+              <Group gap="xl">
                 {fieldTypeOptions.map((option) => (
                   <Radio
                     key={option.value}

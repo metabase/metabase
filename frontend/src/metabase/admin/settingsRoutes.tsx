@@ -89,6 +89,11 @@ const ldapAuth = () =>
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsLdapForm"
   ).then(({ SettingsLdapForm }) => ({ Component: SettingsLdapForm }));
 
+const domainsSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DomainsSettingsPage"
+  ).then(({ DomainsSettingsPage }) => ({ Component: DomainsSettingsPage }));
+
 const remoteSyncSettings = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/RemoteSyncSettingsPage"
@@ -133,6 +138,13 @@ const dataAppsManage = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
   ).then(({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }));
+
+const dataAppUsersManage = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
+  ).then(({ DataAppUsersManagePage }) => ({
+    Component: DataAppUsersManagePage,
+  }));
 
 const uploadSettings = () =>
   import(
@@ -219,6 +231,7 @@ export const getSettingsRoutes = (
         path="authentication/oidc"
         lazy={PLUGIN_AUTH_PROVIDERS.settingsOIDCForm}
       />
+      <Route path="domains" lazy={domainsSettings} />
       <Route path="remote-sync" lazy={remoteSyncSettings} />
       <Route path="maps" lazy={mapsSettings} />
       <Route path="localization" lazy={localizationSettings} />
@@ -234,18 +247,17 @@ export const getSettingsRoutes = (
           <Route path="development" lazy={customVisualizationsDevelopment} />
         )}
       </Route>
-      {/* TODO(v65): data apps launch in v65 — drop the isEnabled gate then so the
-          page shows the upsell without the token feature instead of 404ing */}
-      {PLUGIN_DATA_APPS.isEnabled && (
-        <Route
-          path={
-            Urls.DATA_APP_URL_SEGMENT
-          } /* do not allow users with "Settings access" permissions to access data apps pages */
-          element={<IsAdmin />}
-        >
-          <Route index lazy={dataAppsManage} />
-        </Route>
-      )}
+      <Route
+        path={
+          Urls.DATA_APP_URL_SEGMENT
+        } /* do not allow users with "Settings access" permissions to access data apps pages */
+        element={<IsAdmin />}
+      >
+        <Route index lazy={dataAppsManage} />
+        {PLUGIN_DATA_APPS.isEnabled && (
+          <Route path=":slug/users" lazy={dataAppUsersManage} />
+        )}
+      </Route>
       <Route path="uploads" lazy={uploadSettings} />
       <Route
         path="python-runner"

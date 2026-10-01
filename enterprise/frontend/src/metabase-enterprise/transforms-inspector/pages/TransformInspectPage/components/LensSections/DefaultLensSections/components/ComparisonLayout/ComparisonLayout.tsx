@@ -67,9 +67,9 @@ export const ComparisonLayout = ({
       .otherwise(() => <VisualizationCard card={card} key={card.id} />);
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {visibleGroups.map((group) => (
-        <SimpleGrid key={group.groupId} cols={2} spacing="md">
+        <SimpleGrid key={group.groupId} cols={2} spacing="lg">
           <Stack gap="sm">{group.inputCards.map(renderCard)}</Stack>
           <Stack gap="sm">{group.outputCards.map(renderCard)}</Stack>
         </SimpleGrid>

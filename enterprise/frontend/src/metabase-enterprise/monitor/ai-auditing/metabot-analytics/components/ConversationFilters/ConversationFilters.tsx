@@ -74,9 +74,11 @@ function ConversationDateFilter({
       !retentionCutoff ||
       !getShortcutStartDate(item.value)?.isBefore(retentionCutoff);
 
+    // Mantine keys each group by its name, so the names must be unique. The
+    // dropdown hides them, which is why they are not translated.
     return [
       {
-        group: "",
+        group: "days",
         items: [
           { label: t`Today`, value: "thisday" },
           { label: t`Yesterday`, value: "past1days" },
@@ -85,7 +87,7 @@ function ConversationDateFilter({
         ].filter(withinRetention),
       },
       {
-        group: "",
+        group: "months",
         items: [
           { label: t`Previous month`, value: "past1months" },
           { label: t`Previous 3 months`, value: "past3months" },
@@ -93,7 +95,7 @@ function ConversationDateFilter({
         ].filter(withinRetention),
       },
       {
-        group: "",
+        group: "custom range",
         items: [
           { label: t`Fixed date range…`, value: SPECIFIC_TYPE_VALUE },
           { label: t`Relative date range…`, value: RELATIVE_TYPE_VALUE },
@@ -172,10 +174,11 @@ function ConversationDateFilter({
           onOptionSubmit={handleSelect}
           onDropdownOpen={() => setActiveDropdown("default")}
           w={FILTER_WIDTH}
-          bdrs="sm"
+          bdrs="xs"
           allowDeselect={false}
           leftSection={<Icon name="calendar" />}
           title={displayLabel}
+          styles={{ groupLabel: { display: "none" } }}
           data-testid="conversation-filters-date-select"
         />
       </Popover.Target>
@@ -237,7 +240,7 @@ export function ConversationFilters({
           onChange={(val) => onTenantChange(val === "" ? null : val)}
           searchable
           w={FILTER_WIDTH}
-          bdrs="sm"
+          bdrs="xs"
           data-testid="conversation-filters-tenant-select"
         />
       )}
@@ -250,7 +253,7 @@ export function ConversationFilters({
         }
         searchable
         w={FILTER_WIDTH}
-        bdrs="sm"
+        bdrs="xs"
         data-testid="conversation-filters-group-select"
       />
       <Select
@@ -259,7 +262,7 @@ export function ConversationFilters({
         onChange={(val) => onUserChange(val === "" ? null : val)}
         searchable
         w={FILTER_WIDTH}
-        bdrs="sm"
+        bdrs="xs"
         data-testid="conversation-filters-user-select"
       />
       <ConversationDateFilter value={date} onChange={onDateChange} />

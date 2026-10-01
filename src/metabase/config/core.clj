@@ -13,6 +13,7 @@
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
   (try
+    ;; classpath probe for EE availability; the namespace is never actually used
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'metabase-enterprise.core.dummy-namespace)
     true
@@ -30,6 +31,7 @@
   "Whether code from `./test` is available. This is mainly to facilitate certain things like test QP middleware that we
   want to load only when test code is present."
   (try
+    ;; classpath probe for test-code availability; the namespace is never actually used
     #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'metabase.test.dummy-namespace)
     true
@@ -38,8 +40,8 @@
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
+  ;; Locale/US casing so a Turkish default locale can't hide "Windows" (dotless i)
+  (str/includes? (.toLowerCase (System/getProperty "os.name") java.util.Locale/US) "win"))
 
 (def ^:private app-defaults
   "Global application defaults"
@@ -192,6 +194,7 @@
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
   13371338)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-setting-cache*
   "Whether to disable database cache. Here for loading circularity reasons."
   false)
@@ -202,6 +205,7 @@
   []
   (not (false? (config-bool :mb-load-sample-content))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *request-id*
   "A unique identifier for the current request. This is bound by
   `metabase.server.middleware.request-id/wrap-request-id`."

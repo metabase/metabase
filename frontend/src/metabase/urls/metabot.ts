@@ -1,7 +1,3 @@
-import type {
-  GeneratedCard,
-  GeneratedEntity,
-} from "metabase/api/ai-streaming/schemas";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type {
   CardDisplayType,
@@ -15,7 +11,20 @@ export function newMetabotConversation({ prompt }: { prompt: string }) {
   return `/metabot/new?q=${encodeURIComponent(prompt)}`;
 }
 
-export function generatedCard(card: GeneratedCard) {
+type GeneratedCardLink = {
+  type: "card";
+  query: { query: DatasetQuery };
+  display?: CardDisplayType;
+};
+
+type GeneratedDashboardLink = {
+  type: "dashboard";
+  url: string;
+};
+
+type GeneratedEntityLink = GeneratedCardLink | GeneratedDashboardLink;
+
+export function generatedCard(card: GeneratedCardLink) {
   const unsavedCard: UnsavedCard = {
     dataset_query: card.query.query,
     display: card.display ?? "table",
@@ -25,7 +34,7 @@ export function generatedCard(card: GeneratedCard) {
   return serializedQuestion(unsavedCard, { includeDisplayIsLocked: true });
 }
 
-export function generatedEntity(entity: GeneratedEntity) {
+export function generatedEntity(entity: GeneratedEntityLink) {
   switch (entity.type) {
     case "card":
       return generatedCard(entity);

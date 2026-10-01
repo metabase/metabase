@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]))
 
@@ -13,10 +14,9 @@
    (check-has-application-permission perm-type true))
 
   ([perm-type require-superuser?]
-   (if-let [f (and (premium-features/enable-advanced-permissions?)
-                   config/ee-available?
-                   (requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
-     (api/check-403 (f perm-type))
+   (if (and (premium-features/enable-advanced-permissions?)
+            config/ee-available?)
+     (api/check-403 (perms/current-user-has-application-permissions? perm-type))
      (when require-superuser?
        (api/check-superuser)))))
 

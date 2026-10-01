@@ -28,7 +28,7 @@ Building a custom viz from scaffolding to adding it to your Metabase looks somet
 
 - Node.js 22 or newer.
 - Familiarity with React and TypeScript.
-- A Metabase on a [Pro or Enterprise plan](https://www.metabase.com/pricing/) to load your plugin into.
+- A Metabase on a [Pro or Enterprise plan](https://www.metabase.com/pricing) to load your plugin into.
 
 ## Scaffold a custom visualization project
 
@@ -72,7 +72,7 @@ The scaffold ships a complete, working example: a chart that shows a thumbs-up e
 
 To develop your plugin against a live Metabase with hot reload:
 
-1. Start Metabase with the `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable. Like any Metabase that runs custom visualizations, this local instance needs a [Pro or Enterprise](https://www.metabase.com/pricing/) token.
+1. Start Metabase with the `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable. Like any Metabase that runs custom visualizations, this local instance needs a [Pro or Enterprise](https://www.metabase.com/pricing) token.
 2. Run `npm run dev` in your project. By default, the dev server listens on `http://localhost:5174`.
 3. In Metabase, go to **Admin** > **Settings** > **Custom visualizations** > **Development** and set the **Dev server URL** to your dev server's address.
 
@@ -182,8 +182,8 @@ export default createVisualization;
 | `width`            | `number \| null`                         | Container width in pixels. `null` until the first measure — render `null` to avoid a flash.                                      |
 | `height`           | `number \| null`                         | Container height in pixels. `null` until the first measure.                                                                      |
 | `renderingContext` | `RenderingContext`                       | Host helpers for colors, text measurement, and the current color scheme — see [Formatting and theming](#formatting-and-theming). |
-| `onClick`          | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                                                           |
-| `onHover`          | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                                                          |
+| `onClick`          | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point. Pass `null` to close the drill-through popover.                           |
+| `onHover`          | `(hoverObject?) => void`                 | Call to show a tooltip on a data point. Pass `null` to hide it.                                                                  |
 
 ## Handling query results
 
@@ -234,7 +234,7 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
 />
 ```
 
-Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
+Pass `null` to `onHover` to dismiss the tooltip. Metabase waits a tick before hiding it, so moving between adjacent elements doesn't flicker. Pass `null` to `onClick` to close the drill-through popover, for example when the same element is clicked again or when your chart scrolls. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value.
 
 The hover object accepts more than `element` and `data`. Optional fields like `index` and `seriesIndex` (to highlight a series in the legend) and `value`, `column`, `dimensions`, and `event` (for a simpler single-point tooltip) are available when you need them.
 
@@ -366,7 +366,7 @@ Canvas-based charting libraries (like ECharts and Chart.js) can't read CSS varia
 
 The build produces a single JavaScript bundle (`dist/index.js`), and the [icon](#the-visualization-icon) is the only file Metabase serves alongside it. Metabase doesn't serve arbitrary static files, so bundling images into your plugin is the most reliable approach. The [sandbox](#sandbox-restrictions) blocks scripted network access like `fetch` and `XMLHttpRequest`, but it doesn't stop the browser from loading an `<img>` or CSS `url()`: an external image still loads as long as its domain is allowed by the image-domains Content Security Policy (see below).
 
-Bundled images always render, including when an admin has turned on [Restrict image domains](../configuring-metabase/settings.md#restrict-image-domains). That Content Security Policy setting limits which external hosts images can load from, but inline and `data:` images ship inside your bundle, so they're never blocked.
+Bundled images always render, including when an admin has turned on [Restrict image domains](../configuring-metabase/domains.md#restrict-where-images-can-load-from). That Content Security Policy setting limits which external hosts images can load from, but inline and `data:` images ship inside your bundle, so they're never blocked.
 
 Your `npm` dependencies are bundled in too. You can pull in a charting library (the calendar-heatmap example bundles [ECharts](https://echarts.apache.org/)), but everything ships in that single `dist/index.js`, so your code and its dependencies all count toward the packaged plugin's [size limits](#build-and-package-the-plugin).
 

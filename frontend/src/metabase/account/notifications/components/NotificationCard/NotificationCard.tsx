@@ -58,8 +58,8 @@ export const NotificationCard = ({
       className={S.root}
       data-testid="notification-alert-item"
       align="center"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       bg="background_page-primary"
     >
       <Box flex="1 1 auto">
@@ -70,7 +70,7 @@ export const NotificationCard = ({
         ) : (
           formatTitle(listItem)
         )}
-        <Flex wrap="wrap" mt="xs">
+        <Flex wrap="wrap" mt="xxs">
           <Text
             component="span"
             className={S.message}

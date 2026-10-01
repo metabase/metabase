@@ -70,14 +70,14 @@ export function EditorPanel({
       maw={480}
       style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
     >
-      <Box flex={1} style={{ overflow: "auto" }} p="xl">
-        <Flex align="center" justify="space-between" mb="xl">
+      <Box flex={1} style={{ overflow: "auto" }} p="xxl">
+        <Flex align="center" justify="space-between" mb="xxl">
           <Text fw={700} fz="xl">{t`Edit theme`}</Text>
           <CopyButton value={themeCodeSnippet}>
             {({ copied, copy }) => (
               <Button
                 variant="subtle"
-                size="compact-sm"
+                size="sm"
                 leftSection={<Icon name="copy" size={16} />}
                 onClick={copy}
               >
@@ -87,9 +87,9 @@ export function EditorPanel({
           </CopyButton>
         </Flex>
 
-        <Stack gap="lg">
+        <Stack gap="xl">
           {/* Theme name */}
-          <Card withBorder p="lg">
+          <Card withBorder p="xl">
             <TextInput
               label={t`Theme name`}
               value={currentTheme.name}
@@ -100,20 +100,20 @@ export function EditorPanel({
           </Card>
 
           {/* Main colors */}
-          <Card withBorder p="lg">
+          <Card withBorder p="xl">
             <Flex mb="sm" h="26" align="center" justify="space-between">
               <Text fw={600}>{t`Main colors`}</Text>
               {editor.hasMainColorChanges && (
                 <Tooltip label={t`Reset main colors to defaults`}>
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     variant="subtle"
-                    pt="5"
-                    size="compact-sm"
+                    color="neutral"
+                    size="sm"
                     aria-label={t`Reset main colors to defaults`}
                     onClick={editor.resetMainColors}
-                  >
-                    <Icon name="revert" size={16} />
-                  </Button>
+                    leftSection={<Icon name="revert" />}
+                  />
                 </Tooltip>
               )}
             </Flex>
@@ -130,9 +130,9 @@ export function EditorPanel({
               ))}
             </Flex>
 
-            <Flex mt="md" h="26" align="center" justify="space-between">
+            <Flex mt="lg" h="26" align="center" justify="space-between">
               <UnstyledButton onClick={() => setMoreColorsOpen((v) => !v)}>
-                <Flex align="center" gap="xs">
+                <Flex align="center" gap="xxs">
                   <Text c="core-brand" fz="sm" fw={600}>
                     {moreColorsOpen
                       ? t`Show fewer colors`
@@ -150,14 +150,15 @@ export function EditorPanel({
                 <Tooltip
                   label={t`Regenerate filter, summarize, positive, negative, and chart colors from the brand color`}
                 >
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
                     variant="subtle"
-                    size="compact-sm"
+                    color="neutral"
+                    size="sm"
                     aria-label={t`Regenerate from brand color`}
                     onClick={editor.regenerateAdditionalColorsFromBrand}
-                  >
-                    <Icon name="revert" size={16} />
-                  </Button>
+                    leftSection={<Icon name="revert" />}
+                  />
                 </Tooltip>
               )}
             </Flex>
@@ -215,8 +216,8 @@ export function EditorPanel({
           </Card>
 
           {/* Font */}
-          <Card withBorder p="lg">
-            <Stack gap="md">
+          <Card withBorder p="xl">
+            <Stack gap="lg">
               <Select
                 label={t`Font`}
                 data={FONT_FAMILY_OPTIONS}
@@ -249,10 +250,10 @@ export function EditorPanel({
 
         {onDelete && (
           <Button
-            mt="lg"
-            variant="subtle"
-            color="feedback-negative"
-            px={0}
+            mt="xl"
+            variant="transparent"
+            color="negative"
+            size="compact-md"
             leftSection={<Icon name="trash" size={16} />}
             onClick={onDelete}
           >
@@ -263,12 +264,12 @@ export function EditorPanel({
 
       {/* Bottom action bar */}
       <Flex
-        p="lg"
-        gap="md"
+        p="xl"
+        gap="lg"
         justify="space-between"
         style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
-        <Button variant="subtle" onClick={onCancel}>
+        <Button variant="subtle" color="neutral" onClick={onCancel}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" onClick={onSave} disabled={!editor.canSave}>

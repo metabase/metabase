@@ -52,6 +52,35 @@
         (is (contains? (:body response) :via)
             "Response should contain :via key with exception chain")))))
 
+(deftest api-exception-response-error-code-test
+  (testing "a non-500 that declares an :error-code returns its structured body without a stacktrace, whatever hide-stacktraces says"
+    (doseq [hide? [false true]]
+      (mt/with-temporary-setting-values [server.settings/hide-stacktraces hide?]
+        (let [exception (ex-info "You are out of tokens."
+                                 {:status-code 402
+                                  :message     "You are out of tokens."
+                                  :error-code  "metabase_ai_managed_locked"})
+              response  (mw.exceptions/api-exception-response exception nil)]
+          (is (= 402 (:status response)))
+          (is (= {:message    "You are out of tokens."
+                  :error-code "metabase_ai_managed_locked"}
+                 (:body response))))
+        (let [exception (ex-info "Slack API error: ratelimited"
+                                 {:status-code 502
+                                  :error-code  "ratelimited"})
+              response  (mw.exceptions/api-exception-response exception nil)]
+          (is (= 502 (:status response)))
+          (is (= {:message    "Slack API error: ratelimited"
+                  :error-code "ratelimited"}
+                 (:body response)))))))
+  (testing "a 500, or the legacy :error_code spelling, keeps the full stacktrace body"
+    (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
+      (doseq [data [{:status-code 500, :error-code "boom"}
+                    {:status-code 404, :error_code "archived"}]]
+        (let [response (mw.exceptions/api-exception-response (ex-info "boom" data) nil)]
+          (is (= (:status-code data) (:status response)))
+          (is (contains? (:body response) :trace)))))))
+
 (deftest api-exception-response-hides-stacktraces-returns-generic-message-test
   (testing "When hide-stacktraces is true, exception response contains only a generic message"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces true]
@@ -183,6 +212,19 @@
               "Response should only include generic message")
           (is (not (contains? (:body @captured-response) :trace))
               "Response should not include stacktrace"))))))
+
+(deftest catch-api-exceptions-middleware-includes-configured-cors-test
+  (let [origin   "https://mcp.example"
+        cors     {:origins-fn         (constantly origin)
+                  :sandbox-origin?-fn (constantly false)}
+        handler  (mw.exceptions/catch-api-exceptions
+                  (fn [_request _respond raise]
+                    (raise (Exception. "boom")))
+                  cors)
+        response (handler {:headers {"origin" origin}}
+                          identity
+                          #(throw %))]
+    (is (= origin (get-in response [:headers "Access-Control-Allow-Origin"])))))
 
 (deftest catch-api-exceptions-middleware-eof-exception-logs-request-info-test
   (testing "EofException (request canceled) log line includes the HTTP method, URI, and client IP"

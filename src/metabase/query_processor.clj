@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; the canonical QP entrypoint name predates the module layout
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.query-processor
   "Primary entrypoints to running Metabase (MBQL) queries.
@@ -79,7 +80,7 @@
 
 (mu/defn process-query :- [:fn {:error/message "process-query unexpectedly returned nil."} some?]
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor."
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (process-query query nil))
 
   ([query :- ::qp.schema/any-query
@@ -101,7 +102,7 @@
 
   3. A few extra keys like `:running_time` and `:started_at` are added to the QP
      response (see [[process-userland-query/process-userland-query-middleware]])"
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (userland-query query nil))
 
   ([query :- ::qp.schema/any-query
@@ -119,7 +120,7 @@
   see [[qp.constraints/add-default-userland-constraints]].
 
   This ultimately powers most of the REST API entrypoints into the QP."
-  ([query]
+  ([query :- ::qp.schema/any-query]
    (userland-query-with-default-constraints query nil))
 
   ([query :- ::qp.schema/any-query

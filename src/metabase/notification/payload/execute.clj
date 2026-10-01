@@ -5,10 +5,12 @@
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as viz-settings]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.parameters.shared :as shared.params]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -19,6 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?
@@ -41,7 +44,7 @@
   "Check if a dashboard has more than 1 tab, and thus needs them to be rendered.
   We don't need to render the tab title if only 1 exists (issue #45123)."
   [dashboard-or-id]
-  (< 1 (t2/count :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id))))
+  (< 1 (notification.db/dashboard-tab-count (u/the-id dashboard-or-id))))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -104,9 +107,7 @@
         ;; the info in viz-settings might be out-of-date
         (some? (:entity link-card))
         (let [{:keys [model id]} (:entity link-card)
-              instance           (t2/select-one
-                                  (serdes/link-card-model->toucan-model model)
-                                  (dashboard-card/link-card-info-query-for-model model id))]
+              instance           (dashboard-card/link-card-entity model id)]
           (when (mi/can-read? instance)
             (link-card->text-part (assoc link-card :entity instance))))))
     (catch Throwable e
@@ -199,13 +200,13 @@
      :or   {spill-budget (new-spill-budget)}}]
    (log/with-context {:card_id card_id}
      (try
-       (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
-         (let [dashboard      (t2/select-one :model/Dashboard :id dashboard_id)
+       (when-let [card (notification.db/unarchived-card card_id)]
+         (let [dashboard      (notification.db/dashboard dashboard_id)
                multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
                result-fn      (fn [card-id]
                                 (let [card (if (= card-id (:id card))
                                              card
-                                             (t2/select-one :model/Card :id card-id))
+                                             (notification.db/card card-id))
                                       attached-result? (and attached? (= card-id card_id))]
                                   {:card     card
                                    :dashcard dashcard
@@ -321,6 +322,12 @@
                 [:type [:= :tab-title]]]]
    [::mc/default :map]])
 
+(def ^:private ExecuteDashboardOpts
+  [:map {:closed true}
+   [:spill-budget      {:optional true} notification.temp-storage/ResidentBudget]
+   [:only-card-ids     {:optional true} [:maybe [:set ms/PositiveInt]]]
+   [:attached-card-ids {:optional true} [:maybe [:set ms/PositiveInt]]]])
+
 (mu/defn execute-dashboard :- [:sequential ::Part]
   "Execute a dashboard and return its parts.
 
@@ -332,10 +339,15 @@
     subscriptions that never render the other cards).
   - `:attached-card-ids` cards whose results are exported as file attachments; they run to the attachment row limit
     while the rest get the interactive display limits."
-  ([dashboard-id user-id parameters]
+  ([dashboard-id :- ::lib.schema.id/dashboard
+    user-id      :- ::lib.schema.id/user
+    parameters   :- [:maybe ::parameters.schema/parameters]]
    (execute-dashboard dashboard-id user-id parameters nil))
-  ([dashboard-id user-id parameters {:keys [spill-budget only-card-ids attached-card-ids]
-                                     :or   {spill-budget (new-spill-budget)}}]
+  ([dashboard-id :- ::lib.schema.id/dashboard
+    user-id      :- ::lib.schema.id/user
+    parameters   :- [:maybe ::parameters.schema/parameters]
+    {:keys [spill-budget only-card-ids attached-card-ids]
+     :or   {spill-budget (new-spill-budget)}} :- [:maybe ExecuteDashboardOpts]]
    (let [opts            {:spill-budget      spill-budget
                           :attached-card-ids attached-card-ids}
          keep-dashcards  (fn [dashcards]
@@ -343,7 +355,7 @@
                              only-card-ids (filter #(contains? only-card-ids (:card_id %)))))]
      (request/with-current-user user-id
        (if (render-tabs? dashboard-id)
-         (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
+         (let [tabs               (t2/hydrate (notification.db/dashboard-tabs dashboard-id) :tab-cards)
                tabs-with-cards    (->> tabs
                                        (map #(update % :cards keep-dashcards))
                                        (filter #(seq (:cards %))))
@@ -355,7 +367,7 @@
                                 (when should-render-tab?
                                   [(tab->part tab)])
                                 (dashcards->part cards parameters opts)))))))
-         (let [dashcards (keep-dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id))]
+         (let [dashcards (keep-dashcards (notification.db/dashcards-for-dashboard dashboard-id))]
            (log/debugf "Rendering dashboard with %d cards" (count dashcards))
            (dashcards->part dashcards parameters opts)))))))
 
@@ -363,7 +375,7 @@
   "Returns the result for a card."
   [creator-id :- pos-int?
    card-id :- pos-int?]
-  (let [card   (t2/select-one :model/Card card-id)
+  (let [card   (notification.db/card card-id)
         result (request/with-current-user creator-id
                  (-> (qp.card/process-query-for-card card :api
                                                      ;; TODO rename to :notification?

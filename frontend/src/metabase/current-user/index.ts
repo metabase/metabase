@@ -5,7 +5,9 @@ export {
   useGetCurrentUserQuery,
   useLazyGetCurrentUserQuery,
 } from "./api/current-user";
+export { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "./plugins";
 export {
+  canAccessDataModel,
   canAccessSettings,
   canManageSubscriptions,
   canUserCreateNativeQueries,
@@ -17,6 +19,7 @@ export {
   getUserId,
   getUserIsAdmin,
   getUserIsAnalyst,
+  getUserIsEntitledAnalyst,
   getUserPersonalCollectionId,
 } from "./selectors";
 export { useUserAcknowledgement } from "./use-user-acknowledgement";

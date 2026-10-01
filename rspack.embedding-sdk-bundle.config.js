@@ -100,7 +100,11 @@ const config = {
     // Split chunks and bootstrap go into chunks/ subfolder.
     // The legacy monolithic bundle goes into legacy/.
     // The backend serves chunks/ with far-future immutable cache headers.
-    chunkFilename: "chunks/[id].[contenthash:8].js",
+    // `[name]` falls back to the chunk id when a chunk has no name, so this
+    // only changes chunks named through a `webpackChunkName` comment. The
+    // locale catalogues need their name in the filename: the bundle-size gate
+    // recognises them by it.
+    chunkFilename: "chunks/[name].[contenthash:8].js",
     filename: (pathData) => {
       switch (pathData.chunk?.name) {
         case "embedding-sdk-bootstrap":
@@ -432,9 +436,6 @@ config.resolve.alias = {
   "sdk-iframe-embedding-ee-plugins":
     ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
   "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
-
-  // Allows importing side effects that applies only to the SDK.
-  "sdk-specific-imports": SDK_BUNDLE_SRC_PATH + "/lib/sdk-specific-imports.ts",
 };
 
 if (config.cache) {

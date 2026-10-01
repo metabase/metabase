@@ -1,10 +1,7 @@
 import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
-import {
-  getMaxDimensionsSupported,
-  isCartesianChart,
-} from "metabase/visualizations";
+import { getMaxDimensionsSupported, isCartesianChart } from "metabase/viz-core";
 import type {
   DatasetColumn,
   VisualizationDisplay,

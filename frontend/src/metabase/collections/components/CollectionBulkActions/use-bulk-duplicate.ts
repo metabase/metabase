@@ -10,7 +10,7 @@ import {
   canCopyItem,
   canonicalCollectionId,
 } from "metabase/common/collections/utils";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 export const useBulkDuplicate = (

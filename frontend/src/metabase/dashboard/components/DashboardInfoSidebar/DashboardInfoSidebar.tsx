@@ -4,12 +4,13 @@ import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import {
+  SIDESHEET_HORIZONTAL_PADDING,
   Sidesheet,
   SidesheetCard,
   SidesheetTabPanelContainer,
@@ -142,7 +143,7 @@ export function DashboardInfoSidebarInner({
             defaultValue={Tab.Overview}
             className={SidesheetS.FlexScrollContainer}
           >
-            <Tabs.List mx="xl">
+            <Tabs.List mx={SIDESHEET_HORIZONTAL_PADDING}>
               <Tabs.Tab value={Tab.Overview}>{t`Overview`}</Tabs.Tab>
               {!isIADashboard && (
                 <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
@@ -196,8 +197,8 @@ const OverviewTab = ({
   canWrite: boolean;
 }) => {
   return (
-    <Stack gap="lg">
-      <SidesheetCard title={t`Description`} pb="md">
+    <Stack gap="xl">
+      <SidesheetCard title={t`Description`} pb="lg">
         <SidesheetEditableDescription
           description={dashboard.description}
           onChange={handleDescriptionChange}
@@ -206,7 +207,7 @@ const OverviewTab = ({
           onBlur={handleDescriptionBlur}
         />
         {!!descriptionError && (
-          <Text color="feedback-negative" size="xs" mt="xs">
+          <Text color="feedback-negative" size="xs" mt="xxs">
             {descriptionError}
           </Text>
         )}

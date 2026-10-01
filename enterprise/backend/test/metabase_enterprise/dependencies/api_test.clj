@@ -6,8 +6,10 @@
    [metabase-enterprise.dependencies.async :as dependencies.async]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.events.core :as events]
@@ -507,6 +509,33 @@
                 (let [response2 (mt/user-http-request :crowberto :get 200 (str "ee/dependencies/graph/dependents?broken=false&type=card&id=" (:id model-card)))]
                   (is (= #{(:id dependent-card) (:id next-card)} (set (map :id response2)))
                       "There should two dependents total"))))))))))
+
+(deftest ^:synchronized python-transform-not-broken-after-entity-check-test
+  (testing "GHY-3584: a Python transform has no query to validate, so the entity-check task must not record it as broken"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name   "Python transform - ghy3584"
+                        :source {:type            :python
+                                 :source-database (mt/id)
+                                 :source-tables   [{:alias       "orders"
+                                                    :database_id (mt/id)
+                                                    :schema      "PUBLIC"
+                                                    :table       "ORDERS"
+                                                    :table_id    (mt/id :orders)}]
+                                 :body            "def transform(orders):\n    return orders"}}]
+          (deps.test/synchronously-run-backfill!)
+          (#'task.entity-check/check-entities!)
+          (let [dependent-ids (fn [broken?]
+                                (set (map :id (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                                    :type "table"
+                                                                    :id (mt/id :orders)
+                                                                    :dependent-types "transform"
+                                                                    :broken broken?))))]
+            (is (contains? (dependent-ids false) transform-id)
+                "the Python transform is a dependent of the table it reads")
+            (is (not (contains? (dependent-ids true) transform-id))
+                "the Python transform is not listed as broken")))))))
 
 (deftest graph-permissions-test
   (testing "GET /api/ee/dependencies/graph requires read permissions on the starting entity"
@@ -1200,8 +1229,8 @@
                                                         :document {:type "doc"
                                                                    :content [{:type "paragraph"
                                                                               :content [{:type "smartLink"
-                                                                                         :attrs {:entityId referenced-dashboard-id
-                                                                                                 :model "dashboard"}}]}]}
+                                                                                         :attrs {"entityId" referenced-dashboard-id
+                                                                                                 "model" "dashboard"}}]}]}
                                                         :content_type "application/json+vnd.prose-mirror"}]
         (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id document-id) :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-backfill!)
@@ -1219,8 +1248,8 @@
                                                                  :document {:type "doc"
                                                                             :content [{:type "paragraph"
                                                                                        :content [{:type "smartLink"
-                                                                                                  :attrs {:entityId referenced-document-id
-                                                                                                          :model "document"}}]}]}
+                                                                                                  :attrs {"entityId" referenced-document-id
+                                                                                                          "model" "document"}}]}]}
                                                                  :content_type "application/json+vnd.prose-mirror"}]
         (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id unreffed-document-id) :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-backfill!)
@@ -1504,13 +1533,11 @@
         (let [mp (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))]
           (mt/with-temp [:model/User {user-id :id} {}
-                         :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                   :name "Test Personal Collection"}
                          :model/Collection {sub-personal-coll-id :id} {:name "Sub Personal Collection"
-                                                                       :location (format "/%d/" personal-coll-id)}
+                                                                       :location (format "/%d/" (personal-collection-id user-id))}
                          :model/Card {card-in-personal :id} {:name "Card in Personal - personalcolltest"
                                                              :type :question
-                                                             :collection_id personal-coll-id
+                                                             :collection_id (personal-collection-id user-id)
                                                              :dataset_query (lib/query mp products)}
                          :model/Card {card-in-sub-personal :id} {:name "Card in Sub Personal - personalcolltest"
                                                                  :type :question
@@ -1538,10 +1565,8 @@
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
-                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                 :name "Test Personal Collection"}
                        :model/Dashboard {dash-in-personal :id} {:name "Dashboard in Personal - personalcolltest"
-                                                                :collection_id personal-coll-id}
+                                                                :collection_id (personal-collection-id user-id)}
                        :model/Dashboard {dash-regular :id} {:name "Dashboard Regular - personalcolltest"}]
           (deps.test/synchronously-run-backfill!)
           (testing "include-personal-collections=false (default) excludes dashboards in personal collections"
@@ -1825,15 +1850,13 @@
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
-                       :model/User creator {:email "creator@test.com"}
-                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                 :name "Test Personal Collection"}]
+                       :model/User creator {:email "creator@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
             ;; Create cards in one metadata provider cache session
             (let [[model-in-personal model-regular dependent-card-1 dependent-card-2]
                   (lib-be/with-metadata-provider-cache
                     (let [model-in-personal (create-model-card! creator "Model in Personal - personalcollbrokentest"
-                                                                :collection-id personal-coll-id)
+                                                                :collection-id (personal-collection-id user-id))
                           model-regular (create-model-card! creator "Model Regular - personalcollbrokentest")
                           dependent-card-1 (create-dependent-card-on-model! creator model-in-personal "Dependent of Personal - personalcollbrokentest")
                           dependent-card-2 (create-dependent-card-on-model! creator model-regular "Dependent of Regular - personalcollbrokentest")]
@@ -2092,9 +2115,8 @@
   (testing "GET /api/ee/dependencies/graph/dependents with include-personal-collections parameter"
     (binding [collection/*allow-deleting-personal-collections* true]
       (with-dependents-test! [{user-id :id :as user} {base-card-id :id :as base-card}]
-        (mt/with-temp [:model/Collection {personal-coll-id :id} {:personal_owner_id user-id}
-                       :model/Collection {sub-coll-id :id} {:location (format "/%d/" personal-coll-id)}]
-          (create-dependent! base-card user "In Personal" :collection_id personal-coll-id)
+        (mt/with-temp [:model/Collection {sub-coll-id :id} {:location (format "/%d/" (personal-collection-id user-id))}]
+          (create-dependent! base-card user "In Personal" :collection_id (personal-collection-id user-id))
           (create-dependent! base-card user "In Sub" :collection_id sub-coll-id)
           (create-dependent! base-card user "Regular")
           (deps.test/synchronously-run-backfill!)
@@ -2663,9 +2685,7 @@
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
-                       :model/User creator {:email "creator@test.com"}
-                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                 :name "Test Personal Collection"}]
+                       :model/User creator {:email "creator@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
             ;; one model, two dependents: one in personal collection, one in regular collection
             (let [[model-card dependent-in-personal dependent-regular]
@@ -2673,7 +2693,7 @@
                     (let [model-card (create-model-card! creator "Model - personalcollbrokentest2")
                           dependent-in-personal (create-dependent-card-on-model! creator model-card
                                                                                  "Dependent in Personal - personalcollbrokentest2"
-                                                                                 :collection-id personal-coll-id)
+                                                                                 :collection-id (personal-collection-id user-id))
                           dependent-regular (create-dependent-card-on-model! creator model-card
                                                                              "Dependent Regular - personalcollbrokentest2")]
                       [model-card dependent-in-personal dependent-regular]))]
@@ -2756,7 +2776,7 @@
                       response)))))))))
 
 (deftest data-analyst-can-access-dependency-graph-test
-  (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+  (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
     (testing "Data analysts can access dependency diagnostics endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
@@ -2765,16 +2785,23 @@
                                                      :is_data_analyst true}
                        :model/PermissionsGroupMembership _ {:user_id analyst-id
                                                             :group_id data-analyst-group-id}
-                       :model/Database {db-id :id} {}
-                       :model/Table {_table-id :id} {:db_id db-id}
-                       :model/Transform {transform-id :id} {:source_database_id db-id
-                                                            :name "Test Transform"}]
-          (testing "graph/unreferenced"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/unreferenced"))))
-          (testing "graph/breaking"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/breaking"))))
-          (testing "graph with transform"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+                       ;; the sample database: All Users may query it, so analyst-wide transform visibility applies
+                       :model/Transform {transform-id :id} {:source_database_id (mt/id)
+                                                            :name "Analyst Grace Transform - gracetest"}]
+          (letfn [(unreferenced-transform-ids []
+                    (->> (mt/user-http-request analyst-id :get 200
+                                               "ee/dependencies/graph/unreferenced?types=transform&query=gracetest")
+                         :data
+                         (map :id)
+                         set))]
+            (testing "graph/unreferenced"
+              (is (contains? (unreferenced-transform-ids) transform-id)))
+            (testing "graph/breaking"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              "ee/dependencies/graph/breaking"))))
+            (testing "graph with transform"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              (str "ee/dependencies/graph?type=transform&id=" transform-id)))))
+            (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
+              (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+                (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))

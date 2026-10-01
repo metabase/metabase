@@ -1,8 +1,9 @@
 import { MetabotAsk } from "metabase/metabot/components/MetabotAsk";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
-import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useSelector } from "metabase/redux";
 import { getSettingsLoading } from "metabase/settings";
+
+import { QueryBuilder } from "../../containers/QueryBuilder";
 
 /**
  * Routes /question/ask to either the Metabot NLQ prompt view or the regular QueryBuilder, depending on NLQ access.

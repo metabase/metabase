@@ -4,9 +4,9 @@ import { useCallback, useEffect } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
@@ -149,7 +149,7 @@ export function DiscussionComment({
         </Tooltip>
       </Group>
 
-      <Box mt={isEditing ? "sm" : "xs"}>
+      <Box mt={isEditing ? "sm" : "xxs"}>
         <CommentEditor
           autoFocus
           data-testid="comment-editor"

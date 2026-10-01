@@ -1,3 +1,4 @@
+import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "metabase/current-user";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -21,7 +22,8 @@ import {
  */
 export function initializePlugin() {
   if (hasPremiumFeature("advanced_permissions")) {
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel = canAccessDataModel;
+    PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canAccessDataModel =
+      canAccessDataModel;
     PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(
       dataModelPermissionAllowedPathGetter,
     );

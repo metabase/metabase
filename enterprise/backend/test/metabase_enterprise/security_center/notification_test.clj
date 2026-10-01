@@ -389,8 +389,8 @@
           form-slack-channel "#form-channel"]
       (mt/with-temporary-setting-values [admin-email nil
                                          slack-token-valid? true]
-        (with-redefs [settings/security-center-email-recipients (constantly saved-emails)
-                      settings/security-center-slack-channel     (constantly "#saved-channel")]
+        (mt/with-dynamic-fn-redefs [settings/security-center-email-recipients (constantly saved-emails)
+                                    settings/security-center-slack-channel     (constantly "#saved-channel")]
           (with-send-redef (fn [notif & _] (reset! sent notif))
             (notification/send-test-notification! {:email-recipients form-emails
                                                    :slack-channel    form-slack-channel})

@@ -15,7 +15,7 @@ export const Alert = ({ message, onClose }: AlertProps) => (
     withCloseButton={false}
     data-testid="alert-modal"
   >
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Text>{message}</Text>
       <Button variant="filled" ml="auto" onClick={onClose}>{t`Ok`}</Button>
     </Stack>

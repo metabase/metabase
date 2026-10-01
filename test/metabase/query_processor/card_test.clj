@@ -17,12 +17,11 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
+   ;; asserts on the store's miscellaneous-value slot that the results-metadata middleware writes
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]
-   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -39,6 +38,15 @@
      :make-run (constantly
                 (fn [query info]
                   (qp/process-query (assoc query :info info)))))))
+
+(deftest empty-query-card-is-handed-to-the-runner-test
+  (testing "a Card without a query is handed to the `:make-run` runner instead of being rejected as not found"
+    (mt/test-driver :h2
+      (mt/with-temp [:model/Card card {}]
+        (is (=? {:viz-settings {}
+                 :middleware   {:js-int-to-string? true}}
+                (mt/as-admin
+                  (qp.card/process-query-for-card card :api :make-run (constantly (fn [query _info] query))))))))))
 
 (defn field-filter-query
   "An MBQL 5 native query with a Field Filter (`:dimension`) parameter."
@@ -381,8 +389,11 @@
                                          :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
           (doseq [export-format [:csv :json :xlsx]]
             (testing (str "format: " export-format)
-              (let [response (client/client-full-response
-                              (test.users/username->token :crowberto)
+              ;; through `user-http-request-full-response`, not a raw cached token: that skips the retry in
+              ;; `client-fn`, so a session that was rolled back with the scope that made it comes back here
+              ;; as a bare 401
+              (let [response (mt/user-http-request-full-response
+                              :crowberto
                               :post 200
                               (format "card/%d/query/%s" (:id card) (name export-format))
                               {})]

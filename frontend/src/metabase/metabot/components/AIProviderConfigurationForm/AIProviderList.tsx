@@ -49,7 +49,7 @@ const WARNING_ICON_SIZE = 12;
 // divided the same way, then the button that follows them
 export function ProviderListSkeleton() {
   return (
-    <Stack gap="xs" data-testid="provider-list-skeleton">
+    <Stack gap="xxs" data-testid="provider-list-skeleton">
       <Stack gap={0}>
         <ProviderRowSkeleton />
         <Divider />
@@ -130,8 +130,8 @@ export function AIProviderList() {
   );
 
   return (
-    <Stack gap="md">
-      <Stack gap="xs">
+    <Stack gap="lg">
+      <Stack gap="xxs">
         {hasConnections && (
           <Stack gap={0}>
             {connections.map((connection, index) => (
@@ -152,8 +152,8 @@ export function AIProviderList() {
         )}
 
         <Button
-          variant={hasConnections ? "subtle" : "filled"}
-          p={hasConnections ? 0 : undefined}
+          variant={hasConnections ? "transparent" : "filled"}
+          size={hasConnections ? "compact-md" : "md"}
           w="fit-content"
           leftSection={<Icon name="add" />}
           onClick={startAdding}
@@ -185,8 +185,6 @@ export function AIProviderList() {
 // Features that read a fixed connection key directly rather than following the Metabot selection: deleting
 // the connection they name turns them off, which the admin deserves to hear before confirming.
 const KEYED_DEPENDENTS: Record<string, () => string> = {
-  anthropic: () =>
-    t`SQL generation also runs on this connection, and will stop working without it.`,
   openai: () =>
     t`Semantic search also runs on this connection, and will stop working without it.`,
 };
@@ -206,7 +204,7 @@ function getDeleteWarning(
 
 function RowActions({ children }: { children: ReactNode }) {
   return (
-    <Group gap="xs" wrap="nowrap" h={PROVIDER_ICON_SIZE} align="center">
+    <Group gap="xxs" wrap="nowrap" h={PROVIDER_ICON_SIZE} align="center">
       {children}
     </Group>
   );
@@ -248,7 +246,7 @@ function ProviderConnectionRow({
         justify="center"
         mih={PROVIDER_ICON_SIZE}
       >
-        <Group gap="xs" wrap="nowrap">
+        <Group gap="xxs" wrap="nowrap">
           <Text fw="bold" lh={ROW_LINE_HEIGHT}>
             {connection.name}
           </Text>
@@ -340,7 +338,7 @@ function ProviderConnectionRow({
 
       {hasUsageDetails && (
         <Collapse id={detailsId} in={isShowingDetails}>
-          <Box pl={PROVIDER_DETAILS_INDENT} pb="md">
+          <Box pl={PROVIDER_DETAILS_INDENT} pb="lg">
             <MetabaseAIProviderSetup isConnected />
           </Box>
         </Collapse>

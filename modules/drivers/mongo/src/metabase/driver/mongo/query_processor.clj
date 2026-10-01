@@ -56,10 +56,21 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
+(mr/def ::bson-value
+  "A value inside a Mongo aggregation pipeline, whose shape (BSON literals, arrays, and documents keyed by strings or keywords) the Mongo query language owns."
+  [:schema {::mr/deliberately-open true
+            :description "a Mongo aggregation pipeline value, shaped by the Mongo query language"}
+   :any])
+
+(mr/def ::bson-document
+  "A document inside a Mongo aggregation pipeline, whose string or keyword keys the Mongo query language owns."
+  [:map {:closed false, ::mr/deliberately-open true
+         :description "a Mongo aggregation pipeline document, keyed by the Mongo query language"}])
+
 (mr/def ::$project-stage
   [:map-of
    [:= "$project"]
-   [:map-of ::lib.schema.common/non-blank-string :any]])
+   [:map-of ::lib.schema.common/non-blank-string ::bson-value]])
 
 (mr/def ::sort-spec
   [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]])
@@ -72,23 +83,21 @@
 (mr/def ::$match-stage
   [:map-of
    [:= "$match"]
-   [:map-of
-    [:and
-     [:or ::lib.schema.common/non-blank-string :keyword]
-     [:fn
-      {:error/message "not a $not condition"}
-      (complement #{:$not "$not"})]]
-    :any]])
+   [:and
+    ::bson-document
+    [:fn
+     {:error/message "not a $not condition"}
+     (fn [m] (not-any? #{:$not "$not"} (keys m)))]]])
 
 (mr/def ::$group-stage
   [:map-of
    [:= "$group"]
-   [:map-of ::lib.schema.common/non-blank-string :any]])
+   [:map-of ::lib.schema.common/non-blank-string ::bson-value]])
 
 (mr/def ::$add-fields-stage
   [:map-of
    [:= "$addFields"]
-   [:map-of ::lib.schema.common/non-blank-string :any]])
+   [:map-of ::lib.schema.common/non-blank-string ::bson-value]])
 
 (mr/def ::$lookup-stage
   [:map-of
@@ -96,16 +105,14 @@
    [:map
     {:closed true} ; add more stuff as needed
     [:from     :string]
-    [:let      [:map
-                [:vars {:optional true} :any]
-                [:in   {:optional true} :any]]]
+    [:let      ::bson-document]
     [:pipeline [:ref ::pipeline]]
     [:as       :string]]])
 
 (mr/def ::$unwind-stage
   [:map-of
    [:= "$unwind"]
-   [:map-of [:or :keyword :string] :any]])
+   ::bson-document])
 
 (mr/def ::$limit-stage
   [:map-of
@@ -125,7 +132,7 @@
     ["sortBy"      [:ref ::sort-spec]]
     ["output"      [:map-of
                     ::lib.schema.common/non-blank-string
-                    [:map-of ::lib.schema.common/non-blank-string :any]]]
+                    [:map-of ::lib.schema.common/non-blank-string ::bson-value]]]
     ["partitionBy" {:optional true} [:map-of
                                      ::lib.schema.common/non-blank-string
                                      ::lib.schema.common/non-blank-string]]]])
@@ -157,7 +164,7 @@
     (lib.schema.common/instance-of-class org.bson.Document)]
    [false
     [:and
-     :map
+     ::bson-document
      [:fn
       {:error/message "map with a single key"}
       #(= (count %) 1)]
@@ -208,6 +215,7 @@
     {:closed true} ; we should document anything else we add here.
     [:projections {:optional true} [:maybe ::projections]]
     [:query       [:ref ::pipeline]]
+    [:params      {:optional true} [:maybe [:sequential {:max 0} :string]]]
     ;; TODO (Cam 2026-07-17) it's not really clear if `:collection` is supposed to be in the top-level of the stage e.g.
     ;;
     ;;    {:lib/type :mbql.stage/native, :collection "X", :native {...}}
@@ -232,6 +240,7 @@
 ;;; |                                                    QP Impl                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *next-alias-index*
   "Tracks index of next alias for join compilation. It is bound in [[mbql->native]] to `volatile!` valued 0. Hence
    every compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
@@ -245,6 +254,7 @@
   (vswap! *next-alias-index* inc))
 
 ;; TODO (Cam 2026-07-24) get rid of this dynamic var and attach the mappings directly to the `query` itself
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
   by the nested query."
@@ -333,7 +343,8 @@
 
 (mu/defn field->name
   "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."
-  ([metadata-providerable col]
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    col                   :- ::lib.schema.metadata/column]
    (field->name metadata-providerable col \.))
 
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -535,7 +546,7 @@ function(bin) {
 
 (mu/defn- days-till-start-of-first-full-week
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   column]
+   column                :- ::bson-value]
   (let [start-of-year                (with-rvalue-temporal-bucketing metadata-providerable column :year)
         day-of-week-of-start-of-year (with-rvalue-temporal-bucketing metadata-providerable start-of-year :day-of-week)]
     {:$subtract [8 day-of-week-of-start-of-year]}))
@@ -543,8 +554,8 @@ function(bin) {
 (mu/defn- week-of-year
   "Full explanation of this magic is in [[metabase.driver.sql.query-processor/week-of-year]]."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   column
-   mode]
+   column                :- ::bson-value
+   mode                  :- [:enum :us :instance]]
   (let [doy    (with-rvalue-temporal-bucketing metadata-providerable column :day-of-year)
         dtsofw (binding [driver.common/*start-of-week* (case mode
                                                          :us :sunday
@@ -558,7 +569,7 @@ function(bin) {
 
 (mu/defn- with-rvalue-temporal-bucketing
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   column
+   column                :- ::bson-value
    ;; TODO (Cam 2026-07-24) apparently there's no complete schema with all the valid bucketing and truncation
    ;; units (!) fix this
    unit                  :- [:or
@@ -609,6 +620,7 @@ function(bin) {
           :quarter
           (if supports-dateTrunc?
             (truncate :quarter)
+            ;; mongo-let vars are referenced via :$$parts.* keywords, which kondo can't see
             (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
               {:$dateFromParts {:year  :$$parts.year
                                 :month {$subtract [:$$parts.month
@@ -692,7 +704,7 @@ function(bin) {
   {:$dateFromString {:dateString (str s)}})
 
 (mu/defn- absolute-datetime-or-time->rvalue
-  [metadata-providerable
+  [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
    [_ _opts t unit] :- [:or :mbql.clause/absolute-datetime :mbql.clause/time]]
   (let [report-zone (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database metadata-providerable))
                                    "UTC"))
@@ -707,9 +719,9 @@ function(bin) {
                         java.time.ZonedDateTime  (t/offset-date-time t report-zone)))
         t           (normalize-t t)]
     (letfn [(extract [unit]
-              (u.date/extract t unit))
+              (driver-api/date-extract t unit))
             (bucket [unit]
-              ($date-from-string (u.date/bucket t unit)))]
+              ($date-from-string (driver-api/date-bucket t unit)))]
       (case (or unit :default)
         :default         ($date-from-string t)
         :minute          (bucket :minute)
@@ -747,7 +759,7 @@ function(bin) {
         t
         (-> t
             (u.date/add unit amount)
-            (u.date/bucket unit)))))))
+            (driver-api/date-bucket unit)))))))
 
 ;;; ---------------------------------------------------- functions ---------------------------------------------------
 
@@ -1296,7 +1308,7 @@ function(bin) {
 
 (mu/defmethod negate :default :- ::lib.schema.mbql-clause/clause
   [expr :- ::lib.schema.expression/boolean]
-  (lib/negate-boolean-expression expr))
+  (driver-api/negate-boolean-expression expr))
 
 (mu/defmethod negate :and :- ::lib.schema.mbql-clause/clause
   [[_ opts & subclauses] :- :mbql.clause/and]
@@ -1340,7 +1352,9 @@ function(bin) {
   {$expr (->rvalue query stage-number value-clause)})
 
 (mu/defn- handle-filters :- ::compiled-pipeline
-  ([query stage-number pipeline-ctx]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    pipeline-ctx :- ::compiled-pipeline]
    (handle-filters query stage-number pipeline-ctx (lib/filters query stage-number)))
   ([query          :- ::lib.schema/query
     stage-number   :- :int
@@ -1497,8 +1511,8 @@ function(bin) {
 (mu/defn- handle-join
   [query        :- ::lib.schema/query
    stage-number :- :int
-   pipeline-ctx
-   {join-alias :alias, :keys [conditions stages strategy], :as join}]
+   pipeline-ctx :- ::compiled-pipeline
+   {join-alias :alias, :keys [conditions stages strategy], :as join} :- ::lib.schema.join/join]
   (let [join-query (assoc query :stages stages)
         {:keys [projections], pipeline :query, :or {projections [], pipeline []}} (mbql->native-rec join-query)
         ;; Get the mappings introduced by the source query.
@@ -1618,7 +1632,8 @@ function(bin) {
                                                       (apply distinct? (map first projected-fields)))]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
-  [query stage-number]
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
   (let [breakouts    (lib/breakouts query stage-number)
         aggregations (lib/aggregations query stage-number)]
     (concat
@@ -1854,7 +1869,8 @@ function(bin) {
       (into {} (map #(get % i)) posts))))
 
 (mu/defn- order-by->$sort :- [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]
-  [query stage-number]
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
   (into
    (ordered-map/ordered-map)
    (map (fn [[direction _opts field]]
@@ -1871,11 +1887,11 @@ function(bin) {
    "window" {"documents" ["unbounded" "current"]}})
 
 (mr/def ::window-id
-  "TODO (Cam 2026-07-24) determine actual types of keys + values"
+  "A `{breakout-name rvalue-expr}` map identifying the `_id` grouping key of a `$group` stage."
   [:maybe
    [:map-of
     ::lib.schema.common/non-blank-string
-    :any]])
+    ::bson-value]])
 
 (mu/defn- sort-lookup
   "Generates a lookup string for a particular field"
@@ -1888,8 +1904,8 @@ function(bin) {
 (mu/defn- window-sort
   "Converts a `$sort` body to something that can be used in a `sortBy` clause in a
   `$setWindowFields` stage."
-  [id :- ::window-id
-   pairs]
+  [id    :- ::window-id
+   pairs :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string [:enum -1 1]]]]]
   (when (seq pairs)
     (into (ordered-map/ordered-map)
           (map (fn [[name dir]] [(sort-lookup id name) dir]))
@@ -1921,7 +1937,7 @@ function(bin) {
         sort-expr             (or
                                ;; if there is only one breakout, always use the user's sort order
                                (when (= (count id) 1)
-                                 (window-sort id user-sort))
+                                 (window-sort id (seq user-sort)))
                                ;; if we don't have a temporal breakout, sort by the last breakout, but
                                ;; use the user's sort direction if specified
                                (when-not finest-temporal-index
@@ -1941,7 +1957,7 @@ function(bin) {
   produces a cumulative sum of those fields."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   window-vals  :- [:map-of ::lib.schema.common/non-blank-string :any]
+   window-vals  :- [:map-of ::lib.schema.common/non-blank-string ::bson-value]
    id           :- ::window-id]
   ;; if id is empty, we don't have any breakouts and so don't need to fiddle around with $setWindowFields
   (if (empty? id)
@@ -2208,7 +2224,8 @@ function(bin) {
 
 (mu/defn- add-aggregation-pipeline :- ::compiled-pipeline
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
-  ([query stage-number]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
    (add-aggregation-pipeline query stage-number {:projections [], :query []}))
   ([query        :- ::lib.schema/query
     stage-number :- :int
@@ -2285,14 +2302,18 @@ function(bin) {
 ;;; values added by add-alias-info.
 (defn- HACK-update-aliases-in-field-refs
   [query]
-  (letfn [(prepend-nfc-path [{nfc-path      driver-api/qp.add.nfc-path,
+  (letfn [(raw-mongo-path [id-or-name]
+            (when (pos-int? id-or-name)
+              (field->name query (driver-api/field query id-or-name))))
+          (prepend-nfc-path [raw-path
+                             {nfc-path      driver-api/qp.add.nfc-path,
                               source-alias  driver-api/qp.add.source-alias
                               desired-alias driver-api/qp.add.desired-alias
                               :as           opts}]
             (when (seq nfc-path)
               (let [nfc-path-str (str/join \. nfc-path)]
                 (-> opts
-                    (assoc driver-api/qp.add.source-alias  (str nfc-path-str \. source-alias)
+                    (assoc driver-api/qp.add.source-alias  (or raw-path (str nfc-path-str \. source-alias))
                            driver-api/qp.add.desired-alias (str nfc-path-str \. desired-alias))
                     (dissoc driver-api/qp.add.nfc-path)))))
           (update-name [{field-name :name, source-alias driver-api/qp.add.source-alias, :as opts}]
@@ -2308,20 +2329,20 @@ function(bin) {
                        source-table
                        (not= join-alias source-table))
               (assoc opts :join-alias source-table)))
-          (update-opts [opts]
+          (update-opts [raw-path opts]
             (reduce
              (fn
                [opts f]
                (or (f opts)
                    opts))
              opts
-             [prepend-nfc-path
+             [(partial prepend-nfc-path raw-path)
               update-join-alias
               update-name
               remove-bad-join-alias
               update-join-alias]))
           (update-field-ref [[_tag {source-alias driver-api/qp.add.source-alias, :as _opts} id-or-name, :as field-ref]]
-            (let [field-ref' (lib/update-options field-ref update-opts)]
+            (let [field-ref' (lib/update-options field-ref (partial update-opts (raw-mongo-path id-or-name)))]
               (cond-> field-ref'
                 (and (string? id-or-name)
                      source-alias)

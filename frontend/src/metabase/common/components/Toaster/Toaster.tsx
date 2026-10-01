@@ -3,14 +3,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Group,
-  Icon,
-  Notification,
-  Portal,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import { Button, Group, Icon, Notification, Portal, Text } from "metabase/ui";
 
 import S from "./Toaster.module.css";
 
@@ -82,29 +75,31 @@ export const Toast = ({
       }}
       {...divProps}
     >
-      <Group gap="lg" align="center" wrap="nowrap">
+      <Group gap="xl" align="center" wrap="nowrap">
         <Text className={S.message} flex={1} c="tooltip-text" fz="md">
           {message}
         </Text>
         {hasActions && (
           <Group gap="sm" align="center" wrap="nowrap">
             {onConfirm && (
-              <UnstyledButton
-                className={cx(S.button, S.primary)}
+              <Button
+                variant="on-dark-primary"
+                size="sm"
                 onClick={onConfirm}
                 aria-label={confirmAriaLabel}
               >
                 {confirmText}
-              </UnstyledButton>
+              </Button>
             )}
             {secondaryText && onSecondary && (
-              <UnstyledButton
-                className={cx(S.button, S.secondary)}
+              <Button
+                variant="on-dark-secondary"
+                size="sm"
                 onClick={onSecondary}
                 aria-label={secondaryAriaLabel}
               >
                 {secondaryText}
-              </UnstyledButton>
+              </Button>
             )}
             {rightSection}
           </Group>

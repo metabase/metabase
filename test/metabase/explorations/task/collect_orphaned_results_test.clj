@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.task.collect-orphaned-results :as collect]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -118,3 +119,63 @@
       (collect/collect-orphaned-results!)
       (is (false? (t2/exists? :model/StoredResult :id orphan)))
       (is (zero? (t2/count :model/StoredResultUse :stored_result_id orphan))))))
+
+(defn- summary-embed-card!
+  "The ephemeral `report_card` a Summary `cardEmbed` renders through, scoped to an exploration's
+  Summary `document`. Returns its id."
+  [exploration-id]
+  (let [creator (mt/user->id :lucky)
+        doc     (t2/insert-returning-pk! :model/Document
+                                         {:name           "Summary"
+                                          :document       {:type "doc" :content []}
+                                          :content_type   prose-mirror/prose-mirror-content-type
+                                          :creator_id     creator
+                                          :exploration_id exploration-id})]
+    (t2/insert-returning-pk! :model/Card
+                             {:name "embed" :type :question :creator_id creator
+                              :database_id (mt/id) :dataset_query (venues-count-query)
+                              :display "table" :visualization_settings {}
+                              :document_id doc})))
+
+(deftest keeps-composite-blobs-a-summary-card-renders-from-test
+  (testing "a composite blob is built by combining source snapshots and has no
+            `exploration_query_result` of its own — a Summary `cardEmbed`'s Card is its only
+            referent. That reference is durable (unlike an `exploration_id` use row, which
+            outlives a restart), so it has to keep the blob alive."
+    (let [{:keys [exploration-id]} (exploration-with-query!)
+          card                     (summary-embed-card! exploration-id)
+          composite                (blob!)]
+      (t2/insert! :model/StoredResultUse
+                  {:stored_result_id composite :card_id card})
+      (collect/collect-orphaned-results!)
+      (is (true? (t2/exists? :model/StoredResult :id composite))))))
+
+(deftest keeps-single-query-embed-blobs-past-a-restart-test
+  (testing "a single-query embed reuses the source snapshot rather than copying it, so after a
+            restart drops the `exploration_query_result` the Card use row is all that is left
+            standing between the Summary embed and a sweep."
+    (let [{:keys [exploration-id query-id]} (exploration-with-query!)
+          card                              (summary-embed-card! exploration-id)
+          shared                            (blob!)]
+      (t2/insert! :model/ExplorationQueryResult
+                  {:exploration_query_id query-id :stored_result_id shared})
+      (t2/insert! :model/StoredResultUse
+                  {:stored_result_id shared :card_id card})
+      (t2/delete! :model/ExplorationQuery :id query-id)
+      (collect/collect-orphaned-results!)
+      (is (true? (t2/exists? :model/StoredResult :id shared))))))
+
+(deftest collects-composite-blobs-once-the-summary-card-is-gone-test
+  (testing "deleting the embed's Card cascades its use row away, and with the last referent gone
+            the blob becomes collectable — the reference keeps the blob alive, it does not pin it
+            forever"
+    (let [{:keys [exploration-id]} (exploration-with-query!)
+          card                     (summary-embed-card! exploration-id)
+          composite                (blob!)]
+      (t2/insert! :model/StoredResultUse
+                  {:stored_result_id composite :card_id card})
+      (t2/delete! :model/Card :id card)
+      (is (zero? (t2/count :model/StoredResultUse :stored_result_id composite))
+          "sanity: the card_id FK cascade takes the use row with the Card")
+      (collect/collect-orphaned-results!)
+      (is (false? (t2/exists? :model/StoredResult :id composite))))))

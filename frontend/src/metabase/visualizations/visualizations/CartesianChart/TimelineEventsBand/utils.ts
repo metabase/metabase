@@ -1,9 +1,10 @@
 import type { EChartsType } from "echarts/core";
 
 import type {
+  TimelineEventCluster,
   TimelineEventGroup,
   TimelineEventsModel,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+} from "metabase/viz-core";
 import type { IconName, TimelineIcon } from "metabase-types/api";
 
 export const TIMELINE_ICON_TO_SMALL_ICON_MAP = {
@@ -19,9 +20,9 @@ export const TIMELINE_ICON_TO_SMALL_ICON_MAP = {
   cloud: "cloud_12",
 } satisfies Record<TimelineIcon, IconName>;
 
-export interface PositionedTimelineEventGroup {
-  group: TimelineEventGroup;
-  x: number;
+export interface PositionedTimelineEventCluster {
+  cluster: TimelineEventCluster;
+  memberXs: number[];
 }
 
 export const getTimelineEventGroupIconName = (
@@ -38,32 +39,51 @@ interface PositioningInput {
   xAxisIndex: number;
 }
 
-export const getPositionedTimelineEventGroups = ({
+const toPixelX = (
+  chartInstance: EChartsType,
+  xAxisIndex: number,
+  date: string,
+): number => {
+  const pixel = chartInstance.convertToPixel({ xAxisIndex }, date);
+  return Array.isArray(pixel) ? pixel[0] : pixel;
+};
+
+export const getPositionedTimelineEventClusters = ({
   timelineEventsModel,
   chartInstance,
   plotBounds,
   xAxisIndex,
-}: PositioningInput): PositionedTimelineEventGroup[] => {
+}: PositioningInput): PositionedTimelineEventCluster[] => {
   const { left, right } = plotBounds;
 
-  return timelineEventsModel.flatMap((group) => {
-    const pixel = chartInstance.convertToPixel({ xAxisIndex }, group.date);
-    const x = Array.isArray(pixel) ? pixel[0] : pixel;
+  return timelineEventsModel.flatMap((cluster) => {
+    const anchorX = toPixelX(chartInstance, xAxisIndex, cluster.date);
 
-    if (!Number.isFinite(x) || x < left || x > right) {
+    if (!Number.isFinite(anchorX) || anchorX < left || anchorX > right) {
       return [];
     }
 
-    return [{ group, x }];
+    const memberXs = cluster.groups.map((group) => {
+      const memberX = toPixelX(chartInstance, xAxisIndex, group.date);
+      return Number.isFinite(memberX)
+        ? Math.min(Math.max(memberX, left), right)
+        : anchorX;
+    });
+
+    return [{ cluster, memberXs }];
   });
 };
 
-export const arePositionedGroupsEqual = (
-  a: PositionedTimelineEventGroup[],
-  b: PositionedTimelineEventGroup[],
+export const arePositionedClustersEqual = (
+  a: PositionedTimelineEventCluster[],
+  b: PositionedTimelineEventCluster[],
 ): boolean =>
   a.length === b.length &&
   a.every((item, index) => {
     const other = b[index];
-    return item.group === other.group && item.x === other.x;
+    return (
+      item.cluster === other.cluster &&
+      item.memberXs.length === other.memberXs.length &&
+      item.memberXs.every((x, memberIndex) => x === other.memberXs[memberIndex])
+    );
   });

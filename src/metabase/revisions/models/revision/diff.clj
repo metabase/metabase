@@ -2,14 +2,14 @@
   (:require
    [clojure.data :as data]
    [metabase.models.interface :as mi]
+   [metabase.revisions.db :as revisions.db]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.match :as match]
-   [toucan2.core :as t2]))
+   [metabase.util.match :as match]))
 
 (defn- readable-name
   [model id]
   (when id
-    (when-let [instance (t2/select-one model :id id)]
+    (when-let [instance (revisions.db/entity model id)]
       (when (mi/can-read? instance)
         (:name instance)))))
 

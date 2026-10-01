@@ -12,6 +12,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.schema :as warehouses.schema]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -23,6 +24,13 @@
 
 (p/import-vars
  [verify verify-data-loaded-correctly])
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *skip-dataset-prewarm?*
+  "Whether `with-temp` should skip materializing the test-data Database before opening its transaction.
+
+  Bind this in helpers whose app DB must remain empty. See [[metabase.test.data/with-empty-h2-app-db!]]."
+  false)
 
 (defmulti get-or-create-database!
   "Create data warehouse database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
@@ -44,13 +52,14 @@
   ([]       (get-or-create-default-dataset! (tx/driver)))
   ([driver] (get-or-create-database! driver (tx/default-dataset driver))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:arglists '([])} ^:private *db-fn*
   "Implementation of `db` function that should return the current working test database when called, always with no
   arguments. By default, this is [[get-or-create-default-dataset!]] for the current [[metabase.driver/*driver*]], which
   does exactly what it suggests."
   #'get-or-create-default-dataset!)
 
-(mu/defn db :- [:map [:id ::lib.schema.id/database]]
+(mu/defn db :- ::warehouses.schema/database
   []
   (*db-fn*))
 
@@ -61,9 +70,24 @@
 
   That is memoized for the current application database."
   []
-  (mdb/memoize-for-application-db
-   (fn [driver]
-     (u/the-id (get-or-create-default-dataset! driver)))))
+  (let [cached (mdb/memoize-for-application-db
+                (fn [driver]
+                  (u/the-id (get-or-create-default-dataset! driver))))]
+    (fn [driver]
+      ;; A cached ID can outlive the transaction that created its Database. Bypass the cache within a transaction so
+      ;; rollback cannot leave a stale ID. Do not create the Database on a dedicated connection: the caller may hold
+      ;; cluster-lock rows that would block that connection until timeout.
+      ;; TODO (Chris 2026-08-18) -- On a cache miss, concurrent transactions cannot see one another's uncommitted
+      ;; Database and may each create and sync a duplicate because `(name, engine)` is not unique. Quartz triggers
+      ;; from the after-insert hook can also outlive a rollback. A dedicated connection can deadlock on cluster
+      ;; locks held by the caller, while coordination that lasts until commit would be complex for a test-only path.
+      ;; Materializing the dataset before opening the transaction avoids both problems.
+      ;;
+      ;; Inside a transaction, `mt/id` therefore costs a query, so a `t2/with-call-count` window expecting zero
+      ;; calls must resolve its ids before opening.
+      (if (mdb/in-transaction?)
+        (u/the-id (get-or-create-default-dataset! driver))
+        (cached driver)))))
 
 (def ^:private memoized-test-data-database-id-fn
   "Atom with a function with the signature
@@ -79,6 +103,7 @@
 (defn- test-data-database-id []
   (@memoized-test-data-database-id-fn (tx/driver)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^{:arglists '([])} *db-id-fn*
   #'test-data-database-id)
 
@@ -140,11 +165,23 @@
                     :table_id table-id
                     :active   true))
 
-(def ^:private ^{:arglists '([database-id])} table-lookup-map
+;; Like the Database ID above, these maps are memoized for the application DB. Bypass the caches within a transaction
+;; so a rollback cannot leave IDs for Tables and Fields that no longer exist.
+(def ^:private ^{:arglists '([database-id])} cached-table-lookup-map
   (mdb/memoize-for-application-db build-table-lookup-map))
 
-(def ^:private ^{:arglists '([field-lookup-map])} field-lookup-map
+(defn- table-lookup-map [database-id]
+  (if (mdb/in-transaction?)
+    (build-table-lookup-map database-id)
+    (cached-table-lookup-map database-id)))
+
+(def ^:private ^{:arglists '([table-id])} cached-field-lookup-map
   (mdb/memoize-for-application-db build-field-lookup-map))
+
+(defn- field-lookup-map [table-id]
+  (if (mdb/in-transaction?)
+    (build-field-lookup-map table-id)
+    (cached-field-lookup-map table-id)))
 
 (defn- cached-table-id [db-id table-name]
   (get (table-lookup-map db-id) [db-id table-name]))
@@ -152,6 +189,7 @@
 (defn- cached-field-id [table-id parent-id field-name]
   (get (field-lookup-map table-id) [parent-id field-name]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:added "0.51.0"} *dbdef-used-to-create-db*
   "The database definition used to create the currently bound test database. For those rare occasions when you need to
   refer back to it."
@@ -159,7 +197,7 @@
 
 (mu/defn do-with-db
   "Internal impl of [[metabase.test.data/with-db]]."
-  [db    :- [:map [:id ::lib.schema.id/database]]
+  [db    :- ::warehouses.schema/database
    thunk :- fn?]
   (binding [*db-fn*                   (constantly db)
             *db-id-fn*                (constantly (u/the-id db))
@@ -183,7 +221,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:map [:settings [:map [:database-source-dataset-name :string]]]]]
+  [database :- [:or ::warehouses.schema/database ::warehouses.schema/database.update]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table
@@ -354,6 +392,7 @@
                        prop->old-id)))
       database)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-is-temp-copy?*
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
@@ -393,12 +432,14 @@
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (mdb/memoize-for-application-db
-                           (fn [driver]
-                             (let [db (get-or-create-database! driver dbdef)]
-                               (assert db)
-                               (assert (pos-int? (:id db)))
-                               db)))
+        get-db!           (fn [driver]
+                            (let [db (get-or-create-database! driver dbdef)]
+                              (assert db)
+                              (assert (pos-int? (:id db)))
+                              db))
+        cached            (mdb/memoize-for-application-db get-db!)
+        ;; Bypass the cache within a transaction; see [[make-memoized-test-database-id-fn]].
+        get-db-for-driver #(if (mdb/in-transaction?) (get-db! %) (cached %))
         db-fn             #(get-db-for-driver (tx/driver))]
     (binding [*db-fn*                   db-fn
               *db-id-fn*                #(u/the-id (db-fn))
@@ -406,6 +447,7 @@
       (f))))
 
 (defn- log! [fmt & args]
+  ;; drop-dataset! is a clojure -X CLI entry point; stdout is the user interface
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println (apply format fmt args)))
 
@@ -427,10 +469,11 @@
     (tx/destroy-db! driver dbdef)
     (log! "[%s] Done." (name driver))))
 
+;; kept bang-less to preserve this documented CLI entry point; it is only invoked explicitly
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn test-drop-dataset
   "Like [[drop-dataset!]] but checks existence before and after, verifying deletion.
-   Name lacks `!` because clojure -X cannot resolve function names ending in `!`.
+   The historical CLI name is retained for compatibility.
 
      clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/test-drop-dataset :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
   [{:keys [driver dataset-name] :as opts}]

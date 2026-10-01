@@ -19,8 +19,8 @@ export const ScalarCard = ({ card }: ScalarCardProps) => {
   const value = data?.data?.rows?.[0]?.[0];
 
   return (
-    <Card p="md" shadow="none" withBorder>
-      <Stack gap="xs" align="center">
+    <Card p="lg" shadow="none" withBorder>
+      <Stack gap="xxs" align="center">
         <Text size="sm" c="text-secondary">
           {card.title}
         </Text>

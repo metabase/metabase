@@ -1,12 +1,13 @@
-import { ObjectUnionSchema } from "metabase/schema";
 import type {
   Collection,
   CollectionItemModel,
+  CollectionItemsMetadata,
   CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
   GetCollectionDashboardQuestionCandidatesResult,
+  GetCollectionItemsMetadataRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
@@ -27,7 +28,6 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
-import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 const getCollectionItemTagModels = (
   models: ListCollectionItemsRequest["models"],
@@ -83,10 +83,21 @@ export const collectionApi = Api.injectEndpoints({
         ),
         { type: "collection", id: `${id}-items` },
       ],
-      onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
-        [ObjectUnionSchema],
-        (response) => response.data,
-      ),
+    }),
+    getCollectionItemsMetadata: builder.query<
+      CollectionItemsMetadata,
+      GetCollectionItemsMetadataRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${id}/items/metadata`,
+        params,
+      }),
+      // The metadata describes items of every model, so any item change may invalidate it.
+      providesTags: (_response, _error, { id }) => [
+        ...provideCollectionItemListTags([]),
+        { type: "collection", id: `${id}-items` },
+      ],
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {
@@ -136,9 +147,9 @@ export const collectionApi = Api.injectEndpoints({
           idTag("collection", collection.parent_id ?? "root"),
         ];
 
-        // Creating a shared tenant collection affects the embedding hub checklist
+        // Creating a shared tenant collection affects the setup guide checklist
         if (request.namespace === "shared-tenant-collection") {
-          tags.push(listTag("embedding-hub-checklist"));
+          tags.push(listTag("setup-guide-checklist"));
         }
 
         return invalidateTags(error, tags);
@@ -217,6 +228,7 @@ export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
+  useGetCollectionItemsMetadataQuery,
   useGetCollectionQuery,
   useGetCollectionPermissionsGraphQuery,
   useUpdateCollectionPermissionsGraphMutation,

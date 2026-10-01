@@ -5,59 +5,47 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import { updateTable } from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import {
-  getShallowFields as getFields,
-  getMetadata,
-} from "metabase/selectors/metadata";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { User } from "metabase-types/api";
+import { updateTable } from "metabase/reference/update-actions";
+import type * as Lib from "metabase-lib";
+import type { Table, User } from "metabase-types/api";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getHasSingleSchema,
-  getIsEditing,
-  getIsFormulaExpanded,
-  getTable,
-  getUser,
-} from "../selectors";
-import type {
-  BaseDetailFormFields,
-  ReferenceLoadingProps,
-  StubbedTable,
-} from "../types";
+import type { StateWithReference } from "../selectors";
+import { getIsEditing, getIsFormulaExpanded, getUser } from "../selectors";
+import type { BaseDetailFormFields, ReferenceLoadingProps } from "../types";
 import { getQuestionUrl } from "../utils";
 
 interface TableDetailFormFields extends BaseDetailFormFields {
   revision_message?: string;
 }
 
-const interestingQuestions = (table: StubbedTable, metadata: Metadata) => {
+const interestingQuestions = (
+  table: Table,
+  metadataProvider: Lib.MetadataProvider,
+) => {
   return [
     {
       text: t`Count of ${table.display_name}`,
       icon: "number" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
         getCount: true,
-        metadata,
+        metadataProvider: metadataProvider,
       }),
     },
     {
       text: t`See raw data for ${table.display_name}`,
       icon: "table2" as const,
       link: getQuestionUrl({
-        dbId: table.db_id!,
         tableId: table.id,
-        metadata,
+        metadataProvider: metadataProvider,
       }),
     },
   ];
@@ -65,19 +53,12 @@ const interestingQuestions = (table: StubbedTable, metadata: Metadata) => {
 
 const mapStateToProps = (
   state: StateWithReference,
-  props: ReferenceRouteProps,
+  props: Pick<TableDetailProps, "table">,
 ) => {
-  const entity = getTable(state, props) || {};
-  const fields = getFields(state);
-
   return {
-    entity,
-    table: getTable(state, props),
-    metadataFields: fields,
-    metadata: getMetadata(state),
+    metadataProvider: selectMetadataProvider(state, props.table?.db_id ?? null),
     user: getUser(state),
     isEditing: getIsEditing(state),
-    hasSingleSchema: getHasSingleSchema(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state),
   };
 };
@@ -90,16 +71,15 @@ const mapDispatchToProps = {
 
 interface TableDetailProps {
   style: React.CSSProperties;
-  entity: StubbedTable;
-  table: StubbedTable;
+  table: Table | undefined;
+  tables: Table[];
   user: User;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
-  hasSingleSchema?: boolean;
   loading?: boolean;
   loadingError?: unknown;
-  metadata: Metadata;
+  metadataProvider: Lib.MetadataProvider;
 
   onSubmit: (fields: TableDetailFormFields, props: any) => Promise<void>;
 }
@@ -107,16 +87,15 @@ interface TableDetailProps {
 const TableDetail = (props: TableDetailProps) => {
   const {
     style,
-    entity,
-    table,
+    table: entity,
+    tables,
     loadingError,
     loading,
     user,
     isEditing,
     startEditing,
     endEditing,
-    hasSingleSchema,
-    metadata,
+    metadataProvider,
     onSubmit,
   } = props;
 
@@ -133,7 +112,13 @@ const TableDetail = (props: TableDetailProps) => {
     onSubmit: async (fields): Promise<void> => {
       setSaveError(null);
       try {
-        await onSubmit(fields, { ...props, resetForm: handleReset });
+        await onSubmit(fields, {
+          ...props,
+          // `props` carries the entity under its own name. The update actions
+          // read `entity`, so name it that here.
+          entity: entity ?? {},
+          resetForm: handleReset,
+        });
       } catch (error) {
         console.error(error);
         setSaveError(error);
@@ -145,6 +130,10 @@ const TableDetail = (props: TableDetailProps) => {
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
+
+  const hasSingleSchema =
+    tables.length === 0 ||
+    tables.every(({ schema }) => schema === tables[0].schema);
 
   return (
     <form style={style} className={CS.full} onSubmit={handleSubmit}>
@@ -159,14 +148,17 @@ const TableDetail = (props: TableDetailProps) => {
         />
       )}
       <EditableReferenceHeader
-        entity={entity}
+        entity={entity ?? {}}
         type="table"
         headerIcon="table2"
-        headerLink={getQuestionUrl({
-          dbId: entity.db_id!,
-          tableId: entity.id,
-          metadata,
-        })}
+        headerLink={
+          entity
+            ? getQuestionUrl({
+                tableId: entity.id,
+                metadataProvider,
+              })
+            : undefined
+        }
         name={t`Details`}
         user={user}
         isEditing={isEditing}
@@ -198,7 +190,7 @@ const TableDetail = (props: TableDetailProps) => {
                 <li>
                   <Detail
                     name={t`Description`}
-                    description={entity.description}
+                    description={entity?.description}
                     placeholder={t`No description yet`}
                     isEditing={isEditing}
                     field={getFormField("description")}
@@ -208,7 +200,7 @@ const TableDetail = (props: TableDetailProps) => {
                   <li>
                     <Detail
                       name={t`Actual name in database`}
-                      description={entity.name}
+                      description={entity?.name}
                       subtitleClass={S.tableActualName}
                     />
                   </li>
@@ -216,7 +208,7 @@ const TableDetail = (props: TableDetailProps) => {
                 <li>
                   <Detail
                     name={t`Why this table is interesting`}
-                    description={entity.points_of_interest}
+                    description={entity?.points_of_interest}
                     placeholder={t`Nothing interesting yet`}
                     isEditing={isEditing}
                     field={getFormField("points_of_interest")}
@@ -225,16 +217,16 @@ const TableDetail = (props: TableDetailProps) => {
                 <li>
                   <Detail
                     name={t`Things to be aware of about this table`}
-                    description={entity.caveats}
+                    description={entity?.caveats}
                     placeholder={t`Nothing to be aware of yet`}
                     isEditing={isEditing}
                     field={getFormField("caveats")}
                   />
                 </li>
-                {!isEditing && (
+                {!isEditing && entity && (
                   <li>
                     <UsefulQuestions
-                      questions={interestingQuestions(table, metadata)}
+                      questions={interestingQuestions(entity, metadataProvider)}
                     />
                   </li>
                 )}
@@ -257,6 +249,6 @@ export default connect(
   // props, because the `actions` spread in `mapDispatchToProps` is untyped.
   // The cast restores the props a caller actually passes.
   TableDetail as unknown as React.ComponentType<
-    ReferenceRouteProps & ReferenceLoadingProps
+    ReferenceLoadingProps & Pick<TableDetailProps, "table" | "tables">
   >,
 );

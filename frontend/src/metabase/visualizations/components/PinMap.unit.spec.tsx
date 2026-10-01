@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
@@ -15,11 +14,7 @@ import {
   createMockSingleSeries,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import { PinMap, getPoints } from "./PinMap";
 
@@ -277,7 +272,6 @@ describe("PinMap", () => {
       data: series[0].data,
       card: series[0].card,
       settings,
-      metadata: createMockMetadata({ databases: [createSampleDatabase()] }),
       isDashboard,
       height: 300,
       onRender,

@@ -2,14 +2,24 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
+  getAddMembersDisabledReason,
   getGroupNameLocalized,
   isAdminGroup,
   isDataAnalystGroup,
   isDefaultGroup,
 } from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
-import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
+import {
+  Box,
+  Divider,
+  Flex,
+  Icon,
+  Popover,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo, Member } from "metabase-types/api";
 
@@ -64,6 +74,7 @@ export const MembershipSelect = ({
 }: MembershipSelectProps) => {
   const [popoverOpened, { open: openPopover, toggle: togglePopover }] =
     useDisclosure();
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
   const selectedGroupIds = Array.from(memberships.keys());
   const { pinnedGroups, regularGroups } = useMemo(
     () => getGroupSections(groups),
@@ -86,11 +97,15 @@ export const MembershipSelect = ({
   };
 
   const renderGroup = (group: GroupInfo) => {
+    const isMember = memberships.has(group.id);
+    const addDisabledReason = isMember
+      ? null
+      : getAddMembersDisabledReason(group, hasAdvancedPermissions);
     const isDisabled =
       (isAdminGroup(group) && isCurrentUser) ||
       isDefaultGroup(group) ||
-      PLUGIN_TENANTS.isExternalUsersGroup(group);
-    const isMember = memberships.has(group.id);
+      PLUGIN_TENANTS.isExternalUsersGroup(group) ||
+      addDisabledReason != null;
     const canEditMembershipType =
       isMember &&
       !isUserAdmin &&
@@ -98,37 +113,43 @@ export const MembershipSelect = ({
       !PLUGIN_TENANTS.isTenantGroup(group) &&
       !isAdminGroup(group);
 
+    // The group-manager toggle is a button of its own, so it sits beside the
+    // membership button rather than inside it. aria-disabled instead of
+    // disabled keeps the row focusable and hoverable, so the tooltip can
+    // explain why it can't be toggled.
     return (
-      <li
-        className={S.membershipSelectItem}
-        key={group.id}
-        aria-label={group.name}
-        onClick={() =>
-          isDisabled ? undefined : handleToggleMembership(group.id)
-        }
-        style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
-      >
-        <span>{getGroupNameLocalized(group)}</span>
-        <Flex pl="md" align="center" justify="end">
-          {canEditMembershipType && (
-            <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-              tooltipPlacement="bottom"
-              isManager={memberships.get(group.id)?.is_group_manager}
-              onChange={(is_group_manager: boolean) =>
-                handleChangeMembership(group.id, {
-                  is_group_manager,
-                })
+      <li key={group.id} className={S.membershipSelectItem}>
+        <Tooltip label={addDisabledReason} disabled={addDisabledReason == null}>
+          <UnstyledButton
+            type="button"
+            className={S.membershipToggle}
+            aria-pressed={isMember}
+            aria-disabled={isDisabled || undefined}
+            onClick={() => {
+              if (!isDisabled) {
+                handleToggleMembership(group.id);
               }
-            />
-          )}
-          <span
-            style={{
-              visibility: isMember ? "visible" : "hidden",
             }}
           >
-            <Icon name="check" />
-          </span>
-        </Flex>
+            <span>{getGroupNameLocalized(group)}</span>
+            <Icon
+              name="check"
+              aria-hidden
+              style={{ visibility: isMember ? "visible" : "hidden" }}
+            />
+          </UnstyledButton>
+        </Tooltip>
+        {canEditMembershipType && (
+          <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+            tooltipPlacement="bottom"
+            isManager={memberships.get(group.id)?.is_group_manager}
+            onChange={(is_group_manager: boolean) =>
+              handleChangeMembership(group.id, {
+                is_group_manager,
+              })
+            }
+          />
+        )}
       </li>
     );
   };

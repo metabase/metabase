@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
   Box,
@@ -25,7 +24,6 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   tabs?: ReactNode;
   actions?: ReactNode;
   breadcrumbs: ReactNode;
-  showMetabotButton?: boolean;
   showAppSwitcher?: boolean;
 }
 
@@ -37,17 +35,15 @@ export const PaneHeader = ({
   tabs,
   actions,
   breadcrumbs,
-  showMetabotButton,
   showAppSwitcher = true,
   ...rest
 }: PaneHeaderProps) => {
   return (
-    <Stack gap={0} pt="xs" {...rest}>
-      <Flex mb="lg" mt="md" w="100%" h="xl">
+    <Stack gap={0} pt="xxs" {...rest}>
+      <Flex mb="xl" mt="lg" w="100%" h="xxl">
         {breadcrumbs}
 
-        <Group ml="auto" gap="md" className={S.ButtonGroup}>
-          {showMetabotButton && <MetabotDataStudioButton />}
+        <Group ml="auto" gap="lg" className={S.ButtonGroup}>
           {showAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
@@ -58,7 +54,7 @@ export const PaneHeader = ({
         align="flex-start"
         wrap="nowrap"
       >
-        <Stack gap="md">
+        <Stack gap="lg">
           {title && (
             <Group align="center" gap="sm" wrap="nowrap">
               {icon && <FixedSizeIcon name={icon} c="core-brand" size={20} />}
@@ -116,7 +112,7 @@ export function PaneHeaderInput({
       fw="bold"
       fz="h3"
       lh="h3"
-      px={isOptional ? "xs" : undefined}
+      px={isOptional ? "xxs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border-neutral)" : undefined}
       isOptional={isOptional}
       isDisabled={readOnly}

@@ -2,8 +2,11 @@
   "Provider for emailed secret tokens (password reset, email verification, magic links)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.util :as u]
@@ -24,7 +27,8 @@
   and `:consumed_at` (initially nil)."
   [token :- :string
    & {:keys [expires-in-ms]
-      :or {expires-in-ms (* 48 60 60 1000)}}]
+      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true}
+                                                         [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :consumed_at nil})
@@ -35,8 +39,10 @@
   The `email` parameter is the user's email address. Optional keyword arguments `ip-address` and `user-agent` capture
   request context information. Returns a map with `:email`, `:ip_address`, and `:request_context` (containing
   `:user_agent` and `:timestamp`)."
-  [email :- ms/Email
-   & {:keys [ip-address user-agent]}]
+  [email :- [:maybe ms/Email]
+   & {:keys [ip-address user-agent]} :- [:maybe [:map {:closed true}
+                                                 [:ip-address {:optional true} [:maybe :string]]
+                                                 [:user-agent {:optional true} [:maybe :string]]]]]
   {:email email
    :ip_address ip-address
    :request_context {:user_agent user-agent
@@ -51,10 +57,7 @@
   - `:consumed` if the token has already been used
   - `:invalid` if the token doesn't match the stored hash"
   [token :- :string
-   credentials :- [:map
-                   [:token_hash :string]
-                   [:expires_at inst?]
-                   [:consumed_at [:maybe inst?]]]]
+   credentials :- ::auth-identity.schema/auth-identity.credentials.token]
   (cond
     (:consumed_at credentials)
     :consumed
@@ -65,12 +68,12 @@
     :else
     :invalid))
 
-(mu/defn mark-token-consumed :- [:map [:credentials :map]]
+(mu/defn mark-token-consumed :- ::auth-identity.schema/auth-identity
   "Marks a token as consumed by setting the `:consumed_at` timestamp in the auth-identity's credentials.
 
   Takes an `auth-identity` map and returns an updated version with the current instant set as the `:consumed_at`
   value in the credentials map."
-  [auth-identity :- [:map [:credentials :map]]]
+  [auth-identity :- ::auth-identity.schema/auth-identity]
   (assoc-in auth-identity [:credentials :consumed_at] (t/instant)))
 
 (mu/defn- parse-token-user-id :- [:maybe ms/PositiveInt]
@@ -105,21 +108,21 @@
   [user-id :- ms/PositiveInt]
   (u/prog1 (generate-reset-token user-id)
     (t2/with-transaction [_]
-      (let [user (t2/select-one :model/User user-id)
+      (let [user (auth-identity.db/user user-id)
             auth-identity {:user_id user-id
                            :provider "emailed-secret-password-reset"
                            :provider_id (:email user)
                            :credentials (create-reset-token-credentials <>)
                            :metadata (create-reset-token-metadata (:email user))}]
-        (if-let [auth-identity-id (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")]
-          (t2/update! :model/AuthIdentity auth-identity-id auth-identity)
-          (t2/insert! :model/AuthIdentity auth-identity))))))
+        (if-let [auth-identity-id (auth-identity.db/auth-identity-id user-id "emailed-secret-password-reset")]
+          (auth-identity.db/update-auth-identity! auth-identity-id auth-identity)
+          (auth-identity.db/insert-auth-identity! auth-identity))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register emailed_secret provider in the hierarchy
-(derive :provider/emailed-secret :metabase.auth-identity.provider/provider)
-(derive :provider/emailed-secret-password-reset :provider/emailed-secret)
+(auth-identity.hierarchy/derive! :provider/emailed-secret :metabase.auth-identity.provider/provider)
+(auth-identity.hierarchy/derive! :provider/emailed-secret-password-reset :provider/emailed-secret)
 
 ;;; -------------------------------------------------- Multimethod Implementations --------------------------------------------------
 
@@ -143,9 +146,7 @@
     :else
     (try
       (if-let [user-id (parse-token-user-id token)]
-        (if-let [auth-identity (t2/select-one :model/AuthIdentity
-                                              :user_id user-id
-                                              :provider (name provider))]
+        (if-let [auth-identity (auth-identity.db/auth-identity user-id (name provider))]
           (let [verification-result (verify-reset-token token (:credentials auth-identity))]
             (case verification-result
               :valid
@@ -189,6 +190,6 @@
   (when (:success? result)
     (if (:last_login user)
       (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
-      (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User (:id user))))
+      (messages/send-user-joined-admin-notification-email! (auth-identity.db/user (:id user))))
     (auth-identity/set-password! (:id user) password))
   result)

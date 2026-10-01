@@ -20,7 +20,7 @@ export const Example = ({ columnsAndSeparators }: Props) => {
         bg="background_page-secondary"
         component={ScrollArea}
         p="sm"
-        radius="xs"
+        radius="xxs"
         shadow="none"
         withBorder
       >

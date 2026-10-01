@@ -82,30 +82,64 @@
   [query]
   (u/pprint-to-str (cond-> query (map? query) (dissoc :lib/metadata))))
 
-(defn export-query-for-llm
-  "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM. A query
-  map with a `:database` is normalized and exported to the portable representations form
-  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
-  sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
-  export renders nothing at all rather than the fallback."
-  [query]
+(defn- exported-or-edn
+  "Export `normalized` through `mp`, falling back to EDN of `fallback-query` when the export fails
+  for a reason other than a refusal.
+
+  The refusal marker, not the status code, is what tells \"you may not read this\" from \"the export
+  failed\". A by-id denial collapses into the same not-found a missing id produces, on purpose, so
+  the agent cannot ask for hidden content and learn it exists, which means the 403 this used to
+  catch never arrives on that path. Without the marker a refused card falls through and the raw
+  query is printed."
+  [mp normalized store fallback-query]
+  (binding [shared.content-store/*last-lookup-refused?* (atom false)]
+    (try
+      (or (repr-data->llm-block (repr.resolve/export-query mp normalized store))
+          (query-edn-fallback normalized))
+      (catch Exception e
+        (when-not (or (= 403 (:status-code (ex-data e)))
+                      @shared.content-store/*last-lookup-refused?*)
+          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+          (query-edn-fallback fallback-query))))))
+
+(defn export-gated-query-for-llm
+  "Render a query [[shared.content-store/query-for-export]] cleared, from the `:query` and `:mp`
+  it hands back. With `mp` the query is already normalized and exports through it, resolving its
+  ids to names. Without one there is nothing to resolve, so it renders only by the paths that
+  resolve nothing.
+
+  `store` decides the Card / Measure / Segment lookups and every caller names one:
+  [[shared.content-store/default-store]] for queries loaded from the app DB,
+  [[shared.content-store/audited-store]] for client-supplied queries so a denied lookup keeps its
+  audit trail. No defaulting arity, so the choice stays visible at the call site."
+  [query mp store]
   (cond
     (string? query) query
     (string? (:query-content query)) (:query-content query)
-    (and (map? query) (:database query))
-    (try
-      (let [normalized (lib-be/normalize-query query)
-            mp         (lib-be/application-database-metadata-provider (:database normalized))
-            exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
-        (or (repr-data->llm-block exported)
-            (query-edn-fallback normalized)))
-      (catch Exception e
-        (when-not (= 403 (:status-code (ex-data e)))
-          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
-          (query-edn-fallback query))))
+
+    mp (exported-or-edn mp query store query)
+
     (string? (get-in query [:native :query])) (get-in query [:native :query])
     (map? query) (query-edn-fallback query)
     :else (some-> query str)))
+
+(defn export-query-for-llm
+  "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM, normalizing it
+  and building its metadata provider here. For callers with no permission check in front of them;
+  one that has been through [[shared.content-store/query-for-export]] uses
+  [[export-gated-query-for-llm]] with what that returned instead of normalizing a second time."
+  [query store]
+  (if (and (map? query) (:database query))
+    (try
+      (let [normalized (lib-be/normalize-query query)
+            mp         (lib-be/application-database-metadata-provider (:database normalized))]
+        ;; `query` rather than the normalized form, so a failure here renders what the caller
+        ;; handed us
+        (exported-or-edn mp normalized store query))
+      (catch Exception e
+        (log/debugf "Failed to normalize query for LLM, rendering it unresolved: %s" (ex-message e))
+        (export-gated-query-for-llm query nil store)))
+    (export-gated-query-for-llm query nil store)))
 
 (defn transform-query->text
   "Render a transform source query for model context: native SQL verbatim, anything else
@@ -113,7 +147,7 @@
   fence remains valid when the result is interpolated inside an XML `<query>` element."
   [query]
   (or (when (map? query) (metabot.u/extract-sql-content query))
-      (when-let [text (export-query-for-llm query)]
+      (when-let [text (export-query-for-llm query shared.content-store/default-store)]
         (if (str/starts-with? text "```json\n")
           (format "\n%s\n" text)
           text))))
@@ -156,14 +190,16 @@
     (str/replace s "|" "\\u007c")))
 
 (defn- truncate
-  "Cap `s` at `max-len` characters, appending an ellipsis when truncated.
+  "Cap `s` at `max-len` characters without splitting a surrogate pair, appending an ellipsis when truncated.
   Useful to ensure long free text values (e.g. table descriptions) don't bloat the LLM context.
   Returns nil for nil input."
   [s max-len]
   (when s
     (let [s (str s)]
       (if (> (count s) max-len)
-        (str (subs s 0 max-len) "...")
+        (str (subs s 0 (cond-> max-len
+                         (Character/isHighSurrogate (.charAt s (int (dec max-len)))) dec))
+             "...")
         s))))
 
 (defn- database-type-or-unknown
@@ -686,10 +722,35 @@
     ;; Default to viz card
     (viz-card->xml card)))
 
+(def ^:private max-dashboard-filters
+  "Cap on the filters listed for a dashboard."
+  50)
+
+(def ^:private max-dashboard-filter-name-length
+  "Cap on a dashboard filter's name."
+  100)
+
+(defn- dashboard-filters->xml
+  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
+  [[max-dashboard-filters]] of them and says how many were left out."
+  [parameters]
+  (when (seq parameters)
+    (let [total (count parameters)]
+      (str "  <filters>\n"
+           (str/join (for [param (take max-dashboard-filters parameters)]
+                       (str "    <filter id=\"" (escape-xml (:id param))
+                            "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
+                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+           (when (> total max-dashboard-filters)
+             (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
+                  (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))
+           "  </filters>\n"))))
+
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
-   Matches Python Dashboard.llm_representation exactly."
-  [{:keys [id name description verified collection dashcards]}]
+   Matches Python Dashboard.llm_representation exactly, except we additionally surface the
+   dashboard's filters."
+  [{:keys [id name description verified collection parameters dashcards]}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -716,6 +777,7 @@
       :dashboard_name name
       :dashboard_description description
       :dashboard_collection_xml (when collection (collection->xml collection))
+      :dashboard_filters_xml (dashboard-filters->xml parameters)
       :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
@@ -858,15 +920,19 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation exactly.
+   Matches Python FieldValuesMetadata.llm_representation exactly, plus a note on how many values the
+   field has when only some of them are listed.
    Note: Tables are used with |safe in the template, so values must be escaped."
-  [{:keys [field_values statistics]}]
+  [{:keys [field_values field_values_total has_more_values statistics]}]
   (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)
                                {:value "Value"}
                                {:value-fn escape-value}))
+        shown               (count field_values)
+        partial?            (and field_values_total
+                                 (or has_more_values (< shown field_values_total)))
 
         stats-map   (into {} (filter (fn [[_ v]] (some? v)) statistics))
         stats-table (when (seq stats-map)
@@ -877,6 +943,9 @@
     (render-llm-template
      :field_values_metadata
      {:sample_values_table sample-values-table
+      :sample_values_shown shown
+      :sample_values_total (when partial? field_values_total)
+      :sample_values_more  has_more_values
       :stats_table         stats-table})))
 
 (defn field-metadata->xml
@@ -986,11 +1055,12 @@
   "Render a list-shaped read-resource response.
 
    Input shape:
-     {:list-type :databases     ; keyword, becomes the type attribute
-      :items     [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
-      :total     5
-      :page      1
-      :pages     1}
+     {:list-type      :databases     ; keyword, becomes the type attribute
+      :items          [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
+      :total          5
+      :page           1
+      :pages          1
+      :next-page-uri  \"metabase://databases?page=2\"}   ; present when truncated
 
    An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
    block ahead of the items; items reference tabs via their `tab_id` attribute.
@@ -1000,7 +1070,7 @@
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total page pages tabs]}]
+  [{:keys [list-type items total page pages tabs next-page-uri]}]
   (let [type-attr (clojure.core/name (or list-type :items))
         tabs-xml  (when (seq tabs)
                     (str "<tabs>\n"
@@ -1013,7 +1083,8 @@
         truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
-                         "Append ?page=" (inc page) " to the URI to fetch the next page.</truncation-note>"))]
+                         "Fetch " next-page-uri " for the next page — copy it exactly, do not "
+                         "modify its query string.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
          "\" page=\"" (or page 1)
          "\" pages=\"" (or pages 1)

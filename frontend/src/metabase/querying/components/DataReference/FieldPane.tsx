@@ -10,9 +10,8 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { QueryColumnInfo } from "metabase/common/components/MetadataInfo/QueryColumnInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { getQueryAndColumns } from "metabase/querying/common/utils";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldId } from "metabase-types/api";
 
@@ -30,11 +29,15 @@ export const FieldPane = ({
   id,
 }: DataReferencePaneProps<DataReferenceFieldItem>) => {
   const { field, table, isLoading, error } = useGetFieldAndTable(id);
-  const metadata = useSelector(getMetadata);
+  const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const queryAndColumns = useMemo(
     () =>
-      getQueryAndColumns(metadata, table, field !== undefined ? [field] : []),
-    [metadata, table, field],
+      getQueryAndColumns(
+        metadataProvider,
+        table,
+        field !== undefined ? [field] : [],
+      ),
+    [metadataProvider, table, field],
   );
 
   if (isLoading || error || !field) {

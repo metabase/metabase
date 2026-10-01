@@ -219,7 +219,7 @@ export const NotificationsAdminPage = () => {
       title: count === 1 ? t`Delete 1 alert?` : t`Delete ${count} alerts?`,
       message: t`Recipients will stop receiving these alerts.`,
       confirmButtonText: t`Delete`,
-      confirmButtonProps: { color: "feedback-negative" },
+      confirmButtonProps: { color: "negative" },
       size: "md",
       onConfirm: () =>
         deleteNotifications(
@@ -235,7 +235,7 @@ export const NotificationsAdminPage = () => {
         title: t`Delete this alert?`,
         message: t`Recipients will stop receiving this alert.`,
         confirmButtonText: t`Delete`,
-        confirmButtonProps: { color: "feedback-negative" },
+        confirmButtonProps: { color: "negative" },
         onConfirm: () => deleteNotifications([id], "detail_sidebar"),
       });
     },
@@ -334,7 +334,7 @@ export const NotificationsAdminPage = () => {
             onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
 
-          <Flex gap="md" align="center">
+          <Flex gap="lg" align="center">
             <DebouncedSearchInput
               value={urlState.query}
               placeholder={t`Search by question or owner…`}

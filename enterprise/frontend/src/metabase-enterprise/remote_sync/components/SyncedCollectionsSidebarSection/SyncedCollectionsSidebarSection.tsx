@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
 import {
   SidebarHeading,

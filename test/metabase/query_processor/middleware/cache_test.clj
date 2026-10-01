@@ -25,6 +25,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test :as qp]
@@ -44,16 +45,19 @@
 
 (set! *warn-on-reflection* true)
 
+;; one-time DB init; a :once fixture runs before any tests, parallel or not
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
                       (thunk)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
   because of an Exception or if the byte threshold is passed."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *purge-chan*
   "Gets a message whenever old entries are purged from the test backend."
   nil)
@@ -138,8 +142,10 @@
 (defmacro with-mock-cache! [[& bindings] & body]
   `(do-with-mock-cache! (fn [{:keys [~@bindings]}] ~@body)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-caching-min-ttl*
   "Set this to zero to prevent flakes - we don't want a query to slip under the wire here."
   0)
@@ -154,9 +160,10 @@
   (merge {:cache-strategy (ttl-strategy)
           :lib/type       :mbql/query
           :database       1
-          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2, :abc :def}]}
+          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2}]}
          query-kvs))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *rows*
   "Rows the mock query execution returns. Bind to `[]` to exercise the empty-result path."
   [[:toucan      71]
@@ -242,6 +249,7 @@
 
 (deftest refresh-lease-test
   (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -258,6 +266,7 @@
                 "updated_at means 'when the results blob was last written' -- freshness, purging, and the EE refresh "
                 "scheduler all read it that way. Bumping it on lease claim makes a crashed refresh look freshly "
                 "written, so the stale row is treated as fresh for a full additional cache window.")
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (let [original-updated-at (t/offset-date-time "2020-01-01T00:00Z")]
       (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
@@ -273,6 +282,7 @@
 
 (deftest delete-entry-test
   (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -1010,18 +1020,18 @@
           ;; An rff that injects a sentinel `:fresh` into metadata, the same shape
           ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
           fresh-injecting-rff (fn [metadata]
-                                (qp.reducible/default-rff (assoc metadata :fresh "fresh-value")))
+                                (qp.reducible/default-rff (assoc metadata :viz-settings {:fresh "fresh-value"})))
           rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
-              {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
+              {:last-ran (t/zoned-date-time) :cache-version 1 :cols [{:name "x"}]})
           ;; Simulate a cached replay: two actual row vectors, then the final cached
           ;; result map (which used to stomp acc).
           acc (reduce rf (rf)
                       [[1] [2]
-                       {:data {:cols [{:name "x"}] :stale "stale-value"}}])
+                       {:data {:cols [{:name "x"}] :results_timezone "stale-value"}}])
           result (rf acc)]
-      (is (= "fresh-value" (get-in result [:data :fresh]))
+      (is (= "fresh-value" (get-in result [:data :viz-settings :fresh]))
           "Fresh value injected by the rff chain must survive the cached-final-metadata replay")
-      (is (= "stale-value" (get-in result [:data :stale]))
+      (is (= "stale-value" (get-in result [:data :results_timezone]))
           "Stale-only keys from @final-metadata are still deep-merged in")
       (is (= [[1] [2]] (get-in result [:data :rows]))
           "Replayed cached rows are preserved"))))

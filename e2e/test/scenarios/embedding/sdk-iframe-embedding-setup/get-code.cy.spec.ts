@@ -139,29 +139,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     });
   });
 
-  it("should track embed_wizard_code_copied when copy event triggers", () => {
-    enableJwtAuth();
-    navigateToGetCodeStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-      preselectSso: true,
-    });
-
-    getEmbedSidebar().within(() => {
-      codeBlock().should("not.contain", '"useExistingUserSession": true');
-      cy.findByLabelText("Existing session (local testing only)").click();
-      codeBlock().should("contain", '"useExistingUserSession": true');
-
-      codeBlock().trigger("copy");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_code_copied",
-        event_detail:
-          "experience=dashboard,snippetType=frontend,authSubType=user-session",
-      });
-    });
-  });
-
   it("should track embed_wizard_options_completed with settings=default properly (metabase#68285)", () => {
     navigateToGetCodeStep({
       experience: "chart",

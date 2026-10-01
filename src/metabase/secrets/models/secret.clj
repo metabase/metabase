@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.secrets.db :as secrets.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -31,7 +32,7 @@
   (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/Secret
-  {:value  mi/transform-secret-value
+  {:value  (mi/transform-secret-value "secret.value")
    :kind   mi/transform-keyword
    :source mi/transform-keyword})
 
@@ -46,7 +47,7 @@
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
   {:added "0.42.0"}
   [id]
-  (t2/select-one :model/Secret :id id {:order-by [[:version :desc]]}))
+  (secrets.db/latest-secret id))
 
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.
@@ -55,18 +56,18 @@
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
-                         (let [inserted (first (t2/insert-returning-instances! :model/Secret (cond-> {:version    v
-                                                                                                      :name       nm
-                                                                                                      :kind       kind
-                                                                                                      :source     src
-                                                                                                      :value      value
-                                                                                                      :creator_id api/*current-user-id*}
-                                                                                               id
-                                                                                               (assoc :id id))))]
+                         (let [inserted (secrets.db/insert-secret! (cond-> {:version    v
+                                                                            :name       nm
+                                                                            :kind       kind
+                                                                            :source     src
+                                                                            :value      value
+                                                                            :creator_id api/*current-user-id*}
+                                                                     id
+                                                                     (assoc :id id)))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
                            ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here
-                           (t2/select-one :model/Secret :id (or id (u/the-id inserted)) :version v)))
+                           (secrets.db/secret-version (or id (u/the-id inserted)) v)))
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
       (insert-new (u/the-id latest-version) (inc (:version latest-version)))
@@ -292,7 +293,7 @@
                               #{}
                               possible-secret-prop-names)]
       (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-      (t2/delete! :model/Secret :id secret-id))))
+      (secrets.db/delete-secret! secret-id))))
 
 (defn- hydrate-redacted-secret
   [db-details conn-prop-nm _conn-prop]
@@ -329,7 +330,9 @@
    Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property.
    Operates on `:details`, `:write_data_details`, and `:admin_details`."
   [database]
-  (let [driver  (driver.u/database->driver database)
+  (let [driver  (if-let [engine (:engine database)]
+                  (keyword engine)
+                  (driver.u/database->driver (:id database)))
         hydrate (fn [details]
                   (reduce-over-details-secret-values driver details hydrate-redacted-secret))]
     ;; Very low-level operation here, so not using driver.conn/* utils:
@@ -354,7 +357,7 @@
   "Ensures that all possible secret property values are removed from `:details`, `:write_data_details`, and
    `:admin_details`. This is a transformation on `:model/Database` `results-transform`."
   [database]
-  (let [clean #(clean-secret-properties-from-details % (driver.u/database->driver database))]
+  (let [clean #(clean-secret-properties-from-details % (keyword (:engine database)))]
     ;; Very low-level operation here, so not using driver.conn/* utils:
     (-> database
         (m/update-existing :details clean)
@@ -368,7 +371,7 @@
   (if-let [details (get database details-key)]
     (let [original-details (get (t2/original database) details-key)
           updated-details  (reduce-over-details-secret-values
-                            (driver.u/database->driver database)
+                            (keyword (:engine database))
                             details
                             (fn [db-details conn-prop-nm conn-prop]
                               (let [kws             (->possible-secret-property-names conn-prop-nm)
@@ -386,7 +389,8 @@
                                                         (:value secret))]
                                       (assoc cleared-details id-kw id))
                                     (do
-                                      (t2/delete! :model/Secret :id secret-id)
+                                      (when secret-id
+                                        (secrets.db/delete-secret! secret-id))
                                       (dissoc cleared-details id-kw)))
                                   ;; Don't throw out a secret even if the client didn't send it back
                                   (m/assoc-some cleared-details id-kw secret-id)))))]

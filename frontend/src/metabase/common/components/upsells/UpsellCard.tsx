@@ -107,11 +107,11 @@ export const UpsellCardInner: React.FC<UpsellCardProps> = ({
             {title}
           </Title>
         </Flex>
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text lh="1rem" px="1rem">
             {children}
           </Text>
-          <Box mx="md">
+          <Box mx="lg">
             <UpsellCta
               style={buttonStyle}
               onClick={handleClick}

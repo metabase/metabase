@@ -19,6 +19,8 @@ export const TRANSFORMS_KEY = "remote-sync-transforms";
 export const COLLECTIONS_KEY = "collections";
 // Used in modal variant when library doesn't exist yet but user wants to sync it
 export const SYNC_LIBRARY_PENDING_KEY = "sync-library-pending";
+// A running task whose progress has not moved for this long gets a "still running" hint in the modal
+export const SYNC_QUIET_AFTER_MINUTES = 2;
 
 export const REMOTE_SYNC_SCHEMA = Yup.object({
   [REMOTE_SYNC_KEY]: Yup.boolean().nullable().default(true),

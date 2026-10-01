@@ -2,7 +2,7 @@
   display: block;
   width: 100%;
   margin: 1rem 0;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   position: relative;
   max-width: 900px;
   height: 100%;

@@ -12,11 +12,19 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv select-keys get-in]]))
+
+(mu/defn ->binning-options :- [:maybe ::lib.schema.binning/binning]
+  "The plain `:binning` options behind the value [[binning]] returns: the same map without the `:lib/type` tag and the
+  `:metadata-fn` closure that `display-info` needs. Use this whenever those options go back into a query or into
+  column metadata -- the closure cannot be serialized."
+  [resolved :- [:maybe ::lib.schema.binning/binning.resolved]]
+  (some-> resolved (dissoc :lib/type :metadata-fn)))
 
 (defmulti with-binning-method
   "Implementation for [[with-binning]]. Implement this to tell [[with-binning]] how to add binning to a particular MBQL
@@ -38,10 +46,11 @@
 
   Pass `nil` `binning` to remove any binning."
   {:style/indent [:form]}
-  [x binning :- [:maybe [:or ::lib.schema.binning/binning ::lib.schema.binning/binning-option]]]
-  (with-binning-method x (if (contains? binning :mbql)
-                           (:mbql binning)
-                           binning)))
+  [x       :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
+   binning :- [:maybe [:or ::lib.schema.binning/binning.resolved ::lib.schema.binning/binning-option]]]
+  (with-binning-method x (->binning-options (if (contains? binning :mbql)
+                                              (:mbql binning)
+                                              binning))))
 
 (defmulti binning-method
   "Implementation of [[binning]]. Return the current binning options associated with `x`."
@@ -53,9 +62,11 @@
   [_x]
   nil)
 
-(mu/defn binning :- [:maybe ::lib.schema.binning/binning]
-  "Get the current binning options associated with `x`, if any."
-  [x]
+(mu/defn binning :- [:maybe ::lib.schema.binning/binning.resolved]
+  "Get the current binning options associated with `x`, if any. The options come back tagged with `:lib/type` and a
+  `:metadata-fn` closure for [[metabase.lib.metadata.calculation/display-info]]; strip those before putting them back
+  into a query."
+  [x :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (binning-method x))
 
 (defmulti available-binning-strategies-method
@@ -72,12 +83,13 @@
 
 (mu/defn available-binning-strategies :- [:maybe [:sequential [:ref ::lib.schema.binning/binning-option]]]
   "Get a set of available binning strategies for `x`. Returns nil if none are available."
-  ([query x]
+  ([query :- ::lib.schema/query
+    x     :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
    (available-binning-strategies query -1 x))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
    (available-binning-strategies-method query stage-number x)))
 
 (mu/defn default-auto-bin :- ::lib.schema.binning/binning-option
@@ -127,7 +139,7 @@
 (mu/defn binning-display-name :- ::lib.schema.common/non-blank-string
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
   It's called directly by `:field` or `:metadata/column`'s [[lib.metadata.calculation/display-name]]."
-  [{:keys [bin-width num-bins strategy] :as binning-options} :- ::lib.schema.binning/binning
+  [{:keys [bin-width num-bins strategy] :as binning-options} :- ::lib.schema.binning/binning.resolved
    x                                                         :- [:maybe
                                                                  [:or
                                                                   ::lib.schema.metadata/column
@@ -155,8 +167,8 @@
 
 (mu/defn binning= :- boolean?
   "Given binning values (as returned by [[binning]]), check if they match."
-  [x :- [:maybe ::lib.schema.binning/binning]
-   y :- [:maybe ::lib.schema.binning/binning]]
+  [x :- [:maybe ::lib.schema.binning/binning.resolved]
+   y :- [:maybe ::lib.schema.binning/binning.resolved]]
   (let [binning-keys (case (:strategy x)
                        :num-bins  [:strategy :num-bins]
                        :bin-width [:strategy :bin-width]
@@ -167,7 +179,7 @@
   "Given a binning option (as returned by [[available-binning-strategies]]) and the binning value (possibly nil) from
   a column, check if they match."
   [binning-option :- ::lib.schema.binning/binning-option
-   column-binning :- [:maybe ::lib.schema.binning/binning]]
+   column-binning :- [:maybe ::lib.schema.binning/binning.resolved]]
   (binning= (:mbql binning-option) column-binning))
 
 (mu/defn default-bin-width :- [:maybe ::lib.schema.binning/bin-width]

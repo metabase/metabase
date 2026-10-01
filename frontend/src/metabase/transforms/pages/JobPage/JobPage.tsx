@@ -7,7 +7,7 @@ import {
   useUpdateTransformJobMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useParams } from "metabase/router";
 import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -139,7 +139,6 @@ function JobPageBody({
       tabs={<JobTabs jobId={job.id} />}
       readOnly={readOnly}
       isCheckingPermissions={isCheckingPermissions}
-      showMetabotButton
       onNameChange={onNameChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}

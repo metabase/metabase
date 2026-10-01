@@ -15,65 +15,65 @@ import { RequireMetabotConfigured } from "./components/RequireMetabotConfigured"
  * renders nothing.
  */
 const metabotFeatureAccessPage = () =>
-  import("./pages/MetabotFeatureAccessPage").then(
-    ({ MetabotFeatureAccessPage }) => ({
-      Component: MetabotFeatureAccessPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-feature-access" */ "./pages/MetabotFeatureAccessPage"
+  ).then(({ MetabotFeatureAccessPage }) => ({
+    Component: MetabotFeatureAccessPage,
+  }));
 
 const metabotFeatureAccessUpsellPage = () =>
-  import("./pages/MetabotFeatureAccessPage").then(
-    ({ MetabotFeatureAccessUpsellPage }) => ({
-      Component: MetabotFeatureAccessUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-feature-access" */ "./pages/MetabotFeatureAccessPage"
+  ).then(({ MetabotFeatureAccessUpsellPage }) => ({
+    Component: MetabotFeatureAccessUpsellPage,
+  }));
 
 const metabotUsageLimitsPage = () =>
-  import("./pages/MetabotUsageLimitsPage").then(
-    ({ MetabotUsageLimitsPage }) => ({
-      Component: MetabotUsageLimitsPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-usage-limits" */ "./pages/MetabotUsageLimitsPage"
+  ).then(({ MetabotUsageLimitsPage }) => ({
+    Component: MetabotUsageLimitsPage,
+  }));
 
 const metabotCustomizationPage = () =>
-  import("./pages/MetabotCustomizationPage").then(
-    ({ MetabotCustomizationPage }) => ({
-      Component: MetabotCustomizationPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-customization" */ "./pages/MetabotCustomizationPage"
+  ).then(({ MetabotCustomizationPage }) => ({
+    Component: MetabotCustomizationPage,
+  }));
 
 const metabotCustomizationUpsellPage = () =>
-  import("./pages/MetabotCustomizationPage").then(
-    ({ MetabotCustomizationUpsellPage }) => ({
-      Component: MetabotCustomizationUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-customization" */ "./pages/MetabotCustomizationPage"
+  ).then(({ MetabotCustomizationUpsellPage }) => ({
+    Component: MetabotCustomizationUpsellPage,
+  }));
 
 const metabotChatPromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ MetabotChatPromptPage }) => ({ Component: MetabotChatPromptPage }),
-  );
+  import(
+    /* webpackChunkName: "metabot-system-prompts" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ MetabotChatPromptPage }) => ({ Component: MetabotChatPromptPage }));
 
 const naturalLanguagePromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ NaturalLanguagePromptPage }) => ({
-      Component: NaturalLanguagePromptPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-system-prompts" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ NaturalLanguagePromptPage }) => ({
+    Component: NaturalLanguagePromptPage,
+  }));
 
 const sqlGenerationPromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ SqlGenerationPromptPage }) => ({
-      Component: SqlGenerationPromptPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-system-prompts" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ SqlGenerationPromptPage }) => ({
+    Component: SqlGenerationPromptPage,
+  }));
 
 const metabotSystemPromptsUpsellPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ MetabotSystemPromptsUpsellPage }) => ({
-      Component: MetabotSystemPromptsUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "metabot-system-prompts" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ MetabotSystemPromptsUpsellPage }) => ({
+    Component: MetabotSystemPromptsUpsellPage,
+  }));
 
 /**
  * One spelling of each path, used by the routes below and by the prefetch

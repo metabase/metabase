@@ -9,6 +9,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
@@ -19,7 +20,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
@@ -37,13 +37,14 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
-import { createMockNotebookStep } from "../../test-utils";
+import { createMockNotebookStep, getColumnNames } from "../../test-utils";
 import type { NotebookStep } from "../../types";
 import { NotebookProvider } from "../Notebook/context";
 
@@ -874,15 +875,30 @@ describe("Notebook Editor > Join Step", () => {
         "join-columns-picker",
       );
       await userEvent.click(within(joinColumnsPicker).getByText("Select all"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
 
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
     });
 
     it("should be able to select no columns when adding a new join", async () => {
@@ -963,6 +979,62 @@ describe("Notebook Editor > Join Step", () => {
 
       const { fields } = getRecentJoin();
       expect(fields).toBe("none");
+    });
+
+    it("should only change the matching columns for an existing join when searching", async () => {
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            joins: [
+              {
+                source: { type: "table", id: PEOPLE_ID },
+                strategy: "left-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: {
+                      type: "column",
+                      sourceName: "ORDERS",
+                      name: "USER_ID",
+                    },
+                    right: { type: "column", sourceName: "PEOPLE", name: "ID" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      const [join] = Lib.joins(query, 0);
+      const peopleColumnNames = getColumnNames(
+        query,
+        0,
+        Lib.joinableColumns(query, 0, join),
+      );
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      const picker = await screen.findByTestId("join-columns-picker");
+      await userEvent.type(
+        within(picker).getByLabelText("Search columns"),
+        "tude",
+      );
+      await userEvent.click(
+        within(picker).getByLabelText("Select all of these"),
+      );
+
+      const { query: nextQuery, fields } = getRecentJoin();
+      if (fields === "all" || fields === "none") {
+        throw new Error(`Expected an explicit column list, got "${fields}"`);
+      }
+      expect(getColumnNames(nextQuery, 0, fields)).toEqual(
+        peopleColumnNames.filter(
+          (name) => name !== "LATITUDE" && name !== "LONGITUDE",
+        ),
+      );
     });
   });
 

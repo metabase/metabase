@@ -7,20 +7,25 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   ;; ms/InstanceOf validates a Toucan Database instance; lib.schema has no equivalent
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms])
   (:import
    (java.time ZoneId ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *report-timezone-id-override* nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *database-timezone-id-override* nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *results-timezone-id-override* nil)
 
 ;; TODO - consider making this `metabase.util.date-2/the-timezone-id`
@@ -104,15 +109,17 @@
   (^String []
    (results-timezone-id driver/*driver* ::db-from-store))
 
-  (^String [database]
+  (^String [database :- ::database]
    (results-timezone-id (:engine database) database))
 
   (^String [driver   :- :keyword
             database :- ::database
             & {:keys [use-report-timezone-id-if-unsupported?]
-               :or   {use-report-timezone-id-if-unsupported? false}}]
+               :or   {use-report-timezone-id-if-unsupported? false}}
+            :- [:maybe [:map {:closed true}
+                        [:use-report-timezone-id-if-unsupported? {:optional true} [:maybe :boolean]]]]]
    (valid-timezone-id
-    (or *results-timezone-id-override*
+    (or (valid-timezone-id *results-timezone-id-override*)
         (if use-report-timezone-id-if-unsupported?
           (valid-timezone-id (report-timezone-id*))
           (report-timezone-id-if-supported driver database))

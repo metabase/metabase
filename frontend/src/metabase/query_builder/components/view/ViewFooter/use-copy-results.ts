@@ -10,9 +10,7 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getTokenFeature } from "metabase/settings";
-import { canSavePng, extractRemappedColumns } from "metabase/visualizations";
 import { multiLevelPivot } from "metabase/visualizations/lib/data_grid";
-import { getChartSelector } from "metabase/visualizations/lib/image-exports";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   MAX_COPY_CELLS,
@@ -21,13 +19,18 @@ import {
   getResultsClipboardContent,
 } from "metabase/visualizations/lib/results-clipboard";
 import { getChartImageBlob } from "metabase/visualizations/lib/save-chart-image";
-import { isPivoted } from "metabase/visualizations/lib/settings/column";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getClassicPivotColumnIndexes,
   getVisibleTableData,
 } from "metabase/visualizations/lib/visible-table-data";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  canSavePng,
+  extractRemappedColumns,
+  getChartSelector,
+  getComputedSettingsForSeries,
+  isPivoted,
+} from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type {

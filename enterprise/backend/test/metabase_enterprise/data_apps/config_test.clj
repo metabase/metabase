@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.config-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.config :as data-app.config]))
 
@@ -15,9 +16,41 @@
   ([s dir] (data-app.config/parse-app-config (->bytes s) dir)))
 
 (deftest parse-valid-config-test
-  (is (= {:slug "sales" :display_name "Sales dashboard" :description nil :path "dist/index.js" :allowed_hosts []}
+  (is (= {:slug "sales" :display_name "Sales dashboard" :description nil :version 1
+          :path "dist/index.js" :allowed_hosts []}
          (parse "name: Sales dashboard
 path: ./dist/index.js"))))
+
+(deftest parse-version-test
+  (testing "absent means 1: every app predates the field"
+    (is (= 1 (:version (parse "name: X\npath: dist/index.js")))))
+  (testing "a whole number is carried through"
+    (is (= 3 (:version (parse "name: X\nversion: 3\npath: dist/index.js")))))
+  (testing "anything but a positive whole number is rejected, not coerced or compared as-is"
+    (doseq [bad ["0" "-1" "1.5" "'1'" "one" "[1]" "1.0.0"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"version.*positive whole number"
+                            (parse (str "name: X\nversion: " bad "\npath: dist/index.js")))
+          (str "should reject: " (pr-str bad))))))
+
+(deftest template-manifest-declares-the-supported-version-test
+  (testing "the scaffolding template stamps the version this Metabase serves, so a new app is never born outdated"
+    (is (= data-app.config/supported-app-version
+           (:version (parse (slurp "skills/metabase-data-app-setup/template/data_app.yaml")))))))
+
+(deftest migration-upgrade-guides-cover-every-version-test
+  (testing "the migrate skill ships one guide per upgrade up to the supported version, so an app at any older version has a path"
+    (let [upgrades (->> (.listFiles (io/file "skills/metabase-data-app-migrate/references/upgrades"))
+                        (keep #(re-matches #"v(\d+)-to-v(\d+)\.md" (.getName ^java.io.File %)))
+                        (map (fn [[_ from to]] [(parse-long from) (parse-long to)]))
+                        sort)]
+      (is (= (map (fn [n] [n (inc n)]) (range 1 data-app.config/supported-app-version))
+             upgrades)))))
+
+(deftest outdated-test
+  (testing "an app below the supported version is outdated; one at it is not"
+    (with-redefs [data-app.config/supported-app-version 2]
+      (is (data-app.config/outdated? {:version 1}))
+      (is (not (data-app.config/outdated? {:version 2}))))))
 
 (deftest parse-description-test
   (testing "an optional one-liner is trimmed and carried through"
@@ -82,7 +115,7 @@ path: ./dist/index.js"))))
 
 (deftest unknown-fields-are-ignored-test
   (testing "unknown keys don't fail the parse — including a stray `slug`, which the directory name overrides"
-    (is (= {:slug "sales" :display_name "X" :description nil :path "dist/index.js" :allowed_hosts []}
+    (is (= {:slug "sales" :display_name "X" :description nil :version 1 :path "dist/index.js" :allowed_hosts []}
            (parse "name: X\nslug: elsewhere\nfuture_option: 1\npath: dist/index.js")))))
 
 (deftest parse-errors-test
@@ -101,8 +134,9 @@ path: ./dist/index.js"))))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain"
                           (parse "name: X\npath: dist/../../escape.js"))))
   (testing "a directory whose name collides with an API sub-route is rejected"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved slug"
-                          (parse "name: X\npath: dist/index.js" "data_apps/repo-status")))))
+    (doseq [slug ["repo-status" "sandbox-host"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved slug"
+                            (parse "name: X\npath: dist/index.js" (str "data_apps/" slug)))))))
 
 (deftest parse-errors-carry-400-test
   (try

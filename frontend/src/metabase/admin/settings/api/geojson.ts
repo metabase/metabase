@@ -2,7 +2,7 @@ import type { Feature, FeatureCollection } from "geojson";
 import { t } from "ttag";
 
 import { Api } from "metabase/api";
-import { computeMinimalBoundsCoordinates } from "metabase/visualizations/lib/mapping";
+import { computeMinimalBoundsCoordinates } from "metabase/viz-core";
 import type { GeoJSONData } from "metabase-types/api";
 
 export const geojsonApi = Api.injectEndpoints({

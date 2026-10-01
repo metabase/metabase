@@ -1,6 +1,8 @@
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
-import { isPivoted } from "metabase/visualizations/lib/settings/column";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  isPivoted,
+} from "metabase/viz-core";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 

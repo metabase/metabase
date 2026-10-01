@@ -488,6 +488,7 @@
                     (->> refs
                          (map #(lib.equality/find-matching-column all-4 -1 % ret-4)))))
             (is (=? [0 1 2 3]
+                    ;; the test targets find-column-indexes-for-refs itself
                     #_{:clj-kondo/ignore [:discouraged-var]}
                     (lib.equality/find-column-indexes-for-refs all-4 -1 refs ret-4))))
           (testing "just-3 does not match the joined TAX"
@@ -498,6 +499,7 @@
                     (->> refs
                          (map #(lib.equality/find-matching-column just-3 -1 % ret-3)))))
             (is (=? [0 1 2 -1]
+                    ;; the test targets find-column-indexes-for-refs itself
                     #_{:clj-kondo/ignore [:discouraged-var]}
                     (lib.equality/find-column-indexes-for-refs just-3 -1 refs ret-3)))))))))
 

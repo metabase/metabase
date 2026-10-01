@@ -59,7 +59,7 @@ export function ReplaceWithTransformModal({
     <Modal
       title={t`Convert this model to a transform?`}
       opened={opened}
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -158,7 +158,7 @@ function ReplaceWithTransformForm({
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="lg" mt="sm">
+        <Stack gap="xl" mt="sm">
           <Text>
             {t`We'll create a transform based on the model and replace usages of the model with the transform's output table. Then we'll convert the model to a saved question.`}
           </Text>
@@ -184,11 +184,15 @@ function ReplaceWithTransformForm({
             label={t`Scheduling tags`}
             description={t`Transforms are run by jobs. Jobs run every transform with matching tags.`}
           />
-          <Group gap="xs">
+          <Group gap="xxs">
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+            <Button
+              variant="subtle"
+              color="neutral"
+              onClick={onClose}
+            >{t`Cancel`}</Button>
             <FormSubmitButton
               label={t`Convert to a transform`}
               variant="filled"

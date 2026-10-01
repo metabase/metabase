@@ -1,14 +1,13 @@
 (ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.queries.db :as queries.db]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -36,16 +35,7 @@
    Returns `nil` if no information is available."
   ^Integer [^bytes query-hash]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
-  (t2/select-one-fn :average_execution_time :model/Query :query_hash query-hash))
-
-(defn- int-casting-type
-  "Return appropriate type for use in SQL `CAST(x AS type)` statement.
-   MySQL doesn't accept `integer`, so we have to use `unsigned`; Postgres doesn't accept `unsigned`.
-   so we have to use `integer`. Yay SQL dialect differences :D"
-  []
-  (if (= (mdb/db-type) :mysql)
-    :unsigned
-    :integer))
+  (queries.db/average-execution-time query-hash))
 
 (def ^:private smoothing-factor
   "The weight of the latest execution time in the exponential rolling average formula:
@@ -61,21 +51,14 @@
   "Update the rolling average execution time for query with `query-hash`. Returns `true` if a record was updated,
    or `false` if no matching records were found."
   ^Boolean [query ^bytes query-hash ^Integer execution-time-ms]
-  (let [avg-execution-time (h2x/cast (int-casting-type) (h2x/round (h2x/+ (h2x/* [:inline decay-factor] :average_execution_time)
-                                                                          [:inline (* smoothing-factor execution-time-ms)])
-                                                                   [:inline 0]))]
+  (let [c1 (* smoothing-factor execution-time-ms)]
     (or
      ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
      ;; new entries, so at some point in the future we can take this out, and save a DB call.
-     (pos? (t2/update! :model/Query
-                       {:query_hash query-hash, :query nil}
-                       {:query                 (json/encode query)
-                        :average_execution_time avg-execution-time}))
+     (pos? (queries.db/backfill-query-and-average-execution-time! query-hash (json/encode query) decay-factor c1))
      ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
      ;; updating query on every single UPDATE)
-     (pos? (t2/update! :model/Query
-                       {:query_hash query-hash}
-                       {:average_execution_time avg-execution-time})))))
+     (pos? (queries.db/update-average-execution-time! query-hash decay-factor c1)))))
 
 (defn- rolling-average-coefficients
   "Collapse applying the rolling-average formula (see [[smoothing-factor]]) once per execution time into a single
@@ -102,39 +85,24 @@
   (when hash-bytes
     (ByteBuffer/wrap ^bytes hash-bytes)))
 
-(defn- rolling-average-update-expr
-  "HoneySQL expression that updates `:average_execution_time` as if the rolling-average formula were applied once per
-  execution time, in order."
-  [execution-times-ms]
-  (let [[c0 c1] (rolling-average-coefficients execution-times-ms)]
-    (h2x/cast (int-casting-type)
-              (h2x/round (h2x/+ (h2x/* [:inline c0] :average_execution_time)
-                                [:inline c1])
-                         [:inline 0]))))
-
 (defn- update-rolling-average-execution-times!
   "Update the rolling average execution times for `groups` (each a sequence of entries sharing a query hash) with a
   single atomic UPDATE."
   [groups]
   (when (seq groups)
-    (let [hash+exprs (vec (for [group groups]
-                            [(:query-hash (first group))
-                             (rolling-average-update-expr (map :execution-time-ms group))]))]
-      (t2/query {:update (t2/table-name :model/Query)
-                 :set    {:average_execution_time (into [:case]
-                                                        (mapcat (fn [[query-hash expr]]
-                                                                  [[:= :query_hash query-hash] expr]))
-                                                        hash+exprs)}
-                 :where  [:in :query_hash (mapv first hash+exprs)]}))))
+    (let [hash+coefficients (vec (for [group groups]
+                                   (let [[c0 c1] (rolling-average-coefficients (map :execution-time-ms group))]
+                                     [(:query-hash (first group)) c0 c1])))]
+      (queries.db/update-average-execution-times! hash+coefficients))))
 
 (defn- insert-query-entries!
   "Insert new Query rows for `groups` (each a sequence of entries sharing a query hash) with a single INSERT."
   [groups]
-  (t2/insert! :model/Query (for [group groups]
-                             {:query                  (:query (first group))
-                              :query_hash             (:query-hash (first group))
-                              :average_execution_time (initial-average-execution-time
-                                                       (map :execution-time-ms group))})))
+  (queries.db/insert-queries! (for [group groups]
+                                {:query                  (:query (first group))
+                                 :query_hash             (:query-hash (first group))
+                                 :average_execution_time (initial-average-execution-time
+                                                          (map :execution-time-ms group))})))
 
 (defn- query-hash->row-status
   "Fetch which of `query-hashes` already have Query rows. Returns a map of [[hash-key]] -> `:up-to-date` or
@@ -150,9 +118,7 @@
                   (if (contains? #{true 1} missing_query)
                     :needs-query-backfill
                     :up-to-date)]))
-          (t2/reducible-query {:select [:query_hash [[:= :query nil] :missing_query]]
-                               :from   [(t2/table-name :model/Query)]
-                               :where  [:in :query_hash query-hashes]}))))
+          (queries.db/query-hash-statuses-reducible query-hashes))))
 
 (defn save-queries-and-update-average-execution-times!
   "Update the recorded average execution times (or insert new records as needed) for `entries`, maps with `:query`,
@@ -199,7 +165,7 @@
     (if-let [source-card-id (lib/primary-source-card-id query)]
       (let [card (or (lib.metadata/card query source-card-id)
                      ;; Card may belong to a different Database; fetch from the app DB
-                     (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id source-card-id))]
+                     (queries.db/card-database-and-table-ids source-card-id))]
         (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
       (let [table-id (lib/primary-source-table-id query)]
         {:database-id database-id

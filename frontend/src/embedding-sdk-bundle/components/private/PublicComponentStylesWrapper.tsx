@@ -8,7 +8,7 @@ import { forwardRef } from "react";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useComputedColorScheme } from "metabase/ui";
-import { getSaveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import S from "./PublicComponentStylesWrapper.style.css";
 

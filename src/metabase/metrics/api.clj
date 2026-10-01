@@ -3,13 +3,15 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.db :as metrics.db]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
-   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -45,19 +47,15 @@
    [:map
     [:dimensions           [:sequential ::metrics.dimension/dimension]]
     [:dimension_mappings   [:sequential ::metrics.dimension/dimension-mapping]]
-    [:dataset_query        {:optional true} [:maybe ms/Map]]
+    [:dataset_query        {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
 (defn- count-metrics []
-  (t2/count :model/Card {:where (queries/visible-metric-cards-where-clause)}))
+  (metrics.db/visible-metric-card-count))
 
 (defn- select-metrics [limit offset]
-  (-> (t2/select [:model/Card :id :name :description :collection_id]
-                 {:where    (queries/visible-metric-cards-where-clause)
-                  :order-by [[:name :asc]]
-                  :limit    limit
-                  :offset   offset})
+  (-> (metrics.db/visible-metric-cards-page limit offset)
       (t2/hydrate :collection)))
 
 (api.macros/defendpoint :get "/"
@@ -83,9 +81,9 @@
 
 (mu/defn- hydrated-metric [id :- ms/PositiveInt
                            include-orphaned? :- :boolean]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric"))
+  (api/read-check (metrics.db/metric-card id))
   (metrics/sync-dimensions! :metadata/metric id)
-  (cond-> (-> (t2/select-one :model/Card :id id :type "metric")
+  (cond-> (-> (metrics.db/metric-card id)
               metrics.perms/filter-dimensions-for-user
               (update :dimensions #(or % []))
               (update :dimension_mappings #(or % [])))
@@ -96,8 +94,8 @@
 
   Returns the metric with hydrated dimensions and dimension mappings; the `::MetricWithDimensions`
   schema encodes them to the snake_case wire shape at the `defendpoint` edge."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [include-orphaned]} :- [:map
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [include-orphaned]} :- [:map {:closed true}
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (let [metric (hydrated-metric id (boolean include-orphaned))]
     (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
@@ -123,7 +121,7 @@
   "Schema for the definition object within a dataset request.
    Uses expression-based contract for metric math support."
   [:and
-   [:map
+   [:map {:closed true}
     [:expression  ::lib-metric.schema/metric-math-expression]
     [:filters     {:optional true} [:maybe ::lib-metric.schema/instance-filters]]
     [:projections {:optional true} [:maybe ::lib-metric.schema/typed-projections]]]
@@ -145,7 +143,7 @@
 
 (mr/def ::DatasetRequest
   "Schema for POST /dataset request body."
-  [:map
+  [:map {:closed true}
    [:definition ::Definition]])
 
 (mr/def ::RemappedValueResponse
@@ -173,10 +171,10 @@
                       source-id   (lib-metric/expression-leaf-id leaf)]
                   (case source-type
                     :metric  (do
-                               (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
+                               (api/read-check (metrics.db/metric-card source-id))
                                [(lib-metric/expression-leaf-uuid leaf) source-id])
                     :measure (do
-                               (api/query-check (t2/select-one :model/Measure :id source-id))
+                               (api/query-check (metrics.db/measure source-id))
                                nil))))
               (lib-metric/expression-leaves expression))))
 
@@ -217,14 +215,20 @@
    Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
   Returns {uuid -> qp-result}."
   [leaves metric-card-ids]
-  (let [uuid->future (into {}
-                           (map (fn [[uuid leaf-plan]]
-                                  [uuid (future (process-leaf-query (:leaf/mbql leaf-plan)
-                                                                    (get metric-card-ids uuid)))]))
-                           leaves)]
-    (into {}
-          (map (fn [[uuid f]] [uuid @f]))
-          uuid->future)))
+  (letfn [(run-leaf [[uuid leaf-plan]]
+            (process-leaf-query (:leaf/mbql leaf-plan) (get metric-card-ids uuid)))]
+    (if (mdb/in-transaction?)
+      ;; A transaction owns one connection, and `future` conveys that binding to each thread. Parallel leaves
+      ;; would therefore interleave app DB writes and savepoints on the same session; one thread's rollback can
+      ;; invalidate its siblings' savepoints. Only tests run this code within a transaction. During a request,
+      ;; each future obtains its own pooled connection.
+      (into {} (map (fn [leaf] [(first leaf) (run-leaf leaf)])) leaves)
+      (let [uuid->future (into {}
+                               (map (fn [leaf] [(first leaf) (future (run-leaf leaf))]))
+                               leaves)]
+        (into {}
+              (map (fn [[uuid f]] [uuid @f]))
+              uuid->future)))))
 
 (defn- stream-arithmetic-results
   "Join leaf results and stream the computed output through the QP reduce pipeline.
@@ -292,7 +296,7 @@
    - values: list of [value] or [value, display-name] tuples
    - field_id: the underlying field ID
    - has_more_values: boolean indicating if there are more values"
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
   (let [metric (hydrated-metric id false)]
@@ -306,10 +310,10 @@
   "Search for values of a dimension that contain the query string.
 
    Returns field values matching the search query in the same format as the field values API."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
+   {:keys [query]}            :- [:map {:closed true} [:query ms/NonBlankString]]]
   (let [metric (hydrated-metric id false)]
     (metrics/dimension-search-values
      (:dimensions metric)
@@ -322,10 +326,10 @@
   "Fetch remapped value for a specific dimension value.
 
    Returns a pair [value, display-name] if remapping exists, or [value] otherwise."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [value]}             :- [:map [:value :string]]]
+   {:keys [value]}             :- [:map {:closed true} [:value :string]]]
   (let [metric (hydrated-metric id false)]
     (metrics/dimension-remapped-value
      (:dimensions metric)
@@ -338,10 +342,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- read-check-metric! [id]
-  (api/read-check (t2/select-one :model/Card :id id :type "metric")))
+  (api/read-check (metrics.db/metric-card id)))
 
 (defn- write-check-metric! [id]
-  (api/write-check (t2/select-one :model/Card :id id :type "metric")))
+  (api/write-check (metrics.db/metric-card id)))
 
 ;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
 ;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
@@ -359,8 +363,8 @@
       [:addable [:sequential :map]]]
   "List a metric's curated dimensions, and (when `with-addable=true`) the columns still available to
   add, grouped by source table. Both can be filtered with a `query` name substring."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [query with-addable include-orphaned]} :- [:map
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   {:keys [query with-addable include-orphaned]} :- [:map {:closed true}
                                                      [:query            {:optional true} [:maybe :string]]
                                                      [:with-addable     {:optional true} [:maybe ms/BooleanValue]]
                                                      [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
@@ -376,10 +380,10 @@
   are recomputed server-side.
 
   Returns the updated list of dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [dimensions]} :- [:map
-                            [:dimensions [:sequential [:map
+   {:keys [dimensions]} :- [:map {:closed true}
+                            [:dimensions [:sequential [:map {:closed true}
                                                        [:id             ms/NonBlankString]
                                                        [:display_name   {:optional true} ms/NonBlankString]
                                                        [:description    {:optional true} [:maybe :string]]
@@ -391,9 +395,9 @@
 (api.macros/defendpoint :post "/:id/dimension/remove"
   :- [:sequential :map]
   "Remove dimensions (by UUID) from a metric. Returns the updated list of added dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
+   {:keys [dimension_ids]} :- [:map {:closed true} [:dimension_ids [:sequential ms/NonBlankString]]]]
   (write-check-metric! id)
   (u/prog1 (metrics/remove-dimensions! :metadata/metric id dimension_ids)
     (notify-dimensions-changed! id)))
@@ -403,9 +407,9 @@
   "Mark exactly one dimension as the metric's default, clearing any previous default. A null
   `dimension_id` clears the default without setting a new one, so the metric renders as a scalar.
   Returns the updated list of added dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [dimension_id]} :- [:map [:dimension_id [:maybe ms/NonBlankString]]]]
+   {:keys [dimension_id]} :- [:map {:closed true} [:dimension_id [:maybe ms/NonBlankString]]]]
   (write-check-metric! id)
   (metrics/set-default-dimension! :metadata/metric id dimension_id))
 
@@ -414,9 +418,9 @@
   "Persist a new ordering for a metric's dimensions. `dimension_ids` is the desired order; dimensions
   not listed keep their relative order after the listed ones. Returns the updated list of added
   dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
+   {:keys [dimension_ids]} :- [:map {:closed true} [:dimension_ids [:sequential ms/NonBlankString]]]]
   (write-check-metric! id)
   (metrics/reorder-dimensions! :metadata/metric id dimension_ids))
 
@@ -426,15 +430,15 @@
   column.
 
   `source` is a `{type, field-id}`; the new column must have the same effective type."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:display_name {:optional true} ms/NonBlankString]
             [:description  {:optional true} [:maybe :string]]
             [:default_temporal_unit {:optional true} ms/NonBlankString]
-            [:source       {:optional true} [:maybe [:map [:field-id ms/PositiveInt]]]]]]
+            [:source       {:optional true} [:maybe [:map {:closed true} [:field-id ms/PositiveInt]]]]]]
   (write-check-metric! id)
   (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)
     ;; Only a source-column change alters the mapping (and thus the deps graph).
