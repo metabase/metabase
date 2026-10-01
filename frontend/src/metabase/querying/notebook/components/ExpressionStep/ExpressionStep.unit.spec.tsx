@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
@@ -9,6 +15,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { DEBOUNCE_VALIDATION_MS } from "../../../components/expressions/Editor/constants";
 import { createMockNotebookStep } from "../../test-utils";
 
 import { ExpressionStep } from "./ExpressionStep";
@@ -17,7 +24,7 @@ interface SetupOpts {
   query?: Lib.Query;
 }
 
-function createQueryWithExpression(name: string) {
+function createQueryWithExpressions(...names: string[]) {
   return Lib.createTestQuery(SAMPLE_PROVIDER, {
     stages: [
       {
@@ -25,22 +32,24 @@ function createQueryWithExpression(name: string) {
           type: "table",
           id: ORDERS_ID,
         },
-        expressions: [
-          {
-            name,
-            value: {
-              type: "operator",
-              operator: "+",
-              args: [
-                { type: "literal", value: 1 },
-                { type: "literal", value: 1 },
-              ],
-            },
+        expressions: names.map((name) => ({
+          name,
+          value: {
+            type: "operator",
+            operator: "+",
+            args: [
+              { type: "literal", value: 1 },
+              { type: "literal", value: 1 },
+            ],
           },
-        ],
+        })),
       },
     ],
   });
+}
+
+function createQueryWithExpression(name: string) {
+  return createQueryWithExpressions(name);
 }
 
 function setup({
@@ -143,7 +152,7 @@ describe("Notebook Editor > Expression Step", () => {
       query: createQueryWithExpression("expression name"),
     });
 
-    const pill = screen.getByText("expression name");
+    const pill = screen.getByTestId("expression-pill");
     await userEvent.click(
       within(pill).getByRole("img", { name: "close icon" }),
     );
@@ -200,6 +209,134 @@ describe("Notebook Editor > Expression Step", () => {
     expect(
       screen.queryByRole("button", { name: "Discard" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should keep in-progress text that does not compile when switching pills", async () => {
+    setup({ query: createQueryWithExpressions("first", "second") });
+
+    await userEvent.click(screen.getByText("first"));
+    const input = await screen.findByTestId("custom-expression-query-editor");
+    await userEvent.clear(input);
+    await userEvent.type(input, "1 +");
+    await act(async () => {
+      input.blur();
+    });
+
+    // Go read the other expression, then come back.
+    await userEvent.click(screen.getByText("second"));
+    await userEvent.click(screen.getByText("first"));
+
+    expect(
+      await screen.findByTestId("custom-expression-query-editor"),
+    ).toHaveValue("1 +");
+  });
+
+  it("should keep a draft and its text when switching to another pill", async () => {
+    setup({ query: createQueryWithExpression("saved") });
+
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+    await typeExpression("1 +");
+
+    // Go look at the saved expression, then back to the draft.
+    await userEvent.click(screen.getByText("saved"));
+    expect(screen.getByText("New column")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("New column"));
+
+    expect(
+      await screen.findByTestId("custom-expression-query-editor"),
+    ).toHaveValue("1 +");
+  });
+
+  it("should drop a draft when its pill is removed", async () => {
+    setup();
+
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+    await typeExpression("1 +");
+
+    const draft = screen.getByTestId("selected-expression-pill");
+    await userEvent.click(
+      within(draft).getByRole("img", { name: "close icon" }),
+    );
+
+    expect(screen.queryByText("New column")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("expression-editor")).not.toBeInTheDocument();
+  });
+
+  it("should flag pills whose text is not in the query", async () => {
+    setup({ query: createQueryWithExpression("saved") });
+
+    expect(screen.queryByTestId("unsaved-indicator")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("saved"));
+    const input = await screen.findByTestId("custom-expression-query-editor");
+    await userEvent.clear(input);
+    await userEvent.type(input, "1 +");
+    await act(async () => {
+      input.blur();
+    });
+
+    expect(await screen.findByTestId("unsaved-indicator")).toBeInTheDocument();
+
+    // Making it compile again clears the flag.
+    await userEvent.type(input, " 1");
+    await act(async () => {
+      input.blur();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("unsaved-indicator")).not.toBeInTheDocument();
+    });
+  });
+
+  it("should flag a draft as unsaved", async () => {
+    setup();
+
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+
+    expect(screen.getByTestId("unsaved-indicator")).toBeInTheDocument();
+  });
+
+  it("should allow several drafts at once, each keeping its own text", async () => {
+    setup();
+
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+    await typeExpression("1 +");
+
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+    await typeExpression("2 +");
+
+    expect(screen.getAllByText("New column")).toHaveLength(2);
+
+    const [first, second] = screen.getAllByText("New column");
+    await userEvent.click(first);
+    expect(
+      await screen.findByTestId("custom-expression-query-editor"),
+    ).toHaveValue("1 +");
+
+    await userEvent.click(second);
+    expect(
+      await screen.findByTestId("custom-expression-query-editor"),
+    ).toHaveValue("2 +");
+  });
+
+  it("should not duplicate a column when the debounce and the blur both commit", async () => {
+    const { getRecentQuery, getExpressionNames } = setup();
+
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+
+    const input = await screen.findByTestId("custom-expression-query-editor");
+    await userEvent.type(input, "2 + 2");
+
+    // Let the debounced validation commit before blurring commits again.
+    await act(async () => {
+      jest.advanceTimersByTime(DEBOUNCE_VALIDATION_MS + 50);
+    });
+    await act(async () => {
+      input.blur();
+    });
+
+    expect(getExpressionNames(getRecentQuery())).toEqual(["New column"]);
   });
 
   it("should close the editor on Done", async () => {

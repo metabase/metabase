@@ -25,6 +25,9 @@ export type InlineExpressionEditorProps = {
   clause?: Lib.Expressionable;
 
   onCommit: (clause: Lib.ExpressionClause) => void;
+  initialSource?: string;
+  onSourceChange?: (source: string, isValid: boolean) => void;
+
   onDone: () => void;
   onDiscard: () => void;
 };
@@ -40,6 +43,8 @@ export function InlineExpressionEditor({
   readOnly,
   clause,
   onCommit,
+  initialSource,
+  onSourceChange,
   onDone,
   onDiscard,
 }: InlineExpressionEditorProps) {
@@ -53,23 +58,26 @@ export function InlineExpressionEditor({
     (
       clause: Lib.ExpressionClause | null,
       error: ExpressionError | null,
-      { hasSourceChanged }: EditorChangeMeta,
+      { hasSourceChanged, source }: EditorChangeMeta,
     ) => {
+      const isValid = !error && clause != null;
       setError(error);
       setHasExpression(clause != null);
+      onSourceChange?.(source, isValid);
 
-      if (!error && clause != null && hasSourceChanged) {
+      if (isValid && hasSourceChanged) {
         onCommit(clause);
       }
     },
-    [onCommit],
+    [onCommit, onSourceChange],
   );
 
   const handleRevert = useCallback(() => {
     setError(null);
     setHasExpression(true);
+    onSourceChange?.("", true);
     setRevertCount((count) => count + 1);
-  }, []);
+  }, [onSourceChange]);
 
   const isValid = error == null && hasExpression;
   const isSaved = clause != null;
@@ -77,6 +85,7 @@ export function InlineExpressionEditor({
   return (
     <Layout
       inline
+      mt="sm"
       className={S.panel}
       data-testid="expression-editor"
       data-ignore-editor-clicks="true"
@@ -87,6 +96,7 @@ export function InlineExpressionEditor({
         expressionMode={expressionMode}
         clause={clause}
         initialClause={clause}
+        initialSource={revertCount === 0 ? initialSource : undefined}
         onChange={handleChange}
         query={query}
         stageIndex={stageIndex}
@@ -97,6 +107,7 @@ export function InlineExpressionEditor({
         error={error}
         readOnly={readOnly}
         withPopoverExitGuard={false}
+        withHostedSidebar
       />
 
       {!readOnly && (

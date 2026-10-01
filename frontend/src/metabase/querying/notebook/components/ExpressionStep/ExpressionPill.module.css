@@ -4,18 +4,44 @@
   opacity: 0.6;
 }
 
-.inputRoot {
-  display: flex;
+.hiddenWhileRenaming {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.name {
+  position: relative;
+  white-space: pre;
+}
+
+/* Doubled to outweigh NotebookCellItem's own cursor rule. */
+.renameable.renameable {
+  cursor: text;
+}
+
+.renameable .closeIcon {
+  cursor: pointer;
 }
 
 .input {
-  min-height: unset;
-  height: auto;
+  position: absolute;
+  inset: 0;
+  width: 100%;
   padding: 0;
-  font-weight: bold;
-  color: inherit;
-  background: transparent;
+  margin: 0;
   border: none;
-  field-sizing: content;
-  min-width: 4rem;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.unsavedIndicator {
+  flex: 0 0 auto;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  background-color: currentcolor;
 }

@@ -1,7 +1,9 @@
+import cx from "classnames";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "ttag";
 
-import { Icon, TextInput } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 
 import { NotebookCellItem } from "../NotebookCell";
@@ -13,6 +15,9 @@ type ExpressionPillProps = {
   color: ColorName;
   isActive: boolean;
   readOnly?: boolean;
+  /** Off for a draft, which has no clause to carry a name yet. */
+  canRename?: boolean;
+  hasUnsavedChanges?: boolean;
   hasRemoveButton?: boolean;
   onOpen: () => void;
   onRename: (name: string) => void;
@@ -24,6 +29,8 @@ export function ExpressionPill({
   color,
   isActive,
   readOnly,
+  canRename = true,
+  hasUnsavedChanges = false,
   hasRemoveButton = !readOnly,
   onOpen,
   onRename,
@@ -43,13 +50,13 @@ export function ExpressionPill({
     if (readOnly) {
       return;
     }
-    if (isActive) {
+    if (isActive && canRename) {
       setDraftName(name);
       setIsRenaming(true);
-    } else {
+    } else if (!isActive) {
       onOpen();
     }
-  }, [readOnly, isActive, name, onOpen]);
+  }, [readOnly, isActive, canRename, name, onOpen]);
 
   const handleCommit = useCallback(() => {
     setIsRenaming(false);
@@ -80,28 +87,42 @@ export function ExpressionPill({
       color={color}
       readOnly={readOnly}
       selected={isActive}
+      className={cx({ [S.renameable]: isActive && canRename && !readOnly })}
       onClick={isRenaming ? undefined : handleClick}
       data-testid={isActive ? "selected-expression-pill" : "expression-pill"}
     >
-      {isRenaming ? (
-        <TextInput
-          ref={inputRef}
-          value={draftName}
-          data-testid="expression-name"
-          autoFocus
-          variant="unstyled"
-          aria-label={name}
-          classNames={{ root: S.inputRoot, input: S.input }}
-          onChange={(event) => setDraftName(event.target.value)}
-          onBlur={handleCommit}
-          onKeyDown={handleKeyDown}
-        />
-      ) : (
-        name
+      {hasUnsavedChanges && (
+        <Tooltip label={t`Invalid expressions aren't saved to your question.`}>
+          <span
+            className={S.unsavedIndicator}
+            data-testid="unsaved-indicator"
+            aria-label={t`Invalid expressions aren't saved to your question.`}
+          />
+        </Tooltip>
       )}
-      {hasRemoveButton && !isRenaming && (
+      <span
+        className={cx(S.name, {
+          [S.renameable]: isActive && canRename && !readOnly,
+        })}
+      >
+        {isRenaming ? draftName || "\u00a0" : name}
+        {isRenaming && (
+          <input
+            ref={inputRef}
+            className={S.input}
+            value={draftName}
+            data-testid="expression-name"
+            autoFocus
+            aria-label={name}
+            onChange={(event) => setDraftName(event.target.value)}
+            onBlur={handleCommit}
+            onKeyDown={handleKeyDown}
+          />
+        )}
+      </span>
+      {hasRemoveButton && (
         <Icon
-          className={S.closeIcon}
+          className={cx(S.closeIcon, { [S.hiddenWhileRenaming]: isRenaming })}
           name="close"
           onClick={(event) => {
             event.stopPropagation();

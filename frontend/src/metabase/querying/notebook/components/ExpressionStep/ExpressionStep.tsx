@@ -15,12 +15,11 @@ import { NotebookCell, NotebookCellAdd } from "../NotebookCell";
 
 import { ExpressionPill } from "./ExpressionPill";
 
-/**
- * `index` is null while the pill is a draft, with no clause in the query yet.
- * `session` keys the editor and survives the draft becoming a real clause —
- * autosave flips `index` mid-typing, and remounting due to changed key would drop the caret.
- */
-type OpenEditor = { index: number | null; session: number };
+type EditorTarget =
+  | { kind: "clause"; index: number }
+  | { kind: "draft"; id: string };
+
+type OpenEditor = { target: EditorTarget; session: number };
 
 export const ExpressionStep = ({
   color,
@@ -36,12 +35,48 @@ export const ExpressionStep = ({
   const isEditorLoaded = useInlineExpressionEditorChunk();
 
   const [openEditor, setOpenEditor] = useState<OpenEditor | null>(null);
-  const sessionRef = useRef(0);
+  // The debounced edit and the blur after it both commit, faster than React
+  // re-renders, so the target has to be readable synchronously.
+  const openEditorRef = useRef<OpenEditor | null>(null);
 
-  const openEditorAt = useCallback((index: number | null) => {
-    sessionRef.current += 1;
-    setOpenEditor({ index, session: sessionRef.current });
+  const setOpen = useCallback((next: OpenEditor | null) => {
+    openEditorRef.current = next;
+    setOpenEditor(next);
   }, []);
+
+  const [draftIds, setDraftIds] = useState<string[]>([]);
+  const sessionRef = useRef(0);
+  const draftCountRef = useRef(0);
+
+  const [pendingSources, setPendingSources] = useState<Record<string, string>>(
+    {},
+  );
+
+  const dropPendingSource = useCallback((target: EditorTarget) => {
+    const key = pendingKey(target);
+    setPendingSources((pending) => {
+      if (!(key in pending)) {
+        return pending;
+      }
+      const { [key]: _removed, ...rest } = pending;
+      return rest;
+    });
+  }, []);
+
+  const openEditorAt = useCallback(
+    (target: EditorTarget) => {
+      sessionRef.current += 1;
+      setOpen({ target, session: sessionRef.current });
+    },
+    [setOpen],
+  );
+
+  const addDraft = useCallback(() => {
+    draftCountRef.current += 1;
+    const id = `draft-${draftCountRef.current}`;
+    setDraftIds((ids) => [...ids, id]);
+    openEditorAt({ kind: "draft", id });
+  }, [openEditorAt]);
 
   const expressions = useMemo(
     () => Lib.expressions(query, stageIndex),
@@ -56,9 +91,9 @@ export const ExpressionStep = ({
 
   useEffect(() => {
     if (isLastOpened && isEditorLoaded && !readOnly) {
-      openEditorAt(null);
+      addDraft();
     }
-  }, [isLastOpened, isEditorLoaded, readOnly, openEditorAt]);
+  }, [isLastOpened, isEditorLoaded, readOnly, addDraft]);
 
   const getExpressionName = useCallback(
     (expression: Lib.ExpressionClause) =>
@@ -76,14 +111,16 @@ export const ExpressionStep = ({
 
   const handleCommit = useCallback(
     (clause: Lib.ExpressionClause) => {
-      if (openEditor == null) {
+      const editor = openEditorRef.current;
+      if (editor == null) {
         return;
       }
 
       const currentQuery = queryRef.current;
       const currentExpressions = Lib.expressions(currentQuery, stageIndex);
-      const { index } = openEditor;
-      const existing = index != null ? currentExpressions[index] : undefined;
+      const { target } = editor;
+      const existing =
+        target.kind === "clause" ? currentExpressions[target.index] : undefined;
 
       const name = existing
         ? Lib.displayInfo(currentQuery, stageIndex, existing).displayName
@@ -100,18 +137,23 @@ export const ExpressionStep = ({
         commitQuery(
           Lib.replaceClause(currentQuery, stageIndex, existing, namedClause),
         );
-      } else {
-        commitQuery(
-          Lib.expression(currentQuery, stageIndex, uniqueName, namedClause),
-        );
-        // Further edits now replace rather than append another column.
-        setOpenEditor({
-          index: currentExpressions.length,
-          session: openEditor.session,
+        return;
+      }
+
+      commitQuery(
+        Lib.expression(currentQuery, stageIndex, uniqueName, namedClause),
+      );
+
+      if (target.kind === "draft") {
+        dropPendingSource(target);
+        setDraftIds((ids) => ids.filter((id) => id !== target.id));
+        setOpen({
+          target: { kind: "clause", index: currentExpressions.length },
+          session: editor.session,
         });
       }
     },
-    [openEditor, stageIndex, commitQuery],
+    [stageIndex, commitQuery, dropPendingSource, setOpen],
   );
 
   const handleRename = useCallback(
@@ -148,12 +190,18 @@ export const ExpressionStep = ({
         return;
       }
 
-      if (openEditor?.index === index) {
-        setOpenEditor(null);
+      const editor = openEditorRef.current;
+      if (editor?.target.kind === "clause" && editor.target.index === index) {
+        setOpen(null);
       }
+      setPendingSources((pending) =>
+        Object.fromEntries(
+          Object.entries(pending).filter(([key]) => key.startsWith("draft:")),
+        ),
+      );
       commitQuery(Lib.removeClause(currentQuery, stageIndex, expression));
     },
-    [stageIndex, openEditor, commitQuery],
+    [stageIndex, commitQuery, setOpen],
   );
 
   const handleReorder = useCallback(
@@ -161,7 +209,12 @@ export const ExpressionStep = ({
       sourceClause: Lib.ExpressionClause,
       targetClause: Lib.ExpressionClause,
     ) => {
-      setOpenEditor(null);
+      setOpen(null);
+      setPendingSources((pending) =>
+        Object.fromEntries(
+          Object.entries(pending).filter(([key]) => key.startsWith("draft:")),
+        ),
+      );
       commitQuery(
         Lib.swapClauses(
           queryRef.current,
@@ -171,27 +224,63 @@ export const ExpressionStep = ({
         ),
       );
     },
-    [stageIndex, commitQuery],
+    [stageIndex, commitQuery, setOpen],
+  );
+
+  const discardDraft = useCallback(
+    (id: string) => {
+      dropPendingSource({ kind: "draft", id });
+      setDraftIds((ids) => ids.filter((draftId) => draftId !== id));
+      const editor = openEditorRef.current;
+      if (editor?.target.kind === "draft" && editor.target.id === id) {
+        setOpen(null);
+      }
+    },
+    [dropPendingSource, setOpen],
   );
 
   const handleDiscard = useCallback(() => {
-    setOpenEditor(null);
+    const editor = openEditorRef.current;
+    if (editor == null) {
+      return;
+    }
+    const { target } = editor;
+    if (target.kind === "draft") {
+      discardDraft(target.id);
+      return;
+    }
+    dropPendingSource(target);
+    setOpen(null);
+  }, [discardDraft, dropPendingSource, setOpen]);
+
+  const handleSourceChange = useCallback((source: string, isValid: boolean) => {
+    const editor = openEditorRef.current;
+    if (editor == null) {
+      return;
+    }
+    const key = pendingKey(editor.target);
+    setPendingSources((pending) => {
+      if (isValid) {
+        if (!(key in pending)) {
+          return pending;
+        }
+        const { [key]: _removed, ...rest } = pending;
+        return rest;
+      }
+      return pending[key] === source ? pending : { ...pending, [key]: source };
+    });
   }, []);
 
+  const openTarget = openEditor?.target;
+  const editedIndex = openTarget?.kind === "clause" ? openTarget.index : null;
   const editedExpression =
-    openEditor?.index != null ? expressions[openEditor.index] : undefined;
+    editedIndex != null ? expressions[editedIndex] : undefined;
 
   const availableColumns = useMemo(
     () =>
-      Lib.expressionableColumns(
-        query,
-        stageIndex,
-        openEditor?.index ?? undefined,
-      ),
-    [query, stageIndex, openEditor],
+      Lib.expressionableColumns(query, stageIndex, editedIndex ?? undefined),
+    [query, stageIndex, editedIndex],
   );
-
-  const isDraftOpen = openEditor != null && openEditor.index == null;
 
   return (
     <>
@@ -202,9 +291,12 @@ export const ExpressionStep = ({
               <ExpressionPill
                 name={getExpressionName(expression)}
                 color={color}
-                isActive={openEditor?.index === index}
+                isActive={editedIndex === index}
                 readOnly={readOnly}
-                onOpen={() => openEditorAt(index)}
+                hasUnsavedChanges={
+                  pendingKey({ kind: "clause", index }) in pendingSources
+                }
+                onOpen={() => openEditorAt({ kind: "clause", index })}
                 onRename={(name) => handleRename(index, name)}
                 onRemove={() => handleRemove(index)}
               />
@@ -212,22 +304,22 @@ export const ExpressionStep = ({
           ))}
         </ClauseStepDndContext>
 
-        {isDraftOpen && (
+        {draftIds.map((id) => (
           <ExpressionPill
+            key={id}
             name={t`New column`}
             color={color}
-            isActive
-            readOnly
-            hasRemoveButton={false}
-            onOpen={noop}
+            isActive={openTarget?.kind === "draft" && openTarget.id === id}
+            readOnly={readOnly}
+            canRename={false}
+            hasUnsavedChanges
+            onOpen={() => openEditorAt({ kind: "draft", id })}
             onRename={noop}
-            onRemove={noop}
+            onRemove={() => discardDraft(id)}
           />
-        )}
+        ))}
 
-        {!readOnly && (
-          <NotebookCellAdd color={color} onClick={() => openEditorAt(null)} />
-        )}
+        {!readOnly && <NotebookCellAdd color={color} onClick={addDraft} />}
       </NotebookCell>
 
       {openEditor != null && isEditorLoaded && (
@@ -235,12 +327,14 @@ export const ExpressionStep = ({
           key={openEditor.session}
           query={query}
           stageIndex={stageIndex}
-          expressionIndex={openEditor.index ?? undefined}
+          expressionIndex={editedIndex ?? undefined}
           expressionMode="expression"
           availableColumns={availableColumns}
           reportTimezone={reportTimezone}
           readOnly={readOnly}
           clause={editedExpression}
+          initialSource={pendingSources[pendingKey(openEditor.target)]}
+          onSourceChange={handleSourceChange}
           onCommit={handleCommit}
           onDone={handleDiscard}
           onDiscard={handleDiscard}
@@ -251,6 +345,9 @@ export const ExpressionStep = ({
 };
 
 const noop = () => {};
+
+const pendingKey = (target: EditorTarget) =>
+  target.kind === "clause" ? `clause:${target.index}` : `draft:${target.id}`;
 
 const getUniqueClauseName = (
   query: Lib.Query,
