@@ -1,7 +1,7 @@
 (ns metabase.llm.provider-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
@@ -929,3 +929,14 @@
         (is (=? {:message #".*MB_LLM_OLLAMA_API_KEY.*"}
                 (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-key" {:value "sk-new"})))
         (is (nil? (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
+(deftest typed-value-test
+  (testing "what counts as a value the caller really typed"
+    (are [submitted expected] (= expected (#'llm.provider/typed-value {:k submitted} :k))
+      "sk-new"           "sk-new"
+      "  sk-new  "       "sk-new"
+      nil                nil
+      "   "              nil
+      "**********ew"     nil
+      "**********ew  "   nil
+      ;; the mask of a newline-terminated JSON key file
+      "**********}\n"    nil)))

@@ -595,16 +595,29 @@
                          :error-code  :llm-field-does-not-apply
                          :field       field-key}))))))
 
+(defn- typed-value
+  "The value `submitted` carries for `field-key` when the caller really typed one, or nil.
+
+  A blank is the form clearing a field it hid, and a mask is the client echoing back what is already stored.
+  Both forms are checked for the mask: that of a newline-terminated secret (a JSON key file) matches only
+  untrimmed, while one that picked up padding in transit matches only trimmed."
+  [submitted field-key]
+  (let [raw   (get submitted field-key)
+        value (u/trimmed-string raw)]
+    (when (and value
+               (not (setting/obfuscated-value? raw))
+               (not (setting/obfuscated-value? value)))
+      value)))
+
 (defn assert-config-applies!
   "Reject a value the caller really typed into a field the connection it lands on switches off.
 
-  Blank is the form clearing a field it hid, and a mask is the client keeping what is already stored —
-  neither is someone asking for a value to be kept. `config` is the connection those values land on,
-  which is not `submitted` where the environment or the stored connection has a say in it."
+  Only a [[typed-value]] counts — neither a blank nor a mask is someone asking for a value to be kept.
+  `config` is the connection those values land on, which is not `submitted` where the environment or
+  the stored connection has a say in it."
   [type-name submitted config]
-  (doseq [[field-key value] submitted
-          :when             (and (u/trimmed-string value)
-                                 (not (setting/obfuscated-value? value)))]
+  (doseq [field-key (keys submitted)
+          :when     (typed-value submitted field-key)]
     (assert-field-applies! type-name field-key config)))
 
 (defn- config-problem
@@ -1026,10 +1039,8 @@
   [{conn-key :key type-name :type :keys [config]} submitted env-config]
   (when-let [moved (moved-destination-field type-name config env-config)]
     (when-let [field (first (filter (fn [field-key]
-                                      (let [value (u/trimmed-string (get submitted field-key))]
-                                        (and value
-                                             (not (setting/obfuscated-value? value))
-                                             (not (contains? env-config field-key)))))
+                                      (and (typed-value submitted field-key)
+                                           (not (contains? env-config field-key))))
                                     ;; sorted so a type with several secrets always names the same one
                                     (sort (secret-field-keys type-name))))]
       (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
@@ -1315,10 +1326,8 @@
          carried-secrets (filter #(u/trimmed-string (get new-config %)) secret-keys)
          env-fields      (set env-fields)
          fresh-secret?   (fn [field]
-                           (let [value (u/trimmed-string (get submitted-config field))]
-                             (and (not (contains? env-fields field))
-                                  value
-                                  (not (setting/obfuscated-value? value)))))
+                           (and (not (contains? env-fields field))
+                                (typed-value submitted-config field)))
          missing-secrets (remove fresh-secret? carried-secrets)
          moved           (some #(when (not= (get old-config %) (get new-config %)) %)
                                (destination-fields type-name))]
