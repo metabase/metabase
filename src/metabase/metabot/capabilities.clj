@@ -77,10 +77,16 @@
          (when (metabot.settings/metabot-query-execution-enabled?)
            :feature-query-execution)]))
 
+(defn- feature-capability?
+  [cap]
+  (str/starts-with? (name cap) "feature-"))
+
 (defn capability-set
   "Build the full set of capability keywords for a request: the backend-inferred feature capabilities
-  unioned with the (normalized) capabilities from the API."
+  unioned with the (normalized) capabilities from the API.
+  Feature capabilities come only from the backend, so a claimed `feature:*` capability is dropped."
   [capabilities]
   (into (feature-capabilities)
-        (map capability->keyword)
+        (comp (map capability->keyword)
+              (remove feature-capability?))
         capabilities))

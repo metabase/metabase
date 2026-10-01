@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as tools.u]
@@ -107,6 +108,8 @@
                                     [:row_limit {:optional true}
                                      [:maybe [:int {:min 1 :max max-row-limit}]]]]]
   (try
+    (when-not (metabot.settings/metabot-query-execution-enabled?)
+      (throw (ex-info "Query execution is turned off for Metabot." {:agent-error? true})))
     (let [page (-> (stored-query query_id)
                    runnable-query
                    (query-execution/execute-page! (or row_limit default-row-limit) :metabot))]
