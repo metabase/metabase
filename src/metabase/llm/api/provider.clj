@@ -278,8 +278,8 @@
   the provider's own message when the credentials are rejected.
 
   Returns the model listing and `:connection-info`: whatever the listing determined about the connection, for the
-  caller to store on it. A probe records the model it exercised as `:probed-model`; every listing records whether it
-  included the type's mini model, so quick tasks are only ever derived onto a model the account was seen to serve."
+  caller to store on it. A probe records the model it exercised as `:probed-model`, and every listing records the
+  type's mini model when it includes it as `:mini-model`."
   [conn config model]
   (when-not (llm.provider/managed-type? (:type conn))
     (let [{:keys [error models] :as listed} (list-connection-models* conn config model true)]
@@ -288,8 +288,6 @@
       (update listed :connection-info merge (llm.provider/served-mini-model (:type conn) models)))))
 
 (defn- with-connection-info
-  "`config` with what a listing determined layered over it. An answer that came back nil retires the stored one
-  rather than lingering beside it."
   [config connection-info]
   (without-blank-values (merge config connection-info)))
 
