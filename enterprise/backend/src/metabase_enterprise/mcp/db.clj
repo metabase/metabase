@@ -126,6 +126,11 @@
   (when-not (t2/exists? :model/McpGroupPermission :group_id group-id)
     (t2/insert! :model/McpGroupPermission (assoc values :group_id group-id))))
 
+(mu/defn hidden-group-permissions
+  "The McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
+  [advanced? :- :boolean]
+  (t2/select :model/McpGroupPermission {:where [:not (visible-groups-expr :group_id advanced?)]}))
+
 (mu/defn delete-hidden-group-permissions!
   "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]

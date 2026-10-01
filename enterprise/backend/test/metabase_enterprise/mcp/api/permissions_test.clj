@@ -51,15 +51,17 @@
       (testing "sorted by scope then name, so the admin page can group tools by bucket without re-sorting"
         (is (= (sort-by (juxt :scope :name) tools) tools))))))
 
-(deftest ^:parallel get-permissions-stored-row-test
+(deftest get-permissions-stored-row-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temp [:model/PermissionsGroup    {group-id :id} {:name "Stored Group"}
-                   :model/McpGroupPermission _              {:group_id    group-id
-                                                             :mcp_enabled true
-                                                             :tool_access {"execute_sql" "no" "dodo" "yes"}}]
-      (testing "entries come back as stored, a stale name included"
-        (is (= {:group_id group-id :mcp_enabled true :tool_access {:execute_sql "no" :dodo "yes"}}
-               (group-permission (mt/user-http-request :crowberto :get 200 endpoint) group-id)))))))
+    (mcp.tu/with-group-level-mode
+      (mt/with-temp [:model/PermissionsGroup    {group-id :id} {:name "Stored Group"}
+                     :model/McpGroupPermission _              {:group_id    group-id
+                                                               :mcp_enabled true
+                                                               :tool_access {}}]
+        (mcp.tu/store-stale-tool-access! group-id {"execute_sql" "no" "dodo" "yes"})
+        (testing "entries come back as stored, a stale name included"
+          (is (= {:group_id group-id :mcp_enabled true :tool_access {:execute_sql "no" :dodo "yes"}}
+                 (group-permission (mt/user-http-request :crowberto :get 200 endpoint) group-id))))))))
 
 (defn- do-with-renamed-tool!
   "Run `thunk` while `test_echo` also answers to the former name `test_ping`."
@@ -68,21 +70,22 @@
 
 (deftest get-permissions-presents-renamed-entry-under-current-name-test
   (mt/with-premium-features #{:ai-controls}
-    (do-with-renamed-tool!
-     (fn []
-       (mt/with-temp [:model/PermissionsGroup    {former-id :id} {:name "Former Name Group"}
-                      :model/PermissionsGroup    {both-id :id}   {:name "Both Names Group"}
-                      :model/McpGroupPermission _               {:group_id    former-id
-                                                                 :mcp_enabled true
-                                                                 :tool_access {"test_ping" "no"}}
-                      :model/McpGroupPermission _               {:group_id    both-id
-                                                                 :mcp_enabled true
-                                                                 :tool_access {"test_ping" "no" "test_echo" "yes"}}]
-         (let [response (mt/user-http-request :crowberto :get 200 endpoint)]
-           (testing "an entry stored under a former name is presented under the current one"
-             (is (= {:test_echo "no"} (:tool_access (group-permission response former-id)))))
-           (testing "the current name's own entry wins"
-             (is (= {:test_echo "yes"} (:tool_access (group-permission response both-id)))))))))))
+    (mcp.tu/with-group-level-mode
+      (do-with-renamed-tool!
+       (fn []
+         (mt/with-temp [:model/PermissionsGroup    {former-id :id} {:name "Former Name Group"}
+                        :model/PermissionsGroup    {both-id :id}   {:name "Both Names Group"}
+                        :model/McpGroupPermission _               {:group_id    former-id
+                                                                   :mcp_enabled true
+                                                                   :tool_access {"test_ping" "no"}}
+                        :model/McpGroupPermission _               {:group_id    both-id
+                                                                   :mcp_enabled true
+                                                                   :tool_access {"test_ping" "no" "test_echo" "yes"}}]
+           (let [response (mt/user-http-request :crowberto :get 200 endpoint)]
+             (testing "an entry stored under a former name is presented under the current one"
+               (is (= {:test_echo "no"} (:tool_access (group-permission response former-id)))))
+             (testing "the current name's own entry wins"
+               (is (= {:test_echo "yes"} (:tool_access (group-permission response both-id))))))))))))
 
 (deftest ^:parallel put-permissions-requires-superuser-test
   (mt/with-premium-features #{:ai-controls}
@@ -116,16 +119,17 @@
           (testing "the response is the GET body"
             (is (= (mt/user-http-request :crowberto :get 200 endpoint) response))))))))
 
-(deftest ^:parallel put-permissions-unknown-tool-test
+(deftest put-permissions-unknown-tool-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Group"}]
-      (is (= "Unknown MCP tool: not_a_tool"
-             (mt/user-http-request :crowberto :put 400 endpoint
-                                   {:permissions [{:group_id    group-id
-                                                   :mcp_enabled true
-                                                   :tool_access {"not_a_tool" "no"}}]})))
-      (testing "nothing was written"
-        (is (not (t2/exists? :model/McpGroupPermission :group_id group-id)))))))
+    (mcp.tu/with-group-level-mode
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Group"}]
+        (is (= "Unknown MCP tool: not_a_tool"
+               (mt/user-http-request :crowberto :put 400 endpoint
+                                     {:permissions [{:group_id    group-id
+                                                     :mcp_enabled true
+                                                     :tool_access {"not_a_tool" "no"}}]})))
+        (testing "nothing was written"
+          (is (not (t2/exists? :model/McpGroupPermission :group_id group-id))))))))
 
 (deftest put-permissions-accepts-stored-stale-name-test
   (mt/with-premium-features #{:ai-controls}
@@ -134,7 +138,8 @@
                      :model/PermissionsGroup    {other-id :id} {:name "Other Group"}
                      :model/McpGroupPermission _              {:group_id    stale-id
                                                                :mcp_enabled true
-                                                               :tool_access {"dodo" "no"}}]
+                                                               :tool_access {}}]
+        (mcp.tu/store-stale-tool-access! stale-id {"dodo" "no"})
         (testing "a name the group already stores is accepted, so an untouched stale entry never blocks a save"
           (is (= {:group_id stale-id :mcp_enabled false :tool_access {:dodo "no"}}
                  (group-permission (mt/user-http-request :crowberto :put 200 endpoint
@@ -214,19 +219,15 @@
         (let [all-users-id    (u/the-id (perms/all-users-group))
               all-external-id (u/the-id (perms/all-external-users-group))
               data-analyst-id (u/the-id (perms/data-analyst-group))]
-          (mt/with-temp [:model/PermissionsGroup    {group-id :id} {:name "Other Group"}
-                         :model/McpGroupPermission _              {:group_id    all-users-id
-                                                                   :mcp_enabled true
-                                                                   :tool_access {}}
-                         :model/McpGroupPermission _              {:group_id    all-external-id
-                                                                   :mcp_enabled true
-                                                                   :tool_access {}}
-                         :model/McpGroupPermission _              {:group_id    group-id
-                                                                   :mcp_enabled true
-                                                                   :tool_access {"execute_sql" "no"}}]
+          (mt/with-temp [:model/McpGroupPermission _ {:group_id    all-users-id
+                                                      :mcp_enabled true
+                                                      :tool_access {}}
+                         :model/McpGroupPermission _ {:group_id    all-external-id
+                                                      :mcp_enabled true
+                                                      :tool_access {}}]
             (let [response (mt/user-http-request :crowberto :post 200 "ee/ai-controls/mcp-permissions/advanced")]
               (is (true? (:advanced response)))
-              (is (= #{group-id data-analyst-id} (t2/select-fn-set :group_id :model/McpGroupPermission))
+              (is (= #{data-analyst-id} (t2/select-fn-set :group_id :model/McpGroupPermission))
                   "only the groups group-level mode shows have rows")
               (is (= {:group_id all-users-id :mcp_enabled false :tool_access {}}
                      (group-permission response all-users-id)))
@@ -269,3 +270,19 @@
               (is (= {:group_id all-external-id :mcp_enabled true :tool_access {}}
                      (group-permission response all-external-id))
                   "All tenant users is seeded too"))))))))
+
+(deftest rows-of-both-modes-never-coexist-test
+  (mcp.tu/with-mcp-group-permissions-snapshot
+    (t2/delete! :model/McpGroupPermission)
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Group"}]
+      (let [all-users-id (u/the-id (perms/all-users-group))
+            admin-id     (u/the-id (perms/admin-group))
+            insert!      #(t2/insert! :model/McpGroupPermission {:group_id % :mcp_enabled true :tool_access {}})]
+        (testing "while All Users has a row, no other group but Administrators gets one"
+          (insert! all-users-id)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"while All Users has one" (insert! group-id)))
+          (insert! admin-id))
+        (testing "while another group has a row, All Users gets none"
+          (t2/delete! :model/McpGroupPermission :group_id all-users-id)
+          (insert! group-id)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"while groups have their own" (insert! all-users-id))))))))
