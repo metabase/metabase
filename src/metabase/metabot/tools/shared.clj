@@ -1,7 +1,6 @@
 (ns metabase.metabot.tools.shared
   "Shared tool helpers and state accessors."
   (:require
-   [metabase.metabot.curation :as curation]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -31,11 +30,17 @@
    agent loop so that tools can adapt their output to the active profile."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *curated-only?*
+  "Whether the current agent session's tools may only reach curated content: its Metabot has `use_verified_content`
+   on and its profile isn't exempt (see [[curation/curated-content-only?]]). Bound once per agent session alongside
+   [[*metabot-id*]] and [[*profile-id*]], so tools don't look the Metabot up on every check."
+  false)
+
 (defn curated-only?
-  "Whether the current session's tools may only reach curated content: its Metabot has `use_verified_content` on and
-  its profile isn't exempt (see [[curation/curated-content-only?]])."
+  "Whether the current session's tools may only reach curated content (see [[*curated-only?*]])."
   []
-  (curation/curated-content-only? *metabot-id* *profile-id*))
+  *curated-only?*)
 
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."

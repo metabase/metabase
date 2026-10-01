@@ -857,28 +857,38 @@
              :id-segment   id-seg}))))
 
 (defn- curation-subject
-  "What a single-entity URI must be curated as under [[shared/curated-only?]]: a `[curation-model id]` pair
-   (`\"transform\"` for transforms, which can never be curated), or nil when the URI isn't gated — navigation,
-   collections, dashboards, documents, conversation state, and `table/{id}/derived` (whose listing is filtered
-   instead), plus measures and segments that don't exist (left to their handler's 404)."
+  "What a single-entity URI must be curated as under [[shared/curated-only?]]: a `[model id]` pair — `\"table\"`,
+   `\"card\"`, `\"metric\"` (judged by [[curation/curated-metric?]]), or `\"transform\"` (never curated) — or nil
+   when the URI isn't gated: navigation, collections, dashboards, documents, conversation state, and
+   `table/{id}/derived` (whose listing is filtered instead), plus measures and segments that don't exist (left to
+   their handler's 404)."
   [[type-seg id-seg aspect]]
   (let [id (some-> id-seg parse-long)]
     (when (and id (pos? id))
       (case type-seg
         "table"                       (when-not (= aspect "derived") ["table" id])
-        ("model" "question" "metric") ["card" id]
+        ("model" "question")          ["card" id]
+        "metric"                      ["metric" id]
         "measure"                     (some->> (metabot.db/measure-table-id id) (vector "table"))
         "segment"                     (some->> (metabot.db/segment-table-id id) (vector "table"))
         "transform"                   ["transform" id]
         nil))))
 
+(defn- subject-curated?
+  "Whether `subject`, a `[model id]` pair as [[curation-subject]] builds, is curated. A metric also counts when what
+   it's defined on is curated (see [[curation/curated-metric?]]); a model [[curation/curated-ids]] doesn't recognize
+   (transforms) never is."
+  [[model id]]
+  (if (= model "metric")
+    (curation/curated-metric? id)
+    (boolean (seq (curation/curated-ids [[model id]])))))
+
 (defn check-curated-subject!
-  "Reject `subject` — a `[curation-model id]` pair — unless it's curated, naming it by `label` (a URI or a short
-  description) rather than by the entity's own name. A model [[curation/curated-ids]] doesn't recognize (transforms)
-  is never curated. Callers decide whether the session is curated-only. Exported for
-  [[metabase.metabot.tools.metadata]]."
+  "Reject `subject` — a `[model id]` pair — unless it's curated (see [[subject-curated?]]), naming it by `label` (a URI
+  or a short description) rather than by the entity's own name. Callers decide whether the session is curated-only.
+  Exported for [[metabase.metabot.tools.metadata]]."
   [label subject]
-  (when (and subject (empty? (curation/curated-ids [subject])))
+  (when (and subject (not (subject-curated? subject)))
     (throw (ex-info (tru (str "`{0}` is not available: this Metabot only uses curated content (verified, official, or "
                               "Library content). Use `search` to find curated tables, models, or metrics instead.")
                          label)
@@ -896,9 +906,9 @@
   (when (shared/curated-only?)
     (when-let [[model id :as subject] (curation-subject segments)]
       (case model
-        "table"     (check-table-resource-database id)
-        "card"      (check-card-resource-database id)
-        "transform" (api/read-check :model/Transform id))
+        "table"           (check-table-resource-database id)
+        ("card" "metric") (check-card-resource-database id)
+        "transform"       (api/read-check :model/Transform id))
       (check-curated-subject! uri subject))))
 
 (defn- dispatch
