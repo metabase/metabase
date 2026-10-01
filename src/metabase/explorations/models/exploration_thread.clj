@@ -1,7 +1,7 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
    [metabase.explorations.db :as explorations.db]
-   [metabase.explorations.query-plan.transcript :as transcript]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [methodical.core :as methodical]
@@ -16,7 +16,7 @@
 
 (t2/deftransforms :model/ExplorationThread
   {:query_plan_transcript (mi/transform-json-with-schema "exploration_thread.query_plan_transcript"
-                                                         ::transcript/transcript)
+                                                         ::explorations.schema/exploration-thread.query-plan-transcript)
    :data_access_token     perms/data-access-token-transform})
 
 (defmethod mi/can-read? :model/ExplorationThread
