@@ -60,6 +60,21 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
 
+(mu/defn collection-exists?
+  "Whether the Collection with `collection-id` exists."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/exists? :model/Collection :id collection-id))
+
+(mu/defn unarchived-collection-exists?
+  "Whether the unarchived Collection with `collection-id` exists."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/exists? :model/Collection :id collection-id :archived false))
+
+(mu/defn action-type
+  "The type of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :type [:model/Action :type] :id action-id))
+
 (mu/defn action-model-id
   "The model Card id of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]

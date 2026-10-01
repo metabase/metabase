@@ -531,6 +531,52 @@
             (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:collection_id other-id})
             (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))
 
+(deftest action-without-model-collection-guards-test
+  (testing "an action without a model can only go in an existing, unarchived Collection of the default namespace"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Collection {coll-id :id}     {}
+                       :model/Collection {snippets-id :id} {:namespace "snippets"}
+                       :model/Collection {archived-id :id} {:archived true}]
+          (is (re-find #"can only go in Collections in the"
+                       (str (mt/user-http-request :crowberto :post 400 "action" (model-less-query-action snippets-id)))))
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :post 404 "action" (model-less-query-action Integer/MAX_VALUE))))
+          (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id))))]
+            (mt/user-http-request :crowberto :put 400 path {:collection_id archived-id})
+            (is (= coll-id (:collection_id (mt/user-http-request :crowberto :get 200 path))))))))))
+
+(deftest action-with-missing-model-test
+  (testing "creating or moving an action onto a model that does not exist is a 404"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 "action"
+                                     (assoc (model-less-query-action nil) :model_id Integer/MAX_VALUE))))
+        (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))))]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :put 404 path {:model_id Integer/MAX_VALUE}))))))))
+
+(deftest archiving-directly-test
+  (testing "archiving an action through the API marks it as archived directly, and unarchiving clears that"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (let [action-id (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil)))
+              state     #((juxt :archived :archived_directly) (t2/select-one :model/Action :id action-id))]
+          (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})
+          (is (= [true true] (state)))
+          (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
+          (is (= [false false] (state))))))))
+
+(deftest update-checks-actions-enabled-test
+  (testing "any update of a query action is refused while actions are disabled on its database"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))))]
+          (mt/with-actions-disabled
+            (is (= "Actions are not enabled."
+                   (:cause (mt/user-http-request :crowberto :put 400 path {:name "Renamed"}))))))))))
+
 (deftest remap-parameter-keys-test
   (testing "remap-parameter-keys translates incoming parameter keys to the destination parameter's :id"
     (let [action {:parameters [{:id "d800e41d-edde-49cb-b63b-2386aba34334"
@@ -882,3 +928,11 @@
                     :errors {:user_id "This value does not exist in table \"users\"."}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                          {:parameters {"id" 1 "user_id" 99999}})))))))))
+
+(deftest http-action-public-link-test
+  (testing "the public link of an HTTP action, which runs against no database, can still be removed"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-actions-enabled
+        (mt/with-actions [{:keys [action-id]} (assoc (shared-action-opts) :type :http)]
+          (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
+          (is (nil? (t2/select-one-fn :public_uuid :model/Action :id action-id))))))))

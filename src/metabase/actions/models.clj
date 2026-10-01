@@ -5,6 +5,7 @@
    [metabase.actions.db :as actions.db]
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -109,13 +110,19 @@
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
-(defn- check-implicit-actions-supported
+(defn check-implicit-actions-supported
   "Throws a 400 when `action` is implicit and its model's query does not support implicit actions."
   [{model-id :model_id, :as action}]
   (when (and (implicit? action)
-             (not (query/supports-implicit-actions? (actions.db/card-query model-id))))
+             (not (query/supports-implicit-actions? (some-> model-id actions.db/card-query))))
     (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                     {:status-code 400}))))
+
+(defn- check-collection-content
+  "Throws unless an Action may go in the Collection with `collection-id`."
+  [collection-id]
+  (collection/check-collection-namespace :model/Action collection-id)
+  (collection/check-allowed-content :action collection-id))
 
 (defn- set-model-collection
   "`action` with the `:collection_id` of its model Card."
@@ -127,14 +134,20 @@
   (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix action)
              model-id set-model-collection)
     (when (implicit? action)
-      (check-implicit-action-model model-id))))
+      (check-implicit-action-model model-id))
+    (check-collection-content (:collection_id <>))))
 
 (t2/define-before-update :model/Action
   [{model-id :model_id, :as action}]
-  (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
-             (and model-id (some #(contains? (t2/changes action) %) [:model_id :collection_id])) set-model-collection)
-    (when (and (implicit? action) (contains? (t2/changes action) :model_id))
-      (check-implicit-action-model model-id))))
+  (let [changed? (fn [k] (contains? (t2/changes action) k))]
+    (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
+               (and model-id (or (changed? :model_id) (changed? :collection_id)))
+               set-model-collection)
+      (when (and (implicit? action) (or (changed? :type) (changed? :model_id)))
+        (check-implicit-action-model model-id)
+        (check-implicit-actions-supported action))
+      (when (contains? (t2/changes <>) :collection_id)
+        (check-collection-content (:collection_id <>))))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one."
@@ -159,7 +172,7 @@
     :query    [(or (:database query) database_id)]
     []))
 
-(defn- check-action-databases-enabled
+(defn check-action-databases-enabled
   "Throws a 400 unless actions are enabled on every Database `action` runs against."
   [action]
   (doseq [database-id (action-database-ids action)
@@ -174,33 +187,36 @@
          (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries
                                                   (or (:database query) database_id)))))
 
+(defn- effective-collection-id
+  "The id of the Collection `action` goes in, its model's when it has one; throws a 404 when either does not exist."
+  [{model-id :model_id, collection-id :collection_id}]
+  (if model-id
+    (:collection_id (api/check-404 (actions.db/card-scope-columns model-id)))
+    (u/prog1 collection-id
+      (when collection-id
+        (api/check-404 (actions.db/collection-exists? collection-id))))))
+
 (defn- collection-writable?
-  "Whether the current user can write the Collection `action` is in, its model's when it has one."
-  [{model-id :model_id, :as action}]
+  "Whether the current user can write the Collection `action` goes in."
+  [action]
   ((get-method mi/can-create? :perms/use-parent-collection-perms)
    :model/Action
-   (cond-> action model-id set-model-collection)))
+   (assoc action :collection_id (effective-collection-id action))))
 
 (defmethod mi/can-create? :model/Action
   [_model action]
-  (u/prog1 (and (collection-writable? action)
-                (native-query-permitted? action))
-    (when <>
-      (check-implicit-actions-supported action)
-      (check-action-databases-enabled action))))
+  (and (collection-writable? action)
+       (native-query-permitted? action)))
 
 (defmethod mi/can-update? :model/Action
   [action changes]
-  (let [updated (merge action changes)]
-    (u/prog1 (and (mi/can-write? action)
-                  (collection-writable? updated)
-                  (native-query-permitted? changes))
-      (when <>
-        (check-action-databases-enabled updated)))))
+  (and (mi/can-write? action)
+       (collection-writable? (merge action changes))
+       (native-query-permitted? changes)))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
-  [:archived :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
+  [:archived :archived_directly :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
    :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
@@ -233,6 +249,10 @@
         (actions.db/update-action! id action-row))
       (when (and (:archived updates) (not (:archived existing-action)))
         (actions.db/delete-dashcards-for-action! id))
+      (when-let [collection-id (and (contains? updates :collection_id)
+                                    (not= (:collection_id updates) (:collection_id existing-action))
+                                    (:collection_id updates))]
+        (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
                                        (= (or (:type updates) (:type existing-action))
                                           :implicit)
@@ -251,7 +271,8 @@
             (case (:type existing-action)
               :query    (actions.db/update-query-action! id type-row)
               :http     (actions.db/update-http-action! id type-row)
-              :implicit (actions.db/update-implicit-action! id type-row))))))))
+              :implicit (actions.db/update-implicit-action! id type-row)))))
+      (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
 
 (mu/defn update!
   "Updates an Action and the related type table.
@@ -585,7 +606,7 @@
    :transform {:action_id (serdes/parent-ref)}})
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
-  {:copy      [:archived :description :entity_id :name :public_uuid]
+  {:copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
    :skip      [;; always re-derived from public_uuid on import
                :public_uuid_prefix]
    :transform {:created_at             (serdes/date)
@@ -602,7 +623,7 @@
                                         :import serdes/import-parameter-mappings}
                :visualization_settings {:export serdes/export-visualization-settings
                                         :import serdes/import-visualization-settings}}
-   :defaults  {:archived false}})
+   :defaults  {:archived false, :archived_directly false}})
 
 (defmethod serdes/deserialization-dependencies "Action" [action]
   (set

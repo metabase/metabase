@@ -586,6 +586,8 @@
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
         (queries.db/delete-implicit-actions-for-model! id))
+      (when (contains? changes :archived)
+        (queries.db/set-actions-of-model-archived! id (boolean (:archived changes))))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
@@ -1319,16 +1321,17 @@
     (collection/check-for-remote-sync-update card-before-update)))
 
 (defn- changed-action-events
-  "The `[topic action]` pairs that announce how an update to a model changed its actions: `:event/action-delete` with
+  "The `[topic action]` pairs that announce how an update to a card changed its actions: `:event/action-delete` with
   the old action for each of `actions-before` absent from `actions-after`, and `:event/action-update` with the new
-  action for each one that became archived or moved to another Collection."
+  action for each one that was archived, unarchived, or moved to another Collection while unarchived."
   [actions-before actions-after]
   (let [id->after (m/index-by :id actions-after)]
     (for [before actions-before
           :let   [after (id->after (:id before))]
           :when  (or (nil? after)
-                     (and (:archived after) (not (:archived before)))
-                     (not= (:collection_id after) (:collection_id before)))]
+                     (not= (:archived after) (:archived before))
+                     (and (not= (:collection_id after) (:collection_id before))
+                          (not (and (:archived before) (:archived after)))))]
       (if after
         [:event/action-update after]
         [:event/action-delete before]))))
@@ -1336,11 +1339,10 @@
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously. Publishes `:event/card-update`, plus
-  an action event for each action of a model that the update deletes, archives, or moves."
+  an action event for each action of the card that the update deletes, archives, unarchives, or moves."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
-  ;; The card hooks delete, archive, or move a model's actions without events, so compare the actions before and after.
-  (let [actions-before (when (= :model (keyword (:type card-before-update)))
-                         (queries.db/actions-for-model (:id card-before-update)))]
+  ;; The card hooks delete, archive, or move a card's actions without events, so compare the actions before and after.
+  (let [actions-before (queries.db/actions-for-model (:id card-before-update))]
     (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
     (when (seq actions-before)
       (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]

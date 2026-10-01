@@ -174,6 +174,7 @@
                                [:model_id               {:optional true}    [:maybe ::lib.schema.id/card]]
                                [:collection_id          {:optional true}    [:maybe ::lib.schema.id/collection]]
                                [:archived               {:optional true}    :boolean]
+                               [:archived_directly      {:optional true}    :boolean]
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
                                [:database_id            {:optional true}    [:maybe ::lib.schema.id/database]]

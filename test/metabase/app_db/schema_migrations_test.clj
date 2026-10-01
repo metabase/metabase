@@ -3460,8 +3460,9 @@
                                         :h2       ""))]))))))))
 
 (deftest action-collection-id-backfill-test
-  (testing "v65.2026-10-01T00:00:04: each action takes its model's collection, and model_id becomes nullable"
-    (impl/test-migrations ["v65.2026-10-01T00:00:00" "v65.2026-10-01T00:00:04"] [migrate!]
+  (testing "v65.2026-10-01T00:00:06: each action takes its model's collection, model_id becomes nullable, and
+            already-archived actions count as archived directly"
+    (impl/test-migrations ["v65.2026-10-01T00:00:00" "v65.2026-10-01T00:00:06"] [migrate!]
       (let [user-id   (t2/insert-returning-pk! :core_user {:first_name "Action"
                                                            :last_name  "Owner"
                                                            :email      "action-owner@metabase.com"
@@ -3489,16 +3490,20 @@
                                                                    :collection_id          collection-id
                                                                    :created_at             :%now
                                                                    :updated_at             :%now}))
-            insert-action! (fn [model-id]
+            insert-action! (fn [model-id & {:keys [archived]}]
                              (t2/insert-returning-pk! :action {:name       "Action"
+                                                               :archived   (boolean archived)
                                                                :entity_id  (u/generate-nano-id)
                                                                :type       "implicit"
                                                                :model_id   model-id
                                                                :created_at :%now
                                                                :updated_at :%now}))
             in-coll   (insert-action! (insert-model! coll-id))
-            in-root   (insert-action! (insert-model! nil))]
+            in-root   (insert-action! (insert-model! nil))
+            archived  (insert-action! (insert-model! coll-id) :archived true)]
         (migrate!)
+        (is (true? (t2/select-one-fn :archived_directly :action :id archived)))
+        (is (false? (t2/select-one-fn :archived_directly :action :id in-coll)))
         (is (= coll-id (t2/select-one-fn :collection_id :action :id in-coll)))
         (is (nil? (t2/select-one-fn :collection_id :action :id in-root)))
         (testing "an action can be inserted without a model"

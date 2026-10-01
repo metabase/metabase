@@ -88,6 +88,8 @@
                     {:type        action-type
                      :status-code 400})))
   (api/create-check :model/Action action)
+  (actions/check-implicit-actions-supported action)
+  (actions/check-action-databases-enabled action)
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
@@ -115,12 +117,14 @@
     (throw (ex-info (tru "HTTP actions are not supported.")
                     {:type        :http
                      :status-code 400})))
-  (let [existing-action (api/write-check :model/Action id)]
+  (let [existing-action (api/write-check :model/Action id)
+        action          (api/updates-with-archived-directly existing-action action)]
     (when (= (:type existing-action) :http)
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http
                        :status-code 400})))
     (api/update-check existing-action action)
+    (actions/check-action-databases-enabled (merge (actions/select-action :id id) action))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})

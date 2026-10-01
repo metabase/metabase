@@ -397,10 +397,20 @@
   (t2/update! :model/Timeline {:collection_id [:in collection-ids]} {:archived archived?}))
 
 (mu/defn set-action-archived-in-collections!
-  "Set `archived?` on the Actions in the Collections with `collection-ids`, returning the number updated."
+  "Archive the unarchived Actions in the Collections with `collection-ids` along with them, or unarchive the ones
+  archived along with them, returning the number updated."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    archived?      :- :boolean]
-  (t2/update! :model/Action {:collection_id [:in collection-ids]} {:archived archived?}))
+  (if archived?
+    (t2/update! :model/Action {:collection_id [:in collection-ids], :archived false}
+                {:archived true, :archived_directly false})
+    (t2/update! :model/Action {:collection_id [:in collection-ids], :archived true, :archived_directly false}
+                {:archived false})))
+
+(mu/defn delete-actions-in-collections!
+  "Delete the Actions in the Collections with `collection-ids`, returning the number deleted."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/delete! :model/Action :collection_id [:in collection-ids]))
 
 (mu/defn set-card-archived-in-collections-not-directly!
   "Set `archived?` on the Cards in the Collections with `collection-ids` that were not archived directly, returning

@@ -57,6 +57,8 @@
  [metabase.actions.http-action
   apply-json-query]
  [metabase.actions.models
+  check-action-databases-enabled
+  check-implicit-actions-supported
   dashcard->action
   insert!
   select-action

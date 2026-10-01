@@ -96,6 +96,7 @@
            metabase.actions.types}
    :uses #{analytics
            api
+           collections
            driver
            events
            lib
@@ -3215,8 +3216,10 @@
            warehouse-schema-overlay
            warehouses.secrets}
    :model-exports #{:model/Database}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Field
+                    :model/QueryAction
                     :model/Table
                     :model/User}}
 

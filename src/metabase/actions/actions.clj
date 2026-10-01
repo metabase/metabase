@@ -156,10 +156,12 @@
   (actions.db/database-for-action (u/the-id action-or-id)))
 
 (defn check-actions-enabled
-  "Throws an appropriate error if actions are unsupported or disabled for the database the action runs against,
-   otherwise returns nil."
+  "Throws an appropriate error if actions are unsupported or disabled for the database the action runs against, or a
+  404 when a non-HTTP action has none, otherwise returns nil."
   [action-or-id]
-  (check-actions-enabled-for-database (api/check-404 (database-for-action action-or-id))))
+  (if-let [database (database-for-action action-or-id)]
+    (check-actions-enabled-for-database database)
+    (api/check-404 (= :http (actions.db/action-type (u/the-id action-or-id))))))
 
 (defmulti handle-effects!*
   "Trigger bulk side effects in response to individual effects within actions, e.g. table row modified system events."

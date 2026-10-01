@@ -368,6 +368,15 @@
     (t2/update! :model/Action :id [:in action-ids] {:collection_id collection-id})
     0))
 
+(mu/defn set-actions-of-model-archived!
+  "Archive the unarchived Actions of the Card with `model-id` along with it, or unarchive the ones archived along with
+  it, returning the number updated."
+  [model-id  :- ms/PositiveInt
+   archived? :- :boolean]
+  (if archived?
+    (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false})
+    (t2/update! :model/Action {:model_id model-id, :archived true, :archived_directly false} {:archived false})))
+
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]

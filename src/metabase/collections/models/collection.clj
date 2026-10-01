@@ -2073,7 +2073,8 @@
     (collections.db/delete-dashboards-in-collections! affected-collection-ids)
     (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)
     (collections.db/delete-pulses-in-collections! affected-collection-ids)
-    (collections.db/delete-timelines-in-collections! affected-collection-ids))
+    (collections.db/delete-timelines-in-collections! affected-collection-ids)
+    (collections.db/delete-actions-in-collections! affected-collection-ids))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)

@@ -254,6 +254,27 @@
                                 (action/update! {:id action-id :model_id nil} (action/select-action :id action-id))))
           (is (some? (t2/select-one-fn :model_id :model/Action :id action-id))))))))
 
+(deftest switching-to-implicit-checks-the-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
+      (testing "a query action cannot become implicit when its card is a question"
+        (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query (mt/mbql-query categories)}]
+          (mt/with-model-cleanup [:model/Action]
+            (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                           {:type          :query
+                                                            :name          "On a question"
+                                                            :model_id      question-id
+                                                            :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Actions must be made with models, not cards"
+                                    (action/update! {:id action-id :type :implicit :kind :row/update}
+                                                    (action/select-action :id action-id))))))))
+      (testing "a query action cannot become implicit when its model has clauses"
+        (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query categories {:limit 1})}
+                          {:keys [action-id]} {:type :query}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
+                                (action/update! {:id action-id :type :implicit :kind :row/update}
+                                                (action/select-action :id action-id)))))))))
+
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled

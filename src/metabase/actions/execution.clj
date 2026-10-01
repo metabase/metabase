@@ -101,8 +101,7 @@
 
 (defn- execute-custom-action! [action request-parameters opts]
   (let [{action-type :type, action-id :id} action]
-    (when-not (= action-type :http)
-      (actions/check-actions-enabled action))
+    (actions/check-actions-enabled action)
     ;; the query executes against its own :database; fall back to the derived column if absent
     (when (= action-type :query)
       (actions/check-actions-enabled-for-database

@@ -786,7 +786,8 @@
   (mt/with-temp [:model/Card   {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
                  :model/Action {implicit :id} {:type :implicit :name "Create" :model_id model-id}
                  :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
-                 :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
+                 :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true
+                                               :archived_directly true}]
     ;; the implicit_action row is what marks an action implicit to the queries that retire them
     (t2/insert! :model/ImplicitAction {:action_id implicit :kind "row/create"})
     (f {:model-id model-id :implicit implicit :query query :archived archived})))
@@ -820,14 +821,36 @@
               (action-events-during! #(update-model! model-id {:dataset_query (filtered-venues-query)}))))))))
 
 (deftest model-move-publishes-action-events-test
-  (testing "update-card! announces the actions that move with a model to another collection"
+  (testing "update-card! announces the unarchived actions that move with a model to another collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}]
       (do-with-model-actions!
-       (fn [{:keys [model-id implicit query archived]}]
+       (fn [{:keys [model-id implicit query]}]
          (is (= #{[:event/action-update implicit false]
-                  [:event/action-update query false]
-                  [:event/action-update archived true]}
+                  [:event/action-update query false]}
                 (action-events-during! #(update-model! model-id {:collection_id coll-id})))))))))
+
+(deftest question-move-publishes-action-events-test
+  (testing "update-card! announces the actions that move with a question that used to be a model"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (do-with-model-actions!
+       (fn [{:keys [model-id query]}]
+         (update-model! model-id {:type :question})
+         (is (= #{[:event/action-update query false]}
+                (action-events-during! #(update-model! model-id {:collection_id coll-id})))))))))
+
+(deftest model-archive-cascades-to-actions-test
+  (testing "archiving a model archives its actions, and unarchiving it restores only those"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit query archived]}]
+       (let [archived-state #(t2/select-pk->fn (juxt :archived :archived_directly) :model/Action :model_id model-id)]
+         (is (= #{[:event/action-update implicit true]
+                  [:event/action-update query true]}
+                (action-events-during! #(update-model! model-id {:archived true}))))
+         (is (= {implicit [true false], query [true false], archived [true true]} (archived-state)))
+         (is (= #{[:event/action-update implicit false]
+                  [:event/action-update query false]}
+                (action-events-during! #(update-model! model-id {:archived false}))))
+         (is (= {implicit [false false], query [false false], archived [true true]} (archived-state))))))))
 
 (deftest model-actions-follow-model-collection-test
   (testing "the actions of a model are kept in the model's collection"
