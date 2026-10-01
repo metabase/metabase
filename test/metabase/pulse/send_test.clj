@@ -679,6 +679,30 @@
             (is (= #{:channel/email :channel/slack}
                    (set (map :channel_type (:failed-handlers (ex-data e))))))))))))
 
+(deftest webhook-failure-names-the-channel-test
+  (testing "a pulse webhook handler carries its channel under :channel; the failure still names the channel (GDGT-3144)"
+    (notification.tu/with-send-notification-sync
+      (mt/with-temp
+        [:model/Card         {card-id :id}    (pulse.test-util/checkins-query-card {:breakout [!day.date]
+                                                                                    :limit    1})
+         :model/Channel      {channel-id :id} {:type    :channel/http
+                                               :details {:url         "https://example.com/test"
+                                                         :auth-method :none}}
+         :model/Pulse        {pulse-id :id}   {:name            "Test Pulse"
+                                               :alert_condition "rows"}
+         :model/PulseCard    _                {:pulse_id pulse-id
+                                               :card_id  card-id}
+         :model/PulseChannel _                {:pulse_id     pulse-id
+                                               :channel_type "http"
+                                               :channel_id   channel-id}]
+        (with-redefs [channel/render-notification (fn [& _] (throw (ex-info "http failed" {})))]
+          (let [e (is (thrown? clojure.lang.ExceptionInfo
+                               (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+            (is (= (str "Failed to deliver to channel/http " channel-id) (ex-message e)))
+            (is (=? {:failed-handlers [{:channel_type :channel/http
+                                        :channel_id   channel-id}]}
+                    (ex-data e)))))))))
+
 (deftest alert-send-to-channel-e2e-test
   (testing "Send alert to http channel works e2e"
     (let [requests (atom [])

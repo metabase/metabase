@@ -24,10 +24,15 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- handler-channel-id
+  "The Channel id of a handler: its `:channel_id`, else the id of the Channel row under `:channel`."
+  [handler]
+  (or (:channel_id handler) (-> handler :channel :id)))
+
 (defn- handler->channel-name
-  [{:keys [channel_type channel_id]}]
-  (if channel_id
-    (str (u/qualified-name channel_type) " " channel_id)
+  [{:keys [channel_type] :as handler}]
+  (if-let [channel-id (handler-channel-id handler)]
+    (str (u/qualified-name channel_type) " " channel-id)
     (u/qualified-name channel_type)))
 
 (def ^:private default-blocking-queue-size 1000)
@@ -135,7 +140,7 @@
   [handler error]
   (merge {:handler_id   (:id handler)
           :channel_type (:channel_type handler)
-          :channel_id   (:channel_id handler)}
+          :channel_id   (handler-channel-id handler)}
          error))
 
 (defn- throw-when-handlers-failed
