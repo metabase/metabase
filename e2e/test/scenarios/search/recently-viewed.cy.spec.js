@@ -98,10 +98,8 @@ describe("Recently Viewed > Entity Picker", () => {
     H.popover().findByText("Dashboard").click();
     cy.findByTestId("collection-picker-button").click();
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("Select a collection").click();
-      cy.findByText("My Fresh Collection");
-    });
+    H.entityPickerModalItem(0, "Recent items").click();
+    H.entityPickerModalItem(1, "My Fresh Collection").should("be.visible");
   });
 
   it("shows recently visited dashboard in entity picker", () => {

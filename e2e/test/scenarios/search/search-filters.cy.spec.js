@@ -1025,7 +1025,11 @@ describe("scenarios > search", () => {
         cy.findByTestId("archived-search-filter")
           .findByLabelText("Search items in trash")
           .click();
-        cy.findAllByTestId("search-result-item").should("have.length", 0);
+        cy.url().should("include", "archived=true");
+        cy.findByTestId("search-app")
+          .findByText("Didn't find anything")
+          .should("be.visible");
+        cy.findAllByTestId("search-result-item").should("not.exist");
 
         H.archiveCollection(FIRST_COLLECTION_ID);
         cy.reload();
