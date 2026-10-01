@@ -1,10 +1,6 @@
 import { act } from "@testing-library/react";
 
-import {
-  renderWithProviders,
-  screen,
-  settlePendingUpdates,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
@@ -72,9 +68,10 @@ describe("DataAppView", () => {
 
   it("shows a generic error screen for an unexpected failure", async () => {
     setup({ error: { status: 500 } });
-    await settlePendingUpdates();
 
-    expect(screen.getByText("Couldn’t load this data app")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn’t load this data app"),
+    ).toBeInTheDocument();
   });
 
   it("shows a permission error when the user cannot access the data app", () => {
@@ -260,7 +257,7 @@ describe("DataAppView", () => {
       expect(
         screen.getByText("Couldn’t load this data app"),
       ).toBeInTheDocument();
-      await settlePendingUpdates();
+      await screen.findByText("Show error details");
     });
 
     it("shows an error when the iframe never signals it loaded", async () => {
@@ -279,7 +276,7 @@ describe("DataAppView", () => {
       } finally {
         jest.useRealTimers();
       }
-      await settlePendingUpdates();
+      await screen.findByText("Show error details");
     });
 
     it("does not error once the app reports ready before the timeout", () => {
@@ -325,7 +322,7 @@ describe("DataAppView", () => {
       } finally {
         jest.useRealTimers();
       }
-      await settlePendingUpdates();
+      await screen.findByText("Show error details");
     });
   });
 });
