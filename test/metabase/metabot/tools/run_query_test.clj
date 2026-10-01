@@ -10,11 +10,12 @@
    [metabase.test :as mt]))
 
 (defn- run-tool
-  "Call `run_query` as rasta with `queries` in conversation state."
+  "Call `run_query` as rasta with `queries` in conversation state and query execution enabled."
   [queries args]
-  (mt/with-current-user (mt/user->id :rasta)
-    (binding [shared/*memory-atom* (atom {:state {:queries queries}})]
-      (run-query/run-query-tool args))))
+  (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+    (mt/with-current-user (mt/user->id :rasta)
+      (binding [shared/*memory-atom* (atom {:state {:queries queries}})]
+        (run-query/run-query-tool args)))))
 
 (defn- venues-by-id
   []
@@ -61,6 +62,12 @@
     (is (=? {:context :metabot :executed-by (mt/user->id :rasta)} @info))))
 
 (deftest run-query-refusals-test
+  (testing "nothing runs while an admin has query execution turned off"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+      (mt/with-current-user (mt/user->id :rasta)
+        (binding [shared/*memory-atom* (atom {:state {:queries {"q1" (venues-by-id)}}})]
+          (is (= {:output "Query execution is turned off for Metabot."}
+                 (run-query/run-query-tool {:query_id "q1"})))))))
   (testing "an unknown id lists the ids the model can use"
     (is (= {:output "No query with id nope. Known query ids: [q1]."}
            (run-tool {"q1" (venues-by-id)} {:query_id "nope"}))))

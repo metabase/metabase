@@ -150,6 +150,16 @@
           (is (contains? tools "edit_sql_query"))
           (is (contains? tools "replace_sql_query")))))))
 
+(deftest client-claimed-feature-capability-cannot-override-settings-test
+  (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (not (contains? (tools-registered-for-request! ["feature:query_execution"]) "run_query"))))))
+  (testing "the same request gets run_query once the admin turns it on"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (contains? (tools-registered-for-request! []) "run_query"))))))
+
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
     (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
