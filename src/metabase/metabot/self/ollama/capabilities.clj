@@ -109,12 +109,16 @@
   mutable, so a re-pull or a rebuilt Modelfile can change a template under the same name."
   600000)
 
+(def ^:private cache-threshold
+  "How many models the capabilities cache holds before it evicts the least recently used."
+  256)
+
 (defonce ^:private capabilities-cache
   ;; `{cache-key {:caps #{...}-or-nil :at ms}}`. LRU rather than TTL because age must not mean
   ;; forgetting: an entry that has gone stale is still the best answer we have, and an expired one is
   ;; not evidence that a model stopped thinking. `:at` says when to re-ask, `:caps` what to believe
   ;; meanwhile, and the bound is on size instead.
-  (atom (cache/lru-cache-factory {} :threshold 256)))
+  (atom (cache/lru-cache-factory {} :threshold cache-threshold)))
 
 (defn- cache-key
   "What a model's capabilities are filed under: the destination and credential that would be asked,

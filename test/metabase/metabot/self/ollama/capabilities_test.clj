@@ -140,7 +140,7 @@
 
 (deftest a-full-cache-evicts-the-model-read-least-recently-test
   (testing "reads count as use, so the models being asked about are the ones kept"
-    (let [threshold 256
+    (let [threshold @#'ollama.capabilities/cache-threshold
           model     #(str "model-" %)
           cached?   #(cache/has? @@#'ollama.capabilities/capabilities-cache
                                  (#'ollama.capabilities/cache-key credentials (model %)))]
