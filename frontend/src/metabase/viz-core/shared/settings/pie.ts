@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { color } from "metabase/ui/colors";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import {
   NULL_DIMENSION_KEY,
@@ -222,6 +223,11 @@ export function getColors(
   );
 }
 
+function getColor(colors: Record<string, string>, key: string) {
+  // fallback in case a key isn't present so the viz doesn't crash (metabase#81868)
+  return colors[key] ?? getHexColor(color("text-secondary"));
+}
+
 export function getPieRows(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -316,7 +322,7 @@ export function getPieRows(
     newPieRows = sortedCurrentDataRows.map((dataRow) => {
       const dimensionValue = dataRow[dimensionDesc.index];
       const key = getKeyFromDimensionValue(dimensionValue);
-      const color = colors[key];
+      const color = getColor(colors, key);
 
       const savedRow = keyToSavedPieRow.get(key);
       if (savedRow != null) {
@@ -353,7 +359,7 @@ export function getPieRows(
       }
       const newRow = { ...savedPieRow, hidden: false };
       if (savedPieRow.defaultColor) {
-        newRow.color = colors[keptKey];
+        newRow.color = getColor(colors, keptKey);
       }
       return newRow;
     });
@@ -373,7 +379,7 @@ export function getPieRows(
         const dimensionValue = addedDataRow[dimensionDesc.index];
 
         const key = getKeyFromDimensionValue(dimensionValue);
-        const color = colors[key];
+        const color = getColor(colors, key);
         const displayValue = getDisplayValue(dimensionValue);
         const name = formatDimensionValue(displayValue);
 
