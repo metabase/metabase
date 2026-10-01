@@ -447,7 +447,7 @@
 
 (deftest slow-api-transform-root-breadcrumb-test
   (testing "GET /slow: a transform's breadcrumb carries the transforms namespace, at root and nested"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
       (mt/with-temporary-setting-values [content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [now (t/offset-date-time)]
@@ -479,7 +479,7 @@
 
 (deftest slow-api-subject-view-count-test
   (testing "GET /slow hydrates each finding's own live view_count into details; a transform omits it"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [:model/Collection {coll-id :id}  {}
@@ -521,7 +521,7 @@
 
 (deftest slow-api-filter-and-sort-test
   (testing "GET /slow filters by entity-types/min-duration-ms and sorts by duration-ms/name"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}

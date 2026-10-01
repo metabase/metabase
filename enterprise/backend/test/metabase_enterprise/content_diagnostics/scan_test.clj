@@ -5,8 +5,10 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase-enterprise.content-diagnostics.task.scan :as task.scan]
@@ -409,6 +411,56 @@
                   (let [ids (fetched-ids (fetch))]                  ; default (exclude personal)
                     (is (contains? ids pers-fid))))))))))))        ; now in a regular collection → returned
 
+(deftest api-personal-collection-exclusion-spans-descendants-test
+  (testing "the personal-collection exclusion reaches nested descendants, and nothing outside them"
+    ;; The exclusion is a non-correlated subquery that matches the first segment of `location` against the
+    ;; personal roots, so depth and over-matching are the two ways it could go wrong: a card two levels
+    ;; under a personal collection must still be excluded, and one at the same depth under a regular
+    ;; collection must not be. NB this pins semantic equivalence with the old LIKE-based matcher, which
+    ;; also handled any depth - the bind-parameter blowup the rewrite actually fixes is pinned by
+    ;; `personal-collection-exclusion-binds-a-constant-param-count-test` below.
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [pers-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+          (mt/with-temp [:model/Collection {p-sub :id}    {:location (str "/" pers-id "/")}
+                         :model/Collection {p-subsub :id} {:location (str "/" pers-id "/" p-sub "/")}
+                         :model/Collection {reg :id}      {}
+                         :model/Collection {reg-sub :id}  {:location (str "/" reg "/")}
+                         :model/Card {deep-personal :id}  {:collection_id p-subsub}
+                         :model/Card {deep-regular :id}   {:collection_id reg-sub}
+                         :model/Card {root-resident :id}  {:collection_id nil}]
+            (let [prefix  (scope-prefix)
+                  insert! (fn [card] (t2/insert! :model/ContentDiagnosticsFinding
+                                                 {:scan_id "pd" :entity_type :card :entity_id card
+                                                  :entity_name (str prefix "-" card)
+                                                  :finding_type :stale :details {}}))
+                  listed  (fn [& kvs] (into #{} (map :entity_id)
+                                            (:data (apply mt/user-http-request :crowberto :get 200
+                                                          "ee/content-diagnostics/stale" :query prefix kvs))))]
+              (run! insert! [deep-personal deep-regular root-resident])
+              (testing "default: the personal descendant two levels down is excluded, while a same-depth
+                        regular descendant and a root-resident card are kept"
+                (is (= #{deep-regular root-resident} (listed))))
+              (testing "include-personal-collections=true → the deep personal card comes back"
+                (is (= #{deep-personal deep-regular root-resident}
+                       (listed :include-personal-collections true)))))))))))
+
+(deftest personal-collection-exclusion-binds-a-constant-param-count-test
+  (testing "the personal-collection exclusion inlines no collection ids, so its bind-parameter count cannot
+            grow with the number of personal collections"
+    ;; The defect behind the subquery rewrite was 5N inlined bind parameters crossing Postgres's 65,535
+    ;; limit at roughly 13k personal collections. That is not reproducible in CI, so pin the property that
+    ;; makes it impossible instead: the clause is data-independent. A reintroduced id set would grow these
+    ;; params and fail here, which `api-personal-collection-exclusion-spans-descendants-test` cannot do -
+    ;; the old LIKE matcher handled any depth too, so that test is a semantic-equivalence guard only.
+    (let [params   #(rest (sql/format {:select [:*]
+                                       :from   [:content_diagnostics_finding]
+                                       :where  (api.common/exclude-personal-collections-clause true)}))
+          baseline (params)]
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (collection/user->personal-collection user-id)
+        (is (= baseline (params)))))))
+
 (deftest api-paginates-test
   (testing "GET /stale honors limit/offset and reports the full valid total"
     (mt/with-premium-features #{:content-diagnostics}
@@ -560,7 +612,7 @@
                                   :entity_name         (str prefix " alpha")
                                   :entity_created_at   (t/offset-date-time 2025 1 1)
                                   :entity_creator_id   10
-                                  :entity_creator_name "Amy"
+                                  :entity_creator_name "amy"
                                   :last_active_at      (t/offset-date-time 2025 6 1)})
                   b-fid  (insert {:entity_id           card-b
                                   :entity_name         (str prefix " Beta")
@@ -576,7 +628,8 @@
                 (is (= [b-fid a-fid] (order :sort-column "name" :sort-direction "desc"))))
               (testing "created-at - Jan before Jun"
                 (is (= [a-fid b-fid] (order :sort-column "created-at" :sort-direction "asc"))))
-              (testing "created-by - by creator NAME (Amy < Zoe), independent of the 10-vs-5 id order"
+              (testing "created-by - amy < Zoe, case-insensitive (a bytewise sort puts Zoe first),
+                        independent of the 10-vs-5 id order"
                 (is (= [a-fid b-fid] (order :sort-column "created-by" :sort-direction "asc")))
                 (is (= [b-fid a-fid] (order :sort-column "created-by" :sort-direction "desc"))))
               (testing "last-active-at - Jan before Jun"
@@ -615,7 +668,7 @@
 
 (deftest api-entity-types-filter-test
   (testing "GET /stale filters by entity-types (repeatable; omitted = all)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -654,7 +707,7 @@
 
 (deftest api-card-type-test
   (testing "GET /stale serves each card finding's stored card_type as a top-level field - card findings only"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        ;; transforms only go in the :transforms collection namespace
@@ -744,7 +797,7 @@
 
 (deftest api-transform-owner-hydration-test
   (testing "GET /stale hydrates the transform owner - a Metabase user or an external email, exclusively"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [;; transforms only go in the :transforms collection namespace
@@ -782,7 +835,7 @@
     ;; namespace fixture makes rasta an analyst, and an analyst reads every `transforms`-namespace
     ;; collection outright (`collection/visible-collection-query`) - which is the very thing the last
     ;; assertion denies. `:monitoring` clears the endpoint gate without touching collection visibility.
-    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions :transforms-basic :hosting}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-user-in-groups [group        {:name "Content Diagnostics Monitoring"}
@@ -817,6 +870,66 @@
                   (is (not (contains? ids card-fid))))
                 (testing "archived-folder inclusion does not bypass collection permissions"
                   (is (not (contains? (set (map :id (rows-for unprivileged))) xf-fid))))))))))))
+
+(deftest api-transform-findings-gate-on-analyst-role-test
+  (testing "GET /stale serves a transform finding to any data analyst, source-table perms or not"
+    ;; The chosen read model for transform findings is the analyst role plus an enabled transforms feature -
+    ;; the two conjuncts `transforms.u/enabled-source-types-for-user` gates on, used by `GET /api/transform`
+    ;; and by a collection's items. Neither of those lists applies the source-table check, so hiding here
+    ;; would make the monitor stricter than the feature it monitors and would make `total` disagree with the
+    ;; page. The source-table check stays on the peer hydrator, covered by
+    ;; `duplicated-api-transform-peers-hydrate-test`, which also pins that a non-analyst `:monitoring`
+    ;; grantee gets no transform finding at all.
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Transform {xf-id :id} {}]
+          (let [prefix (scope-prefix)
+                fid    (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                        {:scan_id      "src"
+                                                         :entity_type  :transform
+                                                         :entity_id    xf-id
+                                                         :entity_name  (str prefix "-" xf-id)
+                                                         :finding_type :stale
+                                                         :details      {}}))
+                resp   (fn [user] (mt/user-http-request user :get 200 "ee/content-diagnostics/stale"
+                                                        :query prefix))]
+            (testing "a superuser reads every transform"
+              (let [r (resp :crowberto)]
+                (is (= #{fid} (set (map :id (:data r)))))
+                (is (= 1 (:total r)))))
+            ;; the suite fixture makes rasta an analyst, so only the source-table half differs here
+            (testing "an analyst blocked from the source database still sees it, and `total` agrees"
+              (mt/with-db-perm-for-group! (perms/all-users-group) (mt/id) :perms/view-data :blocked
+                (let [r (resp :rasta)]
+                  (is (= #{fid} (set (map :id (:data r)))))
+                  (is (= 1 (:total r))))))))))))
+
+(deftest api-transform-findings-need-the-transforms-feature-test
+  (testing "GET /stale withholds transform findings when transforms are feature-disabled, even from a superuser"
+    ;; matches the rest of the product: with transforms off, `GET /api/transform` 403s and a collection
+    ;; lists none
+    (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+      (mt/with-temp [:model/Transform {xf-id :id} {}]
+        (let [prefix  (scope-prefix)
+              _       (t2/insert! :model/ContentDiagnosticsFinding
+                                  {:scan_id      "feat"
+                                   :entity_type  :transform
+                                   :entity_id    xf-id
+                                   :entity_name  (str prefix "-" xf-id)
+                                   :finding_type :stale
+                                   :details      {}})
+              listed  (fn [] (into #{} (map :entity_id)
+                                   (:data (mt/user-http-request :crowberto :get 200
+                                                                "ee/content-diagnostics/stale"
+                                                                :query prefix))))]
+          (testing "transforms enabled: the finding is served"
+            (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
+              (is (= #{xf-id} (listed)))))
+          (testing "transforms disabled: it is withheld, though the row is still in the table"
+            (mt/with-premium-features #{:content-diagnostics}
+              (is (= #{} (listed))))
+            (is (some? (t2/select-one-pk :model/ContentDiagnosticsFinding
+                                         :entity_type "transform" :entity_id xf-id)))))))))
 
 (deftest api-threshold-days-filter-test
   (testing "GET /stale threshold-days drops findings less stale than the cutoff; never-used always passes"
@@ -940,6 +1053,65 @@
               ;; so without this the nil assertion below would pass vacuously if the row were dropped
               (is (some? (get by-id old-fid)))
               (is (nil? (get-in by-id [old-fid :collection_name]))))))))))
+
+(deftest api-drops-archived-entities-without-a-rescan-test
+  (testing "GET /stale drops a card archived after the scan, even when no card event fired"
+    ;; Invalidation rides :event/card-update, but some archive paths publish none: archiving a dashboard
+    ;; archives its dashboard questions through one bulk t2/update! in
+    ;; `dashboards.db/archive-dashboard-questions!`, and so does removing a question from its dashboard.
+    ;; The serve gate therefore has to check `archived` itself rather than trust the event.
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp [:model/Collection {coll :id} {}
+                       :model/Dashboard  {dash :id} {:collection_id coll}
+                       :model/Card {dq :id} {:collection_id coll :dashboard_id dash}
+                       :model/Card {plain :id} {:collection_id coll}]
+          (let [prefix   (scope-prefix)
+                insert!  (fn [card-id suffix]
+                           (t2/insert! :model/ContentDiagnosticsFinding
+                                       {:scan_id "s" :entity_type :card :entity_id card-id
+                                        :finding_type :stale :details {:threshold_days 90}
+                                        :entity_name (str prefix " " suffix)}))
+                listed   (fn [] (into #{} (map :entity_id)
+                                      (:data (mt/user-http-request :crowberto :get 200
+                                                                   "ee/content-diagnostics/stale"
+                                                                   :query prefix))))]
+            (insert! dq "dq")
+            (insert! plain "plain")
+            (testing "both findings are served while the cards are active"
+              (is (= #{dq plain} (listed))))
+            ;; exactly what archive-dashboard-questions! does - a bulk update, so no :event/card-update
+            (t2/update! :model/Card :id dq {:archived true :archived_directly false})
+            (testing "the archived dashboard question drops out immediately; its sibling is untouched"
+              (is (= #{plain} (listed))))))))))
+
+(deftest scan-survives-unbounded-upstream-names-test
+  (testing "a name longer than any varchar cap round-trips: the denormalized columns are text, not truncated"
+    ;; collection/document/transform names are `text` upstream and a creator's common_name is first+last
+    ;; (509) or the email (citext on Postgres), so a cap on entity_name/entity_creator_name would throw in
+    ;; the insert stage - leaving the already-committed chunks active, invalidate-superseded! unrun, and
+    ;; every later scan failing the same way.
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [long-name  (str (scope-prefix) " " (apply str (repeat 300 "n")))
+              first-name (apply str (repeat 254 "f"))
+              last-name  (apply str (repeat 254 "l"))]
+          (mt/with-temp [:model/User {creator :id} {:first_name first-name :last_name last-name}
+                         ;; an empty collection, so the imbalanced checker flags the collection itself and
+                         ;; its name lands in entity_name
+                         :model/Collection {coll :id} {:name long-name}
+                         :model/Card _ {:collection_id coll :creator_id creator
+                                        :last_used_at (stale-instant)}]
+            (scan/scan!)
+            (testing "the collection's 300-character name is stored and served in full"
+              (is (= long-name
+                     (t2/select-one-fn :entity_name :model/ContentDiagnosticsFinding
+                                       :entity_type "collection" :entity_id coll))))
+            (testing "the card's 509-character creator name is stored in full"
+              (is (= (str first-name " " last-name)
+                     (t2/select-one-fn :entity_creator_name :model/ContentDiagnosticsFinding
+                                       :entity_type "card" :entity_id
+                                       (t2/select-one-pk :model/Card :collection_id coll)))))))))))
 
 (deftest api-endpoint-is-feature-gated-test
   (testing "GET /stale is gated on the :content-diagnostics premium feature (premium-handler)"

@@ -28,8 +28,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private lookback-days
-  "Only activity within this window counts toward slowness - executions or runs older than this say
-  nothing about how the content performs today."
+  "Only activity within this window counts toward slowness - executions or runs older than this say nothing
+  about how the content performs today. It decides which runs are averaged, so narrowing it can change a
+  median and flip a verdict; a card's served `duration_ms` is the median over this window. Not a setting for
+  that reason. The `empty` checker's window answers a different question - whether there is recent enough
+  evidence to hold a verdict - and has its own setting, `content-diagnostics-empty-card-lookback-days`."
   30)
 
 (defn- lookback-cutoff

@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.scan :as scan]
+   [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -203,6 +204,34 @@
               (testing "a collection holding only a flagged-empty card is not empty - the card carries the finding"
                 (is (some? (by-entity [:card c0])))
                 (is (nil? (by-entity [:collection only-empty-card-coll])))))))))))
+
+(deftest empty-card-lookback-window-test
+  (testing "card-empty only considers clean runs inside `content-diagnostics-empty-card-lookback-days`"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [window (cd.settings/content-diagnostics-empty-card-lookback-days)
+              now    (t/offset-date-time)
+              inside (t/minus now (t/days (dec window)))
+              before (t/minus now (t/days (inc window)))]
+          (mt/with-temp
+            [:model/Collection {coll :id} {}
+             ;; the only clean run is older than the window: no evidence about this card today, and a card
+             ;; nobody has run in that long is already the `stale` checker's business
+             :model/Card {stale-evidence :id} {:collection_id coll}
+             :model/QueryExecution _ {:card_id stale-evidence :started_at before
+                                      :parameterized false :cache_hit false :result_rows 0}
+             :model/Card {in-window :id} {:collection_id coll}
+             :model/QueryExecution _ {:card_id in-window :started_at inside
+                                      :parameterized false :cache_hit false :result_rows 0}]
+            (let [by-entity (empty-by-entity!)]
+              (testing "a clean 0-row run older than the window does not flag"
+                (is (nil? (by-entity [:card stale-evidence]))))
+              ;; the control: the cutoff is not over-filtering (and is the right way round)
+              (testing "a clean 0-row run inside the window still flags"
+                (is (some? (by-entity [:card in-window])))))
+            (testing "the window is the setting, not a constant: narrowing it drops the in-window run too"
+              (mt/with-temporary-setting-values [content-diagnostics-empty-card-lookback-days 1]
+                (is (nil? (get (empty-by-entity!) [:card in-window])))))))))))
 
 ;;; ----------------------------------------------------- dashboards -----------------------------------------
 
