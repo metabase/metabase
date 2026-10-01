@@ -175,6 +175,12 @@
                                     :type     :query
                                     :query    {:source-table (mt/id :orders)
                                                :aggregation  [["metric" plain-metric]]}}}
+                   :model/Card {nested-on-verified :id nested-on-verified-eid :entity_id}
+                   {:type :metric :name "plain metric built on the verified metric"
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :orders)
+                                               :aggregation  [["metric" verified-metric]]}}}
                    :model/Card {verified-join-metric :id verified-join-metric-eid :entity_id}
                    {:type :metric :name "verified metric joining an unrelated table"
                     :dataset_query (count-metric-query (orders-joined-query :reviews :product_id :product_id))}
@@ -254,6 +260,16 @@
                                    (get-in joined-query [:stages 0 :breakout])))))
         (testing "an uncurated metric on a raw table is rejected"
           (is (rejected? metabot-id :internal (metric-query plain-metric-eid))))
+        (testing "read_resource and construct_notebook_query agree on metrics over a raw table"
+          (testing "a plain metric next to the verified one is rejected on both sides"
+            (is (rejected? metabot-id :internal
+                           (assoc-in orders-query [:stages 0 :aggregation]
+                                     [["metric" {} verified-metric-eid] ["metric" {} plain-metric-eid]])))
+            (is (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" plain-metric))))))
+          (testing "a plain metric built on the verified metric is accepted on both sides"
+            (is (accepted? (metric-query nested-on-verified-eid)))
+            (is (not (denied? (first (read-uris metabot-id :internal
+                                                (str "metabase://metric/" nested-on-verified))))))))
         (testing "a table a curated metric only joins is not a source of its own"
           (is (rejected? metabot-id :internal
                          (assoc-in (query {:source-table [db-name "PUBLIC" "REVIEWS"]}) [:stages 0 :aggregation]
