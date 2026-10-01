@@ -4,6 +4,7 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -29,7 +30,7 @@
   unscoped), in name then id order."
   [card-type      :- [:enum :model :question :metric]
    database-ids   :- [:maybe [:set ::lib.schema.id/database]]
-   collection-ids :- [:maybe [:sequential ::lib.schema.id/collection]]]
+   collection-ids :- [:maybe [:set ::lib.schema.id/collection]]]
   (t2/select :model/Card
              {:where    [:and
                          [:= :type (name card-type)]
@@ -45,9 +46,10 @@
   (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn card-dimensions
-  "The dimensions and dimension mappings of the Card with `card-id`, or nil."
+  "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Card with `card-id`,
+  or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dimensions :dimension_mappings] :id card-id))
+  (queries/card-query-info card-id))
 
 (mu/defn table-names
   "The id, database id, name, and display name of the Tables with `table-ids`."

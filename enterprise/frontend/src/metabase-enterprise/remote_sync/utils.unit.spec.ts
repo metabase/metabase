@@ -10,6 +10,7 @@ import {
   getBlockedReason,
   getCollectionPathSegments,
   getListedRequiredSyncs,
+  getProgressPhaseLabel,
   getRequiredSyncRow,
   isTableChildModel,
 } from "./utils";
@@ -198,6 +199,28 @@ describe("remote_sync utils", () => {
       expect(segments[0]).toEqual({ id: 1, name: "Parent" });
       expect(segments[1]).toEqual({ id: 2, name: "Child" });
       expect(segments[2]).toEqual({ id: 3, name: "Grandchild" });
+    });
+  });
+
+  describe("getProgressPhaseLabel", () => {
+    it("maps import progress onto the backend checkpoints", () => {
+      expect(getProgressPhaseLabel(0, "import")).toBe("preparing");
+      expect(getProgressPhaseLabel(0.049, "import")).toBe("preparing");
+      expect(getProgressPhaseLabel(0.05, "import")).toBe("importing content");
+      expect(getProgressPhaseLabel(0.69, "import")).toBe("importing content");
+      expect(getProgressPhaseLabel(0.7, "import")).toBe("recording sync state");
+      expect(getProgressPhaseLabel(0.89, "import")).toBe(
+        "recording sync state",
+      );
+      expect(getProgressPhaseLabel(0.9, "import")).toBe("finishing");
+      expect(getProgressPhaseLabel(1, "import")).toBe("finishing");
+    });
+
+    it("maps export progress onto the plan, serialize and push phases", () => {
+      expect(getProgressPhaseLabel(0, "export")).toBe("preparing");
+      expect(getProgressPhaseLabel(0.33, "export")).toBe("exporting content");
+      expect(getProgressPhaseLabel(0.66, "export")).toBe("pushing");
+      expect(getProgressPhaseLabel(1, "export")).toBe("pushing");
     });
   });
 

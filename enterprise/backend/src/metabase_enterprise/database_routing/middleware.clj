@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *destination-database-id*
   "Bound to the destination database id during query execution when DB routing has swapped in a destination DB.
   Mirrors the shape of [[metabase-enterprise.impersonation.driver/*impersonation-role*]]: analytics code reads it

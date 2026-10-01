@@ -7,6 +7,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -63,14 +64,19 @@
   (t2/select :model/Card :id [:in card-ids]))
 
 (mu/defn card-query-info
-  "The query, type, result metadata, and schema of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema] :id card-id))
+  "The query-related fields of the Card with `card-id`.
+
+  Accepts kv-args:
+  - `:include` is a seq of extra columns to select."
+  [card-id :- ::lib.schema.id/card
+   & {:keys [include]} :- [:maybe [:map {:closed true}
+                                   [:include {:optional true} [:seqable :keyword]]]]]
+  (t2/select-one (queries.card-schema/selection include) :id card-id))
 
 (mu/defn card-dataset-query
   "The `:dataset_query` of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :dataset_query [:model/Card :dataset_query :card_schema] :id card-id))
+  (:dataset_query (card-query-info card-id)))
 
 (mu/defn card-document-id
   "The `:document_id` of the Card with `card-id`."
@@ -82,7 +88,7 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
 
-(mu/defn card-dimensions
+(mu/defn raw-card-dimensions
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/query-one {:select [:dimensions]
@@ -94,15 +100,29 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
 
-(mu/defn card-queries
-  "The IDs and queries of the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :dataset_query :card_schema] :id [:in card-ids]))
+(mu/defn cards-queries-info
+  "The IDs and query-related fields of the Cards with `card-ids`.
+
+  Accepts optional kv-args:
+  - `:include` a seq of extra columns to select."
+  [card-ids :- [:seqable ::lib.schema.id/card]
+   & {:keys [include]} :- [:maybe [:map {:closed true}
+                                   [:include {:optional true} [:seqable :keyword]]]]]
+  (t2/select (queries.card-schema/selection include) :id [:in card-ids]))
+
+(mu/defn mbql-model-cards
+  "The unarchived MBQL models that query the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select (queries.card-schema/selection)
+             :database_id database-id
+             :type        :model
+             :query_type  :query
+             :archived    false))
 
 (mu/defn source-card-dependents
   "The IDs and source Card IDs of the Cards whose source Card is one of `source-card-ids`."
   [source-card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select [:model/Card :id :source_card_id :card_schema] :source_card_id [:in source-card-ids]))
+  (t2/select [:model/Card :id :source_card_id] :source_card_id [:in source-card-ids]))
 
 (mu/defn metric-cards-for-source-cards
   "The unarchived metric Cards built on one of `source-card-ids`, ordered by name."
@@ -132,11 +152,16 @@
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
 (mu/defn dashcard-counts-by-card
-  "Rows of `:card_id` and `:count` of DashboardCards for each of `card-ids`."
+  "Rows of `:card_id` and `:count` of DashboardCards each of `card-ids` appears on, directly or as a series."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
-             :from     [:report_dashboardcard]
-             :where    [:in :card_id card-ids]
+             :from     [[^:allow-subquery {:union-all [^:allow-subquery {:select [:card_id]
+                                                                         :from   [:report_dashboardcard]
+                                                                         :where  [:in :card_id card-ids]}
+                                                       ^:allow-subquery {:select [:card_id]
+                                                                         :from   [:dashboardcard_series]
+                                                                         :where  [:in :card_id card-ids]}]}
+                         :placements]]
              :group-by [:card_id]}))
 
 (mu/defn parameter-card-counts-by-card
@@ -328,6 +353,19 @@
                                     :from   [:action]
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
+
+(mu/defn action-ids-for-model
+  "The IDs of the Actions of the model Card with `model-id`, leaving out archived Actions when `skip-archived`."
+  [model-id      :- ms/PositiveInt
+   skip-archived :- [:maybe :boolean]]
+  (if skip-archived
+    (t2/select-pks-set :model/Action :model_id model-id :archived false)
+    (t2/select-pks-set :model/Action :model_id model-id)))
+
+(mu/defn actions-for-model
+  "The Actions of the model Card with `model-id`."
+  [model-id :- ms/PositiveInt]
+  (t2/select :model/Action :model_id model-id))
 
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."

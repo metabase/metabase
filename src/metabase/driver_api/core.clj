@@ -1,6 +1,4 @@
 (ns metabase.driver-api.core
-  ;; missing docstring warnings are false positives because of Potemkin
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:refer-clojure :exclude [replace compile])
   (:require
    [metabase.actions.core :as actions]
@@ -57,6 +55,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.upload.db :as upload.db]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
@@ -190,6 +189,47 @@
   to see if the query has been canceled."
   []
   qp.pipeline/*canceled-chan*)
+
+;; These fill in the instance's time config, so drivers don't have to pass one.
+
+(defn desugar-filter-clause
+  "[[metabase.lib.core/desugar-filter-clause]] with this instance's time config."
+  [filter-clause]
+  (lib/desugar-filter-clause (lib-be/time-config) filter-clause))
+
+(defn negate-boolean-expression
+  "[[metabase.lib.core/negate-boolean-expression]] with this instance's time config."
+  [expression]
+  (lib/negate-boolean-expression (lib-be/time-config) expression))
+
+(defn date-extract
+  "[[metabase.util.date-2/extract]] with this instance's time config."
+  [t unit]
+  (u.date/extract (lib-be/time-config) t unit))
+
+(defn date-truncate
+  "[[metabase.util.date-2/truncate]] with this instance's time config."
+  [t unit]
+  (u.date/truncate (lib-be/time-config) t unit))
+
+(defn date-bucket
+  "[[metabase.util.date-2/bucket]] with this instance's time config."
+  [t unit]
+  (u.date/bucket (lib-be/time-config) t unit))
+
+(defn date-range
+  "[[metabase.util.date-2/range]] with this instance's time config."
+  ([t unit]
+   (u.date/range (lib-be/time-config) t unit))
+  ([t unit options]
+   (u.date/range (lib-be/time-config) t unit options)))
+
+(defn date-comparison-range
+  "[[metabase.util.date-2/comparison-range]] with this instance's time config."
+  ([t unit comparison-type]
+   (u.date/comparison-range (lib-be/time-config) t unit comparison-type))
+  ([t unit comparison-type options]
+   (u.date/comparison-range (lib-be/time-config) t unit comparison-type options)))
 ;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
 (p/import-fn setting/get-value-of-type setting-get-value-of-type)
 (p/import-fn secrets/value-as-string secret-value-as-string)

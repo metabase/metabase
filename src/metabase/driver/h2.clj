@@ -11,7 +11,6 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
-   [metabase.driver.sql :as sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -734,10 +733,6 @@
 (defmethod sql.normalize/normalize-unquoted-name :h2
   [_ name-str]
   (u/upper-case-en name-str))
-
-(defmethod sql/default-schema :h2
-  [_driver _database]
-  "PUBLIC")
 
 (defmethod driver/temp-table-name :h2
   [_driver]

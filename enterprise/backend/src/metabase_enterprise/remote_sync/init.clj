@@ -5,6 +5,7 @@
    [metabase-enterprise.remote-sync.events :as events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.task.import]
    [metabase-enterprise.remote-sync.task.table-cleanup]
@@ -39,6 +40,8 @@
           (save [] nil))))))
 
 (defn- remote-sync-init []
+  ;; Only stale rows: a fresh open row may belong to a worker on another node sharing this app DB.
+  (remote-sync.task/supersede-stale-tasks!)
   (if (settings/remote-sync-enabled)
     (do
       (when (= :read-only (settings/remote-sync-type))
@@ -59,6 +62,10 @@
         (let [n (events/backfill-glossary-tracking!)]
           (when (pos? n)
             (log/infof "Tracking %d existing glossary entries for remote sync" n))))
+      (when (= :read-write (settings/remote-sync-type))
+        (let [n (events/backfill-action-tracking!)]
+          (when (pos? n)
+            (log/infof "Tracking %d existing actions for remote sync" n))))
       (when-not (collection/has-remote-synced-collection?)
         (if (nil? (settings/remote-sync-branch))
           (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")
@@ -77,3 +84,7 @@
 (defmethod startup/def-startup-logic! ::remote-sync-setup
   [_]
   (remote-sync-init))
+
+(defmethod startup/def-shutdown-logic! ::remote-sync-shutdown
+  [_]
+  (impl/fail-running-tasks! "Interrupted by server shutdown"))

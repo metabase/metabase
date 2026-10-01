@@ -2,11 +2,13 @@
   (:require
    [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase.audit-app.core :as audit-app]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.revisions.models.revision :as revision]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -33,6 +35,10 @@
   {:inputs       (json-column ::transform-testing.schema/inputs)
    :expectations (json-column ::transform-testing.schema/expectations)})
 
+(defmethod audit-app/model-details :model/TransformTest
+  [transform-test _event-type]
+  (select-keys transform-test [:transform_id :name :description]))
+
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defmethod mi/can-read? :model/TransformTest
@@ -53,16 +59,36 @@
   [_model instance]
   (mi/can-write? :model/Transform (:transform_id instance)))
 
+;;; -------------------------------------------------- Revisions ---------------------------------------------------
+
+(def ^:private revision-columns
+  [:transform_id :name :description :inputs :expectations])
+
+(defmethod revision/serialize-instance :model/TransformTest
+  [_model _id transform-test]
+  (select-keys transform-test revision-columns))
+
+(defmethod revision/revision-readable? :model/TransformTest
+  [_model object]
+  (mi/can-read? (t2/instance :model/TransformTest object)))
+
+(defmethod revision/revert-to-revision! :model/TransformTest
+  [_model id _user-id serialized-instance]
+  (transform-testing.db/update-transform-test! id (select-keys serialized-instance revision-columns)))
+
 ;;; ---------------------------------------------------- Events ----------------------------------------------------
 
 (t2/define-after-insert :model/TransformTest [transform-test]
   (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-create {:object transform-test}))
+    (events/publish-event! :event/transform-test-create
+                           {:object  (t2/instance :model/TransformTest transform-test)
+                            :user-id (:creator_id transform-test)}))
   transform-test)
 
 (t2/define-after-update :model/TransformTest [transform-test]
   (when-not mi/*deserializing?*
-    (events/publish-event! :event/transform-test-update {:object transform-test}))
+    (events/publish-event! :event/transform-test-update
+                           {:object (t2/instance :model/TransformTest transform-test)}))
   transform-test)
 
 (defenterprise delete-transform-tests!

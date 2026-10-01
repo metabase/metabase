@@ -69,7 +69,3 @@
   pointer-events: none;
   color: var(--mb-color-text-disabled);
 }
-
-.commentsButton[data-variant="default"]:not(:hover) {
-  background-color: transparent;
-}

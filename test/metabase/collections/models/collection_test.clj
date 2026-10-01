@@ -1331,6 +1331,15 @@
               (is (= nil (t2/hydrate nil :is_personal)))
               (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))))
 
+(deftest hydrate-is-personal-without-any-personal-collections-test
+  (testing "batched hydration works on a fresh instance where no Personal Collection has been created yet"
+    (mt/with-empty-h2-app-db!
+      (let [ids (t2/insert-returning-pks! :model/Collection [{:name "A" :location "/"}
+                                                             {:name "B" :location "/"}])]
+        (is (= [false false]
+               (map :is_personal (t2/hydrate (t2/select :model/Collection :id [:in ids] {:order-by [:id]})
+                                             :is_personal))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -170,6 +170,7 @@
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformTestRun"
    "Undo"
    "User"
    "UserKeyValue"

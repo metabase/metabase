@@ -779,7 +779,7 @@
   (testing "activate-table-and-mark-computed! resolves nil schema when physical table exists in default schema"
     (let [target {:type "table" :schema nil :name "test_nil_schema_fix"}
           synced-table (atom nil)]
-      (mt/with-temp [:model/Database db {:engine :h2}]
+      (mt/with-temp [:model/Database db {:engine :h2, :default_schema "PUBLIC"}]
         (with-redefs [sync/create-table! (fn [database table-map]
                                            (let [created (t2/insert-returning-instance!
                                                           :model/Table
@@ -825,3 +825,18 @@
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (nil? (:schema table))
                 "Table schema should remain nil when physical table isn't in default schema")))))))
+
+(deftest enabled-source-types-for-user-follows-the-advanced-permissions-feature-test
+  (testing "a data analyst sees the enabled source types only while advanced-permissions is available"
+    (mt/with-data-analyst-role! (mt/user->id :rasta)
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/when-ee-evailable
+         (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+           (is (= #{"native" "mbql"} (transforms.u/enabled-source-types-for-user)))))
+        (testing "and none once the feature is gone"
+          (mt/with-premium-features #{:transforms-basic :hosting}
+            (is (nil? (transforms.u/enabled-source-types-for-user))))))))
+  (testing "a superuser is unaffected"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-premium-features #{:transforms-basic :hosting}
+        (is (= #{"native" "mbql"} (transforms.u/enabled-source-types-for-user)))))))

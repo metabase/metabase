@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.clarification :as ask-clarification]))
+   [metabase.metabot.tools.clarification :as ask-clarification]
+   [metabase.test :as mt]))
 
 (deftest ask-for-sql-clarification-test
   (testing "returns structured-output (the success signal that lets a profile end the turn)"
@@ -36,3 +37,9 @@
           "ask_for_sql_clarification must return :structured-output so the agent loop can stop")
       (is (not (contains? result :final-response?))
           "the tool-level :final-response? flag has been removed in favour of :terminal-tools"))))
+
+(deftest ask-for-sql-clarification-tool-unexpected-error-test
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [ask-clarification/ask-for-sql-clarification (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (ask-clarification/ask-for-sql-clarification-tool {:question "Which table?"}))))))

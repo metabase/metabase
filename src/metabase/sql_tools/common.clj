@@ -47,7 +47,7 @@
    An unqualified reference resolves to `database`'s default schema, so the database it was parsed against decides."
   [driver database tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
-                          (sql.normalize/default-schema driver database))
+                          (:default-schema database))
         normalize (partial normalize-name driver)
         matches? (fn [db-table db-schema]
                    (and (= (normalize search-table) (normalize db-table))

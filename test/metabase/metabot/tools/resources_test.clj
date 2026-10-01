@@ -85,6 +85,15 @@
       (is (thrown-with-msg? Exception #"Too many URIs"
                             (read-resource/read-resource {:uris uris}))))))
 
+(deftest read-resource-tool-errors-test
+  (testing "too many URIs go back to the agent as output"
+    (is (re-find #"^Too many URIs provided \(10\)"
+                 (:output (read-resource/read-resource-tool {:uris (vec (repeat 10 "metabase://table/123"))})))))
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [read-resource/read-resource (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (read-resource/read-resource-tool {:uris ["metabase://databases"]}))))))
+
 ;; ===== Dispatch routing — every URI pattern routes to the expected handler =====
 
 (def ^:private dispatch-cases
@@ -498,28 +507,30 @@
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
 
-(deftest read-transform-resource-source-permission-test
-  (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
-           with query access to another table in its database, so the resource never reaches the source"
-    (mt/with-premium-features #{:transforms-basic :hosting}
-      (mt/with-temp [:model/Transform {transform-id :id}
-                     {:name   "Orders Rollup"
-                      :source {:type  "query"
-                               :query (lib/query (mt/metadata-provider)
-                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
-        (mt/with-data-analyst-role! (mt/user->id :rasta)
-          (mt/with-no-data-perms-for-all-users!
-            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
-            (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
-            (mt/with-current-user (mt/user->id :rasta)
-              (is (=? {:resources [{:error "You don't have permissions to do that."}]}
-                      (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]}))))
-            (testing "and the query renders once the source table is granted"
-              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
-              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
-              (mt/with-current-user (mt/user->id :rasta)
-                (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
-                  (is (some? (get-in result [:resources 0 :content :structured-output :source :query]))))))))))))
+;; EE-only: the analyst reading here only can with `advanced-permissions`, which no OSS build can have
+(mt/when-ee-evailable
+ (deftest read-transform-resource-source-permission-test
+   (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
+            with query access to another table in its database, so the resource never reaches the source"
+     (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+       (mt/with-temp [:model/Transform {transform-id :id}
+                      {:name   "Orders Rollup"
+                       :source {:type  "query"
+                                :query (lib/query (mt/metadata-provider)
+                                                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
+         (mt/with-data-analyst-role! (mt/user->id :rasta)
+           (mt/with-no-data-perms-for-all-users!
+             (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+             (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+             (mt/with-current-user (mt/user->id :rasta)
+               (is (=? {:resources [{:error "You don't have permissions to do that."}]}
+                       (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]}))))
+             (testing "and the query renders once the source table is granted"
+               (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
+               (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+               (mt/with-current-user (mt/user->id :rasta)
+                 (let [result (read-resource/read-resource {:uris [(str "metabase://transform/" transform-id)]})]
+                   (is (some? (get-in result [:resources 0 :content :structured-output :source :query])))))))))))))
 
 (defn- read-title
   "The chain-of-thought title `read-resource` derives from what it read."
@@ -1310,6 +1321,20 @@
                                   (fn [& args] (reset! calls args) {:structured-output {:result-type :metabot-entity :type :stub}})]
         (#'read-resource/dispatch "metabase://table/3/fields/c75/17")
         (is (= ["3" "c75/17"] @calls))))))
+
+(deftest read-table-field-partial-values-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [read-field (fn [table field]
+                       (:output (read-resource/read-resource
+                                 {:uris [(str "metabase://table/" (mt/id table) "/fields/" (mt/id table field))]})))]
+      (testing "a field with more values than the sample says how many it has"
+        (let [output (read-field :people :state)]
+          (is (str/includes? output "This list shows 30 of the field's 49 values."))
+          (is (str/includes? output "when the user asks for a specific value, filter on that value"))))
+      (testing "a field whose values all fit in the sample doesn't"
+        (let [output (read-field :products :category)]
+          (is (str/includes? output "| Widget |"))
+          (is (not (str/includes? output "This list shows"))))))))
 
 (deftest read-card-question-vs-model-test
   (mt/with-current-user (mt/user->id :crowberto)

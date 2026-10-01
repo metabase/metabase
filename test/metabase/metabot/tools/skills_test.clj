@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.metabot.tools.skills :as tools.skills]))
+   [metabase.metabot.skills :as skills]
+   [metabase.metabot.tools.skills :as tools.skills]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,3 +33,9 @@
     (let [out (:output (tools.skills/load-skill-tool {:ids ["does-not-exist"]}))]
       (is (str/includes? out "Unknown skill"))
       (is (str/includes? out "does-not-exist")))))
+
+(deftest ^:parallel load-skill-unexpected-error-test
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [skills/get-skill-by-id-string (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (tools.skills/load-skill-tool {:ids ["construct-notebook-query-core"]}))))))
