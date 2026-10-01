@@ -576,6 +576,19 @@
           (is (<= (count description) 2048)
               (str "the description is " (count description) " characters")))))))
 
+(deftest no-transforms-on-the-surface-test
+  (testing "GHY-4746: MCP is for consuming content, and authoring transforms is creation, so MCP v2 has no transforms
+            at all — no tool, argument, enum value, description, learn topic, or resource names them"
+    (let [session-id (initialize-ui-client!)
+          request!   (fn [method params]
+                       (-> (mcp-request (jsonrpc-request method params) {"mcp-session-id" session-id})
+                           (get-in [:body :result])))]
+      (doseq [[label payload] {"tools/list"     (request! "tools/list" {})
+                               "resources/list" (request! "resources/list" {})
+                               "learn()"        (request! "tools/call" {:name "learn" :arguments {}})}]
+        (testing label
+          (is (not (re-find #"(?i)transform" (json/encode payload)))))))))
+
 (deftest refresh-ui-credential-test
   (testing "GHY-4157: #81041 moved MCP Apps credential delivery out of the rendered shell and into a server
             tool — the production template carries no `uiCredential` placeholder any more. v1 got the tool;
@@ -1367,29 +1380,22 @@
        "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\""))
 
 (deftest native-source-scope-denial-is-a-403-insufficient-scope-challenge-test
-  (testing "GHY-4543: question_write and transform_write check agent:sql:run inside the handler, once the source
-            resolves to native SQL. Over HTTP that must be the same 403 `insufficient_scope` challenge the registry
-            gate sends, or a client records no step-up scope and the user can never grant it."
+  (testing "GHY-4543: question_write checks agent:sql:run inside the handler, once the source resolves to native
+            SQL. Over HTTP that must be the same 403 `insufficient_scope` challenge the registry gate sends, or a
+            client records no step-up scope and the user can never grant it."
     (do-with-bearer-token!
      content-write-scopes
      (fn [headers]
-       (let [post!  (bearer-session-post! headers)
-             native {:database (mt/id) :type "native" :native {:query "SELECT 1"}}]
-         (doseq [[tool-name arguments]
-                 [["question_write"  {:method "create" :name "Native probe"
-                                      :native {:database_id (mt/id) :sql "SELECT 1"}}]
-                  ["transform_write" {:method     "create" :name "Native probe"
-                                      :definition {:type "query" :query native}
-                                      :target     {:name "mcp_native_probe" :schema "PUBLIC"}}]]]
-           (testing tool-name
-             (let [response (post! 403 (jsonrpc-request "tools/call" {:name tool-name :arguments arguments}))]
-               (is (= 403 (:status response)))
-               (is (= (sql-step-up-challenge tool-name) (get-in response [:headers "WWW-Authenticate"])))
-               (is (= -32600 (get-in response [:body :error :code])))
-               (is (re-find #"agent:sql:run" (get-in response [:body :error :message]))))))
+       (let [post!     (bearer-session-post! headers)
+             arguments {:method "create" :name "Native probe"
+                        :native {:database_id (mt/id) :sql "SELECT 1"}}
+             response  (post! 403 (jsonrpc-request "tools/call" {:name "question_write" :arguments arguments}))]
+         (is (= 403 (:status response)))
+         (is (= (sql-step-up-challenge "question_write") (get-in response [:headers "WWW-Authenticate"])))
+         (is (= -32600 (get-in response [:body :error :code])))
+         (is (re-find #"agent:sql:run" (get-in response [:body :error :message])))
          (testing "and nothing was written"
-           (is (zero? (t2/count :model/Card :name "Native probe")))
-           (is (zero? (t2/count :model/Transform :name "Native probe")))))))))
+           (is (zero? (t2/count :model/Card :name "Native probe")))))))))
 
 (defn- mcp-app-session-id!
   "Handshake over bearer `headers` as a client that can render MCP Apps, returning the session id."
@@ -1403,7 +1409,7 @@
 (deftest drill-handle-cannot-save-native-sql-without-the-sql-scope-test
   (testing "GHY-4543: `/api/embed-mcp/drills` stores whatever query the iframe hands it, charged the UI credential's
             single agent:query:run, and a handle resolves by user, so holding a drill handle is not proof the SQL
-            gates were spent. Saving one through question_write or transform_write is still charged agent:sql:run."
+            gates were spent. Saving one through question_write is still charged agent:sql:run."
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (do-with-bearer-token!
        content-write-scopes
@@ -1424,36 +1430,28 @@
                                                                "mcp-session-id"         session-id}}}
                                   {:encodedQuery (u/encode-base64 (json/encode query))})
                                  (get-in [:body :handle])))
-               call!       (fn [expected-status tool-name handle]
+               call!       (fn [expected-status handle]
                              (in-session expected-status
                                          (jsonrpc-request
                                           "tools/call"
-                                          {:name      tool-name
-                                           :arguments (cond-> {:method       "create"
-                                                               :name         "Drill probe"
-                                                               :query_handle handle}
-                                                        (= tool-name "transform_write")
-                                                        (assoc :target {:name   "mcp_drill_probe"
-                                                                        :schema "PUBLIC"}))})))]
+                                          {:name      "question_write"
+                                           :arguments {:method       "create"
+                                                       :name         "Drill probe"
+                                                       :query_handle handle}})))]
            (is (string? credential) "the iframe must get a credential, or the drill store is unreachable")
            (testing "a handle carrying an MBQL 5 native stage is refused with the step-up challenge"
              (let [handle (drill! {:lib/type "mbql/query"
                                    :database (mt/id)
                                    :stages   [{:lib/type "mbql.stage/native" :native "SELECT 1"}]})]
                (is (string? handle))
-               (doseq [tool-name ["question_write" "transform_write"]]
-                 (testing tool-name
-                   (let [response (call! 403 tool-name handle)]
-                     (is (= (sql-step-up-challenge tool-name) (get-in response [:headers "WWW-Authenticate"])))
-                     (is (= -32600 (get-in response [:body :error :code]))))))))
+               (let [response (call! 403 handle)]
+                 (is (= (sql-step-up-challenge "question_write") (get-in response [:headers "WWW-Authenticate"])))
+                 (is (= -32600 (get-in response [:body :error :code]))))))
            (testing "the legacy shape never reaches those gates: the save path decodes serialized MBQL 5 only, so a
                      legacy `{type: native}` payload is refused as an invalid query, with no challenge"
-             (let [handle (drill! {:type "native" :database (mt/id) :native {:query "SELECT 1"}})]
-               (doseq [tool-name ["question_write" "transform_write"]]
-                 (testing tool-name
-                   (let [response (call! 200 tool-name handle)]
-                     (is (nil? (get-in response [:headers "WWW-Authenticate"])))
-                     (is (true? (get-in response [:body :result :isError]))))))))
+             (let [handle   (drill! {:type "native" :database (mt/id) :native {:query "SELECT 1"}})
+                   response (call! 200 handle)]
+               (is (nil? (get-in response [:headers "WWW-Authenticate"])))
+               (is (true? (get-in response [:body :result :isError])))))
            (testing "and nothing was written either way"
-             (is (zero? (t2/count :model/Card :name "Drill probe")))
-             (is (zero? (t2/count :model/Transform :name "Drill probe"))))))))))
+             (is (zero? (t2/count :model/Card :name "Drill probe"))))))))))
