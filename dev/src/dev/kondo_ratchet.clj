@@ -646,20 +646,29 @@
          :when (> actual recorded)]
      [linter entry])))
 
-(def ^:private header
-  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts), and\n"
-       ";; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).\n"
-       ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
+(def ^:private shared-header
+  (str ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
        ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
        ";; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one.\n"
        ";; The workflow runs it on master, so feature branches do not need to record reductions.\n"
        ";; Raising or adding a budget (`--seed` for inline ignores, a manual edit otherwise) or widening the\n"
        ";; exemptions must be explained in the PR.\n"
-       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"
+       ";; :all is the vector-less ignore form, which suppresses every linter on the next form.\n"))
+
+(def ^:private header
+  (str ";; Budgets for kondo suppressions: inline `" ignore-marker "` forms per linter (:ignore-counts), and\n"
+       ";; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).\n"
+       shared-header
        ";;\n"
        ";; Test code's :ignore-counts has its own budget in .clj-kondo/ratchets-test.edn.\n"
        ";; :config-counts stays here either way -- config.edn's scoping doesn't cleanly split.\n"))
+
+(def ^:private test-header
+  (str ";; Budgets for kondo suppressions in test code: inline `" ignore-marker "` forms per linter\n"
+       ";; (:ignore-counts). Production code has its own budgets in .clj-kondo/ratchets.edn, which also holds\n"
+       ";; every config-level waiver (:config-counts) -- config.edn's scoping doesn't cleanly split.\n"
+       shared-header))
 
 (def ^:private module-header
   (str ";; Budgets for escape hatches in config.edn. Counts may fall but not exceed these values.\n"
@@ -677,14 +686,14 @@
                        (format (str "%-" width "s %s") (str linter) (str n))))
            "}"))))
 
-(defn render
-  "Canonical Kondo ratchet-file text."
-  [{:keys [ignore-counts config-counts comment-exempt]}]
+(defn- render-policies
+  [header {:keys [ignore-counts config-counts comment-exempt]} config-counts?]
   (let [counts-indent (apply str (repeat (count "{:ignore-counts  {") \space))
         exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
     (str header
          "{:ignore-counts  " (render-counts ignore-counts counts-indent)
-         "\n :config-counts  " (render-counts config-counts counts-indent)
+         (when config-counts?
+           (str "\n :config-counts  " (render-counts config-counts counts-indent)))
          "\n :comment-exempt "
          (if (empty? comment-exempt)
            "#{}"
@@ -693,6 +702,21 @@
                           (sort-by str comment-exempt))
                 "}"))
          "}\n")))
+
+(defn render
+  "Canonical text for the prod ratchets file, [[*ratchets-file*]]."
+  [ratchets]
+  (render-policies header ratchets true))
+
+(defn render-test
+  "Canonical text for the test ratchets file, [[*test-ratchets-file*]], which has no :config-counts.
+  Throws on a nonempty :config-counts rather than dropping it."
+  [{:keys [config-counts] :as ratchets}]
+  (when (seq config-counts)
+    (throw (ex-info (str *test-ratchets-file* " must not set :config-counts -- config-level suppressions are"
+                         " tracked only in " *ratchets-file*)
+                    {:config-counts config-counts})))
+  (render-policies test-header ratchets false))
 
 (defn render-module-ratchets
   "Canonical module ratchet-file text."
@@ -1010,10 +1034,9 @@
                                         (lowered-counts module-ratchets module-actual []))]]
                                (not test-disabled?)
                                (conj [*test-ratchets-file*
-                                      (render {:ignore-counts  (lowered-counts (:ignore-counts test-ratchets)
-                                                                               test-actual seeded)
-                                               :config-counts  {}
-                                               :comment-exempt (:comment-exempt test-ratchets)})]))
+                                      (render-test {:ignore-counts  (lowered-counts (:ignore-counts test-ratchets)
+                                                                                    test-actual seeded)
+                                                    :comment-exempt (:comment-exempt test-ratchets)})]))
              changed         (filterv (fn [[path text]] (not= (slurp path) text)) outputs)]
          (run! println (change-report ratchets module-ratchets prod-occ config-actual module-actual seeded))
          (when-not test-disabled?
@@ -1028,9 +1051,10 @@
 
 (defn- ignore-check-lines
   "Budget, justification, and formatting diagnostics for one ratchets file's :ignore-counts and
-  :comment-exempt, scoped to `occurrences`. `ratchets-file` names the file in the not-normalized message.
+  :comment-exempt, scoped to `occurrences`. `ratchets-file` names the file in the not-normalized message, and
+  `render-fn` gives its canonical text.
   Shared by [[check-report]] (the prod ratchets file) and [[check]]'s pass over the test ratchets file."
-  [ratchets-file {:keys [ignore-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
+  [ratchets-file render-fn {:keys [ignore-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
    occurrences ratchets-text]
   (let [over        (over-budget ignore-counts occurrences)
         uncommented (unjustified comment-exempt occurrences)
@@ -1049,7 +1073,7 @@
              (map (fn [{:keys [file line linters]}]
                     (format "  %s:%d %s" file line (vec linters)))
                   uncommented)))
-     (when (not= ratchets-text (render ratchets))
+     (when (not= ratchets-text (render-fn ratchets))
        [(str ratchets-file " is not normalized -- run `./bin/mage kondo-ratchets-shrink`"
              " to fix the formatting")]))))
 
@@ -1063,7 +1087,7 @@
         budget-line (fn [[k {:keys [recorded actual]}]]
                       (format "  %s: %d recorded, %d actual" k recorded actual))]
     (concat
-     (ignore-check-lines *ratchets-file* ratchets occurrences ratchets-text)
+     (ignore-check-lines *ratchets-file* render ratchets occurrences ratchets-text)
      (when (seq config-over)
        (cons (str "config suppressions over budget -- remove the entry from " kondo-config-file
                   ", or raise the budget manually and explain the increase in the PR:")
@@ -1110,7 +1134,7 @@
                                                (config-suppressions) (module-escape-hatches)
                                                (slurp *ratchets-file*) (slurp *module-ratchets-file*))
                                  (when-not test-disabled?
-                                   (ignore-check-lines *test-ratchets-file* test-ratchets test-occ
+                                   (ignore-check-lines *test-ratchets-file* render-test test-ratchets test-occ
                                                        (slurp *test-ratchets-file*))))]
             (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts prod-occ)) println)
             (some-> (stale-exemptions-warning (:comment-exempt ratchets) prod-occ) println)

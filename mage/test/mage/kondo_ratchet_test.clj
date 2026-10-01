@@ -18,7 +18,7 @@
         prod (doto (io/file dir "ratchets.edn")
                (spit (dev-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt prod-exempt})))
         test (doto (io/file dir "ratchets-test.edn")
-               (spit (dev-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt test-exempt})))]
+               (spit (dev-ratchet/render-test {:ignore-counts {}, :comment-exempt test-exempt})))]
     (binding [dev-ratchet/*ratchets-file*      (.getPath prod)
               dev-ratchet/*test-ratchets-file* (.getPath test)]
       (f))))

@@ -433,7 +433,7 @@
   -ratchets-merge
   {:doc "Internal three-way merge for ratchet files. Called by bin/merge-kondo-ratchets."
    :arg-schema [:tuple
-                [:enum {:name "kind"} "kondo" "modules"]
+                [:enum {:name "kind"} "kondo" "test" "modules"]
                 [:string {:name "base" :description "Ratchets file from the merge base"}]
                 [:string {:name "ours" :description "Git stage 2: ratchets file from the branch receiving the changes"}]
                 [:string {:name "theirs" :description "Git stage 3: ratchets file from the commits being applied"}]
@@ -453,10 +453,11 @@
               (spit output-path
                     (dev.kondo-ratchet/render-module-ratchets
                      (dev.kondo-ratchet/merge-module-ratchets base ours theirs)))
-              (let [merged (dev.kondo-ratchet/merge-ratchets base ours theirs)]
+              (let [merged (dev.kondo-ratchet/merge-ratchets base ours theirs)
+                    render (if (= kind "test") dev.kondo-ratchet/render-test dev.kondo-ratchet/render)]
                 (spit output-path (if (dev.kondo-ratchet/disabled? merged)
                                     (slurp ours-path)
-                                    (dev.kondo-ratchet/render merged)))))
+                                    (render merged)))))
             (println (str "merged ratchets into " output-path))))}
 
   -kondo-ratchets-pr-body

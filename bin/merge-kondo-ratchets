@@ -48,11 +48,11 @@ for i in "${!conflicted_files[@]}"; do
     printf '{}\n' > "$tmp_dir/base-$i"
   fi
 
-  if [ "$ratchets_file" = .clj-kondo/config/modules/ratchets.edn ]; then
-    kind=modules
-  else
-    kind=kondo
-  fi
+  case $ratchets_file in
+    .clj-kondo/config/modules/ratchets.edn) kind=modules ;;
+    .clj-kondo/ratchets-test.edn) kind=test ;;
+    *) kind=kondo ;;
+  esac
   "$bin_dir/mage" -ratchets-merge "$kind" \
     "$tmp_dir/base-$i" \
     "$tmp_dir/ours-$i" \

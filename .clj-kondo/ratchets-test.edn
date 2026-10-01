@@ -1,5 +1,6 @@
-;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts), and
-;; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).
+;; Budgets for kondo suppressions in test code: inline `:clj-kondo/ignore` forms per linter
+;; (:ignore-counts). Production code has its own budgets in .clj-kondo/ratchets.edn, which also holds
+;; every config-level waiver (:config-counts) -- config.edn's scoping doesn't cleanly split.
 ;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.
 ;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
 ;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
@@ -8,9 +9,6 @@
 ;; Raising or adding a budget (`--seed` for inline ignores, a manual edit otherwise) or widening the
 ;; exemptions must be explained in the PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
-;;
-;; Test code's :ignore-counts has its own budget in .clj-kondo/ratchets-test.edn.
-;; :config-counts stays here either way -- config.edn's scoping doesn't cleanly split.
 {:ignore-counts  {:case-symbol-test                                                    1
                   :clojure-lsp/unused-public-var                                       1
                   :deprecated-namespace                                                66
@@ -31,7 +29,6 @@
                   :unresolved-symbol                                                   2
                   :unused-binding                                                      6
                   :unused-private-var                                                  2}
- :config-counts  {}
  :comment-exempt #{:deprecated-namespace
                    :discouraged-namespace
                    :discouraged-var

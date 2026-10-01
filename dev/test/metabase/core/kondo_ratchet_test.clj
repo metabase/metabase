@@ -208,6 +208,20 @@
     (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
                         "{:ignore-counts  {}\n :config-counts  {}\n :comment-exempt #{}}\n"))))
 
+(deftest ^:parallel render-test-test
+  (let [ratchets {:ignore-counts  {:discouraged-var 3}
+                  :comment-exempt #{:discouraged-var}}
+        text     (kondo-ratchet/render-test (assoc ratchets :config-counts {}))]
+    (is (str/starts-with? text ";; Budgets for kondo suppressions in test code"))
+    (is (str/ends-with? text (str "{:ignore-counts  {:discouraged-var 3}\n"
+                                  " :comment-exempt #{:discouraged-var}}\n"))
+        "no :config-counts -- only the prod file tracks them")
+    (is (= ratchets (edn/read-string text)))
+    (is (= text (kondo-ratchet/render-test (edn/read-string text)))))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not set :config-counts"
+                        (kondo-ratchet/render-test {:ignore-counts {}, :config-counts {:a 1}, :comment-exempt #{}}))
+      "a nonempty :config-counts is an error, not silently dropped"))
+
 (deftest ^:parallel render-module-ratchets-test
   (let [ratchets {:uses-any 4, :api-any 1}
         text     (kondo-ratchet/render-module-ratchets ratchets)]
@@ -354,7 +368,7 @@
   run with no test-path occurrences writes nothing and reports nothing for it."
   ^java.io.File [dir]
   (doto (io/file dir "ratchets-test.edn")
-    (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}))))
+    (spit (kondo-ratchet/render-test {:ignore-counts {}, :comment-exempt #{}}))))
 
 (deftest ^:synchronized seed-unlimited-linter-test
   (let [dir        (.toFile (java.nio.file.Files/createTempDirectory
@@ -475,7 +489,8 @@
         budgets      (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
         modules      (doto (io/file dir "module-ratchets.edn")
                        (spit (kondo-ratchet/render-module-ratchets {})))
-        test-budgets (doto (io/file dir "ratchets-test.edn") (spit (kondo-ratchet/render ratchets)))
+        test-budgets (doto (io/file dir "ratchets-test.edn")
+                       (spit (kondo-ratchet/render-test (dissoc ratchets :config-counts))))
         occurrences  [{:file "src/f.clj",  :line 1, :linters [:a]}
                       {:file "src/f.clj",  :line 2, :linters [:a]}
                       {:file "test/g.clj", :line 1, :linters [:a]}]]
@@ -508,7 +523,7 @@
         modules      (doto (io/file dir "module-ratchets.edn")
                        (spit (kondo-ratchet/render-module-ratchets {})))
         test-budgets (doto (io/file dir "ratchets-test.edn")
-                       (spit (kondo-ratchet/render {:ignore-counts {:bogus 1}, :config-counts {}, :comment-exempt #{}})))]
+                       (spit (kondo-ratchet/render-test {:ignore-counts {:bogus 1}, :comment-exempt #{}})))]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)
               kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]

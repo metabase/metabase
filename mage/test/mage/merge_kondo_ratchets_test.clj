@@ -145,19 +145,28 @@
            (status dir)))))
 
 (deftest resolves-test-ratchets-test
-  (with-conflict [dir {:base   {test-ratchets-file base-ratchets}
-                       :ours   {test-ratchets-file (ratchets {:a 5, :b 3} {:c 1} #{})}
-                       :theirs {test-ratchets-file (ratchets {:a 4, :b :unlimited, :ours-drop 1} {:c 2} #{:b})}}]
+  (with-conflict [dir {:base   {test-ratchets-file (ratchets {:a 5, :b :unlimited, :ours-drop 2} {} #{:b})}
+                       :ours   {test-ratchets-file (ratchets {:a 5, :b 3} {} #{})}
+                       :theirs {test-ratchets-file (ratchets {:a 4, :b :unlimited, :ours-drop 1} {} #{:b})}}]
     (let [{:keys [exit out]} (run dir script)]
       (is (= 0 exit))
-      (is (str/includes? out (str "staged merged " test-ratchets-file))
-          "the test ratchets file merges as a plain ratchets-shaped map, the same as the prod file"))
-    (is (= {:ignore-counts  {:a 4, :b 3}
-            :config-counts  {:c 1}
-            :comment-exempt #{}}
-           (edn/read-string (slurp (str (fs/path dir test-ratchets-file))))))
+      (is (str/includes? out (str "staged merged " test-ratchets-file))))
+    (let [text (slurp (str (fs/path dir test-ratchets-file)))]
+      (is (= {:ignore-counts  {:a 4, :b 3}
+              :comment-exempt #{}}
+             (edn/read-string text))
+          "merged with the same rules as the prod file, and written without :config-counts")
+      (is (str/starts-with? text ";; Budgets for kondo suppressions in test code")))
     (is (= #{(str "M  " test-ratchets-file) "UU app.txt"}
-           (status dir)))))
+           (status dir))))
+  (testing "a stage with :config-counts is refused rather than having them dropped"
+    (with-conflict [dir {:base   {test-ratchets-file (ratchets {:a 5} {} #{})}
+                         :ours   {test-ratchets-file (ratchets {:a 4} {} #{})}
+                         :theirs {test-ratchets-file (ratchets {:a 3} {:c 1} #{})}}]
+      (let [{:keys [exit out err]} (run dir script)]
+        (is (pos? exit))
+        (is (str/includes? (str out err) "must not set :config-counts")))
+      (is (contains? (status dir) (str "UU " test-ratchets-file))))))
 
 (deftest resolves-module-ratchets-test
   (with-conflict [dir {:base   {module-ratchets-file "{:api-any 3, :friend-edges 5}\n"}

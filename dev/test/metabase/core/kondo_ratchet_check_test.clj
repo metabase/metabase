@@ -105,8 +105,8 @@
         test-budgets (doto (io/file dir "ratchets-test.edn")
                        (spit (if (:disabled test-ratchets)
                                "{:disabled true}\n"
-                               (kondo-ratchet/render (merge {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
-                                                            test-ratchets)))))
+                               (kondo-ratchet/render-test (merge {:ignore-counts {}, :comment-exempt #{}}
+                                                                 test-ratchets)))))
         thrown?      (atom false)]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)
@@ -258,7 +258,7 @@
         modules      (doto (io/file dir "module-ratchets.edn")
                        (spit (kondo-ratchet/render-module-ratchets {})))
         test-budgets (doto (io/file dir "ratchets-test.edn")
-                       (spit (kondo-ratchet/render {:ignore-counts {:bogus 1}, :config-counts {}, :comment-exempt #{}})))]
+                       (spit (kondo-ratchet/render-test {:ignore-counts {:bogus 1}, :comment-exempt #{}})))]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)
               kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
@@ -291,3 +291,26 @@
                                                " are tracked only in "
                                                (java.util.regex.Pattern/quote (.getPath budgets))))
                               (kondo-ratchet/check)))))))
+
+(deftest check-flags-a-test-file-in-prod-format-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-check-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        empty-policy {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
+        budgets      (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render empty-policy)))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (doto (io/file dir "ratchets-test.edn") (spit (kondo-ratchet/render empty-policy)))]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{})
+                                  kondo-ratchet/scan                  (constantly [])
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (let [out (with-out-str
+                    (is (thrown? clojure.lang.ExceptionInfo (kondo-ratchet/check))))]
+          (is (= [(str (.getPath test-budgets) " is not normalized -- run `./bin/mage kondo-ratchets-shrink`"
+                       " to fix the formatting")]
+                 (str/split-lines out))
+              "the prod header and an empty :config-counts are not the test file's canonical text"))))))
