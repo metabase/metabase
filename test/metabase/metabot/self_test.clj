@@ -640,8 +640,11 @@
           cut-off  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Paris"}}])
           streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
-      (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
-              (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)])))))))
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+        (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
+                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+        (testing "and a warning names the call that never ran"
+          (is (=? [{:level :warn :message #".*call-2.*"}] (messages))))))))
 
 ;;; tool argument validation tests
 

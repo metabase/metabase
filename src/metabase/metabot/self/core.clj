@@ -1037,8 +1037,11 @@
                    (vswap! active assoc toolCallId {:task task})))
 
                :error
-               (do (vreset! errored? true)
-                   (vswap! active #(into {} (filter (comp :task val)) %)))
+               (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
+                 (vreset! errored? true)
+                 (when (seq cut-off)
+                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (vswap! active #(apply dissoc % cut-off))))
 
                ;; otherwise: do nothing
                nil)
