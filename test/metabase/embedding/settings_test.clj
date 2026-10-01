@@ -162,9 +162,9 @@
   (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false})))
   (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-static true})))
   (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-interactive false})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-sdk false})))
   ;; Not OK: the modular value would silently override each of these.
   (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding-static true})
-  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-sdk false})
   (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-simple false})
   (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding true}))
 
@@ -326,18 +326,17 @@
                    (embed.settings/embedding-app-origins-interactive)))))))))
 
 (deftest enable-embedding-modular-falls-back-to-the-settings-it-replaces-test
-  (testing "With nothing set, the merged setting stands for the three it replaces"
-    (doseq [legacy-setting [:enable-embedding-simple :enable-embedding-sdk :enable-embedding-static]]
+  (testing "With nothing set, the merged setting stands for the two it replaces"
+    (doseq [legacy-setting [:enable-embedding-simple :enable-embedding-static]]
       (testing (str "on when only " legacy-setting " is on")
         (mt/with-temporary-setting-values [enable-embedding-simple false
-                                           enable-embedding-sdk false
                                            enable-embedding-static false]
           (mt/with-temporary-setting-values [enable-embedding-modular nil]
             (setting/set-value-of-type! :boolean legacy-setting true)
             (is (true? (embed.settings/enable-embedding-modular))))))))
-  (testing "off when all three are off"
+  (testing "off when both are off, even with the SDK on, since the SDK has its own setting"
     (mt/with-temporary-setting-values [enable-embedding-simple false
-                                       enable-embedding-sdk false
+                                       enable-embedding-sdk true
                                        enable-embedding-static false
                                        enable-embedding-modular nil]
       (is (false? (embed.settings/enable-embedding-modular)))))

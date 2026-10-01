@@ -259,6 +259,7 @@ export const createMockSettings = (
   "enable-embedding": false,
   "non-table-chart-generated": true,
   "enable-embedding-modular": false,
+  "enable-embedding-sdk": false,
   "enable-embedding-interactive": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,

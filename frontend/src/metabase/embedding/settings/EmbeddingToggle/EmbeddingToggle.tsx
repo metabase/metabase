@@ -14,7 +14,8 @@ import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
 
 export type EmbeddingSettingKey =
   | "enable-embedding-interactive"
-  | "enable-embedding-modular";
+  | "enable-embedding-modular"
+  | "enable-embedding-sdk";
 
 export type EmbeddingToggleProps = {
   settingKey: EmbeddingSettingKey;
@@ -46,11 +47,12 @@ export function EmbeddingToggle({
   const isEnabled =
     Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
 
-  // Previously this covered modular embedding and the modular embedding SDK, not
-  // guest embeds. The merged toggle also covers guest embeds, so gate on the token
-  // feature to exclude them and match the previous behaviour.
+  // The terms cover modular embedding and the modular embedding SDK, not guest
+  // embeds. The modular toggle also covers guest embeds, so gate it on the token
+  // feature to exclude them. The SDK row only renders with `embedding_sdk`.
   const shouldShowModularEmbedTerms =
-    settingKey === "enable-embedding-modular" && hasSimpleEmbedding;
+    (settingKey === "enable-embedding-modular" && hasSimpleEmbedding) ||
+    settingKey === "enable-embedding-sdk";
 
   const handleChange = (checked: boolean) => {
     if (showModularEmbedTerms && shouldShowModularEmbedTerms && checked) {
@@ -84,6 +86,7 @@ export function EmbeddingToggle({
         <EmbeddingLegaleseModal
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
+          settingKey={settingKey}
         />
       )}
     </>

@@ -465,6 +465,7 @@ interface InstanceSettings {
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
   "enable-embedding-modular": boolean;
+  "enable-embedding-sdk": boolean;
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
