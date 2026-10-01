@@ -2958,9 +2958,9 @@
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
 (deftest backfill-mfa-confirmed-at-test
-  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+  (testing "v63.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
     (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
-      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
+      (impl/test-migrations ["v63.2026-07-10T22:29:17"] [migrate!]
         (let [confirmed-at "2026-07-01T12:00:00Z"
               insert-identity!
               (fn [user-id credentials-str]
