@@ -353,7 +353,7 @@
 
 (deftest duplicated-api-subject-view-count-test
   (testing "GET /duplicated hydrates each finding's own live view_count into details; a transform omits it"
-    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions :transforms-basic :hosting}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [:model/Collection {coll-id :id}  {}
@@ -393,7 +393,7 @@
 
 (deftest duplicated-api-filter-and-sort-test
   (testing "GET /duplicated filters by entity-types/min-duplicate-count and sorts by duplicate-count/name"
-    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions :transforms-basic :hosting}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -530,7 +530,8 @@
                   (is (= #{reg-peer pers-peer} (peer-ids :include-personal-collections true))))))))))))
 
 (deftest duplicated-api-transform-peers-hydrate-test
-  (testing "GET /duplicated gates transform peers on transform readability, not collection visibility"
+  (testing "GET /duplicated gates transform findings on the analyst role and peers on transform
+            readability - neither on collection visibility"
     ;; Enable transforms via premium features, not the `transforms-enabled` setting: with no `:hosting`
     ;; in scope, `with-temporary-setting-values` would restore an explicit global `false` that disables
     ;; transforms for every other test in a parallel run.
@@ -548,18 +549,22 @@
             (mt/with-temp [:model/Transform {xf-a :id} {:name nm}
                            :model/Transform {xf-b :id} {:name nm}]
               (scan/scan!)
-              (let [finding (fn [user]
+              (let [rows    (fn [user]
+                              (:data (mt/user-http-request user :get 200
+                                                           "ee/content-diagnostics/duplicated"
+                                                           :query prefix)))
+                    finding (fn [user]
                               (some #(when (= [xf-a "transform"] [(:entity_id %) (:entity_type %)]) %)
-                                    (:data (mt/user-http-request user :get 200
-                                                                 "ee/content-diagnostics/duplicated"
-                                                                 :query prefix))))]
+                                    (rows user)))]
                 (testing "superuser: the peer hydrates from the transform model - no card_type, no view_count"
                   (is (= [{:id xf-b :name nm :entity_type "transform"}]
                          (get-in (finding :crowberto) [:details :duplicate_entities]))))
-                (testing "a non-data-analyst sees the finding (collection-visible) but not the peer"
-                  (let [f (finding monitoring-user)]
-                    (is (some? f))
-                    (is (= [] (get-in f [:details :duplicate_entities])))))))))))))
+                (testing "a non-data-analyst gets no transform finding at all - the list agrees with the peer gate"
+                  ;; mi/can-read? on a transform needs superuser, or an analyst who can read the source
+                  ;; tables; the collection clause alone would have served this row's name, description,
+                  ;; duration and owner email to a :monitoring grantee that GET /api/transform/:id 403s.
+                  (is (nil? (finding monitoring-user)))
+                  (is (= [] (filterv (comp #{"transform"} :entity_type) (rows monitoring-user)))))))))))))
 
 (deftest duplicated-api-archived-folder-transform-peer-test
   (testing "GET /duplicated keeps transform findings and peers in archived folders - folder state is not a transform lifecycle state"
@@ -747,3 +752,27 @@
                     (is (some? f))
                     (is (= [] (get-in f [:details :duplicate_entities])))
                     (is (= 1 (:duplicate_count f)))))))))))))
+
+(deftest duplicated-api-drops-archived-peers-test
+  (testing "GET /duplicated drops a peer archived after the scan"
+    ;; The stored duplicate_entity_ids are raw, so the hydrator is the only gate on them. Without an
+    ;; archived filter a trashed peer keeps showing in `duplicate_entities` until the next scan.
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix (scope-prefix)
+              nm     (str prefix " Quarterly Revenue")]
+          (mt/with-temp [:model/Collection {coll :id} {}
+                         :model/Card {kept :id}        {:name nm :collection_id coll}
+                         :model/Card {doomed-peer :id} {:name nm :collection_id coll}]
+            (scan/scan!)
+            (let [peer-ids (fn [] (->> (:data (mt/user-http-request :crowberto :get 200
+                                                                    "ee/content-diagnostics/duplicated"
+                                                                    :query prefix))
+                                       (some #(when (= kept (:entity_id %)) %))
+                                       :details :duplicate_entities
+                                       (into #{} (map :id))))]
+              (testing "the peer hydrates while it is active"
+                (is (= #{doomed-peer} (peer-ids))))
+              (t2/update! :model/Card :id doomed-peer {:archived true :archived_directly true})
+              (testing "and drops out once archived, like a deleted peer"
+                (is (= #{} (peer-ids)))))))))))
