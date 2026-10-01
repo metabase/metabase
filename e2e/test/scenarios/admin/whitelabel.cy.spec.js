@@ -34,8 +34,8 @@ function checkBackgroundIllustration({ testId, settingKey, imageBase64 }) {
     });
 }
 
-function checkNoResultsIllustration({ settingKey, imageBase64 }) {
-  cy.findByAltText("No results")
+function checkNoResultsIllustration({ altText, settingKey, imageBase64 }) {
+  cy.findByAltText(altText)
     .should("have.prop", "src")
     .and("match", illustrationUrlPattern(settingKey))
     .then((src) => checkIllustrationResponse({ url: src, imageBase64 }));
@@ -446,6 +446,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           H.visitDashboard("@dashboardId");
           cy.get("@logoData").then((logo_data) => {
             checkNoResultsIllustration({
+              altText: "No results",
               settingKey: "no-data-illustration-custom",
               imageBase64: logo_data,
             });
@@ -454,6 +455,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           H.visitQuestion("@questionId");
           cy.get("@logoData").then((logo_data) => {
             checkNoResultsIllustration({
+              altText: "No results",
               settingKey: "no-data-illustration-custom",
               imageBase64: logo_data,
             });
@@ -519,6 +521,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
             );
             cy.get("@logoData").then((logo_data) => {
               checkNoResultsIllustration({
+                altText: "Nothing found",
                 settingKey: "no-object-illustration-custom",
                 imageBase64: logo_data,
               });
@@ -539,13 +542,13 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           H.modal().findByTestId("collection-picker-button").click();
           H.entityPickerModal().within(() => {
             cy.findByText(emptyCollectionName).click();
-            cy.findByAltText("No results").should("not.exist");
+            cy.findByAltText("Nothing found").should("not.exist");
 
             cy.log("test search not found illustration");
             cy.findByPlaceholderText("Search…").type(
               "This aren't the objects you're looking for",
             );
-            cy.findByAltText("No results").should("not.exist");
+            cy.findByAltText("Nothing found").should("not.exist");
           });
         });
       });
