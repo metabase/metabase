@@ -44,23 +44,25 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
     }
 
-    it("does not need a default value to run and save the query", () => {
+    it("should handle a required tag", () => {
+      cy.log("does not need a default value to run and save the query");
       SQLFilter.toggleRequired();
       SQLFilter.getRunQueryButton().should("not.be.disabled");
       SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
-    });
+      SQLFilter.toggleRequired();
 
-    it("when there's a default value, enabling required sets it as a parameter value", () => {
-      setDefaultFieldValue(5);
+      cy.log(
+        "when there's a default value, enabling required sets it as a parameter value",
+      );
+      setDefaultFieldValue(8);
       H.filterWidget().click();
       H.clearFilterWidget();
       SQLFilter.toggleRequired();
-      H.filterWidget().should("contain.text", "5");
-    });
+      H.filterWidget().should("contain.text", "8");
 
-    it("when there's a default value and value is unset, updating filter sets the default back", () => {
-      setDefaultFieldValue(10);
-      SQLFilter.toggleRequired();
+      cy.log(
+        "when there's a default value and value is unset, updating filter sets the default back",
+      );
       H.filterWidget().click();
       H.popover().within(() => {
         H.removeFieldValuesValue(0);
@@ -70,12 +72,11 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.log("make sure the dialog is gone");
       cy.findByRole("dialog").should("not.exist");
 
-      H.filterWidget().should("contain.text", "10");
-    });
+      H.filterWidget().should("contain.text", "8");
 
-    it("when there's a default value and template tag is required, can reset it back", () => {
-      setDefaultFieldValue(8);
-      SQLFilter.toggleRequired();
+      cy.log(
+        "when there's a default value and template tag is required, can reset it back",
+      );
       H.filterWidget().click();
       H.popover().within(() => {
         H.fieldValuesCombobox().type("10,");

@@ -2,7 +2,6 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const PG_DB_ID = 2;
-const mongoName = "QA Mongo";
 const postgresName = "QA Postgres12";
 const additionalPG = "New Database";
 const ADDITIONAL_PG_DB_ID = 3;
@@ -58,14 +57,14 @@ describe(
 
       startNativeQuestion();
       assertSelectedDatabase(adminPersistedDatabase);
-    });
 
-    it("deleting previously persisted database should result in the new database selection prompt", () => {
+      cy.log(
+        "deleting previously persisted database should result in the new database selection prompt",
+      );
       H.addPostgresDatabase(additionalPG);
 
       startNativeQuestion();
-      assertNoDatabaseSelected();
-
+      assertSelectedDatabase(adminPersistedDatabase).click();
       selectDatabase(additionalPG);
 
       cy.log("Delete previously persisted database.");
@@ -75,6 +74,25 @@ describe(
 
       startNativeQuestion();
       assertNoDatabaseSelected();
+
+      cy.log(
+        "users that lose permissions to the last used database should not have that database preselected anymore",
+      );
+      H.activateToken("pro-self-hosted");
+      cy.updatePermissionsGraph({
+        [DATA_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": "blocked",
+            "create-queries": "no",
+          },
+        },
+      });
+
+      cy.signOut();
+      cy.signInAsNormalUser();
+      startNativeQuestion();
+      // Postgres will be automatically selected because it's the only dataabse this user can query
+      assertSelectedDatabase(postgresName);
     });
 
     it("persisting a database source should work between native models and questions intechangeably", () => {
@@ -136,7 +154,20 @@ describe(
     });
 
     describe("permissions", () => {
-      it("users should be able to choose the databases they can run native queries against", () => {
+      it("users should be able to choose the databases they can run native queries against (metabase#39053)", () => {
+        cy.log(
+          "users with no native write permissions should be able to choose only the databases they can query against",
+        );
+        cy.signIn("nosql");
+
+        startNativeQuestion();
+        cy.wait("@persistDatabase");
+        cy.findByTestId("selected-database")
+          .should("have.text", postgresName)
+          .click();
+
+        cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
         cy.signIn("nodata");
 
         startNativeQuestion();
@@ -172,71 +203,8 @@ describe(
           .and("contain", "New Database");
       });
     });
-
-    it("users with no native write permissions should be able to choose only the databases they can query against (metabase#39053)", () => {
-      cy.signIn("nosql");
-
-      startNativeQuestion();
-      cy.wait("@persistDatabase");
-      cy.findByTestId("selected-database")
-        .should("have.text", postgresName)
-        .click();
-
-      cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    });
-
-    it("users that lose permissions to the last used database should not have that database preselected anymore", () => {
-      cy.signInAsNormalUser();
-      startNativeQuestion();
-      selectDatabase("Sample Database");
-
-      cy.signOut();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      cy.updatePermissionsGraph({
-        [DATA_GROUP]: {
-          [SAMPLE_DB_ID]: {
-            "view-data": "blocked",
-            "create-queries": "no",
-          },
-        },
-      });
-
-      cy.signOut();
-      cy.signInAsNormalUser();
-      startNativeQuestion();
-      // Postgres will be automatically selected because it's the only dataabse this user can query
-      assertSelectedDatabase(postgresName);
-    });
   },
 );
-
-describe("mongo as the default database", { tags: "@mongo" }, () => {
-  beforeEach(() => {
-    H.restore("mongo-5");
-    cy.signInAsAdmin();
-  });
-
-  it("should persist Mongo database, but not its selected table", () => {
-    startNativeQuestion();
-    assertNoDatabaseSelected();
-
-    selectDatabase(mongoName);
-    cy.findByTestId("native-query-top-bar")
-      .findByText("Select a table")
-      .click();
-    H.popover().findByText("Reviews").click();
-    cy.findByTestId("native-query-top-bar").should(
-      "not.contain",
-      "Select a table",
-    );
-
-    startNativeQuestion();
-
-    assertSelectedDatabase(mongoName);
-    cy.findByTestId("native-query-top-bar").should("contain", "Select a table");
-  });
-});
 
 describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   const MYSQL_DB_NAME = "QA MySQL8";
@@ -249,7 +217,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("can write a native MySQL query with a field filter", () => {
+  it("can write and save a native MySQL query with a field filter", () => {
     // Write Native query that includes a filter
     H.startNewNativeQuestion();
 
@@ -278,14 +246,9 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.get("@queryPreview").contains("Widget").should("not.exist");
 
     cy.get("@queryPreview").contains("Gizmo");
-  });
 
-  it("can save a native MySQL query", () => {
-    H.startNewNativeQuestion();
-
-    cy.findByTestId("gui-builder-data").click();
-    cy.findByLabelText(MYSQL_DB_NAME).click();
-
+    cy.log("can save a native MySQL query");
+    H.NativeEditor.clear();
     H.NativeEditor.type("SELECT * FROM ORDERS");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
@@ -324,6 +287,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.findByTestId("app-bar").findByLabelText("New").click();
     // Reproduces metabase#20499 issue
     H.popover().findByText("Native query").click();
+    assertNoDatabaseSelected();
     H.popover().findByText(MONGO_DB_NAME).click();
     cy.log("Ensure the database was selected");
     cy.findAllByTestId("gui-builder-data")
@@ -336,9 +300,13 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
       .findByText("Select a table")
       .click();
     H.popover().findByText("Orders").click();
+    cy.findByTestId("native-query-top-bar").should(
+      "not.contain",
+      "Select a table",
+    );
   });
 
-  it("can save a native MongoDB query", () => {
+  it("can save a native MongoDB query and persist its database, but not its table", () => {
     H.NativeEditor.focus().type('[ { $count: "Total" } ]', {
       parseSpecialCharSequences: false,
     });
@@ -351,6 +319,11 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.wait("@createQuestion");
 
     cy.location("pathname").should("match", /\/question\/\d+-[a-z0-9-]*$/);
+
+    cy.log("should persist Mongo database, but not its selected table");
+    startNativeQuestion();
+    assertSelectedDatabase(MONGO_DB_NAME);
+    cy.findByTestId("native-query-top-bar").should("contain", "Select a table");
   });
 });
 

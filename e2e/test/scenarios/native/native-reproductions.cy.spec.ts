@@ -523,11 +523,28 @@ describe("issue 52806", () => {
   });
 });
 
-describe("issue 55951", () => {
+describe("issues 55951, 57644", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
+  });
 
+  it("should open the database picker with multiple databases, without a loading state when databases are being reloaded (metabase#55951, metabase#57644)", () => {
+    cy.log(
+      "should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)",
+    );
+    H.startNewNativeQuestion({
+      database: null,
+      query: "",
+    });
+    H.popover()
+      .should("be.visible")
+      .and("contain", "Sample Database")
+      .and("contain", "QA Postgres12");
+
+    cy.log(
+      "should not show loading state in database picker when databases are being reloaded (metabase#55951)",
+    );
     cy.intercept<unknown, ListDatabasesResponse>(
       "GET",
       "/api/database",
@@ -537,9 +554,7 @@ describe("issue 55951", () => {
         });
       },
     ).as("getDatabases");
-  });
 
-  it("should not show loading state in database picker when databases are being reloaded (metabase#55951)", () => {
     cy.visit("/");
     cy.wait("@getDatabases");
 
@@ -661,45 +676,24 @@ describe("issue 56905", () => {
 });
 
 describe("issue 57644", () => {
-  describe("with only one database", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
 
-      H.startNewNativeQuestion({
-        database: null,
-        query: "",
-      });
-    });
-
-    it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
-      cy.findByTestId("native-query-top-bar")
-        .findByText("Select a database")
-        .should("be.visible");
-
-      // The popover should not be visible, we give it a timeout here because the
-      // popover disappears immediately and we don't want that to make the test pass.
-      cy.findAllByRole("dialog", { timeout: 0 }).should("not.exist");
+    H.startNewNativeQuestion({
+      database: null,
+      query: "",
     });
   });
 
-  describe("with multiple databases", () => {
-    beforeEach(() => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
+  it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+    cy.findByTestId("native-query-top-bar")
+      .findByText("Select a database")
+      .should("be.visible");
 
-      H.startNewNativeQuestion({
-        database: null,
-        query: "",
-      });
-    });
-
-    it("should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)", () => {
-      H.popover()
-        .should("be.visible")
-        .and("contain", "Sample Database")
-        .and("contain", "QA Postgres12");
-    });
+    // The popover should not be visible, we give it a timeout here because the
+    // popover disappears immediately and we don't want that to make the test pass.
+    cy.findAllByRole("dialog", { timeout: 0 }).should("not.exist");
   });
 });
 

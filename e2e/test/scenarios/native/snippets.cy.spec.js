@@ -179,10 +179,15 @@ describe("scenarios > question > snippets", () => {
     cy.get("@results").contains(/christ/i);
   });
 
-  it("should be possible to search snippets", () => {
+  it("should be possible to search snippets and preview a query that has a snippet in it (metabase#60534)", () => {
     for (let i = 0; i < 16; i++) {
       H.createSnippet({ name: `snippet ${i}`, content: `select ${i}` });
     }
+    cy.request("POST", "/api/native-query-snippet", {
+      content: "'foo'",
+      name: "Foo",
+      collection_id: null,
+    });
 
     H.startNewNativeQuestion();
     cy.icon("snippet").click();
@@ -195,17 +200,8 @@ describe("scenarios > question > snippets", () => {
 
     H.rightSidebar().icon("close").click();
     H.rightSidebar().findByText("snippet 2").should("be.visible");
-  });
 
-  it("should be possible to preview a query that has a snippet in it (metabase#60534)", () => {
-    cy.request("POST", "/api/native-query-snippet", {
-      content: "'foo'",
-      name: "Foo",
-      collection_id: null,
-    });
-
-    H.startNewNativeQuestion();
-    cy.icon("snippet").click();
+    cy.log("preview a query that has a snippet in it (metabase#60534)");
     H.NativeEditor.type("select {{snippet: Foo}}");
     cy.findByTestId("native-query-top-bar")
       .findByLabelText("Preview the query")
@@ -356,22 +352,26 @@ describe("scenarios > question > snippets (EE)", () => {
     });
   });
 
-  ["admin", "nocollection"].map((user) => {
-    it("should display nested snippets in their folder", () => {
-      createNestedSnippet();
-
-      cy.signIn(user);
-
-      // Open editor and sidebar
-      H.startNewNativeQuestion();
+  it("should display nested snippets in their folder", () => {
+    function assertSnippetInFolder() {
       cy.icon("snippet").click();
-
-      // Confirm snippet is in folder
       H.rightSidebar().within(() => {
         cy.findByText("Snippet Folder").click();
         cy.findByText("snippet 1").click();
       });
-    });
+    }
+
+    createNestedSnippet();
+
+    cy.log("as admin user");
+    cy.signIn("admin");
+    H.startNewNativeQuestion();
+    assertSnippetInFolder();
+
+    cy.log("as nocollection user");
+    cy.signIn("nocollection");
+    cy.reload();
+    assertSnippetInFolder();
   });
 
   describe("navigation", () => {
@@ -442,19 +442,23 @@ describe("scenarios > question > snippets (EE)", () => {
       );
     });
 
-    it("should not display snippet folder as part of collections (metabase#14907)", () => {
+    it("should not display snippet folder as part of collections and shouldn't update root permissions when changing permissions on a created folder (metabase#14907, metabase#17268)", () => {
+      cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
+        "updatePermissions",
+      );
+
+      cy.log(
+        "should not display snippet folder as part of collections (metabase#14907)",
+      );
       cy.visit("/collection/root");
 
       cy.wait("@collections");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Snippet Folder").should("not.exist");
-    });
 
-    it("shouldn't update root permissions when changing permissions on a created folder (metabase#17268)", () => {
-      cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
-        "updatePermissions",
+      cy.log(
+        "shouldn't update root permissions when changing permissions on a created folder (metabase#17268)",
       );
-
       H.startNewNativeQuestion();
       cy.icon("snippet").click();
 

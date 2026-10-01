@@ -56,82 +56,6 @@ describe("issue 12439", () => {
     H.sidebar().contains("Y-axis");
   });
 });
-describe("issue 16886", () => {
-  const ORIGINAL_QUERY = "select 1 from orders";
-  const SELECTED_TEXT = "select 1";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type(ORIGINAL_QUERY);
-    cy.realPress("Home");
-    Cypress._.range(SELECTED_TEXT.length).forEach(() =>
-      cy.realPress(["Shift", "ArrowRight"]),
-    );
-
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-
-    cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
-
-    H.NativeEditor.get().contains(ORIGINAL_QUERY);
-  });
-});
-
-describe("issue 16914", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.intercept("POST", "api/dataset").as("dataset");
-    cy.signInAsAdmin();
-  });
-
-  it("should recover visualization settings after a failed query (metabase#16914)", () => {
-    const FAILING_PIECE = " foo";
-
-    H.visitQuestionAdhoc({
-      display: "table",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "native",
-        native: {
-          query: "SELECT 'a' as hidden, 'b' as visible",
-        },
-      },
-      visualization_settings: {},
-    });
-
-    H.openVizSettingsSidebar();
-    cy.findByTestId("sidebar-left")
-      .as("sidebar")
-      .within(() => {
-        cy.findByTestId("draggable-item-HIDDEN")
-          .icon("eye_outline")
-          .click({ force: true });
-      });
-    cy.button("Done").click();
-
-    H.NativeEditor.focus().type(FAILING_PIECE);
-    H.runNativeQuery();
-
-    H.NativeEditor.focus();
-    cy.realPress("End");
-    Cypress._.range(FAILING_PIECE.length).forEach(() =>
-      cy.realPress(["Shift", "ArrowLeft"]),
-    );
-    cy.realPress("Backspace");
-    H.runNativeQuery();
-
-    cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("Every field is hidden right now").should("not.exist");
-      cy.findByText("VISIBLE");
-      cy.findByText("HIDDEN").should("not.exist");
-    });
-  });
-});
-
 describe("issue 17060", () => {
   const ORIGINAL_QUERY =
     'select ID as "num", CATEGORY as "text" from PRODUCTS limit 1';
@@ -301,30 +225,6 @@ describe("issue 20044", () => {
   });
 });
 
-describe("issue 21034", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.startNewNativeQuestion();
-    cy.intercept(
-      "GET",
-      "/api/database/**/autocomplete_suggestions?**",
-      cy.spy().as("suggestions"),
-    );
-  });
-
-  it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    H.NativeEditor.type("p");
-
-    // Wait until another explicit autocomplete is triggered
-    // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
-    // See https://github.com/metabase/metabase/pull/20970
-    cy.wait(1000);
-
-    cy.get("@suggestions").its("callCount").should("equal", 1);
-  });
-});
-
 describe("issue 31926", { tags: "@external" }, () => {
   const databaseName = "Sample Database";
   const databaseCopyName = `${databaseName} copy`;
@@ -487,7 +387,7 @@ describe("issue 34330", () => {
     cy.get("@autocomplete.all").should("have.length", 1);
   });
 
-  it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
+  it("should call the autocompleter eventually and only once, even when only 1 character was typed (metabase#34330, metabase#21034)", () => {
     H.NativeEditor.type("S", { delay: 10 });
     H.NativeEditor.completion("SEATS").should("be.visible");
 
@@ -497,6 +397,15 @@ describe("issue 34330", () => {
     });
 
     // only one call to the autocompleter should have been made
+    cy.get("@autocomplete.all").should("have.length", 1);
+
+    cy.log(
+      "should not invoke API calls for autocomplete twice in a row (metabase#21034)",
+    );
+    // Wait until another explicit autocomplete could be triggered
+    // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
+    // See https://github.com/metabase/metabase/pull/20970
+    cy.wait(1000);
     cy.get("@autocomplete.all").should("have.length", 1);
   });
 

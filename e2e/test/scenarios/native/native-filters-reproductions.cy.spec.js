@@ -88,7 +88,7 @@ describe("issue 11580", () => {
     cy.signInAsAdmin();
   });
 
-  it("shouldn't reorder template tags when updated (metabase#11580)", () => {
+  it("shouldn't reorder template tags when updated (metabase#11580, metabase#15700)", () => {
     H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
 
@@ -107,6 +107,22 @@ describe("issue 11580", () => {
     cy.get("@variableType").should("have.value", "Number");
 
     // ensure they're still in the right order
+    assertVariablesOrder();
+
+    cy.log(
+      "should be able to select 'Field Filter' category in native query (metabase#15700)",
+    );
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    cy.findAllByTestId("variable-type-select").last().click();
+    SQLFilter.chooseType("Field Filter");
+
+    FieldFilter.mapTo({
+      table: "Products",
+      field: "Category",
+    });
+
+    FieldFilter.setWidgetType("String is not");
+
     assertVariablesOrder();
   });
 });
@@ -339,30 +355,6 @@ describe("issue 14302", () => {
   });
 });
 
-describe("issue 15700", () => {
-  const widgetType = "String is not";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be able to select 'Field Filter' category in native query (metabase#15700)", () => {
-    H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery("{{filter}}");
-
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
-
-    FieldFilter.mapTo({
-      table: "Products",
-      field: "Category",
-    });
-
-    FieldFilter.setWidgetType(widgetType);
-  });
-});
-
 describe("issue 15981", () => {
   beforeEach(() => {
     H.restore();
@@ -422,25 +414,56 @@ describe("issue 16739", () => {
     cy.signInAsAdmin();
   });
 
-  ["normal", "nodata"].forEach((user) => {
-    //Very related to the metabase#15981, only this time the issue happens with the "Field Filter" without the value being set.
-    it(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
-      H.createNativeQuestion({
-        native: {
-          query: "select * from PRODUCTS where {{ filter }}",
-          "template-tags": { filter },
-        },
-      }).then(({ body: { id } }) => {
-        if (user === "nodata") {
-          cy.signOut();
-          cy.signIn(user);
-        }
-
-        H.visitQuestion(id);
-      });
-
-      cy.icon("play").should("not.exist");
+  //Very related to the metabase#15981, only this time the issue happens with the "Field Filter" without the value being set.
+  it("empty field filters shouldn't cause run-overlay of results for admin and nodata users (metabase#16739, metabase#70311)", () => {
+    H.createNativeQuestion({
+      native: {
+        query: "select * from PRODUCTS where {{ filter }}",
+        "template-tags": { filter },
+      },
+    }).then(({ body: { id } }) => {
+      cy.wrap(id).as("questionId");
+      H.visitQuestion(id);
     });
+
+    cy.icon("play").should("not.exist");
+
+    cy.log(
+      "should not show the run overlay for a saved question with an empty between field filter (metabase#70311)",
+    );
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    H.createNativeQuestion(
+      {
+        name: "70311",
+        native: {
+          query: "SELECT * FROM PRODUCTS WHERE {{filter}} LIMIT 5",
+          "template-tags": {
+            filter: {
+              id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
+              name: "filter",
+              "display-name": "Filter",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.RATING, null],
+              "widget-type": "number/between",
+              default: null,
+            },
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.wait("@cardQuery");
+
+    cy.findByTestId("query-visualization-root").should("be.visible");
+    cy.icon("play").should("not.exist");
+
+    cy.log("as nodata user (metabase#16739)");
+    cy.signOut();
+    cy.signIn("nodata");
+    cy.get("@questionId").then((id) => H.visitQuestion(id));
+
+    cy.icon("play").should("not.exist");
   });
 });
 
@@ -781,91 +804,6 @@ describe("issue 31606", () => {
   });
 });
 
-describe("issue 49577", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not show the values initially when using a single select search box (metabase#49577)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from {{param");
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar()
-      .last()
-      .within(() => {
-        cy.findByText("Search box").click();
-        cy.findByText("Edit").click();
-      });
-
-    H.modal().within(() => {
-      cy.findByText("Custom list").click();
-      cy.findByRole("textbox").type("foo\nbar\nbaz");
-      cy.button("Done").click();
-    });
-
-    H.filterWidget().click();
-
-    H.popover().within(() => {
-      cy.findByText("foo").should("not.exist");
-      cy.findByText("bar").should("not.exist");
-      cy.findByText("baz").should("not.exist");
-
-      cy.findByPlaceholderText("Search").should("be.visible").type("fo");
-
-      cy.findByText("foo").should("be.visible");
-    });
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar().last().findByText("Dropdown list").click();
-
-    H.filterWidget().click();
-
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Search the list").should("be.visible");
-      cy.findByText("foo").should("be.visible");
-      cy.findByText("bar").should("be.visible");
-      cy.findByText("baz").should("be.visible");
-    });
-  });
-});
-
-describe("issue 70311", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-  });
-
-  it("should not show the run overlay for a saved question with an empty between field filter (metabase#70311)", () => {
-    H.createNativeQuestion(
-      {
-        name: "70311",
-        native: {
-          query: "SELECT * FROM PRODUCTS WHERE {{filter}} LIMIT 5",
-          "template-tags": {
-            filter: {
-              id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
-              name: "filter",
-              "display-name": "Filter",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.RATING, null],
-              "widget-type": "number/between",
-              default: null,
-            },
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.wait("@cardQuery");
-
-    cy.findByTestId("query-visualization-root").should("be.visible");
-    cy.icon("play").should("not.exist");
-  });
-});
-
 // This reproduction can possibly be replaced with the unit test for the `ListField` component in the future
 describe("issue 45877", () => {
   beforeEach(() => {
@@ -926,7 +864,7 @@ describe("issue 44665", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should use the correct widget for the default value picker (metabase#44665)", () => {
+  it("should use the correct widgets for the search box and the default value picker (metabase#44665, metabase#49577)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from {{param");
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -943,6 +881,25 @@ describe("issue 44665", () => {
       cy.button("Done").click();
     });
 
+    cy.log(
+      "should not show the values initially when using a single select search box (metabase#49577)",
+    );
+    H.filterWidget().click();
+
+    H.popover().within(() => {
+      cy.findByText("foo").should("not.exist");
+      cy.findByText("bar").should("not.exist");
+      cy.findByText("baz").should("not.exist");
+      cy.findByText("foobar").should("not.exist");
+
+      cy.findByPlaceholderText("Search").should("be.visible").type("fo");
+
+      cy.findByText("foo").should("be.visible");
+    });
+    cy.realPress("Escape");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    cy.log("should use the correct widget for the default value picker");
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar().last().findByText("Enter a default value…").click();
     H.popover().within(() => {
@@ -972,6 +929,18 @@ describe("issue 44665", () => {
       cy.findByText("bar").should("be.visible");
       cy.findByText("baz").should("be.visible");
       cy.findByText("foobar").should("be.visible");
+    });
+    cy.realPress("Escape");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    cy.log("the dropdown list shows all values (metabase#49577)");
+    H.filterWidget().click();
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Search the list").should("be.visible");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
     });
   });
 });

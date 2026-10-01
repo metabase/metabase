@@ -88,7 +88,7 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
-  it("displays an error when running selected text", () => {
+  it("displays an error when running selected text and keeps the full query (metabase#16886)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from orders");
 
@@ -99,6 +99,24 @@ describe("scenarios > question > native", () => {
     runQuery();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "ORD" not found');
+
+    cy.log(
+      "shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)",
+    );
+    const ORIGINAL_QUERY = "select 1 from orders";
+    const SELECTED_TEXT = "select 1";
+    H.NativeEditor.clear();
+    H.NativeEditor.type(ORIGINAL_QUERY);
+    cy.realPress("Home");
+    Cypress._.range(SELECTED_TEXT.length).forEach(() =>
+      cy.realPress(["Shift", "ArrowRight"]),
+    );
+
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
+
+    H.NativeEditor.get().contains(ORIGINAL_QUERY);
   });
 
   describe("template tags", () => {
@@ -171,33 +189,31 @@ describe("scenarios > question > native", () => {
         H.popover().findByText("Time grouping").click();
       }
 
-      function setVariableTypeAndField() {
-        setVariableType();
-        H.popover().within(() => {
-          cy.findByText("Orders").click();
-          cy.findByText("Created At").click();
-        });
-      }
-
-      it("should create entries in variables sidebar", () => {
+      it("should create entries in variables sidebar and handle the required prop", () => {
         H.startNewNativeQuestion();
         H.NativeEditor.type(
           "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
         );
-        setVariableTypeAndField();
+        setVariableType();
+
+        cy.log("should show validation error when the field is not set");
+        H.queryBuilderHeader()
+          .button("Save")
+          .should("have.attr", "data-disabled");
+
+        H.popover().within(() => {
+          cy.findByText("Orders").click();
+          cy.findByText("Created At").click();
+        });
+
+        cy.log("should create entries in variables sidebar");
         H.rightSidebar()
           .findByLabelText("Parameter widget label")
           .type(" updated")
           .blur();
         H.filterWidget({ name: "Unit updated" }).should("exist");
-      });
 
-      it("should handle required prop for time grouping", () => {
-        H.startNewNativeQuestion();
-        H.NativeEditor.type(
-          "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
-        );
-        setVariableTypeAndField();
+        cy.log("should handle required prop for time grouping");
         H.rightSidebar()
           .findByLabelText("Always require a value")
           .parent()
@@ -205,7 +221,7 @@ describe("scenarios > question > native", () => {
         H.runNativeQuery();
         cy.findByTestId("query-visualization-root").should(
           "contain",
-          "You'll need to pick a value for 'Unit' before this query can run.",
+          "You'll need to pick a value for 'Unit updated' before this query can run.",
         );
 
         H.rightSidebar().within(() => {
@@ -263,17 +279,6 @@ describe("scenarios > question > native", () => {
         cy.log("verify default value is empty");
         H.rightSidebar().should("contain", "Enter a default value…");
       });
-
-      it("should show validation error when query is invalid", () => {
-        H.startNewNativeQuestion();
-        H.NativeEditor.type(
-          "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
-        );
-        setVariableType();
-        H.queryBuilderHeader()
-          .button("Save")
-          .should("have.attr", "data-disabled");
-      });
     });
   });
 
@@ -296,7 +301,7 @@ describe("scenarios > question > native", () => {
     cy.location("pathname").should("match", /\/question\/\d+/);
   });
 
-  it("should be able to add new columns after hiding some (metabase#15393)", () => {
+  it("should be able to add new columns after hiding some and recover them after a failed query (metabase#15393, metabase#16914)", () => {
     H.startNewNativeQuestion({ display: "table" });
     H.NativeEditor.type("select 1 as visible, 2 as hidden");
     cy.findByTestId("native-query-editor-container")
@@ -315,6 +320,29 @@ describe("scenarios > question > native", () => {
     H.NativeEditor.type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);
+
+    cy.log(
+      "should recover visualization settings after a failed query (metabase#16914)",
+    );
+    const FAILING_PIECE = " foo";
+    cy.button("Done").click();
+
+    H.NativeEditor.focus().type(FAILING_PIECE);
+    H.runNativeQuery();
+
+    H.NativeEditor.focus();
+    cy.realPress("End");
+    Cypress._.range(FAILING_PIECE.length).forEach(() =>
+      cy.realPress(["Shift", "ArrowLeft"]),
+    );
+    cy.realPress("Backspace");
+    H.runNativeQuery();
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("Every field is hidden right now").should("not.exist");
+      cy.findByText("VISIBLE");
+      cy.findByText("HIDDEN").should("not.exist");
+    });
   });
 
   it("should not autorun ad-hoc native queries by default or native queries after updating a question (metabase#30165)", () => {
@@ -367,27 +395,26 @@ describe("scenarios > question > native", () => {
       .should("be.visible");
   });
 
-  it("should allow to preview a fully parameterized query", () => {
+  it("should preview a query with missing and with set parameters", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
-    cy.findByPlaceholderText("Category").type("Gadget");
+
+    cy.log("should show errors when previewing a query");
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
-
-    H.modal().within(() => {
-      H.codeMirrorValue().should("contain", "CATEGORY = 'Gadget'");
-    });
-  });
-
-  it("should show errors when previewing a query", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
-    cy.button("Preview the query").click();
-    cy.wait("@datasetNative");
-
     H.modal()
       .findByText(/missing required parameters/)
       .should("be.visible");
+    cy.realPress("Escape");
+    H.modal().should("not.exist");
+
+    cy.log("should allow to preview a fully parameterized query");
+    cy.findByPlaceholderText("Category").type("Gadget");
+    cy.button("Preview the query").click();
+    cy.wait("@datasetNative");
+    H.modal().within(() => {
+      H.codeMirrorValue().should("contain", "CATEGORY = 'Gadget'");
+    });
   });
 
   it("should run the query when pressing meta+enter", () => {
@@ -422,7 +449,7 @@ describe("scenarios > question > native", () => {
     );
   });
 
-  it("should add tab at the end of the query", () => {
+  it("should add tab at the end of the query and indent the selected line", () => {
     H.startNewNativeQuestion({
       query: "SELECT",
     });
@@ -431,17 +458,12 @@ describe("scenarios > question > native", () => {
     cy.realPress(["Tab"]);
 
     H.NativeEditor.get().should("have.text", "SELECT\t");
-  });
 
-  it("should indent the line when pressing tab while selected", () => {
-    H.startNewNativeQuestion({
-      query: "SELECT",
-    });
-
+    cy.log("should indent the line when pressing tab while selected");
     H.NativeEditor.focus().type("{selectall}");
     cy.realPress(["Tab"]);
 
-    H.NativeEditor.get().should("have.text", "\tSELECT");
+    H.NativeEditor.get().should("have.text", "\tSELECT\t");
   });
 
   it("should indent the next line to the same level when entering newline", () => {
@@ -452,50 +474,6 @@ describe("scenarios > question > native", () => {
       .get()
       .should("have.text", "\tSELECT\tFOO");
   });
-
-  it("should use the correct indentation for mongo", { tags: "@mongo" }, () => {
-    const MONGO_DB_NAME = "QA Mongo";
-
-    H.restore("mongo-5");
-    cy.signInAsAdmin();
-
-    H.startNewNativeQuestion();
-    cy.findByTestId("gui-builder-data").click();
-    cy.findByLabelText(MONGO_DB_NAME).click();
-    H.nativeEditorDataSource().should("contain", MONGO_DB_NAME);
-
-    H.NativeEditor.type('[{enter}{ {enter}"foo": "bar",{enter}"baz"');
-
-    H.NativeEditor.get().should("be.visible").get(".cm-line").as("lines");
-
-    cy.get("@lines").eq(0).should("have.text", "[");
-    cy.get("@lines").eq(1).should("have.text", "  {");
-    cy.get("@lines").eq(2).should("have.text", '    "foo": "bar",');
-    cy.get("@lines").eq(3).should("have.text", '    "baz"');
-    cy.get("@lines").eq(4).should("have.text", "  }");
-    cy.get("@lines").eq(5).should("have.text", "]");
-  });
-
-  it(
-    "it should insert a two spaces when pressing tab in json-like languages",
-    { tags: "@mongo" },
-    () => {
-      const MONGO_DB_NAME = "QA Mongo";
-
-      H.restore("mongo-5");
-      cy.signInAsAdmin();
-
-      H.startNewNativeQuestion();
-      cy.findByTestId("gui-builder-data").click();
-      cy.findByLabelText(MONGO_DB_NAME).click();
-
-      H.NativeEditor.type("{tab}");
-
-      H.NativeEditor.get().should("be.visible").get(".cm-line").as("lines");
-
-      cy.get("@lines").eq(0).should("have.text", "  ");
-    },
-  );
 
   it("should be able to handle two sidebars on different screen sizes", () => {
     const questionDetails = {
@@ -546,6 +524,40 @@ describe("scenarios > question > native", () => {
   });
 });
 
+describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
+  const MONGO_DB_NAME = "QA Mongo";
+
+  beforeEach(() => {
+    H.restore("mongo-5");
+    cy.signInAsAdmin();
+  });
+
+  it("should use two-space indentation for mongo", () => {
+    H.startNewNativeQuestion();
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(MONGO_DB_NAME).click();
+    H.nativeEditorDataSource().should("contain", MONGO_DB_NAME);
+
+    cy.log("should insert two spaces when pressing tab in json-like languages");
+    H.NativeEditor.type("{tab}");
+    H.NativeEditor.get().should("be.visible").get(".cm-line").as("lines");
+    cy.get("@lines").eq(0).should("have.text", "  ");
+
+    cy.log("should use the correct indentation for mongo");
+    H.NativeEditor.clear();
+    H.NativeEditor.type('[{enter}{ {enter}"foo": "bar",{enter}"baz"');
+
+    H.NativeEditor.get().should("be.visible").get(".cm-line").as("lines");
+
+    cy.get("@lines").eq(0).should("have.text", "[");
+    cy.get("@lines").eq(1).should("have.text", "  {");
+    cy.get("@lines").eq(2).should("have.text", '    "foo": "bar",');
+    cy.get("@lines").eq(3).should("have.text", '    "baz"');
+    cy.get("@lines").eq(4).should("have.text", "  }");
+    cy.get("@lines").eq(5).should("have.text", "]");
+  });
+});
+
 describe("scenarios > native question > data reference sidebar", () => {
   beforeEach(() => {
     H.restore();
@@ -562,6 +574,8 @@ describe("scenarios > native question > data reference sidebar", () => {
         "Confirmed Sample Company orders for a product, from a user.",
       );
       cy.findByText("9 columns");
+      cy.log("should not show metrics when they are not defined on the table");
+      cy.findByText(/metric/).should("not.exist");
       cy.findByText("QUANTITY").click();
       cy.findByText("Number of products bought.");
 
@@ -648,16 +662,6 @@ describe("scenarios > native question > data reference sidebar", () => {
   });
 
   describe("metrics", () => {
-    it("should not show metrics when they are not defined on the selected table", () => {
-      H.startNewNativeQuestion();
-      sidebarHeaderTitle().should("have.text", "Sample Database");
-
-      dataReferenceSidebar().within(() => {
-        cy.findByText("ORDERS").click();
-        cy.findByText(/metric/).should("not.exist");
-      });
-    });
-
     it("should show metrics defined on tables", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
 

@@ -20,39 +20,36 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       );
     });
 
-    describe("required tag", () => {
-      it("does not need a default value to run and save the query", () => {
-        SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("not.be.disabled");
-        SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+    it("should handle a required tag", () => {
+      cy.log("does not need a default value to run and save the query");
+      SQLFilter.toggleRequired();
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+      SQLFilter.toggleRequired();
+
+      cy.log(
+        "when there's a default value, enabling required sets it as a parameter value",
+      );
+      SQLFilter.setDefaultValue("default");
+      H.filterWidget().find("input").invoke("val", "");
+      SQLFilter.toggleRequired();
+      H.filterWidget().find("input").should("have.value", "default");
+
+      cy.log(
+        "when there's a default value and input is empty, blur sets default value back",
+      );
+      H.filterWidget().within(() => {
+        cy.get("input").type("{selectAll}{backspace}").should("have.value", "");
+        cy.get("input").blur().should("have.value", "default");
       });
 
-      it("when there's a default value, enabling required sets it as a parameter value", () => {
-        SQLFilter.setDefaultValue("New value");
-        H.filterWidget().find("input").invoke("val", "");
-        SQLFilter.toggleRequired();
-        H.filterWidget().find("input").should("have.value", "New value");
-      });
-
-      it("when there's a default value and input is empty, blur sets default value back", () => {
-        SQLFilter.setDefaultValue("default");
-        SQLFilter.toggleRequired();
-        H.filterWidget().within(() => {
-          cy.get("input")
-            .type("{selectAll}{backspace}")
-            .should("have.value", "");
-          cy.get("input").blur().should("have.value", "default");
-        });
-      });
-
-      it("when there's a default value and template tag is required, can reset it back", () => {
-        SQLFilter.setDefaultValue("default");
-        SQLFilter.toggleRequired();
-        H.filterWidget().within(() => {
-          cy.get("input").type("abc").should("have.value", "defaultabc");
-          cy.icon("revert").click();
-          cy.get("input").should("have.value", "default");
-        });
+      cy.log(
+        "when there's a default value and template tag is required, can reset it back",
+      );
+      H.filterWidget().within(() => {
+        cy.get("input").type("abc").should("have.value", "defaultabc");
+        cy.icon("revert").click();
+        cy.get("input").should("have.value", "default");
       });
     });
   });
@@ -78,39 +75,36 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       });
     });
 
-    describe("required tag", () => {
-      it("does not need a default value to run and save the query", () => {
-        SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("not.be.disabled");
-        SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+    it("should handle a required tag", () => {
+      cy.log("does not need a default value to run and save the query");
+      SQLFilter.toggleRequired();
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+      SQLFilter.toggleRequired();
+
+      cy.log(
+        "when there's a default value, enabling required sets it as a parameter value",
+      );
+      SQLFilter.setDefaultValue("3");
+      H.filterWidget().find("input").invoke("val", "");
+      SQLFilter.toggleRequired();
+      H.filterWidget().find("input").should("have.value", "3");
+
+      cy.log(
+        "when there's a default value and input is empty, blur sets default value back",
+      );
+      H.filterWidget().within(() => {
+        cy.get("input").type("{selectAll}{backspace}").should("have.value", "");
+        cy.get("input").blur().should("have.value", "3");
       });
 
-      it("when there's a default value, enabling required sets it as a parameter value", () => {
-        SQLFilter.setDefaultValue("3");
-        H.filterWidget().find("input").invoke("val", "");
-        SQLFilter.toggleRequired();
-        H.filterWidget().find("input").should("have.value", "3");
-      });
-
-      it("when there's a default value and input is empty, blur sets default value back", () => {
-        SQLFilter.setDefaultValue("3");
-        SQLFilter.toggleRequired();
-        H.filterWidget().within(() => {
-          cy.get("input")
-            .type("{selectAll}{backspace}")
-            .should("have.value", "");
-          cy.get("input").blur().should("have.value", "3");
-        });
-      });
-
-      it("when there's a default value and template tag is required, can reset it back", () => {
-        SQLFilter.setDefaultValue("3");
-        SQLFilter.toggleRequired();
-        H.filterWidget().within(() => {
-          cy.get("input").type(".11").should("have.value", "3.11");
-          cy.icon("revert").click();
-          cy.get("input").should("have.value", "3");
-        });
+      cy.log(
+        "when there's a default value and template tag is required, can reset it back",
+      );
+      H.filterWidget().within(() => {
+        cy.get("input").type(".11").should("have.value", "3.11");
+        cy.icon("revert").click();
+        cy.get("input").should("have.value", "3");
       });
     });
   });
@@ -150,31 +144,31 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       H.popover().findByText("Add filter").click();
     }
 
-    describe("required tag", () => {
-      it("does not need a default value to run and save the query", () => {
-        SQLFilter.toggleRequired();
-        SQLFilter.getRunQueryButton().should("not.be.disabled");
-        SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
-      });
+    it("should handle a required tag", () => {
+      cy.log("does not need a default value to run and save the query");
+      SQLFilter.toggleRequired();
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+      SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
+      SQLFilter.toggleRequired();
 
-      it("when there's a default value, enabling required sets it as a parameter value", () => {
-        setDefaultDate("2026", "11", "01");
-        H.filterWidget().icon("close").click();
-        SQLFilter.toggleRequired();
-        H.filterWidget().should("contain.text", "November 1, 2026");
-      });
+      cy.log(
+        "when there's a default value, enabling required sets it as a parameter value",
+      );
+      setDefaultDate("2026", "11", "01");
+      H.filterWidget().icon("close").click();
+      SQLFilter.toggleRequired();
+      H.filterWidget().should("contain.text", "November 1, 2026");
 
-      it("when there's a default value and template tag is required, can reset it back", () => {
-        setDefaultDate("2026", "11", "01");
-        SQLFilter.toggleRequired();
-        H.filterWidget().click();
-        H.popover().within(() => {
-          cy.findByText("15").click();
-          cy.findByText("Update filter").click();
-        });
-        H.filterWidget().icon("revert").click();
-        H.filterWidget().should("contain.text", "November 1, 2026");
+      cy.log(
+        "when there's a default value and template tag is required, can reset it back",
+      );
+      H.filterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("15").click();
+        cy.findByText("Update filter").click();
       });
+      H.filterWidget().icon("revert").click();
+      H.filterWidget().should("contain.text", "November 1, 2026");
     });
   });
 

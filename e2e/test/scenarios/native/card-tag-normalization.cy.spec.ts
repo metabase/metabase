@@ -11,7 +11,7 @@ describe("scenarios > native > card template tag normalization", () => {
     cy.signInAsAdmin();
   });
 
-  it("saves multiple differently-named references to the same card without erroring or rewriting", () => {
+  it("saves differently-named card references verbatim and reopens frontend-named ones clean", () => {
     H.createNativeQuestion({
       name: "Basic Aggregations",
       native: { query: 'SELECT COUNT(*) AS "count" FROM PEOPLE' },
@@ -31,9 +31,10 @@ describe("scenarios > native > card template tag normalization", () => {
         });
       });
     });
-  });
 
-  it("reopens clean when the tag name matches what the frontend generated", () => {
+    cy.log(
+      "reopens clean when the tag name matches what the frontend generated",
+    );
     H.createNativeQuestion({
       name: "Bob's Café",
       native: { query: 'SELECT COUNT(*) AS "count" FROM PEOPLE' },

@@ -6,7 +6,7 @@ describe("scenarios > question > native > suggestions", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show suggestions for tables", () => {
+  it("should show suggestions for tables and syntax keywords", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("se");
 
@@ -14,14 +14,6 @@ describe("scenarios > question > native > suggestions", () => {
       H.NativeEditor.completion("SEATS")
         .should("be.visible")
         .should("contain.text", "ACCOUNTS :type/Integer");
-    });
-  });
-
-  it("should show suggestions for syntax keywords", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("se");
-
-    H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("SELECT")
         .should("be.visible")
         .should("contain.text", "keyword");
@@ -76,7 +68,7 @@ describe(
       cy.signInAsAdmin();
     });
 
-    it("should suggest keywords", () => {
+    it("should suggest keywords, tables and fields from the schema", () => {
       H.startNewNativeQuestion({ database: 2, query: "" });
 
       H.NativeEditor.type('[{ "$grou');
@@ -86,12 +78,8 @@ describe(
           .should("have.length", 1)
           .should("contain.text", "keyword");
       });
-    });
 
-    it("should suggest tables and fields from the schema", () => {
-      H.startNewNativeQuestion({ database: 2, query: "" });
-
-      H.NativeEditor.type('[{ "$group": { "pr');
+      H.NativeEditor.type('p": { "pr');
       H.NativeEditor.completions().within(() => {
         H.NativeEditor.completion("price")
           .should("be.visible")
