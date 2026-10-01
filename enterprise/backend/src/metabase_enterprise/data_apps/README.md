@@ -127,21 +127,22 @@ middleware's lookup doesn't pull in route code.
 
 ## Permissions
 
-Each app owns a resource collection containing its saved questions, action models, and table-sourced metrics.
-Administrators assign existing internal permission groups through `/api/apps/:slug/groups`. Assignments live in
-`data_app_group_assignment` and stay local to the instance. Repository sync preserves them while the app row exists.
+Each app owns a collection containing its saved questions, models (containing actions), and table-sourced metrics.
 
-Membership in any assigned group grants app access. Administrators can access every app. The list API hides
-unassigned apps from other users, and metadata, bundle, and HTML entry-point requests check the same assignment.
-Collection access alone does not grant app access. An authorized request for an app without a resource collection
-returns HTTP 409 so the frontend can show its unpublished state.
-
-Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
-access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
-collection and assignments, but preserves the assigned groups.
-
-Only administrators can manage assignments. The Data Apps feature is required for all app API endpoints, including
-group listing and removal.
+- Admins assign groups through the `/api/apps/:slug/groups` endpoint.
+- Assignments are defined in the `data_app_group_assignment` table.
+- Users who belong to the assigned group can see the app in their sidebar, and are allowed to access them.
+  - We show a 403 and an error page if a user without an assigned group tries to open an app directly.
+- Admins can access every app.
+- Having access to an app collection does not grant data app access.
+- When assigning a group, we grant the group **read-only access to the app collection**.
+- Each data app sync repairs these grants and removes collection
+  access from unassigned groups.
+- Assignment changes never change data permissions, only collection permissions.
+- Deleting an app deletes its collection and group assignments.
+- If an app doesn't have an associated collection, it is considered to be _unpublished_.
+  - The metadata and bundle endpoint returns HTTP 409 for signed in users.
+  - The app shows an error page that _the data app isn't published yet_.
 
 ## Namespace map
 
@@ -154,5 +155,3 @@ group listing and removal.
 | `models/data_app.clj` | The `:model/DataApp` Toucan model, permissions, blob coercion.                  |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                             |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                       |
-
-`group_access.clj` manages assignments. `models/data_app_group_assignment.clj` defines the local association model.
