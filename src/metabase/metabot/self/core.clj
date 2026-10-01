@@ -98,6 +98,7 @@
   a provider (see [[collect-tool-result]])."
   [:or
    :string
+   :keyword
    number?
    :boolean
    :nil
