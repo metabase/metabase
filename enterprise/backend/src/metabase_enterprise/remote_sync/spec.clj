@@ -50,8 +50,9 @@
                        :prefix - Event keyword prefix (e.g., :event/card)
                        :types  - Vector of event types to handle [:create :update :delete]
    - :eligibility    - Eligibility configuration:
-                       :type       - :collection, :published-table, :parent-table, :parent, :setting, or
-                                     :library-synced (:parent follows :parent-fk to a :parent-model instance)
+                       :type       - :collection, :published-table, :parent-table, :parent, :setting,
+                                     :library-synced, or :always (:parent follows :parent-fk to a :parent-model
+                                     instance)
                        :collection - For :collection type: :remote-synced, :transforms-namespace, :snippets-namespace, or :any
                        :setting    - For :setting type: setting keyword to check
                        (Note: :library-synced type uses the library-is-remote-synced? setting to determine eligibility)
@@ -76,6 +77,9 @@
                                      then scoped to that table's rows in the synced collections (Action)
                        :all-on-setting-disable - Optional setting keyword; when this setting's sentinel
                                      RSO exists with 'delete' status, remove ALL entities of this type
+   - :resources?     - Optional. True when the model's YAML files carry resource files (see
+                       `metabase.models.serialization/resource-paths`), whose changes only a full import or export
+                       handles.
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
@@ -364,7 +368,23 @@
     :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
     :export-scope   :all  ; query for all instances
-    :enabled?       :remote-sync-transforms}})
+    :enabled?       :remote-sync-transforms}
+
+   :model/DataApp
+   {:model-type     "DataApp"
+    :model-key      :model/DataApp
+    :identity       :entity-id
+    :events         {:prefix :event/data-app
+                     :types  [:create :update :delete]}
+    :eligibility    {:type :always}
+    :archived-key   nil
+    :tracking       {:select-fields  [:name]
+                     :field-mappings {:model_name :name}}
+    :conditions     {:draft false}
+    :removal        {:statuses #{"removed" "delete"}}
+    :resources?     true
+    :export-scope   :all
+    :enabled?       true}})
 
 ;;; ------------------------------------------------- Helper Functions -------------------------------------------------
 
@@ -844,6 +864,10 @@
   [_spec _object]
   (rs-settings/library-is-remote-synced?))
 
+(defmethod check-eligibility-by-type :always
+  [_ _]
+  true)
+
 (defmethod check-eligibility-by-type :default
   [_ _]
   false)
@@ -1237,6 +1261,15 @@
             (map (fn [id] [model-type id]))
             (remote-sync.db/ids-where model-key (when archived-key {archived-key false})))
       nil)))
+
+(defmethod query-export-roots :always
+  [{:keys [export-scope model-key model-type] :as spec}]
+  (case export-scope
+    :all
+    (into #{}
+          (map (fn [id] [model-type id]))
+          (remote-sync.db/ids-where model-key (export-conditions spec)))
+    nil))
 
 (defmethod query-export-roots :default [_] nil)
 

@@ -587,6 +587,14 @@
   [entity]
   (:serdes/meta entity))
 
+(defmulti resource-paths
+  "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory."
+  {:arglists '([ingested])}
+  ingested-model)
+
+(defmethod resource-paths :default [_]
+  nil)
+
 (defmulti load-find-local
   "Given a path, tries to look up any corresponding local entity.
 

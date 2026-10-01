@@ -47,3 +47,14 @@
   The last element is the filename (without extension)."
   [ctx entity]
   (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
+
+(defn without-resources
+  "The `entity` as written to its YAML file, without its `:serdes/resources`."
+  [entity]
+  (dissoc entity :serdes/resources))
+
+(defn resource-files
+  "Each of `entity`'s `:serdes/resources` as `[path-segments content]`, next to its YAML file at `resolved`."
+  [resolved entity]
+  (for [[path content] (sort-by key (:serdes/resources entity))]
+    [(into (vec (drop-last resolved)) (str/split path #"/")) content]))

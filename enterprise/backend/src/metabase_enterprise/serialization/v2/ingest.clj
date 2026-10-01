@@ -80,10 +80,38 @@
       (yaml/from-file {:key-fn parse-key})
       read-timestamps))
 
+(defn- check-resource-path!
+  "Throws unless `path` is a relative path that stays inside its entity's directory."
+  [path]
+  (when-not (and (string? path)
+                 (not (str/starts-with? path "/"))
+                 (not-any? #{"" "." ".."} (str/split path #"/" -1)))
+    (throw (ex-info (format "Invalid resource file path: %s" path) {:path path}))))
+
+(defn read-resources
+  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`."
+  [entity read-fn]
+  (if-let [paths (seq (serdes/resource-paths entity))]
+    (assoc entity :serdes/resources (into {}
+                                          (map (fn [path]
+                                                 (check-resource-path! path)
+                                                 [path (read-fn path)]))
+                                          paths))
+    entity))
+
 (def legal-top-level-paths
   "Known top-level paths for directory with serialization output.
   We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
-  #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "osi_ai_context" "snippets" "transforms"})
+  #{"actions" "channels" "collections" "custom_viz_plugins" "data_apps" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "osi_ai_context" "snippets" "transforms"})
+
+(def shared-top-level-paths
+  "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
+  source code."
+  #{"data_apps"})
+
+(def replaced-top-level-paths
+  "The [[legal-top-level-paths]] a full export may replace wholesale."
+  (apply disj legal-top-level-paths shared-top-level-paths))
 
 (defn- path-interner
   "Returns a function that interns `:serdes/meta` path vectors.
@@ -164,7 +192,11 @@
           {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
         (when-let [file (get @cache (strip-labels serdes-meta))]
           (try
-            (ingest-file file)
+            (read-resources (ingest-file file)
+                            (fn [path]
+                              (let [resource (io/file (.getParentFile ^File file) ^String path)]
+                                (when (.isFile resource)
+                                  (slurp resource)))))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
                                                        :abs-path serdes-meta} e))))))))

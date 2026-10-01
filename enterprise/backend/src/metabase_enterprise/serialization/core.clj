@@ -26,12 +26,15 @@
   extract]
  [metabase-enterprise.serialization.v2.ingest
   legal-top-level-paths
+  replaced-top-level-paths
+  shared-top-level-paths
   strip-labels
   Ingestable
   ingest-yaml
   ingest-list
   ingest-one
   ingest-errors
+  read-resources
   read-timestamps
   parse-key]
  [metabase-enterprise.serialization.v2.load
@@ -42,4 +45,6 @@
   file-writer]
  [metabase-enterprise.serialization.v2.storage.util
   resolve-storage-path
-  slugify-name])
+  resource-files
+  slugify-name
+  without-resources])
