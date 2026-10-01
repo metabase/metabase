@@ -37,14 +37,19 @@ describe("getCustomIllustrationUrl", () => {
 
     it("does not change other values", () => {
       const state = setup({
-        "login-page-illustration-custom": "data:image/png;base64,AAAA",
+        // legacy format, can still happen in theory: the backend returns a data
+        // URI it can't parse (here not base64) unchanged
+        "login-page-illustration-custom":
+          "data:image/svg+xml,%3Csvg%3E%3C/svg%3E",
+        // the admin UI only uploads files, an env var or the API can set a URL
         "no-object-illustration-custom": "https://example.com/image.png",
+        // missing for anonymous users, this setting needs a login
         "landing-page-illustration-custom": undefined,
       });
 
       expect(
         getCustomIllustrationUrl(state, "login-page-illustration-custom"),
-      ).toBe("data:image/png;base64,AAAA");
+      ).toBe("data:image/svg+xml,%3Csvg%3E%3C/svg%3E");
       expect(
         getCustomIllustrationUrl(state, "no-object-illustration-custom"),
       ).toBe("https://example.com/image.png");
