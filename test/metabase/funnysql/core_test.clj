@@ -876,3 +876,9 @@
                                           :postgres))
       :update
       [:update])))
+
+(deftest ^:parallel drop-table-test
+  (is (= ["DROP TABLE \"table\""]
+         (funnysql/format {:drop-table [:table]} :postgres)))
+  (is (= ["DROP TABLE \"table\" IF EXISTS"]
+         (funnysql/format {:drop-table [:if-exists :table]} :postgres))))
