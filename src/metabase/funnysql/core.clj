@@ -34,7 +34,7 @@
   (and (map? x)
        (:allow-subquery (meta x))))
 
-(defn- fn-call-form? [x]
+(defn- fn-call? [x]
   (and (vector? x)
        (keyword? (first x))))
 
@@ -483,15 +483,22 @@
     (-identifier! (name k) context)))
 
 (defn- -equals! [sql nil-sql [x y] context]
-  (compile! x context)
+  ;; make sure if `x` is something like `[:= x nil]` we get `(x IS NULL) = <y>` instead of `x IS NULL = y`
+  ((if (fn-call? x)
+     -parens!
+     compile!) x context)
   (if (some? y)
     (do
       (append-sql! context sql)
-      (compile! y context))
+      ((if (fn-call? y)
+         -parens!
+         compile!) y context))
     (append-sql! context nil-sql)))
 
 (defn- -compound! [sql xs context]
-  (interpose-fn xs #(-parens! % context) #(append-sql! context sql)))
+  (if (= (count xs) 1)
+    (compile! (first xs) context)
+    (interpose-fn xs #(-parens! % context) #(append-sql! context sql))))
 
 (defn- not! [[x] context]
   (append-sql! context "NOT ")
@@ -520,7 +527,7 @@
 
         ;; sequence of sequences
         (and (sequential? (first vs))
-             (not (fn-call-form? (first vs))))
+             (not (fn-call? (first vs))))
         (do
           (append-sql! context "(")
           (interpose-fn
@@ -530,7 +537,7 @@
           (append-sql! context ")"))
 
         ;; Handle nonsense like`[:in :field [:inline [3]]]`
-        (fn-call-form? vs)
+        (fn-call? vs)
         (compile! vs context)
 
         :else
@@ -605,7 +612,7 @@
 (defn- lift! [x context]
   (object! x context))
 
-(defn- over! [[expr m :as args] context]
+(defn- over! [[expr m :as _args] context]
   (compile! expr context)
   (append-sql! context " OVER (")
   (when-let [m (not-empty (select-keys m [:order-by :partition-by]))]
@@ -754,6 +761,8 @@
      :current_schema
      :database
      :date_part
+     :dateadd
+     :day
      :distinct
      :escape
      :floor
@@ -798,7 +807,7 @@
                     {:f f, :args args}))))
 
 (defn- sequence! [xs context]
-  (if (fn-call-form? xs)
+  (if (fn-call? xs)
     (-fn-call! xs context)
     (-list! xs context)))
 
@@ -828,9 +837,14 @@
     options :- [:maybe [:map
                         {:metabase.util.malli.registry/deliberately-open true} ; other HoneySQL-specific options are ignored.
                         [:params {:optional true} [:maybe [:map-of {:metabase.util.malli.registry/deliberately-open true} :keyword :any]]]]]]
-   (let [context (default-context engine options)]
-     ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
-     ((if (map? honeysql-form)
-        map!
-        compile!) honeysql-form context)
-     (result! context))))
+   (try
+     (let [context (default-context engine options)]
+       ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
+       ((if (map? honeysql-form)
+          map!
+          compile!) honeysql-form context)
+       (result! context))
+     (catch Exception e
+       (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
+                       {:form honeysql-form, :engine engine, :options options}
+                       e))))))

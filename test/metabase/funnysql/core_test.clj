@@ -33,11 +33,14 @@
 (deftest ^:parallel equals-test
   (are [value expected] (= expected
                            (funnysql/format {:where [:= :field value]} :postgres))
-    "x"  ["WHERE \"field\" = ?" "x"]
-    nil  ["WHERE \"field\" IS NULL"]
+    "x"         ["WHERE \"field\" = ?" "x"]
+    nil         ["WHERE \"field\" IS NULL"]
     ;; booleans and numbers can be inlined
-    true ["WHERE \"field\" = true"]
-    1    ["WHERE \"field\" = 1"]))
+    true        ["WHERE \"field\" = true"]
+    1           ["WHERE \"field\" = 1"]
+    [:= :y nil] ["WHERE \"field\" = (\"y\" IS NULL)"])
+  (is (= ["WHERE (\"x\" IS NULL) = \"y\""]
+         (funnysql/format {:where [:= [:= :x nil] :y]} :postgres))))
 
 (deftest ^:parallel number-rejects-non-numeric-rendering-test
   (testing "compiling a Number must fail closed instead of splicing whatever `(str n)` happens to produce"
@@ -68,7 +71,11 @@
                           (funnysql/format {:where [op :field nil]} :postgres))
       :<>   ["WHERE \"field\" IS NOT NULL"]
       :!=   ["WHERE \"field\" IS NOT NULL"]
-      :not= ["WHERE \"field\" IS NOT NULL"])))
+      :not= ["WHERE \"field\" IS NOT NULL"]))
+  (is (= ["WHERE (\"x\" IS NOT NULL) = \"y\""]
+         (funnysql/format {:where [:= [:not= :x nil] :y]} :postgres)))
+  (is (= ["WHERE \"x\" = (\"y\" IS NOT NULL)"]
+         (funnysql/format {:where [:= :x [:not= :y nil]]} :postgres))))
 
 (deftest ^:parallel and-or-test
   (are [op sql] (= [(str "WHERE (\"field\" = ?) " sql " (\"other_field\" = ?)") "x" "y"]
