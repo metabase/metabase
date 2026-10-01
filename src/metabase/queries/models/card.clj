@@ -537,18 +537,6 @@
               :card      (queries.db/update-card! po-id {:parameters new-parameters})
               :dashboard (queries.db/update-dashboard! po-id {:parameters new-parameters}))))))))
 
-(mu/defn model-supports-implicit-actions?
-  "A model with implicit action supported iff they are a raw table,
-  meaning there are no clauses such as filter, limit, breakout...
-
-  It should be the opposite of [[metabase.lib.stage/has-clauses]] but for all stages."
-  [{query :dataset_query :as _card} :- ::queries.schema/card]
-  (and (seq query)
-       (every? (fn [stage-number]
-                 (and (lib/mbql-stage? query stage-number)
-                      (not (lib/has-clauses? query stage-number))))
-               (range 0 (count (:stages query))))))
-
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
@@ -592,13 +580,11 @@
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
-                 (not (model-supports-implicit-actions? changes)))
+                 (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: archive associated actions
+      ;; Changing from a Model to a Question: implicit actions can't run without a model
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
-        (queries.db/delete-dashcards-for-model-actions! id)
-        (queries.db/archive-explicit-actions-for-model! id)
         (queries.db/delete-implicit-actions-for-model! id))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
@@ -866,6 +852,11 @@
         public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
+(t2/define-after-update :model/Card
+  [card]
+  (u/prog1 card
+    (queries.db/move-actions-of-model! (:id card) (:collection_id card))))
+
 (t2/define-after-insert :model/Card
   [card]
   (u/prog1 card
@@ -873,13 +864,6 @@
       (log/info "Card references Fields in params:" field-ids)
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
-
-(defn- move-model-actions
-  "Moves the Actions of `card` into its Collection when the update changes it, returning `card`."
-  [card original]
-  (u/prog1 card
-    (when (not= (:collection_id card) (:collection_id original))
-      (queries.db/move-actions-of-model! (:id card) (:collection_id card)))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -935,7 +919,6 @@
         (populate-query-fields (contains? changes :dataset_query))
         (clear-metabot-origin changes)
         (pre-update changes)
-        (move-model-actions original)
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 

@@ -257,27 +257,19 @@
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
-      (testing "Non-implicit actions are archived if their model is converted to a saved question"
+      (testing "Non-implicit actions and their dashboard buttons survive their model becoming a saved question"
         (doseq [type [:http :query]]
           (mt/with-actions [{:keys [action-id model-id]} {:type type}]
             (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                            :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
-              (is (false? (t2/select-one-fn :archived :model/Action action-id)))
               (t2/update! :model/Card model-id {:type :question})
-              (is (true? (t2/select-one-fn :archived :model/Action action-id)))
-              (is (not (t2/exists? :model/DashboardCard :id dashcard-id)))))))
+              (is (false? (t2/select-one-fn :archived :model/Action action-id)))
+              (is (t2/exists? :model/DashboardCard :id dashcard-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action action-id)))
           (t2/update! :model/Card model-id {:type :question})
-          (is (false? (t2/exists? :model/Action action-id)))))
-      (testing "Actions can't be unarchived if their model is a saved question"
-        (mt/with-actions [{:keys [action-id model-id]} {}]
-          (t2/update! :model/Card model-id {:type :question})
-          (is (thrown-with-msg?
-               Exception
-               #"Actions must be made with models, not cards"
-               (t2/update! :model/Action action-id {:archived false}))))))))
+          (is (false? (t2/exists? :model/Action action-id))))))))
 
 (deftest model-to-saved-question-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)

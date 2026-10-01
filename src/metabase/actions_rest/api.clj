@@ -10,26 +10,15 @@
    [metabase.api.macros :as api.macros]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- check-native-query-perms!
-  "Creating or updating a native query action requires ad-hoc native query permission on the target database."
-  [database-id dataset-query]
-  (when (and (seq dataset-query) (lib/native? dataset-query))
-    (when-let [db-id (or database-id (:database dataset-query))]
-      (api/check-403
-       (= :query-builder-and-native
-          (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries db-id))))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
@@ -82,18 +71,11 @@
     (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
-(defn- check-collection-write-perms!
-  "Throws a 403 unless the current user can write to the Collection with `collection-id`, the root when nil."
-  [collection-id]
-  (api/check-403
-   (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-                                            (perms/perms-objects-set-for-parent-collection collection-id :write))))
-
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
   "Create a new action."
   [_route-params
    _query-params
-   {:keys [collection_id model_id parameters database_id]
+   {:keys [parameters database_id]
     action-type :type
     :as action} :- ::actions.schema/action.for-insert]
   (when (= action-type :http)
@@ -105,18 +87,7 @@
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        action-type
                      :status-code 400})))
-  (check-native-query-perms! database_id (:dataset_query action))
-  (let [model (when model_id
-                (api/write-check :model/Card model_id))]
-    (when-not model
-      (check-collection-write-perms! collection_id))
-    (when (and (= action-type :implicit)
-               (not (queries/model-supports-implicit-actions? model)))
-      (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
-                      {:status-code 400})))
-    (doseq [db-id (cond-> [] model (conj (:database_id model)) database_id (conj database_id))]
-      (actions/check-actions-enabled-for-database!
-       (actions-rest.db/database db-id))))
+  (api/create-check :model/Action action)
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
@@ -144,24 +115,13 @@
     (throw (ex-info (tru "HTTP actions are not supported.")
                     {:type        :http
                      :status-code 400})))
-  (actions/check-actions-enabled! id)
-  (let [existing-action (api/write-check :model/Action id)
-        model-id        (get action :model_id (:model_id existing-action))]
+  (let [existing-action (api/write-check :model/Action id)]
     (when (= (:type existing-action) :http)
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http
                        :status-code 400})))
-    (when (and model-id (not= model-id (:model_id existing-action)))
-      (api/write-check :model/Card model-id))
-    (when (and (nil? model-id)
-               (contains? action :collection_id)
-               (not= (:collection_id action) (:collection_id existing-action)))
-      (check-collection-write-perms! (:collection_id action)))
-    (when-let [dataset-query (:dataset_query action)]
-      (check-native-query-perms! (:database_id action) dataset-query))
-    (actions/update! (cond-> (assoc action :id id)
-                       model-id (dissoc :collection_id))
-                     existing-action))
+    (api/update-check existing-action action)
+    (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/action
@@ -187,7 +147,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/read-check :model/Action id :archived false)]
-    (actions/check-actions-enabled! action)
+    (actions/check-actions-enabled action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
                  (actions-rest.db/set-action-public-uuid! id <> api/*current-user-id*)))}))
@@ -208,7 +168,7 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
-  (actions/check-actions-enabled! id)
+  (actions/check-actions-enabled id)
   (actions-rest.db/set-action-public-uuid! id nil nil)
   {:status 204, :body nil})
 
@@ -222,7 +182,7 @@
    _query-params
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters ::actions.schema/prefetch-parameter-values]]]
-  (actions/check-actions-enabled! action-id)
+  (actions/check-actions-enabled action-id)
   (-> (actions/select-action :id action-id :archived false)
       api/read-check
       (actions/fetch-values parameters)))

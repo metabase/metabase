@@ -12,13 +12,13 @@
    [toucan2.core :as t2]))
 
 (def ^:private action-database-joins
-  "The joins from `action` to the Database `db` of its model Card, or of its QueryAction when it has no model."
-  [[:report_card :card]     [:= :card.id :action.model_id]
-   [:query_action :qa]      [:= :qa.action_id :action.id]
-   [:metabase_database :db] [:= :db.id [:coalesce :card.database_id :qa.database_id]]])
+  "The joins from `action` to the Database `db` of its query, or of its model Card for an implicit action."
+  [[:query_action :qa]      [:= :qa.action_id :action.id]
+   [:report_card :card]     [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
+   [:metabase_database :db] [:= :db.id [:coalesce :qa.database_id :card.database_id]]])
 
 (mu/defn database-for-action
-  "The Database of the model Card of the Action with `action-id`, or of its query when it has no model, or nil."
+  "The Database the Action with `action-id` runs against: its query's, or its model's for an implicit action, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/Database {:select    [:db.*]
                                   :from      :action

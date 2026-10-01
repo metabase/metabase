@@ -806,11 +806,10 @@
         (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))))
 
 (deftest model-becoming-question-publishes-action-events-test
-  (testing "GHY-4722: update-card! announces the actions it archives and deletes when a model becomes a question"
+  (testing "update-card! announces the implicit actions it deletes when a model becomes a question"
     (do-with-model-actions!
-     (fn [{:keys [model-id implicit query]}]
-       (is (= #{[:event/action-update query true]
-                [:event/action-delete implicit false]}
+     (fn [{:keys [model-id implicit]}]
+       (is (= #{[:event/action-delete implicit false]}
               (action-events-during! #(update-model! model-id {:type :question}))))))))
 
 (deftest model-query-without-implicit-support-publishes-action-events-test

@@ -141,11 +141,9 @@
            api.eid-translation
            collections
            events
-           lib
            lib.schema
            permissions
            public-sharing
-           queries
            util}
    :model-imports #{:model/Action :model/Card :model/Database}}
 

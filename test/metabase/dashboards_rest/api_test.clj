@@ -2390,7 +2390,7 @@
               (is (partial= {:dashcards [{:action (cond-> {:visualization_settings {:hello true}
                                                            :type (name action-type)
                                                            :parameters [{:id "id"}]
-                                                           :database_enabled_actions true}
+                                                           :database_enabled_actions (not= :http action-type)}
                                                     (#{:query :implicit} action-type)
                                                     (assoc :database_id (mt/id)))}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))

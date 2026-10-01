@@ -303,10 +303,13 @@
                       (is (= "Actions are not enabled."
                              (:cause
                               (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
-                  (testing "a plain card instead of a model"
+                  (testing "an implicit action on a plain card instead of a model"
                     (mt/with-temp [:model/Card {plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
                       (is (= "Actions must be made with models, not cards."
-                             (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
+                             (mt/user-http-request :crowberto :post 400 "action" {:name     "implicit on a card"
+                                                                                  :type     "implicit"
+                                                                                  :kind     "row/create"
+                                                                                  :model_id plain-card-id}))))))
                 (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
                       action-path    (str "action/" (:id created-action))]
                   (testing "Create"

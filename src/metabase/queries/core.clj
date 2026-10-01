@@ -51,7 +51,6 @@
  [metabase.queries.models.card
   fully-parameterized?
   maybe-unverify!
-  model-supports-implicit-actions?
   model?
   sole-dashboard-id
   starting-card-schema-version

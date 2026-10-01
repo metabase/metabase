@@ -24,9 +24,9 @@
 (p/import-vars
  [metabase.actions.actions
   cached-value
-  check-actions-enabled!
-  check-actions-enabled-for-database!
-  check-data-editing-enabled-for-database!
+  check-actions-enabled
+  check-actions-enabled-for-database
+  check-data-editing-enabled-for-database
   cached-database
   cached-database-via-table-id
   cached-table

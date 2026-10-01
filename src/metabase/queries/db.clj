@@ -355,11 +355,18 @@
                                     :where  [:= :action.model_id model-id]}))
 
 (mu/defn move-actions-of-model!
-  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
-  updated."
+  "Move the Actions of the model Card with `model-id` that are not in the Collection with `collection-id` there,
+  returning the number updated."
   [model-id      :- ms/PositiveInt
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action :model_id model-id {:collection_id collection-id}))
+  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action
+                                                    {:where [:and
+                                                             [:= :model_id model-id]
+                                                             (if collection-id
+                                                               [:or [:= :collection_id nil] [:not= :collection_id collection-id]]
+                                                               [:not= :collection_id nil])]}))]
+    (t2/update! :model/Action :id [:in action-ids] {:collection_id collection-id})
+    0))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -370,18 +377,6 @@
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
-
-(mu/defn delete-dashcards-for-model-actions!
-  "Delete the DashboardCards of the Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action :model_id model-id))]
-    (t2/delete! :model/DashboardCard :action_id [:in action-ids])
-    0))
-
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the non-implicit Actions of the model Card with `model-id`, returning the number updated."
-  [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id :type [:not= :implicit]} {:archived true}))
 
 (mu/defn delete-implicit-actions-for-model!
   "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."

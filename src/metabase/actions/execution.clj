@@ -17,6 +17,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.card :as qp.card]
@@ -40,15 +41,22 @@
    [:context             {:optional true} [:maybe :keyword]]
    [:dashboard-id        {:optional true} [:maybe ms/PositiveInt]]])
 
+(defn- check-action-read-perms
+  "Throws a permissions error unless the current user, when there is one, can read `action`."
+  [action]
+  (when (and api/*current-user-id* (not (mi/can-read? action)))
+    (throw (ex-info (tru "You do not have permissions to run this action.")
+                    {:type qp.error-type/missing-required-permissions, :status-code 403}))))
+
 (mu/defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
   endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`. `opts` carries the audit attribution from the endpoint."
-  [{query :dataset_query, model-id :model_id, :as action} :- ::actions.schema/action
+  [{query :dataset_query, action-id :id, :as action} :- ::actions.schema/action
    request-parameters :- RequestParameters
    opts                :- [:maybe ExecuteActionOpts]]
-  (log/tracef "Executing action for model %d" model-id)
+  (log/tracef "Executing action %d" action-id)
   (driver.conn/with-write-connection
     (try
       (let [parameters        (for [parameter (:parameters action)]
@@ -61,19 +69,20 @@
             ;; the routed destination database and the impersonation flag are only knowable from inside the
             ;; writeback QP's middleware stack
             execution-context (volatile! nil)]
-        (binding [qp.perms/*card-id* model-id]
-          (actions.audit/with-audited-execution
-            {:action       :query/execute
-             :action-id    (:id action)
-             :dashboard-id (:dashboard-id opts)
-             :database-id  (:database substituted-query)
-             :user-id      api/*current-user-id*
-             :context      (:context opts :action-execute)
-             :native?      true
-             :template     (dissoc query :parameters :info)
-             :inputs       (filterv (comp some? :value) parameters)}
-            (fn [result]
-              (merge {:result_rows (or (:rows-affected result) 0)} @execution-context))
+        (actions.audit/with-audited-execution
+          {:action       :query/execute
+           :action-id    action-id
+           :dashboard-id (:dashboard-id opts)
+           :database-id  (:database substituted-query)
+           :user-id      api/*current-user-id*
+           :context      (:context opts :action-execute)
+           :native?      true
+           :template     (dissoc query :parameters :info)
+           :inputs       (filterv (comp some? :value) parameters)}
+          (fn [result]
+            (merge {:result_rows (or (:rows-affected result) 0)} @execution-context))
+          (do
+            (check-action-read-perms action)
             (qp/do-with-captured-execution-context #(qp/execute-write-query! substituted-query)
                                                    #(vreset! execution-context %)))))
       (catch Throwable e
@@ -92,14 +101,12 @@
 
 (defn- execute-custom-action! [action request-parameters opts]
   (let [{action-type :type, action-id :id} action]
-    (actions/check-actions-enabled! action)
-    (let [model (some-> (:model_id action) actions.db/card)
-          ;; the query executes against its own :database; fall back to the derived column if absent
-          action-db-id (or (:database (:dataset_query action)) (:database_id action))]
-      (when (and (= action-type :query) (not= (:database_id model) action-db-id))
-        ;; the above check checks the db of the model. We check the db of the query action here
-        (actions/check-actions-enabled-for-database!
-         (actions.db/database action-db-id))))
+    (when-not (= action-type :http)
+      (actions/check-actions-enabled action))
+    ;; the query executes against its own :database; fall back to the derived column if absent
+    (when (= action-type :query)
+      (actions/check-actions-enabled-for-database
+       (actions.db/database (or (:database (:dataset_query action)) (:database_id action)))))
     (try
       (case action-type
         :query
