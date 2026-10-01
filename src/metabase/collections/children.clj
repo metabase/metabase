@@ -749,40 +749,33 @@
 
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  (let [{:keys [with clause]} (perms/visible-table-filter-with-cte
-                               :t.id
-                               {:user-id       api/*current-user-id*
-                                :is-superuser? api/*is-superuser?*}
-                               {:perms/view-data      :unrestricted
-                                :perms/create-queries :query-builder}
-                               {:include-published-via-collection? true})]
-    (cond-> {:select [:t.id
-                      [:t.id :table_id]
-                      [:t.display_name :name]
-                      :t.description
-                      :t.collection_id
-                      [:t.db_id :database_id]
-                      [[:!= :t.archived_at nil] :archived]
-                      [(h2x/literal "table") :model]]
-             :from   [(warehouse-schema-overlay/table-query {:alias :t})]
-             :where  [:and
-                      [:= :t.is_published true]
-                      (poison-when-pinned-clause pinned-state)
-                      (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-                      clause
-                      [:= :t.collection_id (:id collection)]
-                      (if archived?
-                        [:!= :t.archived_at nil]
-                        [:= :t.archived_at nil])]}
-      with (assoc :with with))))
-
-(defn- ctes-and-queries
-  "The `:with` entries the per-model `queries` carry, split from the queries themselves, as `{:with [...], :queries
-  [...]}`. A model's query is one UNION ALL branch or EXISTS probe of the statement, where a CTE is not valid, so
-  the caller puts them on the top-level `:with` after `visible_collection_ids`, which they may reference."
-  [queries]
-  {:with    (into [] (mapcat :with) queries)
-   :queries (mapv #(dissoc % :with) queries)})
+  {:select [:t.id
+            [:t.id :table_id]
+            [:t.display_name :name]
+            :t.description
+            :t.collection_id
+            [:t.db_id :database_id]
+            [[:!= :t.archived_at nil] :archived]
+            [(h2x/literal "table") :model]]
+   :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+   :where  [:and
+            [:= :t.is_published true]
+            (poison-when-pinned-clause pinned-state)
+            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+            ;; The subquery form, not the CTE one: this query becomes a UNION ALL branch or an EXISTS probe, where
+            ;; a CTE is not valid, and hoisting the CTE to the top level does not work either: H2 2.1.214 returns no
+            ;; rows for a CTE with bound parameters referenced from inside a derived table (see the docstring).
+            (perms/visible-table-filter-subquery-clause
+             :t.id
+             {:user-id       api/*current-user-id*
+              :is-superuser? api/*is-superuser?*}
+             {:perms/view-data      :unrestricted
+              :perms/create-queries :query-builder}
+             {:include-published-via-collection? true})
+            [:= :t.collection_id (:id collection)]
+            (if archived?
+              [:!= :t.archived_at nil]
+              [:= :t.archived_at nil])]})
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
@@ -1077,25 +1070,22 @@
   [collection models {:keys [sort-info archived? search-text] :as options}]
   (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
         models        (sort (map keyword models))
-        {ctes    :with
-         queries :queries} (ctes-and-queries
-                            (for [model models
-                                  :let  [query              (collection-children-query model collection options)
-                                         select-clause-type (some
-                                                             (fn [k]
-                                                               (when (get query k)
-                                                                 k))
-                                                             [:select :select-distinct])]]
-                              (-> query
-                                  (update select-clause-type add-missing-columns all-select-columns)
-                                  (update select-clause-type add-model-ranking model))))
+        queries       (for [model models
+                            :let  [query              (collection-children-query model collection options)
+                                   select-clause-type (some
+                                                       (fn [k]
+                                                         (when (get query k)
+                                                           k))
+                                                       [:select :select-distinct])]]
+                        (-> query
+                            (update select-clause-type add-missing-columns all-select-columns)
+                            (update select-clause-type add-model-ranking model)))
         viz-config    {:include-archived-items    :all
                        :archive-operation-id      nil
                        :permission-level          (if archived? :write :read)
                        :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
-        viz-query     (collection/visible-collection-query viz-config)
-        rows-query    (cond-> {:with     (into [[:visible_collection_ids viz-query]] ctes)
+        rows-query    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                                :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
                                :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                                :order-by sql-order}
@@ -1196,19 +1186,12 @@
                         :archive-operation-id      nil
                         :permission-level          (if archived? :write :read)
                         :include-trash-collection? archived?}
-            {ctes    :with
-             queries :queries} (ctes-and-queries
-                                (for [model candidates]
-                                  (collection-children-query model collection options)))
             row        (first
                         (collections.db/collection-filter-metadata-rows
-                         {:with   (into [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                                        ctes)
+                         {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                           :select (vec
-                                   (map (fn [model query]
-                                          [[:exists query] model])
-                                        candidates
-                                        queries))}))]
+                                   (for [model candidates]
+                                     [[:exists (collection-children-query model collection options)] model]))}))]
         {:available_models
          (->> candidates
               (keep (fn [model]

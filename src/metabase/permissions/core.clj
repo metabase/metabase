@@ -84,6 +84,7 @@
   visible-database-filter-select
   visible-table-filter-select
   visible-table-filter-with-cte
+  visible-table-filter-subquery-clause
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
   namespace-clause
