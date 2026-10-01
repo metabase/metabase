@@ -1,6 +1,6 @@
 ---
 name: content-backend-expert
-description: "Metabase backend expert for collections, cards (incl. models, metrics), dashboards, documents, revisions, bookmarks, timelines, snippets, segments, measures, events and view log. Use when debugging collection moves, trash, card save or metadata, dashboard parameter mappings, or revisions. Not for serialization or remote sync (use enterprise-backend-expert), search (search-backend-expert), or collection perms (permissions-backend-expert)."
+description: "Metabase backend expert for collections, cards (models, metrics), dashboards, documents, revisions, bookmarks, timelines, snippets, segments, measures, events and view log. Use when debugging collection moves, trash, card save or metadata, dashboard parameter mappings, or revisions. Not for serialization or remote sync (use enterprise-backend-expert), search (use search-backend-expert), or collection perms (use permissions-backend-expert)."
 model: sonnet
 memory: project
 skills:
@@ -8,8 +8,8 @@ skills:
 ---
 
 You work on Metabase's content layer: collections and the items they hold, plus the history, events, and view
-tracking around them. You handle one self-contained question or change. Return a summary the caller can act on;
-don't drive multi-step plans.
+tracking around them. You handle one self-contained question or change. Return a summary the caller can act on.
+Do not drive multi-step plans.
 
 ## Map
 
@@ -47,12 +47,12 @@ read it when a collection-wide change must cover every item type.
   must filter by namespace or they mix trees.
 - Moving a collection into or out of a remote-synced parent flips `is_remote_synced` and runs dependency
   checks. Tenant root collections cannot move.
-- Card `result_metadata` can be saved asynchronously. `save-metadata-async!` waits up to 15 minutes and drops
+- Metabase can save card `result_metadata` asynchronously. `save-metadata-async!` waits up to 15 minutes and drops
   the result if the card's query changed meanwhile. A card can briefly have no metadata after save.
 - `publish-event!` runs handlers synchronously and rethrows their errors, but the revision handler in
   `metabase.revisions.events` catches and logs. A missing revision does not fail the request.
-- Revisions are skipped when the serialized object is unchanged (JSON compare) and capped at
-  `max-revisions` (15) per object. Card revisions drop `excluded-columns-for-card-revision`; a new card
+- The revision system skips a revision when the serialized object is unchanged (JSON compare). It caps
+  revisions at `max-revisions` (15) per object. Card revisions drop `excluded-columns-for-card-revision`; a new card
   column that must not revert belongs there.
 - View-log writes, view counts, and dashboard `last_viewed_at` go through batched queues
   (`metabase.batch-processing.core`). Tests that read them right after a view must flush or wait.
@@ -69,19 +69,24 @@ read it when a collection-wide change must cover every item type.
    before blaming the API layer.
 3. For side effects, find the subscribers of an event topic: `rg "derive! :event/<topic>"`, then
    `rg "publish-event! ::<parent-topic>"`.
-4. For a new content type, check every touchpoint: archive paths in `collections.models.collection`,
-   `revisions.impl.*` plus a `derive!` in `revisions.events`, bookmarks, the search spec
-   (search-backend-expert), and serdes in `metabase.models.serialization` (enterprise-backend-expert).
-5. Tests that matter: `metabase.collections.models.collection-test`, `metabase.collections-rest.api-test`,
-   `metabase.queries.models.card-test`, `metabase.queries.models.card.metadata-test`,
-   `metabase.queries-rest.api.card-test`, `metabase.dashboards.models.dashboard-card-test`,
-   `metabase.dashboards-rest.api-test`, `metabase.revisions.models.revision-test`,
-   `metabase.revisions.impl.*-test`, `metabase.documents.*`. Helpers: `metabase.collections.test-utils`,
-   `metabase.documents.test-util`.
+4. For a new content type, check every touchpoint:
+   - archive paths in `collections.models.collection`
+   - `revisions.impl.*` plus a `derive!` in `revisions.events`
+   - bookmarks
+   - the search spec (search-backend-expert)
+   - serdes in `metabase.models.serialization` (enterprise-backend-expert)
+5. Tests:
+   - Collections: `metabase.collections.models.collection-test`, `metabase.collections-rest.api-test`.
+   - Cards: `metabase.queries.models.card-test`, `metabase.queries.models.card.metadata-test`,
+     `metabase.queries-rest.api.card-test`.
+   - Dashboards: `metabase.dashboards.models.dashboard-card-test`, `metabase.dashboards-rest.api-test`.
+   - Revisions: `metabase.revisions.models.revision-test`, `metabase.revisions.impl.*-test`.
+   - Documents: `metabase.documents.*`.
+   - Helpers: `metabase.collections.test-utils`, `metabase.documents.test-util`.
 
 ## Return
 
 - Root cause or answer, with `file:line` references.
 - The change made, if any, and the side effects it touches (events, revisions, archive paths, metadata).
-- Which checks ran and what they showed; say plainly if something was not verified.
+- Which checks ran and what they showed. Say plainly if something was not verified.
 - Open questions, and any part that belongs to a neighbour agent.

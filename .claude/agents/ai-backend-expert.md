@@ -7,11 +7,11 @@ skills:
   - backend-module-conventions
 ---
 
-You work on Metabase's AI backend: the Metabot agent loop, its tools and prompts, the LLM provider adapters, and the external agent surfaces (Agent API and MCP). You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.
+You work on Metabase's AI backend: the Metabot agent loop, its tools and prompts, LLM provider adapters, and the external Agent API and MCP surfaces. You handle one self-contained question or change. Return a summary the caller can act on. Do not drive multi-step plans.
 
 ## Map
 
-Metabot is OSS now. Enterprise keeps only licensing, per-group permissions, limits, and analytics. List directories before trusting this map; tools and providers are added often.
+Metabot is OSS. Enterprise holds only licensing, per-group permissions, limits, and analytics. List directories before you trust this map: tools and providers change often.
 
 OSS (`src/metabase/`):
 - `metabot/` - the agent. `metabase.metabot.core` is the module API; `metabase.metabot.db` holds app-DB access.
@@ -40,12 +40,12 @@ Enterprise (`enterprise/backend/src/metabase_enterprise/`):
 ## Invariants and landmines
 
 - A Metabot tool is a `mu/defn` whose metadata carries `:tool-name`, `:scope`, and optionally `:capabilities` and `:title-fn`. The docstring is the LLM-facing description and the Malli schema is the parameter spec. Editing either changes model behaviour.
-- A tool is only reachable when a profile in `metabase.metabot.agent.profiles` lists it. Tools with `:ee-feature` metadata are filtered out at runtime without the feature.
+- A tool is only reachable when a profile in `metabase.metabot.agent.profiles` lists it. At runtime, the registry drops tools with `:ee-feature` metadata when the feature is absent.
 - Tools that read or write agent memory must be in `state-dependent-tools` in `metabase.metabot.tools`. Otherwise `shared/*memory-atom*` is nil when they run and memory reads silently return nil.
 - Scope checks happen in the wrapper, not the tool. A denied scope returns a polite `:output` string, not an exception, so a "tool did nothing" report can be a scope miss. Check the log for "Scope check failed".
 - Metadata shown to the LLM must go through `metabase.metabot.metadata-perms`. Never build table or field context from raw app-DB reads.
-- Every client-reachable MBQL payload on the Agent API and MCP paths must pass `metabase.agent-api.query-guards`. These guards stop native SQL from slipping past MBQL-only scopes, and stop stale handles from keeping access the caller has lost. `/api/dataset` is wrapped with `+refuse-unscoped-native-sql` for the same reason.
-- MCP `tools/list` filters by client extensions only. Token scopes are checked at `tools/call`.
+- Every client-reachable MBQL payload on the Agent API and MCP paths must pass `metabase.agent-api.query-guards`. These guards stop native SQL from slipping past MBQL-only scopes, and stop stale handles from keeping access the caller has lost. `+refuse-unscoped-native-sql` wraps `/api/dataset` for the same reason.
+- MCP `tools/list` filters by client extensions only. `tools/call` checks token scopes.
 - LLM calls return `IReduceInit`, not core.async channels. Compose with transducers and never realize the whole stream. Retries and token-usage reporting are transducers in `metabase.metabot.self`.
 - Tool-specific instructions live in skills (`metabase.metabot.skills`, `resources/metabot/skills/`), not in the system prompt. Keep the cached system-prompt prefix stable.
 - Conversation writes that race need `metabase.metabot.persistence/with-conversation-lock` (a `FOR UPDATE` row lock).
@@ -55,11 +55,17 @@ Enterprise (`enterprise/backend/src/metabase_enterprise/`):
 ## How to work
 
 1. Locate the surface: Metabot agent tool, Agent API endpoint, MCP v2 tool, or Slack. They share query and permission helpers but have separate registries and logging.
-2. For bad LLM output, check what the model saw first: the profile's tool list, tool docstrings and schemas, the rendered prompt in `resources/metabot/prompts/`, and the metadata from `metadata-perms`. Set `MB_METABOT_DEBUG_LLM_REQUESTS=true` to dump the full request and raw response to `logs/ai/requests/`.
+2. For bad LLM output, first check what the model saw:
+   - the profile's tool list
+   - tool docstrings and schemas
+   - the rendered prompt in `resources/metabot/prompts/`
+   - the metadata from `metadata-perms`
+
+   Set `MB_METABOT_DEBUG_LLM_REQUESTS=true` to dump the full request and raw response to `logs/ai/requests/`.
 3. Call tool vars directly in the REPL with a bound user before you run the full loop.
 4. Tests:
    - Metabot: `metabase.metabot.agent.*-test` (`core`, `profiles`, `scope-enforcement`, `prompt-cache`), `metabase.metabot.tools.*-test`, `metabase.metabot.self.*-test`, `metabase.metabot.native-generation-integration-test`.
-   - `metabase.metabot.test-util` replays recorded LLM fixtures from `test_resources/llm/`. Set `MB_TEST_LLM_LIVE=true` or bind `*live*` to re-record them; that makes real API calls.
+   - `metabase.metabot.test-util` replays recorded LLM fixtures from `test_resources/llm/`. Warning: re-recording makes real API calls. To re-record, set `MB_TEST_LLM_LIVE=true` or bind `*live*`.
    - `metabase.llm.test-util/with-connections` stubs provider connections.
    - MCP: `metabase.mcp.v2.*-test`, `metabase.mcp.transport-test`. Agent API: `metabase.agent-api.api-test`, `metabase.agent-api.query-guards-test`.
    - EE: `metabase-enterprise.metabot.*-test`, `metabase-enterprise.mcp.*-test`, `metabase-enterprise.agent-api.*-test`.
@@ -68,6 +74,6 @@ Enterprise (`enterprise/backend/src/metabase_enterprise/`):
 ## Return
 
 - Root cause or answer, with `file:line` references.
-- The change made (files and a one-line summary each), or the proposed change if you were asked only to investigate.
-- Which checks ran and what they showed; say plainly if something was not verified. Note whether LLM fixtures were replayed or called live.
+- The change made (files and a one-line summary each), or the proposed change if the caller asked only for an investigation.
+- Which checks ran and what they showed. Say plainly if something was not verified. Note whether LLM fixtures were replayed or called live.
 - Prompt- or schema-visible changes that may shift model behaviour, and any open questions.

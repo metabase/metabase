@@ -1,15 +1,16 @@
 ---
 name: backend-module-conventions
-description: Where Metabase backend code goes and how it reaches the application database - module layout, the `<module>.db` rule, `[:auto/param]` value binding, module config, and the checks to run before handing work back. Use when adding or moving backend namespaces, writing app-DB queries, or touching module boundaries. Preloaded by every `*-backend-expert` agent.
+description: Where Metabase backend code goes and how it reaches the app DB. Covers module layout, the `<module>.db` rule, `[:auto/param]` value binding, module config, and pre-handoff checks. Use when adding or moving backend namespaces, writing app-DB queries, or touching module boundaries. Preloaded by every `*-backend-expert` agent.
 ---
 
 # Backend module conventions
 
-Project `CLAUDE.md` covers the module config keys, nested modules, test commands, and ratchets. This skill
-adds the rules that decide where a line of backend code lives. When the two disagree, the source tree wins:
-read the linter or test that enforces a rule before trusting any prose about it, including this file.
+This skill decides where a line of backend code lives and how it reaches the app DB. Project `CLAUDE.md`
+covers the module config keys, nested modules, test commands, and ratchets. When the two disagree, the
+source tree wins. Read the linter or test that enforces a rule before you trust any prose about it,
+including this file.
 
-## Module layout
+## Split a module into standard namespaces
 
 A module is `metabase.<module>` (OSS, `src/`) or `metabase-enterprise.<module>` (EE,
 `enterprise/backend/src/`). Most modules split into these namespaces:
@@ -24,10 +25,9 @@ A module is `metabase.<module>` (OSS, `src/`) or `metabase-enterprise.<module>` 
 | `<module>.api`, or the nested `<module>.rest` module (`:ns-prefix "metabase.<module>-rest"`, dir `<module>_rest/`) | HTTP endpoints. Domain logic stays in the base module. The `.rest` child calls the parent's `.core`. |
 | `enterprise/<module>` | The EE companion of an OSS module. It nests under the OSS module, which exports it automatically. |
 
-If a setting, task, or event handler never takes effect, the usual cause is a missing link in the
-`.init` chain.
+If a setting, task, or event handler never takes effect, look for a missing link in the `.init` chain.
 
-## App-DB access lives in `<module>.db`
+## Keep app-DB access in `<module>.db`
 
 Call Toucan 2 query functions (`t2/select*`, `t2/insert!`, `t2/update!`, `t2/delete!`, `t2/count`,
 `t2/exists?`, `t2/query`, ...) and the `metabase.app-db.core` wrappers (`mdb/query`,
@@ -46,11 +46,11 @@ Write `db` functions in the style of `src/metabase/settings/db.clj`:
 ### Bind values with `[:auto/param v]`
 
 `metabase.app-db.value-guard` binds a value written as `[:auto/param v]` as a SQL parameter. The
-`:metabase/unsafe-app-db-query` lint is off globally and turned on per namespace under
-`:config-in-ns` in `.clj-kondo/config.edn` as each `db.clj` is converted. Follow these rules in every
-`db.clj`, whether or not the lint is on for it yet:
+`:metabase/unsafe-app-db-query` lint is off globally. `.clj-kondo/config.edn` turns it on per namespace
+under `:config-in-ns`, one converted `db.clj` at a time. Follow these rules in every `db.clj`, whether or
+not the lint covers it yet:
 
-1. Mark a value that comes from a variable when it is in a **value slot** (`:=`, `:in`, `:like`, ... right-hand side, or a kv-arg value used as a filter).
+1. Mark a value that comes from a variable when it sits in a **value slot**. Value slots are the right-hand side of `:=`, `:in`, `:like`, ..., and kv-arg values used as filters.
 2. Never mark a literal. A literal cannot carry a request value.
 3. Never mark a value in an **identifier slot** (`:select`, `:from`, joins, aliases, and similar). `value-guard` throws `::marker-outside-value-slot` at compile time. In `:order-by` and `:group-by` a marker compiles to `ORDER BY ?`, which is useless but does not throw. Don't write one there either.
 4. Leave a possibly-empty collection unmarked. Toucan rewrites `[:in col []]` to `false` before the marker step.
@@ -59,7 +59,7 @@ Write `db` functions in the style of `src/metabase/settings/db.clj`:
 
 The docstring of `metabase.app-db.value-guard` explains what the guard refuses without any marker.
 
-## App-DB migrations
+## Add app-DB migrations as one file per change
 
 `./bin/lint-migrations-file.sh` enforces these rules. Run it after every change.
 
@@ -72,14 +72,19 @@ The docstring of `metabase.app-db.value-guard` explains what the guard refuses w
 - The whole `metabase.app-db.*` module, custom migrations included, is exempt from the `<module>.db` rule (the `app-db-namespaces` group in `.clj-kondo/config.edn`).
 - Test with the `test-migrations` macro (`metabase.app-db.schema-migrations-test.impl`) on H2 and Postgres. Add MySQL when the change touches DDL or JSON columns.
 
-## Module boundaries
+## Cross module boundaries through `:api`
 
 - `.clj-kondo/config/modules/config.edn` declares `:api`, `:uses`, `:model-exports`, and `:model-imports` per module. Run `./bin/mage fix-modules-config` after you add or remove a namespace, a cross-module require, or a cross-module `:model/X` reference. If nothing drifted, it does nothing.
 - `./bin/mage modules-tree` prints the hierarchy. The `dev.deps-graph` and `dev.module-score` namespaces show who uses a module externally.
-- If a module needs something that is not in another module's `:api`, choose a fix in this order: call something that is already public, add the var to that module's `.core`, or invert the dependency with an event (`metabase.events`). Don't add a `:clj-kondo/ignore`.
+- If a module needs something outside another module's `:api`, choose the first fix that works:
+  1. Call something that is already public.
+  2. Add the var to that module's `.core`.
+  3. Invert the dependency with an event (`metabase.events`).
+
+  Don't add a `:clj-kondo/ignore`.
 - If you change a suppression or a module escape hatch, run `./bin/mage kondo-ratchets`.
 
-## Before handing work back
+## Verify before handing work back
 
 1. Load each changed namespace in the REPL (`clojure-eval` skill). If no REPL is available, run `./bin/test-agent :only '[the.ns-test]'`.
 2. Run the narrowest tests that cover the change. Use `./bin/test-agent :module <module>` to check blast radius.

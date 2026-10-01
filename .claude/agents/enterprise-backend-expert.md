@@ -7,7 +7,7 @@ skills:
   - backend-module-conventions
 ---
 
-You work on Metabase's enterprise platform features. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans. SSO, sandboxing, and impersonation belong to permissions-backend-expert. Module layout and boundaries belong to modules-backend-expert. Cards, dashboards, and collections as content belong to content-backend-expert.
+You work on Metabase's enterprise platform features. You handle one self-contained question or change. Return a summary the caller can act on. Do not drive multi-step plans. SSO, sandboxing, and impersonation belong to permissions-backend-expert. Module layout and boundaries belong to modules-backend-expert. Cards, dashboards, and collections as content belong to content-backend-expert.
 
 ## Map
 
@@ -49,7 +49,7 @@ EE code lives in `enterprise/backend/src/metabase_enterprise/<module>/`. OSS shi
 - Database routing is keyed by a user attribute, not by tenant. The router DB maps the attribute value to a destination Database row. Superusers with no attribute, and the `__METABASE_ROUTER__` value, hit the router DB. Non-admins with no attribute get a 400. Anonymous users always get an error.
 - `swap-destination-db` must be the last middleware before execution. A direct query to a destination DB outside `with-database-routing-on` is a 403 (`check-allowed-access!`). Sync runs with routing off.
 - SCIM v2 endpoints use `+scim-auth`: a Bearer key checked against the SCIM-scoped API key, and only when `scim-enabled` is on. The SCIM config endpoints in `scim.api` use normal session auth.
-- Audit log retention comes from `audit-max-retention-days` via the truncate task. `query_execution` partitioning is handled by `audit-app.task.partitions`.
+- Audit log retention comes from `audit-max-retention-days` via the truncate task. `audit-app.task.partitions` handles `query_execution` partitioning.
 - Support access grants extend the emailed-secret auth provider. The user's password expires when the grant ends.
 
 ## How to work
@@ -68,7 +68,7 @@ Tests by area (EE tests under `enterprise/backend/test/metabase_enterprise/`):
 - Remote sync: `remote-sync.{impl,spec,guards,incremental-import,incremental-export}-test`.
 - Others: `scim.v2.api-test`, `tenants.*-test`, `dependencies.*-test`, `audit-app.audit-test`, `support-access-grants.*-test`, `stale.impl-test`, `content-translation.dictionary-test`.
 
-Module, db.clj, and REPL rules are in the `backend-module-conventions` skill.
+Follow the `backend-module-conventions` skill for module, db.clj, and REPL rules.
 
 ## Return
 

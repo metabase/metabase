@@ -1,6 +1,6 @@
 ---
 name: search-backend-expert
-description: Metabase backend expert for search engines (in-place, appdb, semantic), search specs, ingestion and scoring, X-rays, model indexes, and recent views. Use when search results are missing, stale or badly ranked, when a search spec or index changes, when X-ray dashboards look wrong, or when model index values do not refresh. Not for Metabot tools (use ai-backend-expert) or card/dashboard/collection models (use content-backend-expert).
+description: Metabase backend expert for search engines (in-place, appdb, semantic), search specs, ingestion and scoring, X-rays, model indexes, and recent views. Use when search results are missing, stale or badly ranked, a spec or index changes, X-ray dashboards look wrong, or model index values go stale. Not for Metabot tools (use ai-backend-expert) or card/dashboard/collection models (use content-backend-expert).
 model: sonnet
 memory: project
 skills:
@@ -52,11 +52,11 @@ Activity and views: `metabase.activity-feed.{api,models.recent-views,events.rece
 
 - The engine decides the code path. Default precedence is semantic, then appdb, then in-place. Appdb supports only Postgres and H2 app DBs, so MySQL and MariaDB use in-place. Check `(metabase.search.engine/active-engines)` before you debug.
 - `define-spec` derives the model from `:hook/search-index`. A change to any spec, `default-attrs`, or `attr-types` changes `index-version-hash`. Appdb then builds a new pending table and swaps it in. `metabase.search.spec-test` checks that exactly the right models derive the hook.
-- Ingestion is async through a `DelayQueue` in `metabase.search.ingestion`. Tests must wrap in `with-sync-search-indexing`, or results look missing. Do not use search for consistency-critical reads.
+- Ingestion is async through a `DelayQueue` in `metabase.search.ingestion`. Wrap tests in `with-sync-search-indexing`, or results look missing. Do not use search for consistency-critical reads.
 - `metabase.view-log.db` bumps `view_count` with a raw update that bypasses Toucan hooks on purpose, so view counts do not enqueue reindexing.
-- Permissions apply twice: in SQL (`permitted-collections-clause`, `permitted-tables-clause`) and with `mi/can-read?`/`can-write?` in `metabase.search.impl`. Specs with `:visibility :app-user` (model index values) are hidden from sandboxed or impersonated users.
+- Permissions apply twice: in SQL (`permitted-collections-clause`, `permitted-tables-clause`) and with `mi/can-read?`/`can-write?` in `metabase.search.impl`. Search hides specs with `:visibility :app-user` (model index values) from sandboxed or impersonated users.
 - Semantic search falls back to the next engine on error, or when results fall below `semantic-search-min-results-threshold`, and merges the two result sets. Offsets give odd pages in that mode. The pgvector store comes from `MB_PGVECTOR_DB_URL` or the Postgres app DB.
-- Semantic `supported?` requires a usable embedder. Without one the engine is not selected, but maintenance of an existing index still runs.
+- Semantic `supported?` requires a usable embedder. Without one, search does not select the engine. Maintenance of an existing index runs anyway.
 - Weights are `static-default-weights` merged with per-context weights and `experimental-search-weight-overrides`. Change weights in `metabase.search.config`, not in scorer exprs.
 - Model index refresh runs the full model query and stops at `max-indexed-values` (25000). Past that it marks the index `"overflow"`.
 - X-ray output depends on field semantic types and fingerprints from sync/analyze. Fix template YAML before you change the engine.

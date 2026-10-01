@@ -1,6 +1,6 @@
 ---
 name: permissions-backend-expert
-description: "Metabase backend expert for data and collection permissions, query permission checks, sandboxing, connection impersonation, login/session/auth-identity, SSO, MFA, embedding and public-sharing security, and API keys. Use when a permission check allows or denies wrongly, a sandbox or impersonation policy misbehaves, a login or SSO flow fails, or embed token validation is in question. Not for SCIM or tenants (use enterprise-backend-expert)."
+description: "Metabase backend expert for data and collection permissions, query permission checks, sandboxing, connection impersonation, login/session/auth-identity, SSO, MFA, embedding and public-sharing security, and API keys. Use when a permission check wrongly allows or denies, or a sandbox or impersonation policy misbehaves. Also when a login or SSO flow fails or embed token validation is in doubt. Not for SCIM or tenants (use enterprise-backend-expert)."
 model: opus
 memory: project
 skills:
@@ -15,7 +15,7 @@ OSS is under `src/metabase/`, EE under `enterprise/backend/src/metabase_enterpri
 
 | Area | Namespaces | db |
 | --- | --- | --- |
-| Data perms model | `metabase.permissions.core`, `.models.data-permissions` (coalescing, request-scoped caches), `.models.data-permissions.sql` (visible-query helpers), `.schema` (perm types and value order), `.models.permissions` (legacy path strings, still used for collections and cards), `.models.permissions-group`, `.models.permissions-group-membership`, `.published-tables` (OSS stub), `.data-access-token` | yes |
+| Data perms model | `metabase.permissions.core`, `.models.data-permissions` (coalescing, request-scoped caches), `.models.data-permissions.sql` (visible-query helpers), `.schema` (perm types and value order), `.models.permissions` (legacy path strings, used for collections and cards), `.models.permissions-group`, `.models.permissions-group-membership`, `.published-tables` (OSS stub), `.data-access-token` | yes |
 | Collection perms | `metabase.permissions.models.collection.graph`, `.models.collection-permission-graph-revision` | |
 | Perms graph API | `metabase.permissions-rest.api`, `.api.permission-graph`, `.data-permissions.graph` | yes |
 | Query perms | `metabase.query-permissions.impl` (required-perms computation), `metabase.query-processor.middleware.permissions` (QP check) | yes |
@@ -38,7 +38,7 @@ OSS is under `src/metabase/`, EE under `enterprise/backend/src/metabase_enterpri
 - Group perms merge most-permissive-wins via `coalesce`. Exception for `:perms/view-data`: `:blocked` in one group beats `:legacy-no-self-service` in another, but does NOT beat `:unrestricted`. "Block overrides everything" is wrong.
 - Value order lives in `metabase.permissions.schema/data-permissions`. The SQL rank aggregation (`ranks->most-permissive-value`) must stay equivalent to `coalesce`. Change both or neither.
 - Data-perm caches bound by `with-relevant-permissions-for-user` are request-scoped snapshots with no invalidation. Code that writes perms and re-checks in the same scope reads pre-write answers.
-- Native queries are not parsed for tables. They need `:perms/create-queries :query-builder-and-native` and `:perms/view-data :unrestricted` on the database (`native-query-perms` in `metabase.query-permissions.impl`).
+- Permission checks do not parse native queries for tables. Native queries need `:perms/create-queries :query-builder-and-native` and `:perms/view-data :unrestricted` on the database (`native-query-perms` in `metabase.query-permissions.impl`).
 - `apply-sandboxing` runs twice in `metabase.query-processor.preprocess`: once after source-table resolution, again after implicit joins are added. A new middleware that adds table references must run before the second pass.
 - Sandboxed queries carry `:query-permissions/sandboxed-table`. Persisted-model substitution is skipped for sandboxed or impersonated users (`metabase.query-processor.middleware.persistence`). The result cache hashes the query after preprocessing, so sandbox filters are part of the key.
 - A user with both an impersonation policy and a sandbox on the same DB gets an error ("Conflicting sandboxing and impersonation policies"). Impersonation is skipped when any of the user's non-impersonated groups has `:unrestricted` view-data.

@@ -1,6 +1,6 @@
 ---
 name: transforms-backend-expert
-description: "Metabase backend expert for write-back and materialization: actions and EE action_v2 data editing, CSV uploads, transforms (query, incremental, Python, testing, inspector) and model persistence. Use when a transform run, job or DAG run fails or misorders, an upload infers types or appends badly, an action or row edit misbehaves, or persisted models refresh wrong. Not for driver DDL methods or sync (use drivers-and-sync-backend-expert)."
+description: "Metabase backend expert for write-back and materialization: actions and EE action_v2 data editing, CSV uploads, transforms (query, incremental, Python, testing, inspector) and model persistence. Use when a transform, job or DAG run fails or misorders, or an upload infers types or appends badly, or when an action or row edit misbehaves or persisted models refresh wrong. Not for driver DDL methods or sync (use drivers-and-sync-backend-expert)."
 model: sonnet
 memory: project
 skills:
@@ -41,7 +41,11 @@ Enterprise (`enterprise/backend/src/metabase_enterprise/`):
 - `action-v2` - table data editing, form execution, coercion, validation, undo (`action-v2.models.undo`).
 - `upload-management` - API to list and delete upload tables.
 - `transforms` - EE companion: metering, table-dependency caching, `/api/ee/transforms` (mounts the inspector routes).
-- `transforms-python` - `python-runner` (HTTP client for the external runner), `s3` (presigned URLs for data exchange), `execute`, `base`, `models.python-library`, settings for runner URL, S3 and timeouts.
+- `transforms-python` - Python transforms.
+  - `python-runner` - HTTP client for the external runner.
+  - `s3` - presigned URLs for data exchange.
+  - `execute`, `base`, `models.python-library`.
+  - Settings for runner URL, S3 and timeouts.
 - `transforms-inspector` - lens discovery and computation (`lens.*`, `context`, `query-analysis`).
 - `transform-testing` - test runs for a transform against temp tables: `runner`, `compile`, `validator`, `executor`, `expectations.*`.
 
@@ -49,22 +53,30 @@ Every module above has its own `db.clj`.
 
 ## Invariants and landmines
 
-- Every warehouse write path wraps its work in `metabase.driver.connection/with-write-connection`, so `:write-data-details` is honored. A new write path that skips it writes through the read connection.
+- Every warehouse write path wraps its work in `metabase.driver.connection/with-write-connection`, so the write honors `:write-data-details`. A new write path that skips it writes through the read connection.
 - Query transforms run through `driver/run-transform!`. The `[:sql :table]` method picks a strategy from driver features: create-or-replace, atomic rename swap, create-drop-rename, or drop-then-create with no atomicity. Behavior differs per database, so name the driver when you reason about it.
-- A full incremental run (no watermark yet, or after a checkpoint reset) runs as a `:table` transform and drops and recreates the target instead of appending. Merge targets upsert by unique key through a temp table (delete matches, then insert).
+- A full incremental run (no watermark yet, or after a checkpoint reset) runs as a `:table` transform. It drops and recreates the target instead of appending. Merge targets upsert by unique key through a temp table (delete matches, then insert).
 - Transforms refuse to run on databases with DB routing enabled (`transforms-base.util/throw-if-db-routing-enabled!`).
 - Availability: query transforms work on OSS and self-hosted without a license; hosted needs `:transforms-basic`. Python needs `:transforms-basic` and `:transforms-python`. Both also need the `transforms-enabled` setting. Tests for incremental and merge targets live under `enterprise/backend/test/metabase_enterprise/transforms/`.
-- The job coordinator runs Python transforms in a single-slot `:py` lane, never runs two transforms that write the same target table at once, and records dependents of a failed transform as cascade failures, not root causes. A job run whose coordinator misses heartbeats for 5 minutes is reaped; `TimeoutTransforms` times out lost transform runs every 10 minutes.
+- The job coordinator:
+  - runs Python transforms in a single-slot `:py` lane;
+  - never runs two transforms that write the same target table at once;
+  - records dependents of a failed transform as cascade failures, not root causes.
+- Metabase reaps a job run whose coordinator misses heartbeats for 5 minutes. `TimeoutTransforms` times out lost transform runs every 10 minutes.
 - Python transforms do not run in a local subprocess. Metabase calls an external runner over HTTP (`python-runner-url`) and exchanges data through S3 presigned URLs. `transforms_python/s3_test.clj` skips with only a log warning when the runner is not reachable, so a green run can mean nothing ran.
-- Uploads parse the whole CSV into memory (`parsed-rows` is a vector), and sql-jdbc `insert-into!` inserts all rows in one transaction. The size cap is `max-upload-size-bytes` (50 MB), kept in sync with the frontend and docs.
-- Upload type inference walks the DAG in `upload.types` to the first common ancestor; fully blank columns become text. Drivers with `:upload-with-auto-pk` get a `_mb_row_id` primary key, and CSV columns with that name are dropped. Appends match columns by normalized name, then by display name when names collide.
+- Uploads parse the whole CSV into memory (`parsed-rows` is a vector), and sql-jdbc `insert-into!` inserts all rows in one transaction. The size cap is `max-upload-size-bytes` (50 MB). Keep the frontend and docs in sync with it.
+- Upload type inference walks the DAG in `upload.types` to the first common ancestor; fully blank columns become text. Drivers with `:upload-with-auto-pk` get a `_mb_row_id` primary key, and the upload drops CSV columns with that name. Appends match columns by normalized name, then by display name when names collide.
 - Model persistence refresh is drop then create, not create-then-swap. Postgres does both in one transaction. MySQL does not, so a failed MySQL refresh leaves no table until the next refresh. The refresher binds `*allow-persisted-substitution*` to false so the model rebuilds from its source query.
 - Actions need the driver feature (`:actions`, `:actions/custom`, `:actions/data-editing`) and the per-database setting (`database-enable-actions` or `database-enable-table-editing`). Query actions substitute parameters through the QP native parameter path, not string building. Bulk implicit actions run in one JDBC transaction via `with-jdbc-transaction`.
 - Driver action methods dispatch on concrete action keywords through `driver/hierarchy`. Group keywords such as `:table.row/common` exist only in `metabase.actions.hierarchy`.
 
 ## How to work
 
-1. Name the path first: action (query, HTTP, implicit, data editing), upload (create, append, replace), transform (query, incremental, merge, Python, test run, job, DAG run) or persisted model refresh.
+1. Name the path first:
+   - action (query, HTTP, implicit, data editing);
+   - upload (create, append, replace);
+   - transform (query, incremental, merge, Python, test run, job, DAG run);
+   - persisted model refresh.
 2. For transforms, separate base execution (`transforms-base`, no run rows) from tracked execution (`transforms.execute`, `transforms.jobs`). Bugs in run status, cancelation or failure notifications live in the tracked layer.
 3. When the failure depends on the warehouse, read the driver's `run-transform!`, `insert-into!`, `create-table!` or `ddl.i/refresh!` method and its feature flags before you change shared code. Hand driver DDL changes to drivers-and-sync-backend-expert.
 4. Reproduce at the REPL with the test macros: `metabase.transforms.test-util` (`with-transform-cleanup!`, `with-transforms-api-users!`), `metabase.actions.test-util` (`with-actions-test-data`, `with-actions-enabled`, `with-actions`), `metabase.model-persistence.test-util/with-persistence-enabled!`.

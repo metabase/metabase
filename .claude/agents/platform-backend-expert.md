@@ -1,6 +1,6 @@
 ---
 name: platform-backend-expert
-description: "Metabase backend expert for the app DB (connection, Liquibase and custom migrations, value-guard, cluster lock), HTTP server and middleware, defendpoint and OpenAPI, settings, Quartz tasks, caching, Toucan 2 model infra, and metabase.util. Use when a migration fails on one app DB, a defendpoint or setting misbehaves, a task does not fire, or middleware or streaming needs changing. Not for module boundaries (use modules-backend-expert)."
+description: "Metabase backend expert for the app DB (connection, Liquibase/custom migrations, value-guard, cluster lock), HTTP server and middleware, defendpoint/OpenAPI, settings, Quartz tasks, caching, Toucan 2 model infra, and metabase.util. Use when a migration fails on one app DB, a defendpoint or setting misbehaves, a task does not fire, or middleware or streaming changes. Not for module boundaries (use modules-backend-expert)."
 model: opus
 memory: project
 skills:
@@ -37,22 +37,22 @@ All OSS, under `src/metabase/` unless noted.
 - **Shipped migrations are immutable.** Liquibase checksums changesets. Fix a shipped changeset or custom migration by adding a new one. Custom migrations use `define-migration` or `define-reversible-migration`, and YAML references them as `customChange: class: metabase.app_db.custom_migrations.<Name>`.
 - **Custom migrations run inside `t2/with-transaction`.** Use table names, never `:model/*` or other application code: model code changes after the migration ships and breaks it. Some older migrations use `:model/*`; don't copy them.
 - **Three app DBs: H2, Postgres, MySQL/MariaDB.** Locking, DDL, JSON, and case rules differ. `metabase.app-db.liquibase.h2` and `.mysql` exist because of this.
-- **The guards run in the Toucan pipeline.** `honeysql-guard` runs before `value-guard` and rejects a `{:raw ...}` map or a bare subquery inline in a value slot, marked or not. `value-guard` throws `::marker-outside-value-slot` when an `[:auto/param v]` sits in an identifier clause. A marker in `:order-by` or `:group-by` compiles to `ORDER BY ?` without an error. The ns docstring still says nothing catches a misplaced marker; it is stale.
-- **Middleware order is inverted.** In `metabase.server.handler`, the vector is wrapped top to bottom, so requests pass through it bottom to top. Read the comment there before you insert a middleware.
-- **`defendpoint` checks closed schemas when the endpoint is evaluated.** An open `[:map ...]`, a `:map-of :keyword`, or `:any` reachable from a request fails at load time (`metabase.api.macros.defendpoint.closed-schemas`). The decoder drops undeclared keys, so an undeclared key reads as `nil`.
+- **The guards run in the Toucan pipeline.** `honeysql-guard` runs before `value-guard`. It rejects a `{:raw ...}` map or a bare subquery inline in a value slot, marked or not. `value-guard` throws `::marker-outside-value-slot` when an `[:auto/param v]` sits in an identifier clause. A marker in `:order-by` or `:group-by` compiles to `ORDER BY ?` without an error. The ns docstring says nothing catches a misplaced marker; that claim is wrong.
+- **Middleware order is inverted.** `metabase.server.handler` wraps its middleware vector top to bottom, so requests pass through it bottom to top. Read the comment there before you insert a middleware.
+- **`defendpoint` checks closed schemas when it evaluates the endpoint.** A request-reachable open `[:map ...]`, `:map-of :keyword`, or `:any` fails at load time (`metabase.api.macros.defendpoint.closed-schemas`). The decoder drops undeclared keys, so an undeclared key reads as `nil`.
 - **Settings cache coherence is eventual.** Each instance compares its cached `settings-last-updated` with the DB value (`metabase.settings.models.setting.cache`). Another instance sees a write only after it refreshes.
-- **Quartz state persists in the app DB.** `schedule-task!` reschedules when the job exists, and on a multi-trigger job with no key match it replaces an arbitrary trigger (`metabase.task.impl/reschedule-task!`). Startup tasks run on every instance and on each restart, so they must be idempotent (`QUARTZ.md`).
+- **Quartz state persists in the app DB.** `schedule-task!` reschedules when the job exists. On a multi-trigger job with no key match, it replaces an arbitrary trigger (`metabase.task.impl/reschedule-task!`). Startup tasks run on every instance and on each restart, so they must be idempotent (`QUARTZ.md`).
 - **Streaming responses share one fixed pool.** Size comes from `MB_ASYNC_QUERY_THREAD_POOL_SIZE`, else `MB_JETTY_MAXTHREADS`, else 50. Blocking work in a streaming body starves every other export.
 - **Cluster locks need a consistent order.** Take several locks by passing `:locks` in the opts map of `do-with-cluster-lock`, not with nested `with-cluster-lock` forms.
 - **Encryption key rotation is a CLI command** (`metabase.cmd.rotate-encryption-key`). It calls `mdb/encrypt-db`, which re-encrypts the raw table and column lists `encrypted-string-columns` and `encrypted-bytes-columns` in `metabase.app-db.encryption`. When you add an encrypted column, add it to those lists too.
 
 ## How to work
 
-1. Migrations: follow the "App-DB migrations" section of the `backend-module-conventions` skill (file layout, IDs, backports, scoped preconditions). Copy the shape of a recent file in the newest dir, run `bin/lint-migrations-file.sh`, and test with the `test-migrations` macro (`metabase.app-db.schema-migrations-test.impl`); `metabase.app-db.schema-migrations-test` and `metabase.app-db.custom-migrations-test` have examples.
-2. Guards and lint: tests are `metabase.app-db.value-guard-test`, `metabase.app-db.query-test`, and `hooks.metabase.toucan.db-ns-test` (run kondo hook tests with `clj -X:dev:test:test/kondo`). A hook change alters lint output for every module, so run `./bin/mage kondo-ratchets` after it.
+1. Migrations: follow the "Add app-DB migrations as one file per change" section of the `backend-module-conventions` skill (file layout, IDs, backports, scoped preconditions). Copy the shape of a recent file in the newest dir. Run `bin/lint-migrations-file.sh`. Test with the `test-migrations` macro (`metabase.app-db.schema-migrations-test.impl`); `metabase.app-db.schema-migrations-test` and `metabase.app-db.custom-migrations-test` have examples.
+2. Guards and lint: run `metabase.app-db.value-guard-test`, `metabase.app-db.query-test`, and `hooks.metabase.toucan.db-ns-test` (run kondo hook tests with `clj -X:dev:test:test/kondo`). A hook change alters lint output for every module, so run `./bin/mage kondo-ratchets` after it.
 3. Middleware and server: read the stack in `metabase.server.handler`, then the one middleware. Tests live in `test/metabase/server/` (`handler-test`, `streaming-response-test`, `middleware/`).
-4. API framework: `metabase.api.macros-test` and `metabase.api.open-api-test`. A change to `defendpoint` touches every endpoint, so also load a few `*.api` namespaces.
-5. Settings: `metabase.settings.models.setting-test`. Check the env-var override and visibility, not only the DB path.
+4. API framework: run `metabase.api.macros-test` and `metabase.api.open-api-test`. A change to `defendpoint` touches every endpoint, so also load a few `*.api` namespaces.
+5. Settings: run `metabase.settings.models.setting-test`. Check the env-var override and visibility, not only the DB path.
 6. Tasks: inspect live state with `metabase.task.impl/scheduler-info` and `job-info` in the REPL before you change triggers.
 7. For cache, locks, settings, and Quartz, check single-instance and multi-instance behaviour. They differ.
 

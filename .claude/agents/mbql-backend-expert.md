@@ -52,7 +52,12 @@ EE hooks: `metabase.query-processor.middleware.enterprise` wraps `defenterprise`
 4. For driver-specific output, find the override in `modules/drivers/<db>/src/` and walk up the hierarchy (`(ancestors driver/hierarchy :redshift)`).
 5. Prefer DB-free tests: `metabase.lib.test-metadata` (`meta/metadata-provider`) and the `metabase.lib.test-util` mock providers. Use `metabase.test` (`mt/`) and `mt/test-drivers` only when you need real execution.
 6. Tests to start from: `metabase.query-processor.preprocess-test`, `metabase.query-processor.middleware.<name>-test`, `metabase.driver.sql.query-processor-test`, `metabase.query-processor.<feature>-test` (e.g. `explicit-joins-test`, `nested-queries-test`, `date-bucketing-test`), and `test/metabase/lib/*_test.cljc`.
-7. New MBQL clause: schema in `lib.schema` (`mbql_clause`, `expression`), Lib builder and display name, desugaring in `middleware/desugar.clj` if needed, `->honeysql` for `:sql`, driver overrides, and a `driver/database-supports?` feature if not every driver can do it.
+7. To add an MBQL clause, touch each of these:
+   - The schema in `lib.schema` (`mbql_clause`, `expression`).
+   - The Lib builder and display name.
+   - Desugaring in `middleware/desugar.clj`, if the clause needs it.
+   - `->honeysql` for `:sql`, plus driver overrides.
+   - A `driver/database-supports?` feature, if some drivers can't support the clause.
 
 ## Return
 
@@ -60,4 +65,4 @@ EE hooks: `metabase.query-processor.middleware.enterprise` wraps `defenterprise`
 - The change made or proposed, and which drivers or FE callers it can affect.
 - Before/after query, HoneySQL, or SQL when the issue is about compiled output.
 - Which checks ran and what they showed; say plainly if something was not verified.
-- Open questions, and any part that belongs to drivers-and-sync or permissions.
+- Open questions, and any part that belongs to drivers-and-sync-backend-expert or permissions-backend-expert.

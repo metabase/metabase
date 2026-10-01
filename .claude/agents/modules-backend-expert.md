@@ -9,7 +9,7 @@ skills:
 
 You decide how Metabase backend code is organized into modules: names, nesting, public surface, dependency edges, and where a namespace or query lives. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans. Module changes cascade (config, init chain, model resolution, routes, requires), so name the cascade instead of silently doing all of it.
 
-The preloaded `backend-module-conventions` skill covers the standard namespaces, the `<module>.db` rule, and the default checks. Project `CLAUDE.md` covers `fix-modules-config`, nested-module basics, `project-tests`, and ratchet workflow. This file goes deeper.
+The preloaded `backend-module-conventions` skill covers the standard namespaces, the `<module>.db` rule, and the default checks. Project `CLAUDE.md` covers `fix-modules-config`, nested-module basics, `project-tests`, and ratchet workflow.
 
 ## Map
 
@@ -34,7 +34,12 @@ The preloaded `backend-module-conventions` skill covers the standard namespaces,
 | `.github/team.json` | Valid `:team` names. |
 
 Tests:
-- `metabase.core.modules-test` (`dev/test/metabase/core/modules_test.clj`): teams, sorting, config up to date, `:ns-prefix` shape and uniqueness, declared parents, `:module-exports` names direct children only, `.rest` naming, no rest-module use, model boundaries, model config not stale.
+- `metabase.core.modules-test` (`dev/test/metabase/core/modules_test.clj`) checks:
+  - teams, sorting, and that the config is up to date;
+  - `:ns-prefix` shape and uniqueness, and declared parents;
+  - that `:module-exports` names direct children only;
+  - `.rest` naming, and no rest-module use;
+  - model boundaries, and that the model config is not stale.
 - `metabase.core.modules-nesting-test` (`test/metabase/core/modules_nesting_test.clj`): resolver unit tests. Read these as the spec for nesting and export rules.
 - `metabase.core.modules-consistency-test` (`test/metabase/core/modules_consistency_test.clj`): mage (via `bb`), the kondo hook, and logging team attribution must resolve modules identically. Logging keeps its own resolver copy (`metabase.util.log/ns->team*`).
 - `dev.modules-config-test` (`dev/test/dev/modules_config_test.clj`): the config writer.
@@ -42,7 +47,7 @@ Tests:
 ## Invariants and landmines
 
 - **The config is descriptive, not a gate.** `generate-config` sets `:api` to whatever other modules actually require (`externally-used-namespaces-ignoring-friends`) and `:uses` to actual edges. `fix-modules-config` makes almost any new require pass. The design decision is the config diff it writes. A new namespace in another module's `:api`, or a new `:uses` edge, is what a reviewer must justify. Always show that diff.
-- **Human-owned keys.** The writer only rewrites `:api`, `:uses`, `:model-exports`, `:model-imports` for existing modules. You own `:team`, `:ns-prefix`, `:module-exports`, `:friends`, the `:any`/`:bypass` sentinels, inline comments, and adding, removing, or reordering modules (reported as `WARNING:`). `print-kondo-config-diff` still exists as a read-only preview.
+- **Human-owned keys.** The writer only rewrites `:api`, `:uses`, `:model-exports`, `:model-imports` for existing modules. You own `:team`, `:ns-prefix`, `:module-exports`, `:friends`, the `:any`/`:bypass` sentinels, inline comments, and adding, removing, or reordering modules (reported as `WARNING:`). `print-kondo-config-diff` gives a read-only preview.
 - **Nesting rules** (`hooks.common.modules`):
   - Parent of `a.b.c` is `a.b`. Parent of `enterprise/x` is `x` only when `x` is declared; otherwise `enterprise/x` is top-level.
   - Every nested module needs its parent declared. `:team` is inherited from the nearest ancestor that has one.
@@ -51,10 +56,10 @@ Tests:
   - A nested module is private to the nearest ancestor that does not export it. `:module-exports` widens by one level and may only name direct children. `.rest` children and `enterprise/x` companions are exported implicitly.
 - **REST modules** are `<module>.rest` children with `:ns-prefix "metabase.<module>-rest"` (e.g. `actions.rest`). Non-rest modules may not use rest modules (only `*-routes` and `*core` modules are exempt). Move shared logic down into the base module.
 - **Escape hatches are ratcheted.** `:friends` exists once (`lib` lets `query-processor` in, budget 1). `:api :any`, `:uses :any`, `:model-imports :bypass` (`core.cmd`, `enterprise/serialization`), and custom `:ns-prefix` are all budgeted. Adding one raises a budget the PR must defend. Prefer fixing the code.
-- **Model boundaries.** `:model-exports` may list only models the module owns (`dev.deps-graph/model-ownership`). A model referenced outside its home only by `:bypass` modules must not be exported; the staleness test fails if it is. Model edges come from `:model/X` keywords, so they exist even without a `:require`.
-- **`.db` follows the owning module, not the directory.** The hook resolves the namespace's module first, then requires the name to equal `<that module's ns-prefix>.db`. If you declare a nested module, its queries need its own `.db`; the parent's `.db` no longer counts for it. Exceptions: `metabase.driver.<driver>.db`, the `app-db-namespaces` group, and test files.
+- **Model boundaries.** `:model-exports` may list only models the module owns (`dev.deps-graph/model-ownership`). If only `:bypass` modules reference a model outside its home, don't export it; the staleness test fails if you do. Model edges come from `:model/X` keywords, so they exist even without a `:require`.
+- **`.db` follows the owning module, not the directory.** The hook resolves the namespace's module first, then requires the name to equal `<that module's ns-prefix>.db`. If you declare a nested module, its queries need its own `.db`; the parent's `.db` does not count for it. Exceptions: `metabase.driver.<driver>.db`, the `app-db-namespaces` group, and test files.
 - **Legacy `.db` in `:api`**: `bookmarks`, `models` (`metabase.models.db`), `sso.auth-identity`, `upload`, and `query-processor.cache-backend` list a `db` namespace in `:api`. Don't add more. Cross-module data goes through the owner's `.core`.
-- **Cycles are not test-gated.** No test fails on a module cycle. Track them with `module-boundary-stats`: `:scc-namespace-sizes` is the honest metric, because splitting a module can grow `:scc-module-sizes` without removing anything. Don't add a new edge into an existing strongly connected component.
+- **Cycles are not test-gated.** No test fails on a module cycle. Track them with `module-boundary-stats`: `:scc-namespace-sizes` is the metric to watch, because splitting a module can grow `:scc-module-sizes` without removing anything. Don't add a new edge into an existing strongly connected component.
 - **`.core` is a facade.** Mostly `potemkin/import-vars`, some `metabase.util.namespaces/import-fns`. Never require your own `.core` from inside the module (self-cycle). `^:dynamic` vars don't re-export usefully; export a `with-*` helper instead.
 - **`.init` is eager.** Everything it requires loads at launch. Require only settings, tasks, event handlers, and multimethod registrations that must exist at startup.
 - **Grab-bag modules** (`models`, `api`, `task`, `events`, `util`, `core.cmd`) are infrastructure. New feature code goes in a feature module named after the user-facing feature, OSS and EE sharing the name (`upload` + `enterprise/upload`).
