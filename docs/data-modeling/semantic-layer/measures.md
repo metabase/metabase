@@ -13,7 +13,7 @@ People will see measures as options in the Summarize block of the [query builder
 
 ![Measure in the query builder](./images/measure.png)
 
-Measures can be associated with any table. Measures associated with [_published_ tables](published-tables.md) are part of of Metabase's [semantic layer](.)
+You can define measures on any table. Measures on [published tables](published-tables.md) are part of your [semantic layer](library.md#semantic-layer).
 
 ## Create measures
 
@@ -69,7 +69,7 @@ You can explore measures along dimensions and compare several measures in the [M
 
 ![Explore a measure](./images/explore-measure.png)
 
-To see all measures on a table, select the table in [Data Studio > Managing tables](../metadata/managing-tables.md) and switch to the **Measures** tab.
+To see all measures on a table, select the table in [Data Studio > Connected data](../metadata/managing-tables.md) and switch to the **Measures** tab.
 
 ## Permissions for measures
 

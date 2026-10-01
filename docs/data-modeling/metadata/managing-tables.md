@@ -34,25 +34,27 @@ You can see all tables in all databases connected to your Metabase in **Data Stu
 
 You can search for table names, but the search will only match beginnings of words in table names. So for example, if you search for "base", results will include names like "Baseball stats" and "All your base are belong to us", but the results won't include tables like "Metabase secrets".
 
-You can also filter tables by attributes like owners, visibility, or source - for example, if you wanted to find all hidden tables, or all tables created from CSV uploads.
+You can also filter tables by attributes like owners, visibility, or source - for example, if you wanted to find all hidden tables, or all tables created from CSV uploads. To find tables that nothing else in your Metabase uses, select **Table isn't referenced by anything**. On Pro and Enterprise plans, you can also select **Published tables only**.
 
-You can set [table attributes](#table-attributes), [edit metadata](#table-and-field-metadata), [publish the table](#publishing-and-unpublishing-tables) or create [segments](../semantic-layer/segments.md) or [measures](../semantic-layer/measures.md) on the table. You can also select tables in bulk to publish or assign attributes (including visibility) to multiple tables at once.
+You can set [table attributes](#table-attributes), [edit metadata](#table-and-field-metadata), [publish the table](#publishing-and-unpublishing-tables) or create [segments](../semantic-layer/segments.md) or [measures](../semantic-layer/measures.md) on the table. You can also select tables in bulk to publish or unpublish them, change their [sync settings](#sync-settings), or assign attributes (including visibility) to multiple tables at once.
 
 ## Publishing and unpublishing tables
 
 _Data Studio > Connected data > Details_
 
-![Publishing a table from Data structure](../images/data-structure-publish.png)
+![Publishing a table from Connected data](../images/data-structure-publish.png)
 
 {% include plans-blockquote.html feature="Publishing tables to the Library" %}
 
-Once you select a table in **Data Studio > Tables**, you can publish the table to add it to the Library. The Library is a special collection that helps you create a source of truth for analytics by providing a centrally managed set of curated content.
+Once you select a table in **Data Studio > Connected data**, you can click **Publish** on the table's **Details** tab to add the table to the Library. The Library is a special collection that helps you create a source of truth for analytics by providing a centrally managed set of curated content.
 
-See [Publishing tables](../semantic-layer/library.md#publishing-tables) in the [Library docs](../semantic-layer/library.md).
+See [Published tables](../semantic-layer/published-tables.md).
 
 ## Find and replace tables
 
-You can replace every occurrence of a table as a data source with another table. See [Replace data sources](../tools/replace-data-sources.md).
+{% include plans-blockquote.html feature="Replacing data sources" %}
+
+Admins can replace every occurrence of a table as a data source with another table. Select the table in **Data Studio > Connected data**, click the **three-dot** menu on the table's **Details** tab, and select **Find and replace**. See [Replace data sources](../tools/replace-data-sources.md).
 
 ## Sync settings
 
