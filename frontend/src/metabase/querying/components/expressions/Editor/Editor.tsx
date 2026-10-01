@@ -55,11 +55,20 @@ export type EditorProps = {
   onCloseEditor?: () => void;
   initialExpressionClause?: Lib.DefinedClauseName | null;
 
+  /** Off outside a popover: the guard swallows clicks page-wide. */
+  withPopoverExitGuard?: boolean;
+
   onChange: (
     clause: Lib.ExpressionClause | null,
     error: ExpressionError | null,
+    meta: EditorChangeMeta,
   ) => void;
   shortcuts?: Shortcut[];
+};
+
+export type EditorChangeMeta = {
+  /** False for the initial format pass, so autosaving callers can skip it. */
+  hasSourceChanged: boolean;
 };
 
 const EDITOR_WIDGET_HEIGHT = 220;
@@ -81,6 +90,7 @@ export function Editor(props: EditorProps) {
     hasHeader,
     onCloseEditor,
     initialExpressionClause,
+    withPopoverExitGuard = true,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -106,7 +116,8 @@ export function Editor(props: EditorProps) {
   });
 
   const { showModal, closeModal } = useCloseModal({
-    allowPopoverExit: source === "" || !hasSourceChanged,
+    allowPopoverExit:
+      !withPopoverExitGuard || source === "" || !hasSourceChanged,
   });
 
   const [customTooltip, portal] = useCustomTooltip({
@@ -192,7 +203,7 @@ export function Editor(props: EditorProps) {
               : undefined
           }
         />
-        <Errors error={isSnippetActive ? null : error} />
+        <Errors error={isSnippetActive ? null : error} source={source} />
 
         {source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
@@ -266,6 +277,8 @@ function useExpression({
 }) {
   const [source, setSource] = useState("");
   const [initialSource, setInitialSource] = useState("");
+  // CodeMirror reports the formatted source before the state above settles.
+  const initialSourceRef = useRef("");
   const [isFormatting, setIsFormatting] = useState(true);
   const [isValidated, setIsValidated] = useState(false);
   const errorRef = useRef<ExpressionError | null>(null);
@@ -277,6 +290,7 @@ function useExpression({
         setSource(source);
         if (initial) {
           setInitialSource(source);
+          initialSourceRef.current = source;
         }
       }
 
@@ -298,10 +312,10 @@ function useExpression({
   );
 
   const handleChange = useCallback<typeof onChange>(
-    (clause, error) => {
+    (clause, error, meta) => {
       setIsValidated(true);
       errorRef.current = error;
-      onChange(clause, error);
+      onChange(clause, error, meta);
     },
     [onChange],
   );
@@ -316,9 +330,11 @@ function useExpression({
       setSource(source);
       setIsValidated(false);
 
+      const meta = { hasSourceChanged: source !== initialSourceRef.current };
+
       if (source.trim() === "") {
         debouncedOnChange.cancel();
-        handleChange(null, null);
+        handleChange(null, null, meta);
         return;
       }
 
@@ -334,9 +350,9 @@ function useExpression({
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
-        handleChange(clause, error);
+        handleChange(clause, error, meta);
       } else {
-        debouncedOnChange(clause, error);
+        debouncedOnChange(clause, error, meta);
       }
     },
     [

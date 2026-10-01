@@ -34,6 +34,26 @@
   }
 }
 
+.inline {
+  --main-width: 100%;
+  --main-height: 20rem;
+
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+
+  @media screen and (--breakpoint-max-md) {
+    --main-width: 100%;
+  }
+
+  @media screen and (--breakpoint-max-sm) {
+    --main-width: 100%;
+    --main-height: 15rem;
+
+    position: static;
+    grid-template-rows: min-content min-content min-content;
+  }
+}
+
 .header {
   height: var(--header-height);
   grid-row: 1;

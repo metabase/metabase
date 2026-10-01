@@ -7,8 +7,13 @@ import S from "./Layout.module.css";
 
 type Props = BoxProps & HTMLAttributes<HTMLDivElement>;
 
-export function Layout(props: Props) {
-  return <Box {...props} className={cx(S.layout, props.className)} />;
+export function Layout({ inline, ...props }: Props & { inline?: boolean }) {
+  return (
+    <Box
+      {...props}
+      className={cx(S.layout, { [S.inline]: inline }, props.className)}
+    />
+  );
 }
 
 export function LayoutHeader(props: Props) {

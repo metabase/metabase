@@ -1,0 +1,21 @@
+.closeIcon {
+  margin-left: 0.5rem;
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+
+.inputRoot {
+  display: flex;
+}
+
+.input {
+  min-height: unset;
+  height: auto;
+  padding: 0;
+  font-weight: bold;
+  color: inherit;
+  background: transparent;
+  border: none;
+  field-sizing: content;
+  min-width: 4rem;
+}

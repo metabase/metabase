@@ -234,6 +234,8 @@ const getActualColors = (brand: BrandRamp) => ({
   "core-white": baseColors.white,
   "core-white_constant": baseColors.white,
   "core-yellow-saturated": baseColors.dubloon[30],
+  "custom_column-selected": baseColors.orion[70],
+  "custom_column_label-selected": baseColors.white,
   "feedback-negative": baseColors.lobster[50],
   "feedback-negative-strong": baseColors.lobster[60],
   "feedback-neutral-strong": baseColors.orionAlpha[60],
