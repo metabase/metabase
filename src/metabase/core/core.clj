@@ -21,8 +21,10 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
+   [metabase.oauth-server.api :as oauth-server.api]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -30,6 +32,7 @@
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
+   [metabase.sso.auth-wrapper :as auth-wrapper]
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
@@ -277,8 +280,11 @@
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver
-    (let [server-routes (server/make-routes #'api-routes/routes)
-          handler       (server/make-handler server-routes)]
+    (let [server-routes (server/make-routes {:api        #'api-routes/routes
+                                             :auth       #'auth-wrapper/routes
+                                             :oauth      #'oauth-server.api/oauth-routes
+                                             :well-known #'oauth-server.api/well-known-routes})
+          handler       (server/make-handler server-routes #'mcp.http-handler/options)]
       (server/start-web-server! handler))
     ;; run our initialization process
     (init!)

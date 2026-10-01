@@ -69,6 +69,7 @@ export interface Database extends DatabaseData {
   native_permissions: "write" | "none";
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
+  initial_sync_error?: string | null;
   description?: string;
   caveats?: string;
   points_of_interest?: string;
