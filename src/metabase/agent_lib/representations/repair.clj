@@ -2795,10 +2795,23 @@
 ;;; row to every row. Reject it while the LLM can still fix it.
 ;;; ============================================================
 
+(defn- join-anchoring-ref?
+  "True if field ref `clause` names a column of `join`: it carries the join's `alias`, it's a
+  portable ref into the join's own `source-table`, or it's a numeric field id - which names its
+  table too, so the resolver places it without needing `join-alias`."
+  [join clause]
+  (let [id-or-name   (nth clause 2)
+        source-table (get-in join ["stages" 0 "source-table"])]
+    (or (= (get join "alias") (get (nth clause 1) "join-alias"))
+        (pos-int? id-or-name)
+        (and (sequential? id-or-name)
+             (sequential? source-table)
+             (= (seq source-table) (take (count source-table) id-or-name))))))
+
 (defn- unanchored-join-condition
   "Return the first condition of `join` that has a string-named field ref without `join-alias`
-  and no ref carrying the join's own `alias`, or nil. Conditions written only with portable refs
-  are left to the resolver, which places a joined table's portable refs itself."
+  and no [[join-anchoring-ref?]], or nil. Conditions written only with portable refs are left to
+  the resolver, which places a joined table's portable refs itself."
   [join]
   (let [join-alias (when (map? join) (get join "alias"))
         conditions (when (map? join) (get join "conditions"))]
@@ -2807,7 +2820,7 @@
                 (let [refs (match/match-many condition
                              ["field" (_ :guard map?) _] &match)]
                   (and (some #(and (string-cross-stage-field-clause? %) (not (join-alias-ref? %))) refs)
-                       (not-any? #(= join-alias (get (nth % 1) "join-alias")) refs))))
+                       (not-any? #(join-anchoring-ref? join %) refs))))
               conditions))))
 
 (defn- assert-join-conditions-name-join*
