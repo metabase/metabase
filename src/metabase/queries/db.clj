@@ -152,11 +152,16 @@
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
 (mu/defn dashcard-counts-by-card
-  "Rows of `:card_id` and `:count` of DashboardCards for each of `card-ids`."
+  "Rows of `:card_id` and `:count` of DashboardCards each of `card-ids` appears on, directly or as a series."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
-             :from     [:report_dashboardcard]
-             :where    [:in :card_id card-ids]
+             :from     [[^:allow-subquery {:union-all [^:allow-subquery {:select [:card_id]
+                                                                         :from   [:report_dashboardcard]
+                                                                         :where  [:in :card_id card-ids]}
+                                                       ^:allow-subquery {:select [:card_id]
+                                                                         :from   [:dashboardcard_series]
+                                                                         :where  [:in :card_id card-ids]}]}
+                         :placements]]
              :group-by [:card_id]}))
 
 (mu/defn parameter-card-counts-by-card
@@ -348,6 +353,19 @@
                                     :from   [:action]
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
+
+(mu/defn action-ids-for-model
+  "The IDs of the Actions of the model Card with `model-id`, leaving out archived Actions when `skip-archived`."
+  [model-id      :- ms/PositiveInt
+   skip-archived :- [:maybe :boolean]]
+  (if skip-archived
+    (t2/select-pks-set :model/Action :model_id model-id :archived false)
+    (t2/select-pks-set :model/Action :model_id model-id)))
+
+(mu/defn actions-for-model
+  "The Actions of the model Card with `model-id`."
+  [model-id :- ms/PositiveInt]
+  (t2/select :model/Action :model_id model-id))
 
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."

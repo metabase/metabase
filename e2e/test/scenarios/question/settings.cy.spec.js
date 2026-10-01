@@ -24,6 +24,7 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
 
       cy.findByTestId("sidebar-content").as("tableOptions");
+      H.tableInteractive().contains("Total");
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
 
@@ -460,9 +461,9 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders").click();
 
-      // This next assertion might not catch bugs where the modal displays after
-      // a quick delay. With the previous presentation of this bug, the modal
-      // was immediately visible, so I'm not going to add any waits.
+      cy.location("pathname").should("eq", `/table/${ORDERS_ID}-orders`);
+      H.tableInteractive().should("be.visible");
+      H.entityPickerModal().should("not.exist");
       H.modal().should("not.exist");
     });
   });

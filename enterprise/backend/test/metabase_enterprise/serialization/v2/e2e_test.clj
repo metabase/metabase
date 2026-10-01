@@ -934,6 +934,50 @@
                                                      :breakout    [[:field {} (mt/id :orders :user_id)]]}]}}
                           (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
 
+(deftest metric-dimensions-round-trip-test
+  (testing "a metric's curated dimensions and mappings survive export to YAML files and import"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [dim-id "11111111-1111-4111-8111-111111111111"]
+            (mt/with-temp
+              [:model/Collection {coll-id :id} {:name "Collection"}
+               :model/Card       _metric       {:name               "Metric With Dimensions"
+                                                :collection_id      coll-id
+                                                :type               :metric
+                                                :dataset_query      (mt/mbql-query orders {:aggregation [[:count]]})
+                                                :dimensions         [{:id             dim-id
+                                                                      :name           "CATEGORY"
+                                                                      :display-name   "Category"
+                                                                      :effective-type :type/Text
+                                                                      :status         :status/active
+                                                                      :sources        [{:type     :field
+                                                                                        :field-id (mt/id :products :category)}]}]
+                                                :dimension_mappings [{:type         :table
+                                                                      :table-id     (mt/id :products)
+                                                                      :dimension-id dim-id
+                                                                      :target       [:field
+                                                                                     {:lib/uuid     "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                                                                                      :source-field (mt/id :orders :product_id)}
+                                                                                     (mt/id :products :category)]}]}]
+              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+                (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
+              (ts/with-db dest-db
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (is (=? {:dimensions         [{:id             dim-id
+                                               :effective-type :type/Text
+                                               :status         :status/active
+                                               :sources        [{:type     :field
+                                                                 :field-id (mt/id :products :category)}]}]
+                         :dimension_mappings [{:type         :table
+                                               :table-id     (mt/id :products)
+                                               :dimension-id dim-id
+                                               :target       [:field
+                                                              {:source-field (mt/id :orders :product_id)}
+                                                              (mt/id :products :category)]}]}
+                        (t2/select-one :model/Card :name "Metric With Dimensions")))))))))))
+
 (deftest gui-question-joined-to-native-source-card-survives-roundtrip-test
   (testing "GUI question joining a native source-card should still run after serdes export+import (GHY-3801)"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]

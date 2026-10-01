@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,6 +19,7 @@
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -58,7 +60,16 @@
         (testing "add to a second Dashboard"
           (add-card-to-dash! dash-2)
           (is (= 2
-                 (get-dashboard-count))))))))
+                 (get-dashboard-count))))
+        (testing "a series placement on another card's dashcard counts too"
+          (mt/with-temp [:model/Card                {other-card-id :id} {}
+                         :model/DashboardCard       {dashcard-id :id}   {:card_id      other-card-id
+                                                                         :dashboard_id (u/the-id dash-1)}
+                         :model/DashboardCardSeries _                   {:dashboardcard_id dashcard-id
+                                                                         :card_id          card-id
+                                                                         :position         0}]
+            (is (= 3
+                   (get-dashboard-count)))))))))
 
 (deftest dropdown-widget-values-usage-count-test
   (let [hydrated-count (fn [card] (-> card
@@ -758,6 +769,87 @@
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2) {}))))))
 
+(deftest ^:parallel descendants-model-actions-test
+  (testing "GHY-4722: a model's actions are its descendants, though the model doesn't reference them"
+    (mt/with-temp [:model/Card   {model-id :id}    {:type          :model
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    {:source-table (mt/id :venues)}}}
+                   :model/Action {action-id :id}   {:type :implicit :name "Live" :model_id model-id}
+                   :model/Action {archived-id :id} {:type :implicit :name "Archived" :model_id model-id :archived true}]
+      (is (= {["Action" action-id]   {"Card" model-id}
+              ["Action" archived-id] {"Card" model-id}}
+             (serdes/descendants "Card" model-id {})))
+      (testing "with :skip-archived, archived actions are left out"
+        (is (= {["Action" action-id] {"Card" model-id}}
+               (serdes/descendants "Card" model-id {:skip-archived true})))))))
+
+(defn- action-events-during!
+  "The set of `[topic action-id archived?]` for the action events `thunk` publishes."
+  [thunk]
+  (let [published (atom #{})]
+    (with-redefs [events/publish-event! (fn [topic {:keys [object]}]
+                                          (when (#{:event/action-create :event/action-update :event/action-delete} topic)
+                                            (swap! published conj [topic (:id object) (boolean (:archived object))])))]
+      (thunk))
+    @published))
+
+(defn- do-with-model-actions!
+  "Runs `f` with `{:model-id :implicit :query :archived}`: a model with an implicit action, a query action, and an
+  already-archived query action."
+  [f]
+  (mt/with-temp [:model/Card   {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                 :model/Action {implicit :id} {:type :implicit :name "Create" :model_id model-id}
+                 :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
+                 :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
+    ;; the implicit_action row is what marks an action implicit to the queries that retire them
+    (t2/insert! :model/ImplicitAction {:action_id implicit :kind "row/create"})
+    (f {:model-id model-id :implicit implicit :query query :archived archived})))
+
+(defn- update-model!
+  "Updates the model Card with `model-id` through [[card/update-card!]], as the API does."
+  [model-id changes]
+  (mt/with-test-user :crowberto
+    (card/update-card! {:card-before-update (t2/select-one :model/Card model-id)
+                        :card-updates       changes})))
+
+(defn- filtered-venues-query
+  "A venues query with a filter, which does not support implicit actions."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))))
+
+(deftest model-becoming-question-publishes-action-events-test
+  (testing "GHY-4722: update-card! announces the actions it archives and deletes when a model becomes a question"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit query]}]
+       (is (= #{[:event/action-update query true]
+                [:event/action-delete implicit false]}
+              (action-events-during! #(update-model! model-id {:type :question}))))))))
+
+(deftest model-query-without-implicit-support-publishes-action-events-test
+  (testing "GHY-4722: update-card! announces the implicit actions it deletes when a model query no longer supports them"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit]}]
+       (is (= #{[:event/action-delete implicit false]}
+              (action-events-during! #(update-model! model-id {:dataset_query (filtered-venues-query)}))))))))
+
+(deftest model-changes-outside-update-card-publish-no-action-events-test
+  (testing "GHY-4722: a serdes load writes models with t2 directly, and must not publish action events (they would dirty the remote sync ledger during a pull)"
+    (testing "a model becoming a question"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/update! :model/Card model-id {:type :question})))))))
+    (testing "a model query that no longer supports implicit actions"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/update! :model/Card model-id {:dataset_query (filtered-venues-query)})))))))
+    (testing "a deleted model"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/delete! :model/Card model-id)))))))))
+
 (deftest ^:parallel extract-result-metadata-non-model-test
   (testing "non-model Card extraction drops :result_metadata entirely"
     (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
@@ -821,6 +913,31 @@
             "native model keeps structural type info the target can't re-derive")
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
         (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
+
+(deftest serdes-load-legacy-query-integer-literals-test
+  (testing "a Card loaded from a legacy-MBQL export keeps integer literals in comparisons and runs"
+    (let [db-name  (t2/select-one-fn :name :model/Database (mt/id))
+          price-id (mt/id :venues :price)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+              ;; `price-id` is the Field ID of VENUES.PRICE, so coercing it would silently filter on that column
+              legacy    {:database db-name
+                         :type     "query"
+                         :query    {:source-table [db-name "PUBLIC" "VENUES"]
+                                    :aggregation  [["count"]]
+                                    :filter       ["=" price-id price-id]
+                                    :joins        [{:source-table [db-name "PUBLIC" "CATEGORIES"]
+                                                    :alias        "C"
+                                                    :strategy     "left-join"
+                                                    :condition    ["=" 1 1]}]}}]
+          (serdes/load-one! (assoc extracted :dataset_query legacy)
+                            (t2/select-one :model/Card :id card-id))
+          (let [query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+            (is (=? {:stages [{:filters [[:= {} price-id price-id]]
+                               :joins   [{:conditions [[:= {} 1 1]]}]}]}
+                    query))
+            (is (= [[(* 100 75)]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
@@ -1138,6 +1255,42 @@
       (testing "CAN 'update' the type"
         (is (card/update-card! {:card-before-update card
                                 :card-updates {:type :question}}))))))
+
+(deftest updating-dashboard-internal-card-used-on-other-dashboards-test
+  ;; #82237
+  (mt/with-temp [:model/Dashboard     {home-dash-id :id}  {}
+                 :model/Dashboard     {other-dash-id :id} {}
+                 :model/Dashboard     {third-dash-id :id} {}
+                 :model/Card          card                {:dashboard_id home-dash-id}
+                 :model/DashboardCard _                   {:card_id (:id card) :dashboard_id other-dash-id}]
+    (mt/with-test-user :rasta
+      (testing "re-sending the unchanged dashboard_id alongside an edit succeeds"
+        (is (= "edited"
+               (:name (card/update-card! {:card-before-update card
+                                          :card-updates       {:name "edited" :dashboard_id home-dash-id}})))))
+      (testing "moving it into a different dashboard is still rejected"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can't move question into dashboard"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates       {:dashboard_id third-dash-id}})))))))
+
+(deftest moving-collection-card-into-dashboard-while-on-other-dashboards-test
+  ;; Model-level guard for the narrowed check above; the API layer covers the same moves in
+  ;; `metabase.queries-rest.api.card-test`.
+  (mt/with-temp [:model/Dashboard     {dash-id :id}       {}
+                 :model/Dashboard     {other-dash-id :id} {}
+                 :model/Card          card                {}
+                 :model/DashboardCard _                   {:card_id (:id card) :dashboard_id other-dash-id}]
+    (mt/with-test-user :rasta
+      (testing "without delete-old-dashcards? the move is rejected"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can't move question into dashboard"
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates       {:dashboard_id dash-id}}))))
+      (testing "with delete-old-dashcards? the other dashcards are removed and the move succeeds"
+        (is (= dash-id
+               (:dashboard_id (card/update-card! {:card-before-update    card
+                                                  :card-updates          {:dashboard_id dash-id}
+                                                  :delete-old-dashcards? true}))))
+        (is (not (t2/exists? :model/DashboardCard :card_id (:id card) :dashboard_id other-dash-id)))))))
 
 (deftest update-does-not-break
   ;; There's currently a footgun in Toucan2 - if 1) the result of `before-update` doesn't have an ID, 2) part of your

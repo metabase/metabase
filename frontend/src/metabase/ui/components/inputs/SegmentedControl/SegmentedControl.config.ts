@@ -1,8 +1,6 @@
 import {
-  type MantineTheme,
   type MantineThemeOverride,
   SegmentedControl,
-  type SegmentedControlProps,
   rem,
 } from "@mantine/core";
 
@@ -11,45 +9,16 @@ import S from "./SegmentedControl.module.css";
 export const segmentedControlOverrides: MantineThemeOverride["components"] = {
   SegmentedControl: SegmentedControl.extend({
     defaultProps: {
-      size: "md",
-      radius: rem(4),
+      size: "sm",
+      radius: rem(6),
     },
     classNames: {
       root: S.SegmentedControl,
       label: S.SegmentedControlLabel,
+      innerLabel: S.SegmentedControlInnerLabel,
       control: S.SegmentedControl_Control,
       input: S.SegmentedControlInput,
+      indicator: S.SegmentedControlIndicator,
     },
-    vars: (theme, props) => ({
-      root: {
-        "--sc-active-text-color": props.c ?? "var(--mb-color-text-primary)",
-        "--sc-background-color":
-          props.bg ?? "var(--mb-color-background_page-tertiary)",
-        ...(!props.color && {
-          "--sc-color": "var(--mb-color-background_page-primary)",
-        }),
-        "--sc-padding": getPadding(theme, props),
-        "--sc-font-size": theme.fontSizes.md,
-      },
-    }),
   }),
 };
-
-function getPadding(
-  theme: MantineTheme,
-  { fullWidth, size }: SegmentedControlProps,
-): string {
-  if (fullWidth) {
-    if (size === "sm") {
-      return `${theme.spacing.xxs} ${theme.spacing.sm}`;
-    }
-
-    return `${theme.spacing.sm} ${theme.spacing.lg}`;
-  }
-
-  if (size === "sm") {
-    return theme.spacing.xxs;
-  }
-
-  return theme.spacing.sm;
-}

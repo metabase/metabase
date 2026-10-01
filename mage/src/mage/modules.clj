@@ -183,6 +183,7 @@
      pulse
      remote-sync
      request
+     request.schema
      sample-data
      search
      warehouses.secrets
@@ -198,6 +199,7 @@
      system
      task
      task.history
+     task.secure-delegate
      tiles
      timeline
      tracing
