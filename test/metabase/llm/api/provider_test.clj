@@ -150,7 +150,7 @@
                   {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
                   {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
                   {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                  {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
+                  {:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]
                  (:models google)))))
       (testing "the alternative credential groups ride along so the form knows when the config is complete"
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
@@ -1181,7 +1181,7 @@
                               {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
                               {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
                               {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                              {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]}]
+                              {:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]}]
                    (mt/user-http-request :crowberto :get 200 "llm/models")))
             (is (= "google/gemini-3.5-flash" @probed))))))))
 

@@ -84,6 +84,7 @@
       "anthropic/claude-opus-4-6"           1000000
       "anthropic/claude-sonnet-5"           1000000
       "anthropic/claude-sonnet-4-6"         1000000
+      "anthropic/claude-haiku-4-5"           200000
       "anthropic/claude-haiku-4-5@20251001"  200000
       "anthropic/claude-unknown"            nil)))
 

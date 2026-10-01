@@ -178,6 +178,26 @@
       "metabase" (validate-managed-model! model)
       nil)))
 
+(def ^:private renamed-google-models
+  "Google model IDs Metabase has offered that Google has since renamed, mapped to the current ID, so a stored selection
+  still matches a model the picker lists, e.g. `anthropic/claude-haiku-4-5@20251001` → `anthropic/claude-haiku-4-5`.
+  A rename usually needs a matching entry in [[metabase.metabot.self.google.raw-predict/undated-aliases]], which keys
+  the current ID to the Claude adapter's model limits.
+
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-4-5"
+  {"anthropic/claude-haiku-4-5@20251001" "anthropic/claude-haiku-4-5"})
+
+(defn- current-model-ref
+  "`model-ref` with a renamed Google model replaced by its current ID ([[renamed-google-models]]); a ref on any other
+  connection type, or any other value, unchanged."
+  [model-ref]
+  (let [conn-key (some-> model-ref llm.provider/model-ref->connection-key)
+        model    (some-> model-ref llm.provider/model-ref->model renamed-google-models)]
+    ;; `model` first: the connection lookup runs only for a stored ref that names a renamed model
+    (if (and model (= "google" (:type (llm.provider/connection conn-key))))
+      (str conn-key "/" model)
+      model-ref)))
+
 (defsetting llm-metabot-provider
   (deferred-tru "The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.")
   :type             :string
@@ -186,6 +206,7 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
+  :getter           #(current-model-ref (setting/get-value-of-type :string :llm-metabot-provider))
   :setter           (fn [new-value]
                       (when new-value
                         (validate-model-ref! new-value))
@@ -204,7 +225,7 @@
   from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model quick tasks happen
   to run on want this: [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked."
   []
-  (setting/get-value-of-type :string :llm-mini-model))
+  (current-model-ref (setting/get-value-of-type :string :llm-mini-model)))
 
 (defn- -llm-mini-model
   "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the

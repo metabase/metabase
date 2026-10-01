@@ -190,17 +190,17 @@ Credentials:
 
 Supported models:
 
-| Model             | Model ID                              |
-| ----------------- | ------------------------------------- |
-| Claude Fable 5    | `anthropic/claude-fable-5`            |
-| Claude Haiku 4.5  | `anthropic/claude-haiku-4-5@20251001` |
-| Claude Opus 4.6   | `anthropic/claude-opus-4-6`           |
-| Claude Opus 5     | `anthropic/claude-opus-5`             |
-| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6`         |
-| Claude Sonnet 5   | `anthropic/claude-sonnet-5`           |
-| Gemini 3.5 Flash  | `google/gemini-3.5-flash`             |
-| Gemini 3.6 Flash  | `google/gemini-3.6-flash`             |
-| Gemini 3.7 Flash  | `google/gemini-3.7-flash`             |
+| Model             | Model ID                      |
+| ----------------- | ----------------------------- |
+| Claude Fable 5    | `anthropic/claude-fable-5`    |
+| Claude Haiku 4.5  | `anthropic/claude-haiku-4-5`  |
+| Claude Opus 4.6   | `anthropic/claude-opus-4-6`   |
+| Claude Opus 5     | `anthropic/claude-opus-5`     |
+| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6` |
+| Claude Sonnet 5   | `anthropic/claude-sonnet-5`   |
+| Gemini 3.5 Flash  | `google/gemini-3.5-flash`     |
+| Gemini 3.6 Flash  | `google/gemini-3.6-flash`     |
+| Gemini 3.7 Flash  | `google/gemini-3.7-flash`     |
 
 Credentials:
 

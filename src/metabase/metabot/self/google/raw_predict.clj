@@ -20,13 +20,21 @@
   "Google-specific `anthropic_version`."
   "vertex-2023-10-16")
 
+(def ^:private undated-aliases
+  "Platform model IDs published without the date the Messages API keys the model by, mapped to that dated ID, e.g.
+  `claude-haiku-4-5` → `claude-haiku-4-5-20251001`.
+
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-4-5"
+  {"claude-haiku-4-5" "claude-haiku-4-5-20251001"})
+
 (defn- direct-api-model-id
   "The direct-API spelling of a platform model ID.
   The Gemini Agent Platform versions a dated model as `{model}@{date}` where the Messages API spells it
-  `{model}-{date}`. The Claude adapter's model knowledge (max_tokens ceilings, thinking support) is keyed by the
-  direct spelling."
+  `{model}-{date}`, and publishes some models without the date the Messages API keys them by ([[undated-aliases]]).
+  The Claude adapter's model knowledge (max_tokens ceilings, thinking support) is keyed by the direct spelling."
   [model-id]
-  (str/replace (str model-id) "@" "-"))
+  (let [id (str/replace (str model-id) "@" "-")]
+    (get undated-aliases id id)))
 
 (mu/defn request-body
   "Build the streamRawPredict request body for an LLM request on `model-id`."

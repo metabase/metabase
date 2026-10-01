@@ -152,6 +152,10 @@
     (is (= 200000 (raw-predict/context-window-tokens "claude-haiku-4-5@20251001")))
     (is (= 200000 (raw-predict/context-window-tokens "claude-sonnet-4-5@20250929")))))
 
+(deftest ^:parallel context-window-tokens-undated-alias-test
+  (testing "a model the platform publishes without the date the direct API keys it by is recognized as that model"
+    (is (= 200000 (raw-predict/context-window-tokens "claude-haiku-4-5")))))
+
 (deftest ^:parallel context-window-tokens-unknown-model-test
   (testing "a model we know nothing about has no context window"
     (is (nil? (raw-predict/context-window-tokens "claude-not-a-real-model")))
