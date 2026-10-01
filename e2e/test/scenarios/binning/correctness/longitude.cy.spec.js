@@ -45,7 +45,6 @@ describe("scenarios > binning > correctness > longitude", () => {
           .should("contain", "Longitude")
           .and("contain", selected);
 
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
         getTitle(`Count by Longitude: ${selected}`);
