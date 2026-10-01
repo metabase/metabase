@@ -130,6 +130,11 @@
   ^bytes [^String content]
   (.getBytes content StandardCharsets/UTF_8))
 
+(defn- ingested-bundle-path
+  "The normalized bundle path of the ingested data app `ingested`."
+  [ingested]
+  (lib/normalize ::data-apps.schema/bundle-path (:path ingested)))
+
 (defmethod serdes/make-spec "DataApp"
   [_model-name _opts]
   {:copy      [:entity_id :description :version :allowed_hosts]
@@ -149,7 +154,7 @@
                                                        {(:bundle_path app) (bundle->file bundle)}
                                                        ::serdes/skip))
                               :import-with-context (fn [ingested _k files]
-                                                     (let [path (:path ingested)]
+                                                     (let [path (ingested-bundle-path ingested)]
                                                        (file->bundle
                                                         (or (get files path)
                                                             (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
@@ -166,7 +171,7 @@
   [{:label data-app.config/apps-dir} {:label (:slug app) :key (:entity_id app)} {:label "data_app"}])
 
 (defmethod serdes/resource-paths "DataApp" [ingested]
-  [(:path ingested)])
+  [(ingested-bundle-path ingested)])
 
 (defmethod serdes/load-one! "DataApp"
   [ingested maybe-local]

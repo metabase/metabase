@@ -99,7 +99,8 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-update-"]
         (let [app (insert-app! :enabled false)]
-          (write-app-files! dump-dir "sales_ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed")
+          (write-app-files! dump-dir "sales_ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
+                                                           :path "./dist/index.js")
                             {"dist/index.js" "console.log(2)"})
           (import! dump-dir)
           (let [updated (t2/select-one :model/DataApp :id (:id app))]
