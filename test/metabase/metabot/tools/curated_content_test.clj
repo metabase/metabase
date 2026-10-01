@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
@@ -24,6 +25,18 @@
 (defn- orders-query []
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
+(defn- orders-joined-query
+  "ORDERS explicitly joined to `table-kw` on `ORDERS.<fk-kw> = <table-kw>.<pk-kw>`."
+  [table-kw fk-kw pk-kw]
+  (let [mp (mt/metadata-provider)]
+    (lib/join (orders-query)
+              (lib/join-clause (lib.metadata/table mp (mt/id table-kw))
+                               [(lib/= (lib.metadata/field mp (mt/id :orders fk-kw))
+                                       (lib.metadata/field mp (mt/id table-kw pk-kw)))]))))
+
+(defn- count-metric-query [query]
+  (lib/aggregate query (lib/count)))
 
 (defn- read-uris
   "Run `read_resource` on `uris` as a tool of the Metabot with entity id `metabot-id` under `profile-id`."
@@ -114,8 +127,11 @@
             (activity-feed/update-users-recent-views! (mt/user->id :crowberto) model id :view))
           (let [items (get-in (first (read-uris metabot-id :internal "metabase://user/recent-items"))
                               [:content :structured-output :items])]
+            ;; key on type and id: a temp Card's id can coincide with a temp Table's
             (is (=? [{:type "model" :id verified-model}]
-                    (filterv (comp #{verified-model plain-question raw-table} :id) items)))))))))
+                    (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]}
+                                   (juxt :type :id))
+                             items)))))))))
 
 (deftest ^:parallel curation-subject-test
   (testing "transforms can never be curated"
@@ -136,9 +152,19 @@
                    :model/Card {plain-eid :entity_id} {:type :model :name "plain model"
                                                        :dataset_query (orders-query)}
                    :model/Card {verified-metric :id verified-metric-eid :entity_id}
-                   {:type :metric :name "verified metric" :dataset_query (lib/aggregate (orders-query) (lib/count))}
+                   {:type :metric :name "verified metric" :dataset_query (count-metric-query (orders-query))}
                    :model/Card {plain-metric-eid :entity_id}
-                   {:type :metric :name "plain metric" :dataset_query (lib/aggregate (orders-query) (lib/count))}
+                   {:type :metric :name "plain metric" :dataset_query (count-metric-query (orders-query))}
+                   :model/Card {related-join-metric-eid :entity_id}
+                   {:type :metric :name "plain metric joining a related table"
+                    :dataset_query (count-metric-query (orders-joined-query :products :product_id :id))}
+                   :model/Card {unrelated-join-metric-eid :entity_id}
+                   {:type :metric :name "plain metric joining an unrelated table"
+                    :dataset_query (count-metric-query (orders-joined-query :reviews :product_id :product_id))}
+                   :model/Card {model-metric-eid :entity_id}
+                   {:type :metric :name "plain metric on a model"
+                    :dataset_query (let [mp (mt/metadata-provider)]
+                                     (count-metric-query (lib/query mp (lib.metadata/card mp verified-model))))}
                    :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
       (verify-card! verified-model)
       (verify-card! verified-metric)
@@ -150,6 +176,17 @@
             joined-query   (assoc-in orders-query [:stages 0 :breakout]
                                      [["field" {:source-field [db-name "PUBLIC" "ORDERS" "PRODUCT_ID"]}
                                        [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]])
+            ;; raw PRODUCTS as the source, explicitly joined to ORDERS
+            products-joined-query
+            (assoc-in products-query [:stages 0 :joins]
+                      [{:lib/type   "mbql/join"
+                        :fields     "all"
+                        :strategy   "left-join"
+                        :alias      "Orders"
+                        :conditions [["=" {}
+                                      ["field" {} [db-name "PUBLIC" "PRODUCTS" "ID"]]
+                                      ["field" {:join-alias "Orders"} [db-name "PUBLIC" "ORDERS" "PRODUCT_ID"]]]]
+                        :stages     [{:lib/type "mbql.stage/mbql" :source-table [db-name "PUBLIC" "ORDERS"]}]}])
             metric-query   (fn [metric-eid]
                              (assoc-in orders-query [:stages 0 :aggregation] [["metric" {} metric-eid]]))
             construct      (fn [metabot-id profile-id q]
@@ -176,9 +213,17 @@
             (testing "along with the related tables it exposes, joined implicitly"
               (is (accepted? joined-query)))
             (testing "and the metrics defined on it, curated or not"
-              (is (accepted? (metric-query plain-metric-eid))))
+              (is (accepted? (metric-query plain-metric-eid)))
+              (testing "as long as everything the metric's definition reads is curated or covered"
+                (is (accepted? (metric-query related-join-metric-eid)))
+                (is (rejected? metabot-id :internal (metric-query unrelated-join-metric-eid)))))
             (testing "but a related table is still not a source of its own"
-              (is (rejected? metabot-id :internal products-query)))))
+              (is (rejected? metabot-id :internal products-query))
+              (testing "even when joined to the curated table"
+                (is (rejected? metabot-id :internal products-joined-query))))))
+        (testing "an uncurated metric defined on a curated model is accepted"
+          (is (accepted? (assoc-in (query {:source-card verified-eid}) [:stages 0 :aggregation]
+                                   [["metric" {} model-metric-eid]]))))
         (testing "a curated metric covers the raw table it's defined on, and that table's related tables"
           (is (accepted? (metric-query verified-metric-eid)))
           (is (accepted? (assoc-in (metric-query verified-metric-eid) [:stages 0 :breakout]
@@ -189,14 +234,19 @@
           (is (accepted? (query {:source-card verified-eid})))
           (is (rejected? metabot-id :internal (query {:source-card plain-eid}))))))))
 
-(deftest read-resource-curated-check-after-handler-test
-  (testing "the curation check runs after the handler's own checks"
+(deftest read-resource-curated-check-ordering-test
+  (testing "the curation check runs after the entity's existence and read checks, but before its handler"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
         (testing "a missing table reads as missing, not as uncurated"
           (let [[resource] (read-uris metabot-id :internal "metabase://table/2147483647")]
             (is (some? (:error resource)))
-            (is (not (denied? resource)))))))
+            (is (not (denied? resource)))))
+        (testing "a denied URI does none of its handler's work (field values and fingerprints aren't computed)"
+          (mt/with-dynamic-fn-redefs [field-stats/field-values
+                                      (fn [& _] (throw (ex-info "handler ran for a denied URI" {})))]
+            (let [uri (str "metabase://table/" (mt/id :orders) "/fields/" (mt/id :orders :total))]
+              (is (denied? (first (read-uris metabot-id :internal uri)))))))))
     (testing "an unreadable table doesn't reveal whether it's curated"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {published :id} {:db_id db-id :name "hidden_published" :active true
