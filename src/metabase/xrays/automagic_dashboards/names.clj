@@ -179,7 +179,10 @@
       (:minute-of-hour
        :day-of-month
        :day-of-year
-       :week-of-year)  (u.date/extract options dt unit))))
+       :week-of-year)  (if (integer? t)
+                         ;; Already the number to show. A round trip through a date can change it.
+                         t
+                         (u.date/extract options dt unit)))))
 
 (mu/defmethod humanize-filter-value :=
   [root                            :- ::ads/root

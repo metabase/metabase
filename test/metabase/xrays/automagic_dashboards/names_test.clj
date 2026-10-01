@@ -59,7 +59,10 @@
                                  :week-of-year    t}]
           (testing (format "unit = %s" unit)
             (is (= (str expected)
-                   (str (#'names/humanize-datetime t unit))))))))))
+                   (str (#'names/humanize-datetime t unit))))))
+        (testing "every week number names itself"
+          (doseq [week (range 1 54)]
+            (is (= (str week) (str (#'names/humanize-datetime week :week-of-year))))))))))
 
 (deftest ^:parallel pluralize-test
   (are [expected n] (= (str expected)
