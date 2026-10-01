@@ -367,6 +367,8 @@ describe("scenarios > metrics > editing", () => {
         cy.contains("This is a description").should("be.visible");
         cy.contains("with markdown").should("be.visible");
       });
+      H.popover().findByPlaceholderText("Find...").realHover();
+      H.hovercard().should("not.exist");
 
       cy.log("search for metrics");
       H.popover().within(() => {

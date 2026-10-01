@@ -151,7 +151,7 @@ describe("scenarios > metrics > metric page", () => {
     H.getNotebookStep("data").findByText("Orders").should("be.visible");
 
     H.MetricPage.historyTab().click();
-    cy.findAllByTestId("revision-history-event").should("have.length.gte", 1);
+    cy.findAllByTestId("revision-history-event").should("have.length.gte", 3);
 
     H.MetricPage.aboutTab().click();
     H.MetricPage.aboutPage().should("be.visible");

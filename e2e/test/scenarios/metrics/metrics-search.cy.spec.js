@@ -17,7 +17,6 @@ describe("scenarios > metrics > search", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/search?q=*").as("search");
   });
 
   it("should be able to search for metrics in global search and on the search page", () => {
@@ -32,9 +31,10 @@ describe("scenarios > metrics > search", () => {
     H.MetricPage.aboutPage().should("be.visible");
 
     cy.log("search page");
+    cy.intercept("GET", "/api/search?*context=search-app*").as("searchPage");
     cy.visit("/");
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, true);
-    cy.wait("@search");
+    cy.wait("@searchPage");
     cy.findByTestId("search-app").within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByTestId("type-search-filter").click();
@@ -43,7 +43,7 @@ describe("scenarios > metrics > search", () => {
       cy.findByText("Metric").click();
       cy.findByText("Apply").click();
     });
-    cy.wait("@search");
+    cy.wait("@searchPage");
     cy.findByTestId("search-app").within(() => {
       cy.findByText("1 result").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
