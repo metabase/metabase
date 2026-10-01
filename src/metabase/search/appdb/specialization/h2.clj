@@ -4,8 +4,9 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.db :as search.db]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defmethod specialization/table-schema :h2 [base-schema]
   (into [[:id :bigint :auto-increment :primary-key]
@@ -27,14 +28,14 @@
     (when (seq entries)
       (doseq [[model model-entries] (group-by :model entries)]
         (let [ids (map (comp str :model_id) model-entries)]
-          (t2/delete! table :model model :model_id [:in ids])))
-      (t2/insert! table entries))))
+          (search.db/delete-index-rows! table model ids)))
+      (search.db/insert-rows! table entries))))
 
 (defn- wildcard-tokens [search-term]
   (->> (str/split search-term #"\s+")
        (map #(u/lower-case-en (str/trim %)))
        (remove str/blank?)
-       (map (fn [s] (str "%" s "%")))))
+       (map h2x/like-substring)))
 
 (defmethod specialization/base-query :h2
   [active-table search-term search-ctx select-items]
@@ -64,4 +65,4 @@
 
 (defmethod specialization/index-size-estimate :h2
   [table-name]
-  (t2/count table-name))
+  (search.db/index-entry-count table-name))

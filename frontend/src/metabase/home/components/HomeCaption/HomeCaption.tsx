@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { CaptionRoot } from "./HomeCaption.styled";
+import { Flex, Text } from "metabase/ui";
 
 interface HomeCaptionProps {
   primary?: boolean;
@@ -11,5 +11,15 @@ export const HomeCaption = ({
   primary,
   children,
 }: HomeCaptionProps): JSX.Element => {
-  return <CaptionRoot primary={primary}>{children}</CaptionRoot>;
+  return (
+    <Flex align="center" mb={{ base: "xl", xl: "xxl" }}>
+      <Text
+        component="div"
+        fw={700}
+        c={primary ? "text-primary" : "text-secondary"}
+      >
+        {children}
+      </Text>
+    </Flex>
+  );
 };

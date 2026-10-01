@@ -6,8 +6,10 @@
    [metabase-enterprise.dependencies.async :as dependencies.async]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.events.core :as events]
@@ -225,7 +227,7 @@
                          :edges #{}}
                         (update response :edges set)))))))))))
 
-(deftest ^:sequential table-dependents-all-types-test
+(deftest ^:synchronized table-dependents-all-types-test
   (testing "GET /api/ee/dependencies/graph dependents_count types every non-card dependent kind for a table root"
     (mt/with-premium-features #{:dependencies :transforms-basic}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus
@@ -307,7 +309,7 @@
                       :type "card"}]
                     response))))))))
 
-(deftest ^:sequential dependents-multiple-types-test
+(deftest ^:synchronized dependents-multiple-types-test
   (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent-types"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/DashboardCard]
@@ -346,7 +348,7 @@
                 (is (contains? (set (map :type response)) "card"))
                 (is (contains? (set (map :type response)) "dashboard"))))))))))
 
-(deftest ^:sequential dependents-multiple-card-types-test
+(deftest ^:synchronized dependents-multiple-card-types-test
   (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent-card-types"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
@@ -448,7 +450,7 @@
                                                  :dependent-types "card")]
               (is (empty? response)))))))))
 
-(deftest ^:sequential dependents-inactive-table-test
+(deftest ^:synchronized dependents-inactive-table-test
   (testing "inactive tables are always included as dependents and in node counts"
     (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
       (let [mp (mt/metadata-provider)
@@ -484,7 +486,7 @@
                                                (:nodes response))]
               (is (= 1 (get-in transform-node [:dependents_count :table]))))))))))
 
-(deftest ^:sequential dependents-broken-parameter-test
+(deftest ^:synchronized dependents-broken-parameter-test
   (testing "GET /api/ee/dependencies/graph/dependents?broken=true - only returns entities that are broken"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -507,6 +509,33 @@
                 (let [response2 (mt/user-http-request :crowberto :get 200 (str "ee/dependencies/graph/dependents?broken=false&type=card&id=" (:id model-card)))]
                   (is (= #{(:id dependent-card) (:id next-card)} (set (map :id response2)))
                       "There should two dependents total"))))))))))
+
+(deftest ^:synchronized python-transform-not-broken-after-entity-check-test
+  (testing "GHY-3584: a Python transform has no query to validate, so the entity-check task must not record it as broken"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name   "Python transform - ghy3584"
+                        :source {:type            :python
+                                 :source-database (mt/id)
+                                 :source-tables   [{:alias       "orders"
+                                                    :database_id (mt/id)
+                                                    :schema      "PUBLIC"
+                                                    :table       "ORDERS"
+                                                    :table_id    (mt/id :orders)}]
+                                 :body            "def transform(orders):\n    return orders"}}]
+          (deps.test/synchronously-run-backfill!)
+          (#'task.entity-check/check-entities!)
+          (let [dependent-ids (fn [broken?]
+                                (set (map :id (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                                    :type "table"
+                                                                    :id (mt/id :orders)
+                                                                    :dependent-types "transform"
+                                                                    :broken broken?))))]
+            (is (contains? (dependent-ids false) transform-id)
+                "the Python transform is a dependent of the table it reads")
+            (is (not (contains? (dependent-ids true) transform-id))
+                "the Python transform is not listed as broken")))))))
 
 (deftest graph-permissions-test
   (testing "GET /api/ee/dependencies/graph requires read permissions on the starting entity"
@@ -988,7 +1017,7 @@
                 (is (= (:id card) (:id (first response))))))))))))
 
 ;; TODO (AlexP 01/15/26) -- fix and unskip this test
-#_(deftest ^:sequential graph-archived-measure-in-chain-test
+#_(deftest ^:synchronized graph-archived-measure-in-chain-test
     (testing "GET /api/ee/dependencies/graph when a measure in the chain is archived"
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/Measure]
@@ -1057,7 +1086,7 @@
                 (is (contains? node-ids measure-c-id) "measure C should appear")
                 (is (contains? node-ids products-id) "products table should appear"))))))))
 
-(deftest ^:sequential graph-view-count-test
+(deftest ^:synchronized graph-view-count-test
   (testing "GET /api/ee/dependencies/graph should return :view_count for :card"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User {user-id :id} {}
@@ -1092,7 +1121,7 @@
                             :data {:view_count 1}}]}
                   response)))))))
 
-(deftest ^:sequential unreferenced-questions-test
+(deftest ^:synchronized unreferenced-questions-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced questions are returned"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
@@ -1114,7 +1143,7 @@
                              :data {:name "Unreferenced Card - unreftest"}}]}
                     response))))))))
 
-(deftest ^:sequential unreferenced-tables-test
+(deftest ^:synchronized unreferenced-tables-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced tables are returned"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)]
@@ -1131,7 +1160,7 @@
                              :data {:name "Unreferenced Table - unreftest"}}]}
                     response))))))))
 
-(deftest ^:sequential unreferenced-transforms-test
+(deftest ^:synchronized unreferenced-transforms-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced transforms are returned"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
@@ -1165,7 +1194,7 @@
                              :data {:name "Unreferenced Transform - unreftest"}}]}
                     response))))))))
 
-(deftest ^:sequential unreferenced-snippets-test
+(deftest ^:synchronized unreferenced-snippets-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced snippets are returned"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)]
@@ -1191,7 +1220,7 @@
                                    :data {:name "Unreferenced Snippet - unreftest"}}]}
                         response))))))))))
 
-(deftest ^:sequential unreferenced-dashboards-test
+(deftest ^:synchronized unreferenced-dashboards-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced dashboards are returned"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Dashboard {unreffed-dashboard-id :id} {:name "Unreferenced Dashboard - unreftest"}
@@ -1200,8 +1229,8 @@
                                                         :document {:type "doc"
                                                                    :content [{:type "paragraph"
                                                                               :content [{:type "smartLink"
-                                                                                         :attrs {:entityId referenced-dashboard-id
-                                                                                                 :model "dashboard"}}]}]}
+                                                                                         :attrs {"entityId" referenced-dashboard-id
+                                                                                                 "model" "dashboard"}}]}]}
                                                         :content_type "application/json+vnd.prose-mirror"}]
         (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id document-id) :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-backfill!)
@@ -1211,7 +1240,7 @@
                            :data {:name "Unreferenced Dashboard - unreftest"}}]}
                   response)))))))
 
-(deftest ^:sequential unreferenced-documents-test
+(deftest ^:synchronized unreferenced-documents-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced documents are returned"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Document {referenced-document-id :id} {:name "Referenced Document - unreftest"}
@@ -1219,8 +1248,8 @@
                                                                  :document {:type "doc"
                                                                             :content [{:type "paragraph"
                                                                                        :content [{:type "smartLink"
-                                                                                                  :attrs {:entityId referenced-document-id
-                                                                                                          :model "document"}}]}]}
+                                                                                                  :attrs {"entityId" referenced-document-id
+                                                                                                          "model" "document"}}]}]}
                                                                  :content_type "application/json+vnd.prose-mirror"}]
         (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id unreffed-document-id) :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-backfill!)
@@ -1230,7 +1259,7 @@
                            :data {:name "Unreferenced Document - unreftest"}}]}
                   response)))))))
 
-(deftest ^:sequential unreferenced-sandboxes-test
+(deftest ^:synchronized unreferenced-sandboxes-test
   (testing "GET /api/ee/dependencies/unreferenced - unreferenced sandboxes are returned"
     (mt/with-premium-features #{:dependencies :sandboxes}
       (let [mp (mt/metadata-provider)
@@ -1249,7 +1278,7 @@
                              :data {:table {:name "PRODUCTS"}}}]}
                     response))))))))
 
-(deftest ^:sequential unreferenced-card-types-test
+(deftest ^:synchronized unreferenced-card-types-test
   (testing "GET /api/ee/dependencies/unreferenced - unreferenced models and metrics are filtered by card-types and pagination"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
@@ -1287,7 +1316,7 @@
                                       :type "metric"}}]}
                       response)))))))))
 
-(deftest ^:sequential unreferenced-archived-card-test
+(deftest ^:synchronized unreferenced-archived-card-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
@@ -1305,7 +1334,7 @@
             (is (contains? card-ids unreffed-card-id))
             (is (not (contains? card-ids archived-card-id)))))))))
 
-(deftest ^:sequential unreferenced-archived-dashboard-test
+(deftest ^:synchronized unreferenced-archived-dashboard-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for dashboards"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Dashboard {unreffed-dashboard-id :id} {:name "Unreferenced Dashboard - archivedtest"}
@@ -1317,7 +1346,7 @@
           (is (contains? dashboard-ids unreffed-dashboard-id))
           (is (not (contains? dashboard-ids archived-dashboard-id))))))))
 
-(deftest ^:sequential unreferenced-archived-document-test
+(deftest ^:synchronized unreferenced-archived-document-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for documents"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Document {unreffed-document-id :id} {:name "Unreferenced Document - archivedtest"}
@@ -1329,7 +1358,7 @@
           (is (contains? document-ids unreffed-document-id))
           (is (not (contains? document-ids archived-document-id))))))))
 
-(deftest ^:sequential unreferenced-archived-snippet-test
+(deftest ^:synchronized unreferenced-archived-snippet-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for snippets"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/NativeQuerySnippet {unreffed-snippet-id :id} {:name "Unreferenced Snippet - archivedtest"
@@ -1343,7 +1372,7 @@
           (is (contains? snippet-ids unreffed-snippet-id))
           (is (not (contains? snippet-ids archived-snippet-id))))))))
 
-(deftest ^:sequential unreferenced-excludes-internal-content-test
+(deftest ^:synchronized unreferenced-excludes-internal-content-test
   (testing "GET /api/ee/dependencies/graph/unreferenced excludes system-managed (internal-user) content"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
@@ -1372,7 +1401,7 @@
               (is (contains? dashboard-ids regular-dashboard-id))
               (is (not (contains? dashboard-ids internal-dashboard-id))))))))))
 
-(deftest ^:sequential breaking-entities-includes-internal-content-test
+(deftest ^:synchronized breaking-entities-includes-internal-content-test
   (testing "GET /api/ee/dependencies/graph/breaking still surfaces internal-user (system-managed) content"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -1394,7 +1423,7 @@
               (is (contains? card-ids (:id internal-model))
                   "Internal-user model card should still appear in breaking list"))))))))
 
-(deftest ^:sequential unreferenced-archived-segment-test
+(deftest ^:synchronized unreferenced-archived-segment-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for segments"
     (mt/with-premium-features #{:dependencies}
       (let [products-id (mt/id :products)
@@ -1414,7 +1443,7 @@
             (is (contains? segment-ids unreffed-segment-id))
             (is (not (contains? segment-ids archived-segment-id)))))))))
 
-(deftest ^:sequential unreferenced-archived-table-test
+(deftest ^:synchronized unreferenced-archived-table-test
   (testing "GET /api/ee/dependencies/graph/unreferenced includes inactive and hidden tables"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Table {active-table-id :id} {:name "Active Unreferenced Table - archivedtest"
@@ -1436,7 +1465,7 @@
           (testing "hidden tables are always included"
             (is (contains? table-ids hidden-table-id))))))))
 
-(deftest ^:sequential unreferenced-pagination-test
+(deftest ^:synchronized unreferenced-pagination-test
   (testing "GET /api/ee/dependencies/unreferenced - should paginate results"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Table {table1-id :id} {:name "Table 1 - unreftest"}
@@ -1454,7 +1483,7 @@
                  :limit  2}
                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=2&limit=2")))))))
 
-(deftest ^:sequential unreferenced-sample-db-test
+(deftest ^:synchronized unreferenced-sample-db-test
   (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the sample database"
     (mt/with-premium-features #{:dependencies}
       (mt/with-empty-h2-app-db!
@@ -1464,7 +1493,7 @@
                    :total  0}
                   (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest"))))))))
 
-(deftest ^:sequential unreferenced-audit-db-test
+(deftest ^:synchronized unreferenced-audit-db-test
   (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the audit database"
     (mt/with-premium-features #{:dependencies}
       (mt/with-empty-h2-app-db!
@@ -1473,7 +1502,7 @@
                  :total  0}
                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=notification")))))))
 
-(deftest ^:sequential unreferenced-archived-measure-test
+(deftest ^:synchronized unreferenced-archived-measure-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for measures"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
@@ -1497,20 +1526,18 @@
             (is (contains? measure-ids unreffed-measure-id))
             (is (not (contains? measure-ids archived-measure-id)))))))))
 
-(deftest ^:sequential unreferenced-personal-collection-card-test
+(deftest ^:synchronized unreferenced-personal-collection-card-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with include-personal-collections parameter for cards"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (let [mp (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))]
           (mt/with-temp [:model/User {user-id :id} {}
-                         :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                   :name "Test Personal Collection"}
                          :model/Collection {sub-personal-coll-id :id} {:name "Sub Personal Collection"
-                                                                       :location (format "/%d/" personal-coll-id)}
+                                                                       :location (format "/%d/" (personal-collection-id user-id))}
                          :model/Card {card-in-personal :id} {:name "Card in Personal - personalcolltest"
                                                              :type :question
-                                                             :collection_id personal-coll-id
+                                                             :collection_id (personal-collection-id user-id)
                                                              :dataset_query (lib/query mp products)}
                          :model/Card {card-in-sub-personal :id} {:name "Card in Sub Personal - personalcolltest"
                                                                  :type :question
@@ -1533,15 +1560,13 @@
                 (is (contains? card-ids card-in-sub-personal))
                 (is (contains? card-ids card-regular))))))))))
 
-(deftest ^:sequential unreferenced-personal-collection-dashboard-test
+(deftest ^:synchronized unreferenced-personal-collection-dashboard-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with include-personal-collections parameter for dashboards"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
-                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                 :name "Test Personal Collection"}
                        :model/Dashboard {dash-in-personal :id} {:name "Dashboard in Personal - personalcolltest"
-                                                                :collection_id personal-coll-id}
+                                                                :collection_id (personal-collection-id user-id)}
                        :model/Dashboard {dash-regular :id} {:name "Dashboard Regular - personalcolltest"}]
           (deps.test/synchronously-run-backfill!)
           (testing "include-personal-collections=false (default) excludes dashboards in personal collections"
@@ -1555,7 +1580,7 @@
               (is (contains? dashboard-ids dash-in-personal))
               (is (contains? dashboard-ids dash-regular)))))))))
 
-(deftest ^:sequential unreferenced-sort-by-name-test
+(deftest ^:synchronized unreferenced-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by name"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card               _ {:name "A Card sorttest"}
@@ -1586,7 +1611,7 @@
                      (= sort-direction :desc) reverse)
                    names))))))))
 
-(deftest ^:sequential unreferenced-sort-by-location-test
+(deftest ^:synchronized unreferenced-sort-by-location-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by location"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [;; locations
@@ -1653,7 +1678,7 @@
                      (= sort-direction :desc) reverse)
                    names))))))))
 
-(deftest ^:sequential unreferenced-sort-by-location-with-root-collection-test
+(deftest ^:synchronized unreferenced-sort-by-location-with-root-collection-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - sorting by location with root collection"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Collection {collection1-id :id} {:name "Collection 1"}
@@ -1677,7 +1702,7 @@
                      (= sort-direction :desc) reverse)
                    names))))))))
 
-(deftest ^:sequential breaking-entities-returns-source-of-errors-test
+(deftest ^:synchronized breaking-entities-returns-source-of-errors-test
   (testing "GET /api/ee/dependencies/graph/breaking - returns entities that are SOURCE of downstream errors"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -1698,7 +1723,7 @@
               (is (= [(:id model-card)] (mapv :id (:data response)))
                   "Model card should appear as a breaking entity"))))))))
 
-(deftest ^:sequential breaking-entities-types-filtering-test
+(deftest ^:synchronized breaking-entities-types-filtering-test
   (testing "GET /api/ee/dependencies/graph/breaking - types parameter filters results"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -1730,7 +1755,7 @@
                     ids (set (map :id (:data response)))]
                 (is (empty? ids) "No tables should be in results")))))))))
 
-(deftest ^:sequential breaking-entities-archived-card-test
+(deftest ^:synchronized breaking-entities-archived-card-test
   (testing "GET /api/ee/dependencies/graph/breaking includes archived source cards that break a non-archived dependent"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -1762,7 +1787,7 @@
               ;; (dependent-card-2) has an error traced back to it, so it should be surfaced.
               (is (contains? card-ids (:id archived-model))))))))))
 
-(deftest ^:sequential breaking-entities-inactive-table-test
+(deftest ^:synchronized breaking-entities-inactive-table-test
   (testing "GET /api/ee/dependencies/graph/breaking?types=table includes an inactive table that breaks a non-archived dependent"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Database db    {:engine :h2, :name "inactive-table-breaking-test"}
@@ -1796,7 +1821,7 @@
                       table-ids (set (map :id (:data response)))]
                   (is (contains? table-ids (:id table))))))))))))
 
-(deftest ^:sequential breaking-entities-multiple-dependents-test
+(deftest ^:synchronized breaking-entities-multiple-dependents-test
   (testing "GET /api/ee/dependencies/graph/breaking - model breaking multiple dependents appears once"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -1820,20 +1845,18 @@
                   model-ids (filter #(= (:id %) (:id model-card)) (:data response))]
               (is (= 1 (count model-ids)) "Model should appear exactly once even with multiple broken dependents"))))))))
 
-(deftest ^:sequential breaking-entities-personal-collection-card-test
+(deftest ^:synchronized breaking-entities-personal-collection-card-test
   (testing "GET /api/ee/dependencies/graph/breaking with include-personal-collections parameter"
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
-                       :model/User creator {:email "creator@test.com"}
-                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                 :name "Test Personal Collection"}]
+                       :model/User creator {:email "creator@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
             ;; Create cards in one metadata provider cache session
             (let [[model-in-personal model-regular dependent-card-1 dependent-card-2]
                   (lib-be/with-metadata-provider-cache
                     (let [model-in-personal (create-model-card! creator "Model in Personal - personalcollbrokentest"
-                                                                :collection-id personal-coll-id)
+                                                                :collection-id (personal-collection-id user-id))
                           model-regular (create-model-card! creator "Model Regular - personalcollbrokentest")
                           dependent-card-1 (create-dependent-card-on-model! creator model-in-personal "Dependent of Personal - personalcollbrokentest")
                           dependent-card-2 (create-dependent-card-on-model! creator model-regular "Dependent of Regular - personalcollbrokentest")]
@@ -1858,7 +1881,7 @@
                   (is (contains? card-ids (:id model-in-personal)))
                   (is (contains? card-ids (:id model-regular))))))))))))
 
-(deftest ^:sequential breaking-entities-pagination-test
+(deftest ^:synchronized breaking-entities-pagination-test
   (testing "GET /api/ee/dependencies/graph/breaking - should paginate results"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -1891,7 +1914,7 @@
                      :limit  1}
                     (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=paginationtest&offset=1&limit=1")))))))))
 
-(deftest ^:sequential breaking-entities-sort-by-name-test
+(deftest ^:synchronized breaking-entities-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/breaking - sorting by name"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -1926,7 +1949,7 @@
                          (= sort-direction :desc) reverse)
                        names))))))))))
 
-(deftest ^:sequential breaking-entities-sort-by-location-test
+(deftest ^:synchronized breaking-entities-sort-by-location-test
   (testing "GET /api/ee/dependencies/graph/breaking - sorting by location"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}
@@ -1963,7 +1986,7 @@
                          (= sort-direction :desc) reverse)
                        names))))))))))
 
-(deftest ^:sequential breaking-entities-sort-by-dependents-with-errors-count-test
+(deftest ^:synchronized breaking-entities-sort-by-dependents-with-errors-count-test
   (testing "GET /api/ee/dependencies/graph/breaking - sorting by dependents with errors count"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -2001,7 +2024,7 @@
                          (= sort-direction :desc) reverse)
                        names))))))))))
 
-(deftest ^:sequential breaking-entities-sort-by-dependents-with-errors-test
+(deftest ^:synchronized breaking-entities-sort-by-dependents-with-errors-test
   (testing "GET /api/ee/dependencies/graph/breaking - sorting by dependents with errors count"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -2062,7 +2085,7 @@
                ~base-card-binding (card/create-card! (basic-card "Base") user#)]
            ~@body)))))
 
-(deftest ^:sequential dependents-query-filter-test
+(deftest ^:synchronized dependents-query-filter-test
   (testing "GET /api/ee/dependencies/graph/dependents with query parameter"
     (with-dependents-test! [user {base-card-id :id :as base-card}]
       (create-dependent! base-card user "Alpha")
@@ -2078,7 +2101,7 @@
       (testing "no query returns all dependents"
         (is (= 3 (count (get-dependents base-card-id))))))))
 
-(deftest ^:sequential dependents-query-filter-by-location-test
+(deftest ^:synchronized dependents-query-filter-by-location-test
   (testing "GET /api/ee/dependencies/graph/dependents query filters by location (collection name)"
     (with-dependents-test! [user {base-card-id :id :as base-card}]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "SpecialCollection"}]
@@ -2088,13 +2111,12 @@
         (is (=? [{:data {:name "Card in collection"}}]
                 (get-dependents base-card-id :query "SpecialCollection")))))))
 
-(deftest ^:sequential dependents-personal-collections-test
+(deftest ^:synchronized dependents-personal-collections-test
   (testing "GET /api/ee/dependencies/graph/dependents with include-personal-collections parameter"
     (binding [collection/*allow-deleting-personal-collections* true]
       (with-dependents-test! [{user-id :id :as user} {base-card-id :id :as base-card}]
-        (mt/with-temp [:model/Collection {personal-coll-id :id} {:personal_owner_id user-id}
-                       :model/Collection {sub-coll-id :id} {:location (format "/%d/" personal-coll-id)}]
-          (create-dependent! base-card user "In Personal" :collection_id personal-coll-id)
+        (mt/with-temp [:model/Collection {sub-coll-id :id} {:location (format "/%d/" (personal-collection-id user-id))}]
+          (create-dependent! base-card user "In Personal" :collection_id (personal-collection-id user-id))
           (create-dependent! base-card user "In Sub" :collection_id sub-coll-id)
           (create-dependent! base-card user "Regular")
           (deps.test/synchronously-run-backfill!)
@@ -2104,7 +2126,7 @@
           (testing "include-personal-collections=true includes them"
             (is (= 3 (count (get-dependents base-card-id :include-personal-collections true))))))))))
 
-(deftest ^:sequential dependents-sort-by-name-test
+(deftest ^:synchronized dependents-sort-by-name-test
   (testing "GET /api/ee/dependencies/graph/dependents - sorting by name"
     (with-dependents-test! [user {base-card-id :id :as base-card}]
       (create-dependent! base-card user "C Card")
@@ -2116,7 +2138,7 @@
       (is (=? [{:data {:name "C Card"}} {:data {:name "B Card"}} {:data {:name "A Card"}}]
               (get-dependents base-card-id :sort-column :name :sort-direction :desc))))))
 
-(deftest ^:sequential dependents-sort-by-location-test
+(deftest ^:synchronized dependents-sort-by-location-test
   (testing "GET /api/ee/dependencies/graph/dependents - sorting by location"
     (with-dependents-test! [user {base-card-id :id :as base-card}]
       (mt/with-temp [:model/Collection {coll-a :id} {:name "A Collection"}
@@ -2131,7 +2153,7 @@
         (is (=? [{:data {:name "In C"}} {:data {:name "In B"}} {:data {:name "In A"}}]
                 (get-dependents base-card-id :sort-column :location :sort-direction :desc)))))))
 
-(deftest ^:sequential dependents-sort-by-view-count-test
+(deftest ^:synchronized dependents-sort-by-view-count-test
   (testing "GET /api/ee/dependencies/graph/dependents - sorting by view-count"
     (with-dependents-test! [user {base-card-id :id :as base-card}]
       (let [{low-id :id} (create-dependent! base-card user "Low")
@@ -2146,7 +2168,7 @@
         (is (=? [{:data {:view_count 100}} {:data {:view_count 50}} {:data {:view_count 10}}]
                 (get-dependents base-card-id :sort-column :view-count :sort-direction :desc)))))))
 
-(deftest ^:sequential dependents-sort-view-count-mixed-types-test
+(deftest ^:synchronized dependents-sort-view-count-mixed-types-test
   (testing "GET /api/ee/dependencies/graph/dependents - view-count sorting with mixed entity types"
     (with-dependents-test! [user {base-card-id :id :as base-card}]
       (mt/with-model-cleanup [:model/DashboardCard]
@@ -2164,7 +2186,7 @@
             (is (=? [{:data {:view_count 200}} {:data {:view_count 100}} {:data {:view_count 10}}]
                     (get-dependents base-card-id :sort-column :view-count :sort-direction :desc)))))))))
 
-(deftest ^:sequential dependents-query-and-sort-combined-test
+(deftest ^:synchronized dependents-query-and-sort-combined-test
   (testing "GET /api/ee/dependencies/graph/dependents with query and sort together"
     (with-dependents-test! [user {base-card-id :id :as base-card}]
       (create-dependent! base-card user "C Match")
@@ -2175,7 +2197,7 @@
       (is (=? [{:data {:name "A Match"}} {:data {:name "B Match"}} {:data {:name "C Match"}}]
               (get-dependents base-card-id :query "Match" :sort-column :name :sort-direction :asc))))))
 
-(deftest ^:sequential node-errors-filtering-test
+(deftest ^:synchronized node-errors-filtering-test
   (testing "node-errors filters by source visibility"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {coll-id :id}     {}
@@ -2210,7 +2232,7 @@
           (testing "includes errors with nil source"
             (is (contains? card-errors {:type :invalid-query}))))))))
 
-(deftest ^:sequential node-downstream-errors-filtering-test
+(deftest ^:synchronized node-downstream-errors-filtering-test
   (testing "node-downstream-errors filters by analyzed entity visibility"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Collection {coll-id :id}       {}
@@ -2236,7 +2258,7 @@
           (testing "the included error is the visible one"
             (is (= visible-card (:analyzed_entity_id (first card-errors))))))))))
 
-(deftest ^:sequential broken-endpoint-error-visibility-filtering-test
+(deftest ^:synchronized broken-endpoint-error-visibility-filtering-test
   (testing "GET /api/ee/dependencies/graph/breaking - pagination and sorting work with error visibility filtering"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -2332,7 +2354,7 @@
                 (testing "descending order puts more errors first"
                   (is (= (:id model-card-b) (-> desc-response :data first :id))))))))))))
 
-(deftest ^:sequential broken-endpoint-sort-by-visible-errors-only-test
+(deftest ^:synchronized broken-endpoint-sort-by-visible-errors-only-test
   (testing "GET /api/ee/dependencies/graph/breaking - sorting counts only visible errors, not archived"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
@@ -2398,7 +2420,7 @@
                 ;; so B comes first. With fix, sort counts visible errors (A=1, B=2) so A comes first.
                 (is (= (:id model-card-a) (-> asc-response :data first :id)))))))))))
 
-(deftest ^:sequential unreferenced-pagination-with-archived-items-test
+(deftest ^:synchronized unreferenced-pagination-with-archived-items-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - pagination works correctly with archived items"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
@@ -2420,7 +2442,7 @@
                      :limit  2}
                     response))))))))
 
-(deftest ^:sequential unreferenced-pagination-with-archived-dependents-test
+(deftest ^:synchronized unreferenced-pagination-with-archived-dependents-test
   (testing "GET /api/ee/dependencies/graph/unreferenced - should return items if all dependents are archived"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
@@ -2663,9 +2685,7 @@
     (mt/with-premium-features #{:dependencies}
       (binding [collection/*allow-deleting-personal-collections* true]
         (mt/with-temp [:model/User {user-id :id} {}
-                       :model/User creator {:email "creator@test.com"}
-                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
-                                                                 :name "Test Personal Collection"}]
+                       :model/User creator {:email "creator@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
             ;; one model, two dependents: one in personal collection, one in regular collection
             (let [[model-card dependent-in-personal dependent-regular]
@@ -2673,7 +2693,7 @@
                     (let [model-card (create-model-card! creator "Model - personalcollbrokentest2")
                           dependent-in-personal (create-dependent-card-on-model! creator model-card
                                                                                  "Dependent in Personal - personalcollbrokentest2"
-                                                                                 :collection-id personal-coll-id)
+                                                                                 :collection-id (personal-collection-id user-id))
                           dependent-regular (create-dependent-card-on-model! creator model-card
                                                                              "Dependent Regular - personalcollbrokentest2")]
                       [model-card dependent-in-personal dependent-regular]))]
@@ -2697,7 +2717,7 @@
                   (is (contains? card-ids (:id dependent-in-personal)))
                   (is (contains? card-ids (:id dependent-regular))))))))))))
 
-(deftest ^:sequential unreferenced-table-owner-test
+(deftest ^:synchronized unreferenced-table-owner-test
   (testing "GET /api/ee/dependencies/unreferenced - table owner is returned"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
@@ -2721,7 +2741,7 @@
                                             :email "crowberto@metabase.com"}}}]}
                     response))))))))
 
-(deftest ^:sequential unreferenced-transform-owner-test
+(deftest ^:synchronized unreferenced-transform-owner-test
   (testing "GET /api/ee/dependencies/unreferenced - transform owner is returned"
     (mt/with-premium-features #{:dependencies}
       (let [mp       (mt/metadata-provider)
@@ -2756,7 +2776,7 @@
                       response)))))))))
 
 (deftest data-analyst-can-access-dependency-graph-test
-  (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+  (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
     (testing "Data analysts can access dependency diagnostics endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
@@ -2765,16 +2785,23 @@
                                                      :is_data_analyst true}
                        :model/PermissionsGroupMembership _ {:user_id analyst-id
                                                             :group_id data-analyst-group-id}
-                       :model/Database {db-id :id} {}
-                       :model/Table {_table-id :id} {:db_id db-id}
-                       :model/Transform {transform-id :id} {:source_database_id db-id
-                                                            :name "Test Transform"}]
-          (testing "graph/unreferenced"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/unreferenced"))))
-          (testing "graph/breaking"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/breaking"))))
-          (testing "graph with transform"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+                       ;; the sample database: All Users may query it, so analyst-wide transform visibility applies
+                       :model/Transform {transform-id :id} {:source_database_id (mt/id)
+                                                            :name "Analyst Grace Transform - gracetest"}]
+          (letfn [(unreferenced-transform-ids []
+                    (->> (mt/user-http-request analyst-id :get 200
+                                               "ee/dependencies/graph/unreferenced?types=transform&query=gracetest")
+                         :data
+                         (map :id)
+                         set))]
+            (testing "graph/unreferenced"
+              (is (contains? (unreferenced-transform-ids) transform-id)))
+            (testing "graph/breaking"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              "ee/dependencies/graph/breaking"))))
+            (testing "graph with transform"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              (str "ee/dependencies/graph?type=transform&id=" transform-id)))))
+            (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
+              (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+                (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))

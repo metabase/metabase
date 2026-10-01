@@ -5,7 +5,7 @@
   padding: 0.5rem 0.75rem;
   font-weight: bold;
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--default-button-border-radius);
+  border-radius: var(--mantine-radius-xs);
   opacity: 1;
   transition:
     transform 0.25s,

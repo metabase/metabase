@@ -41,9 +41,6 @@
               :tabs                []
               :archived            false
               :collection_position nil
-              :enable_embedding    false
-              :embedding_type      nil
-              :embedding_params    nil
               :parameters          []
               :width               "fixed"}
              (update (revision/serialize-instance :model/Dashboard (:id dashboard) dashboard)
@@ -177,24 +174,26 @@
               :collection_id nil}))))
     (mt/with-temp
       [:model/Collection {coll-id :id} {:name "New collection"}]
-      (is (= "moved this Dashboard to New collection."
-             (u/build-sentence
-              (revision/diff-strings
-               :model/Dashboard
-               {:name "Apple"}
-               {:name          "Apple"
-                :collection_id coll-id})))))
+      (mt/with-test-user :crowberto
+        (is (= "moved this Dashboard to New collection."
+               (u/build-sentence
+                (revision/diff-strings
+                 :model/Dashboard
+                 {:name "Apple"}
+                 {:name          "Apple"
+                  :collection_id coll-id}))))))
     (mt/with-temp
       [:model/Collection {coll-id-1 :id} {:name "Old collection"}
        :model/Collection {coll-id-2 :id} {:name "New collection"}]
-      (is (= "moved this Dashboard from Old collection to New collection."
-             (u/build-sentence
-              (revision/diff-strings
-               :model/Dashboard
-               {:name          "Apple"
-                :collection_id coll-id-1}
-               {:name          "Apple"
-                :collection_id coll-id-2})))))))
+      (mt/with-test-user :crowberto
+        (is (= "moved this Dashboard from Old collection to New collection."
+               (u/build-sentence
+                (revision/diff-strings
+                 :model/Dashboard
+                 {:name          "Apple"
+                  :collection_id coll-id-1}
+                 {:name          "Apple"
+                  :collection_id coll-id-2}))))))))
 
 (deftest ^:parallel diff-dashboards-str-update-tabs-test
   (testing "update tabs"
@@ -366,9 +365,6 @@
                                 :tabs                []
                                 :archived            false
                                 :collection_position nil
-                                :enable_embedding    false
-                                :embedding_type      nil
-                                :embedding_params    nil
                                 :parameters          []
                                 :width               "fixed"}
           serialized-dashboard (revision/serialize-instance :model/Dashboard (:id dashboard) dashboard)]
@@ -395,9 +391,6 @@
                 :tabs                []
                 :archived            false
                 :collection_position nil
-                :enable_embedding    false
-                :embedding_type      nil
-                :embedding_params    nil
                 :parameters          []
                 :width               "fixed"}
                (update serialized-dashboard :cards check-ids))))
@@ -435,9 +428,6 @@
                 :tabs                []
                 :archived            false
                 :collection_position nil
-                :enable_embedding    false
-                :embedding_type      nil
-                :embedding_params    nil
                 :parameters          []
                 :width               "fixed"}
                (update (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard :id dashboard-id))
@@ -468,7 +458,8 @@
   (let [ids (t2/select-pks-vec :model/Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                        :limit    n})]
     (assert (= n (count ids)), "There are less revisions than required to revert")
-    (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
+    (mt/with-test-user :crowberto
+      (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)}))))
 
 (deftest revert-dashboard-with-tabs-basic-test
   (testing "revert adding tabs"

@@ -1,10 +1,10 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require
    [metabase-enterprise.sandbox.api.table :as table]
+   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
@@ -23,11 +23,9 @@
   called from a background sync), since sandboxes are scoped to a user's group memberships."
   [table-id]
   (when api/*current-user-id*
-    (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
+    (let [group-ids (sandbox.db/user-group-ids api/*current-user-id*)
           sandboxes (when (seq group-ids)
-                      (t2/select :model/Sandbox
-                                 :group_id [:in group-ids]
-                                 :table_id table-id))]
+                      (sandbox.db/sandboxes-for-groups-and-table group-ids table-id))]
       (when sandboxes
         (sandboxing/assert-one-sandbox-per-table sandboxes)
         ;; there should be only one gtap per table and we only need one table here
@@ -37,14 +35,21 @@
 (defn- field->sandbox-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.
 
-  The gtap-attributes is a list with 2 elements:
+  The gtap-attributes is a list with 3 elements:
   1. card-id - for GTAP that use a saved question
   2. the timestamp when the saved question was last updated
   3. a map:
     if query is mbql query:
-      - with key is the user-attribute that applied to the table that `field` is in
+      - with an entry for every user-attribute in the GTAP's `attribute_remappings`
       - value is the user-attribute of current user corresponding to the key
     for native query, this map will be the login-attributes of user
+
+  The query processor applies *every* attribute remapping when it runs the sandboxed query —
+  including remappings whose target is a column of a joined table, or a column referenced by
+  name — so every remapped attribute can change which rows the user sees and must be part of
+  this fingerprint. Narrowing the map to remappings that target the sandboxed table's own
+  columns let two users with different values for a joined-table attribute share one cached
+  FieldValues row (SEC-874).
 
   For example we have an GTAP rules
   {:card_id              1 ;; a mbql query
@@ -57,8 +62,7 @@
   [{table-id :table_id, :as _field}]
   (when-let [sandbox (table-id->sandbox table-id)]
     (let [login-attributes     (api/current-user-attributes)
-          attribute_remappings (:attribute_remappings sandbox)
-          field-ids            (t2/select-fn-set :id :model/Field :table_id table-id)]
+          attribute-remappings (:attribute_remappings sandbox)]
       [(:card_id sandbox)
        (-> sandbox :card :updated_at)
        (if (= :native (get-in sandbox [:card :query_type]))
@@ -67,15 +71,8 @@
          ;; This makes hashing a bit less efficient but it ensures that user get a new hash
          ;; if they change login attributes
          login-attributes
-         (into {} (for [[k v] attribute_remappings
-                        ;; get attribute that map to fields of the same table
-                        :when (contains? field-ids
-                                         (match/match-one v
-                                           ;; new style with {:stage-number }
-                                           [:dimension [:field field-id _] _] field-id
-                                           ;; old style without stage number
-                                           [:dimension [:field field-id _]] field-id))]
-                    {k (get login-attributes k)})))])))
+         (into {} (for [k (keys attribute-remappings)]
+                    [k (get login-attributes k)])))])))
 
 (defenterprise hash-input-for-sandbox
   "Returns a hash-input for FieldValues if the field is sandboxed."

@@ -1,0 +1,63 @@
+import { useMemo } from "react";
+import { P, match } from "ts-pattern";
+import { t } from "ttag";
+
+import { useGetAdhocQueryQuery } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
+import { Button, Flex, Loader, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+
+import { ClauseStep } from "../ClauseStep";
+
+type PreviewStepProps = {
+  query: Lib.Query | undefined;
+  stageIndex: number;
+};
+
+export function PreviewStep({ query, stageIndex }: PreviewStepProps) {
+  return query ? (
+    <PreviewQuery query={query} stageIndex={stageIndex} />
+  ) : (
+    <ClauseStep />
+  );
+}
+
+type PreviewQueryProps = {
+  query: Lib.Query;
+  stageIndex: number;
+};
+
+function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
+  const countQuery = useMemo(
+    () => Lib.aggregateByCount(query, stageIndex),
+    [query, stageIndex],
+  );
+  const { data, isFetching } = useGetAdhocQueryQuery(Lib.toJsQuery(countQuery));
+  const count = data?.data?.rows?.[0]?.[0];
+
+  const previewUrl = Urls.newQuestion({
+    dataset_query: Lib.toJsQuery(query),
+  });
+
+  return (
+    <ClauseStep>
+      <Flex gap="lg" align="center">
+        {match({ isFetching, count })
+          .with({ isFetching: true }, () => <Loader />)
+          .with({ isFetching: false, count: P.nonNullable }, () => (
+            <Text fw="bold">{t`${count} rows`}</Text>
+          ))
+          .otherwise(() => null)}
+        <Button
+          component={Link}
+          to={previewUrl}
+          target="_blank"
+          variant="filled"
+        >
+          {t`Preview`}
+        </Button>
+      </Flex>
+    </ClauseStep>
+  );
+}

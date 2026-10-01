@@ -1,12 +1,12 @@
 import _ from "underscore";
 
 import { getMainStore } from "__support__/entities-store";
-import type { StoreDashcard } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import type { StoreDashcard } from "metabase/redux/store";
 import type {
   DashCardDataMap,
   Parameter,
@@ -28,13 +28,8 @@ import { ORDERS, ORDERS_ID, PRODUCTS } from "metabase-types/api/mocks/presets";
 import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
 import { getDashboard, getDashcards } from "../selectors";
 
-import {
-  duplicateTab,
-  getIdFromSlug,
-  moveTab,
-  resetTempTabId,
-  tabsReducer,
-} from "./tabs";
+import { getIdFromSlug, moveTab, resetTempTabId, tabsReducer } from "./tabs";
+import { duplicateTab } from "./tabs-thunks";
 
 const ORDERS_CARD = createMockCard({
   id: 1,

@@ -1,10 +1,10 @@
+import { createMockLocation } from "__support__/state";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
   isSearchPageLocation,
 } from "metabase/common/search";
 import { SearchFilterKeys } from "metabase/common/search/constants";
-import { createMockLocation } from "metabase/redux/store/mocks";
 
 describe("isSearchPageLocation", () => {
   it("should return true for a search page location", () => {

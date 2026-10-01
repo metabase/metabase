@@ -1,5 +1,5 @@
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Outlet } from "metabase/router";
 import { Box } from "metabase/ui";
 
@@ -21,8 +21,8 @@ export const MetabotAdminLayout = ({
     <ErrorBoundary>
       {fullWidth ? (
         <Box
-          py={innerContentProps?.fullHeight ? 0 : "lg"}
-          px={innerContentProps?.fullWidth ? 0 : "xl"}
+          py={innerContentProps?.fullHeight ? 0 : "xl"}
+          px={innerContentProps?.fullWidth ? 0 : "xxl"}
           maw={innerContentProps?.fullWidth ? undefined : "100rem"}
           h={innerContentProps?.fullHeight ? "100%" : undefined}
           mx="auto"

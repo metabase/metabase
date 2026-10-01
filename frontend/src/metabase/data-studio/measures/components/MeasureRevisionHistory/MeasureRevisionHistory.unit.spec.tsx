@@ -1,12 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { setupMeasureRevisionsEndpoint } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Measure, Revision } from "metabase-types/api";
 import {
   createMockMeasure,

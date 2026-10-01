@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { Flex, PopoverBackButton } from "metabase/ui";
 
 interface FilterPickerHeaderProps {
@@ -21,10 +21,10 @@ export function FilterPickerHeader({
   const tc = useTranslateContent();
   const { locale } = useLocale();
   return (
-    <Flex px="md" pt="md" justify="space-between">
+    <Flex px="lg" pt="lg" justify="space-between">
       {onBack && (
         <PopoverBackButton
-          pr="md"
+          pr="lg"
           onClick={onBack}
           disabled={readOnly}
           withArrow={!readOnly}

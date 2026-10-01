@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
@@ -30,6 +29,7 @@ import {
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 import type { ApiKey, GroupInfo } from "metabase-types/api";
 
+import { useListApiKeysQuery } from "../../settings/api/api-key";
 import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
@@ -144,7 +144,7 @@ function ActionsPopover({
 
   return (
     <>
-      <Menu shadow="md" width={200} position="bottom-end">
+      <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
             <Icon c="text-disabled" name="ellipsis" />
@@ -199,10 +199,14 @@ function EditingGroupRow({
       </td>
       <td />
       <Box component="td" ta="right">
-        <Button variant="subtle" onClick={onCancelClicked}>{t`Cancel`}</Button>
+        <Button
+          variant="subtle"
+          color="neutral"
+          onClick={onCancelClicked}
+        >{t`Cancel`}</Button>
         <Button
           ml="1rem"
-          variant={textIsValid && textHasChanged ? "filled" : "outline"}
+          variant={textIsValid && textHasChanged ? "filled" : "default"}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}
         >
@@ -214,6 +218,28 @@ function EditingGroupRow({
 }
 
 // ------------------------------------------------------------ Groups Table: not editing ------------------------------------------------------------
+
+function GroupNameCell({ group }: { group: GroupInfo }) {
+  const name = getGroupNameLocalized(group);
+  const membersLink = PLUGIN_TENANTS.isTenantGroup(group)
+    ? `/admin/people/tenants/groups/${group.id}`
+    : `/admin/people/groups/${group.id}`;
+
+  return (
+    <Flex
+      component={Link}
+      align="center"
+      to={membersLink}
+      className={CS.link}
+      gap="md"
+    >
+      <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />
+      <Box component="span" fw={700} c="core-brand">
+        {name}
+      </Box>
+    </Flex>
+  );
+}
 
 interface GroupRowProps {
   group: GroupInfo;
@@ -236,18 +262,11 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }: GroupRowProps) {
-  const backgroundColor = groupIdToColor(group.id);
   const showActionsButton =
     !isDefaultGroup(group) &&
     !isAdminGroup(group) &&
     !PLUGIN_TENANTS.isExternalUsersGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
-
-  const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
-
-  const membersLink = isTenantGroup
-    ? `/admin/people/tenants/groups/${group.id}`
-    : `/admin/people/groups/${group.id}`;
 
   return editing ? (
     <EditingGroupRow
@@ -260,21 +279,7 @@ function GroupRow({
   ) : (
     <tr aria-label={`group-${group.id}-row`}>
       <td>
-        <Flex
-          component={Link}
-          align="center"
-          to={membersLink}
-          className={CS.link}
-          gap="md"
-        >
-          <UserAvatar
-            user={{ name: getGroupNameLocalized(group) }}
-            bg={backgroundColor}
-          />
-          <Box component="span" fw={700} c="core-brand">
-            {getGroupNameLocalized(group)}
-          </Box>
-        </Flex>
+        <GroupNameCell group={group} />
       </td>
       <td aria-label="member-count">
         {group.member_count || 0}
@@ -517,7 +522,6 @@ export const GroupsListing = (props: GroupsListingProps) => {
           <Button
             variant="filled"
             onClick={onCreateAGroupButtonClicked}
-            flex="0 1 140px"
           >{t`Create a group`}</Button>
         )
       }
@@ -548,7 +552,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
         closeButtonText={null}
         withCloseButton={false}
         confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "core-brand" }}
+        confirmButtonProps={{ color: "brand" }}
         data-testid="alert-modal"
       />
     </AdminPaneLayout>

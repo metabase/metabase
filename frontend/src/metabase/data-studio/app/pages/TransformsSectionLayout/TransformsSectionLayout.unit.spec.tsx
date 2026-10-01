@@ -6,11 +6,10 @@ import {
   setupPropertiesEndpoints,
   setupStoreEEBillingEndpoint,
   setupStoreEECloudAddOnsEndpoint,
-  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
@@ -54,7 +53,6 @@ const setup = ({
   databases?: Database[];
   databasesError?: boolean;
 } = {}) => {
-  setupUserMetabotPermissionsEndpoint();
   if (databasesError) {
     fetchMock.get("path:/api/database", 500);
   } else {
@@ -292,7 +290,13 @@ const assertEnableScreen = async () =>
     await screen.findByText("Customize and clean up your data"),
   ).toBeInTheDocument();
 
-const assertNoWritableDatabasesEmptyState = async () =>
+const assertNoWritableDatabasesEmptyState = async () => {
   expect(
     await screen.findByText("No compatible database connection"),
   ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("tab", { name: "Transforms" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: "Jobs" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: "Runs" })).not.toBeInTheDocument();
+};

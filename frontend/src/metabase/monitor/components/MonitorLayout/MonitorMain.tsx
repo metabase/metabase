@@ -19,7 +19,7 @@ export function MonitorMain({
   ...stackProps
 }: MonitorMainProps) {
   return (
-    <Stack className={cx(S.main, className)} flex={1} gap="md" {...stackProps}>
+    <Stack className={cx(S.main, className)} flex={1} gap="lg" {...stackProps}>
       {children}
     </Stack>
   );

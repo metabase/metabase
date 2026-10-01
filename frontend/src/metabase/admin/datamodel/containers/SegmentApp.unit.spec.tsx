@@ -18,7 +18,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -97,7 +97,7 @@ describe("SegmentApp", () => {
       return callMockEvent(mockEventListener, "beforeunload");
     });
     expect(mockEvent.preventDefault).toHaveBeenCalled();
-    expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    expect(mockEvent.returnValue).toBe(getBeforeUnloadUnsavedMessage());
   });
 
   it("should not have an beforeunload event when segment is unedited", () => {

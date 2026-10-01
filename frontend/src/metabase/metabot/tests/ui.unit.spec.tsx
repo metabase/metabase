@@ -5,17 +5,15 @@ import { assocIn } from "icepick";
 
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotTextMessage,
   setupGetMetabotConversationEndpoint,
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
-import { act, screen, waitFor, within } from "__support__/ui";
-import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
+import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
+import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
-import {
-  createConversation,
-  getMetabotInitialState,
-} from "metabase/metabot/state/reducer-utils";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { logout } from "metabase/redux/auth";
 import * as domModule from "metabase/utils/dom";
 import {
@@ -35,7 +33,9 @@ import {
   conversationTitle,
   createMockSSEStream,
   createPauses,
+  createTestMetabotState,
   enterChatMessage,
+  expectContextUsage,
   hideMetabot,
   input,
   lastReqBody,
@@ -44,6 +44,7 @@ import {
   queryConversationTitle,
   setup,
   showMetabot,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
@@ -55,7 +56,12 @@ describe("metabot > ui", () => {
 
   it("does not render header actions unless they are provided", async () => {
     setup({
-      ui: <MetabotChat config={{ agentId: "ask", suggestionModels: [] }} />,
+      ui: (
+        <MetabotChat
+          conversationId={testConversationId("omnibot")}
+          config={{ suggestionModels: [] }}
+        />
+      ),
     });
 
     expect(await screen.findByTestId("metabot-chat-input")).toBeInTheDocument();
@@ -125,6 +131,44 @@ describe("metabot > ui", () => {
 
     await userEvent.click(await closeChatButton());
     await assertNotVisible();
+  });
+
+  describe("keyboard shortcut", () => {
+    // jsdom reports an empty navigator.platform, so tinykeys binds $mod to Control.
+    const pressShortcut = () =>
+      fireEvent.keyDown(window, { key: "e", ctrlKey: true });
+
+    it("should toggle visibility", async () => {
+      const { store } = setup({
+        withRouter: true,
+        initialRoute: "/question/123",
+      });
+      expect(await chat()).toBeInTheDocument();
+
+      hideMetabot(store.dispatch);
+      await assertNotVisible();
+
+      pressShortcut();
+      expect(await chat()).toBeInTheDocument();
+    });
+
+    it.each([
+      "/question/ask",
+      "/question/ask/",
+      "/metabot/conversation/past-conversation-id",
+    ])(
+      "should do nothing on the full-page metabot surface (%s)",
+      async (initialRoute) => {
+        const { store } = setup({ withRouter: true, initialRoute });
+        expect(await chat()).toBeInTheDocument();
+
+        hideMetabot(store.dispatch);
+        await assertNotVisible();
+
+        pressShortcut();
+        await assertNotVisible();
+      },
+    );
   });
 
   it("should be able to hide metabot via a prop", async () => {
@@ -213,7 +257,7 @@ describe("metabot > ui", () => {
 
     store.dispatch(
       metabotActions.addUserMessage({
-        agentId: "omnibot",
+        conversationId: testConversationId("omnibot"),
         id: "user-1",
         type: "text",
         message: "first line\nsecond line",
@@ -238,7 +282,7 @@ describe("metabot > ui", () => {
 
     store.dispatch(
       metabotActions.addUserMessage({
-        agentId: "omnibot",
+        conversationId: testConversationId("omnibot"),
         id: "user-2",
         type: "text",
         message: "first line\n\nsecond line",
@@ -258,46 +302,97 @@ describe("metabot > ui", () => {
     expect(secondParagraph).toBeInTheDocument();
   });
 
-  it("should warn the chat is getting long w/ ability to clear it", async () => {
-    const { store } = setup();
-    const longMsg = "x".repeat(LONG_CONVO_MSG_LENGTH_THRESHOLD / 2);
+  const CONTEXT_WINDOW = 11000;
 
-    act(() => {
-      store.dispatch(
-        metabotActions.addUserMessage({
-          id: "1",
-          type: "text",
-          message: longMsg,
-          agentId: "omnibot",
-        }),
-      );
-    });
-    expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
+  const contextUsageResponse = (contextTokens: number): SSEEvent[] => [
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: "answer" },
+    { type: "text-end", id: "t1" },
+    {
+      type: "finish",
+      finishReason: "stop",
+      messageMetadata: {
+        usage: {
+          inputTokens: contextTokens,
+          outputTokens: 50,
+          totalTokens: contextTokens + 50,
+        },
+        contextTokens,
+        contextWindowTokens: CONTEXT_WINDOW,
+      },
+    },
+  ];
+
+  const chatUsingContext = async (contextTokens: number) => {
+    setup();
+    mockAgentEndpoint({ events: contextUsageResponse(contextTokens) });
+    // nothing to report before a turn completes
     expect(
-      screen.queryByText(/This chat is getting long/),
+      screen.queryByTestId("metabot-context-usage-ring"),
     ).not.toBeInTheDocument();
 
-    act(() => {
-      store.dispatch(
-        metabotActions.addUserMessage({
-          id: "2",
-          type: "text",
-          message: longMsg,
-          agentId: "omnibot",
-        }),
-      );
-    });
+    await enterChatMessage("hello there");
+    expect(await screen.findByText("answer")).toBeInTheDocument();
+
+    return screen.findByTestId("metabot-long-chat-notice");
+  };
+
+  it("should warn as the chat nears the context limit", async () => {
+    const notice = await chatUsingContext(CONTEXT_WINDOW * 0.95);
+
     expect(
-      await screen.findByText(/This chat is getting long/),
+      within(notice).getByText(/This chat is nearing the/),
     ).toBeInTheDocument();
-    await userEvent.click(await screen.findByTestId("metabot-reset-long-chat"));
+    expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-context-usage-ring")).toHaveAttribute(
+      "aria-label",
+      "95% of the context window used",
+    );
+
+    await userEvent.hover(
+      within(notice).getByTestId("metabot-long-chat-context-limit"),
+    );
+    expect(
+      await screen.findByText(/Once a chat reaches the context limit/),
+    ).toBeInTheDocument();
+
+    // dismissing the warning keeps the conversation
+    await userEvent.click(
+      within(notice).getByTestId("metabot-long-chat-dismiss"),
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-long-chat-notice"),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("answer")).toBeInTheDocument();
+  });
+
+  it("should prompt for a new chat once the context limit is met", async () => {
+    const notice = await chatUsingContext(CONTEXT_WINDOW);
+
+    expect(
+      within(notice).getByText(/This chat has reached the/),
+    ).toBeInTheDocument();
+    expect(
+      within(notice).queryByTestId("metabot-long-chat-dismiss"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-chat-input")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-context-usage-ring"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(notice).getByTestId("metabot-long-chat-new-chat"),
+    );
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/This chat is getting long/),
+        screen.queryByTestId("metabot-long-chat-notice"),
       ).not.toBeInTheDocument();
     });
-    expect(screen.queryByText(/xxxxxxx/)).not.toBeInTheDocument();
+    expect(screen.queryByText("answer")).not.toBeInTheDocument();
+    expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {
@@ -434,14 +529,8 @@ describe("metabot > ui", () => {
     });
 
     it("polls for the title when the stream ends without one", async () => {
-      const conversationId = "abcdabcd-abcd-abcd-abcd-abcdabcdabcd";
-      setup({
-        metabotInitialState: assocIn(
-          getMetabotInitialState(),
-          ["conversations", "omnibot"],
-          createConversation("omnibot", { conversationId, visible: true }),
-        ),
-      });
+      setup({ conversationTitle: null });
+      const conversationId = testConversationId("omnibot");
 
       let titleReady = false;
       fetchMock.removeRoute("metabot-conversation-title");
@@ -477,6 +566,10 @@ describe("metabot > ui", () => {
   });
 
   describe("conversation history", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it("lists past conversations when opened, falling back to a placeholder for untitled ones", async () => {
       setup({
         conversations: [
@@ -525,11 +618,11 @@ describe("metabot > ui", () => {
     it("filters conversations by the current agent's profile", async () => {
       const metabotInitialState = assocIn(
         assocIn(
-          getMetabotInitialState(),
-          ["conversations", "omnibot", "visible"],
+          createTestMetabotState(),
+          ["agents", "omnibot", "visible"],
           true,
         ),
-        ["conversations", "omnibot", "profileOverride"],
+        ["conversations", testConversationId("omnibot"), "profileOverride"],
         "nlq",
       );
 
@@ -553,7 +646,17 @@ describe("metabot > ui", () => {
     const PAST_CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";
 
     const setupWithPastConversation = () => {
-      setup({
+      setupGetMetabotConversationEndpoint(
+        createMockMetabotConversationDetail({
+          conversation_id: PAST_CONVERSATION_ID,
+          title: "Orders by month",
+          messages: [
+            createMockMetabotTextMessage("user", "How many orders?"),
+            createMockMetabotTextMessage("agent", "There are 42 orders."),
+          ],
+        }),
+      );
+      return setup({
         conversations: [
           createMockMetabotConversation({
             conversation_id: PAST_CONVERSATION_ID,
@@ -561,36 +664,16 @@ describe("metabot > ui", () => {
           }),
         ],
       });
-      setupGetMetabotConversationEndpoint(
-        createMockMetabotConversationDetail({
-          conversation_id: PAST_CONVERSATION_ID,
-          title: "Orders by month",
-          messages: [
-            {
-              id: "u1",
-              role: "user",
-              type: "text",
-              message: "How many orders?",
-            },
-            {
-              id: "a1",
-              role: "agent",
-              type: "text",
-              message: "There are 42 orders.",
-            },
-          ],
-        }),
-      );
     };
 
-    const selectPastConversation = async () => {
+    const selectPastConversation = async (title = "Orders by month") => {
       await userEvent.click(
         await screen.findByTestId("metabot-conversation-history"),
       );
       const list = await screen.findByTestId(
         "metabot-conversation-history-list",
       );
-      await userEvent.click(await within(list).findByText("Orders by month"));
+      await userEvent.click(await within(list).findByText(title));
     };
 
     it("loads a past conversation into the chat when a history item is clicked", async () => {
@@ -611,6 +694,86 @@ describe("metabot > ui", () => {
           ),
         ).toHaveLength(1);
       });
+    });
+
+    it("renders the context usage of a loaded conversation", async () => {
+      const CONTEXT_WINDOW = 1000;
+      const used = [
+        {
+          id: "22222222-2222-2222-2222-222222222222",
+          title: "Half full",
+          contextTokens: 520,
+        },
+        {
+          id: "33333333-3333-3333-3333-333333333333",
+          title: "Brimming",
+          contextTokens: CONTEXT_WINDOW,
+        },
+      ];
+
+      used.forEach(({ id, title, contextTokens }) =>
+        setupGetMetabotConversationEndpoint(
+          createMockMetabotConversationDetail({
+            conversation_id: id,
+            title,
+            context_window_tokens: CONTEXT_WINDOW,
+            messages: [
+              createMockMetabotTextMessage("user", "How many orders?"),
+              createMockMetabotTextMessage("agent", "There are 42 orders.", {
+                contextTokens,
+              }),
+            ],
+          }),
+        ),
+      );
+      setup({
+        conversations: used.map(({ id, title }) =>
+          createMockMetabotConversation({ conversation_id: id, title }),
+        ),
+      });
+
+      await selectPastConversation("Half full");
+      await expectContextUsage(52);
+      expect(
+        screen.queryByTestId("metabot-long-chat-notice"),
+      ).not.toBeInTheDocument();
+
+      await selectPastConversation("Brimming");
+      expect(
+        await screen.findByTestId("metabot-long-chat-notice"),
+      ).toHaveTextContent(/This chat has reached the/);
+      expect(
+        screen.queryByTestId("metabot-context-usage-ring"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("positions a loaded conversation before the next frame", async () => {
+      jest.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+      jest
+        .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+        .mockReturnValue(800);
+      const { store } = setupWithPastConversation();
+      act(() => {
+        store.dispatch(
+          metabotActions.setConversationSnapshot({
+            conversationId: "current-conversation",
+            messages: [
+              createMockMetabotTextMessage("user", "Current question"),
+            ],
+            activeToolCalls: [],
+          }),
+        );
+      });
+      const previousMessages = await screen.findByTestId(
+        "metabot-chat-messages",
+      );
+      previousMessages.scrollTop = 100;
+
+      await selectPastConversation();
+      await screen.findByText("There are 42 orders.");
+
+      const messages = screen.getByTestId("metabot-chat-messages");
+      expect(messages.scrollTop).toBe(messages.scrollHeight);
     });
 
     it("continues the loaded conversation when a new message is submitted", async () => {

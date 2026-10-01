@@ -1,7 +1,7 @@
 import type { GlobalTypes } from "@storybook/types";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
-import { storybookThemeOptions } from "embedding-sdk-bundle/test/storybook-themes";
+import { storybookThemeOptions } from "embedding-sdk-shared/test/storybook-themes";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
 

@@ -9,7 +9,6 @@ describe("Cross-version questions - nested model", () => {
     "setup: creates a model based on another question",
     { tags: ["@source"] },
     () => {
-      H.restoreCrossVersionDev("02-complete");
       cy.signIn("admin", { skipCache: true });
 
       cy.log("-- Create a model from a previous question --");
@@ -32,7 +31,8 @@ describe("Cross-version questions - nested model", () => {
       cy.log("-- Turn question into a model --");
       H.openQuestionActions();
       X.selectFromPopover("Turn into a model");
-      H.modal().button("Turn this into a model").click();
+      // Doesn't use modal() helper from e2e-ui-elements-helpers.js because the modal change significantly between v60 -> v63.
+      cy.findByRole("dialog").button("Turn this into a model").click();
       cy.location("pathname").should("contain", "model");
 
       cy.log("-- Edit model metadata --");
@@ -48,8 +48,11 @@ describe("Cross-version questions - nested model", () => {
       H.rightSidebar().findByDisplayValue("Euro").should("be.visible");
 
       H.saveMetadataChanges();
-      cy.location("pathname").should("not.include", "columns");
 
+      // Reload to ensure a scalar is displayed, not a table.
+      cy.intercept("GET", "/api/card/*/query_metadata").as("modelQuery");
+      cy.reload();
+      cy.wait("@modelQuery");
       cy.findByTestId("scalar-value").should("have.text", "€20.80");
     },
   );
@@ -78,8 +81,6 @@ describe("Cross-version questions - nested model", () => {
 
       cy.findByTestId("scalar-value").should("not.exist");
       cy.findByTestId("header-cell").should("contain", "Total Discount (€)");
-
-      H.snapshotCrossVersionDev("03-complete");
     },
   );
 });

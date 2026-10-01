@@ -11,9 +11,13 @@ import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Button, Card, Flex, Icon, Tooltip } from "metabase/ui";
-import { conjunct, formatTimeWithUnit } from "metabase/utils/formatting";
+import { conjunct } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { isNotNull } from "metabase/utils/types";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -74,22 +78,26 @@ function _PulsesListSidebar({
 
         <Flex align="center">
           <Tooltip label={createSubscriptionLabel}>
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
-              aria-label={createSubscriptionLabel}
-              leftSection={<Icon name="add" size={16} />}
               variant="subtle"
+              color="neutral"
+              size="sm"
+              aria-label={createSubscriptionLabel}
+              leftSection={<Icon name="add" />}
               mr="1rem"
               onClick={createSubscription}
             />
           </Tooltip>
 
           <Tooltip label={closeSidebarLabel}>
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
-              aria-label={closeSidebarLabel}
-              leftSection={<Icon name="close" size={16} />}
               variant="subtle"
-              color="text-secondary"
-              mr="-1rem"
+              color="neutral"
+              size="sm"
+              aria-label={closeSidebarLabel}
+              leftSection={<Icon name="close" />}
               onClick={onCancel}
             />
           </Tooltip>
@@ -105,7 +113,7 @@ function _PulsesListSidebar({
               key={pulse.id}
               className={cx(S.pulseCard, { [S.pulseCardEditable]: canEdit })}
               p={0}
-              radius="md"
+              radius="sm"
               shadow="none"
               withBorder
               onClick={() =>
@@ -185,7 +193,7 @@ function buildRecipientText(pulse: DashboardSubscription): string {
       )}`;
 }
 
-function buildFilterText(
+export function buildFilterText(
   pulse: DashboardSubscription,
   parameters: UiParameter[],
 ): string {
@@ -204,8 +212,8 @@ function buildFilterText(
       ? firstParameter.value
       : [firstParameter.value];
     const formattedValues = values
-      .map((val: string) => formatDateValue(firstParameter, val))
-      .filter(Boolean);
+      .map((val) => formatDateValue(firstParameter, val))
+      .filter(isNotNull);
     if (formattedValues.length > 0) {
       formattedValue = conjunct(formattedValues, t`and`);
     } else {
@@ -218,7 +226,7 @@ function buildFilterText(
     formattedValue =
       values.length > 1
         ? t`${values.length} selections`
-        : conjunct(values, t`and`);
+        : conjunct(values.filter(isNotNull), t`and`);
   }
 
   const firstFilterText = `${firstParameter.name}: ${formattedValue}`;

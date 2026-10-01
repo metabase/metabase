@@ -1,3 +1,5 @@
+import { coerceToString } from "./coerce";
+
 export const ADD_EVENT_LISTENER = EventTarget.prototype.addEventListener;
 
 // Event types that, when listened for on `document` or `window`, give the
@@ -5,7 +7,7 @@ export const ADD_EVENT_LISTENER = EventTarget.prototype.addEventListener;
 // legitimate reason for it to listen for typed text or clipboard activity
 // outside its own subtree — listening on script-owned elements still
 // works, and that's where the script's own UI events live.
-const GLOBAL_BLOCKED_EVENT_TYPES = new Set([
+export const GLOBAL_BLOCKED_EVENT_TYPES = new Set([
   "keydown",
   "keyup",
   "keypress",
@@ -34,14 +36,15 @@ export function addEventListenerDistortion(errorPrefix: string) {
     listener: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions,
   ): void {
+    const eventType = coerceToString(type);
     if (
       isGlobalEventTarget(this) &&
-      GLOBAL_BLOCKED_EVENT_TYPES.has(String(type).toLowerCase())
+      GLOBAL_BLOCKED_EVENT_TYPES.has(eventType.toLowerCase())
     ) {
       throw new Error(
-        `[${errorPrefix}] blocked addEventListener for global event type: ${type}`,
+        `[${errorPrefix}] blocked addEventListener for global event type: ${eventType}`,
       );
     }
-    return ADD_EVENT_LISTENER.call(this, type, listener, options);
+    return ADD_EVENT_LISTENER.call(this, eventType, listener, options);
   };
 }

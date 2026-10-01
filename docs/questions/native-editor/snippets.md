@@ -13,7 +13,7 @@ redirect_from:
 
 For example, if you frequently write queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
 
-You can use snippets to define standardized KPIs and filters using SQL, just like you do with [metrics](../../data-modeling/metrics.md) and [segments](../../data-modeling/segments.md) in the query builder. For example, you may want to store exactly how you calculate revenue, or what constitutes an active user.
+You can use snippets to define standardized KPIs and filters using SQL, just like you do with [metrics](../../data-modeling/semantic-layer/metrics.md) and [segments](../../data-modeling/semantic-layer/segments.md) in the query builder. For example, you may want to store exactly how you calculate revenue, or what constitutes an active user.
 
 You can also use snippets to define a set of reusable filters for SQL questions.
 
@@ -185,7 +185,7 @@ Snippets are good for:
 
   How does your organization define a popular product? Is it by number of units sold? Or by reviews with an average rating greater than 4? You can define those qualifications for a popular product and codify them in a Snippet, `{% raw %}{{snippet: popular products}}{% endraw %}`, and have that code populate in every question that uses that snippet. If down the line this definition needs to change, simply update the snippet’s SQL, and the change will propagate to all questions that use that snippet.
 
-  Similar to how [segments](../../data-modeling/segments.md) (a named filter or set of filters) and [metrics](../../data-modeling/models.md) (a named computation) can standardize analytics in your organization, snippets offer a way to ensure correctness and consistency of SQL across teams.
+  Similar to how [segments](../../data-modeling/semantic-layer/segments.md) (a named filter or set of filters) and [metrics](../../data-modeling/models/models.md) (a named computation) can standardize analytics in your organization, snippets offer a way to ensure correctness and consistency of SQL across teams.
 
 - **Efficiency**
 

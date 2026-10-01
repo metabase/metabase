@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import { getUser } from "metabase/selectors/user";
+import { getUser } from "metabase/current-user";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { useHostSdkStore } from "./use-host-sdk-store";

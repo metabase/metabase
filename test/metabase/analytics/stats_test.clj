@@ -245,22 +245,19 @@
     (doseq [tz ["Pacific/Auckland" "Europe/Helsinki"]]
       (testing tz
         (mt/with-app-db-timezone-id! tz
-          (let [get-executions #(:executions (#'stats/execution-metrics))
-                before         (get-executions)]
-            (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                          {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                           (t/minus (t/days 30))
-                                                                           (t/plus (t/minutes 10)))})]
-              (is (= (inc before)
-                     (get-executions))
-                  "execution metrics include query executions since 30 days ago"))
-            (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                          {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                           (t/minus (t/days 30))
-                                                                           (t/minus (t/minutes 10)))})]
-              (is (= before
-                     (get-executions))
-                  "the executions metrics exclude query executions before 30 days ago"))))))))
+          (mt/with-temp [:model/QueryExecution {inside :id} (merge query-execution-defaults
+                                                                   {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                                    (t/minus (t/days 30))
+                                                                                    (t/plus (t/minutes 10)))})
+                         :model/QueryExecution {outside :id} (merge query-execution-defaults
+                                                                    {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                                     (t/minus (t/days 30))
+                                                                                     (t/minus (t/minutes 10)))})]
+            ;; QueryExecutions are written asynchronously in batches, so rows queued by other tests can commit at any
+            ;; moment. Count against a table holding only the two rows under test instead of against a delta.
+            (t2/delete! :model/QueryExecution :id [:not-in [inside outside]])
+            (is (= 1 (:executions (#'stats/execution-metrics)))
+                "the 30 day cutoff includes the execution 10 minutes after it and excludes the one 10 minutes before")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Pulses & Alerts                                                 |
@@ -546,7 +543,7 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
-    :data-apps-preview
+    :data-apps
     :data-complexity-score
     :development-mode
     :library
@@ -587,6 +584,12 @@
           (is (not (< (get query_executions k)
                       (get query_executions_24h k)))
               "There are never more query executions in the 24h version than all-of-time."))))))
+
+(deftest snowplow-anonymous-usage-stats-test
+  (testing "the stats ping sends every metric it collects"
+    (let [{:strs [metrics]} (#'stats/snowplow-anonymous-usage-stats (legacy-anonymous-usage-stats))]
+      (is (empty? (set/difference (set (map name (keys (#'stats/->snowplow-metric-info))))
+                                  (set (map #(get % "name") metrics))))))))
 
 (deftest snowplow-setting-tests
   (testing "snowplow formated settings"

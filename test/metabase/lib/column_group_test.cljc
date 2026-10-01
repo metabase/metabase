@@ -16,7 +16,7 @@
   (let [query   (lib.tu/venues-query)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
-    (is (not (mr/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
+    (is (not (mr/explain [:sequential ::lib.column-group/column-group] groups)))
     (is (=? [{::lib.column-group/group-type :group-type/main
               :lib/type                     :metadata/column-group
               ::lib.column-group/columns    [{:name "ID", :display-name "ID"}

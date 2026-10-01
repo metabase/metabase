@@ -1,7 +1,5 @@
 (ns metabase.metabot.util
   (:require
-   [clojure.data.xml :as xml]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.util :as u]))
 
@@ -26,17 +24,6 @@
              #(cond-> % (map? %) (update-keys f))
              form))
 
-(defn xml
-  "Format hiccup-like data structure to an XML string"
-  [& bits]
-  (let [fmt (fn [v]
-              (let [res ^String (xml/indent-str (xml/sexp-as-element v))]
-                (cond-> res
-                  ;; strip preamble
-                  (str/starts-with? res "<?xml") (subs (inc (.indexOf res "\n"))))))]
-    (->> (map fmt bits)
-         (str/join "\n"))))
-
 ;;; MBQL utils (needed until we erradicate legacy from Metabot module)
 
 (defn extract-sql-content
@@ -56,16 +43,3 @@
    (when (= 1 (count (get query "stages")))
      (get-in query ["stages" 0 "native"]))
    (get-in query ["native" "query"])))
-
-(defn transform-query->text
-  "Render a transform source query for model context: the native SQL when the query
-  has any, otherwise the EDN of the query with its metadata provider stripped so the
-  provider is never printed into the context window. String queries (legacy data and
-  orphaned sources, which skip normalization) pass through verbatim."
-  [query]
-  (when query
-    (cond
-      (string? query) query
-      (map? query)    (or (extract-sql-content query)
-                          (pr-str (dissoc query :lib/metadata)))
-      :else           (pr-str query))))

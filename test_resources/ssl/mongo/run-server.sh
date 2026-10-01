@@ -33,7 +33,7 @@ fi
 
 echo "Running mongod version ${version} in SSL mode ${ssl}"
 
-docker run -d -it --rm -p 27017:27017 --name metamongo \
+docker run -d -it --rm -p 127.0.0.1:27017:27017 --name metamongo \
        -e MONGO_INITDB_ROOT_USERNAME=metabase \
        -e MONGO_INITDB_ROOT_PASSWORD=metasample123 \
        metabase/qa-databases:mongo-sample-${version} \

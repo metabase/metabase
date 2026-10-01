@@ -12,6 +12,6 @@ Administration tools for managing your Metabase.
 
 See how people are using your Metabase.
 
-## [Admin tools](./tools.md)
+## [Monitor](../monitor/start.md)
 
-View question error and model caching logs.
+View erroring questions, logs, and other troubleshooting tools.

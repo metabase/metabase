@@ -55,13 +55,13 @@ const TimelineForm = ({
             label={t`Name`}
             placeholder={t`Product releases`}
             autoFocus
-            mb="md"
+            mb="lg"
           />
           <FormTextarea
             name="description"
             label={t`Description`}
             minRows={5}
-            mb="md"
+            mb="lg"
             nullable
           />
           <IconField name="icon" title={t`Default icon`} options={icons} />

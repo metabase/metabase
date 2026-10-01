@@ -1,3 +1,3 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./ActionContextProvider";
-export { useActionContext } from "./ActionContext";
+export { ActionContext, useActionContext } from "./ActionContext";
+export type { ActionContextType } from "./ActionContext";
+export type { ActionContextProviderProps, EditorBodyProps } from "./types";

@@ -20,7 +20,7 @@ export const SummarizeDropdownStory = {
   name: "Default",
   render() {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           <Group wrap="nowrap" align="flex-start">
             <SdkQuestion.Summarize />

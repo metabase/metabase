@@ -136,9 +136,9 @@ export function AddEntitiesModal({
       onClose={onClose}
       title={title}
       size="lg"
-      padding="xl"
+      padding="xxl"
     >
-      <Stack gap="md">
+      <Stack gap="lg">
         <TextInput
           value={search}
           onChange={(event) => onSearchChange(event.currentTarget.value)}
@@ -158,7 +158,7 @@ export function AddEntitiesModal({
                 <Text
                   c="text-secondary"
                   ta="center"
-                  py="lg"
+                  py="xl"
                 >{t`No results`}</Text>
               ))
             ) : (
@@ -188,7 +188,7 @@ export function AddEntitiesModal({
                         size="sm"
                         fw="bold"
                         c="text-secondary"
-                        pt="xs"
+                        pt="xxs"
                         style={positioning}
                       >
                         {row.label}

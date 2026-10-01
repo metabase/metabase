@@ -2,12 +2,14 @@
   "Common logging interface that wraps clojure.tools.logging in JVM Clojure and Glogi in CLJS.
 
   The interface is the same as [[clojure.tools.logging]]."
+  ;; kondo mis-tracks unquote nesting in the doubly syntax-quoted log macros below
   {:clj-kondo/ignore [:unquote-not-syntax-quoted]}
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
+   ;; this ns is the facade over tools.logging; it has to require the real thing
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
@@ -107,23 +109,42 @@
   `(with-thread-context-fn ~context-map
      (fn [] ~@body)))
 
-(let [config (-> (if (config/jar?)
-                   (io/resource "metabase/config/modules.edn")
-                   (io/file ".clj-kondo/config/modules/config.edn"))
-                 slurp edn/read-string :metabase/modules)
-      first-segment (fn first-segment [ns-sym]
-                      (-> (str/split (name ns-sym) #"\.") second))
-      chop (fn chop [ns-sym]
-             (if (str/starts-with? (name ns-sym) "metabase-enterprise")
-               (symbol "enterprise" (first-segment ns-sym))
-               (symbol (first-segment ns-sym))))]
+(defn- module-for-ns
+  "Copy of `hooks.common.modules/declared-module`, which the packaged application cannot load."
+  [prefix->module ns-sym]
+  (loop [candidate (str/replace (str ns-sym) #"-test$" "")]
+    (or (get prefix->module candidate)
+        (when-let [dot (str/last-index-of candidate ".")]
+          (recur (subs candidate 0 dot))))))
+
+(let [config         (-> (if (config/jar?)
+                           (io/resource "metabase/config/modules.edn")
+                           (io/file ".clj-kondo/config/modules/config.edn"))
+                         slurp edn/read-string :metabase/modules)
+      prefix->module (into {}
+                           (map (fn [[module {:keys [ns-prefix]}]]
+                                  [(or ns-prefix
+                                       (str (if (= "enterprise" (namespace module)) "metabase-enterprise." "metabase.")
+                                            (name module)))
+                                   module]))
+                           config)
+      parent         (fn [module]
+                       (let [module-name (name module)]
+                         (if-let [dot (str/last-index-of module-name ".")]
+                           (symbol (namespace module) (subs module-name 0 dot))
+                           (when (= "enterprise" (namespace module))
+                             (let [oss (symbol module-name)]
+                               (when (contains? config oss)
+                                 oss))))))]
   (defn ns->team*
-    "Chops the namespace symbol to look up which team owns this namespace in the module config. Assumes that the first
-  segment of the namespace is a module. Should be memoized for speed."
+    "Return the nearest configured team for the namespace's module.
+
+    The caller should memoize this lookup."
     [ns-sym]
     (if ('#{metabase.server.middleware.log} ns-sym)
       ::skip
-      (-> ns-sym chop config :team))))
+      (when-let [module (module-for-ns prefix->module ns-sym)]
+        (some #(get-in config [% :team]) (take-while some? (iterate parent module)))))))
 
 (let [attribution (if (config/config-bool :mb-log-team-attribution)
                     (memoize ns->team*)
@@ -268,6 +289,7 @@
   [& args]
   `(logf :error ~@args))
 
+;; part of the public log API; its callers live in test and EE code outside this lint's view
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro fatal
   "Log one or more args at the `:fatal` level."
@@ -291,6 +313,7 @@
      :cljs (glogi-spy (str *ns*) level expr
                       #(str/trim-newline
                         (with-out-str
+                          ;; spy's own formatter: pprint goes into with-out-str, nothing is printed
                           #_{:clj-kondo/ignore [:discouraged-var]}
                           (pprint/with-pprint-dispatch pprint/code-dispatch
                             (pprint/pprint '~expr)
@@ -298,6 +321,7 @@
                             (pprint/pprint %)))))
      :clj  `(clojure.tools.logging/spy ~level ~expr))))
 
+;; legacy REPL/debug API with no in-tree callers; retained pending a compatibility/removal audit
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro spyf
   "Evaluates an expression, and may write both the form and its formatted result to the log.

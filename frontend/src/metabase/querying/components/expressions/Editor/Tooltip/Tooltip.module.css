@@ -3,7 +3,9 @@
   flex-direction: row;
 
   &:has(.tooltip:empty) {
+    /* make sure that there's no border shadow artefacts in empty tooltip */
     border: none;
+    box-shadow: none;
   }
 }
 

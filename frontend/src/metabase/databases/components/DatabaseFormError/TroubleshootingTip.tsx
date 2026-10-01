@@ -22,14 +22,14 @@ export const TroubleshootingTip = (props: TipProps) => {
   return (
     <Flex
       className={S.container}
-      gap="md"
-      px="md"
-      py="lg"
+      gap="lg"
+      px="lg"
+      py="xl"
       {...flexProps}
       data-testid="troubleshooting-tip"
     >
       {!noIcon && <Icon name="info" mt={2} />}
-      <Flex direction="column" gap="xs">
+      <Flex direction="column" gap="xxs">
         <Text className={S.title}>{title}</Text>
         <Box className={S.body}>{body}</Box>
       </Flex>

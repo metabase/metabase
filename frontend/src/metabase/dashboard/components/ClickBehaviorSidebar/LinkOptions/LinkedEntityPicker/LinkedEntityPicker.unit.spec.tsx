@@ -9,6 +9,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { createMockDashboardState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -17,7 +18,6 @@ import {
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
 import type { StoreDashboard } from "metabase/redux/store";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   CollectionItem,
@@ -68,7 +68,7 @@ const collectionInRootCollectionItem = createMockCollectionItem({
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id,
+  id: CURRENT_USER.personal_collection_id ?? undefined,
   name: "Personal collection",
   can_write: true,
   is_personal: true,

@@ -45,13 +45,16 @@
     (is (contains? scopes "agent:sql:*"))
     (is (contains? scopes "agent:transforms:*"))
     (is (contains? scopes "agent:snippets:*"))
-    (is (contains? scopes "agent:search"))))
+    (is (contains? scopes "agent:search"))
+    (testing "metric is an MBQL macro gated by NLQ, not SQL generation"
+      (is (not (contains? scopes "agent:metric:*"))))))
 
 (deftest ^:parallel perms->scopes-nql-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
     (is (contains? scopes "agent:notebook:*"))
     (is (contains? scopes "agent:query:*"))
-    (is (contains? scopes "agent:question:*"))))
+    (is (contains? scopes "agent:question:*"))
+    (is (contains? scopes "agent:metric:*"))))
 
 (deftest ^:parallel perms->scopes-other-tools-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
@@ -59,6 +62,32 @@
     (is (contains? scopes "agent:dashboard:*"))
     (is (contains? scopes "agent:document:*"))
     (is (contains? scopes "agent:alert:*"))))
+
+(deftest ^:parallel rationalized-mcp-v2-scopes-bucket-membership-test
+  (testing "GHY-4225: each of the five rationalized scopes is reachable from at least one permission bucket"
+    (let [nlq         (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})
+          other       (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})
+          sql-gen     (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :yes})]
+      (testing "agent:content:read via nlq (read-only)"
+        (is (api-scope/scope-matches? nlq "agent:content:read")))
+      (testing "agent:content:write via other-tools"
+        (is (api-scope/scope-matches? other "agent:content:write")))
+      (testing "agent:query:run via nlq"
+        (is (api-scope/scope-matches? nlq "agent:query:run")))
+      (testing "agent:sql:run via sql-generation"
+        (is (api-scope/scope-matches? sql-gen "agent:sql:run")))
+      (testing "I1: agent:delivery:write via other-tools — no other bucket's wildcard reaches it"
+        (is (api-scope/scope-matches? other "agent:delivery:write"))
+        (is (not (api-scope/scope-matches? nlq "agent:delivery:write")))
+        (is (not (api-scope/scope-matches? sql-gen "agent:delivery:write")))))))
+
+(deftest ^:parallel nlq-does-not-grant-content-write-test
+  (testing "I2: metabot-nlq grants content READ but NOT content write — an NLQ-only user must not be
+            able to create/edit/trash content via the agent:content:* wildcard"
+    (let [nlq (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
+      (is (api-scope/scope-matches? nlq "agent:content:read"))
+      (is (not (contains? nlq "agent:content:*")))
+      (is (not (api-scope/scope-matches? nlq "agent:content:write"))))))
 
 (deftest ^:parallel perms->scopes-no-does-not-grant-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :no

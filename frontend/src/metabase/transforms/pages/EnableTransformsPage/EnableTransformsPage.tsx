@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting, useUpdateSettingMutation } from "metabase/settings";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { Center, Text } from "metabase/ui";
 
 import { EnableTransformsCard } from "./EnableTransformsCard";
@@ -24,11 +23,7 @@ export const EnableTransformsPage = () => {
 
   return (
     <PageContainer data-testid="enable-transform-page">
-      <PaneHeader
-        breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-        }
-      />
+      <TransformsHeader showTabs={false} />
       <Center>
         <EnableTransformsCard
           onEnableClick={enableTransforms}

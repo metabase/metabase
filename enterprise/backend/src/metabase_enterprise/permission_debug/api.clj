@@ -66,7 +66,7 @@
     ```"
   [_route-params
    {:keys [user_id model_id action_type]
-    :or {}} :- [:map
+    :or {}} :- [:map {:closed true}
                 [:user_id pos-int?]
                 [:model_id :string]
                 [:action_type permission-debug.impl/ActionType]]

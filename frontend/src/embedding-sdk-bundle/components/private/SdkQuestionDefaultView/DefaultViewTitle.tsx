@@ -10,7 +10,7 @@ type DefaultViewTitleTextProps = Pick<SdkQuestionDefaultViewProps, "title">;
 
 const DefaultViewTitleText = ({ title: Title }: DefaultViewTitleTextProps) => {
   return (
-    <Stack gap="xs" align="flex-start">
+    <Stack gap="xxs" align="flex-start">
       {typeof Title === "function" ? <Title></Title> : Title}
     </Stack>
   );

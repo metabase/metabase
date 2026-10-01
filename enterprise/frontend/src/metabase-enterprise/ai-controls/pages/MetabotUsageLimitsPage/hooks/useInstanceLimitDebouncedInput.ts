@@ -2,7 +2,7 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   useGetAIControlsInstanceLimitQuery,
   useUpdateAIControlsInstanceLimitMutation,

@@ -199,7 +199,7 @@
    [:tuple
     [:= {:decode/normalize common/normalize-keyword} :field]
     [:ref ::field.options]
-    [:or ::id/field :string]]
+    [:or :string ::id/field]]
    [:multi {:dispatch      (fn [clause]
                              ;; apparently it still tries to dispatch when humanizing errors even if the `:tuple`
                              ;; schema above failed, so we need to check that this is actually a tuple here again.
@@ -230,7 +230,8 @@
    {:decode/normalize normalize-expression-options}
    ::common/options
    [:map
-    [:temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]])
+    [:temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]
+    [:lib/original-effective-type {:optional true} [:ref ::common/base-type]]]])
 
 (mbql-clause/define-mbql-clause :expression
   [:and

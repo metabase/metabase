@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -356,7 +357,7 @@
 
 (defn pulse->trigger-info
   [pulse-id schedule-map pc-ids]
-  {:key      (.getName ^org.quartz.TriggerKey (#'task.send-pulses/send-pulse-trigger-key pulse-id schedule-map))
+  {:key      (.getName ^org.quartz.TriggerKey (#'task.send-pulses-trigger/send-pulse-trigger-key pulse-id schedule-map))
    :schedule (u.cron/schedule-map->cron-string schedule-map)
    :priority 6
    :data     {"pulse-id"    pulse-id
@@ -376,7 +377,7 @@
 
 (defn send-pulse-triggers
   [pulse-id & {:keys [additional-keys]}]
-  (->> (task/job-info @#'task.send-pulses/send-pulse-job-key)
+  (->> (task/job-info task.send-pulses-trigger/send-pulse-job-key)
        :triggers
        (map #(select-keys % (concat [:key :schedule :data :priority] additional-keys)))
        (filter #(or (nil? pulse-id) (= pulse-id (get-in % [:data "pulse-id"]))))

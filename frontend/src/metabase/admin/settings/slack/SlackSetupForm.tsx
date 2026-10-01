@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useUpdateSlackSettingsMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -11,6 +10,8 @@ import {
 } from "metabase/forms";
 import { Flex, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+
+import { useUpdateSlackSettingsMutation } from "../api/slack";
 
 type FormValues = { "slack-app-token": string };
 

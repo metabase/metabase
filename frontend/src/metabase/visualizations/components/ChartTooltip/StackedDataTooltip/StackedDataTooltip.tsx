@@ -2,17 +2,17 @@ import { useMemo } from "react";
 
 import { Box, Stack } from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import type { StackedTooltipModel } from "metabase/visualizations/types";
-
-import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
-
-import S from "./StackedDataTooltip.module.css";
 import {
+  type StackedTooltipModel,
   getPercent,
   getSortedRows,
   getTotalValue,
   groupExcessiveTooltipRows,
-} from "./utils";
+} from "metabase/viz-core";
+
+import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
+
+import S from "./StackedDataTooltip.module.css";
 
 const MAX_BODY_ROWS = 8;
 
@@ -56,14 +56,14 @@ const StackedDataTooltip = ({
   );
 
   return (
-    <Stack gap={0} pt="md">
+    <Stack gap={0} pt="lg">
       {headerTitle && (
         <Box
           component="header"
           tt="uppercase"
           fz="sm"
-          px="lg"
-          pb="xs"
+          px="xl"
+          pb="xxs"
           data-testid="tooltip-header"
         >
           {headerTitle}

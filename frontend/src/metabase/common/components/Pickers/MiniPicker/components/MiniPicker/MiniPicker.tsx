@@ -71,6 +71,7 @@ export function MiniPicker({
     value,
     opened,
     libraryCollection,
+    models,
   });
 
   const { isFolder, isHidden } = useMemo(() => {

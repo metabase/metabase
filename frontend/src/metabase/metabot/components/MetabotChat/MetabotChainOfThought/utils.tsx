@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
 import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
+import { isEmbedding } from "metabase/embedding/config";
 import { MarkdownSmartLink } from "metabase/metabot/components/AIMarkdown/components/MarkdownSmartLink";
 import { getToolMessage } from "metabase/metabot/constants";
 import type { MetabotChainStep } from "metabase/metabot/state";
@@ -157,12 +158,19 @@ export type DisplayItem =
   | { kind: "tool"; step: ToolChainStep; index: number }
   | { kind: "resourceGroup"; steps: ToolChainStep[]; index: number };
 
+const isGroupableResourceStep = (step: MetabotChainStep) =>
+  isResourceStep(step) && step.status !== "errored";
+
 const groupConsecutiveResources = (
   steps: MetabotChainStep[],
 ): MetabotChainStep[][] =>
   steps.reduce<MetabotChainStep[][]>((groups, step) => {
     const last = groups.at(-1);
-    if (last && isResourceStep(step) && isResourceStep(last[0])) {
+    if (
+      last &&
+      isGroupableResourceStep(step) &&
+      isGroupableResourceStep(last[0])
+    ) {
       return [...groups.slice(0, -1), [...last, step]];
     }
     return [...groups, [step]];
@@ -185,8 +193,15 @@ const toDisplayItem = (
 const isRenderableItem = (item: DisplayItem): boolean =>
   item.kind === "resourceGroup" || isRenderableStep(item.step);
 
+const redactStep = (step: MetabotChainStep): MetabotChainStep =>
+  step.kind === "reasoning"
+    ? { ...step, text: "" }
+    : { ...step, title: undefined, searchResults: undefined };
+
 export const buildDisplayItems = (steps: MetabotChainStep[]): DisplayItem[] => {
-  const groups = groupConsecutiveResources(steps);
+  const groups = groupConsecutiveResources(
+    isEmbedding() ? steps.map(redactStep) : steps,
+  );
   return groups
     .map((group, groupIndex) => {
       const stepIndex = groups.slice(0, groupIndex).flat().length;

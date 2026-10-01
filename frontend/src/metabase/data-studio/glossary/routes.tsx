@@ -1,7 +1,10 @@
 import { Route } from "metabase/router";
 
-import { GlossaryPage } from "./pages/GlossaryPage";
+const glossaryPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-glossary" */ "./pages/GlossaryPage"
+  ).then(({ GlossaryPage }) => ({ Component: GlossaryPage }));
 
 export function getDataStudioGlossaryRoutes() {
-  return <Route path="glossary" element={<GlossaryPage />} />;
+  return <Route path="glossary" lazy={glossaryPage} />;
 }

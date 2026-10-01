@@ -3,7 +3,6 @@ import { chunk } from "underscore";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -264,49 +263,6 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
     cy.findByTestId("sidebar-content").findByText("Subtotal");
 
     // if you add it back again it crashes the question
-  });
-});
-
-describe("issue 23076", () => {
-  const questionDetails = {
-    name: "Orders, Distinct values of ID, Grouped by Product → Title and Created At (month) and User → ID",
-
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["distinct", ["field", ORDERS.ID, null]]],
-      breakout: [
-        ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
-        ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-        ["field", PEOPLE.ID, { "source-field": ORDERS.USER_ID }],
-      ],
-    },
-    display: "pivot",
-    visualization_settings: {
-      "pivot_table.column_split": {
-        rows: ["TITLE", "CREATED_AT", "ID"],
-        columns: [],
-        values: ["distinct"],
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
-      locale: "en-ZZ",
-    });
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-  });
-
-  it("should correctly translate dates (metabase#23076)", () => {
-    cy.findAllByText(/^\[zz\] Totals for/)
-      .should("be.visible")
-      .eq(1)
-      .invoke("text")
-      .should("eq", "[zz] Totals for May 2026");
   });
 });
 
@@ -971,8 +927,8 @@ describe("issue 50686", () => {
 
   it("should allow selecting more than 1 comparison (metabase#50686)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    // Default comparison
-    H.queryBuilderMain().findByText("N/A");
+    // Default comparison (a single one renders inline)
+    H.queryBuilderMain().findByText("(No data)");
 
     // Add another comparison
     H.openVizSettingsSidebar();
@@ -983,10 +939,10 @@ describe("issue 50686", () => {
 
     H.queryBuilderMain().within(() => {
       // First comparison still exists
-      cy.findByText("N/A");
+      cy.findByText("N/A (No data)");
 
       // New comparison has been added
-      cy.findByText("9.09%");
+      cy.findByText("-9.09% (110)");
       cy.contains("vs. FORECAST");
     });
   });

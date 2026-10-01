@@ -46,7 +46,7 @@ export function EnableEmbeddingPrompt({
 
   return (
     <Center h="100%">
-      <Stack align="center" gap="md" maw={400}>
+      <Stack align="center" gap="lg" maw={400}>
         <Text ta="center" c="text-secondary">
           {message}
         </Text>

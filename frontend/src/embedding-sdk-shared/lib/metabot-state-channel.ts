@@ -1,9 +1,11 @@
-import type { UseMetabotResult } from "embedding-sdk-bundle/types/metabot";
-
 import { getWindow } from "./get-window";
 
-type MetabotStateChannel = {
-  value: UseMetabotResult | null;
+// The payload is generic here so this module never imports the bundle's types.
+// The bundle publishes its `UseMetabotResult` and the package reads it back
+// with the same type parameter; both sides compile against the same bundle
+// version (see the collision note below).
+type MetabotStateChannel<TState = unknown> = {
+  value: TState | null;
   listeners: Set<() => void>;
 };
 
@@ -12,12 +14,12 @@ type MetabotStateChannel = {
 // clobbers the state. Not a supported scenario.
 const METABOT_STATE_KEY = "METABASE_EMBEDDING_SDK_METABOT_STATE";
 
-const EMPTY_CHANNEL: MetabotStateChannel = {
+const EMPTY_CHANNEL: MetabotStateChannel<never> = {
   value: null,
   listeners: new Set(),
 };
 
-function getChannel(): MetabotStateChannel {
+function getChannel<TState>(): MetabotStateChannel<TState> {
   const windowObject = getWindow();
   if (!windowObject) {
     return EMPTY_CHANNEL;
@@ -25,11 +27,13 @@ function getChannel(): MetabotStateChannel {
   if (!windowObject[METABOT_STATE_KEY]) {
     windowObject[METABOT_STATE_KEY] = { value: null, listeners: new Set() };
   }
-  return windowObject[METABOT_STATE_KEY];
+  // The window holds one untyped singleton; the caller picks the state type,
+  // and publisher and reader compile against the same bundle version.
+  return windowObject[METABOT_STATE_KEY] as MetabotStateChannel<TState>;
 }
 
-export function publishMetabotState(value: UseMetabotResult | null): void {
-  const channel = getChannel();
+export function publishMetabotState<TState>(value: TState | null): void {
+  const channel = getChannel<TState>();
   channel.value = value;
   channel.listeners.forEach((listener) => listener());
 }
@@ -42,8 +46,8 @@ export function subscribeMetabotState(listener: () => void): () => void {
   };
 }
 
-export function getMetabotStateSnapshot(): UseMetabotResult | null {
-  return getChannel().value;
+export function getMetabotStateSnapshot<TState>(): TState | null {
+  return getChannel<TState>().value;
 }
 
 export type { MetabotStateChannel };

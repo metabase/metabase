@@ -5,11 +5,11 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.expression.temporal
     :as lib.schema.expression.temporal]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,5 +44,5 @@
           zone-id (if (= zone-id "Z") "UTC" zone-id)]
       (log/infof "%s database %s default timezone is %s" driver (pr-str (:id database)) (pr-str zone-id))
       (when-not (= zone-id (:timezone database))
-        (t2/update! :model/Database (:id database) {:timezone zone-id}))
+        (sync.db/update-database! (:id database) {:timezone zone-id}))
       {:timezone-id zone-id})))

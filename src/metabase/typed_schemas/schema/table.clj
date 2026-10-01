@@ -7,8 +7,8 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.typed-schemas.common :as common]
-   [metabase.typed-schemas.schema.common :as schema.common]
-   [toucan2.core :as t2]))
+   [metabase.typed-schemas.db :as typed-schemas.db]
+   [metabase.typed-schemas.schema.common :as schema.common]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,7 +16,7 @@
   "Returns the table for a given field id."
   [field-id]
   (when (integer? field-id)
-    (t2/select-one-fn :table_id :model/Field :id field-id)))
+    (typed-schemas.db/field-table-id field-id)))
 
 (defn field-schema
   "Returns the schema for a table field."
@@ -38,11 +38,16 @@
       :defaultTemporalBucket (:unit field)))))
 
 (defn- filter-readable-tables
-  "Filters tables down to the ones the current user can read."
+  "Filters tables down to the ones the current user can read, excluding any backed by a destination
+  (routed) database -- see [[schema.common/destination-db-ids]]."
   [tables]
   (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                   :table-ids (into #{} (map :id) tables)})
-  (filter mi/can-read? tables))
+  (let [destination-ids (schema.common/destination-db-ids (into #{} (keep :db_id) tables))
+        tables          (if (seq destination-ids)
+                          (remove #(contains? destination-ids (:db_id %)) tables)
+                          tables)]
+    (filter mi/can-read? tables)))
 
 (defn select-tables
   "Returns readable tables, with optional database and table-id scopes.
@@ -50,22 +55,13 @@
   Library and database endpoint paths both need the same active/readable table
   rules; only their id filters differ."
   [database-ids table-ids]
-  (->> (t2/select :model/Table
-                  {:where    (cond-> [:and [:= :active true]]
-                               database-ids (conj (schema.common/scope-filter-clause database-ids :db_id))
-                               table-ids (conj (schema.common/scope-filter-clause table-ids :id)))
-                   :order-by [[:name :asc] [:id :asc]]})
+  (->> (typed-schemas.db/active-tables-in-scope database-ids table-ids)
        (filter-readable-tables)))
 
 (defn select-library-tables
   "Returns published tables from the library based on the given scope."
   [{:keys [data-collection-ids]}]
-  (->> (t2/select :model/Table
-                  {:where    [:and
-                              [:= :active true]
-                              [:= :is_published true]
-                              (schema.common/scope-filter-clause data-collection-ids :collection_id)]
-                   :order-by [[:name :asc] [:id :asc]]})
+  (->> (typed-schemas.db/published-library-tables-in-collections data-collection-ids)
        (filter-readable-tables)))
 
 (defn segment-schema
@@ -95,7 +91,7 @@
   measure remains usable with a fallback column."
   [database-id measure-id]
   (try
-    (when-let [definition (t2/select-one-fn :definition :model/Measure :id measure-id)]
+    (when-let [definition (typed-schemas.db/measure-definition measure-id)]
       (schema.common/aggregation-result-column database-id definition))
     (catch Exception _
       nil)))
@@ -107,7 +103,7 @@
     (when (seq measure-ids)
       (let [definition-by-measure-id (into {}
                                            (map (juxt :id :definition))
-                                           (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))]
+                                           (typed-schemas.db/measure-definitions measure-ids))]
         (try
           (let [metadata-provider (lib-be/application-database-metadata-provider database-id)]
             (into {}

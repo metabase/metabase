@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; third-party drivers depend on this exact name
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.driver
   "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
@@ -43,6 +44,7 @@
 ;;; |                                                 Current Driver                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *driver*
   "Current driver (a keyword such as `:postgres`) in use by the Query Processor/tests/etc. Bind this with `with-driver`
   below. The QP binds the driver this way in the `bind-driver` middleware."
@@ -528,8 +530,8 @@
     {:closed true}
     [:schema-names {:optional true} [:maybe
                                      [:or
-                                      [:sequential :string]
-                                      [:set :string]]]]
+                                      [:sequential [:maybe :string]]
+                                      [:set [:maybe :string]]]]]
     [:table-names  {:optional true} [:maybe
                                      [:or
                                       [:sequential :string]
@@ -955,6 +957,11 @@
     ;; Does this driver support executing python transforms?
     :transforms/python
     ;;
+    ;; Does this driver support running transform test suites against temp tables? Drivers with this feature
+    ;; implement [[temp-table-name]], [[compile-create-temp-table]], [[compile-drop-temp-table]],
+    ;; [[do-with-test-connection]], [[execute-on-connection!]] and [[query-on-connection]].
+    :transforms/testing
+    ;;
     ;; Does this driver support creating an index (in the broad sense -- see the comment above
     ;; [[supported-index-methods]]) as a standalone statement after the transform target table already exists?
     ;; Drivers with this feature implement [[supported-index-methods]] and [[compile-create-index]]. Contrast with
@@ -1132,8 +1139,9 @@
   (first messages))
 
 (defmulti mbql->native
-  "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
-  [[metabase.legacy-mbql.schema/Query]]; this function should return a native query that conforms to that schema.
+  "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL 5 query in
+  `:metabase.lib.schema/query`; this function should return a compiled query that matches the
+  `:metabase.query-processor.compile/compiled` schema.
 
   If the underlying query language supports remarks or comments, the driver should
   use [[metabase.query-processor.util/query->remark]] to generate an appropriate message and include that in an
@@ -1177,6 +1185,7 @@
   [_ native-form]
   native-form)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:added "0.51.0"} *compile-with-inline-parameters*
   "Whether to compile an MBQL query to native with parameters spliced inline (as opposed to using placeholders like `?`
   and passing the parameters separately.) Normally we want to pass parameters separately to protect against SQL
@@ -1206,6 +1215,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+;; default impl of the deprecated multimethod; throws to point implementers at the replacement
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod splice-parameters-into-native-query ::driver
   [_driver _query]
@@ -1284,31 +1294,36 @@
 (defmulti substitute-native-parameters-in-stage-method
   "Implementation for [[substitute-native-parameters-in-stage]]; avoid calling this directly and
   call [[substitute-native-parameters-in-stage]] instead. Only use this for `defmethod` method implementations."
-  {:added "0.62.0" :arglists '([driver metadata-providerable native-query-stage])}
+  {:added "0.62.0" :arglists '([driver query stage-number])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(mu/defn substitute-native-parameters-in-stage  :- ::lib.schema/stage.native
-  "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
+(mu/defn substitute-native-parameters-in-stage  :- ::lib.schema/query
+  "For drivers that support `:native-parameters`. Substitute parameters in a normalized native query stage, and return
+  the updated query.
 
-    {:lib/type      :mbql.stage/native
-     :native         \"SELECT count(*) FROM table WHERE id = {{param}}\"
-     :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
-     :parameters    [{:type   :number
-                      :target [:variable [:template-tag \"param\"]]
-                      :value  2}]}
+    {:lib/type :mbql.query/mbql
+     :stages   [{:lib/type      :mbql.stage/native
+                :native         \"SELECT count(*) FROM table WHERE id = {{param}}\"
+                :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
+                :parameters    [{:type   :number
+                                 :target [:variable [:template-tag \"param\"]]
+                                 :value  2}]}]}
     ->
-    {:native \"SELECT count(*) FROM table WHERE id = 2\", ...}
+    {:lib/type :mbql.query/mbql
+     :stages   [{:lib/type :mbql.stage/native
+                 :native   \"SELECT count(*) FROM table WHERE id = 2\"
+                 ...}]}
 
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.query-processor.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations
   of this method. Driver-agnostic end-to-end native parameter tests live in
   [[metabase.query-processor.parameters-test]] and other namespaces."
   {:added "0.62.0"}
-  [driver                :- :keyword
-   metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   native-stage          :- ::lib.schema/stage.native]
-  (substitute-native-parameters-in-stage-method driver metadata-providerable native-stage))
+  [driver       :- :keyword
+   query        :- ::lib.schema/query
+   stage-number :- :int]
+  (substitute-native-parameters-in-stage-method driver query stage-number))
 
 (defmulti default-field-order
   "Return how fields should be sorted by default for this database."
@@ -1441,6 +1456,47 @@
 (defmulti compile-insert
   "Compiles the sql for an insert statement (INSERT INTO ... SELECT), given a compiled inner sql query and a destination."
   {:added "0.58.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti temp-table-name
+  "Returns a new unique name for a temp table created while running a transform test suite."
+  {:added "0.64.0", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-create-temp-table
+  "Compiles the `[sql params]` statement creating the temp table `table` from the compiled `query`."
+  {:added "0.64.0", :arglists '([driver {:keys [table query]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-drop-temp-table
+  "Compiles the `[sql params]` statement dropping the temp table `table` if it exists."
+  {:added "0.64.0", :arglists '([driver table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti do-with-test-connection
+  "Calls `f` with a single connection to `database` that keeps its temp tables between statements and rolls back
+  everything it did afterwards."
+  {:added "0.64.0", :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti execute-on-connection!
+  "Executes the `[sql params]` statement on a connection from [[do-with-test-connection]]."
+  {:added "0.64.0", :arglists '([driver conn query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti query-on-connection
+  "`{:rows :columns}` for the `[sql params]` `query` on a connection from [[do-with-test-connection]]:
+  at most `max-rows` rows as vectors, and one `{:name :database_type}` per column, in order.
+
+  Names and types are the engine's own, after whatever folding it applies to unquoted identifiers,
+  and are reported whether or not any row comes back."
+  {:added "0.64.0", :arglists '([driver conn query {:keys [max-rows]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1629,6 +1685,7 @@
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *insert-chunk-rows*
   "The number of rows to insert at a time when uploading data to a database. This can be bound for testing purposes."
   nil)
@@ -1786,6 +1843,17 @@
   [driver _database _schema _table]
   (throw (ex-info (format "fetch-table-indexes is not implemented for driver %s" driver)
                   {:driver driver})))
+
+(defmulti humanize-index-error-message
+  "Trim `message`, from an exception an index operation raised ([[fetch-table-indexes]] or the DDL from
+  [[compile-create-index]]), for display to the user. The default returns it unchanged."
+  {:added "0.64.0", :arglists '([driver message])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod humanize-index-error-message :default
+  [_driver message]
+  message)
 
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified

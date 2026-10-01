@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { formatPercent } from "metabase/static-viz/lib/numbers";
-import type { TooltipRowModel } from "metabase/visualizations/types";
+import { formatPercent } from "metabase/utils/formatting";
+import type { TooltipRowModel } from "metabase/viz-core";
 
 import S from "./TooltipRow.module.css";
 

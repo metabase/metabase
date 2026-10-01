@@ -1,4 +1,5 @@
 import type {
+  GroupId,
   TaskRunDateFilterOption,
   TaskRunEntityType,
   TaskRunType,
@@ -93,8 +94,13 @@ export function monitorAiAuditing() {
   return `${ROOT_URL}/ai-auditing`;
 }
 
-export function monitorAiAuditingUsage() {
-  return `${monitorAiAuditing()}/usage`;
+export function monitorAiAuditingUsage(opts?: { groupId?: GroupId }) {
+  const path = `${monitorAiAuditing()}/usage`;
+  return opts?.groupId == null ? path : `${path}?group=${opts.groupId}`;
+}
+
+export function monitorAiAuditingUsageMetric(metric: string) {
+  return `${monitorAiAuditingUsage()}/${metric}`;
 }
 
 export function monitorAiAuditingConversations() {
@@ -109,6 +115,22 @@ export function monitorAiAuditingMcp() {
   return `${monitorAiAuditing()}/mcp`;
 }
 
+export function monitorAiAuditingMcpUsage() {
+  return `${monitorAiAuditingMcp()}/usage`;
+}
+
+export function monitorAiAuditingMcpEvents() {
+  return `${monitorAiAuditingMcp()}/events`;
+}
+
 export function monitorAiAuditingCli() {
   return `${monitorAiAuditing()}/cli`;
+}
+
+export function monitorAiAuditingCliUsage() {
+  return `${monitorAiAuditingCli()}/usage`;
+}
+
+export function monitorAiAuditingCliCalls() {
+  return `${monitorAiAuditingCli()}/calls`;
 }

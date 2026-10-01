@@ -45,14 +45,14 @@ export const AuthenticationCard = () => {
   };
 
   return (
-    <Card p="md">
-      <Stack gap="md" p="xs">
+    <Card p="lg">
+      <Stack gap="lg" p="xxs">
         <Text size="lg" fw="bold">
           {t`Authentication`}
         </Text>
 
         <Radio.Group value={authType} onChange={handleAuthTypeChange}>
-          <Stack gap="md">
+          <Stack gap="lg">
             <Stack gap="sm">
               <Radio
                 value="sso"

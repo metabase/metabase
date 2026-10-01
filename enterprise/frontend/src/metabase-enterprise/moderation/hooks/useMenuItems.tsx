@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { useEditItemVerificationMutation } from "metabase/api";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import type { Card, Dashboard, ModerationReview } from "metabase-types/api";
 
+import { useEditItemVerificationMutation } from "../api/moderation";
 import {
   MODERATION_STATUS,
   getLatestModerationReview,

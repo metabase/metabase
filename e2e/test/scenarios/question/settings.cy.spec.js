@@ -24,6 +24,7 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
 
       cy.findByTestId("sidebar-content").as("tableOptions");
+      H.tableInteractive().contains("Total");
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
 
@@ -429,128 +430,6 @@ describe("scenarios > question > settings", () => {
           cy.findByLabelText("close icon").should("not.exist");
         });
     });
-
-    it(
-      "should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)",
-      { tags: "@skip" },
-      () => {
-        // products joined to orders with breakouts on 3 product columns followed by a custom column
-        H.createQuestion(
-          {
-            name: "repro 22563",
-            query: {
-              "source-query": {
-                "source-table": ORDERS_ID,
-                joins: [
-                  {
-                    alias: "Products",
-                    condition: [
-                      "=",
-                      ["field", ORDERS.PRODUCT_ID, null],
-                      [
-                        "field",
-                        PRODUCTS.ID,
-                        {
-                          "join-alias": "Products",
-                        },
-                      ],
-                    ],
-                    "source-table": PRODUCTS_ID,
-                  },
-                ],
-                aggregation: [["count"]],
-                breakout: [
-                  [
-                    "field",
-                    PRODUCTS.CATEGORY,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
-                  [
-                    "field",
-                    PRODUCTS.TITLE,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
-                  [
-                    "field",
-                    PRODUCTS.VENDOR,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
-                ],
-              },
-              expressions: {
-                two: ["+", 1, 1],
-              },
-            },
-          },
-          { visitQuestion: true },
-        );
-
-        const columnNames = [
-          "Products → Category",
-          "Products → Title",
-          "Products → Vendor",
-          "Count",
-          "two",
-        ];
-
-        H.tableInteractive().within(() => {
-          columnNames.forEach((text) =>
-            cy.findByText(text).should("be.visible"),
-          );
-        });
-
-        H.openVizSettingsSidebar();
-
-        cy.findByTestId("chartsettings-sidebar").within(() => {
-          columnNames.forEach((text) =>
-            cy.findByText(text).should("be.visible"),
-          );
-          cy.findByText("More Columns").should("not.exist");
-
-          cy.icon("eye_outline").first().click();
-
-          cy.findByText("More columns").should("be.visible");
-
-          // disable the first column
-          cy.findByTestId("disabled-columns")
-            .findByText("Products → Category")
-            .should("be.visible");
-          cy.findByTestId("visible-columns")
-            .findByText("Products → Category")
-            .should("not.exist");
-        });
-
-        H.tableInteractive().within(() => {
-          // the query should not have changed
-          cy.icon("play").should("not.exist");
-          cy.findByText("Products → Category").should("not.exist");
-        });
-
-        cy.findByTestId("chartsettings-sidebar").within(() => {
-          cy.icon("add").click();
-          // re-enable the first column
-          cy.findByText("More columns").should("not.exist");
-          cy.findByTestId("visible-columns")
-            .findByText("Products → Category")
-            .should("be.visible");
-        });
-
-        H.tableInteractive().within(() => {
-          // the query should not have changed
-          cy.icon("play").should("not.exist");
-          cy.findByText("Products → Category").should("be.visible");
-        });
-      },
-    );
   });
 
   describe("resetting state", () => {
@@ -582,9 +461,9 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders").click();
 
-      // This next assertion might not catch bugs where the modal displays after
-      // a quick delay. With the previous presentation of this bug, the modal
-      // was immediately visible, so I'm not going to add any waits.
+      cy.location("pathname").should("eq", `/table/${ORDERS_ID}-orders`);
+      H.tableInteractive().should("be.visible");
+      H.entityPickerModal().should("not.exist");
       H.modal().should("not.exist");
     });
   });

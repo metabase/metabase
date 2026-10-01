@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
 
-import { ColorRange } from "metabase/common/components/ColorRange";
 import { Box } from "metabase/ui";
 import type { ColumnFormattingSetting } from "metabase-types/api";
+
+import { ColorRange } from "../ColorRange";
 
 export const RuleBackground = ({
   rule,

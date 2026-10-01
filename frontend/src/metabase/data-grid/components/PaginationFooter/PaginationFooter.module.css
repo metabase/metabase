@@ -1,0 +1,30 @@
+.root {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin-left: auto;
+  text-align: right;
+}
+
+.message {
+  font-weight: bold;
+}
+
+.button {
+  padding-right: 0.5rem;
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+}
+
+.button:hover {
+  color: var(--mb-color-core-brand);
+}
+
+.button:disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.previous {
+  padding-left: 0.5rem;
+}

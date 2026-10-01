@@ -35,7 +35,7 @@ export const Overview = {
         title="Simultaneous"
         description="Keys pressed together render adjacent, with no separator."
       >
-        <Stack gap="md" align="flex-start">
+        <Stack gap="lg" align="flex-start">
           <KeyboardShortcut shortcut="$mod+k" />
           <KeyboardShortcut shortcut="Shift+$mod+p" />
           <KeyboardShortcut shortcut="$mod+backspace" />
@@ -47,7 +47,7 @@ export const Overview = {
         title="Sequential"
         description={`Keys pressed one after another are joined by "then".`}
       >
-        <Stack gap="md" align="flex-start">
+        <Stack gap="lg" align="flex-start">
           <KeyboardShortcut shortcut="c q" />
           <KeyboardShortcut shortcut="c e" />
         </Stack>

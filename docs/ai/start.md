@@ -12,6 +12,10 @@ Metabot is an AI assistant that helps you explore and analyze your data.
 
 Connect an AI provider and configure AI features like Metabot.
 
+## [Supported AI providers](./providers.md)
+
+The AI providers Metabase can connect to, the credentials each one needs, and the models each one offers.
+
 ## [AI privacy](./privacy.md)
 
 What data Metabase sends to AI providers and MCP clients, and what Metabase collects.

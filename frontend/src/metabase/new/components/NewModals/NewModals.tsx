@@ -1,21 +1,14 @@
 import { useCallback, useEffect } from "react";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import CreateCollectionModal, {
   type CreateCollectionModalOwnProps,
 } from "metabase/common/collections/containers/CreateCollectionModal";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
-import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { LegacyStaticEmbeddingModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
-import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import type {
-  LegacyStaticEmbeddingModalProps,
-  SdkIframeEmbedSetupModalProps,
-} from "metabase/plugins";
+import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { ModalState } from "metabase/redux/store/modal";
@@ -111,31 +104,6 @@ export const NewModals = () => {
           />
         </Modal>
       );
-    case "embed": {
-      // Unjustified type cast. FIXME
-      const props = currentNewModalProps as SdkIframeEmbedSetupModalProps;
-      return (
-        <SdkIframeEmbedSetupModal
-          opened
-          initialState={props?.initialState}
-          onClose={handleModalClose}
-        />
-      );
-    }
-    case STATIC_LEGACY_EMBEDDING_TYPE: {
-      // Unjustified type cast. FIXME
-      const props = currentNewModalProps as LegacyStaticEmbeddingModalProps;
-
-      return (
-        <LegacyStaticEmbeddingModal
-          experience={props?.experience}
-          dashboardId={props?.dashboardId}
-          questionId={props?.questionId}
-          parentInitialState={props?.parentInitialState}
-          onClose={handleModalClose}
-        />
-      );
-    }
     case "upgrade":
       return <UpgradeModal opened onClose={handleModalClose} />;
     default:

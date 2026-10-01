@@ -48,7 +48,7 @@ const SyncStatus = ({ app }: Props) => {
 };
 
 export const DataAppSummary = ({ app }: Props) => {
-  const isOpenable = app.enabled && !app.sync_error;
+  const isOpenable = app.enabled && !app.sync_error && !app.outdated;
 
   return (
     <Group align="center" flex="1" wrap="nowrap" miw={0}>
@@ -74,7 +74,13 @@ export const DataAppSummary = ({ app }: Props) => {
           </Text>
         )}
 
-        <Group gap="xs" align="center" wrap="wrap">
+        {app.description && (
+          <Text size="sm" c="text-secondary" lh="1.4" my="xxs">
+            {app.description}
+          </Text>
+        )}
+
+        <Group gap="xxs" align="center" wrap="wrap">
           <Text
             size="sm"
             c="text-secondary"

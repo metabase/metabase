@@ -6,20 +6,18 @@ import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type { CollectionItem } from "metabase-types/api";
 
 export type ItemRendererProps = {
   item: CollectionItem;
   isSelected?: boolean;
   isPinned?: boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
-  collection?: Collection;
-  draggable?: boolean;
   testIdPrefix?: string;
-  databases?: Database[];
-  bookmarks?: Bookmark[];
-} & ActionMenuProps &
+} & Omit<
+  ActionMenuProps,
+  "className" | "item" | "isSelected" | "onToggleSelected"
+> &
   Pick<BaseItemsTableProps, "onClick" | "visibleColumnsMap">;
 
 export const DefaultItemRenderer = ({
@@ -95,6 +93,8 @@ export const DefaultItemRenderer = ({
           onMove={onMove}
           createBookmark={createBookmark}
           deleteBookmark={deleteBookmark}
+          isSelected={isSelected}
+          onToggleSelected={canSelect ? handleSelectionToggled : undefined}
         />
       )}
       {visibleColumnsMap["archive"] && <Columns.Archive.Cell item={item} />}

@@ -80,12 +80,12 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.core :as server]
-   [metabase.server.test-handler :as server.test-handler]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -104,7 +104,8 @@
 
 (apply require clojure.main/repl-requires)
 
-#_:clj-kondo/ignore
+;; REPL spy helper; tap> is the point
+#_{:clj-kondo/ignore [:discouraged-var :missing-docstring]}
 (defn tap>-spy [x]
   (doto x tap>))
 
@@ -179,7 +180,7 @@
 (defn start!
   "Start Metabase"
   []
-  (server/start-web-server! (server.test-handler/test-handler))
+  (server/start-web-server! (test.server.handler/test-handler))
   (init!)
   (when config/is-dev?
     (prune-deleted-inmem-databases!)
@@ -365,10 +366,9 @@
   []
   (binding [t2.connection/*current-connectable* nil]
     (or (t2/select-one :model/Database :name "Application Database")
-        #_:clj-kondo/ignore
-        (let [details (#'metabase.app-db.env/broken-out-details
+        (let [details (#'mdb.env/broken-out-details
                        (mdb/db-type)
-                       @#'metabase.app-db.env/env)
+                       @#'mdb.env/env)
               app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
@@ -392,7 +392,8 @@
   [form]
   (hashp/p* form))
 
-#_:clj-kondo/ignore
+;; pipeline tap helper; calling tap> is the point
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn tap
   "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
   [form]

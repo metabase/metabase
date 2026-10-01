@@ -6,17 +6,24 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import NoResultsImg from "assets/img/no_results.svg";
-import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCollectionItemsMetadataQuery,
+  useListCollectionItemsQuery,
+} from "metabase/api";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
   type CollectionContentTableColumn,
   DEFAULT_VISIBLE_COLUMNS_LIST,
+  FILTERS_VISIBILITY_THRESHOLD,
 } from "metabase/collections/components/CollectionContent/constants";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
+import { trackCollectionItemsFiltered } from "metabase/common/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -32,22 +39,18 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionId,
   CollectionItem,
   CollectionItemModel,
+  Database,
   ListCollectionItemsRequest,
   ListCollectionItemsSortColumn,
   SortingOptions,
 } from "metabase-types/api";
 
-import {
-  CollectionEmptyContent,
-  CollectionTable,
-} from "./CollectionContent.styled";
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
 
 const shouldDebounceSearchText = (
@@ -69,18 +72,15 @@ const getDefaultSortingOptions = (
       };
 };
 
-const getQueryFilters = (
-  models: CollectionItemModel[],
-  selectedFilters: CollectionItemModel[] | null,
-): Pick<ListCollectionItemsRequest, "models"> => {
-  if (selectedFilters == null) {
-    return { models };
-  }
-
-  return {
-    models: selectedFilters.length > 0 ? selectedFilters : ["no_models"],
-  };
-};
+// `itemsSorting` keeps the snake_case `SortingOptions` shape that `BaseItemsTable` emits, which is shared with
+// tables driving endpoints that still take snake_case (e.g. /api/ee/stale/:id). The collection items endpoint
+// takes kebab-case, so translate here rather than changing the shared UI type.
+const toItemsSortingParams = (
+  sorting: SortingOptions<ListCollectionItemsSortColumn>,
+) => ({
+  "sort-column": sorting.sort_column,
+  "sort-direction": sorting.sort_direction,
+});
 
 export type CollectionItemsTableProps = {
   collectionId?: CollectionId;
@@ -97,8 +97,6 @@ export type CollectionItemsTableProps = {
   getIsSelected: (item: CollectionItem) => boolean;
   handleCopy: (items: CollectionItem[]) => void;
   handleMove: (items: CollectionItem[]) => void;
-  hasPinnedItems: boolean;
-  loadingPinnedItems: boolean;
   models: CollectionItemModel[];
   pageSize: number;
   showDashboardQuestions: boolean;
@@ -116,9 +114,9 @@ const DefaultEmptyContentComponent = ({
   collection?: Collection;
 }) => {
   return (
-    <CollectionEmptyContent>
+    <Box mt="15vh">
       <CollectionEmptyState collection={collection} />
-    </CollectionEmptyContent>
+    </Box>
   );
 };
 
@@ -148,8 +146,6 @@ export const CollectionItemsTable = ({
   getIsSelected,
   handleCopy,
   handleMove,
-  hasPinnedItems,
-  loadingPinnedItems,
   models = ALL_MODELS,
   pageSize = COLLECTION_PAGE_SIZE,
   showFilterBar,
@@ -177,8 +173,9 @@ export const CollectionItemsTable = ({
   );
   const trimmedSearchText =
     searchText.trim().length > 0 ? debouncedSearchText.trim() : "";
+  const previousTrimmedSearchText = usePrevious(trimmedSearchText);
 
-  const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState<
+  const [itemsSorting, setItemsSorting] = useState<
     SortingOptions<ListCollectionItemsSortColumn>
   >(() => getDefaultSortingOptions(collection));
 
@@ -191,6 +188,12 @@ export const CollectionItemsTable = ({
     setFilterSelection({ collectionId, value: null });
   }, [collectionId, resetPage]);
 
+  useEffect(() => {
+    if (previousTrimmedSearchText === "" && trimmedSearchText.length > 0) {
+      trackCollectionItemsFiltered({ collectionId, filter: "search" });
+    }
+  }, [collectionId, previousTrimmedSearchText, trimmedSearchText]);
+
   const handleSearchTextChange = useCallback(
     (value: string) => {
       setSearch({ collectionId, value });
@@ -201,21 +204,47 @@ export const CollectionItemsTable = ({
 
   const handleSelectedFiltersChange = useCallback(
     (nextFilters: CollectionItemModel[] | null) => {
+      if (selectedFilters == null && nextFilters != null) {
+        trackCollectionItemsFiltered({ collectionId, filter: "type" });
+      }
       setFilterSelection({ collectionId, value: nextFilters });
       setPage(0);
     },
-    [collectionId, setPage],
+    [collectionId, selectedFilters, setPage],
   );
 
-  const handleUnpinnedItemsSortingChange = useCallback(
+  const handleItemsSortingChange = useCallback(
     (sortingOpts: SortingOptions<ListCollectionItemsSortColumn>) => {
-      setUnpinnedItemsSorting(sortingOpts);
+      setItemsSorting(sortingOpts);
       setPage(0);
     },
     [setPage],
   );
 
-  const showAllItems = isEmbeddingSdk() || isRootTrashCollection(collection);
+  // Dashboard questions are only ever listed in the SDK and in the trash.
+  const showDashboardQuestionsInList =
+    (isEmbeddingSdk() || isRootTrashCollection(collection)) &&
+    showDashboardQuestions;
+
+  // `currentData` is per collection, so a previous collection's metadata never drives this one's toolbar.
+  const { currentData: itemsMetadata } = useGetCollectionItemsMetadataQuery(
+    collectionId === undefined || !showFilterBar
+      ? skipToken
+      : {
+          id: collectionId,
+          models,
+          "show-dashboard-questions": showDashboardQuestionsInList,
+        },
+  );
+  const availableModels = itemsMetadata?.available_models ?? [];
+  const totalItems = itemsMetadata?.total_items ?? 0;
+
+  const showToolbar =
+    Boolean(showFilterBar) && totalItems > FILTERS_VISIBILITY_THRESHOLD;
+  // The toolbar can disappear while a search or type filter is active, e.g. after
+  // archiving items; ignore the leftover selection rather than filtering a bare list.
+  const appliedSearchText = showToolbar ? trimmedSearchText : "";
+  const appliedFilters = showToolbar ? selectedFilters : null;
 
   return (
     <CollectionItemsTableContent
@@ -230,40 +259,36 @@ export const CollectionItemsTable = ({
       getIsSelected={getIsSelected}
       handleCopy={handleCopy}
       handleMove={handleMove}
-      hasPinnedItems={hasPinnedItems}
-      loadingPinnedItems={loadingPinnedItems}
       page={page}
       pageSize={pageSize}
-      searchText={searchText}
-      selectedFilters={selectedFilters}
+      searchText={showToolbar ? searchText : ""}
+      selectedFilters={appliedFilters}
       selected={selected}
       selectOnlyTheseItems={selectOnlyTheseItems}
-      showFilterBar={showFilterBar}
+      showToolbar={showToolbar}
       toggleItem={toggleItem}
-      unpinnedItemsSorting={unpinnedItemsSorting}
-      unpinnedQuery={
+      itemsSorting={itemsSorting}
+      itemsQuery={
         collectionId === undefined
           ? skipToken
           : {
               id: collectionId,
-              ...getQueryFilters(models, selectedFilters),
-              ...(showFilterBar ? { include_available_models: true } : {}),
+              models: appliedFilters ?? models,
               limit: pageSize,
               offset: pageSize * page,
-              ...(showAllItems
-                ? { show_dashboard_questions: showDashboardQuestions }
-                : { pinned_state: "is_not_pinned" }),
-              ...unpinnedItemsSorting,
-              ...(trimmedSearchText.length > 0 ? { q: trimmedSearchText } : {}),
+              "show-dashboard-questions": showDashboardQuestionsInList,
+              ...toItemsSortingParams(itemsSorting),
+              ...(appliedSearchText.length > 0 ? { q: appliedSearchText } : {}),
             }
       }
+      availableModels={availableModels}
       visibleColumns={visibleColumns}
       onClick={onClick}
       onNextPage={handleNextPage}
       onPreviousPage={handlePreviousPage}
       onSearchTextChange={handleSearchTextChange}
       onSelectedFiltersChange={handleSelectedFiltersChange}
-      onUnpinnedItemsSortingChange={handleUnpinnedItemsSortingChange}
+      onItemsSortingChange={handleItemsSortingChange}
     />
   );
 };
@@ -272,14 +297,16 @@ type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   page: number;
   searchText: string;
   selectedFilters: CollectionItemModel[] | null;
-  unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
-  unpinnedQuery: ListCollectionItemsRequest | typeof skipToken;
+  showToolbar: boolean;
+  availableModels: string[];
+  itemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
+  itemsQuery: ListCollectionItemsRequest | typeof skipToken;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onSearchTextChange: (searchText: string) => void;
   onSelectedFiltersChange: (filters: CollectionItemModel[] | null) => void;
-  onUnpinnedItemsSortingChange: (
-    unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
+  onItemsSortingChange: (
+    itemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
   ) => void;
   visibleColumns: CollectionContentTableColumn[];
 };
@@ -295,93 +322,85 @@ const CollectionItemsTableContent = ({
   getIsSelected,
   handleCopy,
   handleMove,
-  hasPinnedItems,
-  loadingPinnedItems,
   page,
   pageSize = COLLECTION_PAGE_SIZE,
   searchText,
   selectedFilters,
   selected,
   selectOnlyTheseItems,
-  showFilterBar,
+  showToolbar,
+  availableModels,
   toggleItem,
-  unpinnedItemsSorting,
-  unpinnedQuery,
+  itemsSorting,
+  itemsQuery,
   visibleColumns,
   onClick,
   onNextPage,
   onPreviousPage,
   onSearchTextChange,
   onSelectedFiltersChange,
-  onUnpinnedItemsSortingChange,
+  onItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
-  const { data, isFetching: fetchingUnpinnedItems } =
-    useListCollectionItemsQuery(unpinnedQuery);
+  const { data, isFetching } = useListCollectionItemsQuery(itemsQuery);
 
-  const unpinnedItems = data?.data ?? [];
-  const availableModels = data?.available_models ?? [];
-  const total = data?.total;
+  const items = data?.data ?? [];
+  const totalMatchingItems = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
     [visibleColumns],
   );
 
-  const hasPagination: boolean = total ? total > pageSize : false;
+  const hasPagination: boolean = totalMatchingItems
+    ? totalMatchingItems > pageSize
+    : false;
 
   const unselected = getIsSelected
-    ? unpinnedItems.filter((item) => !getIsSelected(item))
-    : unpinnedItems;
+    ? items.filter((item) => !getIsSelected(item))
+    : items;
   const hasUnselected = unselected.length > 0;
 
   const handleSelectAll = () => {
-    selectOnlyTheseItems?.(unpinnedItems);
+    selectOnlyTheseItems?.(items);
   };
 
-  const loading = loadingPinnedItems || fetchingUnpinnedItems;
   const hasSearchQuery =
-    unpinnedQuery !== skipToken && Boolean(unpinnedQuery.q?.trim());
+    itemsQuery !== skipToken && Boolean(itemsQuery.q?.trim());
   const hasSearchText = searchText.trim().length > 0 || hasSearchQuery;
   const hasActiveFilters = hasSearchText || selectedFilters != null;
-  const isSearching = fetchingUnpinnedItems && hasSearchQuery;
-  const isEmpty =
-    !loading &&
-    !hasPinnedItems &&
-    unpinnedItems.length === 0 &&
-    !hasActiveFilters;
+  const isSearching = isFetching && hasSearchQuery;
+  const isEmpty = !isFetching && items.length === 0 && !hasActiveFilters;
 
   if (isEmpty) {
     return <EmptyContentComponent collection={collection} />;
   }
 
-  const showNoResults =
-    !fetchingUnpinnedItems && hasActiveFilters && unpinnedItems.length === 0;
+  const showNoResults = !isFetching && hasActiveFilters && items.length === 0;
   const showTable = !showNoResults;
 
   return (
     <>
-      {showFilterBar && (
+      {showToolbar && (
         <CollectionItemsToolbar
           searchText={searchText}
           availableModels={availableModels}
           selectedFilters={selectedFilters}
           onSearchTextChange={onSearchTextChange}
           onSelectedFiltersChange={onSelectedFiltersChange}
-          hasPinnedItems={hasPinnedItems}
           isSearching={isSearching}
         />
       )}
       {showNoResults && <CollectionNoResults hasSearchText={hasSearchText} />}
       {showTable && (
-        <CollectionTable data-testid="collection-table">
+        <Box data-testid="collection-table">
           <ItemsTable
             databases={databases}
             bookmarks={bookmarks}
             createBookmark={createBookmark}
             deleteBookmark={deleteBookmark}
-            items={unpinnedItems}
+            items={items}
             collection={collection}
-            sortingOptions={unpinnedItemsSorting}
-            onSortingOptionsChange={onUnpinnedItemsSortingChange}
+            sortingOptions={itemsSorting}
+            onSortingOptionsChange={onItemsSortingChange}
             selectedItems={selected}
             hasUnselected={hasUnselected}
             getIsSelected={getIsSelected}
@@ -407,14 +426,14 @@ const CollectionItemsTableContent = ({
                 showTotal
                 page={page}
                 pageSize={pageSize}
-                total={total}
-                itemsLength={unpinnedItems.length}
+                total={totalMatchingItems}
+                itemsLength={items.length}
                 onNextPage={onNextPage}
                 onPreviousPage={onPreviousPage}
               />
             )}
           </div>
-        </CollectionTable>
+        </Box>
       )}
     </>
   );

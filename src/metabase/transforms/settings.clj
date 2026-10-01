@@ -70,6 +70,7 @@
   :visibility :authenticated
   :export?    false
   :audit      :getter
+  :setter     :none
   :can-read-from-env? false
   :getter (fn []
             ;; if the setting is set (whether true or false), then setup is complete. otherwise, check the token feature for cloud

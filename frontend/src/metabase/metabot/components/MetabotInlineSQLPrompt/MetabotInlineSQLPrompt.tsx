@@ -116,7 +116,7 @@ export const MetabotInlineSQLPrompt = ({
         </Box>
       )}
 
-      <Flex justify="space-between" align="center" gap="sm" mt="xs">
+      <Flex justify="space-between" align="center" gap="sm" mt="xxs">
         <Box
           data-testid="metabot-inline-sql-error"
           w="100%"
@@ -129,37 +129,35 @@ export const MetabotInlineSQLPrompt = ({
             error?.message
           )}
         </Box>
-        <Flex gap="xs" flex="1 0 auto">
+        <Flex gap="xxs" flex="1 0 auto">
           {canUseSqlGeneration && (
             <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
               <Button
-                className={S.submitButton}
                 data-testid="metabot-inline-sql-generate"
-                size="xs"
                 variant="filled"
                 px="0"
-                w="1.875rem"
-                styles={{ label: { display: "flex" } }}
+                w="2rem"
+                leftSection={
+                  isLoading ? (
+                    <Loader
+                      size="xs"
+                      color="text-disabled"
+                      data-testid="metabot-inline-sql-generating"
+                    />
+                  ) : (
+                    <Icon name="send" />
+                  )
+                }
                 onClick={handleSubmit}
                 disabled={isSubmitDisabled}
-              >
-                {isLoading ? (
-                  <Loader
-                    size="xs"
-                    color="text-disabled"
-                    data-testid="metabot-inline-sql-generating"
-                  />
-                ) : (
-                  <Icon name="send" />
-                )}
-              </Button>
+              />
             </Tooltip>
           )}
           <Button
             className={S.cancelButton}
             data-testid="metabot-inline-sql-cancel"
-            size="xs"
             variant="subtle"
+            color="neutral"
             onClick={handleClose}
           >
             {t`Cancel`}

@@ -22,7 +22,7 @@
         expiration (t/instant (t/plus timestamp (t/seconds 300)))
         nonce      (random-uuid)
         payload    (str (.getEpochSecond timestamp) "." (.getEpochSecond expiration) "." nonce)
-        encrypted  (encryption/encrypt (hashed-key) payload)]
+        encrypted  (encryption/encrypt payload {:secret-key (hashed-key)})]
     (URLEncoder/encode encrypted "UTF-8")))
 
 (defn validate-token
@@ -33,7 +33,7 @@
         (not-empty token)
         (try
           (let [decoded-token     (URLDecoder/decode ^String token "UTF-8")
-                decrypted-payload (encryption/decrypt (hashed-key) decoded-token)
+                decrypted-payload (encryption/decrypt decoded-token {:secret-key (hashed-key)})
                 [_ expiration _]  (str/split decrypted-payload #"\." 3)]
             (t/< (t/instant) (Instant/ofEpochSecond (Long/parseLong expiration))))
           (catch Exception _

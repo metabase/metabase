@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views.model]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -82,6 +83,18 @@
           (is (nil? (:collection_id doc)))
           (is (nil? (:collection_name doc)))
           (is (nil? (:collection_authority_level doc))))))))
+
+(deftest select-documents-for-recents-personal-collection-test
+  (testing "returns the owner-qualified name for a document in a personal collection"
+    ;; The command palette shows the collection a recent document lives in, and for a personal
+    ;; collection that name is the owner-qualified one written at creation time, not a blank row.
+    (let [coll-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Personal Document"
+                                                   :collection_id coll-id
+                                                   :archived false}]
+        (let [doc (first (#'recent-views.model/document-recents [doc-id]))]
+          (is (= coll-id (:collection_id doc)))
+          (is (= "Rasta Toucan's Personal Collection" (:collection_name doc))))))))
 
 (deftest select-documents-for-recents-archived-collections-test
   (testing "excludes documents from archived collections via left join"
@@ -163,3 +176,25 @@
                           (= (:name %) "Test Document"))
                     (:recents response))
               "Document should be present in recents when premium feature is enabled"))))))
+
+(deftest recents-api-excludes-exploration-documents-test
+  (testing "/recents API hides documents attached to an exploration"
+    (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Test Collection"}
+                   :model/Exploration {expl-id :id}   {:name "Expl"
+                                                       :creator_id (mt/user->id :rasta)}
+                   :model/Document    {plain-id :id}  {:name "Plain Document"
+                                                       :collection_id coll-id
+                                                       :archived false}
+                   :model/Document    {expl-doc :id}  {:name "Exploration Document"
+                                                       :collection_id coll-id
+                                                       :exploration_id expl-id
+                                                       :archived false}]
+      ;; Bypass the write-time filter to simulate historical rows already present in recent_views.
+      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document plain-id :view)
+      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document expl-doc :view)
+      (let [recents (:recents (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views]))
+            ids    (set (map :id (filter #(= (:model %) "document") recents)))]
+        (is (contains? ids plain-id)
+            "Plain document should appear in recents")
+        (is (not (contains? ids expl-doc))
+            "Exploration-attached document should be filtered out of recents")))))

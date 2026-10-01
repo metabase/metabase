@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { getDimensionIcon } from "metabase/common/utils/columns";
-import type { DimensionBlock, MetricBlock } from "metabase/explorations/hooks";
+import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
   ActionIcon,
   Box,
@@ -11,12 +10,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as LibMetric from "metabase-lib/metric/core";
-import type {
-  DimensionId,
-  ExplorationMetric,
-  IconName,
-} from "metabase-types/api";
+import type { DimensionId, IconName } from "metabase-types/api";
 
 import S from "./NewExplorationData.module.css";
 import { SelectedPills, TogglePill } from "./Pills";
@@ -61,7 +55,7 @@ export function EntityBlock({
         <Ellipsified flex={1} fw="bold">
           {title}
         </Ellipsified>
-        <Group className={S.blockActions} wrap="nowrap" gap="xs">
+        <Group className={S.blockActions} wrap="nowrap" gap="xxs">
           <ActionIcon
             size="sm"
             variant="subtle"
@@ -98,7 +92,7 @@ export function EntityBlock({
 }
 
 interface MetricBlockItemProps {
-  block: MetricBlock;
+  block: ExplorationBlock;
   expanded: boolean;
   disabled: boolean;
   onToggleExpand: () => void;
@@ -132,7 +126,7 @@ export function MetricBlockItem({
       onRemoveBlock={onRemoveBlock}
     >
       {expanded ? (
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text size="sm" c="text-secondary">
             {t`Modify which dimensions to see this metric by`}
           </Text>
@@ -148,70 +142,6 @@ export function MetricBlockItem({
               />
             ))}
           </Group>
-        </Stack>
-      ) : (
-        <SelectedPills pills={selectedPills} />
-      )}
-    </EntityBlock>
-  );
-}
-
-interface DimensionBlockItemProps {
-  block: DimensionBlock;
-  expanded: boolean;
-  disabled: boolean;
-  onToggleExpand: () => void;
-  onRemoveBlock: () => void;
-  onToggleMetric: (metricId: ExplorationMetric["id"]) => void;
-}
-
-export function DimensionBlockItem({
-  block,
-  expanded,
-  disabled,
-  onToggleExpand,
-  onRemoveBlock,
-  onToggleMetric,
-}: DimensionBlockItemProps) {
-  const iconName = getDimensionIcon(
-    LibMetric.fromMetricDimension(block.dimension),
-  );
-  const selectedPills = block.metrics
-    .filter((m) => block.selectedMetricIds.has(m.id))
-    .map((m) => ({ label: m.name }));
-
-  return (
-    <EntityBlock
-      iconName={iconName}
-      iconLabel={t`Dimension`}
-      title={formatDimensionLabel(block.dimension)}
-      expanded={expanded}
-      disabled={disabled}
-      onToggleExpand={onToggleExpand}
-      onRemoveBlock={onRemoveBlock}
-    >
-      {expanded ? (
-        <Stack gap="md">
-          <Text size="sm" c="text-secondary">
-            {t`Modify which metrics to look at for this dimension`}
-          </Text>
-          {block.metrics.length === 0 ? (
-            <Text size="sm" c="text-secondary">
-              {t`No related metrics.`}
-            </Text>
-          ) : (
-            <Group align="center" gap="sm" wrap="wrap">
-              {block.metrics.map((metric) => (
-                <TogglePill
-                  key={metric.id}
-                  label={metric.name}
-                  selected={block.selectedMetricIds.has(metric.id)}
-                  disabled={disabled}
-                  onToggle={() => onToggleMetric(metric.id)}
-                />
-              ))}
-            </Group>
-          )}
         </Stack>
       ) : (
         <SelectedPills pills={selectedPills} />

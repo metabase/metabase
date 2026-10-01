@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { setupBasename } from "__support__/basename";
+import { api } from "metabase/api/client";
 
 import {
   aiStreamingQuery,
@@ -16,6 +17,8 @@ describe("ai requests", () => {
   setupBasename(fakeBasename);
 
   describe("aiStreamingQuery", () => {
+    afterEach(() => api.removeAllListeners(401));
+
     it("should call a request with a baseurl", async () => {
       const fetchSpy = jest.spyOn(global, "fetch");
 
@@ -87,10 +90,13 @@ describe("ai requests", () => {
     });
 
     it("throw error if bad http status code", async () => {
+      const on401 = jest.fn();
+      api.on(401, on401);
       fetchMock.post(`path:${endpoint}`, 500);
       await expect(
         aiStreamingQuery({ url: endpoint, body: {} }),
       ).rejects.toMatchObject({ status: 500 });
+      expect(on401).not.toHaveBeenCalled();
     });
 
     it("preserves structured JSON error responses", async () => {
@@ -111,6 +117,17 @@ describe("ai requests", () => {
           "error-code": "metabase_ai_managed_locked",
         },
       });
+    });
+
+    it("emits 401 so the global handler can send the user to login", async () => {
+      const on401 = jest.fn();
+      api.on(401, on401);
+      fetchMock.post(`path:${endpoint}`, 401);
+
+      await expect(
+        aiStreamingQuery({ url: endpoint, body: {} }),
+      ).rejects.toMatchObject({ status: 401 });
+      expect(on401).toHaveBeenCalledWith(endpoint);
     });
 
     it("throw error if no response", async () => {

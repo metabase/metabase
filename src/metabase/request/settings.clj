@@ -7,7 +7,7 @@
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header''s value, instead of its remote address.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default "X-Forwarded-For"
   :export? true
   :audit   :getter
@@ -64,7 +64,7 @@
   :setter #'-session-cookie-samesite!
   :doc "See [Embedding Metabase in a different domain](../embedding/full-app-embedding.md#embedding-metabase-in-a-different-domain).
         Read more about [Full app embedding](../embedding/full-app-embedding.md).
-        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).")
+        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value).")
 
 (defn- check-session-timeout
   "Returns nil if the [[session-timeout]] value is valid. Otherwise returns an error key."
@@ -104,7 +104,7 @@
   ;; Should be in the form "{\"amount\":60,\"unit\":\"minutes\"}" where the unit is one of "seconds", "minutes"
   ;; or "hours". The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :default    nil
   :getter     #'-session-timeout

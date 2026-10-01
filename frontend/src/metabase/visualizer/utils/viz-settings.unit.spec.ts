@@ -1,6 +1,6 @@
-import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { Map } from "metabase/visualizations/visualizations/Map/Map";
+import { registerVisualization } from "metabase/viz-core";
 
 import { getColumnVizSettings } from "./viz-settings";
 

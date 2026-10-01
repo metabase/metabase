@@ -17,7 +17,6 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
   focusedTimelineEventIds: null,
-  isShowingAIQuestionAnalysisSidebar: false,
   isNativeEditorOpen: false,
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
@@ -57,7 +56,6 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingSummarySidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
-  isShowingAIQuestionAnalysisSidebar: false,
   isShowingTimelineSidebar: false,
   focusedTimelineEventIds: null,
   isShowingQuestionInfoSidebar: false,

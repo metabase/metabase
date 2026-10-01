@@ -2,7 +2,7 @@
 
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
 
-![Metabase Product Screenshot](https://www.metabase.com/images/metabase-product-screenshot-updated.png)
+![Metabase Product Screenshot](./docs/images/metabase-product-screenshot-updated.png)
 
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)
@@ -46,7 +46,8 @@ The [Metabase handbook](https://www.metabase.com/docs/latest/).
 
 ## Contributing
 
-To contribute to Metabase, see our [Developer docs](./docs/developers-guide/start.md).
+- To contribute to Metabase, see our [Developer docs](./docs/developers-guide/start.md).
+- Found an issue? Read our [Reporting a bug guide](https://www.metabase.com/docs/latest/troubleshooting-guide/bugs)
 
 ## Extending Metabase
 

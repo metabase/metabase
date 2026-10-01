@@ -11,6 +11,10 @@ export type TokenUsage = {
 export type MessageMetadata = {
   usage?: TokenUsage;
   usageByModel?: Record<string, TokenUsage>;
+  contextWindowTokens?: number;
+  // the turn's final LLM call (prompt + completion) — the conversation's
+  // current size, unlike `usage` which sums every call in the turn
+  contextTokens?: number;
   // a typed error's code, ridden on the trailing `finish` event so the client
   // can branch on it (e.g. the usage-limit upgrade prompt)
   errorCode?: string;

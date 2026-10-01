@@ -2,6 +2,15 @@
   overflow: auto;
 }
 
-.descriptionLabel {
-  margin-bottom: 0.75rem;
+/* Double class so this beats EditableText's Emotion hover/focus border */
+.descriptionInput {
+  && {
+    border-color: var(--mb-color-border-neutral);
+    cursor: text;
+
+    &:hover,
+    &:focus-within {
+      border-color: var(--mb-color-core-brand);
+    }
+  }
 }

@@ -46,9 +46,9 @@ export function NewExplorationPlan({ selection }: NewExplorationPlanProps) {
           <Button
             component={ForwardRefLink}
             to={Urls.newExploration()}
-            c="text-secondary"
-            bd="none"
-            leftSection={<Icon name="arrow_left" c="brand" />}
+            variant="transparent"
+            size="compact-md"
+            leftSection={<Icon name="arrow_left" />}
           >
             {t`All projects`}
           </Button>
@@ -78,7 +78,7 @@ export function NewExplorationPlan({ selection }: NewExplorationPlanProps) {
             w="100%"
             align="stretch"
             wrap="nowrap"
-            bdrs="md"
+            bdrs="sm"
             gap={0}
           >
             <Stack flex={1} miw={0} mih={0} h="100%" gap={0}>

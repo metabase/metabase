@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv not-empty select-keys])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
@@ -22,7 +22,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys]]
    [next.jdbc])
   (:import
    (java.sql Connection SQLException SQLTimeoutException)))
@@ -53,9 +53,36 @@
 ;;; |                                     Default SQL JDBC metabase.driver impls                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private disallowed-additional-opts
+  "JDBC connection properties that are not needed to connect to a warehouse and are rejected for every
+  SQL-JDBC driver. Matched case-insensitively as substrings of the raw `additional-options` string, so a token here
+  also catches its longer spellings (`socketFactory` covers `socketFactoryClass`, `socketfactoryname`,
+  `sslsocketfactoryname`; `hostnameverifier` covers `sslhostnameverifier`).
+
+  These are all properties whose value a JDBC driver loads and instantiates as a Java class -- a no-arg constructor
+  and/or static initializer runs inside the Metabase process -- which is arbitrary-class-instantiation leading to
+  code execution when a gadget is on the classpath. None is needed to reach a data warehouse."
+  #"(?i)(?:socketFactory|sslfactory|hostnameverifier|sslpasswordcallback|xmlFactoryFactory|loggerFile|queryInterceptors|dnsResolver)")
+
+(defn reject-dangerous-additional-options!
+  "Throw if `details` name a JDBC connection property on the shared SQL-JDBC denylist. Drivers that override
+  `validate-db-details!` must call this themselves."
+  [details]
+  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
+    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+
+(defmethod driver/validate-db-details! :sql-jdbc
+  [_driver details]
+  (reject-dangerous-additional-options! details))
+
 (defmethod driver/can-connect? :sql-jdbc
   [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
+
+(defmethod driver/validate-impersonated-query :sql-jdbc
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
 
 (defmethod driver/table-rows-seq :sql-jdbc
   [driver database table]
@@ -97,6 +124,13 @@
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
   (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
+
+(defmethod driver.sql/default-schema :sql-jdbc
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^Connection conn]
+     (not-empty (.getSchema conn)))))
 
 (defmethod driver/describe-database* :sql-jdbc
   [driver database]
@@ -294,6 +328,7 @@
   [driver db-id table-name column-definitions]
   (driver-api/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
+;; back-compat: honors driver overrides of the old alter-columns! method until drivers migrate
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-table-columns! :sql-jdbc
   [driver db-id table-name column-definitions & opts]

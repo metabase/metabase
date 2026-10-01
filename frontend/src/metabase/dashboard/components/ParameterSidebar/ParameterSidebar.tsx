@@ -9,7 +9,7 @@ import { hasMapping } from "metabase/parameters/utils/dashboards";
 import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
 import { useSelector } from "metabase/redux";
 import { Tabs } from "metabase/ui";
-import { slugify } from "metabase/visualizations/lib/formatting";
+import { slugify } from "metabase/utils/formatting";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -252,25 +252,18 @@ export const ParameterSidebar = (): JSX.Element | null => {
       }
       data-testid="dashboard-parameter-sidebar"
     >
-      <Tabs radius={0} value={tab} onChange={handleTabChange}>
+      <Tabs value={tab} onChange={handleTabChange}>
         {tabs.length > 1 && (
           <Tabs.List grow>
             {tabs.map((tab) => (
-              <Tabs.Tab
-                pl={0}
-                pr={0}
-                pt="md"
-                pb="md"
-                value={tab.value}
-                key={tab.value}
-              >
+              <Tabs.Tab value={tab.value} key={tab.value}>
                 {tab.name}
               </Tabs.Tab>
             ))}
           </Tabs.List>
         )}
 
-        <Tabs.Panel pr="md" pl="md" value="settings" key="settings">
+        <Tabs.Panel pr="lg" pl="lg" value="settings" key="settings">
           <ParameterSettings
             editingParameterInlineDashcard={editingParameterInlineDashcard}
             parameter={parameter}
@@ -289,7 +282,7 @@ export const ParameterSidebar = (): JSX.Element | null => {
           />
         </Tabs.Panel>
 
-        <Tabs.Panel pr="md" pl="md" value="filters" key="filters">
+        <Tabs.Panel pr="lg" pl="lg" value="filters" key="filters">
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}

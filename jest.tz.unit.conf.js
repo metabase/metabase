@@ -36,10 +36,7 @@ module.exports = {
   coverageDirectory: "./",
   coverageReporters: ["text", "json-summary"],
   collectCoverageFrom: ["frontend/src/**/*.{js,ts,jsx,tsx}"],
-  coveragePathIgnorePatterns: [
-    "/node_modules/",
-    "/frontend/src/metabase/visualizations/lib/errors.js",
-  ],
+  coveragePathIgnorePatterns: ["/node_modules/"],
   testEnvironment: "jest-environment-jsdom",
   testTimeout: 30000,
 };

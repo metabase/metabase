@@ -1,9 +1,15 @@
 (ns metabase-enterprise.replacement.source-check-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase-enterprise.replacement.source-check :as replacement.source-check]
    [metabase-enterprise.replacement.usages :as replacement.usages]
-   [metabase.test :as mt]))
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.sync.core :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -361,3 +367,31 @@
                     [:card c1-id] [:card c2-id])]
         (is (true? (:success result)))
         (is (nil? (some #{:database-mismatch} (:errors result))))))))
+
+(deftest no-implicit-joins-from-dropped-table-test
+  (testing "#82615: an FK on a table that was dropped from the warehouse does not block replacing the table it targets"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "replace-dropped-fk-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "replace-dropped-fk-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (doseq [statement ["CREATE TABLE table_a (id integer PRIMARY KEY, name text NOT NULL);"
+                           "CREATE TABLE table_b (id integer PRIMARY KEY, name text NOT NULL);"
+                           "CREATE TABLE table_c (fk_id integer NOT NULL REFERENCES table_a (id));"
+                           "CREATE TABLE table_d (fk_id integer NOT NULL REFERENCES table_a (id));"]]
+          (jdbc/execute! spec [statement]))
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+          (sync/sync-database! database {:scan :schema})
+          (let [table-id   (fn [table-name] (t2/select-one-pk :model/Table :db_id (:id database) :name table-name))
+                fk-field   (fn [table-name] (t2/select-one :model/Field :table_id (table-id table-name) :name "fk_id"))
+                table-a-id (table-id "table_a")
+                table-b-id (table-id "table_b")]
+            (jdbc/execute! spec ["DROP TABLE table_d;"])
+            (sync/sync-database! database {:scan :schema})
+            (testing "precondition: the dropped table is inactive but its FK field is still active"
+              (is (false? (t2/select-one-fn :active :model/Table :id (table-id "table_d"))))
+              (is (=? {:active true, :fk_target_field_id some?} (fk-field "table_d"))))
+            (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id (fk-field "table_c")))
+                                  {:semantic_type nil})
+            (is (=? {:success true}
+                    (replacement.source-check/check-replace-source
+                     [:table table-a-id] [:table table-b-id])))))))))

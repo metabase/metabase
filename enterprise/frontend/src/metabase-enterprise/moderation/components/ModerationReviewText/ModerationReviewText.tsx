@@ -1,6 +1,6 @@
 import { skipToken, useGetUserQuery } from "metabase/api";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { FixedSizeIcon, Flex, Text } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import {
@@ -75,7 +75,7 @@ const ModerationReviewText = ({
         name={iconName}
         c={iconColor}
         size={ICON_BUTTON_SIZE}
-        mt="xs"
+        mt="xxs"
       />
       <Text>
         {bannerText} {relativeCreationTime}

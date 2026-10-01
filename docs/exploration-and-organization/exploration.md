@@ -51,13 +51,13 @@ You can search by:
 
 ![Browse databases](./images/browse-data.png)
 
-The left sidebar lists your databases, [models](../data-modeling/models.md), and [metrics](../data-modeling/metrics.md).
+The left sidebar lists your databases, [models](../data-modeling/models/models.md), and [metrics](../data-modeling/semantic-layer/metrics.md).
 
 [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to filter for [verified models and metrics](./content-verification.md).
 
 The database browser will list all the databases connected to your Metabase. Hover over a table and click on the **bolt** icon to [X-ray](x-rays.md) the table, or click on the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
 
-To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
+To learn more, see the [data reference](./data-model-reference.md).
 
 ## Exploring collections
 
@@ -68,8 +68,8 @@ To learn more, see [Exploring data with Metabase's data browser](https://www.met
 Your teammates might have pinned some items to the top of your collection.
 
 - [dashboards](../dashboards/introduction.md)
-- [models](../data-modeling/models.md)
-- [metrics](../data-modeling/metrics.md)
+- [models](../data-modeling/models/models.md)
+- [metrics](../data-modeling/semantic-layer/metrics.md)
 - [questions](../questions/start.md)
 
 Collections have a list of any other items that are saved within them, and you can see what other collections are saved inside of the current one by checking out the navigation sidebar.
@@ -108,9 +108,9 @@ To see the details of an individual record when viewing unaggregated tables, cli
 
 To expand the details sidebar to a full page, click "Open in full page". Every record has a dedicated details page which you can link to.
 
-Admins and people with [table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) can set specific fields to display only in this details view. See [Table metadata](../data-modeling/metadata-editing.md).
+Admins and people with [table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) can set specific fields to display only in this details view. See [Table metadata](../data-modeling/metadata/metadata-editing.md).
 
-If your record has a field containing [an image link](../data-modeling/formatting.md), Metabase will show the image as the record's icon in the detail view. If the record has a field with the "Entity name" name semantic type, or a field called `Title` or `Name` , Metabase will show this field as the name of the record.
+If your record has a field containing [an image link](../data-modeling/metadata/formatting.md), Metabase will show the image as the record's icon in the detail view. If the record has a field with the "Entity name" name semantic type, or a field called `Title` or `Name` , Metabase will show this field as the name of the record.
 
 ## Bookmarks
 
@@ -134,4 +134,4 @@ Some things to remember with bookmarks:
 
 [collections]: ./collections.md
 [dashboards]: ../dashboards/start.md
-[models]: ../data-modeling/models.md
+[models]: ../data-modeling/models/models.md

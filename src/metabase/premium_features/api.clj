@@ -7,6 +7,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [ring.util.response :as response])
   (:import
@@ -25,14 +26,24 @@
   (api/check-404 (premium-features/token-status)))
 
 (defn- invalidate-llm-proxy-token-cache!
-  "Invalidation of the AI service's cached token status for the current instance token."
+  "Invalidation of the AI service's cached token status for the current instance token.
+
+  The URL carries the instance token in its path, and `ai-service-base-url` is a stored setting a superuser can
+  write through the generic settings API, so this request gets the same network policy as any other LLM request:
+  see [[metabase.llm.settings/llm-request-opts]]. Only a base URL the environment supplies is deployment
+  configuration, and only that one is granted the `:allow-private` floor a service inside the cluster needs.
+
+  Best effort: a refused or failed invalidation is logged, not raised. Token refresh has already happened by the
+  time it runs, and the AI service's cache expires on its own."
   []
   (when-let [service-base-url (llm.settings/ai-service-base-url)]
     (when-let [^String token (premium-features/premium-embedding-token)]
       (try
         (let [encoded-token (URLEncoder/encode ^String token "UTF-8")
               url (str (str/replace service-base-url #"/+$" "") "/v1/invalidate-token-cache/" encoded-token)
-              response (http/post url {:throw-exceptions false})]
+              floor (when (setting/env-var-value :ai-service-base-url) :allow-private)
+              response (http/post url (merge {:throw-exceptions false}
+                                             (llm.settings/llm-request-opts floor url)))]
           (when-not (<= 200 (:status response) 299)
             (log/warnf "LLM proxy token cache invalidation failed with status %s" (:status response))))
         (catch Exception e

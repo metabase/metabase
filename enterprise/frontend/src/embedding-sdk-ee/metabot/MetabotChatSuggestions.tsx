@@ -1,4 +1,4 @@
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase/metabot";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { Button, Stack } from "metabase/ui";
 
@@ -26,12 +26,10 @@ export const MetabotChatSuggestions = () => {
   }
 
   return (
-    <Stack gap="sm" p="md" className={S.promptSuggestionsContainer}>
+    <Stack gap="sm" p="lg" className={S.promptSuggestionsContainer}>
       {suggestedPrompts.map(({ prompt }, index) => (
         <Button
           key={index}
-          size="xs"
-          variant="outline"
           fw={400}
           onClick={() => metabot.submitInput(prompt, { focusInput: true })}
           className={S.promptSuggestionButton}

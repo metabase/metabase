@@ -28,7 +28,7 @@
 
 (mu/defn breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
   "Return the current breakouts"
-  ([query]
+  ([query :- ::lib.schema/query]
    (breakouts query -1))
   ([query :- ::lib.schema/query
     stage-number :- :int]
@@ -36,7 +36,7 @@
 
 (mu/defn breakouts-metadata :- [:maybe ::lib.metadata.calculation/visible-columns]
   "Get metadata about the breakouts in a given stage of a `query`."
-  ([query]
+  ([query :- ::lib.schema/query]
    (breakouts-metadata query -1))
   ([query        :- ::lib.schema/query
     stage-number :- :int]
@@ -47,11 +47,12 @@
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
-  ([query expr]
+  ([query :- ::lib.schema/query
+    expr  :- [:or fn? ::lib.ref/referenceable]]
    (breakout query -1 expr))
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    expr         :- some?]
+    expr         :- [:or fn? ::lib.ref/referenceable]]
    (let [expr (if (fn? expr) (expr query stage-number) expr)]
      (if (lib.schema.util/distinct-mbql-clauses? (map lib.ref/ref (cons expr (breakouts query stage-number))))
        (lib.util/add-summary-clause query stage-number :breakout expr)
@@ -97,7 +98,9 @@
 (mu/defn existing-breakouts :- [:maybe [:sequential {:min 1} ::lib.schema.ref/ref]]
   "Returns existing breakouts (as MBQL expressions) for `column` in a stage if there are any. Returns `nil` if there
   are no existing breakouts."
-  ([query stage-number column]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    column       :- ::lib.schema.metadata/column]
    (existing-breakouts query stage-number column nil))
 
   ([query                                         :- ::lib.schema/query
@@ -105,7 +108,7 @@
     column                                        :- ::lib.schema.metadata/column
     {:keys [same-binning-strategy?
             same-temporal-bucket?], :as _options} :- [:maybe
-                                                      [:map
+                                                      [:map {:closed true}
                                                        [:same-binning-strategy? {:optional true, :default false} [:maybe :boolean]]
                                                        [:same-temporal-bucket? {:optional true, :default false} [:maybe :boolean]]]]]
    (not-empty
@@ -130,7 +133,8 @@
 (mu/defn remove-existing-breakouts-for-column :- ::lib.schema/query
   "Remove all existing breakouts against `column` if there are any in the stage in question. Disregards temporal
   bucketing and binning."
-  ([query column]
+  ([query  :- ::lib.schema/query
+    column :- ::lib.schema.metadata/column]
    (remove-existing-breakouts-for-column query -1 column))
 
   ([query        :- ::lib.schema/query
@@ -161,7 +165,7 @@
 
 (mu/defn remove-all-breakouts :- ::lib.schema/query
   "Remove all breakouts from a query stage."
-  ([query]
+  ([query :- ::lib.schema/query]
    (remove-all-breakouts query -1))
 
   ([query        :- ::lib.schema/query

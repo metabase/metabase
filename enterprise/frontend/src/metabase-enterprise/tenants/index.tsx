@@ -17,6 +17,7 @@ import {
 } from "metabase/common/collections/utils";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
+import { getIsTenantUser, getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -24,7 +25,6 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Route, redirect } from "metabase/router";
-import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
@@ -33,23 +33,16 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
-import { CanAccessTenantSpecificRoute } from "./components/CanAccessTenantSpecificRoute";
 import { CreateTenantsOnboardingStep } from "./components/CreateTenantsOnboardingStep";
-import { ExternalGroupDetailApp } from "./components/ExternalGroupDetailApp/ExternalGroupDetailApp";
-import { ExternalGroupsListingApp } from "./components/ExternalGroupsListingApp/ExternalGroupsListingApp";
-import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
 import { MainNavSharedCollections } from "./components/MainNavSharedCollections";
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
 import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
-import { TenantCollectionList } from "./components/TenantCollectionList";
 import { TenantCollectionPermissionsPage } from "./components/TenantCollectionPermissionsPage";
 import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { TenantGroupHintIcon } from "./components/TenantGroupHintIcon";
 import { TenantSpecificCollectionPermissionsPage } from "./components/TenantSpecificCollectionPermissionsPage";
 import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
-import { TenantUsersList } from "./components/TenantUsersList";
-import { TenantUsersPersonalCollectionList } from "./components/TenantUsersPersonalCollectionList";
 import { TenantsSummaryOnboardingStep } from "./components/TenantsSummaryOnboardingStep";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
@@ -69,14 +62,75 @@ import {
   isTenantGroup,
 } from "./utils/utils";
 
+/**
+ * The tenant people and group pages wrap the admin pages of the same name, so
+ * importing them here would hold those admin pages in the initial bundle. They
+ * get a chunk of their own rather than the `admin` one: naming an `import()`
+ * into a chunk another site already names merges the two module sets, which
+ * copies whatever they shared into every other chunk that needs it.
+ */
+const externalPeopleListing = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalPeopleListingApp/ExternalPeopleListingApp"
+  ).then(({ ExternalPeopleListingApp }) => ({
+    Component: ExternalPeopleListingApp,
+  }));
+
+const externalGroupsListing = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalGroupsListingApp/ExternalGroupsListingApp"
+  ).then(({ ExternalGroupsListingApp }) => ({
+    Component: ExternalGroupsListingApp,
+  }));
+
+const externalGroupDetail = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalGroupDetailApp/ExternalGroupDetailApp"
+  ).then(({ ExternalGroupDetailApp }) => ({
+    Component: ExternalGroupDetailApp,
+  }));
+
+/**
+ * The collection-facing tenant pages stay out of the `tenants` chunk above. That
+ * chunk holds the admin listings, and a tenant user has no reason to download
+ * them.
+ */
+const canAccessTenantSpecificRoute = () =>
+  import(
+    /* webpackChunkName: "tenant-collections" */ "./components/CanAccessTenantSpecificRoute"
+  ).then(({ CanAccessTenantSpecificRoute }) => ({
+    Component: CanAccessTenantSpecificRoute,
+  }));
+
+const tenantCollectionList = () =>
+  import(
+    /* webpackChunkName: "tenant-collections" */ "./components/TenantCollectionList"
+  ).then(({ TenantCollectionList }) => ({ Component: TenantCollectionList }));
+
+const tenantUsersList = () =>
+  import(
+    /* webpackChunkName: "tenant-users" */ "./components/TenantUsersList"
+  ).then(({ TenantUsersList }) => ({
+    Component: TenantUsersList,
+  }));
+
+const tenantUsersPersonalCollectionList = () =>
+  import(
+    /* webpackChunkName: "tenant-user-collections" */ "./components/TenantUsersPersonalCollectionList"
+  ).then(({ TenantUsersPersonalCollectionList }) => ({
+    Component: TenantUsersPersonalCollectionList,
+  }));
+
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
 
-    PLUGIN_TENANTS.useListActiveTenants = () => {
-      const { data, isLoading, error } = useListTenantsQuery({
-        status: "active",
-      });
+    PLUGIN_TENANTS.useListActiveTenants = ({ skip } = {}) => {
+      const { data, isLoading, error } = useListTenantsQuery(
+        { status: "active" },
+        { skip },
+      );
+
       return { data: data?.data, isLoading, error };
     };
 
@@ -126,10 +180,10 @@ export function initializePlugin() {
           {modalRoute("user-strategy", EditUserStrategyModal, { noWrap: true })}
         </Route>
         <Route path="groups">
-          <Route index element={<ExternalGroupsListingApp />} />
-          <Route path=":groupId" element={<ExternalGroupDetailApp />} />
+          <Route index lazy={externalGroupsListing} />
+          <Route path=":groupId" lazy={externalGroupDetail} />
         </Route>
-        <Route path="people" element={<ExternalPeopleListingApp />}>
+        <Route path="people" lazy={externalPeopleListing}>
           {modalRoute(
             "new",
             (props) => (
@@ -190,11 +244,11 @@ export function initializePlugin() {
     PLUGIN_TENANTS.TenantCollectionItemList = TenantCollectionItemList;
     PLUGIN_TENANTS.TenantSpecificCollectionsItemList =
       TenantSpecificCollectionsItemList;
-    PLUGIN_TENANTS.TenantCollectionList = TenantCollectionList;
-    PLUGIN_TENANTS.CanAccessTenantSpecificRoute = CanAccessTenantSpecificRoute;
-    PLUGIN_TENANTS.TenantUsersList = TenantUsersList;
-    PLUGIN_TENANTS.TenantUsersPersonalCollectionList =
-      TenantUsersPersonalCollectionList;
+    PLUGIN_TENANTS.tenantCollectionList = tenantCollectionList;
+    PLUGIN_TENANTS.canAccessTenantSpecificRoute = canAccessTenantSpecificRoute;
+    PLUGIN_TENANTS.tenantUsersList = tenantUsersList;
+    PLUGIN_TENANTS.tenantUsersPersonalCollectionList =
+      tenantUsersPersonalCollectionList;
     PLUGIN_TENANTS.canPlaceEntityInCollection = canPlaceEntityInCollection;
 
     // Category 1: UI Components

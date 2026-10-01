@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import { formatDateTimeRangeWithUnit } from "metabase/visualizations/lib/formatting/date";
-import type { PreviousPeriodChange } from "metabase/visualizations/lib/trend-helpers";
 import {
+  formatDateTimeRangeWithUnit,
+  formatValue,
+} from "metabase/value-formatting";
+import {
+  type PreviousPeriodChange,
   computePreviousPeriodChange,
   findPreviousNonEmptyRowIndex,
-} from "metabase/visualizations/lib/trend-helpers";
+} from "metabase/viz-core";
 import type { Dataset, DatasetColumn } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 

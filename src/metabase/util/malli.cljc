@@ -44,10 +44,31 @@
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))
 
+(mr/def ::json-schema-doc
+  "A hand-authored JSON Schema document: only ever echoed to an LLM or OpenAPI consumer, never read by key."
+  [:map {:closed true}
+   [:type        {:optional true} :string]
+   [:const       {:optional true} :string]
+   [:description {:optional true} :string]
+   [:required    {:optional true} [:sequential :string]]
+   [:minItems    {:optional true} :int]
+   [:maxItems    {:optional true} :int]
+   [:items       {:optional true} [:ref ::json-schema-doc]]
+   [:properties  {:optional true} [:map-of :string [:ref ::json-schema-doc]]]])
+
+(def ^:private SchemaProperties
+  "The malli schema properties [[with]] is actually asked to attach."
+  [:map {:closed true}
+   [:description          {:optional true} [:or :string localized-string-schema]]
+   [:decode/api           {:optional true} ifn?]
+   [:json-schema          {:optional true} ::json-schema-doc]
+   [::mr/deliberately-open {:optional true} :boolean]])
+
 (metabase.util.malli/defn with
   "Update a malli schema with an arbitrary map of properties"
   {:style/indent [:form]}
-  [mschema props]
+  [mschema :- Schema
+   props   :- SchemaProperties]
   (mut/update-properties (mc/schema mschema) merge props))
 
 ;; Kondo gets confused by :refer [defn] on this, so it's referenced fully qualified.
@@ -62,7 +83,7 @@
   {:style/indent [:form]}
   ([mschema :- Schema error-message :- localized-string-schema]
    (with-api-error-message mschema error-message error-message))
-  ([mschema                :- :any
+  ([mschema                :- Schema
     description-message    :- localized-string-schema
     specific-error-message :- localized-string-schema]
    (mut/update-properties (mc/schema mschema) assoc
@@ -118,7 +139,7 @@
        :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
 
 #?(:clj
-   (defn validate-throw
+   (core/defn validate-throw
      "Returns the value if it matches the schema, else throw an exception."
      [schema-or-validator value]
      (let [is-validator? (fn? schema-or-validator)]
@@ -151,16 +172,9 @@
       :and (some map-schema-keys (mc/children schema))
       nil)))
 
-(core/defn dispatched-map
-  "A `:multi` schema on `dispatch` whose every branch declares `common-entries` on top of its own entries.
-
-  This is what `[:merge [:map common-entries] [:multi ...]]` looks like it does, but does not: `:merge` pushes itself
-  inside each branch, nesting a second dispatch there instead of adding the common keys to it. A branch given
-  anything other than a vector of entries is used as its own schema."
-  [dispatch common-entries branches]
-  (into [:multi {:dispatch dispatch}]
-        (map (core/fn [[dispatch-value entries]]
-               [dispatch-value (if (vector? entries)
-                                 (into (into [:map] common-entries) entries)
-                                 entries)]))
-        branches))
+(core/defn refuse
+  "A schema that never validates; its `:decode/api` throws a 400 with `(message-fn)`. Intended as the last branch of
+  an `[:or ...]`."
+  [message-fn]
+  [:fn {:decode/api (core/fn [_] (throw (ex-info (message-fn) {:status-code 400})))}
+   (constantly false)])

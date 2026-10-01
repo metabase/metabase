@@ -9,7 +9,7 @@ import {
 import type { CodeLanguage } from "./types";
 import { useExtensions } from "./utils";
 
-type Props = Omit<CodeMirrorProps, "onChange"> & {
+export type CodeEditorProps = Omit<CodeMirrorProps, "onChange"> & {
   language?: CodeLanguage | Extension;
   lineNumbers?: boolean;
   proposedValue?: string;
@@ -28,7 +28,7 @@ export function CodeEditor({
   onChange,
   extensions: externalExtensions,
   ...rest
-}: Props) {
+}: CodeEditorProps) {
   const extensions = useExtensions({
     language,
     extensions: externalExtensions,

@@ -1,5 +1,9 @@
-import type { LoginData } from "metabase/redux/auth";
-import type { MfaMethod, PasswordResetTokenStatus } from "metabase-types/api";
+import type {
+  LoginData,
+  MfaEnrollResponse,
+  MfaMethod,
+  PasswordResetTokenStatus,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 
@@ -13,12 +17,26 @@ export interface MfaChallengeResponse {
   challenge_token: string;
 }
 
-export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;
+export interface MfaEnrollmentResponse extends MfaEnrollResponse {
+  mfa_enrollment: true;
+  methods: MfaMethod[];
+  enrollment_token: string;
+}
+
+export type CreateSessionResponse =
+  | SessionResponse
+  | MfaChallengeResponse
+  | MfaEnrollmentResponse;
 
 export const isMfaChallenge = (
   response: CreateSessionResponse,
 ): response is MfaChallengeResponse =>
   "mfa_required" in response && response.mfa_required === true;
+
+export const isMfaEnrollment = (
+  response: CreateSessionResponse,
+): response is MfaEnrollmentResponse =>
+  "mfa_enrollment" in response && response.mfa_enrollment === true;
 
 export interface GoogleAuthData {
   token: string;

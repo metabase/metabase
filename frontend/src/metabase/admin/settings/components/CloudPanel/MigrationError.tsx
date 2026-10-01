@@ -24,7 +24,7 @@ export const MigrationError = ({
   return (
     <>
       <MigrationCard>
-        <Flex gap="md">
+        <Flex gap="lg">
           <LargeIconContainer color={color("feedback-negative")}>
             <Icon size="1.5rem" name="warning" />
           </LargeIconContainer>
@@ -55,10 +55,10 @@ export const MigrationError = ({
       </MigrationCard>
 
       <Button
-        variant="subtle"
+        variant="transparent"
+        size="compact-md"
         onClick={restartMigration}
         disabled={isRestarting}
-        px="0"
         mt="1rem"
       >{t`Restart the process`}</Button>
     </>

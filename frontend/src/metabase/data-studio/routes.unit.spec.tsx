@@ -1,57 +1,132 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import { Outlet, Route } from "metabase/router";
+import fetchMock from "fetch-mock";
 
-import { getDataStudioRoutes } from "./routes";
+import { lazyLoaders } from "__support__/lazy-routes";
+import { setupUserKeyValueEndpoints } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
+import { act, renderWithProviders, screen } from "__support__/ui";
+import { delay } from "__support__/utils";
+import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
+import { createMockUser } from "metabase-types/api/mocks";
 
-/**
- * These specs assert that the legacy redirects sit outside the Data Studio
- * access guard, so the guard is stubbed to always deny.
- */
-jest.mock("./route-guards", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return {
-    CanAccessDataStudio: () => <div data-testid="data-studio-access-denied" />,
-    CanAccessDataModel: () => <Outlet />,
-  };
+import { DataStudioIndexRedirect, getDataStudioRoutes } from "./routes";
+
+const Guard = () => null;
+describe("data-studio routes", () => {
+  it("resolves every page", async () => {
+    const loaders = lazyLoaders(getDataStudioRoutes(Guard));
+
+    // Includes the transform, data model, glossary and settings routes, which
+    // this tree nests.
+    expect(loaders).toHaveLength(39);
+
+    for (const load of loaders) {
+      expect((await load()).Component).toBeDefined();
+    }
+  });
 });
 
-const AllowingGuard = () => <Outlet />;
+function setupIndexRedirect({
+  hasSeenGuide,
+  isAdmin = false,
+  transformsLoading,
+}: {
+  hasSeenGuide: boolean | Promise<boolean>;
+  isAdmin?: boolean;
+  transformsLoading?: Promise<void>;
+}) {
+  if (typeof hasSeenGuide === "boolean") {
+    setupUserKeyValueEndpoints({
+      namespace: "data_studio",
+      key: "hasSeenGuide",
+      value: hasSeenGuide,
+    });
+  } else {
+    fetchMock.get(
+      "path:/api/user-key-value/namespace/data_studio/key/hasSeenGuide",
+      async () =>
+        new Response(JSON.stringify(await hasSeenGuide), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+  }
 
-function setup(initialRoute: string) {
-  renderWithProviders(
+  return renderWithProviders(
     <Route path="/">
-      {getDataStudioRoutes(AllowingGuard)}
-      <Route
-        path="monitor/dependency-diagnostics"
-        element={<div data-testid="diagnostics-index" />}
-      />
-      <Route
-        path="monitor/dependency-diagnostics/unreferenced"
-        element={<div data-testid="diagnostics-unreferenced" />}
-      />
+      <Route path="data-studio">
+        <Route index element={<DataStudioIndexRedirect />} />
+        <Route path="guide" element={<div data-testid="guide-page" />} />
+        <Route path="data" element={<div data-testid="data-index" />} />
+        <Route path="library" element={<div data-testid="library-index" />} />
+        {transformsLoading ? (
+          <Route
+            path="transforms"
+            lazy={async () => {
+              await transformsLoading;
+              return {
+                Component: () => <div data-testid="transforms-index" />,
+              };
+            }}
+          />
+        ) : (
+          <Route
+            path="transforms"
+            element={<div data-testid="transforms-index" />}
+          />
+        )}
+      </Route>
     </Route>,
-    { initialRoute, withRouter: true },
+    {
+      withRouter: true,
+      initialRoute: "/data-studio",
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      }),
+    },
   );
 }
 
-describe("Data Studio routes", () => {
-  it("redirects the legacy Dependency Diagnostics index outside the Data Studio access guard", async () => {
-    setup("/data-studio/dependency-diagnostics");
+describe("Data Studio index redirect", () => {
+  it("sends first-time visitors to the guide without recording the visit itself", async () => {
+    setupIndexRedirect({ hasSeenGuide: false, isAdmin: true });
 
-    expect(await screen.findByTestId("diagnostics-index")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("data-studio-access-denied"),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId("guide-page")).toBeInTheDocument();
+    expect(screen.queryByTestId("data-index")).not.toBeInTheDocument();
   });
 
-  it("preserves the child path instead of matching the Data Studio catch-all", async () => {
-    setup("/data-studio/dependency-diagnostics/unreferenced");
+  it("sends returning admins to their data index", async () => {
+    setupIndexRedirect({ hasSeenGuide: true, isAdmin: true });
 
-    expect(
-      await screen.findByTestId("diagnostics-unreferenced"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("data-studio-access-denied"),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId("data-index")).toBeInTheDocument();
+    expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
+  });
+
+  it("sends returning non-admins to their computed index", async () => {
+    setupIndexRedirect({ hasSeenGuide: true });
+
+    expect(await screen.findByTestId("library-index")).toBeInTheDocument();
+    expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
+  });
+
+  it("lets a navigation the user already started finish", async () => {
+    const hasSeenGuide = defer<boolean>();
+    const transformsModule = defer<void>();
+    const { router } = setupIndexRedirect({
+      hasSeenGuide: hasSeenGuide.promise,
+      isAdmin: true,
+      transformsLoading: transformsModule.promise,
+    });
+
+    act(() => router?.navigate("/data-studio/transforms"));
+
+    // The redirect resolves while the lazy route is still loading.
+    hasSeenGuide.resolve(false);
+    await delay(0);
+
+    transformsModule.resolve();
+
+    expect(await screen.findByTestId("transforms-index")).toBeInTheDocument();
+    expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
   });
 });

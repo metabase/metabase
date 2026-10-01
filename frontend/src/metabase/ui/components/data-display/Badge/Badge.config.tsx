@@ -82,6 +82,7 @@ export const badgeOverrides = {
   Badge: Badge.extend({
     classNames: {
       root: BadgeStyles.root,
+      section: BadgeStyles.section,
     },
     vars: (_theme, props) => {
       const { size, variant, color: badgeColor } = props;

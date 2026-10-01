@@ -1,12 +1,11 @@
-import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type {
@@ -89,18 +88,6 @@ export async function setup(
   });
 
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
-
-  if (hash.locale) {
-    fetchMock.get(`path:/app/locales/${hash.locale}.json`, {
-      headers: {
-        language: "ko",
-        "plural-forms": "nplurals=1; plural=0;",
-      },
-      translations: {
-        "": {},
-      },
-    });
-  }
 
   const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
   const hashString = _.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`;

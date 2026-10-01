@@ -10,6 +10,7 @@ import {
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -17,12 +18,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
@@ -54,12 +50,13 @@ import {
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
+import ActionCreatorModal from "../ActionCreatorModal";
+
 import ModelActions from "./ModelActions";
 
-// eslint-disable-next-line react/display-name
-jest.mock("metabase/actions/containers/ActionCreator", () => () => (
-  <div data-testid="mock-action-editor" />
-));
+jest.mock("metabase/querying/action-creator", () => ({
+  ActionCreator: () => <div data-testid="mock-action-editor" />,
+}));
 
 const TEST_DATABASE_ID = 1;
 const TEST_TABLE_ID = 1;
@@ -197,6 +194,11 @@ async function setup({
   );
 
   setupDatabasesEndpoints(databases);
+  if (databases.length === 0) {
+    // The page reads the model's source table to decide whether to load its
+    // foreign keys. With no data permissions the server refuses it.
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}`, 403);
+  }
   setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
@@ -224,10 +226,10 @@ async function setup({
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
         <Route path="actions" element={<ModelActions />}>
-          {modalRoute("new", ActionCreator, {
+          {modalRoute("new", ActionCreatorModal, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
-          {modalRoute(":actionId", ActionCreator, {
+          {modalRoute(":actionId", ActionCreatorModal, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
         </Route>

@@ -48,7 +48,7 @@ describe("scenarios > data studio > snippets", () => {
         cy.findByText(/by Bobby Tables/).should("be.visible");
       });
 
-      H.DataStudio.nav().findByRole("link", { name: "Library" }).click();
+      H.DataStudio.nav().findByRole("link", { name: "Semantic layer" }).click();
       H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
         .should("be.visible");
