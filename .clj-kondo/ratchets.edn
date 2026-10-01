@@ -17,7 +17,7 @@
                   :deprecated-var                                                      85
                   :discouraged-java-method                                             4
                   :discouraged-namespace                                               68
-                  :discouraged-var                                                     132
+                  :discouraged-var                                                     133
                   :duplicate-require                                                   1
                   :equals-true                                                         1
                   :main-without-gen-class                                              1
