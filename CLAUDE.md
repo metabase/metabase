@@ -115,18 +115,13 @@ Explain budget increases in the PR. Do not record reductions in feature PRs: pos
 a `Tighten ratchets` PR for them. Use `./bin/mage kondo-ratchets-shrink --seed :linter` only when adding an
 inline-ignore budget. If any ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
 
-`.clj-kondo/config/modules/cycle-clusters.edn` names each cyclic strongly connected component of the module
-graph, in the require graph and in the graph with model imports added, and records which modules are in it. A
-cluster keeps its name while it shrinks and splits, so it can be followed over time; the big one is
-`galactic-center`.
+`.clj-kondo/config/modules/cycle-clusters.edn` names each cyclic cluster (strongly connected component) of the module
+require graph by an anchor module: the cluster holding the anchor carries the name, and its members are computed,
+so a named cluster can grow and shrink without an edit. The big one is `galactic-center`.
 
-The file's `:mode` is the switch, and it is `:observe` for now: `metabase.core.module-cycle-ratchet-test` prints
-how the clusters changed and fails nothing, and the shrink workflow records the new structure on master with
-`./bin/mage fix-module-cycles`, so feature branches never edit the file. Set it to `:enforce` to make membership
-a ceiling: the test then fails when a cluster gains a module, when two clusters merge, and when a new cycle
-appears, and tangling another module in becomes a hand edit to the file, explained in the PR that makes it.
-Only membership is recorded: the edges inside a cluster move whenever anyone adds a require between two modules
-already in it, which says nothing about whether the tangle got worse.
+`metabase.core.module-cycles-test` fails until every cluster holds exactly one anchor. When you split a cluster,
+name the new half: the failure proposes a name and anchor to add. When two named clusters merge, find another way;
+the failure shows the requires joining them. When a cluster dissolves, remove its line.
 
 ## Tool Preferences
 

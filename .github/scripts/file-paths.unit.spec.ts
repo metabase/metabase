@@ -53,9 +53,6 @@ describe("file-paths.yaml", () => {
       expect(matches(name, ".clj-kondo/config/modules/ratchets.edn")).toBe(
         false,
       );
-      expect(
-        matches(name, ".clj-kondo/config/modules/cycle-clusters.edn"),
-      ).toBe(false);
       expect(matches(name, ".clj-kondo/config.edn")).toBe(true);
       expect(matches(name, ".clj-kondo/config/modules/config.edn")).toBe(true);
     },
@@ -186,25 +183,12 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", file)).toBe(true);
   });
 
-  it("runs the cycle test on the cycle clusters file", () => {
+  it("runs the module cycles test when a cluster is named", () => {
     expect(
       matches(
         "project_backend_checks",
         ".clj-kondo/config/modules/cycle-clusters.edn",
       ),
     ).toBe(true);
-  });
-
-  // run-tests.yml reads this filter to decide that a change needs no uberjar.
-  it("recognizes a cycle-record-only change", () => {
-    expect(
-      matches(
-        "project_cycle_record",
-        ".clj-kondo/config/modules/cycle-clusters.edn",
-      ),
-    ).toBe(true);
-    expect(
-      matches("project_cycle_record", ".clj-kondo/config/modules/ratchets.edn"),
-    ).toBe(false);
   });
 });
