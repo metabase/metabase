@@ -745,7 +745,7 @@
                                       :value_with_aad "2026-10-01 18:37:49.894829"}
                              :where  [:= :key [:param :p17uc4hjfp068j]]}
                             :h2
-                            {:parameters {:p17uc4hjfp068j 100}})))
+                            {:params {:p17uc4hjfp068j 100}})))
     (testing "error on missing parameter"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo

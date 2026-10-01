@@ -598,7 +598,7 @@
 
 (defn- param! [k context]
   {:pre [(keyword? k)]}
-  (let [v (or (get-in (options context) [:parameters k])
+  (let [v (or (get-in (options context) [:params k])
               (throw (ex-info "Missing value for :param" {:param k})))]
     (object! v context)))
 
@@ -809,8 +809,8 @@
                       vector?]
     engine  :- [:enum :h2 :postgres :mysql]
     options :- [:maybe [:map
-                        {:closed true}
-                        [:parameters {:optional true} [:maybe [:map-of {:metabase.util.malli.registry/deliberately-open true} :keyword :any]]]]]]
+                        {:metabase.util.malli.registry/deliberately-open true} ; other HoneySQL-specific options are ignored.
+                        [:params {:optional true} [:maybe [:map-of {:metabase.util.malli.registry/deliberately-open true} :keyword :any]]]]]]
    (let [context (default-context engine options)]
      ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
      ((if (map? honeysql-form)

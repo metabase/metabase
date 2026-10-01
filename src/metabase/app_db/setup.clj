@@ -396,6 +396,7 @@
                                            #_query      clojure.lang.IPersistentMap]
   "Override default Honey SQL 2 backend; compile using Funny SQL instead."
   [query-type model honeysql]
-  (let [sql-args (t2.util/try-with-error-context ["compile Honey SQL to SQL" {::honeysql honeysql}]
-                   (funnysql/format honeysql (mdb.connection/db-type)))]
+  (let [options  (t2.honeysql/options)
+        sql-args (t2.util/try-with-error-context ["compile SQL with Funny SQL" {:honeysql honeysql, :options options}]
+                   (funnysql/format honeysql (mdb.connection/db-type) options))]
     (t2.pipeline/compile query-type model sql-args)))
