@@ -203,6 +203,7 @@ const OVERVIEW_STATES = [
     label: "Disabled, filled",
     props: { disabled: true, defaultValue: OVERVIEW_VALUE },
   },
+  // TODO: use the `loading` prop instead of a Loader in `rightSection` after upgrading Mantine
   {
     id: "loading-focused-empty",
     label: "Loading + Focused, empty",
