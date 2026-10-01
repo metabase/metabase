@@ -213,6 +213,7 @@ describe("scenarios > search", () => {
   describe("accessing full page search with `Enter`", () => {
     it("should not search or render full page search if user has not entered a text query", () => {
       cy.intercept("GET", "/api/activity/recents?*").as("getRecentViews");
+      cy.intercept("GET", "/api/search*").as("anySearch");
 
       visitEmbeddingWithSearch("/");
 
@@ -231,7 +232,7 @@ describe("scenarios > search", () => {
       });
       H.getSearchBar().type("{enter}");
       cy.location("pathname").should("eq", "/");
-      cy.get("@search.all").should("have.length", 0);
+      cy.get("@anySearch.all").should("have.length", 0);
     });
 
     it("should render full page search when search text is present and user clicks 'Enter'", () => {
