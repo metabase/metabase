@@ -921,3 +921,23 @@
                        "# TODO\n  . TODONE"))
     (is (str/includes? (body ["# still our problem" ". fixed, so no longer our problem"])
                        "[`./bin/mage kondo-ratchets-shrink`](https://example.test/run/1)"))))
+
+(deftest ^:synchronized shrink-pr-body-from-files-test
+  (let [dir   (.toFile (java.nio.file.Files/createTempDirectory
+                        "kondo-ratchet-test"
+                        (make-array java.nio.file.attribute.FileAttribute 0)))
+        write (fn [file-name text] (.getPath (doto (io/file dir file-name) (spit text))))
+        prod  (fn [n] (kondo-ratchet/render {:ignore-counts {:a n}, :config-counts {}, :comment-exempt #{}}))
+        paths {:before         (write "before.edn" (prod 3))
+               :after          (write "after.edn" (prod 2))
+               :modules-before (write "modules-before.edn" (kondo-ratchet/render-module-ratchets {:friend-edges 5}))
+               :modules-after  (write "modules-after.edn" (kondo-ratchet/render-module-ratchets {:friend-edges 4}))
+               :test-before    (write "test-before.edn" (prod 7))
+               :test-after     (write "test-after.edn" (prod 6))}]
+    (try
+      (let [body (kondo-ratchet/shrink-pr-body-from-files paths "https://example.test/run/1")]
+        (is (re-find #":a\s+3 => 2" body))
+        (is (re-find #":module/friend-edges\s+5 => 4" body))
+        (is (re-find #":test/a\s+7 => 6" body)))
+      (finally
+        (run! io/delete-file (reverse (file-seq dir)))))))

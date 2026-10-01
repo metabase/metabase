@@ -471,21 +471,15 @@
                 [:string {:name "workflow-url" :description "URL of the workflow run"}]]
    :requires [[dev.kondo-ratchet]]
    :task (task!
-          (let [[before-path after-path modules-before-path modules-after-path
-                 test-before-path test-after-path workflow-url] (:arguments parsed)
-                read-ratchets (fn [path]
-                                (binding [dev.kondo-ratchet/*ratchets-file* path]
-                                  (dev.kondo-ratchet/read-ratchets)))
-                read-modules  (fn [path]
-                                (binding [dev.kondo-ratchet/*module-ratchets-file* path]
-                                  (dev.kondo-ratchet/read-module-ratchets)))]
-            (print (dev.kondo-ratchet/shrink-pr-body
-                    (assoc (read-ratchets before-path)
-                           :module-counts (read-modules modules-before-path)
-                           :test-ignore-counts (:ignore-counts (read-ratchets test-before-path)))
-                    (assoc (read-ratchets after-path)
-                           :module-counts (read-modules modules-after-path)
-                           :test-ignore-counts (:ignore-counts (read-ratchets test-after-path)))
+          (let [[before after modules-before modules-after test-before test-after workflow-url]
+                (:arguments parsed)]
+            (print (dev.kondo-ratchet/shrink-pr-body-from-files
+                    {:before         before
+                     :after          after
+                     :modules-before modules-before
+                     :modules-after  modules-after
+                     :test-before    test-before
+                     :test-after     test-after}
                     workflow-url))))}
 
   -driver-decisions
