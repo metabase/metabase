@@ -164,7 +164,8 @@
   [detail]
   (let [window (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))]
     (cond-> detail
-      (and detail window) (assoc :context_window_tokens window))))
+      (and detail window) (-> (assoc :context_window_tokens window)
+                              (update :messages metabot.persistence/mark-context-window-full window)))))
 
 (api.macros/defendpoint :get "/:id" :- ConversationDetail
   "Return a single conversation with its flattened chat messages.
