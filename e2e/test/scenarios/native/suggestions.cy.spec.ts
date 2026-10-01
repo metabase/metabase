@@ -81,7 +81,8 @@ describe(
         H.NativeEditor.completion("$group").should("contain.text", "keyword");
       });
 
-      H.NativeEditor.type('p": { "pr');
+      H.NativeEditor.type('p": { "pr', { focus: false });
+      H.NativeEditor.value().should("contain", '[{ "$group": { "pr');
       H.NativeEditor.completions().within(() => {
         H.NativeEditor.completion("price")
           .should("be.visible")

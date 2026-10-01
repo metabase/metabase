@@ -166,9 +166,19 @@ describe("issue 38083", () => {
         }),
       )
       .then((card) => {
-        cy.intercept("POST", `/api/card/${card.id}/query`).as("cardQuery");
-        cy.visit(`/question/${card.id}?state=CA`);
+        cy.wrap(card.id).as("cardId");
+        H.visitQuestion(card.id);
       });
+
+    cy.log("the default value is applied on load");
+    H.filterWidget().find("input").should("have.value", "CA");
+    H.filterWidget().icon("revert").should("not.exist");
+
+    cy.log("the default value is passed in the URL");
+    cy.get("@cardId").then((cardId) => {
+      cy.intercept("POST", `/api/card/${cardId}/query`).as("cardQuery");
+      cy.visit(`/question/${cardId}?state=CA`);
+    });
     cy.wait("@cardQuery");
 
     H.filterWidget().find("input").should("have.value", "CA");
