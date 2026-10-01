@@ -2,11 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockState } from "__support__/state";
-import {
-  renderWithProviders,
-  screen,
-  settlePendingUpdates,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { ExportFormat } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -140,7 +136,7 @@ describe("PublicLinkPopover", () => {
 
     it("should not render `Remove public link` for non-admins", async () => {
       setup({ isAdmin: false });
-      await settlePendingUpdates();
+      await screen.findByDisplayValue("sample-public-link");
 
       expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
     });
@@ -161,15 +157,13 @@ describe("PublicLinkPopover", () => {
   describe("when creating public links", () => {
     it("should call createPublicLink when uuid is null and isOpen is true", async () => {
       const { createPublicLink } = setup({ hasUUID: false });
-      // `useAsync` in the popover resolves after this render.
-      await settlePendingUpdates();
 
-      expect(createPublicLink).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(createPublicLink).toHaveBeenCalledTimes(1));
     });
 
     it("should not call createPublicLink when isOpen is false", async () => {
       const { createPublicLink } = setup({ isOpen: false, hasUUID: false });
-      await settlePendingUpdates();
+      await screen.findByTestId("target");
 
       expect(createPublicLink).not.toHaveBeenCalled();
     });
@@ -216,7 +210,6 @@ describe("PublicLinkPopover", () => {
   describe("when copying the link", () => {
     it("should allow admins to copy the link to the clipboard", async () => {
       setup({ hasUUID: true, isOpen: true });
-      await settlePendingUpdates();
 
       expect(
         await screen.findByDisplayValue("sample-public-link"),
