@@ -433,7 +433,11 @@
             (let [result (call-content nil {:items [{:type "transform" :id id}]})]
               (is (:isError result))
               (is (not (re-find #"t1" (-> result :content first :text)))
-                  "and nothing of the transform leaks into the refusal"))))))))
+                  "and nothing of the transform leaks into the refusal"))))))
+    (testing "a transform folder reads as not found, the same answer a missing id gets"
+      (mt/with-temp [:model/Collection {folder-id :id} {:name "Rollups" :namespace "transforms"}]
+        (mt/with-test-user :crowberto
+          (is (re-find #"not found" (:error (content-one {:items [{:type "collection" :id folder-id}]})))))))))
 
 (deftest get-content-resolves-entity-ids-test
   (testing "GHY-4140: `id` takes a 21-character entity_id as well as a numeric id, for every type

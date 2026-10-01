@@ -1377,7 +1377,6 @@
                     :model/Pulse
                     :model/Segment
                     :model/Table
-                    :model/Transform
                     :model/User}}
 
   mcp.oauth-server

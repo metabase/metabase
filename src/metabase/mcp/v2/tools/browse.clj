@@ -667,7 +667,6 @@
   (case ns-str
     nil          (into #{} (map type->rest-model) type)
     "snippets"   #{:snippet :collection}
-    "transforms" #{:transform :collection}
     "analytics"  #{:collection}))
 
 (defn- collection-items-content
@@ -836,8 +835,8 @@
     [:maybe [:enum {:description "items (default) lists the collection's contents; tree returns the nested subcollection structure (collections only, no items, no pagination)."}
              "items" "tree"]]]
    [:namespace {:optional true}
-    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; transforms holds transform folders and transforms; analytics is the read-only usage-analytics tree."}
-             "content" "snippets" "transforms" "analytics"]]]
+    [:maybe [:enum {:description "Which collection partition to browse; only meaningful with id: \"root\" (a real collection id already carries its namespace). content (default) holds questions/dashboards/etc.; snippets holds snippet folders and snippets; analytics is the read-only usage-analytics tree."}
+             "content" "snippets" "analytics"]]]
    [:type {:optional true}
     [:maybe [:sequential [:enum {:description "items mode, content namespace only: return only these item types."}
                           "question" "model" "metric" "dashboard" "collection" "document"]]]]
