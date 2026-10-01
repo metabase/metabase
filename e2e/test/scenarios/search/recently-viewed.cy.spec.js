@@ -40,12 +40,6 @@ describe("search > recently viewed", () => {
     cy.findByTestId("loading-indicator").should("not.exist");
   });
 
-  it("shows list of recently viewed items", () => {
-    assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
-    assertRecentlyViewedItem(1, "Orders", "Question");
-    assertRecentlyViewedItem(2, "People", "Table");
-  });
-
   it("allows to select an item from keyboard", () => {
     cy.findByTestId("recents-list-container").findByText("Recently viewed");
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
@@ -55,7 +49,7 @@ describe("search > recently viewed", () => {
     cy.url().should("match", /\/question\/\d+-orders$/);
   });
 
-  it("shows up-to-date list of recently viewed items after another page is visited (metabase#36868)", () => {
+  it("shows list of recently viewed items and keeps it up to date after another page is visited (metabase#36868)", () => {
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
     cy.findByTestId("loading-indicator").should("not.exist");

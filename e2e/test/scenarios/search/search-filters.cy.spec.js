@@ -73,7 +73,6 @@ const REVIEWS_TABLE_NAME = "Reviews";
 const TEST_NATIVE_QUESTION_NAME = "GithubUptimeisMagnificentlyHigh";
 
 const TEST_CREATED_AT_FILTERS = [
-  ["Today", "thisday"],
   ["Yesterday", "past1days"],
   ["Previous week", "past1weeks"],
   ["Previous 7 days", "past7days"],
@@ -758,7 +757,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should remove created_at filter when `X` is clicked on search filter", () => {
+      it("should hydrate created_at=thisday and remove the filter when `X` is clicked", () => {
         cy.visit("/search?q=Reviews&created_at=thisday");
         cy.wait("@search");
 
@@ -858,7 +857,7 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should remove last_edited_at filter when `X` is clicked on search filter", () => {
+      it("should hydrate last_edited_at=thisday and remove the filter when `X` is clicked", () => {
         cy.visit("/search?q=Reviews&last_edited_at=thisday");
         cy.wait("@search");
 
