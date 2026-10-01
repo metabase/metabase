@@ -388,11 +388,11 @@ describe("scenarios > question > native", () => {
     });
     cy.wait("@updateQuestion");
 
-    cy.get("@dataset.all").should("have.length", 0);
-    cy.get("@cardQuery.all").should("have.length", 0);
     cy.findByTestId("query-builder-main")
       .findByText("Here's where your results will appear")
       .should("be.visible");
+    cy.get("@dataset.all").should("have.length", 0);
+    cy.get("@cardQuery.all").should("have.length", 0);
   });
 
   it("should preview a query with missing and with set parameters", () => {
@@ -506,6 +506,7 @@ describe("scenarios > question > native", () => {
 
     cy.log("try to open data reference sidebar on a mid size screen");
     cy.findByTestId("visibility-toggler").click();
+    H.NativeEditor.get().should("be.visible");
     dataReferenceSidebar().should("not.be.visible");
 
     cy.log("open visualization settings sidebar, order matters");
@@ -677,6 +678,7 @@ describe("scenarios > native question > data reference sidebar", () => {
 
         cy.log("clicking the title should navigate back");
         cy.findByText("Count of orders").should("be.visible").click();
+        cy.findByText("1 metric").should("be.visible");
       });
     });
   });

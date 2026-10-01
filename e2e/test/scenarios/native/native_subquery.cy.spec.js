@@ -34,11 +34,14 @@ describe("scenarios > question > native subquery", () => {
           // placing the cursor inside an existing template tag should open the data reference
           H.NativeEditor.focus().type("{leftarrow}{leftarrow}");
           cy.findByText("A People Question");
-          // subsequently moving the cursor out from the tag should keep the data reference open
-          H.NativeEditor.focus().type("{rightarrow}");
-          cy.findByText("A People Question");
+          // typing after the tag, outside of it, should keep the data reference open
+          H.NativeEditor.focus().type(" ");
+          H.NativeEditor.value().should("eq", `${queryText} `);
+          cy.findByTestId("sidebar-right")
+            .findByText("A People Question")
+            .should("be.visible");
           // typing a template tag id should open the editor
-          H.NativeEditor.focus().type(" ").type(`{{#${questionId2}`);
+          H.NativeEditor.type(`{{#${questionId2}`);
           cy.findByText("A People Model");
         });
       });
@@ -195,10 +198,12 @@ describe("scenarios > question > native subquery", () => {
         });
 
         // change the name
+        cy.intercept("PUT", "/api/card/*").as("updateCard");
         cy.visit(`/question/${questionId1}`);
         cy.findByText("A People Question 1").type(" changed");
         // unfocus the input
         cy.findByText("Open Editor").click();
+        cy.wait("@updateCard");
 
         // check the name has changed
         cy.visit(`/question/${questionId2}`);

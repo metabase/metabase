@@ -139,6 +139,9 @@ describe("issue 11580", () => {
     });
 
     FieldFilter.setWidgetType("String is not");
+    H.rightSidebar()
+      .findByTestId("filter-widget-type-select")
+      .should("have.value", "String is not");
 
     assertVariablesOrder();
   });
@@ -168,8 +171,6 @@ describe("issue 12581", () => {
   };
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -265,8 +266,8 @@ describe("issue 14302", () => {
   it("should not make the question dirty when there are no changes (metabase#14302)", () => {
     cy.log("Reported on v0.37.5 - Regression since v0.37.0");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").should("not.exist");
+    cy.findByTestId("query-visualization-root").should("contain", "Gizmo");
+    H.queryBuilderHeader().button("Save").should("not.exist");
   });
 });
 
@@ -364,10 +365,10 @@ describe("issue 14302", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      H.NativeEditor.get().should("not.exist");
       cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
+      H.NativeEditor.get().should("not.exist");
     });
   });
 });
@@ -443,7 +444,8 @@ describe("issue 16739", () => {
       H.visitQuestion(id);
     });
 
-    cy.icon("play").should("not.exist");
+    H.assertQueryBuilderRowCount(200);
+    H.runButtonOverlay().icon("play").should("not.exist");
 
     cy.log(
       "should not show the run overlay for a saved question with an empty between field filter (metabase#70311)",
@@ -473,14 +475,16 @@ describe("issue 16739", () => {
     cy.wait("@cardQuery");
 
     cy.findByTestId("query-visualization-root").should("be.visible");
-    cy.icon("play").should("not.exist");
+    H.assertQueryBuilderRowCount(5);
+    H.runButtonOverlay().icon("play").should("not.exist");
 
     cy.log("as nodata user (metabase#16739)");
     cy.signOut();
     cy.signIn("nodata");
     cy.get("@questionId").then((id) => H.visitQuestion(id));
 
-    cy.icon("play").should("not.exist");
+    H.assertQueryBuilderRowCount(200);
+    H.runButtonOverlay().icon("play").should("not.exist");
   });
 });
 
@@ -607,7 +611,7 @@ describe("issue 27257", () => {
     cy.reload();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear");
-    cy.findByDisplayValue("0");
+    H.filterWidget().findByDisplayValue("0").should("be.visible");
   });
 });
 

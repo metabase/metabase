@@ -71,10 +71,10 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       SQLFilter.runQuery();
 
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("Aerodynamic Linen Coat");
-        cy.findAllByText("4.3");
-      });
+      H.assertQueryBuilderRowCount(17);
+      H.tableInteractive()
+        .findByText("Aerodynamic Linen Coat")
+        .should("be.visible");
     });
 
     it("should handle a required tag", () => {

@@ -55,8 +55,9 @@ describe("scenarios > filters > sql filters > field filter", () => {
         "when there's a default value, enabling required sets it as a parameter value",
       );
       setDefaultFieldValue(8);
-      H.filterWidget().click();
+      H.filterWidget().should("contain.text", "8").click();
       H.clearFilterWidget();
+      H.filterWidget().should("not.contain.text", "8");
       SQLFilter.toggleRequired();
       H.filterWidget().should("contain.text", "8");
 
@@ -66,13 +67,23 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.filterWidget().click();
       H.popover().within(() => {
         H.removeFieldValuesValue(0);
+        H.fieldValuesCombobox().type("10,");
+        cy.findByText("Update filter").click();
+      });
+      H.filterWidget().should("contain.text", "10");
+
+      H.filterWidget().click();
+      H.popover().within(() => {
+        H.removeFieldValuesValue(0);
         cy.findByText("Set to default").click();
       });
 
       cy.log("make sure the dialog is gone");
       cy.findByRole("dialog").should("not.exist");
 
-      H.filterWidget().should("contain.text", "8");
+      H.filterWidget()
+        .should("contain.text", "8")
+        .and("not.contain.text", "10");
 
       cy.log(
         "when there's a default value and template tag is required, can reset it back",
@@ -82,8 +93,9 @@ describe("scenarios > filters > sql filters > field filter", () => {
         H.fieldValuesCombobox().type("10,");
         cy.findByText("Update filter").click();
       });
-      H.filterWidget().icon("revert").click();
+      H.filterWidget().icon("revert").should("be.visible").click();
       H.filterWidget().should("contain.text", "8");
+      H.filterWidget().icon("revert").should("not.exist");
     });
   });
   // Deprecated field filter types
@@ -134,6 +146,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.findByText("Filter widget type")
         .parent()
         .findByTestId("filter-widget-type-select")
+        .should("have.value", "String")
         .click();
 
       H.popover().contains("String");
@@ -159,7 +172,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.button("Add filter").click();
       });
       SQLFilter.runQuery();
-      H.tableInteractive().should("contain", "10").and("contain", "20");
+      H.assertQueryBuilderRowCount(2);
+      H.assertTableData({ columns: ["ALIAS"], firstRows: [["10"], ["20"]] });
     });
 
     it("should be able to use a field alias with a time grouping", () => {

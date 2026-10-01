@@ -104,8 +104,10 @@ describe("issue 17060", () => {
     H.NativeEditor.type("RATING", { focus: false });
     runQuery();
 
+    H.tableInteractiveBody().findByText("4.6").should("be.visible");
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("num");
+      cy.findAllByTestId("header-cell").should("have.length", 2);
+      cy.findByText("num").should("be.visible");
     });
   });
 });
@@ -215,12 +217,19 @@ describe("issue 20044", () => {
 
   it("nodata user should not see 'Explore results' (metabase#20044)", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      H.visitQuestion(id);
+      cy.findByTestId("qb-header-action-panel")
+        .findByText("Explore results")
+        .should("be.visible");
+
       cy.signIn("nodata");
 
       H.visitQuestion(id);
 
       cy.get("[data-testid=cell-data]").contains("1");
-      cy.findByText("Explore results").should("not.exist");
+      cy.findByTestId("qb-header-action-panel")
+        .findByText("Explore results")
+        .should("not.exist");
     });
   });
 });
@@ -256,8 +265,8 @@ describe("issue 31926", { tags: "@external" }, () => {
     });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("200");
+    cy.findByTestId("scalar-value").should("have.text", "200");
+    cy.findByTestId("qb-save-button").should("not.have.attr", "data-disabled");
 
     // Change DB
     // and re-run the native query
@@ -349,6 +358,7 @@ describe("issue 30680", () => {
 
     H.runNativeQuery();
     cy.findByTestId("editor-tabs-columns").should("not.be.disabled");
+    cy.findByTestId("native-query-editor-action-buttons").should("be.visible");
     cy.findByTestId("editor-tabs-columns-name").click();
 
     cy.findByTestId("sidebar-content").should("exist");
@@ -489,6 +499,7 @@ describe("issue 35785", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.intercept("GET", "/api/search?*").as("getSearchResults");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should not redirect to the value of 'from' URL parameter after saving (metabase#35785)", () => {
@@ -503,9 +514,11 @@ describe("issue 35785", () => {
       cy.findByText("Save").click();
     });
 
+    cy.wait("@updateCard");
     cy.wait("@getSearchResults");
 
-    cy.url().should("include", "/question");
+    cy.findByTestId("save-question-modal").should("not.exist");
+    cy.location("pathname").should("match", /^\/question\/\d+/);
   });
 });
 

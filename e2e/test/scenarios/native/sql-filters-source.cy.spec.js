@@ -52,15 +52,18 @@ describe("scenarios > filters > sql filters > values source", () => {
       });
 
       FieldFilter.openEntryForm();
+      checkFilterValueInList("Gizmo");
       checkFilterValueNotInList("Doohickey");
       FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
+      H.assertQueryBuilderRowCount(51);
 
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
       FieldFilter.selectFilterValueFromList("Gadget", {
         buttonLabel: "Update filter",
       });
+      cy.findByTestId("sidebar-content").should("contain", "Gadget");
     });
 
     it("should be able to use a structured question source with a text tag", () => {
@@ -77,6 +80,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       });
 
       FieldFilter.openEntryForm();
+      checkFilterValueInList("Gizmo");
       checkFilterValueNotInList("Doohickey");
       FieldFilter.selectFilterValueFromList("Gadget", { addFilter: false });
       FieldFilter.selectFilterValueFromList("Gizmo");
@@ -93,6 +97,7 @@ describe("scenarios > filters > sql filters > values source", () => {
         cy.findByText("Gadget").click();
         cy.button("Update filter").click();
       });
+      cy.findByTestId("sidebar-content").should("contain", "Gadget");
     });
 
     it("should properly cache parameter values api calls", () => {
@@ -154,9 +159,11 @@ describe("scenarios > filters > sql filters > values source", () => {
       });
 
       FieldFilter.openEntryForm();
+      checkFilterValueInList("1018947080336");
       checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
       SQLFilter.runQuery("cardQuery");
+      H.assertQueryBuilderRowCount(1);
     });
   });
 
@@ -176,11 +183,13 @@ describe("scenarios > filters > sql filters > values source", () => {
       });
 
       FieldFilter.openEntryForm();
+      checkFilterValueInList("Custom Label");
       checkFilterValueNotInList("0001664425970");
       checkFilterValueNotInList("1018947080336");
       FieldFilter.selectFilterValueFromList("Custom Label");
       cy.findByLabelText("Tag").should("contain.text", "Custom Label");
       SQLFilter.runQuery("cardQuery");
+      H.assertQueryBuilderRowCount(1);
 
       FieldFilter.openEntryForm();
       H.popover().findByText("Custom Label").click();
@@ -189,6 +198,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       });
       cy.findByLabelText("Tag").should("contain.text", "7663515285824");
       SQLFilter.runQuery("cardQuery");
+      H.assertQueryBuilderRowCount(1);
     });
   });
 
@@ -212,6 +222,8 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
 
       H.fieldValuesCombobox().type("Custom Label");
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      H.popover().last().findByText("Custom Label").should("be.visible");
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -268,10 +280,12 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       });
 
       FieldFilter.openEntryForm();
+      checkFilterValueInList("Twenty");
       checkFilterValueNotInList("10");
       FieldFilter.selectFilterValueFromList("Twenty");
       cy.findByLabelText("X").should("contain.text", "Twenty");
       SQLFilter.runQuery("cardQuery");
+      H.assertQueryBuilderRowCount(1);
     });
   });
 
@@ -338,6 +352,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
     cy.findByLabelText("X").should("contain.text", "Twenty");
     SQLFilter.runQuery("cardQuery");
+    H.assertQueryBuilderRowCount(1);
   });
 
   it("should clear the value type and config when changing the template tag type and restore them when changing the type back", () => {

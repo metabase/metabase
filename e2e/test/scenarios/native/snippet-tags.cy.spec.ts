@@ -77,7 +77,7 @@ describe("scenarios > native > snippet tags", () => {
     H.NativeEditor.type("select id from products where {{snippet: snippet2}}");
     getEditorTopBar().findByLabelText("Category").clear().type("Gizmo");
     H.runNativeQuery();
-    H.tableInteractive().should("be.visible");
+    H.assertQueryBuilderRowCount(51);
   });
 
   it("should be able to update a snippet and change tags", () => {
@@ -87,6 +87,7 @@ describe("scenarios > native > snippet tags", () => {
 
     cy.log("update the snippet");
     getEditorVisibilityToggler().click();
+    getEditorTopBar().findByPlaceholderText("Filter").should("be.visible");
     getEditorTopBar().icon("snippet").click();
     getEditorSidebar().within(() => {
       cy.icon("chevrondown").click({ force: true });

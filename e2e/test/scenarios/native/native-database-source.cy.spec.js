@@ -247,10 +247,12 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.findByPlaceholderText(/Id/i).click().type("1");
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.wait("@dataset");
 
-    cy.get("@queryPreview").contains("Widget").should("not.exist");
-
-    cy.get("@queryPreview").contains("Gizmo");
+    H.assertQueryBuilderRowCount(93);
+    cy.get("@queryPreview")
+      .should("contain", "Gizmo")
+      .and("not.contain", "Widget");
 
     cy.log("can save a native MySQL query");
     H.NativeEditor.clear();

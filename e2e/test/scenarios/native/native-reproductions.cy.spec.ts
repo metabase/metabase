@@ -247,7 +247,8 @@ describe("issue 49454", () => {
     H.startNewNativeQuestion();
 
     cy.log("should not show empty tooltip (metabase#51035)");
-    cy.button("Save").realHover();
+    cy.button("Save").should("have.attr", "data-disabled");
+    cy.button("Save").should("be.visible").realHover();
     H.tooltip().should("not.exist");
 
     H.NativeEditor.type("select * from {{ #test");
@@ -301,12 +302,13 @@ describe("issue 53194", () => {
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
+      cy.findByTestId("sidebar-header-title").should("contain.text", "REVIEWS");
       cy.findByText("ID").should("not.exist");
       cy.findByText("ORDERS").should("not.exist");
 
       cy.findByTestId("sidebar-header-title").click(); // if app is frozen, Cypress won't be able to execute this
-      cy.findByText("ID").should("not.exist");
       cy.findByText("REVIEWS").should("be.visible");
+      cy.findByText("ID").should("not.exist");
 
       cy.findByText("ORDERS").click();
       cy.findByText("ID").should("be.visible");
@@ -398,6 +400,10 @@ describe("issue 53171", () => {
     cy.findByTestId("sidebar-content").within(($container) => {
       const [container] = $container;
 
+      cy.findByTestId("sidebar-header").should(
+        "contain.text",
+        `Question ${"a".repeat(100)}`,
+      );
       cy.findByTestId("sidebar-header").should(($header) => {
         const [header] = $header;
         const headerDescendants = header.querySelectorAll("*");
@@ -480,12 +486,14 @@ describe("issues 52811, 52812", () => {
 
     cy.log("popover should close when clicking away (metabase#52811)");
     H.popover().findByText("Field Filter").click();
+    H.popover().should("be.visible").and("contain.text", "Orders");
     clickAway();
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
     cy.log(
       "the default value input should not be rendered when 'Field to map to' is not set yet (metabase#52812)",
     );
+    H.rightSidebar().findByText("Field to map to").should("be.visible");
     H.rightSidebar()
       .findByText("Default filter widget value")
       .should("not.exist");
@@ -681,6 +689,9 @@ describe("issue 57644", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.intercept({ method: "GET", pathname: "/api/database" }).as(
+      "getDatabases",
+    );
 
     H.startNewNativeQuestion({
       database: null,
@@ -689,6 +700,7 @@ describe("issue 57644", () => {
   });
 
   it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+    cy.wait("@getDatabases");
     cy.findByTestId("native-query-top-bar")
       .findByText("Select a database")
       .should("be.visible");
@@ -746,6 +758,7 @@ describe("issue 59110", () => {
   it("should allow dragging border to completely hide native query editor (metabase#59110)", () => {
     H.startNewNativeQuestion();
 
+    H.NativeEditor.get().should("be.visible");
     cy.findByTestId("visibility-toggler")
       .findByText(/open editor/i)
       .should("not.exist");
@@ -884,7 +897,6 @@ describe("issue 66745", () => {
     cy.signInAsNormalUser();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("PUT", "/api/card/*").as("saveCard");
   });
 
@@ -934,18 +946,16 @@ describe("issue 66745", () => {
         .findByText("Save")
         .should("not.exist");
 
+      cy.intercept("GET", "/api/card/*").as("getCard");
       H.visitQuestion("@questionId");
-
       cy.wait("@getCard");
-      cy.wait("@cardQuery");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors
-      cy.findByText("Something’s gone wrong").should("not.exist");
 
       cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Total").should("be.visible");
         cy.findByText("World").should("not.exist");
       });
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors
+      cy.findByText("Something’s gone wrong").should("not.exist");
 
       H.openVizSettingsSidebar();
       H.leftSidebar().within(() => {
@@ -1012,30 +1022,37 @@ describe("issue 59075", () => {
   });
 
   it("should not be possible to resize the native query editor too far (metabase#59075)", () => {
-    cy.findByTestId("drag-handle").then((handle) => {
-      const coordsDrag = handle[0].getBoundingClientRect();
+    cy.findByTestId("native-query-editor")
+      .should("be.visible")
+      .then((editor) => {
+        const initialBottom = editor[0].getBoundingClientRect().bottom;
 
-      cy.wrap(handle)
-        .trigger("mousedown", {
-          button: BUTTON_INDEX,
-          clientX: coordsDrag.x,
-          clientY: coordsDrag.y,
-          force: true,
-        })
-        // Drag to the bottom of the screen
-        .trigger("mousemove", {
-          button: BUTTON_INDEX,
-          clientX: coordsDrag.x,
-          clientY: WINDOW_HEIGHT + 10,
-          force: true,
-        })
-        .trigger("mouseup");
-    });
+        cy.findByTestId("drag-handle").then((handle) => {
+          const coordsDrag = handle[0].getBoundingClientRect();
 
-    H.NativeEditor.get().then((editor) => {
-      const { bottom } = editor.get()[0].getBoundingClientRect();
-      cy.wrap(bottom).should("be.lessThan", WINDOW_HEIGHT - 50);
-    });
+          cy.wrap(handle)
+            .trigger("mousedown", {
+              button: BUTTON_INDEX,
+              clientX: coordsDrag.x,
+              clientY: coordsDrag.y,
+              force: true,
+            })
+            // Drag to the bottom of the screen
+            .trigger("mousemove", {
+              button: BUTTON_INDEX,
+              clientX: coordsDrag.x,
+              clientY: WINDOW_HEIGHT + 10,
+              force: true,
+            })
+            .trigger("mouseup");
+        });
+
+        cy.findByTestId("native-query-editor").should(($editor) => {
+          const { bottom } = $editor[0].getBoundingClientRect();
+          expect(bottom).to.be.greaterThan(initialBottom);
+          expect(bottom).to.be.lessThan(WINDOW_HEIGHT - 50);
+        });
+      });
   });
 });
 

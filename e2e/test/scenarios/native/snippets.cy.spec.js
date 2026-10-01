@@ -192,6 +192,7 @@ describe("scenarios > question > snippets", () => {
     H.startNewNativeQuestion();
     cy.icon("snippet").click();
 
+    H.rightSidebar().findByText("snippet 2").should("be.visible");
     H.rightSidebar().icon("search").click();
     H.rightSidebar().findByRole("textbox").type("snippet 14");
 
@@ -227,6 +228,7 @@ describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
     // Confirm snippet is not in folder
     H.rightSidebar().within(() => {
       cy.findByText("snippet 1").should("be.visible");
+      cy.findByText("Snippet Folder").should("not.exist");
     });
   });
 });
@@ -453,8 +455,10 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.visit("/collection/root");
 
       cy.wait("@collections");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Snippet Folder").should("not.exist");
+      H.navigationSidebar().findByText("First collection").should("be.visible");
+      H.navigationSidebar().findByText("Snippet Folder").should("not.exist");
+      H.collectionTable().findByText("First collection").should("be.visible");
+      H.collectionTable().findByText("Snippet Folder").should("not.exist");
 
       cy.log(
         "shouldn't update root permissions when changing permissions on a created folder (metabase#17268)",
