@@ -252,7 +252,8 @@
   "Whether `e` is a malli schema-validation failure. Those only throw where schemas are validated (dev and
   test), and mean the code is wrong, so they must not be swallowed like a runtime failure."
   [e]
-  (= :metabase.util.malli.fn/invalid-input (:type (ex-data e))))
+  (contains? #{:metabase.util.malli.fn/invalid-input :metabase.util.malli.fn/invalid-output}
+             (:type (ex-data e))))
 
 (defn- save-transcript!
   [thread-id transcript]
