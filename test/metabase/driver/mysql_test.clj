@@ -434,6 +434,14 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"dangerous"
              (driver/validate-db-details! :mysql {:additional-options opt}))))))
+  (testing "...and so is the same property sent as a detail key, which the spec passes to the client too"
+    (doseq [details [{:host "h" :autoDeserialize true}
+                     {:host "h" :allowLoadLocalInfile true}
+                     {:host "h" :socketFactory "evil.SocketFactory"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :mysql details))))))
   (testing "benign additional options are still allowed"
     (doseq [opt [nil "tinyInt1isBit=false" "useSSL=true&trustServerCertificate=true"]]
       (is (nil? (driver/validate-db-details! :mysql {:additional-options opt}))))))
