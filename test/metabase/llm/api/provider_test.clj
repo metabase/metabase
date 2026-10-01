@@ -107,6 +107,7 @@
         (is (= {"access-key-id"     false
                 "secret-access-key" false
                 "region"            false
+                "model-id"          false
                 "session-token"     true}
                (->> types
                     (filter #(= "bedrock" (:type %)))
@@ -164,7 +165,7 @@
     (mt/with-premium-features #{:hosting}
       (let [bedrock (m/find-first #(= "bedrock" (:type %))
                                   (mt/user-http-request :crowberto :get 200 "llm/provider-types"))]
-        (is (= {"access-key-id" true "secret-access-key" true "region" false "session-token" false}
+        (is (= {"access-key-id" true "secret-access-key" true "region" false "model-id" false "session-token" false}
                (->> bedrock :fields (into {} (map (juxt :key :required))))))
         (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
                (:help (m/find-first #(= "access-key-id" (:key %)) (:fields bedrock)))))))))
@@ -471,6 +472,25 @@
                                       model (assoc :model model)))
               (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
               (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))))
+
+(deftest create-bedrock-connection-with-an-inference-profile-test
+  (testing "a Bedrock connection that names an inference profile is checked on bedrock-runtime and Metabot runs on it"
+    (let [requested (atom [])]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (swap! requested conj (:url req))
+                                                 {:status 200 :body (java.io.ByteArrayInputStream. (byte-array 0))})]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+            (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                  {:type   "bedrock"
+                                   :config {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                            :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+                                            :region            "eu-central-1"
+                                            :model-id          "eu.anthropic.claude-sonnet-4-6"}})
+            (is (= [(str "https://bedrock-runtime.eu-central-1.amazonaws.com/model/eu.anthropic.claude-sonnet-4-6"
+                         "/invoke-with-response-stream")]
+                   @requested))
+            (is (= "bedrock/eu.anthropic.claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))))
 
 (deftest writes-keep-a-stored-connection-the-environment-shadows-test
   (testing (str "The environment wins on read, but it must not take the stored credentials with it: they are what "
