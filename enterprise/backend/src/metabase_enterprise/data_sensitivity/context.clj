@@ -171,8 +171,8 @@
       {:values nil :error (ex-message e)})))
 
 (defn- field-entry
-  "Non-nil user-settings values are overlaid on the Field row, as `sync-user-settings` does on every Field update, so
-  a human's choice is reported even when the row has not been rewritten since it was made."
+  "The packet entry for `field`, with its non-nil user-settings values taking precedence over the Field row.
+  `:human_set` names the columns a user has set."
   [{:keys [id] :as field} {:keys [user-settings fk-targets cached sampled]}]
   (let [settings  (get user-settings id)
         human-set (human-set-keys settings)
