@@ -111,21 +111,49 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
     });
 
     it("serves the report to shell agents, with cursor filtering", () => {
+      const DIAGNOSTICS_IDLE_MS = 500;
+
+      let lastPostAt = Date.now();
+      cy.intercept("POST", "**/__data-app/diagnostics", (req) => {
+        lastPostAt = Date.now();
+        req.continue();
+      }).as("diagPost");
+
+      // The sandbox probe's blocked fetch can legitimately arrive in a
+      // second, later POST — wait for traffic to settle before trusting a cursor.
+      // Still a cy.wait under the hood, just one that adapts to actual
+      // traffic instead of a fixed duration, and fails loud if it never settles.
+      const waitForDiagnosticsIdle = (attempt = 0): Cypress.Chainable<void> => {
+        if (Date.now() - lastPostAt >= DIAGNOSTICS_IDLE_MS) {
+          return cy.wrap(undefined, { log: false });
+        }
+        if (attempt >= 40) {
+          throw new Error("Diagnostics POST traffic never went idle");
+        }
+        return cy
+          .wait(100, { log: false })
+          .then(() => waitForDiagnosticsIdle(attempt + 1));
+      };
+
       readDiagnosticsUntil(
         DIAGNOSTICS_URL,
         "a blocked-network entry and a healthy connection",
         (report) =>
           report.entries.some((entry) => entry.kind === "blocked-network") &&
           report.connection?.reachable === true,
-      ).then((report) => {
-        expect(report.manifest?.errors).to.have.length(0);
-        expect(report.clients).to.be.gte(1);
+      )
+        .then(() => waitForDiagnosticsIdle())
+        .then(() => {
+          cy.request(DIAGNOSTICS_URL).then(({ body: report }) => {
+            expect(report.manifest?.errors).to.have.length(0);
+            expect(report.clients).to.be.gte(1);
 
-        // A reader that has consumed everything sees an empty page, not a replay.
-        cy.request(`${DIAGNOSTICS_URL}?startEventId=${report.nextEventId}`)
-          .its("body.entries")
-          .should("be.empty");
-      });
+            // A reader that has consumed everything sees an empty page, not a replay.
+            cy.request(`${DIAGNOSTICS_URL}?startEventId=${report.nextEventId}`)
+              .its("body.entries")
+              .should("be.empty");
+          });
+        });
     });
 
     it("keeps the buffer across a page reload, with continuous event ids", () => {
