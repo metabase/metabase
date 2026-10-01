@@ -45,13 +45,13 @@
 
 (deftest ^:parallel a-three-way-merge-shows-requires-to-every-named-cluster-test
   (let [graph   (assoc graph 'settings #{'app-db 'qp}, 'lib #{'qp}, 'qp #{'sync 'lib})
-        anchors '{foundation app-db, galactic-center qp, rosetta lib}
+        anchors '{foundation app-db, galactic-center qp, darmok lib}
         [msg]   (module-cycles/problems graph (conj modules 'lib) anchors)
         reaches (filter #(str/includes? % " reaches ") (str/split-lines msg))]
-    (is (=? [#"  foundation reaches galactic-center .*"
-             #"  galactic-center reaches foundation .*"
-             #"  foundation reaches rosetta .*"
-             #"  rosetta reaches foundation .*"]
+    (is (=? [#"  darmok reaches foundation .*"
+             #"  foundation reaches darmok .*"
+             #"  darmok reaches galactic-center .*"
+             #"  galactic-center reaches darmok .*"]
             reaches))))
 
 (deftest ^:parallel an-unnamed-cluster-fails-with-a-proposed-name-test
