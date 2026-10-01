@@ -1,7 +1,7 @@
-(ns metabase.agent-api.usage-test
+(ns metabase.metabot.agent-api.usage-test
   (:require
    [clojure.test :refer :all]
-   [metabase.agent-api.usage :as agent-api.usage]))
+   [metabase.metabot.agent-api.usage :as agent-api.usage]))
 
 (deftest templatize-uri-test
   (testing "numeric path segments are replaced with :id"

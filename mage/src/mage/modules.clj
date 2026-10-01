@@ -130,6 +130,7 @@
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
   '#{metabot.agent-api
+     metabot.agent-api.usage
      analytics
      analytics.interface
      api

@@ -13,6 +13,7 @@
    [medley.core :as m]
    [metabase.dashboards.schema]
    [metabase.revisions.db :as revisions.db]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -20,21 +21,9 @@
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
-;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
-(def ^:private LastEditInfo
-  "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."
-  [:map
-   [:timestamp  [:maybe :any]]
-   [:id         [:maybe ms/PositiveInt]]
-   [:first_name [:maybe :string]]
-   [:last_name  [:maybe :string]]
-   [:email      [:maybe :string]]])
+(def ^:private LastEditInfo ::revisions.schema/last-edit-info)
 
-(def MaybeAnnotated
-  "Spec for an item annotated with last-edit-info. Items are cards or dashboards. Optional because we may not always
-  have revision history for all cards/dashboards."
-  [:map
-   [:last-edit-info {:optional true} LastEditInfo]])
+(def ^:private MaybeAnnotated ::revisions.schema/maybe-annotated)
 
 (mu/defn with-last-edit-info :- [:maybe [:sequential MaybeAnnotated]]
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
