@@ -117,7 +117,8 @@ inline-ignore budget. If any ratchet file conflicts, run `./bin/merge-kondo-ratc
 
 `.clj-kondo/config/modules/cycle-clusters.edn` names each cyclic cluster (strongly connected component) of the module
 require graph by an anchor module: the cluster holding the anchor carries the name, and its members are computed,
-so a named cluster can grow and shrink without an edit. The big one is `galactic-center`.
+so a named cluster can grow and shrink without an edit. The big one is `galactic-center`. Names follow a space
+theme; the `name-module-cycle` skill helps pick one.
 
 `metabase.core.module-cycles-test` fails until every cluster holds exactly one anchor. When you split a cluster,
 name the new half: the failure proposes a name and anchor to add. When two named clusters merge, find another way;

@@ -134,8 +134,9 @@
    [(format "A cluster without a name: %d modules, %s." (count cluster) (module-list cluster))
     (str "  If your change split a cluster in two, that is a real improvement: thank you."
          " You get to name the new one.")
-    (format "  Add `%s %s` to %s, or pick your own name and anchor it on any of its modules." name anchor
-            clusters-file)
+    (str "  Names follow a space theme, with some link to what the cluster does. For ideas, ask your agent to use"
+         " the name-module-cycle skill in .claude/skills/name-module-cycle.")
+    (format "  Then add a line like `%s %s` to %s, anchored on any of its modules." name anchor clusters-file)
     "  If this is a brand new cycle instead, break it rather than naming it."]))
 
 (defn- dissolved-message [cluster-name anchor]
@@ -185,3 +186,23 @@
     (vec (problems (deps-graph/module-dependencies (deps-graph/dependencies))
                    (set (keys config))
                    (read-anchors)))))
+
+(defn print-clusters
+  "Print every cyclic cluster of the module require graph with its name, anchor, teams and full membership, for
+  choosing a name. Run it with `clojure -X:dev dev.module-cycles/print-clusters`."
+  [_]
+  (let [config    (deps-graph/kondo-config)
+        graph     (deps-graph/module-dependencies (deps-graph/dependencies))
+        anchors   (read-anchors)
+        anchor->n (into {} (map (juxt val key)) anchors)]
+    (doseq [cluster (deps-graph/cyclic-components graph)
+            :let    [named (sort (keep (fn [m] (when-let [n (anchor->n m)] [n m])) cluster))]]
+      (println (if (seq named)
+                 (str/join " + " (map (fn [[n m]] (format "%s (anchor %s)" n m)) named))
+                 (let [{:keys [name anchor]} (propose graph cluster (keys anchors))]
+                   (format "unnamed (placeholder %s, anchor %s)" name anchor))))
+      (println (format "  %d modules, teams: %s" (count cluster)
+                       (str/join ", " (sort (distinct (keep #(get-in config [% :team]) cluster))))))
+      (doseq [module (sort cluster)]
+        (println (str "  " module)))
+      (println))))
