@@ -62,7 +62,7 @@ describe("scenarios > metrics > dimensions", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("curates the dimension list: seeded columns, search, drag-and-drop reorder, add, rename, set default, and remove", () => {
+  it("curates the dimension list: seeded columns, search, drag-and-drop reorder, add, rename, describe, set and remove the default, and bulk remove", () => {
     H.visitMetric(metricId);
     H.MetricPage.dimensionsTab().click();
     H.MetricPage.dimensionsPage().should("be.visible");

@@ -86,7 +86,7 @@ describe("scenarios > metrics > metric page", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should display scalar metric, edit name and description, explore link, and more menu actions", () => {
+  it("should display a scalar metric, edit its name and description, link to explore, navigate tabs, and duplicate it", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("POST", "/api/card").as("createCard");
 
@@ -291,7 +291,7 @@ describe("scenarios > metrics > metric page", () => {
     });
   });
 
-  it("should discard unsaved changes on leaving, and edit, save, and cancel metric definition changes (metabase#32037)", () => {
+  it("should discard unsaved changes on leaving (metabase#32037), cancel and save metric definition changes, and surface a failed revert (UXW-310)", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
     H.createQuestion(ORDERS_SCALAR_METRIC, {
@@ -382,7 +382,7 @@ describe("scenarios > metrics > metric page", () => {
     H.main().findByText("This metric is in the trash.");
   });
 
-  it("should restrict editing controls and definition tab for read-only users", () => {
+  it("should hide editing controls and the overview and definition tabs from read-only users", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
       cy.signIn("readonly");
       H.visitMetric(metric.id);

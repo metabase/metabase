@@ -516,7 +516,7 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   describe("Entry points", () => {
-    it("should handle breakout with no results gracefully", () => {
+    it("should show a No results state for a metric whose query returns no rows", () => {
       createMetrics([
         {
           name: "Empty Metric",
@@ -536,7 +536,7 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   describe("Adding metrics and measures", () => {
-    it("should add multiple metrics", () => {
+    it("should add metrics, duplicates, and measures, persist them in the URL, and show no search results for unknown names", () => {
       H.MetricsViewer.goToViewer();
       cy.url().should("include", "/explore");
       cy.findByRole("heading", { name: "Start exploring" }).should(
@@ -708,7 +708,9 @@ describe("scenarios > metrics > explorer", () => {
         { nameOrPath: "Count of orders" },
       ]);
 
-      cy.log("Should have 2 metric pills (expression pill is separate)");
+      cy.log(
+        "Should have 3 pills: two standalone Count of orders and an expression between them",
+      );
       H.MetricsViewer.searchBarPills().should("have.length", 3);
 
       cy.log(
@@ -749,7 +751,9 @@ describe("scenarios > metrics > explorer", () => {
         .children()
         .should("have.length.greaterThan", 1);
 
-      cy.log("Second pill should have single color (no breakout yet)");
+      cy.log(
+        "Second Count of orders pill should have single color (no breakout yet)",
+      );
       H.MetricsViewer.searchBarPills()
         .eq(2)
         .findByTestId("color-indicator-container")
@@ -830,7 +834,7 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should preserve breakout state when editing formula and re-running", () => {
-      cy.log("Set up: two instances of Count of orders with an expression");
+      cy.log("Set up: two standalone instances of Count of orders");
       addMetric("Count of orders");
 
       H.MetricsViewer.searchBarPills().should("have.length", 2);
@@ -1020,7 +1024,7 @@ describe("scenarios > metrics > explorer", () => {
       });
     });
 
-    it("should preserve custom name when re-running with the same expression", () => {
+    it("should preserve custom name when the formula is re-run with the expression unchanged", () => {
       addMetricInputSequence([
         { nameOrPath: "Count of orders" },
         "+",
@@ -1039,7 +1043,7 @@ describe("scenarios > metrics > explorer", () => {
         .eq(1)
         .should("contain.text", "My Stable Name");
 
-      cy.log("Enter formula mode and re-run the expression");
+      cy.log("Append another metric and re-run the formula");
       addMetric("Count of products");
 
       cy.log("Custom name should still be preserved");
@@ -1105,10 +1109,7 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should keep each expression's own name when an earlier expression is removed", () => {
-      // Regression: names used to shift up by ordinal position, so deleting
-      // the first expression made the second one inherit "First Name".
-      // Now names are bound to identities — the surviving expression keeps
-      // its own "Second Name".
+      // Names are bound to expression identities, not ordinal positions.
       cy.log("Build two separately-named expressions");
       addMetricInputSequence(
         [
@@ -1519,7 +1520,7 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of orders");
     });
 
-    it("should apply a categorical filter to a metric (UXW-4849)", () => {
+    it("should add, edit, and remove categorical metric and dimension filters with a series breakout, and step through them with browser history (UXW-4849)", () => {
       cy.log("with a single series, map shows one visualization");
       selectDimensionBreakout("State");
       H.MetricsViewer.assertVizType("Map");
@@ -1673,7 +1674,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getAllFilterPills().should("have.length", 0);
     });
 
-    it("should allow me to apply filters to each metric individually (UXW-4849)", () => {
+    it("should apply filters to each metric individually, and change time granularity and date range (UXW-4849)", () => {
       addMetric("Count of products");
       selectDimensionBreakout("Category");
       H.MetricsViewer.assertVizType("Bar");
@@ -1979,7 +1980,7 @@ describe("scenarios > metrics > explorer", () => {
     });
   });
 
-  describe("Dimension filters", () => {
+  describe("Expression editing", () => {
     beforeEach(() => {
       H.MetricsViewer.goToViewer();
     });
@@ -2122,7 +2123,7 @@ describe("scenarios > metrics > explorer", () => {
         cy.log("metric math expression still renders with the applied state");
         H.MetricsViewer.getMetricVisualization().should("be.visible");
 
-        cy.log("dimension filter is applied");
+        cy.log("the Category filters are applied");
         H.echartsContainer().within(() => {
           cy.findByText("Doohickey").should("be.visible");
           cy.findByText("Gadget").should("not.exist");
@@ -2542,7 +2543,7 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
         .should("contain.text", "Category");
     });
 
-    it("disables metrics without a dimension of the picked type", () => {
+    it("leaves metrics without a dimension of the picked type unmapped", () => {
       visitViewerWithMetrics(["Plain orders", "Plain products"]);
 
       H.MetricsViewer.openDimensionPickerSidebar();
@@ -2555,7 +2556,7 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
         .click();
       cy.wait("@dataset");
 
-      cy.log("Orders has no category dimensions, so it is excluded");
+      cy.log("Orders has no category dimensions, so it is left unmapped");
       assertSerializedDimensionBreakout((dimensionBreakout) => {
         expect(dimensionBreakout.t).to.equal("category");
         expect(dimensionBreakout.D?.find((entry) => entry.i === 0)?.d).to.be

@@ -278,7 +278,7 @@ describe("scenarios > metrics > editing", () => {
     });
   });
 
-  describe("breakouts", () => {
+  describe("filters", () => {
     it("should run the query from the empty state, then create a filtered timeseries metric based on a table", () => {
       startNewMetricWithTable("Sample Database", "Orders");
 

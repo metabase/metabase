@@ -302,7 +302,7 @@ describe("scenarios > metrics > dashboard", () => {
     H.saveDashboard();
     H.getDashboardCard().within(() => {
       H.cartesianChartCircle()
-        .eq(5) // random dot
+        .eq(5) // sixth point, whose Count of 92 is passed as the User ID
         .click({ force: true });
     });
     cy.wait("@dataset");

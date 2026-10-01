@@ -93,7 +93,7 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("no metrics", () => {
-    it("should show the empty metrics page, discard a new metric on cancel (metabase#48024), and hide create actions without data access", () => {
+    it("should show the empty metrics page, discard a new metric on cancel (metabase#48024), and hide create actions from users who cannot create queries", () => {
       const emptyStateText =
         "Create Metrics to define the official way to calculate important numbers for your team";
 
@@ -123,7 +123,9 @@ describe("scenarios > browse > metrics", () => {
       cy.location("pathname").should("eq", "/browse/metrics");
       H.main().findByText(emptyStateText).should("be.visible");
 
-      cy.log("create actions are hidden without data access");
+      cy.log(
+        "create actions are hidden from a sandboxed user who cannot create queries",
+      );
       cy.signInAsSandboxedUser();
       cy.visit("/browse/metrics");
       H.main().within(() => {

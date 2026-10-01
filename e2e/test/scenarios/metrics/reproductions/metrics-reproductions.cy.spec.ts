@@ -167,7 +167,7 @@ describe("issue 79571", () => {
     cy.signInAsNormalUser();
   });
 
-  it("logs choosing a metric as a recent selection and lists it under Recent items (metabase#79571)", () => {
+  it("logs choosing a metric as a recent selection, offers custom column and join actions on it, and lists it under Recent items (metabase#79571)", () => {
     H.createQuestion(ORDERS_COUNT_METRIC).then(({ body: { id: metricId } }) => {
       cy.intercept("POST", "/api/activity/recents").as("logRecent");
 

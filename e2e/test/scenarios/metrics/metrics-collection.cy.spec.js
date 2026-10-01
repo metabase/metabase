@@ -38,7 +38,7 @@ describe("scenarios > metrics > collection", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be possible to pin and unpin metrics", () => {
+  it("should show pinned metrics in a collection, and unpin and pin them", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion(ORDERS_TIMESERIES_METRIC);
     cy.visit("/collection/root");
@@ -70,7 +70,7 @@ describe("scenarios > metrics > collection", () => {
       .should("be.visible");
   });
 
-  it("should be possible to bookmark, archive, unarchive, and delete a metric", () => {
+  it("should be possible to bookmark, trash, restore, and permanently delete a metric", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion({
       ...ORDERS_TIMESERIES_METRIC,
@@ -105,7 +105,7 @@ describe("scenarios > metrics > collection", () => {
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
 
-    cy.log("archive, unarchive, and delete");
+    cy.log("trash, restore, and permanently delete");
     H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Move to trash").click();
     H.getPinnedSection().should("not.exist");
