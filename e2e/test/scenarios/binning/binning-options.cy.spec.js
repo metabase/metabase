@@ -252,7 +252,9 @@ describe("scenarios > binning > binning options", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("January 2026");
 
-      cy.log("time series footer highlights the current bucket (metabase#11183)");
+      cy.log(
+        "time series footer highlights the current bucket (metabase#11183)",
+      );
       cy.findByTestId("timeseries-bucket-button").click();
       H.popover()
         .findByText("Month")
