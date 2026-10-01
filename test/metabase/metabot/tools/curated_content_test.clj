@@ -8,6 +8,7 @@
    [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.metadata :as metadata-tools]
@@ -38,12 +39,19 @@
 (defn- count-metric-query [query]
   (lib/aggregate query (lib/count)))
 
+(defn- as-metabot
+  "Call `f` as a tool of the Metabot with entity id `metabot-id` under `profile-id`, with tool state bound the way
+  the agent loop binds it."
+  [metabot-id profile-id f]
+  (binding [tools.shared/*metabot-id*    metabot-id
+            tools.shared/*profile-id*    profile-id
+            tools.shared/*curated-only?* (curation/curated-content-only? metabot-id profile-id)]
+    (f)))
+
 (defn- read-uris
   "Run `read_resource` on `uris` as a tool of the Metabot with entity id `metabot-id` under `profile-id`."
   [metabot-id profile-id & uris]
-  (binding [tools.shared/*metabot-id* metabot-id
-            tools.shared/*profile-id* profile-id]
-    (:resources (read-resource/read-resource {:uris (vec uris)}))))
+  (as-metabot metabot-id profile-id #(:resources (read-resource/read-resource {:uris (vec uris)}))))
 
 (defn- item-ids [resource]
   (into #{} (map :id) (get-in resource [:content :structured-output :items])))
@@ -98,8 +106,14 @@
                                                      :dataset_query (orders-query)}
                    :model/Card {plain-model :id} {:type :model :name "plain model" :collection_id coll-id
                                                   :dataset_query (orders-query)}
+                   :model/Card {plain-metric :id} {:type :metric :name "plain metric" :collection_id coll-id
+                                                   :dataset_query (count-metric-query (orders-query))}
                    :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
       (verify-card! verified-model)
+      (testing "reads an uncurated metric only when what it's defined on is curated, as construct_notebook_query does"
+        (is (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" plain-metric)))))
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (is (not (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" plain-metric))))))))
       (testing "denies uncurated cards"
         (is (denied? (first (read-uris metabot-id :internal (str "metabase://model/" plain-model "/fields"))))))
       (testing "reads curated cards"
@@ -143,7 +157,7 @@
     (is (nil? (#'read-resource/curation-subject ["table" "1" "derived"]))))
   (testing "tables and cards are judged as themselves"
     (is (= ["table" 1] (#'read-resource/curation-subject ["table" "1" "fields" "c75"])))
-    (is (= ["card" 2] (#'read-resource/curation-subject ["metric" "2" "dimensions"])))))
+    (is (= ["metric" 2] (#'read-resource/curation-subject ["metric" "2" "dimensions"])))))
 
 (deftest construct-query-curated-only-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -200,9 +214,7 @@
             metric-query   (fn [metric-eid]
                              (assoc-in orders-query [:stages 0 :aggregation] [["metric" {} metric-eid]]))
             construct      (fn [metabot-id profile-id q]
-                             (binding [tools.shared/*metabot-id* metabot-id
-                                       tools.shared/*profile-id* profile-id]
-                               (construct/execute-representations-query q)))
+                             (as-metabot metabot-id profile-id #(construct/execute-representations-query q)))
             rejected?      (fn [metabot-id profile-id q]
                              (try
                                (construct metabot-id profile-id q)
@@ -310,21 +322,26 @@
 
 (deftest metadata-tools-curated-only-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
-      (binding [tools.shared/*metabot-id* metabot-id
-                tools.shared/*profile-id* :internal]
-        (testing "list_available_fields reports uncurated tables as errors"
-          (let [{:keys [tables errors]} (:structured-output
-                                         (metadata-tools/get-metadata {:table-ids [(mt/id :orders)]}))]
-            (is (empty? tables))
-            (is (some #(str/includes? % "only uses curated content") errors))))
-        (testing "get_field_values rejects uncurated tables"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
-                                (metadata-tools/get-field-values-tool
-                                 {:data_source "table" :source_id (mt/id :orders) :field_id (mt/id :orders :total)}))))
-        (testing "curated tables are readable"
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
-            (is (=? {:structured-output {:tables [{:id (mt/id :orders)}]}}
-                    (metadata-tools/get-metadata {:table-ids [(mt/id :orders)]})))
-            (is (some? (metadata-tools/get-field-values-tool
-                        {:data_source "table" :source_id (mt/id :orders) :field_id (mt/id :orders :total)})))))))))
+    (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}
+                   :model/Card {plain-metric :id} {:type :metric :name "plain metric"
+                                                   :dataset_query (count-metric-query (orders-query))}]
+      (as-metabot metabot-id :internal
+                  (fn []
+                    (testing "list_available_fields reports uncurated tables as errors"
+                      (let [{:keys [tables errors]} (:structured-output
+                                                     (metadata-tools/get-metadata {:table-ids [(mt/id :orders)]}))]
+                        (is (empty? tables))
+                        (is (some #(str/includes? % "only uses curated content") errors))))
+                    (testing "get_field_values rejects uncurated tables"
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                            (metadata-tools/get-field-values-tool
+                                             {:data_source "table" :source_id (mt/id :orders) :field_id (mt/id :orders :total)}))))
+                    (testing "curated tables are readable"
+                      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+                        (is (=? {:structured-output {:tables [{:id (mt/id :orders)}]}}
+                                (metadata-tools/get-metadata {:table-ids [(mt/id :orders)]})))
+                        (testing "and so are the metrics defined on them"
+                          (is (=? {:structured-output {:metrics [{:id plain-metric}]}}
+                                  (metadata-tools/get-metadata {:metric-ids [plain-metric]}))))
+                        (is (some? (metadata-tools/get-field-values-tool
+                                    {:data_source "table" :source_id (mt/id :orders) :field_id (mt/id :orders :total)}))))))))))

@@ -94,7 +94,7 @@
             metric-results (mapv #(safe-fetch
                                    (fn [metric-id]
                                      (resources-tools/check-card-resource-database metric-id)
-                                     (check-curated (str "metric " metric-id) ["card" metric-id])
+                                     (check-curated (str "metric " metric-id) ["metric" metric-id])
                                      (entity-details-tools/get-metric-details
                                       {:metric-id metric-id
                                        :with-default-temporal-breakout? false
@@ -200,8 +200,9 @@
   (when (shared/curated-only?)
     (resources-tools/check-curated-subject! (str data_source " " source_id)
                                             (case data_source
-                                              "table"                                ["table" source_id]
-                                              ("model" "metric" "question" "report") ["card" source_id]
+                                              "table"                       ["table" source_id]
+                                              "metric"                      ["metric" source_id]
+                                              ("model" "question" "report") ["card" source_id]
                                               nil)))
   (add-output
    (field-stats-tools/field-values {:entity-type data_source

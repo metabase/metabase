@@ -7,6 +7,7 @@
   is a function that takes the tool arguments and returns a result map."
   (:require
    [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
@@ -148,33 +149,36 @@
   in the system prompt, with full bodies loaded on demand via the `load_skill`
   tool."
   [tools memory-atom metabot-id profile-id]
-  (reduce-kv
-   (fn [acc tool-name tool-var]
-     (let [m          (meta tool-var)
-           base-fn    (if (contains? state-dependent-tools tool-name)
-                        (fn [args]
-                          (binding [shared/*memory-atom* memory-atom
-                                    shared/*metabot-id*  metabot-id
-                                    shared/*profile-id*  profile-id]
-                            (tool-var args)))
-                        (fn [args]
-                          (binding [shared/*metabot-id* metabot-id
-                                    shared/*profile-id* profile-id]
-                            (tool-var args))))
-           tool-scope (:scope m)
-           tool-fn    (if tool-scope
-                        (wrap-with-scope-check base-fn tool-name tool-scope)
-                        base-fn)
-           tool-def   {:tool-name            (:tool-name m)
-                       :doc                  (:doc m)
-                       :schema               (:schema m)
-                       :prompt               (:prompt m)
-                       :decode               (:decode m)
-                       :title-fn             (:title-fn m)
-                       :system-instructions  (:system-instructions m)
-                       :capabilities         (:capabilities m)
-                       :scope                (:scope m)
-                       :fn                   tool-fn}]
-       (assoc acc tool-name tool-def)))
-   {}
-   tools))
+  (let [curated-only? (curation/curated-content-only? metabot-id profile-id)]
+    (reduce-kv
+     (fn [acc tool-name tool-var]
+       (let [m          (meta tool-var)
+             base-fn    (if (contains? state-dependent-tools tool-name)
+                          (fn [args]
+                            (binding [shared/*memory-atom*   memory-atom
+                                      shared/*metabot-id*    metabot-id
+                                      shared/*profile-id*    profile-id
+                                      shared/*curated-only?* curated-only?]
+                              (tool-var args)))
+                          (fn [args]
+                            (binding [shared/*metabot-id*    metabot-id
+                                      shared/*profile-id*    profile-id
+                                      shared/*curated-only?* curated-only?]
+                              (tool-var args))))
+             tool-scope (:scope m)
+             tool-fn    (if tool-scope
+                          (wrap-with-scope-check base-fn tool-name tool-scope)
+                          base-fn)
+             tool-def   {:tool-name            (:tool-name m)
+                         :doc                  (:doc m)
+                         :schema               (:schema m)
+                         :prompt               (:prompt m)
+                         :decode               (:decode m)
+                         :title-fn             (:title-fn m)
+                         :system-instructions  (:system-instructions m)
+                         :capabilities         (:capabilities m)
+                         :scope                (:scope m)
+                         :fn                   tool-fn}]
+         (assoc acc tool-name tool-def)))
+     {}
+     tools)))
