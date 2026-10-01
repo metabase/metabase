@@ -98,6 +98,7 @@ describe("Recently Viewed > Entity Picker", () => {
     H.popover().findByText("Dashboard").click();
     cy.findByTestId("collection-picker-button").click();
 
+    H.entityPickerModalItem(1, "My Fresh Collection").should("be.visible");
     H.entityPickerModalItem(0, "Recent items").click();
     H.entityPickerModalItem(1, "My Fresh Collection").should("be.visible");
   });
@@ -119,6 +120,35 @@ describe("Recently Viewed > Entity Picker", () => {
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}-`);
     cy.findByTestId("dashboard-header-container").findByText(
       /You're editing this dashboard/,
+    );
+    H.saveDashboard();
+
+    H.createDashboard({ name: "My Fresh Dashboard" }).then(
+      ({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.visitQuestion(ORDERS_QUESTION_ID);
+
+        cy.findByTestId("qb-header").icon("ellipsis").click();
+        H.popover().findByText("Add to dashboard").click();
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Add this question to a dashboard").should(
+            "be.visible",
+          );
+          cy.button("Select").should("be.enabled");
+          cy.findByText("Recent items").click();
+          cy.contains(
+            "[data-testid=result-item]",
+            "My Fresh Dashboard",
+          ).click();
+          cy.button("Select").click();
+        });
+
+        cy.url().should("contain", `/dashboard/${dashboardId}-`);
+        cy.findByTestId("dashboard-header-container").findByText(
+          /You're editing this dashboard/,
+        );
+      },
     );
   });
 });

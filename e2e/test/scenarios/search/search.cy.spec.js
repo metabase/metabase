@@ -5,6 +5,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -74,15 +75,17 @@ describe("scenarios > search", () => {
       cy.findByTestId("search-app")
         .findByText('Results for "product"')
         .should("exist");
-      H.expectSearchResultContent({
-        expectedSearchResults: [
-          {
-            name: "Products",
-            description:
-              "Includes a catalog of all the products ever sold by the famed Sample Company.",
-          },
-        ],
-        strict: false,
+      cy.findByTestId("search-app").within(() => {
+        H.expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: "Products",
+              description:
+                "Includes a catalog of all the products ever sold by the famed Sample Company.",
+            },
+          ],
+          strict: false,
+        });
       });
     });
 
@@ -211,7 +214,7 @@ describe("scenarios > search", () => {
   });
 
   describe("accessing full page search with `Enter`", () => {
-    it("should not search or render full page search if user has not entered a text query", () => {
+    it("should only search and open full page search when a text query is entered", () => {
       cy.intercept("GET", "/api/activity/recents?*").as("getRecentViews");
       cy.intercept("GET", "/api/search*").as("anySearch");
 
@@ -226,20 +229,32 @@ describe("scenarios > search", () => {
       });
       cy.location("pathname").should("eq", "/");
 
+      cy.clock(Date.now(), ["setTimeout", "clearTimeout"]);
       H.getSearchBar().type(" ").should("have.value", " ");
+      cy.tick(SEARCH_DEBOUNCE_DURATION);
       cy.findByTestId("search-results-floating-container").within(() => {
         cy.findByText("Recently viewed").should("exist");
       });
       H.getSearchBar().type("{enter}");
       cy.location("pathname").should("eq", "/");
       cy.get("@anySearch.all").should("have.length", 0);
-    });
 
-    it("should render full page search when search text is present and user clicks 'Enter'", () => {
-      visitEmbeddingWithSearch("/");
+      H.getSearchBar().clear().type("ord").should("have.value", "ord");
+      cy.tick(SEARCH_DEBOUNCE_DURATION);
+      cy.wait("@anySearch");
+      cy.findByTestId("search-bar-results-container").should("be.visible");
 
-      H.getSearchBar().click().type("orders{enter}");
-      cy.wait("@search");
+      H.getSearchBar().clear().type(" ").should("have.value", " ");
+      cy.tick(SEARCH_DEBOUNCE_DURATION);
+      cy.findByTestId("search-results-floating-container")
+        .findByText("Recently viewed")
+        .should("be.visible");
+      cy.findByTestId("search-bar-results-container").should("not.exist");
+      cy.get("@anySearch.all").should("have.length", 1);
+      cy.clock().invoke("restore");
+
+      H.getSearchBar().clear().type("orders{enter}");
+      cy.wait("@anySearch");
 
       cy.findByTestId("search-app").within(() => {
         cy.findByText('Results for "orders"').should("exist");
@@ -259,7 +274,6 @@ describe("issue 28788", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/search*").as("search");
   });
 
   it("search results should not overflow or scroll horizontally with long names and descriptions (metabase#28788)", () => {
@@ -295,12 +309,13 @@ describe("issue 28788", () => {
       qs: { top_nav: true, search: true },
     });
     cy.findByPlaceholderText("Search…").type(questionDetails.name);
-    cy.wait("@search");
-    cy.icon("hourglass").should("not.exist");
 
-    cy.findByTestId("search-bar-results-container").then(($container) => {
-      expect(H.isScrollableHorizontally($container[0])).to.be.false;
-    });
+    cy.findByTestId("search-results-list")
+      .should("contain.text", questionDetails.name)
+      .find("ul")
+      .should(($list) => {
+        expect(H.isScrollableHorizontally($list[0])).to.be.false;
+      });
 
     cy.findByPlaceholderText("Search…").clear().type("Test");
     cy.findByTestId("search-results-floating-container")
