@@ -110,7 +110,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
       cy.log(
         "The group attribute saves with the page form, the switch stays out of it",
       );
-      cy.findByLabelText("Group attribute name").type("memberOf");
+      cy.findByLabelText(/Group attribute name/).type("memberOf");
       cy.button("Save changes").click();
       cy.wait("@updateSamlSettings")
         .its("request.body")
@@ -123,7 +123,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
       cy.reload();
       groupMappingSwitch().should("be.checked");
       mappingRow("engineering").should("contain", "data, nosql");
-      cy.findByLabelText("Group attribute name").should(
+      cy.findByLabelText(/Group attribute name/).should(
         "have.value",
         "memberOf",
       );

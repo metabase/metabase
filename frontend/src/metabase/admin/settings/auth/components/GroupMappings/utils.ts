@@ -64,12 +64,16 @@ export function createGroupLookup(
 ) {
   const loadedGroups = groups ?? [];
   const groupsById = new Map(loadedGroups.map((group) => [group.id, group]));
-  // the backend refuses to delete any built-in group, and to clear only the Administrators group
+  // the backend refuses to delete any built-in group, and to clear Administrators, All Users and All tenant users
   const isKeptBy = (value: CascadeValue, group: GroupListQuery) => {
     if (value === "delete") {
       return group.magic_group_type != null;
     }
-    return isAdminGroup(group);
+    return (
+      isAdminGroup(group) ||
+      isDefaultGroup(group) ||
+      isDefaultTenantGroup(group)
+    );
   };
   return {
     // every id reads as missing until the groups arrive, so callers hold their controls until then

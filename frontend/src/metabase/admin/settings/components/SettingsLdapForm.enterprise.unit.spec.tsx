@@ -207,6 +207,7 @@ describe("SettingsLdapForm (EE)", () => {
       const [{ url, body }] = await findRequests("PUT");
       expect(url).toMatch(/api\/ldap\/settings/);
       expect(body["ldap-host"]).toBe("ldap.example.test.internal");
+      expect(body).not.toHaveProperty("ldap-group-membership-filter");
     });
   });
 });

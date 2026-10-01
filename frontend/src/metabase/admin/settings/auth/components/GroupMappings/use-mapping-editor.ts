@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import type { GroupId, GroupMappings } from "metabase-types/api";
 
@@ -20,6 +21,10 @@ export type MappingEditorState = {
   saveError: string | null;
   canSave: boolean;
   isSubmitting: boolean;
+  // true when saving adds a mapping rather than replacing the one being edited
+  isDraftNew: boolean;
+  // true once an open draft holds something the admin would lose by leaving
+  hasUnsavedChanges: boolean;
   startNew: () => void;
   startEdit: (name: string, groupIds: GroupId[]) => void;
   change: (draft: MappingDraft) => void;
@@ -41,10 +46,18 @@ export function useMappingEditor({
   namesValidatedOnSave?: boolean;
 }): MappingEditorState {
   const [draft, setDraft] = useState<MappingDraft | null>(null);
+  // the draft as it was opened, so an untouched one does not count as unsaved
+  const [openedDraft, setOpenedDraft] = useState<MappingDraft | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const trimmedName = draft?.name.trim() ?? "";
+  // a draft whose mapping was deleted meanwhile, say by another admin, carries on as a new one
+  const isDraftNew =
+    draft != null &&
+    (draft.originalName == null ||
+      !Object.hasOwn(mappings, draft.originalName));
+  const hasUnsavedChanges = draft != null && !_.isEqual(draft, openedDraft);
   const isDuplicateName =
     draft != null &&
     Object.hasOwn(mappings, trimmedName) &&
@@ -62,16 +75,20 @@ export function useMappingEditor({
   }
   const saveError = namesValidatedOnSave ? null : submitError;
 
-  const replaceDraft = (nextDraft: MappingDraft | null) => {
+  const changeDraft = (nextDraft: MappingDraft | null) => {
     setSubmitError(null);
     setDraft(nextDraft);
+  };
+
+  const resetDraft = (nextDraft: MappingDraft | null) => {
+    setOpenedDraft(nextDraft);
+    changeDraft(nextDraft);
   };
 
   const save = async () => {
     if (draft == null || !canSave) {
       return;
     }
-    const isNewMapping = draft.originalName == null;
     setIsSubmitting(true);
     try {
       const result = await saveMappings(
@@ -82,12 +99,12 @@ export function useMappingEditor({
           draft.groupValues.map(Number),
         ),
         {
-          successMessage: isNewMapping ? t`Mapping added` : t`Mapping updated`,
+          successMessage: isDraftNew ? t`Mapping added` : t`Mapping updated`,
           showErrorToast: false,
         },
       );
       if (result.ok) {
-        replaceDraft(null);
+        resetDraft(null);
       } else {
         setSubmitError(result.error);
       }
@@ -102,16 +119,18 @@ export function useMappingEditor({
     saveError,
     canSave,
     isSubmitting,
+    isDraftNew,
+    hasUnsavedChanges,
     startNew: () =>
-      replaceDraft({ name: "", groupValues: [], originalName: null }),
+      resetDraft({ name: "", groupValues: [], originalName: null }),
     startEdit: (name, groupIds) =>
-      replaceDraft({
+      resetDraft({
         name,
         groupValues: groupLookup.existingIds(groupIds).map(String),
         originalName: name,
       }),
-    change: replaceDraft,
-    cancel: () => replaceDraft(null),
+    change: changeDraft,
+    cancel: () => resetDraft(null),
     save,
   };
 }

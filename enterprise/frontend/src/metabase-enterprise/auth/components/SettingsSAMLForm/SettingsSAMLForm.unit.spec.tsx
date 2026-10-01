@@ -441,7 +441,10 @@ describe("SettingsSAMLForm", () => {
     it("adds a mapping and writes it without touching the page form", async () => {
       await setupConfigured({ "saml-group-sync": true });
 
-      await userEvent.click(screen.getByRole("button", { name: "New" }));
+      // the panel holds New until the groups have loaded
+      const newButton = screen.getByRole("button", { name: "New" });
+      await waitFor(() => expect(newButton).toBeEnabled());
+      await userEvent.click(newButton);
       await userEvent.type(
         screen.getByPlaceholderText(SAML_GROUP_PLACEHOLDER),
         "engineering",
@@ -461,6 +464,41 @@ describe("SettingsSAMLForm", () => {
       expect(puts[0].body).toEqual({
         "saml-group-mappings": { engineering: [4] },
       });
+    });
+
+    it("shows the group attribute an env var sets, read-only", async () => {
+      await setupConfigured(
+        { "saml-group-sync": true, "saml-attribute-group": "memberOf" },
+        [
+          {
+            key: "saml-attribute-group",
+            is_env_setting: true,
+            env_name: "MB_SAML_ATTRIBUTE_GROUP",
+          },
+        ],
+      );
+
+      const attributeInput = screen.getByRole("textbox", {
+        name: /Group attribute name/,
+      });
+      expect(attributeInput).toHaveValue("memberOf");
+      expect(attributeInput).toHaveAttribute("readonly");
+      expect(attributeInput).toHaveAccessibleDescription(
+        "Using MB_SAML_ATTRIBUTE_GROUP",
+      );
+    });
+
+    it("marks the group attribute as needed while group mapping is on", async () => {
+      await setupConfigured({ "saml-group-sync": true });
+
+      const attributeInput = screen.getByRole("textbox", {
+        name: /Group attribute name/,
+      });
+      expect(attributeInput).toBeRequired();
+      expect(attributeInput).toBeInvalid();
+      expect(attributeInput).toHaveAccessibleDescription(
+        "The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set.",
+      );
     });
 
     it("saves the group attribute with the page form", async () => {

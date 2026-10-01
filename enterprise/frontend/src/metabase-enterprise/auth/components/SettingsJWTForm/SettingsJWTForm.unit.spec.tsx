@@ -339,6 +339,9 @@ describe("SettingsJWTForm", () => {
     expect(
       screen.getByText(/Users will be assigned to Metabase groups/),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Save the settings above to set up group mapping."),
+    ).not.toBeInTheDocument();
   });
 
   it("saves the attribute keys once the server settings exist", async () => {
@@ -686,6 +689,18 @@ describe("SettingsJWTForm", () => {
       expect(screen.getByRole("radio", { name: "Off" })).toBeDisabled();
       expect(
         screen.queryByText(/Users will be assigned to Metabase groups/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Save the settings above to set up group mapping."),
+      ).toBeInTheDocument();
+    });
+
+    it("leaves the save hint out while an env var sets group mapping", async () => {
+      await setup({ groupSyncEnvConfigured: true });
+
+      expect(screen.getByText("Using MB_JWT_GROUP_SYNC")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Save the settings above to set up group mapping."),
       ).not.toBeInTheDocument();
     });
 

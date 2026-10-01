@@ -60,6 +60,9 @@ export function MappingEditorRow({
 
   // the editor is inside the page form, so Enter must not reach its submit button
   const handleNameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (event.key === "Enter") {
       event.preventDefault();
       if (canSubmit && !isSubmitting) {
@@ -74,6 +77,9 @@ export function MappingEditorRow({
   const handleGroupsKeyDown = (
     event: React.KeyboardEvent<HTMLInputElement>,
   ) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (event.key === "Enter") {
       event.preventDefault();
     }

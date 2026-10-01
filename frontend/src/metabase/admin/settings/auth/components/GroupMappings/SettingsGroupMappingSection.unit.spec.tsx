@@ -9,13 +9,16 @@ import {
 import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   act,
+  fireEvent,
   renderWithProviders,
   screen,
   waitFor,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import { settingsApi } from "metabase/settings";
 import { delay } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -29,6 +32,7 @@ const GROUPS = [
   createMockGroup(),
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
   createMockGroup({ id: 3, name: "Engineering", magic_group_type: null }),
+  createMockGroup({ id: 4, name: "Marketing", magic_group_type: null }),
 ];
 
 const DEVS_DN = "cn=devs,ou=groups,dc=example,dc=org";
@@ -51,6 +55,24 @@ const findMappingRow = (name: string) =>
     .queryAllByTestId("group-mapping-row")
     .find((row) => within(row).queryByText(name) != null);
 
+const getMappingRow = (name: string) => checkNotNull(findMappingRow(name));
+
+const clickNew = async () => {
+  const newButton = screen.getByRole("button", { name: "New" });
+  // the panel holds New until the groups have loaded
+  await waitFor(() => expect(newButton).toBeEnabled());
+  await userEvent.click(newButton);
+};
+
+const fillNewDraft = async (name: string) => {
+  await clickNew();
+  await userEvent.type(screen.getByLabelText("LDAP group name"), name);
+  await userEvent.click(screen.getByPlaceholderText("Pick Metabase group..."));
+  await userEvent.click(
+    await screen.findByRole("option", { name: "Engineering" }),
+  );
+};
+
 const setup = async ({
   settingValues = {},
   settingDefinitions = [],
@@ -58,6 +80,8 @@ const setup = async ({
   readDelay,
   groupsDelay,
   groupsStatus,
+  withRouter = false,
+  disabled = false,
 }: {
   settingValues?: Partial<EnterpriseSettings>;
   // entries here win over the ones derived from settingValues
@@ -66,6 +90,10 @@ const setup = async ({
   readDelay?: number;
   groupsDelay?: number;
   groupsStatus?: number;
+  // renders the card on an ldap route next to a people route, so leaving can be tried
+  withRouter?: boolean;
+  // stands for a provider that is not configured yet
+  disabled?: boolean;
 } = {}) => {
   const settings = createMockSettings(settingValues);
   const listedKeys = new Set(
@@ -86,23 +114,35 @@ const setup = async ({
     { delay: groupsDelay },
   );
 
-  const { store } = renderWithProviders(
+  const section = (
     <SettingsGroupMappingSection
       syncSettingKey="ldap-group-sync"
       mappingsSettingKey="ldap-group-mappings"
       description="Assign people to groups based on their LDAP groups"
       nameLabel="LDAP group name"
       namePlaceholder="cn=people,ou=groups,dc=example,dc=org"
+      disabled={disabled}
     >
       <div>Group fields</div>
-    </SettingsGroupMappingSection>,
-    {
-      withUndos: true,
-      storeInitialState: createMockState({
-        settings: createMockSettingsState(settings),
-      }),
-    },
+    </SettingsGroupMappingSection>
   );
+  let tree = section;
+  if (withRouter) {
+    tree = (
+      <Route path="/">
+        <Route path="ldap" element={section} />
+        <Route path="people" element={<span>People</span>} />
+      </Route>
+    );
+  }
+  const { store, router } = renderWithProviders(tree, {
+    withUndos: true,
+    withRouter,
+    initialRoute: "/ldap",
+    storeInitialState: createMockState({
+      settings: createMockSettingsState(settings),
+    }),
+  });
 
   // the switch is held while the settings load, so a click before that would be ignored
   if (settingValues["ldap-group-sync"] === true) {
@@ -112,7 +152,7 @@ const setup = async ({
       expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
     );
   }
-  return { store, settingsStore };
+  return { store, settingsStore, router };
 };
 
 describe("SettingsGroupMappingSection", () => {
@@ -145,6 +185,23 @@ describe("SettingsGroupMappingSection", () => {
       expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
     );
     expect(groupMappingSwitch()).toBeChecked();
+  });
+
+  it("says how to unlock the card", async () => {
+    await setup({ disabled: true });
+
+    expect(groupMappingSwitch()).toBeDisabled();
+    expect(groupMappingSwitch()).toHaveAccessibleDescription(
+      /Save the settings above to set up group mapping/,
+    );
+  });
+
+  it("says nothing about saving once the card is unlocked", async () => {
+    await setup();
+
+    expect(groupMappingSwitch()).not.toHaveAccessibleDescription(
+      /Save the settings above to set up group mapping/,
+    );
   });
 
   it("puts the old value back when the write fails", async () => {
@@ -202,7 +259,7 @@ describe("SettingsGroupMappingSection", () => {
     });
     const newButton = () => screen.getByRole("button", { name: "New" });
     const deleteButton = () =>
-      within(findMappingRow(DEVS_DN)!).getByRole("button", {
+      within(getMappingRow(DEVS_DN)).getByRole("button", {
         name: "Delete mapping",
       });
     // the initial settings read is slow too, so wait for the panel to open up
@@ -234,13 +291,13 @@ describe("SettingsGroupMappingSection", () => {
     });
     await waitFor(() =>
       expect(
-        within(findMappingRow(DEVS_DN)!).getByRole("button", {
+        within(getMappingRow(DEVS_DN)).getByRole("button", {
           name: "Edit mapping",
         }),
       ).toBeEnabled(),
     );
     await userEvent.click(
-      within(findMappingRow(DEVS_DN)!).getByRole("button", {
+      within(getMappingRow(DEVS_DN)).getByRole("button", {
         name: "Edit mapping",
       }),
     );
@@ -250,13 +307,131 @@ describe("SettingsGroupMappingSection", () => {
     settingsStore["ldap-group-mappings"] = { [OPS_DN]: [3] };
     store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
 
-    expect(
-      await screen.findByRole("button", { name: "Add mapping" }),
-    ).toBeInTheDocument();
+    const addButton = await screen.findByRole("button", {
+      name: "Add mapping",
+    });
     expect(screen.getByLabelText("LDAP group name")).toHaveValue(DEVS_DN);
     expect(
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
+
+    await waitFor(() => expect(addButton).toBeEnabled());
+    await userEvent.click(addButton);
+    expect(await screen.findByText("Mapping added")).toBeInTheDocument();
+    expect(screen.queryByText("Mapping updated")).not.toBeInTheDocument();
+    const [{ body }] = await findRequests("PUT");
+    expect(body).toEqual({
+      "ldap-group-mappings": { [OPS_DN]: [3], [DEVS_DN]: [3] },
+    });
+  });
+
+  it("keeps an open draft editable while the panel waits for a settings refetch", async () => {
+    const { store, settingsStore } = await setup({
+      settingValues: { "ldap-group-sync": true },
+    });
+    await fillNewDraft(DEVS_DN);
+
+    // the properties answer only once the test lets them, so the hold can be seen
+    let releaseRead = () => {};
+    const readHeld = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      async () => {
+        await readHeld;
+        return { ...settingsStore };
+      },
+      { name: "get-session-properties" },
+    );
+    store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
+
+    const addButton = screen.getByRole("button", { name: "Add mapping" });
+    const nameInput = screen.getByLabelText("LDAP group name");
+    try {
+      await waitFor(() => expect(addButton).toBeDisabled());
+      expect(addButton).not.toHaveAttribute("data-loading");
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+      await userEvent.type(nameInput, "x");
+      expect(nameInput).toHaveValue(`${DEVS_DN}x`);
+    } finally {
+      // a read still held would outlive the test
+      releaseRead();
+    }
+    await waitFor(() => expect(addButton).toBeEnabled());
+  });
+
+  it("leaves Enter and Escape to an input method that is composing", async () => {
+    await setup({ settingValues: { "ldap-group-sync": true } });
+    await fillNewDraft(DEVS_DN);
+    const nameInput = screen.getByLabelText("LDAP group name");
+
+    fireEvent.keyDown(nameInput, { key: "Enter", isComposing: true });
+    expect(
+      screen.getByRole("button", { name: "Add mapping" }),
+    ).not.toHaveAttribute("data-loading");
+    fireEvent.keyDown(nameInput, { key: "Escape", isComposing: true });
+    expect(nameInput).toBeInTheDocument();
+    const isGroupsEnterKept = fireEvent.keyDown(
+      screen.getByRole("textbox", { name: "Metabase groups" }),
+      { key: "Enter", isComposing: true },
+    );
+    expect(isGroupsEnterKept).toBe(true);
+
+    await userEvent.click(nameInput);
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByText("Mapping added")).toBeInTheDocument();
+  });
+
+  it("asks before leaving with an unsaved mapping draft", async () => {
+    const { router } = await setup({
+      settingValues: { "ldap-group-sync": true },
+      withRouter: true,
+    });
+    const routerWithRoutes = checkNotNull(router);
+    await clickNew();
+    await userEvent.type(screen.getByLabelText("LDAP group name"), DEVS_DN);
+
+    act(() => routerWithRoutes.navigate("/people"));
+
+    expect(
+      await screen.findByText("Discard your changes?"),
+    ).toBeInTheDocument();
+    expect(routerWithRoutes.location.pathname).toBe("/ldap");
+  });
+
+  it("leaves without asking when the draft is untouched", async () => {
+    const { router } = await setup({
+      settingValues: { "ldap-group-sync": true },
+      withRouter: true,
+    });
+    await clickNew();
+
+    act(() => checkNotNull(router).navigate("/people"));
+
+    expect(await screen.findByText("People")).toBeInTheDocument();
+    expect(screen.queryByText("Discard your changes?")).not.toBeInTheDocument();
+  });
+
+  it("leaves without asking when an opened edit is untouched", async () => {
+    const { router } = await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [DEVS_DN]: [3] },
+      },
+      withRouter: true,
+    });
+    const editButton = within(getMappingRow(DEVS_DN)).getByRole("button", {
+      name: "Edit mapping",
+    });
+    await waitFor(() => expect(editButton).toBeEnabled());
+    await userEvent.click(editButton);
+
+    act(() => checkNotNull(router).navigate("/people"));
+
+    expect(await screen.findByText("People")).toBeInTheDocument();
+    expect(screen.queryByText("Discard your changes?")).not.toBeInTheDocument();
   });
 
   it("holds the mapping controls until the groups have loaded", async () => {
@@ -269,14 +444,30 @@ describe("SettingsGroupMappingSection", () => {
     });
     const newButton = () => screen.getByRole("button", { name: "New" });
     const editButton = () =>
-      within(findMappingRow(DEVS_DN)!).getByRole("button", {
+      within(getMappingRow(DEVS_DN)).getByRole("button", {
         name: "Edit mapping",
       });
     expect(newButton()).toBeDisabled();
     expect(editButton()).toBeDisabled();
+    const row = getMappingRow(DEVS_DN);
+    expect(within(row).queryByText("No groups")).not.toBeInTheDocument();
 
     await waitFor(() => expect(newButton()).toBeEnabled());
     expect(editButton()).toBeEnabled();
+    expect(await within(row).findByText("Engineering")).toBeInTheDocument();
+  });
+
+  it("says No groups for a mapping without groups", async () => {
+    await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [DEVS_DN]: [] },
+      },
+    });
+
+    expect(
+      await within(getMappingRow(DEVS_DN)).findByText("No groups"),
+    ).toBeInTheDocument();
   });
 
   it("says so when the groups could not be loaded", async () => {
@@ -292,6 +483,57 @@ describe("SettingsGroupMappingSection", () => {
       await screen.findByText("Groups could not be loaded"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
+    expect(
+      within(getMappingRow(DEVS_DN)).queryByText("No groups"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reports a failed clean-up after deleting a mapping's groups as part of the deletion", async () => {
+    const OLD_DN = "cn=old,ou=groups,dc=example,dc=org";
+    const { settingsStore } = await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [OLD_DN]: [4], [DEVS_DN]: [4, 3] },
+      },
+    });
+    fetchMock.delete("express:/api/permissions/group/:id", 204);
+    // the mapping removal lands, while the clean-up write after the group delete fails
+    let writeCount = 0;
+    fetchMock.removeRoute("update-settings");
+    fetchMock.put(
+      "path:/api/setting",
+      ({ options }) => {
+        writeCount += 1;
+        if (writeCount > 1) {
+          return { status: 500 };
+        }
+        Object.assign(settingsStore, JSON.parse(String(options.body)));
+        return { status: 204 };
+      },
+      { name: "update-settings" },
+    );
+    const deleteButton = within(getMappingRow(OLD_DN)).getByRole("button", {
+      name: "Delete mapping",
+    });
+    await waitFor(() => expect(deleteButton).toBeEnabled());
+
+    await userEvent.click(deleteButton);
+    await userEvent.click(
+      await screen.findByRole("radio", { name: "Also delete the group" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove mapping and delete group" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Mapping deleted, but its deleted group could not be removed from the other mappings",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Error saving group mapping"),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(findMappingRow(OLD_DN)).toBeUndefined());
   });
 
   it("locks the mappings to the ones an env var sets", async () => {

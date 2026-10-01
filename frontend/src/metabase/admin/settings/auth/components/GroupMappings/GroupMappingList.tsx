@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { Stack, Text } from "metabase/ui";
 import type { GroupMappings } from "metabase-types/api";
@@ -40,11 +41,6 @@ export function GroupMappingList({
 }: GroupMappingListProps) {
   const { draft } = editor;
   const hasMappings = Object.keys(mappings).length > 0;
-  // a draft whose mapping was deleted meanwhile, say by another admin, carries on as a new one
-  const isDraftNew =
-    draft != null &&
-    (draft.originalName == null ||
-      !Object.hasOwn(mappings, draft.originalName));
   const groupOptions = groupLookup.mappableGroups.map((group) => ({
     value: String(group.id),
     label: getGroupNameLocalized(group),
@@ -53,10 +49,11 @@ export function GroupMappingList({
     groupOptions,
     nameLabel,
     namePlaceholder,
-    canSubmit: editor.canSave,
+    // a hold for another reason blocks only the submit, so the draft stays editable
+    canSubmit: editor.canSave && !disabled,
     nameError: editor.nameError,
     saveError: editor.saveError,
-    isSubmitting: disabled || editor.isSubmitting,
+    isSubmitting: editor.isSubmitting,
     onChange: editor.change,
     onCancel: editor.cancel,
     onSubmit: editor.save,
@@ -89,7 +86,7 @@ export function GroupMappingList({
             />
           ),
         )}
-        {draft != null && isDraftNew && (
+        {draft != null && editor.isDraftNew && (
           <MappingEditorRow
             draft={draft}
             submitLabel={t`Add mapping`}
@@ -113,6 +110,7 @@ export function GroupMappingList({
           onHide={deletion.cancelDelete}
         />
       )}
+      <LeaveRouteConfirmModal isEnabled={editor.hasUnsavedChanges} />
     </>
   );
 }

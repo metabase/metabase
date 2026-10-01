@@ -358,6 +358,18 @@ describe("SettingsLdapForm", () => {
       expect(await findRequests("PUT")).toHaveLength(0);
     });
 
+    it("stays clean after typing the saved port back", async () => {
+      await setup({ settingValues: { "ldap-port": 636 } });
+
+      const port = screen.getByLabelText(/LDAP port/);
+      await userEvent.type(port, "1");
+      expect(screen.getByRole("button", { name: /Save/ })).toBeEnabled();
+      await userEvent.type(port, "{Backspace}");
+
+      expect(port).toHaveValue(636);
+      expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
+    });
+
     it("shows the value an env var gives a field, read-only", async () => {
       await setup({
         settingValues: { "ldap-host": "ldap.env.test" },
@@ -480,6 +492,47 @@ describe("SettingsLdapForm", () => {
         expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );
       expect(groupBase()).toHaveValue("ou=groups,dc=example,dc=org");
+    });
+
+    it("leaves the hidden group fields out of a save while group mapping is off", async () => {
+      await setupConfigured({
+        settingValues: {
+          "ldap-host": "ldap.example.org",
+          "ldap-user-base": "ou=users,dc=example,dc=org",
+          "ldap-group-base": "ou=groups,dc=example,dc=org",
+          "ldap-group-sync": false,
+        },
+      });
+
+      await userEvent.type(screen.getByLabelText(/LDAP host/), ".internal");
+      await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+      const [{ body }] = await findRequests("PUT");
+      expect(body["ldap-host"]).toBe("ldap.example.org.internal");
+      expect(body).not.toHaveProperty("ldap-group-base");
+    });
+
+    it("leaves the save hint out while an env var holds group mapping", async () => {
+      await setup({
+        settingValues: { "ldap-group-sync": false },
+        settingDefinitions: [
+          {
+            key: "ldap-group-sync",
+            is_env_setting: true,
+            env_name: "MB_LDAP_GROUP_SYNC",
+          },
+        ],
+      });
+
+      // saving the page would not unlock a switch the env var holds
+      await waitFor(() =>
+        expect(groupMappingSwitch()).toHaveAccessibleDescription(
+          /Using MB_LDAP_GROUP_SYNC/,
+        ),
+      );
+      expect(groupMappingSwitch()).not.toHaveAccessibleDescription(
+        /Save the settings above to set up group mapping/,
+      );
     });
 
     it("asks only for internal groups, since LDAP users are never tenants", async () => {

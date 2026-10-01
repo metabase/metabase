@@ -297,11 +297,12 @@ export function SettingsSAMLForm() {
                 <FormTextInput
                   name="saml-attribute-group"
                   label={t`Group attribute name`}
+                  description={t`The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set.`}
+                  descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                   placeholder="member_of"
+                  required
                   nullable
-                  {...getExtraFormFieldProps(
-                    settingDetails["saml-attribute-group"],
-                  )}
+                  {...getEnvNoticeProps(settingDetails["saml-attribute-group"])}
                 />
               </SettingsGroupMappingSection>
 

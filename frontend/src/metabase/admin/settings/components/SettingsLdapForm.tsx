@@ -1,6 +1,7 @@
 import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 import { c, t } from "ttag";
+import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
@@ -66,9 +67,9 @@ const getLdapSchema = (isGroupMappingOn: boolean) => {
   });
 };
 
-// an empty port means the default, so the form allows null where the setting does not
+// the port field holds the input's text, and an empty port means the default
 export type LdapFormValues = Omit<LdapSettingValues, "ldap-port"> & {
-  "ldap-port": number | null;
+  "ldap-port": string | null;
 };
 
 type LdapSettingValues = Pick<
@@ -97,6 +98,12 @@ const LDAP_ATTRIBUTE_KEYS = [
   "ldap-attribute-firstname",
   "ldap-attribute-lastname",
 ] as const;
+
+// the group mapping card's own fields, hidden while group mapping is off
+const GROUP_MAPPING_FIELD_KEYS = [
+  "ldap-group-base",
+  "ldap-group-membership-filter",
+] satisfies (keyof LdapFormValues)[];
 
 // the backend copy for a few fields predates the design, so the page supplies its own description
 const withDescription = (
@@ -131,15 +138,19 @@ export const SettingsLdapForm = () => {
 
   const handleSubmit = useCallback(
     async (values: LdapFormValues, helpers: FormikHelpers<LdapFormValues>) => {
+      // hidden group fields stay out of the save, so a stored search base cannot fail the connection test unseen
+      const valuesToSave = isGroupMappingOn
+        ? values
+        : _.omit(values, GROUP_MAPPING_FIELD_KEYS);
       await updateLdapSettings({
-        ...values,
+        ...valuesToSave,
         "ldap-port": Number(values["ldap-port"] ?? defaultPort),
         "ldap-enabled": true,
       }).unwrap();
       // the form ignores refetches, which can still hold old values, so the saved values become its baseline
       helpers.resetForm({ values });
     },
-    [updateLdapSettings, defaultPort],
+    [updateLdapSettings, defaultPort, isGroupMappingOn],
   );
 
   if (isLoadingDetails || isLoadingValues) {
@@ -298,10 +309,11 @@ export const SettingsLdapForm = () => {
                 disabled={!isConfigured}
                 onToggle={(enabled) => {
                   if (!enabled) {
-                    resetFieldsToInitial(setFieldValue, initialValues, [
-                      "ldap-group-base",
-                      "ldap-group-membership-filter",
-                    ]);
+                    resetFieldsToInitial(
+                      setFieldValue,
+                      initialValues,
+                      GROUP_MAPPING_FIELD_KEYS,
+                    );
                   }
                 }}
               >
@@ -343,12 +355,14 @@ export const getFormValues = (
   const storedValue = (key: LdapTextKey): string | null =>
     getStoredFieldValue(settingDetails[key], settingValues[key]);
 
+  const port = getStoredFieldValue(
+    settingDetails["ldap-port"],
+    settingValues["ldap-port"],
+  );
+
   const values: LdapFormValues = {
     "ldap-host": storedValue("ldap-host"),
-    "ldap-port": getStoredFieldValue(
-      settingDetails["ldap-port"],
-      settingValues["ldap-port"],
-    ),
+    "ldap-port": port === null ? null : String(port),
     "ldap-security": settingValues["ldap-security"] ?? "none",
     "ldap-bind-dn": storedValue("ldap-bind-dn"),
     "ldap-password": storedValue("ldap-password"),

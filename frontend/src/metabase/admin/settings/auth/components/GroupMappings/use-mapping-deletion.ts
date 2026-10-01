@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   useClearGroupMembershipMutation,
@@ -92,23 +92,33 @@ export function useMappingDeletion({
     const hasDeletedGroups = Object.values(nextMappings).some((ids) =>
       ids.some((groupId) => deleted.has(groupId)),
     );
-    if (hasDeletedGroups) {
-      const scrubResult = await saveMappings(
-        withoutGroups(nextMappings, deletedIds),
-      );
-      if (!scrubResult.ok) {
-        return;
-      }
-    }
+    // the mapping and its groups are already gone, so a failed clean-up is reported with the deletion
+    const scrubResult = hasDeletedGroups
+      ? await saveMappings(withoutGroups(nextMappings, deletedIds), {
+          showErrorToast: false,
+        })
+      : null;
     if (failureCount > 0) {
       sendToast({
         message: t`Mapping deleted, but not all of its groups could be updated`,
         icon: "warning",
         toastColor: "feedback-negative",
       });
-    } else {
-      sendToast({ message: t`Mapping deleted`, icon: "check_filled" });
+      return;
     }
+    if (scrubResult?.ok === false) {
+      sendToast({
+        message: ngettext(
+          msgid`Mapping deleted, but its deleted group could not be removed from the other mappings`,
+          `Mapping deleted, but its deleted groups could not be removed from the other mappings`,
+          deletedIds.length,
+        ),
+        icon: "warning",
+        toastColor: "feedback-negative",
+      });
+      return;
+    }
+    sendToast({ message: t`Mapping deleted`, icon: "check_filled" });
   };
 
   const confirmDelete = async (value: DeleteMappingModalValueType) => {

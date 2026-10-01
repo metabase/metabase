@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useAdminSetting, useSettingSwitch } from "metabase/settings";
 import { SwitchSettingsSection } from "metabase/settings-components";
-import type { BoxProps } from "metabase/ui";
+import { type BoxProps, Text } from "metabase/ui";
 
 import { GroupMappingsPanel } from "./GroupMappingsPanel";
 import { useGroupLookup } from "./use-group-lookup";
@@ -44,12 +44,20 @@ export function SettingsGroupMappingSection({
   ...boxProps
 }: SettingsGroupMappingSectionProps) {
   const groupSyncSwitch = useSettingSwitch(syncSettingKey, { onToggle });
+  const isLockedUntilSave = disabled && groupSyncSwitch.envName === undefined;
 
   return (
     <SwitchSettingsSection
       title={t`Group mapping`}
       description={description}
       lockedEnvName={groupSyncSwitch.envName}
+      note={
+        isLockedUntilSave && (
+          <Text c="text-secondary" mt="sm">
+            {t`Save the settings above to set up group mapping.`}
+          </Text>
+        )
+      }
       checked={groupSyncSwitch.checked}
       disabled={disabled}
       switchDisabled={groupSyncSwitch.isBusy}

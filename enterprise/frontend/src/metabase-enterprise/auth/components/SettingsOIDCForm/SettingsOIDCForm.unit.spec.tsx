@@ -249,10 +249,23 @@ describe("SettingsOIDCForm", () => {
         screen.queryByRole("button", { name: "Save changes" }),
       ).not.toBeInTheDocument();
       expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
-      // the page banner names the env var, so the card does not repeat it
-      expect(
-        screen.queryByText("Using MB_OIDC_PROVIDERS"),
-      ).not.toBeInTheDocument();
+      expect(groupMappingSwitch()).toHaveAccessibleDescription(
+        /Using MB_OIDC_PROVIDERS/,
+      );
+      // the banner heads the cards it locks, below the provisioning card it does not
+      const banner = screen.getByTestId("setting-env-var-message");
+      const bannerAfterProvisioning = screen
+        .getByRole("switch", { name: "User provisioning" })
+        .compareDocumentPosition(banner);
+      const serverSettingsAfterBanner = banner.compareDocumentPosition(
+        screen.getByRole("heading", { name: "Server settings" }),
+      );
+      expect(bannerAfterProvisioning & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(serverSettingsAfterBanner & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
       expect(queryMappingRow("admins")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "New" }),
@@ -272,6 +285,10 @@ describe("SettingsOIDCForm", () => {
       expect(
         screen.queryByRole("button", { name: "Save and enable" }),
       ).not.toBeInTheDocument();
+      // the env line explains the lock, and saving is not possible here
+      expect(groupMappingSwitch()).not.toHaveAccessibleDescription(
+        /Save the settings above to set up group mapping/,
+      );
     });
   });
 
@@ -335,6 +352,9 @@ describe("SettingsOIDCForm", () => {
       expect(screen.getByRole("button", { name: "Attributes" })).toBeEnabled();
       expect(groupMappingSwitch()).toBeDisabled();
       expect(groupMappingSwitch()).not.toBeChecked();
+      expect(groupMappingSwitch()).toHaveAccessibleDescription(
+        /Save the settings above to set up group mapping/,
+      );
       expect(
         screen.queryByText("Manual group mappings"),
       ).not.toBeInTheDocument();

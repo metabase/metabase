@@ -65,10 +65,16 @@ export function JWTGroupMappingSection({
 
   const isLocked = lockedEnvNames.length > 0;
   const isReadOnly = isLocked || !isServerConfigured;
+  const isLockedUntilSave = !isServerConfigured && !isLocked;
   const isLastMapping = Object.keys(groupMapping.mappings).length === 1;
 
   return (
     <Stack gap="lg">
+      {isLockedUntilSave && (
+        <Text c="text-secondary">
+          {t`Save the settings above to set up group mapping.`}
+        </Text>
+      )}
       <Flex justify="space-between" align="center" wrap="wrap" gap="lg">
         <SegmentedControl<JWTGroupSyncMode>
           aria-label={t`Group mapping mode`}

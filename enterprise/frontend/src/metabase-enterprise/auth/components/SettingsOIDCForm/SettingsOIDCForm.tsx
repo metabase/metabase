@@ -323,11 +323,12 @@ export function SettingsOIDCForm() {
         {({ dirty, values, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
-              {lockedEnvName != null && <SetByEnvVar varName={lockedEnvName} />}
               <UserProvisioningSection
                 settingKey="oidc-user-provisioning-enabled?"
                 providerName="OIDC"
               />
+              {/* provisioning is its own setting, so the banner heads the cards it locks */}
+              {lockedEnvName != null && <SetByEnvVar varName={lockedEnvName} />}
 
               <SettingsSection
                 title={t`Server settings`}

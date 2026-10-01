@@ -5,7 +5,6 @@ export { useGroupLookup } from "./use-group-lookup";
 export {
   type GroupMappingsSaveResult,
   type SaveOptions,
-  useGroupMappings,
 } from "./use-group-mappings";
 export { useMappingDeletion } from "./use-mapping-deletion";
 export { useMappingEditor } from "./use-mapping-editor";

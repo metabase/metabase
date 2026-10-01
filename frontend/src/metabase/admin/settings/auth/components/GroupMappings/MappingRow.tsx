@@ -37,8 +37,13 @@ export function MappingRow({
         <Text fw="bold" flex="0 0 auto" maw="100%" className={S.wrappableText}>
           {name}
         </Text>
-        <FixedSizeIcon aria-hidden name="arrow_right" c="text-secondary" />
-        <MappingRowGroups groupIds={groupIds} groupLookup={groupLookup} />
+        {/* every id reads as missing until the groups arrive, so the row names none until then */}
+        {groupLookup.isLoaded && (
+          <>
+            <FixedSizeIcon aria-hidden name="arrow_right" c="text-secondary" />
+            <MappingRowGroups groupIds={groupIds} groupLookup={groupLookup} />
+          </>
+        )}
       </Flex>
       {!readOnly && (
         <Flex className={S.rowActions} gap="sm">

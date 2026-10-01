@@ -17,7 +17,7 @@ import {
 } from "metabase/settings";
 import type { EnterpriseSettings, GroupMappings } from "metabase-types/api";
 
-export type GroupMappingSettings = Partial<
+type GroupMappingSettings = Partial<
   Pick<EnterpriseSettings, "jwt-group-sync" | "jwt-group-mappings">
 >;
 

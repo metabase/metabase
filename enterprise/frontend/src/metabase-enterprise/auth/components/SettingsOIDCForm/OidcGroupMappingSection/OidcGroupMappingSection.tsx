@@ -13,7 +13,7 @@ import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { SwitchSettingsSection } from "metabase/settings-components";
-import type { BoxProps } from "metabase/ui";
+import { type BoxProps, Text } from "metabase/ui";
 import {
   type CustomOidcConfig,
   customOidcApi,
@@ -30,7 +30,7 @@ type OidcGroupMappingSectionProps = {
   onSavingChange?: (isSaving: boolean) => void;
   // the group fields of the page form, shown only while group mapping is on
   children: React.ReactNode;
-  // the env var that owns the providers; the page shows the notice, the card only locks
+  // the env var that owns the providers, which locks the card and is named in it
   lockedEnvName?: string;
   // true while the page form saves the provider, which a card write would race
   isPageSaving?: boolean;
@@ -68,6 +68,8 @@ export function OidcGroupMappingSection({
   // the page form's save carries the group sync too, so the card waits for it as well
   const isWriting = isSaving || isProvidersFetching || isPageSaving;
   const isLocked = lockedEnvName != null;
+  const isUnconfigured = disabled || provider == null;
+  const isLockedUntilSave = isUnconfigured && !isLocked;
 
   // writes the group sync with some fields replaced, since the API swaps the whole map
   const saveGroupSync = async (
@@ -144,9 +146,17 @@ export function OidcGroupMappingSection({
     <SwitchSettingsSection
       title={t`Group mapping`}
       description={t`Automatically assign people to ${applicationName} groups based on groups from your OIDC provider`}
+      note={
+        isLockedUntilSave && (
+          <Text c="text-secondary" mt="sm">
+            {t`Save the settings above to set up group mapping.`}
+          </Text>
+        )
+      }
       checked={provider?.["group-sync"]?.enabled ?? false}
-      disabled={disabled || provider == null}
-      switchDisabled={isLocked || isWriting}
+      disabled={isUnconfigured}
+      switchDisabled={isWriting}
+      lockedEnvName={lockedEnvName}
       onChange={handleChange}
       {...boxProps}
     >

@@ -75,6 +75,11 @@ describe("createGroupLookup", () => {
       name: "Data Analysts",
       magic_group_type: "data-analyst",
     }),
+    createMockGroup({
+      id: 5,
+      name: "All tenant users",
+      magic_group_type: "all-external-users",
+    }),
   ]);
 
   it("excludes the default groups from the mappable ones", () => {
@@ -103,10 +108,14 @@ describe("createGroupLookup", () => {
     ]);
   });
 
-  it("leaves only the Administrators group out of a clear cascade", () => {
-    expect(groupLookup.actionableIds([2, 3, 4, 9], "clear")).toEqual([3, 4]);
-    expect(groupLookup.keptGroupNames([2, 3, 4], "clear")).toEqual([
+  it("leaves Administrators, All Users and All tenant users out of a clear cascade", () => {
+    expect(groupLookup.actionableIds([1, 2, 3, 4, 5, 9], "clear")).toEqual([
+      3, 4,
+    ]);
+    expect(groupLookup.keptGroupNames([1, 2, 3, 4, 5], "clear")).toEqual([
+      "All Users",
       "Administrators",
+      "All tenant users",
     ]);
   });
 });
