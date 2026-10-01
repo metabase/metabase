@@ -474,7 +474,17 @@
                            :discouraged-namespace {}}
             :unattributed [{:file "a.clj", :line 6, :linters [:discouraged-var]}]
             :unresolved   []}
-           (kondo-ratchet/attribute-discouraged {"a.clj" a-clj} eval-and-println known))))
+           (kondo-ratchet/attribute-discouraged {"a.clj" a-clj} eval-and-println [] known))))
+  (testing "a finding kondo also reports with the ignores in place isn't charged to the ignore before it"
+    (is (= {:actual       {:discouraged-var       {:clojure.core/eval 1, :clojure.core/println 1}
+                           :discouraged-namespace {}}
+            :unattributed [{:file "a.clj", :line 4, :linters [:discouraged-var]}
+                           {:file "a.clj", :line 6, :linters [:discouraged-var]}]
+            :unresolved   []}
+           (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
+                                                eval-and-println
+                                                [{:filename "a.clj", :row 5, :col 1, :type "discouraged-var"}]
+                                                known))))
   (testing "two findings of one symbol under one ignore count once"
     (is (= {:clojure.core/eval 1}
            (-> (kondo-ratchet/attribute-discouraged
@@ -483,6 +493,7 @@
                             {:filename "b.clj", :row 2, :col 14, :type "discouraged-var"}]
                  :analysis {:var-usages [{:filename "b.clj", :row 2, :col 5, :to "clojure.core", :name "eval"}
                                          {:filename "b.clj", :row 2, :col 14, :to "clojure.core", :name "eval"}]}}
+                []
                 known)
                (get-in [:actual :discouraged-var])))))
   (testing "the same ignore at the same place in two files counts once in each"
@@ -494,6 +505,7 @@
                             {:filename "c.clj", :row 2, :col 1, :type "discouraged-var"}]
                  :analysis {:var-usages [{:filename "b.clj", :row 2, :col 1, :to "clojure.core", :name "eval"}
                                          {:filename "c.clj", :row 2, :col 1, :to "clojure.core", :name "eval"}]}}
+                []
                 known)
                (get-in [:actual :discouraged-var])))))
   (testing "a namespace finding resolves through its namespace usage"
@@ -502,6 +514,7 @@
                 {"c.clj" "(ns c\n  (:require\n   #_{:clj-kondo/ignore [:discouraged-namespace]}\n   [clojure.tools.logging]))\n"}
                 {:findings [{:filename "c.clj", :row 4, :col 5, :type "discouraged-namespace"}]
                  :analysis {:namespace-usages [{:filename "c.clj", :row 4, :col 5, :to "clojure.tools.logging"}]}}
+                []
                 known)
                (get-in [:actual :discouraged-namespace])))))
   (testing "a finding whose usage isn't a configured symbol is unresolved"
@@ -509,7 +522,8 @@
            (:unresolved
             (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
                                                  eval-and-println
+                                                 []
                                                  (assoc known :discouraged-var #{'clojure.core/eval}))))))
   (testing "findings in files outside `contents` are ignored"
     (is (= {}
-           (get-in (kondo-ratchet/attribute-discouraged {} eval-and-println known) [:actual :discouraged-var])))))
+           (get-in (kondo-ratchet/attribute-discouraged {} eval-and-println [] known) [:actual :discouraged-var])))))

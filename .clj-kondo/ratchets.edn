@@ -56,10 +56,10 @@
                                 :query-processor.store 8
                                 :toucan2.core          3
                                 :util.malli.schema     2}
- :discouraged-var-counts       {:clojure.core/eval                                     7
+ :discouraged-var-counts       {:clojure.core/eval                                     6
                                 :clojure.core/print                                    1
-                                :clojure.core/println                                  10
-                                :clojure.core/prn                                      4
+                                :clojure.core/println                                  9
+                                :clojure.core/prn                                      3
                                 :clojure.core/tap>                                     5
                                 :clojure.core/update-keys                              1
                                 :clojure.java.jdbc/get-connection                      2

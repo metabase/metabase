@@ -96,18 +96,20 @@
   file to text.
   `output` is kondo's JSON output, findings plus var and namespace usages, for the same files with those
   ignores disabled by [[disable-ignores]] and its `:filename`s mapped back to the keys of `contents`.
+  `baseline` is kondo's findings for the files as they are, with the ignores in place.
   `known` maps each linter to its configured symbols.
   An ignore counts once for each distinct symbol among the findings it covers.
   Returns `{:actual {linter {key count}}, :unattributed _, :unresolved _}`, with keys from
   [[kondo-ratchet/discouraged-count-key]].
   The `:unattributed` ignores cover no finding, and the `:unresolved` findings have no configured symbol; both
   are `{:file _, :line _, :linters [linter]}` maps."
-  [contents output known]
-  ;; The tree lints clean with every ignore in place, so each finding here sits under one of the disabled
-  ;; ignores: the last one before it naming its linter. Kondo has already applied `:config-in-ns` scopes,
-  ;; `:off` overrides, and inline ns config, so only usages it flagged are counted.
+  [contents output baseline known]
+  ;; A finding missing from `baseline` was suppressed by one of the disabled ignores: the last one before it
+  ;; naming its linter. Kondo has already applied `:config-in-ns` scopes, `:off` overrides, and inline ns
+  ;; config, so only usages it flagged are counted.
   (let [ignores   (update-vals contents discouraged-ignores)
         offsets   (update-vals contents offset-fn)
+        reported? (set (map (juxt :filename :row :col :type) baseline))
         ;; kondo puts each finding at its usage's own :row/:col
         usages-at (group-by (juxt :linter :filename :row :col)
                             (for [[linter k] usages-key
@@ -115,7 +117,9 @@
                               (assoc usage :linter linter)))
         hits      (for [{:keys [filename row col], :as finding} (:findings output)
                         :let  [linter (keyword (:type finding))]
-                        :when (and (usages-key linter) (contains? contents filename))
+                        :when (and (usages-key linter)
+                                   (contains? contents filename)
+                                   (not (reported? [filename row col (:type finding)])))
                         :let  [offset ((offsets filename) row col)]]
                     {:file   filename
                      :line   row
@@ -144,8 +148,9 @@
   "Per-symbol attribution of the [[kondo-ratchet/discouragement-linters]] ignores among `occurrences`, as
   [[attribute-discouraged]] returns it; the `:attribute` that [[dev.kondo-ratchet/check]] and `fix!` take."
   [occurrences]
-  ;; Lints copies with the discouraged ignores disabled, under a temp directory. Kondo configures a copy the
-  ;; same as the original because every ns-group matches on namespace names, not paths.
+  ;; Lints the files and, in the same run, copies with the discouraged ignores disabled, under a temp
+  ;; directory. Kondo configures a copy the same as the original because every ns-group matches on namespace
+  ;; names, not paths.
   (let [files    (into (sorted-set)
                        (comp (filter #(some kondo-ratchet/discouragement-linters (:linters %)))
                              (map :file))
@@ -154,10 +159,11 @@
         known    (into {} (map (juxt identity kondo-ratchet/discouraged-symbols))
                        kondo-ratchet/discouragement-linters)]
     (if (empty? files)
-      (attribute-discouraged {} {} known)
+      (attribute-discouraged {} {} [] known)
       (let [dir      (fs/create-temp-dir {:prefix "kondo-ratchet-attribution"})
             original (into {} (map (juxt #(str (fs/path dir %)) identity)) files)
-            restore  (partial map #(update % :filename original))]
+            ;; keeps only the copies' entries, renamed to their originals
+            restore  (partial keep #(some->> (original (:filename %)) (assoc % :filename)))]
         (try
           (doseq [[copy file] original
                   :let        [content (contents file)]]
@@ -165,12 +171,13 @@
             (spit copy (disable-ignores content (discouraged-ignores content))))
           (let [output (run-kondo! :json
                                    {:output {:analysis {:var-usages true, :namespace-usages true}}}
-                                   (keys original))]
+                                   (concat files (keys original)))]
             (attribute-discouraged contents
                                    (-> output
                                        (update :findings restore)
                                        (update-in [:analysis :var-usages] restore)
                                        (update-in [:analysis :namespace-usages] restore))
+                                   (filter (comp files :filename) (:findings output))
                                    known))
           (finally
             (fs/delete-tree dir)))))))
