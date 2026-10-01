@@ -262,7 +262,7 @@ describe("table and chart click behavior", () => {
 
   const questionDetails: StructuredQuestionDetails = {
     name: "Orders by Category",
-    display: "table",
+    display: "bar",
     query: {
       "source-table": ORDERS_ID,
       aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
@@ -308,6 +308,37 @@ describe("table and chart click behavior", () => {
         },
       });
       H.visitDashboard(dashcard.dashboard_id);
+
+      H.editDashboard();
+      H.clickBehaviorSidebar().findByText("Go to a custom destination").click();
+      H.sidebar().findByText("URL").click();
+      H.modal().within(() => {
+        cy.findByRole("textbox").type(`/question/${dashcard.card_id}`);
+        cy.button("Done").click();
+      });
+      H.sidebar().button("Done").click();
+      H.saveDashboard();
+
+      H.chartPathWithFillColor("#509EE3")
+        .should("have.length", 4)
+        .first()
+        .click();
+      cy.location("pathname").should(
+        "include",
+        `/question/${dashcard.card_id}`,
+      );
+
+      cy.log(
+        "Change the saved question to a table, retaining the chart action",
+      );
+      H.openVizTypeSidebar();
+      H.vizTypeSidebar().findByTestId("Table-button").click();
+      H.vizTypeSidebar().button("Done").click();
+      H.tableInteractive().should("be.visible");
+      cy.intercept("PUT", `/api/card/${dashcard.card_id}`).as("updateQuestion");
+      H.saveQuestion(null, { shouldReplaceOriginalQuestion: true });
+      cy.wait("@updateQuestion");
+      H.visitDashboard(dashcard.dashboard_id);
     });
 
     H.editDashboard();
@@ -316,7 +347,7 @@ describe("table and chart click behavior", () => {
     H.saveDashboard();
   });
 
-  it("preserves click behavior when visualizing a dashboard table as a bar (#82956, #73448)", () => {
+  it("respects click behavior when changing between table and bar visualizations (#82956, #73448)", () => {
     for (const value of ["3,976", "297,270.99"]) {
       H.getDashboardCard().findByText(value).click();
       H.popover()
@@ -361,7 +392,7 @@ describe("table and chart click behavior", () => {
     H.chartPathWithFillColor("#509EE3").should("have.length", 4);
 
     cy.log(
-      "Clearing the chart action must not revive the old table column action",
+      "Clearing the chart action must not revive the old URL or table column action",
     );
     H.editDashboard();
     H.clickBehaviorSidebar().within(() => {
@@ -372,6 +403,7 @@ describe("table and chart click behavior", () => {
       cy.button("Done").click();
     });
     H.saveDashboard();
+    cy.reload();
     H.chartPathWithFillColor("#509EE3")
       .should("have.length", 4)
       .first()

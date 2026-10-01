@@ -1,5 +1,6 @@
 import querystring from "querystring";
 
+import { hasColumnLevelClickBehavior } from "metabase/dashboard/utils";
 import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
 import {
   formatSourceForTarget,
@@ -190,10 +191,18 @@ export function getClickBehavior(
   clicked: ClickBehaviorClickObject,
 ): ClickBehavior | undefined {
   const settings: ComputedVisualizationSettings = clicked?.settings || {};
+  const dashcard = clicked?.extraData?.dashcard;
   const columnSettings = clicked?.column
     ? settings.column?.(clicked.column)
     : undefined;
 
+  if (dashcard) {
+    return hasColumnLevelClickBehavior(dashcard)
+      ? columnSettings?.click_behavior
+      : settings.click_behavior;
+  }
+
+  // Standalone SDK questions can have column links without a dashboard card.
   return columnSettings?.click_behavior || settings.click_behavior;
 }
 

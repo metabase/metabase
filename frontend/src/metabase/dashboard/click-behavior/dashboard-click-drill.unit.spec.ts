@@ -5,7 +5,9 @@ import {
   createMockCard,
   createMockColumn,
   createMockDashboard,
+  createMockDashboardCard,
   createMockParameter,
+  createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
 
 import { DashboardClickAction } from "./DashboardClickAction";
@@ -60,6 +62,7 @@ describe("getClickBehavior", () => {
       settings: buildSettings({
         columns: { CATEGORY: dimensionClickBehavior },
       }),
+      extraData: { dashcard: createMockDashboardCard() },
     });
 
     expect(clickBehavior).toBeUndefined();
@@ -74,6 +77,18 @@ describe("getClickBehavior", () => {
       const clickBehavior = getClickBehavior({
         column: metricColumn,
         dimensions: [{ column: dimensionColumn, value: "Gadget" }],
+        extraData: {
+          dashcard: createMockVisualizerDashboardCard({
+            card: createMockCard({ display: "table" }),
+            visualization_settings: {
+              visualization: {
+                display: "bar",
+                settings: {},
+                columnValuesMapping: {},
+              },
+            },
+          }),
+        },
         settings: {
           ...buildSettings({
             root: behavior,
@@ -91,21 +106,25 @@ describe("getClickBehavior", () => {
     },
   );
 
-  it("prefers the clicked column behavior over other column and root behaviors", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      dimensions: [{ column: dimensionColumn, value: "Gadget" }],
-      settings: buildSettings({
-        root: rootClickBehavior,
-        columns: {
-          count: metricClickBehavior,
-          CATEGORY: dimensionClickBehavior,
+  it.each([
+    { description: "configured", behavior: metricClickBehavior },
+    { description: "default", behavior: undefined },
+  ])(
+    "uses only the table column's $description behavior when a card action remains",
+    ({ behavior }) => {
+      const clickBehavior = getClickBehavior({
+        column: metricColumn,
+        dimensions: [{ column: dimensionColumn, value: "Gadget" }],
+        extraData: { dashcard: createMockDashboardCard() },
+        settings: {
+          ...buildSettings({ root: rootClickBehavior }),
+          column: () => ({ click_behavior: behavior }),
         },
-      }),
-    });
+      });
 
-    expect(clickBehavior).toBe(metricClickBehavior);
-  });
+      expect(clickBehavior).toBe(behavior);
+    },
+  );
 });
 
 const stateColumn = createMockColumn({ name: "STATE" });
