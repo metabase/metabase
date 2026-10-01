@@ -18,6 +18,7 @@
   font-weight: bold;
   padding: var(--mantine-spacing-xxs) var(--mantine-spacing-md);
   border-radius: var(--mantine-radius-xs);
+  line-height: normal;
 
   &:hover:not([data-active], [data-disabled]) {
     color: var(--mb-color-text-primary);
