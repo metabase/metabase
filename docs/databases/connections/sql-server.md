@@ -102,8 +102,6 @@ To connect to Azure SQL, set the port to 1433. Under **Authentication method**, 
 - **Azure AD - Service principal (certificate)** — Same as service principal, but authenticates with the app registration's certificate instead of a client secret. Upload the **Client certificate**, and if the certificate needs a password, provide it in **Certificate password**. If the private key is stored in a separate file from the certificate, provide it in **Client key** (and its password in **Client key password** if the key is encrypted).
 - **Azure AD - Managed identity** — Metabase authenticates using the [managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview) assigned to the compute it runs on (App Service, Container Apps, VM, AKS). Leave **Managed identity client ID** blank to use the default identity, or fill it in to select a specific user-assigned managed identity. This mode only works when Metabase runs inside Azure.
 
-All Azure AD modes work against servers that have [Microsoft Entra-only authentication](https://learn.microsoft.com/en-us/azure/azure-sql/database/authentication-azure-ad-only-authentication-tutorial) enforced.
-
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
