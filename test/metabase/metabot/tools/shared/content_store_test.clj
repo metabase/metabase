@@ -49,6 +49,7 @@
     (measure-by-id        [_ _id]  measure-id)
     (segment-by-id        [_ _id]  segment-id)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *stub-can-read?*
   "Controls the [[mi/can-read?]] answer for [[stub-row]]s below."
   true)

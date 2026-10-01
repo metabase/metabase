@@ -200,7 +200,7 @@
       (select-keys [:values :human_readable_values])))
 
 (defn- sync-and-find-values! [db field-values-id]
-  (sync/sync-database! db)
+  (sync/sync-database! (t2/select-one :model/Database (u/the-id db)))
   (find-values field-values-id))
 
 (deftest implicit-deduplication-test

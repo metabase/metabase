@@ -133,21 +133,25 @@ export type FieldReference<TTable = unknown> =
   | LocalFieldReference<TTable>
   | JoinedFieldReference;
 
+// `name` names the result column, which is how a later stage refers to it. A
+// query with two aggregations of the same kind needs it to tell them apart.
 export type CountAggregation = {
   type: "operator";
   operator: "count";
   args: [];
+  name?: string;
 };
 
-export type CountAggregationSchema = CountAggregation & {
-  columns: readonly [
-    {
-      name: "count";
-      displayName: "Count";
-      jsType: "number";
-    },
-  ];
-};
+export type CountAggregationSchema<TName extends string = "count"> =
+  CountAggregation & {
+    columns: readonly [
+      {
+        name: TName;
+        displayName: "Count";
+        jsType: "number";
+      },
+    ];
+  };
 
 type CountAggregationColumn = CountAggregationSchema["columns"][number];
 
@@ -166,16 +170,18 @@ export type FieldAggregation<
   type: "operator";
   operator: TOperator;
   args: readonly [TDimension];
+  name?: string;
 };
 
 export type FieldAggregationSchema<
   TOperator extends FieldAggregationOperator = FieldAggregationOperator,
   TDimension = unknown,
   TJavaScriptType extends SchemaJavaScriptType = "number",
+  TName extends string = TOperator extends "distinct" ? "count" : TOperator,
 > = FieldAggregation<TOperator, TDimension> & {
   columns: readonly [
     {
-      name: TOperator extends "distinct" ? "count" : TOperator;
+      name: TName;
       displayName: string;
       jsType: TJavaScriptType;
     },

@@ -27,6 +27,7 @@
        str))
    x))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache-miss-hook*
   "A hook that is called whenever there is a cache miss, for side effects.
   This is used in tests or to monitor cache misses."

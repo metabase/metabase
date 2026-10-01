@@ -262,15 +262,17 @@
   #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
 
 (defmethod driver/validate-db-details! :sqlserver
-  [_driver {:keys [host additional-options]}]
+  [_driver {:keys [host additional-options] :as details}]
   (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match}))))
+    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match})))
+  (sql-jdbc/reject-dangerous-additional-options! details))
 
 (defmethod driver/can-connect? :sqlserver
   [driver details]
   (driver/validate-db-details! driver details)
   ((get-method driver/can-connect? :sql-jdbc) driver details))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *field-options*
   "The options part of the `:field` clause we're currently compiling."
   nil)
@@ -894,6 +896,7 @@
   [driver [_ _opts arg]]
   (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *compared-field-options*
   "This variable is set to the options of the field we are comparing
   (presumably in a filter)."

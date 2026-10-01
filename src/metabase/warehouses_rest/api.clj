@@ -1151,6 +1151,7 @@
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *rescan-values-async*
   "Boolean indicating whether the rescan_values job should be done async or not. Defaults to `true`. Should only be rebound
   in tests to force the scan to block."
