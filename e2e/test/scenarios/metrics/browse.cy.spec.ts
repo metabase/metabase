@@ -278,6 +278,17 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("dot menu", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+      cy.signInAsNormalUser();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
     it("should be possible to navigate to the collection from the dot menu", () => {
       createMetrics([ORDERS_SCALAR_MODEL_METRIC]);
 
@@ -302,6 +313,11 @@ describe("scenarios > browse > metrics", () => {
       H.popover().findByText("Bookmark").should("be.visible").click();
 
       shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
+      H.expectUnstructuredSnowplowEvent({
+        event: "bookmark_added",
+        event_detail: "metric",
+        triggered_from: "browse_metrics",
+      });
 
       metricsTable().findByLabelText("Metric options").click();
       H.popover()

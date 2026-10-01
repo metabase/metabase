@@ -645,7 +645,8 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of orders");
     });
 
-    it("should add a temporal breakout dimension", () => {
+    it("should add, change, and remove a temporal series breakout, then add a numeric breakout with default binning", () => {
+      cy.log("temporal breakout with year binning");
       selectBreakout("Count of orders", "Created At", 0, "Year");
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Created At" }).should("be.visible");
@@ -660,6 +661,7 @@ describe("scenarios > metrics > explorer", () => {
         .children()
         .should("have.length", 5);
 
+      cy.log("change the series breakout");
       H.MetricsViewer.searchBarPills().contains("Count of orders").click();
       H.popover().findByText("Change series breakout").click();
       H.popover().findByText("Category").click();
@@ -668,12 +670,12 @@ describe("scenarios > metrics > explorer", () => {
         .findByRole("heading", { name: /Category/ })
         .should("be.visible");
 
+      cy.log("remove the series breakout");
       H.MetricsViewer.searchBarPills().contains("Count of orders").click();
       H.popover().findByText("Remove series breakout").click();
       H.MetricsViewer.breakoutLegend().should("not.exist");
-    });
 
-    it("should add a numeric breakout dimension with default binning", () => {
+      cy.log("numeric breakout with default binning");
       selectBreakout("Count of orders", "Total");
       H.MetricsViewer.breakoutLegend().within(() => {
         cy.findByRole("heading", { name: "Total" }).should("be.visible");

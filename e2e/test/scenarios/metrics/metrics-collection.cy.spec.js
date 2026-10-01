@@ -34,8 +34,15 @@ const ORDERS_TIMESERIES_METRIC = {
 
 describe("scenarios > metrics > collection", () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
+    cy.signInAsAdmin();
+    H.enableTracking();
     cy.signInAsNormalUser();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should show pinned metrics in a collection, and unpin and pin them", () => {
@@ -87,6 +94,11 @@ describe("scenarios > metrics > collection", () => {
     H.navigationSidebar()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "metric",
+      triggered_from: "collection_list",
+    });
 
     H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Remove from bookmarks").click();
@@ -99,6 +111,14 @@ describe("scenarios > metrics > collection", () => {
     H.navigationSidebar()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("be.visible");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "bookmark_added",
+        event_detail: "metric",
+        triggered_from: "collection_list",
+      },
+      2,
+    );
     H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
     H.popover().findByText("Remove from bookmarks").click();
     H.navigationSidebar()

@@ -86,7 +86,7 @@ describe("scenarios > metrics > metric page", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should display a scalar metric, edit its name and description, link to explore, navigate tabs, and duplicate it", () => {
+  it("should display a scalar metric, edit its name and description, link to explore, navigate tabs, bookmark, and duplicate it", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("POST", "/api/card").as("createCard");
 
@@ -156,6 +156,11 @@ describe("scenarios > metrics > metric page", () => {
     H.MetricPage.aboutTab().click();
     H.MetricPage.aboutPage().should("be.visible");
 
+    cy.log("bookmark via more menu");
+    H.MetricPage.moreMenu().click();
+    H.popover().findByTextEnsureVisible("Bookmark").click();
+    H.navigationSidebar().findByText("Renamed metric").should("be.visible");
+
     cy.log("duplicate via more menu");
     H.MetricPage.moreMenu().click();
     H.popover().findByText("Duplicate").click();
@@ -172,34 +177,6 @@ describe("scenarios > metrics > metric page", () => {
     H.MetricPage.aboutPage()
       .findByDisplayValue("Renamed metric copy")
       .should("be.visible");
-  });
-
-  it("should open alert channel setup modal from more menu when no channels configured", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
-      H.visitMetric(metric.id);
-    });
-
-    H.MetricPage.moreMenu().click();
-    H.popover().findByText("Create an alert").click();
-
-    H.modal().within(() => {
-      cy.findByText(
-        "To get notified when something happens, or to send this chart on a schedule, first set up email, Slack, or a webhook.",
-      ).should("be.visible");
-
-      cy.findByText("Set up email")
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/settings/email");
-      cy.findByText("Set up Slack")
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/settings/slack");
-      cy.findByText("Add a webhook")
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/settings/webhooks");
-    });
   });
 
   it(
@@ -291,7 +268,7 @@ describe("scenarios > metrics > metric page", () => {
     });
   });
 
-  it("should discard unsaved changes on leaving (metabase#32037), cancel and save metric definition changes, and surface a failed revert (UXW-310)", () => {
+  it("should discard unsaved changes on leaving (metabase#32037), cancel and save metric definition changes, surface a failed revert (UXW-310), offer alert channel setup when no channels are configured, and move the metric to trash", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
     H.createQuestion(ORDERS_SCALAR_METRIC, {
@@ -366,15 +343,35 @@ describe("scenarios > metrics > metric page", () => {
     cy.wait("@failedRevert");
 
     H.undoToast().should("contain.text", "Cannot revert: missing metric");
-  });
 
-  it("should move metric to trash via more menu", () => {
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.log("create an alert without channels offers channel setup");
+    H.MetricPage.aboutTab().click();
+    H.MetricPage.aboutPage().should("be.visible");
+    H.MetricPage.moreMenu().click();
+    H.popover().findByText("Create an alert").click();
 
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-      H.visitMetric(card.id);
+    H.modal().within(() => {
+      cy.findByText(
+        "To get notified when something happens, or to send this chart on a schedule, first set up email, Slack, or a webhook.",
+      ).should("be.visible");
+
+      cy.findByText("Set up email")
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/settings/email");
+      cy.findByText("Set up Slack")
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/settings/slack");
+      cy.findByText("Add a webhook")
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/settings/webhooks");
     });
+    cy.realPress("Escape");
+    H.modal().should("not.exist");
 
+    cy.log("move to trash via more menu");
     H.MetricPage.moreMenu().click();
     H.popover().findByText("Move to trash").click();
     H.modal().button("Move to trash").click();
