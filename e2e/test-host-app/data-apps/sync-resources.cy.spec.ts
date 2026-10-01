@@ -488,7 +488,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
               "each app gets its own collection",
             ).not.to.eq(null);
 
-            // Joining one app's group must not reach the other app's copy.
+            // Assignment to one app must not grant access to the other app's copy.
             addUserToGroup(groupId, USERS.normal.email);
 
             cy.request(
@@ -550,15 +550,14 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   });
 
   describe("permissions", () => {
-    const joinAppGroup = () =>
-      assignDataAppTestGroup(APP_SLUG).then((groupId) => {
-        addUserToGroup(groupId, USERS.normal.email);
-        return cy.wrap(groupId, { log: false });
-      });
+    const grantNormalUserAppAccess = () =>
+      assignDataAppTestGroup(APP_SLUG).then((groupId) =>
+        addUserToGroup(groupId, USERS.normal.email),
+      );
 
     it("does not let a viewer modify the copy it can read", () => {
       syncOneQuery().then((card) => {
-        joinAppGroup();
+        grantNormalUserAppAccess();
 
         cy.signInAsNormalUser();
         cy.request(`/api/card/${card.id}`).its("body.id").should("eq", card.id);
@@ -609,7 +608,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       cy.request("POST", "/api/collection", { name: "Private" }).then(
         ({ body: collection }) => {
           // The normal user belongs to groups that can read new collections, so
-          // close this one: the claim under test is that joining the app group
+          // close this one: the claim under test is that assigning a group
           // grants the app's collection and nothing else.
           setDataAppCollectionAccess(collection.id, "none");
 
@@ -619,7 +618,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
             collection_id: collection.id,
           }).then(({ body: unrelated }) => {
             syncOneQuery().then((card) => {
-              joinAppGroup();
+              grantNormalUserAppAccess();
 
               cy.signInAsNormalUser();
               cy.request(`/api/card/${card.id}`)
@@ -639,7 +638,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
     it("leaves the group with nothing once the declaration is removed", () => {
       syncOneQuery().then((card) => {
-        joinAppGroup();
+        grantNormalUserAppAccess();
 
         cy.signInAsNormalUser();
         cy.request(`/api/card/${card.id}`).its("body.id").should("eq", card.id);
@@ -657,7 +656,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
-    it("lets the app's group read the copy while the rest of the instance cannot", () => {
+    it("lets an assigned group read the copy while the rest of the instance cannot", () => {
       syncOneQuery().then((card) => {
         assignDataAppTestGroup(APP_SLUG).then((groupId) => {
           cy.signInAsNormalUser();

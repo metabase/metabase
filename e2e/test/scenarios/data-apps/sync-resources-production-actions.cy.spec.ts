@@ -128,7 +128,7 @@ describe(
       });
     });
 
-    it("lets a member of the app's group execute it", () => {
+    it("lets a member of an assigned group execute it", () => {
       syncApp().then(({ copiedActionId }) => {
         assignDataAppTestGroup(APP_SLUG).then((groupId) => {
           addUserToGroup(groupId, USERS.normal.email);
