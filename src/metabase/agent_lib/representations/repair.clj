@@ -2785,6 +2785,53 @@
   query)
 
 ;;; ============================================================
+;;; Pass 5.8 -- assert each join condition names its join
+;;;
+;;; A string-named ref in a join condition without `join-alias` is matched against the stage's
+;;; own source, so a condition whose joined side forgot `join-alias` - `PRODUCT_ID = ID`, where
+;;; the source also has an `ID` - compares two source columns. It builds and runs, joining every
+;;; row to every row. Reject it while the LLM can still fix it.
+;;; ============================================================
+
+(defn- unanchored-join-condition
+  "Return the first condition of `join` that has a string-named field ref without `join-alias`
+  and no ref carrying the join's own `alias`, or nil. Conditions written only with portable refs
+  are left to the resolver, which places a joined table's portable refs itself."
+  [join]
+  (let [join-alias (when (map? join) (get join "alias"))
+        conditions (when (map? join) (get join "conditions"))]
+    (when (and (non-blank-string? join-alias) (sequential? conditions))
+      (u/seek (fn [condition]
+                (let [refs (match/match-many condition
+                             ["field" (_ :guard map?) _] &match)]
+                  (and (some #(and (string-cross-stage-field-clause? %) (not (join-alias-ref? %))) refs)
+                       (not-any? #(= join-alias (get (nth % 1) "join-alias")) refs))))
+              conditions))))
+
+(defn- assert-join-conditions-name-join*
+  "Pass 5.8: raise an `:agent-error?` for a join condition that never references the join's own
+  columns (see [[unanchored-join-condition]])."
+  [query]
+  (when-let [stages (match/match-one query
+                      {"stages" (stages :guard vector?)} stages
+                      _ nil)]
+    (doseq [[idx stage] (map-indexed vector stages)
+            :when        (map? stage)
+            join         (let [joins (get stage "joins")] (when (sequential? joins) joins))
+            :let         [condition (unanchored-join-condition join)]
+            :when        condition]
+      (let [join-alias (get join "alias")]
+        (throw (ex-info
+                (tru "A condition of join `{0}` references no column of the joined source: a column without `join-alias` is the stage''s own column, so the condition compares the stage with itself. Set `join-alias` to `{1}` on the condition''s joined-side column."
+                     join-alias join-alias)
+                {:agent-error? true
+                 :error        :join-condition-missing-join-alias
+                 :stage        idx
+                 :join-alias   join-alias
+                 :condition    condition})))))
+  query)
+
+;;; ============================================================
 ;;; Pass 6 -- friendly error messages for silently-accepted-but-wrong shapes.
 ;;;
 ;;; lib's schema is intentionally shape-only and does not catch a number of patterns where
@@ -3113,6 +3160,9 @@
        LLM naming a column that doesn't exist (often a display label); raise an `:agent-error?`
        naming it and listing the valid columns, instead of letting it pass through into a
        schema-invalid, non-runnable query (BOT-1442).
+    5.8. assert that every join condition with a string-named ref lacking `join-alias` also
+       references the join's own `alias`; otherwise it compares the stage with itself and
+       silently cross-joins. Raise an `:agent-error?` asking for the missing `join-alias`.
 
   Pass 4, Pass 4.5, Pass 5, and Pass 5.7 require `mp` (a `MetadataProvider`); they are
   best-effort no-ops when `mp` can't resolve the relevant pieces (so the subsequent
@@ -3155,6 +3205,7 @@
        (infer-source-card-field-types* mp content-store)
        (infer-cross-stage-field-types* mp content-store)
        (assert-cross-stage-refs-resolved* mp content-store)
+       assert-join-conditions-name-join*
        friendly-errors*)))
 
 ;;; ============================================================

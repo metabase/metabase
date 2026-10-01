@@ -1345,6 +1345,34 @@
           (is (str/includes? (ex-message e)
                              "Columns of an explicit join need `join-alias` set to that join's alias: `P` (ID, CATEGORY).")))))))
 
+(deftest join-condition-without-join-alias-surfaces-error-test
+  (testing (str "a join condition whose joined side lacks `join-alias` but names a column the source also\n"
+                "has (ID) resolves both sides against the source - a silent cross join - so it's rejected")
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [condition ["=" {} ["field" {} "PRODUCT_ID"] ["field" {} "ID"]]
+              e         (try (construct/execute-representations-query
+                              (query-data
+                               {"lib/type" "mbql/query"
+                                "database" "Sample"
+                                "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                             "source-card" card-entity-id
+                                             "joins"       [(assoc (products-join ["field" {} "PRODUCT_ID"])
+                                                                   "conditions" [condition])]
+                                             "aggregation" [["count" {}]]
+                                             "breakout"    [["field" {"join-alias" "P"} "CATEGORY"]]}]}))
+                             nil
+                             (catch clojure.lang.ExceptionInfo ex ex))]
+          (is (=? {:agent-error? true
+                   :error        :join-condition-missing-join-alias
+                   :stage        0
+                   :join-alias   "P"
+                   :condition    ["=" {}
+                                  ["field" {"base-type" "type/Integer"} "PRODUCT_ID"]
+                                  ["field" {"base-type" "type/Integer"} "ID"]]}
+                  (ex-data e)))
+          (is (str/includes? (ex-message e) "Set `join-alias` to `P`")))))))
+
 ;;; ============================================================
 ;;; Numeric-id dialect — accepted on the MCP v2 surface, rejected on the default (v1) surface
 ;;; ============================================================
