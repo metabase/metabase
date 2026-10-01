@@ -11,7 +11,6 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import Animation from "metabase/css/core/animation.module.css";
 import {
-  Alert,
   Box,
   Collapse,
   Flex,
@@ -38,8 +37,8 @@ type Props = {
   isAdding: boolean;
   groups: DataAppGroup[];
 
-  onAddGroups: (groupIds: number[]) => Promise<boolean>;
   onCancelAdd: () => void;
+  onAddGroups: (groupIds: number[]) => Promise<boolean>;
   onRemoveGroup: (group: DataAppGroup) => Promise<boolean>;
 };
 
@@ -66,7 +65,7 @@ export const DataAppGroupList = ({
     [groups, page],
   );
 
-  const warnings = useGetDataAppGroupPermissionWarningsQuery(
+  const warningsQuery = useGetDataAppGroupPermissionWarningsQuery(
     groups.length > 0 ? appName : skipToken,
     { refetchOnMountOrArgChange: true },
   );
@@ -74,18 +73,16 @@ export const DataAppGroupList = ({
   const warningsByGroupId = useMemo(
     () =>
       new Map(
-        warnings.currentData?.map((warning) => [warning.group_id, warning]),
+        warningsQuery.currentData?.map((warning) => [
+          warning.group_id,
+          warning,
+        ]),
       ),
-    [warnings.currentData],
+    [warningsQuery.currentData],
   );
 
   return (
     <Stack data-testid="group-management-sections" gap="lg">
-      {groups.length > 0 && warnings.isError && (
-        <Alert color="warning" icon={<Icon name="warning" />}>
-          {t`We couldn't check data access for assigned groups. You can still update access to this data app.`}
-        </Alert>
-      )}
       <Box
         className={cx(
           S.groupListContent,

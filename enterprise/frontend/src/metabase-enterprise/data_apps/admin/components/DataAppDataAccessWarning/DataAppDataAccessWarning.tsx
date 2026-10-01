@@ -48,9 +48,9 @@ export const DataAppDataAccessWarning = ({ warning, groupName }: Props) => {
       </HoverCard.Target>
 
       <HoverCard.Dropdown
-        data-testid="data-access-warning-popover"
         p="lg"
         w="30rem"
+        data-testid="data-access-warning-popover"
       >
         <Stack gap="lg">
           <Text size="sm">
@@ -109,14 +109,15 @@ export const DataAppDataAccessWarning = ({ warning, groupName }: Props) => {
   );
 };
 
-const getMissingTableSegments = (table: DataAppMissingTable) => [
-  {
+const getMissingTableSegments = (table: DataAppMissingTable) => {
+  const databaseSection = {
     label: table.database_name,
     url: getDatabaseFocusPermissionsUrl({
       databaseId: table.database_id,
     }),
-  },
-  ...(table.schema
+  };
+
+  const schemaSection = table.schema
     ? [
         {
           label: table.schema,
@@ -126,13 +127,16 @@ const getMissingTableSegments = (table: DataAppMissingTable) => [
           }),
         },
       ]
-    : []),
-  {
+    : [];
+
+  const tableSection = {
     label: table.name,
     url: getDatabaseFocusPermissionsUrl({
       databaseId: table.database_id,
       schemaName: table.schema ?? undefined,
       tableId: table.id,
     }),
-  },
-];
+  };
+
+  return [databaseSection, ...schemaSection, tableSection];
+};
