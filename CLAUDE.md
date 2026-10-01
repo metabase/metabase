@@ -24,7 +24,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 ## Documentation
 
 - **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide
-- **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review checklist
+- **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review with Metabase style guide
 
 ## Serialization
 

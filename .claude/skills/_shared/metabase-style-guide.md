@@ -2,7 +2,7 @@
 
 Write like people normally talk with each other.
 
-In order of importance: accurate, then clear, then on-style. One wrong setting name outweighs any number of "users" that should be "people".
+Clear comes before on-style. One buried instruction outweighs any number of "users" that should be "people".
 
 ## Who reads this
 
@@ -10,71 +10,46 @@ In order of importance: accurate, then clear, then on-style. One wrong setting n
 - **Customers**, already running Metabase and learning how a piece of it works.
 - **Developers** building Metabase, who also read `docs/developers-guide/` (which is only relevant for devs).
 
-All readers are smart and impatient, and most of them don't want to spend time reading docs. Don't explain what they already know. Don't explain things they don't need to know.
+## Key points
 
-## Accuracy
-
-**Setting and environment variable names.** `MB_FOO_BAR` maps to `defsetting foo-bar`. Check every one you write:
-
-```sh
-grep -rn "defsetting foo-bar" src/ enterprise/backend/src/
-```
-
-A few (`MB_ENCRYPTION_SECRET_KEY`) have no `defsetting`.
-
-**UI labels** should match what the product renders. They're i18n-tagged, so they grep:
-
-```sh
-grep -rn "Performance" frontend/src --include="*.ts" --include="*.tsx" | grep "t\`"
-```
-
-**Run your examples.** One that errors is worse than none. The reader assumes their setup is broken.
-
-**Numbers go stale**. Versions, limits, quotas: point at where the value lives, or craft the sentence so it survives changes.
-
-**Version numbers**: "Metabase 57", not "v57", "version 57", or "Metabase 0.57". Write the full `v0.57.2` or `v1.57.2` only when a person has to type it, like a Docker tag.
-
-**Paid features carry a plan blockquote**, at the top of the smallest section it gates, or under the H1 if the whole page covers a paid feature:
-
-```html
-{% include plans-blockquote.html feature="Official collections" %}
-```
-
-The include lives in the docs site repo, not here. Params in use across `docs/`: `is_plural=true`, `self-hosted-only="true"`, `sdk=true`, `convert_pro_link_to_embedding=true`.
-
-A paid item in a list or table gets a short parenthetical instead: "(Pro and Enterprise plans)".
-
-**Deprecated features get a blockquote** under the heading that says what's deprecated, since which version, and what to use instead. Not "(DEPRECATED)" in the heading.
+- Our readers are smart and impatient; most of them don't want to spend time reading docs.
+- Don't explain what they already know.
+- Don't explain things they don't need to know.
 
 ## Structure and clarity
 
-**Lead with the important thing**. Action first, then how, then why.
+**Lead with the important thing.** Action first, then how, then why.
 
 **Commands go in fenced blocks, in the order they're run.** Explanation comes after, never wrapped around the command.
 
-**Say what Metabase can't do**, plainly, and own it when the product is at fault. A feature described without its limits isn't finished.
+**Say what Metabase can't do**, plainly, and own it when the product is at fault. A feature described without its limits isn't finished. Limitations should be inlined where relevant (not in a dedicated limitations section).
 
 **Frame use cases, not software.** Readers arrive from search, trying to solve a problem, and may not know Metabase's terms yet. Name what they're trying to do, not the feature that does it. Mirror the UI's framing where it helps, and break from it where a use case is easier to find.
 
-- "Embed a view-only dashboard": good
-- "Embedded dashboards with guest authentication": readers don't know what guest authentication is until they've used it
+- "Embed a view-only dashboard": good.
+- "Embedded dashboards with guest authentication": readers don't know what guest authentication is until they've used it.
 
-**Headings state the point, not the topic:**
+**Use headings to highlight key points**
 
-- "Set up SAML before adding people": good
-- "SAML configuration": too broad
-- "SAML configuration timing": too vague
-- "How to set up SAML before you add people": too wordy
+Readers should be able to read the headings and get a good idea of what you’re saying. Take the following example:
 
-Sentence case, no end punctuation, except (sparingly) bangs, and question marks on troubleshooting pages. No bold or italics, no skipped levels. No link unless the whole heading is a link.
+Avoid:
+
+> How to write a good heading
+
+Better:
+
+> Use headings to highlight key points
+
+Why the edit is better: “How to write a good heading” might be a good title for a post, but you’re not trying to get people to click on headings. If the main thing you want say is that people should use headings to highlight key points, just put that advice right in the heading.
+
+Sentence case, no end punctuation, except (sparingly) bangs, and question marks on troubleshooting pages.
 
 Task headings are imperative: "Create a dashboard", not "Creating a dashboard". A heading that's a UI label matches the label's case.
 
-_Exception:_ troubleshooting pages, where the heading is the reader's symptom. "No access to Metabase login page" is what they'd have typed into search.
-
 **Each section stands alone.** Readers arrive from search, mid-page. Put the condition in the heading with its consequence: "If you're using H2, stop Metabase before importing", not a list of conditions above a consequence.
 
-**Ask whether the page/section/sentence should exist at all.** A page or section nobody will read costs maintenance and hides the ones people do read. Cut it or fold it into where they'll look.
+**Ask whether the page/section/sentence should exist at all.** A page or section nobody will read costs maintenance and hides the ones people do read. Cut the section or fold it into where they'll look.
 
 **One job per paragraph.** Cut what doesn't help the reader. When in doubt, cut.
 
@@ -86,17 +61,21 @@ _Exception:_ troubleshooting pages, where the heading is the reader's symptom. "
 - Hedges on deterministic behavior: Metabase "caches results", it doesn't "typically" or "may" cache them
 - Defining the term the reader just searched for
 
+_Exception to the hedges rule:_ behavior that depends on a setting or a plan. Say what it depends on instead of hedging.
+
 **Images are minimal and scoped** to the UI element you're pointing at. A screenshot goes stale faster than the prose around it.
+
+**Numbers go stale.** Versions, limits, quotas: point at where the value lives, or craft the sentence so it survives changes.
 
 **Explain in prose, not bullets.** Bullets are for parallel items: options, requirements. Steps go in numbered lists, not bullets or a click path in a paragraph. _Exception:_ reference material readers scan.
 
-**Answer the questions you had when learning**. Instead of the question ("Does Metabase support pivot tables?"), write the answer: "Metabase supports pivot tables."
+**Answer the questions you had when learning.** Instead of the question ("Does Metabase support pivot tables?"), write the answer: "Metabase supports pivot tables."
 
 **Repeat new terms** before falling back to pronouns. Avoid pronouns when they could introduce ambiguity.
 
 **Subject, verb, object.** Deviate only with good reason, like a leading conditional. "Create summary tables for frequently aggregated data", not "Since summary tables get written to the warehouse, having them can streamline things".
 
-**Prefer positive constructions to negative constructions**: That is, say what to do, not what to avoid. Example: prefer "Remember" to "don't forget".
+**Prefer positive constructions.** Say what to do, not what to avoid: "Keep your encryption key somewhere safe", not "Don't lose your encryption key".
 
 ## Tone and voice
 
@@ -104,7 +83,7 @@ _Exception:_ troubleshooting pages, where the heading is the reader's symptom. "
 
 **Describe what it does instead of praising it.** "Loads in under a second", not "powerful", "seamless", or "robust".
 
-**Don't describe tasks as easy.** "A simple bar chart" is fine. Avoid "setup is easy".
+**Don't describe tasks as easy.** "A simple bar chart" is fine. "Setup is easy", "just click", and "simply run" aren't.
 
 ## Word choice
 
@@ -150,10 +129,10 @@ Spelling: timezone, dropdown, environment variable (not "env var"). "Set up" is 
 
 ## UI references
 
-- **Navigation paths** go in italics: _Admin > Settings > Domains_.
+- **Navigation paths**: Italics for a path, bold for a single thing to click: "Go to _Admin > Settings > Domains_ and click **Save**".
 - **Icons**: "the **grid** icon", with only the name in bold. "The three-dot menu (**...**)".
 - **Verbs**: "click", not "click on". "Select" for options in a list. "Press" for keys. "Go to", not "navigate to".
-- **Keyboard shortcuts**: `Cmd/Ctrl + K`.
+- **Keyboard shortcuts**: Plain text, with no backticks or bold: Cmd/Ctrl + K.
 - **Steps**: Put the result in the same step, in present tense. Mark optional steps with "Optional:" at the start.
 
 ## Formatting
@@ -164,6 +143,20 @@ Spelling: timezone, dropdown, environment variable (not "env var"). "Set up" is 
 
 **Callouts are plain blockquotes.** No "Note:", "Tip:", "WARNING:", or emoji. For a risk of losing data or getting locked out, open the blockquote with a bold sentence stating the risk.
 
+**Paid features carry a plan blockquote**, at the top of the smallest section it gates, or under the H1 if the whole page covers a paid feature:
+
+```html
+{% include plans-blockquote.html feature="Official collections" %}
+```
+
+<!-- TODO: say how `feature` reads in the rendered sentence, and what to write when two paid features gate one section. -->
+
+The include lives in the docs site repo, not here. Params in use across `docs/`: `is_plural=true`, `self-hosted-only="true"`, `sdk=true`, `convert_pro_link_to_embedding=true`.
+
+A paid item in a list or table gets a short parenthetical instead: "(Pro and Enterprise plans)".
+
+**Deprecated features get a blockquote** under the heading that says what's deprecated, since which version, and what to use instead. Not "(DEPRECATED)" in the heading.
+
 **Links** are inline and relative: `[text](./page.md)`, not `https://www.metabase.com/docs/latest/...`.
 
 **Every image gets alt text** that says what the image shows.
@@ -172,16 +165,31 @@ Spelling: timezone, dropdown, environment variable (not "env var"). "Set up" is 
 
 **American spelling, serial commas**, and consistent list formatting within a page.
 
+**Version numbers**: "Metabase 57", not "v57", "version 57", or "Metabase 0.57". Write the full `v0.57.2` or `v1.57.2` only when a person has to type it, like a Docker tag.
+
 **Match the surrounding file's formatting.** Don't reformat lines you didn't change.
 
-**Docs markdown is unwrapped**. One line per paragraph, however long. Never hard-wrap, and never reflow a paragraph you're only editing part of.
+**Docs markdown is unwrapped.** One line per paragraph, however long. Never hard-wrap, and never reflow a paragraph you're only editing part of.
 
 ## Code
 
-- **Every fence gets a lowercase language tag**: `sh`, `sql`, `json`, `yaml`, `javascript`, `typescript`. Use `text` for output, logs, and custom expressions. No shell prompt (`$`).
+- **Every fence gets a lowercase language tag**: `sh`, `sql`, `json`, `yaml`, `javascript`, `typescript`. Write `sh`, not `bash` or `shell`. Use `text` for output, logs, and custom expressions. No shell prompt (`$`).
 - **Placeholders**: `YOUR_API_KEY`, `YOUR_METABASE_URL`. Not `<your-value>` or `{your-value}`, which can be mistaken for syntax.
 - **Example domains**: `metabase.example.com` for a Metabase, `example.com` for any other site, `person@example.com` for an email.
 - **SQL**: Uppercase keywords, `{{variable}}` with no spaces inside the braces, `[[ optional clause ]]` with spaces inside the brackets.
+- **Double braces**: Wrap anything containing `{{ }}` in `{% raw %}` and `{% endraw %}`, or Jekyll evaluates it and the variable disappears from the page. In a code fence, put the tags on their own lines inside the fence.
+
+## Generated pages
+
+These are rebuilt from source every weeknight. Don't edit or review them. Change the source instead.
+
+- `docs/configuring-metabase/environment-variables.md` and `config-template.md`
+- `docs/installation-and-operation/commands.md`
+- `docs/api.html`
+- `docs/usage-and-performance-tools/usage-analytics-reference.md`
+- `docs/questions/visualizations/country-codes.md`
+- `docs/embedding/sdk/api/` and `docs/embedding/eajs/snippets/`
+- Code pulled into a page with `include_file`, which lives under `snippets/`
 
 ## This style guide is aspirational
 
