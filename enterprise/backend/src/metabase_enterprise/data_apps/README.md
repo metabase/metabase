@@ -123,6 +123,8 @@ View Data permissions; the viewer's other groups and sandboxes continue to deter
 **Managing is superuser-only** — assignments, enabling, disabling, deleting, and repo status.
 Exporting an app's resources also needs a superuser.
 
+The Data Apps feature is required for all app API endpoints, including group listing and removal.
+
 ## Namespace map
 
 | Namespace             | Responsibility                                                                                      |

@@ -19,10 +19,8 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.premium-features.core :as premium-features]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -353,7 +351,6 @@
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]
   (api/check-superuser)
-  (premium-features/assert-has-feature :data-apps (tru "Data Apps"))
   (data-app.group-access/add-groups! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-ids))
 
 (api.macros/defendpoint :delete ["/:slug/groups/:group-id" :slug slug-regex] :- :nil
@@ -412,16 +409,6 @@
     (catch Throwable e
       (raise e))))
 
-(defn- +check-feature
-  [handler]
-  (open-api/handler-with-open-api-spec
-   (fn [request respond raise]
-     (when-not (and (#{:get :delete} (:request-method request))
-                    (re-matches #"/api/apps/[^/]+/groups(?:/[0-9]+)?" (:uri request)))
-       (premium-features/assert-has-feature :data-apps (tru "Data Apps")))
-     (handler request respond raise))
-   (fn [prefix] (open-api/open-api-spec handler prefix))))
-
 (def routes
-  "`/api/apps` routes. Group inspection and revocation remain available after feature expiry."
-  (api.macros/ns-handler *ns* +auth +check-feature))
+  "`/api/apps` routes."
+  (api.macros/ns-handler *ns* +auth))

@@ -150,8 +150,7 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (collection/archive-or-unarchive-collection!
            (t2/select-one :model/Collection :id collection-id) {:archived true}))
-        (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id group))))
+        (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id group)))
         (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
         (is (empty? (t2/select :model/Permissions :group_id (:id group)
                                :object [:in [(perms/collection-read-path collection-id)
@@ -195,16 +194,20 @@
     (mt/with-current-user (mt/user->id :rasta)
       (is (mi/can-read? app)))))
 
-(deftest group-list-and-revocation-after-token-expiry-test
+(deftest group-endpoints-require-feature-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                    :model/PermissionsGroup group {}]
       (group-access/add-groups! app [(:id group)])
-      (is (= [(:id group)]
-             (mapv :id (mt/user-http-request :crowberto :get 200 "apps/birds/groups"))))
-      (mt/with-premium-features #{}
-        (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id group)))
-        (mt/user-http-request :crowberto :post 402 "apps/birds/groups" {:group_ids [(:id group)]})))))
+      (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
+        (mt/with-premium-features #{}
+          (mt/user-http-request :crowberto :get 402 "apps")
+          (mt/user-http-request :crowberto :get 402 "apps/birds/groups")
+          (mt/user-http-request :crowberto :post 402 "apps/birds/groups" {:group_ids [(:id group)]})
+          (mt/user-http-request :crowberto :delete 402 (str "apps/birds/groups/" (:id group)))
+          (is (t2/exists? :model/DataAppGroupAssignment :data_app_id (:id app) :permission_group_id (:id group)))
+          (is (t2/exists? :model/Permissions :group_id (:id group)
+                          :object (perms/collection-read-path collection-id))))))))
 
 (deftest assignment-uniqueness-test
   (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
@@ -219,22 +222,21 @@
                    :model/PermissionsGroup group {}]
       (group-access/add-groups! app [(:id group)])
       (t2/update! :model/PermissionsGroup (:id group) {:is_tenant_group true})
-      (mt/with-premium-features #{}
-        (mt/user-http-request :rasta :delete 403 (str "apps/birds/groups/" (:id group)))
-        (is (= [(:id group)] (mapv :id (group-access/assigned-groups app))))
-        (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id group)))
-        (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))
-        (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
-          (is (not (t2/exists? :model/Permissions :group_id (:id group)
-                               :object (perms/collection-read-path collection-id)))))))))
+      (mt/user-http-request :rasta :delete 403 (str "apps/birds/groups/" (:id group)))
+      (is (= [(:id group)] (mapv :id (group-access/assigned-groups app))))
+      (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id group)))
+      (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))
+      (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
+        (is (not (t2/exists? :model/Permissions :group_id (:id group)
+                             :object (perms/collection-read-path collection-id))))))))
 
 (deftest revoke-invalid-admin-assignment-preserves-admin-permissions-test
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
-    (resources/ensure-resources! app)
-    (let [admin-id (:id (perms/admin-group))
-          permissions (t2/select :model/Permissions :group_id admin-id)]
-      (t2/insert! :model/DataAppGroupAssignment {:data_app_id (:id app) :permission_group_id admin-id})
-      (mt/with-premium-features #{}
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
+      (resources/ensure-resources! app)
+      (let [admin-id (:id (perms/admin-group))
+            permissions (t2/select :model/Permissions :group_id admin-id)]
+        (t2/insert! :model/DataAppGroupAssignment {:data_app_id (:id app) :permission_group_id admin-id})
         (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" admin-id))
         (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))
         (is (= permissions (t2/select :model/Permissions :group_id admin-id)))))))
