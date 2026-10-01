@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-apps.access
-  "Read access through group assignments, with an administrator bypass."
+  "Read access through group assignments."
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]))
 
