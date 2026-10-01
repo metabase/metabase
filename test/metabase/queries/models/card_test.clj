@@ -115,7 +115,7 @@
   [database-id]
   {:database database-id
    :type :query
-   :query {:source-table 1}})
+   :query {:source-table (mt/id :venues)}})
 
 (deftest database-id-test
   (mt/with-temp [:model/Card {:keys [id]} {:name          "some name"
@@ -769,21 +769,6 @@
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2) {}))))))
 
-(deftest ^:parallel descendants-model-actions-test
-  (testing "GHY-4722: a model's actions are its descendants, though the model doesn't reference them"
-    (mt/with-temp [:model/Card   {model-id :id}    {:type          :model
-                                                    :dataset_query {:database (mt/id)
-                                                                    :type     :query
-                                                                    :query    {:source-table (mt/id :venues)}}}
-                   :model/Action {action-id :id}   {:type :implicit :name "Live" :model_id model-id}
-                   :model/Action {archived-id :id} {:type :implicit :name "Archived" :model_id model-id :archived true}]
-      (is (= {["Action" action-id]   {"Card" model-id}
-              ["Action" archived-id] {"Card" model-id}}
-             (serdes/descendants "Card" model-id {})))
-      (testing "with :skip-archived, archived actions are left out"
-        (is (= {["Action" action-id] {"Card" model-id}}
-               (serdes/descendants "Card" model-id {:skip-archived true})))))))
-
 (defn- action-events-during!
   "The set of `[topic action-id archived?]` for the action events `thunk` publishes."
   [thunk]
@@ -834,6 +819,36 @@
      (fn [{:keys [model-id implicit]}]
        (is (= #{[:event/action-delete implicit false]}
               (action-events-during! #(update-model! model-id {:dataset_query (filtered-venues-query)}))))))))
+
+(deftest model-move-publishes-action-events-test
+  (testing "update-card! announces the actions that move with a model to another collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (do-with-model-actions!
+       (fn [{:keys [model-id implicit query archived]}]
+         (is (= #{[:event/action-update implicit false]
+                  [:event/action-update query false]
+                  [:event/action-update archived true]}
+                (action-events-during! #(update-model! model-id {:collection_id coll-id})))))))))
+
+(deftest model-actions-follow-model-collection-test
+  (testing "the actions of a model are kept in the model's collection"
+    (mt/with-temp [:model/Collection {coll-1 :id} {}
+                   :model/Collection {coll-2 :id} {}
+                   :model/Card       {model-id :id} {:type :model :collection_id coll-1 :dataset_query (mt/mbql-query venues)}
+                   :model/Card       {other-id :id} {:type :model :collection_id coll-2 :dataset_query (mt/mbql-query venues)}
+                   :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
+      (let [action-collection #(t2/select-one-fn :collection_id :model/Action :id action-id)]
+        (testing "an inserted action takes its model's collection"
+          (is (= coll-1 (action-collection))))
+        (testing "moving the model moves its actions"
+          (t2/update! :model/Card model-id {:collection_id coll-2})
+          (is (= coll-2 (action-collection)))
+          (t2/update! :model/Card model-id {:collection_id nil})
+          (is (nil? (action-collection))))
+        (testing "attaching an action to another model moves it to that model's collection"
+          (t2/update! :model/Card model-id {:collection_id coll-1})
+          (t2/update! :model/Action action-id {:model_id other-id})
+          (is (= coll-2 (action-collection))))))))
 
 (deftest model-changes-outside-update-card-publish-no-action-events-test
   (testing "GHY-4722: a serdes load writes models with t2 directly, and must not publish action events (they would dirty the remote sync ledger during a pull)"

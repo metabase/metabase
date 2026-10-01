@@ -597,6 +597,7 @@
       ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
+        (queries.db/delete-dashcards-for-model-actions! id)
         (queries.db/archive-explicit-actions-for-model! id)
         (queries.db/delete-implicit-actions-for-model! id))
       ;; Make sure any native query template tags match the DB in the query.
@@ -873,6 +874,13 @@
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
+(defn- move-model-actions
+  "Moves the Actions of `card` into its Collection when the update changes it, returning `card`."
+  [card original]
+  (u/prog1 card
+    (when (not= (:collection_id card) (:collection_id original))
+      (queries.db/move-actions-of-model! (:id card) (:collection_id card)))))
+
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
     (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
@@ -927,6 +935,7 @@
         (populate-query-fields (contains? changes :dataset_query))
         (clear-metabot-origin changes)
         (pre-update changes)
+        (move-model-actions original)
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 
@@ -1326,15 +1335,17 @@
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
     (collection/check-for-remote-sync-update card-before-update)))
 
-(defn- retired-action-events
-  "The `[topic action]` pairs that announce how an update to a model retired its actions: `:event/action-delete` with
+(defn- changed-action-events
+  "The `[topic action]` pairs that announce how an update to a model changed its actions: `:event/action-delete` with
   the old action for each of `actions-before` absent from `actions-after`, and `:event/action-update` with the new
-  action for each one that became archived."
+  action for each one that became archived or moved to another Collection."
   [actions-before actions-after]
   (let [id->after (m/index-by :id actions-after)]
     (for [before actions-before
           :let   [after (id->after (:id before))]
-          :when  (or (nil? after) (and (:archived after) (not (:archived before))))]
+          :when  (or (nil? after)
+                     (and (:archived after) (not (:archived before)))
+                     (not= (:collection_id after) (:collection_id before)))]
       (if after
         [:event/action-update after]
         [:event/action-delete before]))))
@@ -1342,14 +1353,14 @@
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously. Publishes `:event/card-update`, plus
-  an action event for each action of a model that the update deletes or archives."
+  an action event for each action of a model that the update deletes, archives, or moves."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
-  ;; The card hooks delete or archive a model's actions without events, so compare the actions before and after.
+  ;; The card hooks delete, archive, or move a model's actions without events, so compare the actions before and after.
   (let [actions-before (when (= :model (keyword (:type card-before-update)))
                          (queries.db/actions-for-model (:id card-before-update)))]
     (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
     (when (seq actions-before)
-      (doseq [[topic action] (retired-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
+      (doseq [[topic action] (changed-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
         (events/publish-event! topic {:object action :user-id api/*current-user-id*}))))
   ;; Fetch the updated Card from the DB
   (let [card (queries.db/card (:id card-before-update))]
@@ -1541,7 +1552,7 @@
 (defmethod serdes/deserialization-dependencies "Card" [card]
   (card-deps false card))
 
-(defmethod serdes/descendants "Card" [_model-name id {:keys [skip-archived]}]
+(defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (queries.db/card id)
         query              (not-empty (:dataset_query card))
         source-cards       (some-> query lib/all-source-card-ids)
@@ -1557,11 +1568,7 @@
               (for [card-id parameters-card-id]
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
-                {["NativeQuerySnippet" snippet-id] {"Card" id}})
-              ;; An Action points at its model, but the model doesn't reference its actions, so list them here.
-              (when (= :model (:type card))
-                (for [action-id (queries.db/action-ids-for-model id skip-archived)]
-                  {["Action" action-id] {"Card" id}}))))))
+                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

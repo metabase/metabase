@@ -625,7 +625,8 @@
            util.config
            warehouse-schema-overlay}
    :model-exports #{:model/Collection}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/CollectionBookmark
                     :model/CollectionPermissionGraphRevision
                     :model/Dashboard

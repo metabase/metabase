@@ -200,6 +200,19 @@
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
       (is (false? (t2/select-one-fn :archived :model/Card :id (u/the-id card)))))))
 
+(deftest archive-actions-test
+  (testing "archiving a Collection archives its Actions and keeps their dashboard buttons, and unarchiving restores them"
+    (mt/with-temp [:model/Collection    collection {}
+                   :model/Card          model      {:type :model :collection_id (u/the-id collection)}
+                   :model/Action        action     {:type :query :name "Rename" :model_id (u/the-id model)}
+                   :model/Dashboard     dashboard  {:collection_id (u/the-id collection)}
+                   :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard) :action_id (u/the-id action)}]
+      (archive-collection! collection)
+      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
+      (is (t2/exists? :model/DashboardCard :id (u/the-id dashcard)))
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
+      (is (false? (t2/select-one-fn :archived :model/Action :id (u/the-id action)))))))
+
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
     (is (thrown?

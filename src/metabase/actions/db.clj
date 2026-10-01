@@ -50,6 +50,16 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :type [:model/Card :type] :id card-id))
 
+(mu/defn card-collection-id
+  "The Collection id of the Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
+
+(mu/defn action-model-id
+  "The model Card id of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :model_id [:model/Action :model_id] :id action-id))
+
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]

@@ -354,13 +354,12 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
-(mu/defn action-ids-for-model
-  "The IDs of the Actions of the model Card with `model-id`, leaving out archived Actions when `skip-archived`."
+(mu/defn move-actions-of-model!
+  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
+  updated."
   [model-id      :- ms/PositiveInt
-   skip-archived :- [:maybe :boolean]]
-  (if skip-archived
-    (t2/select-pks-set :model/Action :model_id model-id :archived false)
-    (t2/select-pks-set :model/Action :model_id model-id)))
+   collection-id :- [:maybe ::lib.schema.id/collection]]
+  (t2/update! :model/Action :model_id model-id {:collection_id collection-id}))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -371,6 +370,13 @@
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
+
+(mu/defn delete-dashcards-for-model-actions!
+  "Delete the DashboardCards of the Actions of the model Card with `model-id`, returning the number deleted."
+  [model-id :- ms/PositiveInt]
+  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action :model_id model-id))]
+    (t2/delete! :model/DashboardCard :action_id [:in action-ids])
+    0))
 
 (mu/defn archive-explicit-actions-for-model!
   "Archive the non-implicit Actions of the model Card with `model-id`, returning the number updated."

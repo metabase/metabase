@@ -53,7 +53,7 @@
 (defn- collectable-models
   []
   (set/union (archived-directly-models)
-             #{:model/Pulse :model/NativeQuerySnippet :model/Timeline}))
+             #{:model/Action :model/Pulse :model/NativeQuerySnippet :model/Timeline}))
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
@@ -1693,6 +1693,7 @@
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
       (collections.db/set-timeline-archived-in-collections! affected-collection-ids true)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids true)
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
@@ -1756,6 +1757,7 @@
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids false)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids false)
       (collections.db/set-timeline-archived-in-collections! affected-collection-ids false)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids false)
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
@@ -2158,13 +2160,15 @@
                                {["Document" doc-id] {"Collection" id}})))
         timelines   (into {} (for [timeline-id (collections.db/timeline-ids-in-collection id skip-archived)]
                                {["Timeline" timeline-id] {"Collection" id}}))
+        actions     (into {} (for [action-id (collections.db/action-ids-in-collection id skip-archived)]
+                               {["Action" action-id] {"Collection" id}}))
         tables      (into {} (for [table-id (collections.db/published-table-ids-in-collection id skip-archived)]
                                {["Table" table-id] {"Collection" id}}))
         ;; Transforms don't have an archived column, so we don't filter by skip-archived
         transforms  (when config/ee-available?
                       (into {} (for [transform-id (collections.db/transform-ids-in-collection id)]
                                  {["Transform" transform-id] {"Collection" id}})))]
-    (merge child-colls dashboards cards documents timelines tables transforms)))
+    (merge child-colls dashboards cards documents timelines actions tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [path      (get collections (:entity_id coll))

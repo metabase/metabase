@@ -171,7 +171,8 @@
                                 :insert nil)
                               [[:name                   required-for-insert :string]
                                [:type                   required-for-insert ::type]
-                               [:model_id               required-for-insert ::lib.schema.id/card]
+                               [:model_id               {:optional true}    [:maybe ::lib.schema.id/card]]
+                               [:collection_id          {:optional true}    [:maybe ::lib.schema.id/collection]]
                                [:archived               {:optional true}    :boolean]
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
@@ -191,7 +192,7 @@
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
               :dispatch         (comp keyword :type)}
       [:http     (into [:map {:closed true}] http-action-entries)]
-      [:implicit (into [:map {:closed true}] implicit-action-entries)]
+      [:implicit (into [:map {:closed true} [:model_id required-for-insert ::lib.schema.id/card]] implicit-action-entries)]
       [:query    (into [:map {:closed true}] query-action-entries)]
       ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
       [nil       (into [:map {:closed true}] cat [http-action-entries implicit-action-entries query-action-entries])]]]))

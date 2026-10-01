@@ -223,7 +223,10 @@
           (testing "storage"
             (storage/store! (seq @extraction) (storage.files/file-writer dump-dir))
             (testing "for Actions"
-              (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
+              (let [main-dir (io/file dump-dir "collections" "main")]
+                (is (= 30 (count (for [f (file-set main-dir)
+                                       :when (= "Action" (yaml-model-at main-dir f))]
+                                   f))))))
             (testing "for Collections"
               ;; +1 for the Trash collection
               (let [colls-dir  (io/file dump-dir "collections")
@@ -258,7 +261,7 @@
               ;; exact count may vary by 1 depending on naming collisions with collection names
               (let [main-dir (io/file dump-dir "collections" "main")]
                 (is (<= 269 (count (for [f (file-set main-dir)
-                                         :when (not= "Collection" (yaml-model-at main-dir f))]
+                                         :when (not (#{"Collection" "Action"} (yaml-model-at main-dir f)))]
                                      f)) 271))))
             (testing "for segments"
               (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))

@@ -422,9 +422,8 @@
               (is (=? {:errors {:name "string"},
                        :specific-errors {:name ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
-              (is (=? {:errors {:model_id "Valid Card ID"}
-                       :specific-errors {:model_id ["missing required key, received: nil"]}}
-                      (mt/user-http-request :crowberto :post 400 "action" {:type "query" :name "test"}))))))))))
+              (is (=? {:specific-errors {:model_id ["missing required key, received: nil"]}}
+                      (mt/user-http-request :crowberto :post 400 "action" {:type "implicit" :name "test"}))))))))))
 
 (deftest native-query-action-requires-native-permission-test
   (testing "creating or updating a native query action requires native query permission on the database"

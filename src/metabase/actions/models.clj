@@ -10,6 +10,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
@@ -101,28 +102,38 @@
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
+(defn- set-model-collection
+  "`action` with the `:collection_id` of its model Card."
+  [{model-id :model_id, :as action}]
+  (assoc action :collection_id (actions.db/card-collection-id model-id)))
+
 (t2/define-before-insert :model/Action
   [{model-id :model_id, :as action}]
-  (u/prog1 (public-sharing/add-public-uuid-prefix action)
-    (check-model-is-not-a-saved-question model-id)))
+  (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix action)
+             model-id set-model-collection)
+    (when model-id
+      (check-model-is-not-a-saved-question model-id))))
 
 (t2/define-before-update :model/Action
-  [{archived? :archived, id :id, model-id :model_id, :as changes}]
-  (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed changes)
-    (if archived?
-      (actions.db/delete-dashcards-for-action! id)
+  [{archived? :archived, model-id :model_id, :as action}]
+  (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
+             (and model-id (contains? (t2/changes action) :model_id)) set-model-collection)
+    (when (and model-id (not archived?))
       (check-model-is-not-a-saved-question model-id))))
 
 (mu/defmethod mi/perms-objects-set :model/Action :- [:set {:min 1} :string]
-  [instance      :- [:map
-                     [:model_id pos-int?]]
-   read-or-write :- [:enum :read :write]]
-  (mi/perms-objects-set (actions.db/card (:model_id instance)) read-or-write))
+  [{model-id :model_id, :as instance} :- [:map
+                                          [:model_id      {:optional true} [:maybe pos-int?]]
+                                          [:collection_id {:optional true} [:maybe pos-int?]]]
+   read-or-write                      :- [:enum :read :write]]
+  (if model-id
+    (mi/perms-objects-set (actions.db/card model-id) read-or-write)
+    (perms/perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
-  [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
-   :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
+  [:archived :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
+   :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
@@ -177,6 +188,8 @@
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
         (actions.db/update-action! id action-row))
+      (when (and (:archived updates) (not (:archived existing-action)))
+        (actions.db/delete-dashcards-for-action! id))
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
                                        (= (or (:type updates) (:type existing-action))
                                           :implicit)
@@ -536,6 +549,7 @@
                :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
+               :collection_id          (serdes/fk :model/Collection)
                :model_id               (serdes/fk :model/Card)
                :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
                :http                   (serdes/nested :model/HTTPAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
@@ -550,8 +564,10 @@
 (defmethod serdes/deserialization-dependencies "Action" [action]
   (set
    (concat
-    ;; other stuff is implicitly referenced through a Card
-    [[{:model "Card" :id (:model_id action)}]]
+    (when-let [collection-id (:collection_id action)]
+      [[{:model "Collection" :id collection-id}]])
+    (when-let [model-id (:model_id action)]
+      [[{:model "Card" :id model-id}]])
     ;; this method is called on ingested data before transformation, and so here it always will be a string
     (when (= (:type action) "query")
       (let [{:keys [database_id dataset_query]} (first (:query action))]
@@ -559,11 +575,12 @@
          [[{:model "Database" :id database_id}]]
          (serdes/mbql-deps false dataset_query)))))))
 
-(defmethod serdes/serialization-dependencies "Action" [_model-name {:keys [id model_id type]}]
+(defmethod serdes/serialization-dependencies "Action" [_model-name {:keys [id collection_id model_id type]}]
   ;; Serialization runs on the raw entity, whose query lives in the `query_action` child table (`:type` is a keyword
   ;; here, not a string), so the query is fetched rather than read from a nested `:query` key.
   (set
    (concat
+    (when collection_id [[{:model "Collection" :id collection_id}]])
     (when model_id [[{:model "Card" :id model_id}]])
     (when (= type :query)
       (when-let [{:keys [database_id dataset_query]} (actions.db/query-action id)]
@@ -571,8 +588,9 @@
          (when database_id [[{:model "Database" :id database_id}]])
          (serdes/mbql-deps true dataset_query)))))))
 
-(defmethod serdes/storage-path "Action" [action _ctx]
-  [{:label "actions"} {:label (:name action) :key (:entity_id action)}])
+(defmethod serdes/descendants "Action" [_model-name id _opts]
+  (when-let [model-id (actions.db/action-model-id id)]
+    {["Card" model-id] {"Action" id}}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

@@ -3458,3 +3458,48 @@
                                         :mysql    " AND table_schema = database()"
                                         :postgres " AND table_schema = current_schema()"
                                         :h2       ""))]))))))))
+
+(deftest action-collection-id-backfill-test
+  (testing "v65.2026-10-01T00:00:04: each action takes its model's collection, and model_id becomes nullable"
+    (impl/test-migrations ["v65.2026-10-01T00:00:00" "v65.2026-10-01T00:00:04"] [migrate!]
+      (let [user-id   (t2/insert-returning-pk! :core_user {:first_name "Action"
+                                                           :last_name  "Owner"
+                                                           :email      "action-owner@metabase.com"
+                                                           :password   "superstrong"
+                                                           :entity_id  (u/generate-nano-id)
+                                                           :date_joined :%now})
+            db-id     (t2/insert-returning-pk! :metabase_database {:name       "Action Test DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            coll-id   (t2/insert-returning-pk! :collection {:name      "Models"
+                                                            :slug      "models"
+                                                            :entity_id (u/generate-nano-id)
+                                                            :location "/"})
+            insert-model! (fn [collection-id]
+                            (t2/insert-returning-pk! :report_card {:name                   "Model"
+                                                                   :entity_id              (u/generate-nano-id)
+                                                                   :type                   "model"
+                                                                   :display                "table"
+                                                                   :dataset_query          "{}"
+                                                                   :visualization_settings "{}"
+                                                                   :creator_id             user-id
+                                                                   :database_id            db-id
+                                                                   :collection_id          collection-id
+                                                                   :created_at             :%now
+                                                                   :updated_at             :%now}))
+            insert-action! (fn [model-id]
+                             (t2/insert-returning-pk! :action {:name       "Action"
+                                                               :entity_id  (u/generate-nano-id)
+                                                               :type       "implicit"
+                                                               :model_id   model-id
+                                                               :created_at :%now
+                                                               :updated_at :%now}))
+            in-coll   (insert-action! (insert-model! coll-id))
+            in-root   (insert-action! (insert-model! nil))]
+        (migrate!)
+        (is (= coll-id (t2/select-one-fn :collection_id :action :id in-coll)))
+        (is (nil? (t2/select-one-fn :collection_id :action :id in-root)))
+        (testing "an action can be inserted without a model"
+          (is (pos-int? (insert-action! nil))))))))

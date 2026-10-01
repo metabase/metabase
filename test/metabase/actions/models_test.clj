@@ -225,15 +225,47 @@
           (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)
           (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
 
+(deftest query-action-without-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (testing "a query action can be inserted and updated without a model, and keeps its own collection"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-model-cleanup [:model/Action]
+          (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                         {:type          :query
+                                                          :name          "No model"
+                                                          :collection_id coll-id
+                                                          :database_id   (mt/id)
+                                                          :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+            (is (=? {:model_id nil :collection_id coll-id :database_id (mt/id)}
+                    (action/select-action :id action-id)))
+            (action/update! {:id action-id :name "Renamed"} (action/select-action :id action-id))
+            (is (=? {:name "Renamed" :model_id nil :collection_id coll-id}
+                    (action/select-action :id action-id)))))))))
+
+(deftest implicit-action-requires-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (testing "an implicit action cannot be inserted without a model"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"model_id"
+                            (action/insert! {:type :implicit :name "No model" :kind :row/create}))))
+    (testing "an implicit action cannot be detached from its model"
+      (mt/with-actions-enabled
+        (mt/with-actions [{:keys [action-id]} {:type :implicit :kind "row/create"}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"model_id"
+                                (action/update! {:id action-id :model_id nil} (action/select-action :id action-id))))
+          (is (some? (t2/select-one-fn :model_id :model/Action :id action-id))))))))
+
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (testing "Non-implicit actions are archived if their model is converted to a saved question"
         (doseq [type [:http :query]]
           (mt/with-actions [{:keys [action-id model-id]} {:type type}]
-            (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-            (t2/update! :model/Card model-id {:type :question})
-            (is (true? (t2/select-one-fn :archived :model/Action action-id))))))
+            (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                           :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
+              (is (false? (t2/select-one-fn :archived :model/Action action-id)))
+              (t2/update! :model/Card model-id {:type :question})
+              (is (true? (t2/select-one-fn :archived :model/Action action-id)))
+              (is (not (t2/exists? :model/DashboardCard :id dashcard-id)))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action action-id)))
