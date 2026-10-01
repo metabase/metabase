@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [clojure.set :as set]
    [malli.error :as me]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
@@ -519,6 +520,18 @@
                table-fks))
      already-checked)))
 
+(defn- metric-queries-closure
+  "Map of metric id -> its query, for `metric-ids` and every metric their definitions reference, transitively."
+  [metadata-provider metric-ids]
+  (loop [acc  {}
+         todo (set metric-ids)]
+    (if-let [id (first todo)]
+      (let [q      (lib/query metadata-provider (:dataset-query (lib.metadata/card metadata-provider id)))
+            acc    (assoc acc id q)
+            nested (:metric (lib/all-referenced-entity-ids [q]))]
+        (recur acc (into (disj todo id) (remove acc) nested)))
+      acc)))
+
 (defn- check-curated-query-sources!
   "When the session's Metabot is restricted to curated content, require every Table and Card `pmbql-query` reads —
   source, joined, and implicitly joined Tables, source Cards, and metrics — to be curated, or covered by curated
@@ -527,9 +540,10 @@
   - a curated Table or Card covers the Tables one FK hop away (its related tables), but only as joins: the query's
     own source must be curated itself, or be what a curated metric in the query is defined on, so a raw Table
     can't be read in full by joining it to a curated one;
-  - a curated metric covers the Tables and Cards it's defined on, and their related tables;
+  - a curated metric covers the Table or Card it's defined on (its primary source, not the Tables it joins), and
+    their related tables;
   - a curated Table or Card covers the metrics defined on it, as long as everything the metric's definition reads
-    is curated or covered too."
+    is curated or covered too, judging the metrics it references in turn the same way."
   [metadata-provider pmbql-query]
   (when (shared/curated-only?)
     (let [mp             metadata-provider
@@ -537,19 +551,26 @@
           {:keys [table card metric]} (lib/all-referenced-entity-ids [query])
           ;; `:card` also lists the metrics the query references; judge those as metrics, not as source Cards
           card           (remove (set metric) card)
-          metric-queries (into {} (map (fn [id] [id (lib/query mp (:dataset-query (lib.metadata/card mp id)))])) metric)
+          ;; Every metric the query reaches, transitively: a metric's aggregation may reference other metrics.
+          metric-queries (metric-queries-closure mp metric)
           ;; What each metric's definition reads, so an uncurated metric is judged by all of it rather than by its
           ;; primary source: a metric on a curated Table may still join an unrelated raw one, and a metric on a
-          ;; curated model has no primary source Table at all.
-          metric-refs    (update-vals metric-queries #(lib/all-referenced-entity-ids [%]))
+          ;; curated model has no primary source Table at all. Metrics it references are judged as metrics, not Cards.
+          metric-refs    (update-vals metric-queries
+                                      (fn [q]
+                                        (let [refs (lib/all-referenced-entity-ids [q])]
+                                          (update refs :card set/difference (:metric refs)))))
           curated        (curation/curated-ids
                           (concat (map #(vector "table" %) (concat table (mapcat :table (vals metric-refs))))
-                                  (map #(vector "card" %) (concat card metric (mapcat :card (vals metric-refs))))))
+                                  (map #(vector "card" %) (concat card
+                                                                  (keys metric-queries)
+                                                                  (mapcat :card (vals metric-refs))))))
           curated?       (fn [model id] (contains? curated [model id]))
           curated-metric-queries (keep (fn [[id q]] (when (curated? "card" id) q)) metric-queries)
-          ;; The Tables and Cards curated metrics in the query are defined on: the only uncurated sources a query
-          ;; may be built on.
-          metric-sources (lib/all-referenced-entity-ids curated-metric-queries)
+          ;; What curated metrics are defined on: the only uncurated sources a query may be built on. Only the
+          ;; primary source — a Table the metric merely joins stays reachable as a join, not as a source.
+          metric-sources {:table (into #{} (keep lib/primary-source-table-id) curated-metric-queries)
+                          :card  (into #{} (keep lib/primary-source-card-id) curated-metric-queries)}
           ;; Everything curated content in the query exposes through `read_resource`: itself and its related tables.
           covered        (lib/all-referenced-entity-ids
                           (concat (for [id table :when (curated? "table" id)] (lib/query mp (lib.metadata/table mp id)))
@@ -564,6 +585,15 @@
           source-allowed? (fn [model id]
                             (or (curated? model id)
                                 (contains? (get metric-sources (keyword model)) id)))
+          ;; A metric is fine when curated, or when everything it reads is allowed and the metrics it references are
+          ;; fine in turn. A reference cycle (invalid, but possible via import) fails closed.
+          metric-ok?     (fn metric-ok? [id seen]
+                           (or (curated? "card" id)
+                               (let [{:keys [table card metric]} (metric-refs id)
+                                     seen (conj seen id)]
+                                 (and (every? #(allowed? "table" %) table)
+                                      (every? #(allowed? "card" %) card)
+                                      (every? #(and (not (seen %)) (metric-ok? % seen)) metric)))))
           uncurated      (into []
                                cat
                                [(for [id table
@@ -576,10 +606,7 @@
                                                    (source-allowed? "card" id)
                                                    (allowed? "card" id)))]
                                   ["card" id])
-                                (for [[id refs] metric-refs
-                                      :when (not (or (curated? "card" id)
-                                                     (and (every? #(allowed? "table" %) (:table refs))
-                                                          (every? #(allowed? "card" %) (:card refs)))))]
+                                (for [id metric :when (not (metric-ok? id #{}))]
                                   ["card" id])])]
       (when (seq uncurated)
         (throw (ex-info (tru (str "This Metabot only uses curated content (verified, official, or Library content), "

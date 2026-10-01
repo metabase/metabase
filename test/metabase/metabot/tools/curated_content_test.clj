@@ -153,8 +153,17 @@
                                                        :dataset_query (orders-query)}
                    :model/Card {verified-metric :id verified-metric-eid :entity_id}
                    {:type :metric :name "verified metric" :dataset_query (count-metric-query (orders-query))}
-                   :model/Card {plain-metric-eid :entity_id}
+                   :model/Card {plain-metric :id plain-metric-eid :entity_id}
                    {:type :metric :name "plain metric" :dataset_query (count-metric-query (orders-query))}
+                   :model/Card {nested-metric-eid :entity_id}
+                   {:type :metric :name "plain metric built on the plain metric"
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :orders)
+                                               :aggregation  [["metric" plain-metric]]}}}
+                   :model/Card {verified-join-metric :id verified-join-metric-eid :entity_id}
+                   {:type :metric :name "verified metric joining an unrelated table"
+                    :dataset_query (count-metric-query (orders-joined-query :reviews :product_id :product_id))}
                    :model/Card {related-join-metric-eid :entity_id}
                    {:type :metric :name "plain metric joining a related table"
                     :dataset_query (count-metric-query (orders-joined-query :products :product_id :id))}
@@ -168,6 +177,7 @@
                    :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
       (verify-card! verified-model)
       (verify-card! verified-metric)
+      (verify-card! verified-join-metric)
       (let [db-name        (t2/select-one-fn :name :model/Database :id (mt/id))
             stage          (fn [source] (merge {:lib/type "mbql.stage/mbql" :aggregation [["count" {}]]} source))
             query          (fn [source] {:lib/type "mbql/query" :stages [(stage source)]})
@@ -216,7 +226,9 @@
               (is (accepted? (metric-query plain-metric-eid)))
               (testing "as long as everything the metric's definition reads is curated or covered"
                 (is (accepted? (metric-query related-join-metric-eid)))
-                (is (rejected? metabot-id :internal (metric-query unrelated-join-metric-eid)))))
+                (is (rejected? metabot-id :internal (metric-query unrelated-join-metric-eid))))
+              (testing "including a metric built on another uncurated metric over the curated table"
+                (is (accepted? (metric-query nested-metric-eid)))))
             (testing "but a related table is still not a source of its own"
               (is (rejected? metabot-id :internal products-query))
               (testing "even when joined to the curated table"
@@ -230,6 +242,10 @@
                                    (get-in joined-query [:stages 0 :breakout])))))
         (testing "an uncurated metric on a raw table is rejected"
           (is (rejected? metabot-id :internal (metric-query plain-metric-eid))))
+        (testing "a table a curated metric only joins is not a source of its own"
+          (is (rejected? metabot-id :internal
+                         (assoc-in (query {:source-table [db-name "PUBLIC" "REVIEWS"]}) [:stages 0 :aggregation]
+                                   [["metric" {} verified-join-metric-eid]]))))
         (testing "source cards must be curated"
           (is (accepted? (query {:source-card verified-eid})))
           (is (rejected? metabot-id :internal (query {:source-card plain-eid}))))))))
