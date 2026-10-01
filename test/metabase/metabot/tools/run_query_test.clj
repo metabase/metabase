@@ -93,6 +93,9 @@
     (testing "cell text cannot break the table"
       (is (= ["| A\\|B |" "| --- |" "| x\\|y z |"]
              (data-lines (output [{:display_name "A|B"}] [["x|y\nz"]])))))
+    (testing "false renders as a value"
+      (is (= ["| A | B |" "| --- | --- |" "| false |  |"]
+             (data-lines (output [{:display_name "A"} {:display_name "B"}] [[false nil]])))))
     (testing "a backslash cannot unescape a pipe, and Unicode line breaks collapse"
       (is (= ["| A |" "| --- |" "| x\\\\\\|y a b |"]
              (data-lines (output [{:display_name "A"}] [["x\\|y a b"]])))))
