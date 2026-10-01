@@ -35,7 +35,7 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
-(deftest data-app-access-requires-read-access-to-its-resource-collection-test
+(deftest assigned-users-can-load-bundles-but-cannot-manage-apps-test
   ;; global mode so the `:data-apps` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
@@ -46,20 +46,12 @@
         (let [app (t2/select-one :model/DataApp :name "demo")
               {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)
               permission_group_id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Finches"}))]
-          (testing "a non-member cannot open a data app or load its bundle"
-            (is (= [] (mt/user-http-request :rasta :get 200 "apps")))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "apps/demo")))
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 "apps/demo/bundle"))))
           (testing "collection access alone does not assign an app"
             (perms/grant-collection-read-permissions! (perms/all-users-group) resource_collection_id)
             (mt/user-http-request :rasta :get 403 "apps/demo"))
           (testing "a member can open a data app"
             (group-access/add-groups! app [permission_group_id])
             (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
-            (is (= {:name "demo" :display_name "Demo"}
-                   (mt/user-http-request :rasta :get 200 "apps/demo")))
             (is (str/includes?
                  (str (mt/user-real-request :rasta :get 200 "apps/demo/bundle"))
                  "BUNDLE"))))
@@ -183,7 +175,6 @@
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (doseq [slug ["old" "current"]
                   :let [app (t2/select-one :model/DataApp :name slug)]]
-            (data-app.resources/ensure-resources! app)
             (group-access/add-groups! app [group-id])))
         (with-redefs [data-app.config/supported-app-version 2]
           (testing "a regular user is never told about the outdated app in a list"

@@ -42,14 +42,18 @@
   (let [group-ids (into #{} (map :permission_group_id) (data-apps.db/app-assignments [(:id app)]))
         read-path (perms/collection-read-path collection)
         write-path (perms/collection-readwrite-path collection)
+
+        ;; existing permissions for the app collection for each groups
         permissions-by-group (group-by :group_id
                                        (data-apps.db/permissions-for-paths-excluding-group
                                         [read-path write-path] (:id (perms/admin-group))))
         read-only? (fn [group-id]
                      (= #{read-path} (set (map :object (get permissions-by-group group-id)))))]
+    ;; revoke app collection access from unassigned groups
     (doseq [group-id (keys permissions-by-group)
             :when (not (and (group-ids group-id) (read-only? group-id)))]
       (perms/revoke-collection-permissions! group-id collection))
+    ;; grant app collection access to assigned groups
     (doseq [group-id group-ids
             :when (not (read-only? group-id))]
       (perms/grant-collection-read-permissions! group-id collection))))
@@ -77,7 +81,7 @@
       {:resource_collection_id (:id collection)})))
 
 (defn delete-resources!
-  "Delete the resource collection owned by the app. Assigned groups remain independent."
+  "Delete the app collection."
   [{:keys [resource_collection_id]}]
   (when resource_collection_id
     (data-apps.db/delete-resource-collection! resource_collection_id)))

@@ -3854,23 +3854,39 @@
 
 (deftest data-app-group-assignment-migration-test
   (impl/test-migrations ["v65.2026-09-16T00:00:00" "v65.2026-09-16T00:00:08"] [migrate!]
-    (let [legacy-group (t2/insert-returning-pk! :permissions_group {:name "Data App: birds" :is_data_app_group true :entity_id "legacy-app-group"})
-          ordinary-group (t2/insert-returning-pk! :permissions_group {:name "Finches" :entity_id "ordinary-group"})
-          user-id (t2/insert-returning-pk! :core_user {:email "finch@test.com" :entity_id "migration-finch" :date_joined :%now
-                                                       :password "password" :password_salt "salt"})
-          app-id (t2/insert-returning-pk! :data_app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                                     :permission_group_id legacy-group :created_at :%now :updated_at :%now})]
+    (let [legacy-group (t2/insert-returning-pk! :permissions_group
+                                                {:name "Data App: birds"
+                                                 :is_data_app_group true
+                                                 :entity_id "legacy-app-group"})
+          ordinary-group (t2/insert-returning-pk! :permissions_group
+                                                  {:name "Finches" :entity_id "ordinary-group"})
+          user-id (t2/insert-returning-pk! :core_user
+                                           {:email "finch@test.com"
+                                            :entity_id "migration-finch"
+                                            :date_joined :%now
+                                            :password "password"
+                                            :password_salt "salt"})
+          app-id (t2/insert-returning-pk! :data_app
+                                          {:name "birds"
+                                           :display_name "Birds"
+                                           :bundle_path "birds.js"
+                                           :permission_group_id legacy-group
+                                           :created_at :%now
+                                           :updated_at :%now})]
       (t2/insert! :permissions_group_membership {:group_id legacy-group :user_id user-id})
       (t2/insert! :permissions {:group_id legacy-group :object "/collection/999/read/"})
-      (migrate!)
-      (is (not (t2/exists? :permissions_group :id legacy-group)))
-      (is (not (t2/exists? :permissions_group_membership :group_id legacy-group)))
-      (is (not (t2/exists? :permissions :group_id legacy-group)))
-      (is (t2/exists? :permissions_group :id ordinary-group))
-      (is (t2/exists? :data_app :id app-id))
-      (is (empty? (t2/select :data_app_group_assignment)))
-      (is (not (contains? (t2/select-one :data_app :id app-id) :permission_group_id)))
-      (is (not (contains? (t2/select-one :permissions_group :id ordinary-group) :is_data_app_group)))
+      (testing "migration removes legacy groups and their access"
+        (migrate!)
+        (is (not (t2/exists? :permissions_group :id legacy-group)))
+        (is (not (t2/exists? :permissions_group_membership :group_id legacy-group)))
+        (is (not (t2/exists? :permissions :group_id legacy-group))))
+      (testing "migration preserves apps and ordinary groups without converting legacy access"
+        (is (t2/exists? :permissions_group :id ordinary-group))
+        (is (t2/exists? :data_app :id app-id))
+        (is (empty? (t2/select :data_app_group_assignment))))
+      (testing "migration removes the obsolete columns"
+        (is (not (contains? (t2/select-one :data_app :id app-id) :permission_group_id)))
+        (is (not (contains? (t2/select-one :permissions_group :id ordinary-group) :is_data_app_group))))
       (testing "rollback restores the old columns without deleting apps or ordinary groups"
         (migrate! :down 64)
         (is (contains? (t2/select-one :data_app :id app-id) :permission_group_id))
