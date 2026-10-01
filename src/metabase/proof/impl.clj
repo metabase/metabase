@@ -9,7 +9,7 @@
   Proofs come from three kinds of issuing check:
 
   - the per-user checks [[authorize-create]], [[authorize-update]] and [[authorize-delete]];
-  - [[cascade]], for a parent's children;
+  - [[cascade]], for a parent's children, deriving their write from the parent's by the child's [[cascade-write]];
   - the system issuers [[serdes-load]], [[provisioning]] and [[test-only]], for contexts in which no user is acting.
     Every call of one outside this namespace is flagged by the `:metabase/dangerously-issue-system-proof` lint; a call
     that acts on nobody's behalf is waved through at the site with an inline ignore and a comment saying why, and
@@ -295,36 +295,61 @@
       :or   (boolean (and (seq args) (every? #(where-keyed-by? % cascade-key parent-model id) args)))
       false)))
 
-(mu/defn cascade
-  "Derive from `parent-proof` a proof over the rows of `child-model` that `where` names, applying `changes` to them, or
-  deleting them when `changes` is nil. Refuses unless `child-model` declares the parent proof's model in
-  [[cascade-parents]], the parent proof names one row by id, and `where` is keyed to that id as the declaration says
-  (see [[where-keyed-by?]]): directly, by a materialized path, or through a subquery over the parent's table that is
-  itself keyed to the id. The derived proof's subject is `where`."
+(defmulti cascade-write
+  "The write that a verified `parent-write` of `parent-model` implies for the rows of `child-model`: `{:where where,
+  :changes changes}` (`changes` nil for a delete), or nil when it implies none. A module declares a model's
+  derivations next to its [[cascade-parents]], e.g.
+
+    (defmethod proof/cascade-write [:model/Card :model/Collection]
+      [_child _parent parent-write]
+      (collection/contents-cascade-write parent-write :archived-directly? true))
+
+  Dispatches on `[child-model parent-model]`. `parent-write` is `{:model :operation :subject :changes}` as [[verify]]
+  returns it, its subject one row by id; a derivation may read that row. The caller of [[cascade]] chooses nothing:
+  the child write is a function of the parent's, so a parent proof for one operation cannot be turned into any other
+  write on the children. `where` must be keyed to the parent row's id as the child's cascade-parents declaration says;
+  [[cascade]] checks that before it issues the derived proof."
+  {:arglists '([child-model parent-model parent-write])}
+  (fn [child-model parent-model _parent-write]
+    [child-model parent-model]))
+
+(mu/defn cascade :- [:maybe ::proof]
+  "Derive from `parent-proof` the proof over the rows of `child-model` that the parent's write implies, per the
+  child's [[cascade-write]] declaration, or nil when it implies no write. Refuses unless `child-model` declares the
+  parent proof's model in [[cascade-parents]] and a derivation for it, the parent proof names one row by id, and the
+  derived where-clause is keyed to that id as the declaration says (see [[where-keyed-by?]]): directly, by a
+  materialized path, or through a subquery over the parent's table that is itself keyed to the id. The derived
+  proof's subject is that where-clause."
   [parent-proof :- ::proof
-   child-model  :- :keyword
-   where        :- ::where
-   changes      :- [:maybe ::changes]]
+   child-model  :- :keyword]
   (let [parent       (ensure-proof! parent-proof)
         parent-model (.-model parent)
         parent-id    (.-subject parent)
-        cascade-key  (get (cascade-parents child-model) parent-model)]
+        cascade-key  (get (cascade-parents child-model) parent-model)
+        derive       (get-method cascade-write [child-model parent-model])]
     (when-not (= (subject-kind parent-id) :id)
       (invalid-proof! "only a proof for one row by id can be cascaded"
                       {:parent-model parent-model, :subject-kind (subject-kind parent-id)}))
     (when-not cascade-key
       (invalid-proof! (format "%s does not declare %s as a cascade parent" child-model parent-model)
                       {:child-model child-model, :parent-model parent-model}))
-    (when-not (where-keyed-by? where cascade-key parent-model parent-id)
-      (invalid-proof! (format "the where-clause is not keyed by %s to the parent's id" cascade-key)
-                      {:child-model child-model, :parent-model parent-model, :column cascade-key}))
-    (->Proof child-model
-             (if (nil? changes) :delete :update)
-             where
-             changes
-             (.-user-id parent)
-             [:cascade (.-issuer parent)]
-             nonce)))
+    (when-not derive
+      (invalid-proof! (format "%s declares no cascade-write for %s" child-model parent-model)
+                      {:child-model child-model, :parent-model parent-model}))
+    (when-let [{:keys [where changes]} (derive child-model parent-model (covered-write parent))]
+      (when-not (mr/validate ::where where)
+        (invalid-proof! (format "%s derived something other than a where-clause from %s" child-model parent-model)
+                        {:child-model child-model, :parent-model parent-model, :actual (some-> where class .getName)}))
+      (when-not (where-keyed-by? where cascade-key parent-model parent-id)
+        (invalid-proof! (format "the derived where-clause is not keyed by %s to the parent's id" cascade-key)
+                        {:child-model child-model, :parent-model parent-model, :column cascade-key}))
+      (->Proof child-model
+               (if (nil? changes) :delete :update)
+               where
+               changes
+               (.-user-id parent)
+               [:cascade (.-issuer parent)]
+               nonce))))
 
 ;;; ------------------------------------------------- System issuers -------------------------------------------------
 

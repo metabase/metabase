@@ -62,6 +62,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/cascade-write [:model/Card :model/Collection]
+  [_child _parent parent-write]
+  (collections/contents-cascade-write parent-write :archived-directly? true))
+
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
   :model/Card)

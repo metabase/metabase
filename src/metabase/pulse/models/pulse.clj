@@ -47,6 +47,10 @@
 (defmethod proof/cascade-parents :model/Pulse
   [_model]
   {:model/Collection :collection_id})
+
+(defmethod proof/cascade-write [:model/Pulse :model/Collection]
+  [_child _parent parent-write]
+  (collection/contents-cascade-write parent-write))
 (methodical/defmethod t2/model-for-automagic-hydration [:default :pulse]  [_original-model _k] :model/Pulse)
 
 (doto :model/Pulse

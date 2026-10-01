@@ -19,18 +19,26 @@
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id snippet-id))))))
 
 (deftest ^:parallel cascade-parents-test
-  (testing "A Collection's proof cascades to the snippets in it, so the collections module can write them under it"
-    (let [collection-proof (proof/test-only {:model     :model/Collection
-                                             :operation :update
-                                             :subject   10
-                                             :changes   {:archived true}})
-          cascaded         (proof/cascade collection-proof :model/NativeQuerySnippet
-                                          [:= :collection_id 10] {:archived true})]
-      (is (= {:model     :model/NativeQuerySnippet
-              :operation :update
-              :subject   [:= :collection_id 10]
-              :changes   {:archived true}}
-             (proof/verify cascaded {:model :model/NativeQuerySnippet, :operation :update, :subject-kind :where}))))))
+  (testing "A Collection's archive cascades to the snippets in it, so the collections module can write them under it"
+    (mt/with-temp [:model/Collection {collection-id :id} {:namespace "snippets"}]
+      (let [collection-proof (proof/test-only {:model     :model/Collection
+                                               :operation :update
+                                               :subject   collection-id
+                                               :changes   {:archive_operation_id "op"
+                                                           :archived_directly    true
+                                                           :archived             true}})
+            cascaded         (proof/cascade collection-proof :model/NativeQuerySnippet)]
+        (is (=? {:model     :model/NativeQuerySnippet
+                 :operation :update
+                 :subject   [:and [:in :collection_id map?]]
+                 :changes   {:archived true}}
+                (proof/verify cascaded {:model :model/NativeQuerySnippet, :operation :update, :subject-kind :where})))
+        (testing "and a rename of the Collection implies nothing for them"
+          (is (nil? (proof/cascade (proof/test-only {:model     :model/Collection
+                                                     :operation :update
+                                                     :subject   collection-id
+                                                     :changes   {:name "renamed"}})
+                                   :model/NativeQuerySnippet))))))))
 
 (deftest snippet-collection-test
   (testing "Should be allowed to create snippets in a Collection in the :snippets namespace"

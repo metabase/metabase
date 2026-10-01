@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
+   [metabase.collections.core :as collections]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
@@ -29,6 +30,10 @@
 (defmethod proof/cascade-parents :model/Exploration
   [_model]
   {:model/Collection :collection_id})
+
+(defmethod proof/cascade-write [:model/Exploration :model/Collection]
+  [_child _parent parent-write]
+  (collections/contents-cascade-write parent-write :archived-directly? true))
 
 (doto :model/Exploration
   (derive :metabase/model)

@@ -94,106 +94,142 @@
                     (tree-seq coll? seq
                               (invalid-proof-data #(proof/verify p {:operation :delete, :subject-kind :id}))))))))
 
+(def ^:private ^:dynamic *child-write*
+  "What the test models derive from a parent write: a `{:where …, :changes …}` map, a function of the parent write
+  returning one, or nil."
+  nil)
+
+(defn- derived
+  [parent-write]
+  (if (fn? *child-write*)
+    (*child-write* parent-write)
+    *child-write*))
+
 (defmethod proof/cascade-parents ::child
   [_model]
   {::parent :parent_id})
 
-(deftest ^:parallel verify-columns-test
-  (testing "a mutator that declares the columns it writes refuses a change set outside them"
-    (let [expects {:model :model/Card, :operation :update, :subject-kind :id, :columns #{:archived :archived_directly}}]
-      (is (= {:model :model/Card, :operation :update, :subject 42, :changes {:archived true}}
-             (proof/verify (update-proof 42 {:archived true}) expects)))
-      (are [changes] (=? {:status-code 500, :actual (set (keys changes))}
-                         (invalid-proof-data #(proof/verify (update-proof 42 changes) expects)))
-        {:name "x"}
-        {:archived true, :name "x"}
-        {})))
-  (testing "for a create, every row is held to the columns"
-    (let [expects {:model :model/Card, :operation :create, :subject-kind :none, :columns #{:name}}
-          create  (fn [rows] (proof/test-only {:model :model/Card, :operation :create, :changes rows}))]
-      (is (=? {:changes [{:name "a"} {:name "b"}]}
-              (proof/verify (create [{:name "a"} {:name "b"}]) expects)))
-      (is (=? {:status-code 500, :actual #{:name :archived}}
-              (invalid-proof-data #(proof/verify (create [{:name "a"} {:name "b", :archived true}]) expects)))))))
+(defmethod proof/cascade-write [::child ::parent]
+  [_child _parent parent-write]
+  (derived parent-write))
+
+;; declares the parent but derives nothing from it
+(defmethod proof/cascade-parents ::undeclared
+  [_model]
+  {::parent :parent_id})
+
+;; a model that is its own cascade parent by a materialized path, and a leaf keyed to it by column, for the path and
+;; subquery forms (Toucan names a keyword model's table after it, so ::node's table is `node`)
+(defmethod proof/cascade-parents ::node
+  [_model]
+  {::node [:path :location]})
+
+(defmethod proof/cascade-write [::node ::node]
+  [_child _parent parent-write]
+  (derived parent-write))
+
+(defmethod proof/cascade-parents ::leaf
+  [_model]
+  {::node :node_id})
+
+(defmethod proof/cascade-write [::leaf ::node]
+  [_child _parent parent-write]
+  (derived parent-write))
 
 (deftest ^:parallel cascade-test
-  (let [parent-proof (proof/test-only {:model ::parent, :operation :update, :subject 10, :changes {:archived true}})]
-    (testing "a declared parent's proof cascades to a where-clause keyed by its id"
-      (let [p (proof/cascade parent-proof ::child [:= :parent_id 10] {:archived true})]
+  (let [parent-proof (proof/test-only {:model ::parent, :operation :update, :subject 10, :changes {:archived true}})
+        verify       (fn [p operation]
+                       (proof/verify p {:model ::child, :operation operation, :subject-kind :where}))]
+    (testing "the child's declaration derives its write from the parent's; the caller chooses nothing"
+      (binding [*child-write* (fn [{:keys [subject changes]}]
+                                {:where [:= :parent_id subject], :changes (select-keys changes [:archived])})]
         (is (= {:model ::child, :operation :update, :subject [:= :parent_id 10], :changes {:archived true}}
-               (proof/verify p {:model ::child, :operation :update, :subject-kind :where}))))
+               (verify (proof/cascade parent-proof ::child) :update))))
       (testing "nil changes mean delete"
-        (is (= {:model ::child, :operation :delete, :subject [:and [:= :parent_id 10] [:= :archived true]]}
-               (proof/verify (proof/cascade parent-proof ::child [:and [:= :parent_id 10] [:= :archived true]] nil)
-                              {:model ::child, :operation :delete, :subject-kind :where})))))
+        (binding [*child-write* {:where [:and [:= :parent_id 10] [:= :archived true]], :changes nil}]
+          (is (= {:model ::child, :operation :delete, :subject [:and [:= :parent_id 10] [:= :archived true]]}
+                 (verify (proof/cascade parent-proof ::child) :delete)))))
+      (testing "a parent write that implies nothing for the child yields no proof"
+        (binding [*child-write* nil]
+          (is (nil? (proof/cascade parent-proof ::child))))))
     (testing "an undeclared parent is refused"
       (let [stranger-proof (proof/test-only {:model ::stranger, :operation :delete, :subject 10})]
         (is (=? {:status-code 500, :child-model ::child, :parent-model ::stranger}
-                (invalid-proof-data #(proof/cascade stranger-proof ::child [:= :parent_id 10] nil)))))
+                (invalid-proof-data #(proof/cascade stranger-proof ::child)))))
       (is (=? {:status-code 500, :child-model ::orphan}
-              (invalid-proof-data #(proof/cascade parent-proof ::orphan [:= :parent_id 10] nil)))))
-    (testing "a where-clause not keyed by the parent's id is refused"
+              (invalid-proof-data #(proof/cascade parent-proof ::orphan)))))
+    (testing "a declared parent without a derivation is refused"
+      (is (=? {:status-code 500, :child-model ::undeclared, :parent-model ::parent}
+              (invalid-proof-data #(proof/cascade parent-proof ::undeclared)))))
+    (testing "a derived where-clause not keyed by the parent's id is refused"
       (are [where] (=? {:status-code 500, :column :parent_id}
-                       (invalid-proof-data #(proof/cascade parent-proof ::child where nil)))
+                       (binding [*child-write* {:where where, :changes nil}]
+                         (invalid-proof-data #(proof/cascade parent-proof ::child))))
         [:= :parent_id 11]
         [:= :other_id 10]
         [:in :parent_id [10]]
         [:or [:= :parent_id 10] [:= :parent_id 11]]))
+    (testing "a derivation that is not a where-clause is refused"
+      (binding [*child-write* {:where {:select [:id]}, :changes nil}]
+        (is (=? {:status-code 500, :child-model ::child, :actual string?}
+                (invalid-proof-data #(proof/cascade parent-proof ::child))))))
     (testing "only a proof for one row by id can be cascaded"
       (let [where-proof (proof/test-only {:model ::parent, :operation :delete, :subject [:= :id 10]})]
         (is (=? {:status-code 500, :subject-kind :where}
-                (invalid-proof-data #(proof/cascade where-proof ::child [:= :parent_id 10] nil))))))
+                (invalid-proof-data #(proof/cascade where-proof ::child))))))
     (testing "the cascade proof is bound to the parent's user"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"issued for another user"
-                            (binding [api/*current-user-id* 7]
-                              (proof/cascade parent-proof ::child [:= :parent_id 10] nil)))))))
+      (binding [*child-write* {:where [:= :parent_id 10], :changes nil}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"issued for another user"
+                              (binding [api/*current-user-id* 7]
+                                (proof/cascade parent-proof ::child))))))))
 
 (deftest ^:parallel cascade-by-path-and-subquery-test
-  ;; Collection declares itself a cascade parent by its materialized path, and Card declares Collection by column
-  (let [collection-proof (proof/test-only {:model :model/Collection, :operation :delete, :subject 10})
-        subtree          [:or [:= :id 10] [:like :location "/3/10/%"]]
-        contents         [:in :collection_id ^:allow-subquery {:select [:id], :from [:collection], :where subtree}]]
+  (let [node-proof (proof/test-only {:model ::node, :operation :delete, :subject 10})
+        subtree    [:or [:= :id 10] [:like :location "/3/10/%"]]
+        contents   [:in :node_id ^:allow-subquery {:select [:id], :from [:node], :where subtree}]
+        derive     (fn [child where changes]
+                     (binding [*child-write* {:where where, :changes changes}]
+                       (proof/cascade node-proof child)))
+        refused    (fn [child where]
+                     (binding [*child-write* {:where where, :changes nil}]
+                       (invalid-proof-data #(proof/cascade node-proof child))))]
     (testing "a where-clause on the path column keyed by the parent's id names its descendants"
-      (are [where] (= {:model :model/Collection, :operation :delete, :subject where}
-                      (proof/verify (proof/cascade collection-proof :model/Collection where nil)
-                                    {:model :model/Collection, :operation :delete, :subject-kind :where}))
+      (are [where] (= {:model ::node, :operation :delete, :subject where}
+                      (proof/verify (derive ::node where nil)
+                                    {:model ::node, :operation :delete, :subject-kind :where}))
         [:like :location "/3/10/%"]
         [:like :location "/10/%"]
         [:and [:like :location "/10/%"] [:not :archived]]))
     (testing "a path pattern not under the parent is refused"
       (are [where] (=? {:status-code 500, :column [:path :location]}
-                       (invalid-proof-data #(proof/cascade collection-proof :model/Collection where nil)))
+                       (refused ::node where))
         [:like :location "/3/11/%"]
         [:like :location "/110/%"]
         [:like :location "/3/%"]
         [:= :location "/3/10/"]))
     (testing "a subquery over the parent's table keyed by the parent's id (itself or its subtree) names the contents"
-      (is (= {:model :model/Card, :operation :delete, :subject contents}
-             (proof/verify (proof/cascade collection-proof :model/Card contents nil)
-                           {:model :model/Card, :operation :delete, :subject-kind :where})))
-      (is (=? {:model :model/Card, :operation :update, :changes {:archived true}}
-              (proof/verify (proof/cascade collection-proof :model/Card [:and contents [:= :archived_directly false]]
-                                           {:archived true})
-                            {:model :model/Card, :operation :update, :subject-kind :where}))))
+      (is (= {:model ::leaf, :operation :delete, :subject contents}
+             (proof/verify (derive ::leaf contents nil)
+                           {:model ::leaf, :operation :delete, :subject-kind :where})))
+      (is (=? {:model ::leaf, :operation :update, :changes {:archived true}}
+              (proof/verify (derive ::leaf [:and contents [:= :archived_directly false]] {:archived true})
+                            {:model ::leaf, :operation :update, :subject-kind :where}))))
     (testing "a subquery that could name other rows is refused"
-      (are [subquery] (=? {:status-code 500, :column :collection_id}
-                          (invalid-proof-data
-                           #(proof/cascade collection-proof :model/Card [:in :collection_id subquery] nil)))
-        ;; another collection's subtree
-        {:select [:id], :from [:collection], :where [:or [:= :id 11] [:like :location "/11/%"]]}
+      (are [subquery] (=? {:status-code 500, :column :node_id}
+                          (refused ::leaf [:in :node_id subquery]))
+        ;; another node's subtree
+        {:select [:id], :from [:node], :where [:or [:= :id 11] [:like :location "/11/%"]]}
         ;; the parent or anything else
-        {:select [:id], :from [:collection], :where [:or [:= :id 10] [:= :archived true]]}
+        {:select [:id], :from [:node], :where [:or [:= :id 10] [:= :archived true]]}
         ;; another table
-        {:select [:id], :from [:report_dashboard], :where [:= :id 10]}
+        {:select [:id], :from [:other], :where [:= :id 10]}
         ;; extra clauses in the subquery
-        {:select [:id], :from [:collection], :where [:= :id 10], :limit 1}
+        {:select [:id], :from [:node], :where [:= :id 10], :limit 1}
         ;; a list of ids, however right
         [10]))
     (testing "the subquery form is only for a column key: the parent's own rows are keyed by their path"
       (is (=? {:status-code 500}
-              (invalid-proof-data #(proof/cascade collection-proof :model/Collection
-                                                  [:in :id {:select [:id], :from [:collection], :where [:= :id 10]}]
-                                                  nil)))))))
+              (refused ::node [:in :id {:select [:id], :from [:node], :where [:= :id 10]}]))))))
 
 (deftest authorize-test
   (mt/with-temp [:model/NativeQuerySnippet snippet {:name "proof-test", :content "1"}]

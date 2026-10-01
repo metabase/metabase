@@ -93,6 +93,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/cascade-write [:model/Table :model/Collection]
+  [_child _parent parent-write]
+  (collection/unpublish-cascade-write parent-write))
+
 (doto :model/Table
   (derive :metabase/model)
   (derive ::mi/read-policy.full-perms-for-perms-set)

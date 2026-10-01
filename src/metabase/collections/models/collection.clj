@@ -1760,33 +1760,105 @@
                                                                   collection-clauses)}]]
         row-clauses))
 
+(defn- replaced-children-location
+  "A `[:replace …]` change for a descendant's `:location`: the children-location of `collection` becomes the
+  children-location it has once its own `:location` is `new-location`."
+  [collection new-location]
+  [:replace :location (children-location collection) (children-location (assoc collection :location new-location))])
+
+;;; What a Collection's own write implies for its descendants: archiving marks the live ones with the operation id,
+;;; unarchiving restores the ones that operation marked (and moves them along when the Collection is restored
+;;; elsewhere), moving rewrites their location, deleting deletes them. A rename or any other write implies nothing.
+(defmethod proof/cascade-write [:model/Collection :model/Collection]
+  [_child _parent {:keys [operation subject changes]}]
+  (when-let [collection (collections.db/collection subject)]
+    (let [descendants (descendants-where collection)]
+      (case operation
+        :delete {:where descendants, :changes nil}
+        :update (cond
+                  (true? (:archived changes))
+                  {:where   [:and descendants [:not :archived]]
+                   :changes {:archive_operation_id (:archive_operation_id changes)
+                             :archived_directly    false
+                             :archived             true}}
+
+                  (false? (:archived changes))
+                  {:where   [:and
+                             descendants
+                             [:= :archive_operation_id (:archive_operation_id collection)]
+                             [:not= :archived_directly true]]
+                   :changes (cond-> (merge (select-keys changes [:is_remote_synced])
+                                           {:archive_operation_id nil
+                                            :archived_directly    nil
+                                            :archived             false})
+                              (contains? changes :location)
+                              (assoc :location (replaced-children-location collection (:location changes))))}
+
+                  (contains? changes :location)
+                  {:where   descendants
+                   :changes (merge (select-keys changes [:is_remote_synced])
+                                   {:location (replaced-children-location collection (:location changes))})}
+
+                  :else nil)
+        nil))))
+
+(defn contents-cascade-write
+  "The write a Collection's verified `parent-write` implies for the rows of a content model inside it and its
+  descendants, for that model's [[proof/cascade-write]] declaration: archiving or unarchiving the Collection archives
+  or restores the contents of the Collections in the same archive operation (a model that is `:archived-directly?`
+  keeps the rows that were archived on their own), deleting it deletes them, and no other write touches them. Nil when
+  the write implies nothing for the contents.
+
+  Derive before the Collection's own row is written: the subtree is read from its current location, and on an
+  unarchive the operation id from its current row."
+  [{:keys [operation subject changes]} & {:keys [archived-directly?]}]
+  (when-let [collection (collections.db/collection subject)]
+    (case operation
+      :delete {:where (contents-where collection), :changes nil}
+      :update (when (contains? changes :archived)
+                (let [archived?    (:archived changes)
+                      operation-id (if archived?
+                                     (:archive_operation_id changes)
+                                     (:archive_operation_id collection))]
+                  {:where   (contents-where collection
+                                            :collection-clauses [[:= :archive_operation_id operation-id]]
+                                            :row-clauses        (when archived-directly?
+                                                                  [[:= :archived_directly false]]))
+                   :changes {:archived archived?}}))
+      nil)))
+
+(defn unpublish-cascade-write
+  "The write a Collection's verified `parent-write` implies for the published Tables inside it and its descendants
+  (and for their per-user settings overlay), for those models' [[proof/cascade-write]] declarations: archiving the
+  Collection unpublishes the Tables of its Library data Collections, deleting it unpublishes them all, and no other
+  write touches them."
+  [{:keys [operation subject changes]}]
+  (let [unpublish {:collection_id nil, :is_published false}]
+    (when-let [collection (and (or (= operation :delete) (true? (:archived changes)))
+                               (collections.db/collection subject))]
+      {:where   (contents-where collection
+                                :collection-clauses (when (= operation :update)
+                                                      [[:= :type library-data-collection-type]]))
+       :changes unpublish})))
+
 (defn- unpublish-tables!
-  "Under `proof` for a collection, unpublish the Tables that `where` names (see [[contents-where]]), in `metabase_table`
-  and in the per-user settings overlay."
-  [proof where]
-  (let [changes {:collection_id nil, :is_published false}]
-    (collections.db/unpublish-tables! (proof/cascade proof :model/Table where changes))
-    (collections.db/unpublish-table-user-settings! (proof/cascade proof :model/TableUserSettings where changes))))
+  "Under `proof` for a collection, unpublish the Tables its write implies (see [[unpublish-cascade-write]]), in
+  `metabase_table` and in the per-user settings overlay."
+  [proof]
+  (some->> (proof/cascade proof :model/Table) collections.db/unpublish-tables!)
+  (some->> (proof/cascade proof :model/TableUserSettings) collections.db/unpublish-table-user-settings!))
 
 (defn- set-contents-archived!
-  "Under `proof` for `collection`, set `archived?` on everything inside it and the descendants that belong to the
-  archive operation `archive-operation-id` (a descendant trashed separately keeps its own state): Pulses, snippets and
-  Timelines outright; Cards, Dashboards, Documents and Explorations unless they were archived directly."
-  [proof collection archive-operation-id archived?]
-  (let [in-operation [[:= :archive_operation_id archive-operation-id]]
-        everything   (contents-where collection :collection-clauses in-operation)
-        not-directly (contents-where collection
-                                     :collection-clauses in-operation
-                                     :row-clauses        [[:= :archived_directly false]])
-        changes      {:archived archived?}]
-    (collections.db/set-pulses-archived! (proof/cascade proof :model/Pulse everything changes))
-    (collections.db/set-native-query-snippets-archived!
-     (proof/cascade proof :model/NativeQuerySnippet everything changes))
-    (collections.db/set-timelines-archived! (proof/cascade proof :model/Timeline everything changes))
-    (collections.db/set-cards-archived! (proof/cascade proof :model/Card not-directly changes))
-    (collections.db/set-dashboards-archived! (proof/cascade proof :model/Dashboard not-directly changes))
-    (collections.db/set-documents-archived! (proof/cascade proof :model/Document not-directly changes))
-    (collections.db/set-explorations-archived! (proof/cascade proof :model/Exploration not-directly changes))))
+  "Under an archive or unarchive `proof` for a Collection, apply what it implies to each content model (see
+  [[contents-cascade-write]])."
+  [proof]
+  (some->> (proof/cascade proof :model/Pulse) collections.db/set-pulses-archived!)
+  (some->> (proof/cascade proof :model/NativeQuerySnippet) collections.db/set-native-query-snippets-archived!)
+  (some->> (proof/cascade proof :model/Timeline) collections.db/set-timelines-archived!)
+  (some->> (proof/cascade proof :model/Card) collections.db/set-cards-archived!)
+  (some->> (proof/cascade proof :model/Dashboard) collections.db/set-dashboards-archived!)
+  (some->> (proof/cascade proof :model/Document) collections.db/set-documents-archived!)
+  (some->> (proof/cascade proof :model/Exploration) collections.db/set-explorations-archived!))
 
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
@@ -1800,21 +1872,18 @@
      (or *allow-modifying-tenant-root-collections?*
          (not= (:type collection) tenant-specific-root-collection-type)))
     (t2/with-transaction [_conn]
-      (collections.db/update-collection! proof)
-      (collections.db/update-descendant-collections!
-       (proof/cascade proof :model/Collection [:and (descendants-where collection) [:not :archived]]
-                      {:archive_operation_id archive-operation-id
-                       :archived_directly    false
-                       :archived             true}))
+      ;; every cascade derives from the Collection's row as it is before the operation
+      (let [descendants-proof (proof/cascade proof :model/Collection)]
+        (collections.db/update-collection! proof)
+        (collections.db/update-descendant-collections! descendants-proof))
       ;; now the Collection and the descendants archived with it carry the operation id, so the contents are keyed by it
-      (set-contents-archived! proof collection archive-operation-id true)
+      (set-contents-archived! proof)
       (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
             library-data-ids        (collections.db/collection-ids-of-type affected-collection-ids
                                                                            library-data-collection-type)]
         (when (seq library-data-ids)
           (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
-            (unpublish-tables! proof (contents-where collection
-                                                     :collection-clauses [[:= :type library-data-collection-type]]))
+            (unpublish-tables! proof)
             (unpublish-downstream-fk-tables! published-table-ids))))
       ;; inside the transaction, so a refused archive rolls back
       (let [updated-collection (collections.db/collection (:id collection))]
@@ -1830,8 +1899,7 @@
                [:parent_id {:optional true} [:maybe ms/PositiveInt]]
                [:archived  {:optional true} :boolean]]]
   (assert (:archive_operation_id collection))
-  (let [archive-operation-id    (:archive_operation_id collection)
-        current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
+  (let [current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
         new-parent-id           (if (contains? updates :parent_id)
                                   (:parent_id updates)
                                   current-parent-id)
@@ -1839,9 +1907,7 @@
                                   (collections.db/collection new-parent-id)
                                   root-collection)
         new-parent-is-remote-synced? (:is_remote_synced new-parent)
-        new-location            (children-location new-parent)
-        orig-children-location  (children-location collection)
-        new-children-location   (children-location (assoc collection :location new-location))]
+        new-location            (children-location new-parent)]
     (api/check-400
      (and (some? new-parent) (not (:archived new-parent))))
     ;; the change set names the destination only when the caller specified one; the issuing check treats a change set
@@ -1853,19 +1919,11 @@
                                                  :archived             false}
                                           (contains? updates :parent_id) (assoc :location new-location)))]
       (t2/with-transaction [_conn]
-        ;; the contents first, while the operation id still marks the Collections being restored
-        (set-contents-archived! proof collection archive-operation-id false)
-        (collections.db/update-collection! proof)
-        (collections.db/update-descendant-collections!
-         (proof/cascade proof :model/Collection [:and
-                                                 (descendants-where collection)
-                                                 [:= :archive_operation_id archive-operation-id]
-                                                 [:not= :archived_directly true]]
-                        {:location             [:replace :location orig-children-location new-children-location]
-                         :is_remote_synced     (boolean new-parent-is-remote-synced?)
-                         :archive_operation_id nil
-                         :archived_directly    nil
-                         :archived             false}))
+        ;; the contents and the descendants derive from the Collection's row while the operation id still marks it
+        (set-contents-archived! proof)
+        (let [descendants-proof (proof/cascade proof :model/Collection)]
+          (collections.db/update-collection! proof)
+          (collections.db/update-descendant-collections! descendants-proof))
         (when (:is_remote_synced collection)
           (check-non-remote-synced-dependencies collection))))))
 
@@ -1886,9 +1944,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot
    new-location :- LocationPath
    & [into-remote-synced?] :- [:* :boolean]]
-  (let [orig-children-location (children-location collection)
-        new-children-location  (children-location (assoc collection :location new-location))
-        will-be-in-trash? (str/starts-with? new-location (trash-path))
+  (let [will-be-in-trash? (str/starts-with? new-location (trash-path))
         will-be-in-remote-synced? (collections.db/collection-remote-synced? (parent-id* {:location new-location}))
         ;; the issuing check (403) comes before the shape checks, as it did when the endpoint ran it
         proof                     (proof/authorize-update :model/Collection (u/the-id collection)
@@ -1905,16 +1961,15 @@
                (u/the-id collection) (:location collection) new-location)
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
-      (collections.db/update-collection! proof)
-      ;; we need to update all the descendant collections as well...
-      (u/prog1 (collections.db/update-descendant-collections!
-                (proof/cascade proof :model/Collection (descendants-where collection)
-                               {:location         [:replace :location orig-children-location new-children-location]
-                                :is_remote_synced (boolean will-be-in-remote-synced?)}))
+      ;; the descendants' write derives from the Collection's row as it is before the move
+      (let [descendants-proof (proof/cascade proof :model/Collection)]
+        (collections.db/update-collection! proof)
+        ;; we need to update all the descendant collections as well...
+        (u/prog1 (collections.db/update-descendant-collections! descendants-proof)
         (when into-remote-synced?
           (check-non-remote-synced-dependencies collection))
         (when (moving-from-remote-synced? (parent-id* collection) (parent-id* {:location new-location}))
-          (check-remote-synced-dependents collection))))))
+          (check-remote-synced-dependents collection)))))))
 
 (defn delete-collection!
   "Delete the Collection that `proof` (a delete proof for it, from [[proof/authorize-delete]]) names, with everything
@@ -1923,19 +1978,17 @@
   [proof]
   (let [{:keys [subject]}       (proof/verify proof {:model :model/Collection, :operation :delete, :subject-kind :id})
         collection              (api/check-404 (collections.db/collection subject))
-        everything              (contents-where collection)
         affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
         published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
     (t2/with-transaction [_conn]
-      (unpublish-tables! proof everything)
+      (unpublish-tables! proof)
       (unpublish-downstream-fk-tables! published-table-ids)
-      (collections.db/delete-cards! (proof/cascade proof :model/Card everything nil))
-      (collections.db/delete-dashboards! (proof/cascade proof :model/Dashboard everything nil))
-      (collections.db/delete-native-query-snippets! (proof/cascade proof :model/NativeQuerySnippet everything nil))
-      (collections.db/delete-pulses! (proof/cascade proof :model/Pulse everything nil))
-      (collections.db/delete-timelines! (proof/cascade proof :model/Timeline everything nil))
-      (collections.db/delete-descendant-collections!
-       (proof/cascade proof :model/Collection (descendants-where collection) nil))
+      (some->> (proof/cascade proof :model/Card) collections.db/delete-cards!)
+      (some->> (proof/cascade proof :model/Dashboard) collections.db/delete-dashboards!)
+      (some->> (proof/cascade proof :model/NativeQuerySnippet) collections.db/delete-native-query-snippets!)
+      (some->> (proof/cascade proof :model/Pulse) collections.db/delete-pulses!)
+      (some->> (proof/cascade proof :model/Timeline) collections.db/delete-timelines!)
+      (some->> (proof/cascade proof :model/Collection) collections.db/delete-descendant-collections!)
       (collections.db/delete-collection! proof))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

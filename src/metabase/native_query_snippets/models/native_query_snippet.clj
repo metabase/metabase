@@ -42,6 +42,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/cascade-write [:model/NativeQuerySnippet :model/Collection]
+  [_child _parent parent-write]
+  (collection/contents-cascade-write parent-write))
+
 (events/derive! ::event :metabase/event)
 (doseq [e [:event/snippet-create :event/snippet-update :event/snippet-delete]]
   (events/derive! e ::event))

@@ -14,6 +14,7 @@
   authorize-update
   cascade
   cascade-parents
+  cascade-write
   proof?
   provisioning
   serdes-load

@@ -114,30 +114,25 @@
                  :model/Card {card-in-a :id} {:collection_id a}
                  :model/Card {card-in-a-child :id} {:collection_id a-child}
                  :model/Card {card-in-b :id} {:collection_id b}]
-    (let [a-proof   (collection-proof {:operation :update, :subject a, :changes {:archived true}})
-          contents  (fn [collection-id]
-                      [:in :collection_id ^:allow-subquery {:select [:id]
-                                                            :from   [:collection]
-                                                            :where  [:or
-                                                                     [:= :id collection-id]
-                                                                     [:like :location (str "/" collection-id "/%")]]}])
-          archived? (fn [card-id] (t2/select-one-fn :archived :model/Card :id card-id))]
-      (testing "a cascade proof keyed by the collection writes exactly the rows inside it and its descendants"
-        (collections.db/set-cards-archived! (proof/cascade a-proof :model/Card (contents a) {:archived true}))
+    (let [operation-id (str (random-uuid))
+          a-proof      (collection-proof {:operation :update
+                                          :subject   a
+                                          :changes   {:archive_operation_id operation-id
+                                                      :archived_directly    true
+                                                      :archived             true}})
+          archived?    (fn [card-id] (t2/select-one-fn :archived :model/Card :id card-id))]
+      (testing "the cascade proof derived from the collection's archive writes exactly the rows inside it and its descendants"
+        ;; the contents are keyed by the operation id, which the Collections carry once the archive has marked them
+        (collections.db/update-collection! a-proof)
+        (collections.db/update-descendant-collections! (proof/cascade a-proof :model/Collection))
+        (collections.db/set-cards-archived! (proof/cascade a-proof :model/Card))
         (is (true? (archived? card-in-a)))
         (is (true? (archived? card-in-a-child)))
         (is (false? (archived? card-in-b))))
-      (testing "a cascade proof for the wrong collection id is refused when it is derived"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Invalid proof.*not keyed"
-                              (proof/cascade a-proof :model/Card (contents b) {:archived true})))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Invalid proof.*not keyed"
-                              (proof/cascade a-proof :model/Collection [:like :location (str "/" b "/%")]
-                                             {:archived true}))))
       (testing "the content mutators refuse anything but a cascade proof for their model"
         (doseq [[label value] [["nil" nil]
                                ["the collection's own proof" a-proof]
-                               ["a cascade proof for another model"
-                                (proof/cascade a-proof :model/Dashboard (contents a) {:archived true})]
+                               ["a cascade proof for another model" (proof/cascade a-proof :model/Dashboard)]
                                ["a proof for one row by id"
                                 (proof/test-only {:model     :model/Card
                                                   :operation :update
@@ -151,7 +146,10 @@
         (doseq [changes [{:name "forged"} {:archived true, :collection_id b}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Invalid proof.*other columns"
                                 (collections.db/set-cards-archived!
-                                 (proof/cascade a-proof :model/Card (contents a) changes)))))
+                                 (proof/test-only {:model     :model/Card
+                                                   :operation :update
+                                                   :subject   [:= :collection_id a]
+                                                   :changes   changes})))))
         (is (zero? (t2/count :model/Card :name "forged")))
         (is (= b (t2/select-one-fn :collection_id :model/Card :id card-in-b))))
       (testing "the descendant mutator refuses a proof for one row by id"

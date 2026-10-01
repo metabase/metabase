@@ -24,6 +24,7 @@
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
+  contents-cascade-write
   create-library-collection!
   delete-collection!
   descendant-ids
@@ -42,6 +43,7 @@
   remote-synced-collection?
   remote-synced-dependents
   shared-tenant-collection?
-  transforms-ns]
+  transforms-ns
+  unpublish-cascade-write]
  [metabase.collections.util
   annotate-dashboards])

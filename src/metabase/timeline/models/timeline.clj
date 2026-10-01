@@ -16,6 +16,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/cascade-write [:model/Timeline :model/Collection]
+  [_child _parent parent-write]
+  (collection/contents-cascade-write parent-write))
+
 (doto :model/Timeline
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)

@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
+   [metabase.collections.core :as collections]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -21,6 +22,10 @@
 (defmethod proof/cascade-parents :model/TableUserSettings
   [_model]
   {:model/Collection :collection_id})
+
+(defmethod proof/cascade-write [:model/TableUserSettings :model/Collection]
+  [_child _parent parent-write]
+  (collections/unpublish-cascade-write parent-write))
 
 (t2/deftransforms :model/TableUserSettings
   {:entity_type     mi/transform-keyword
