@@ -197,6 +197,7 @@
       (str/replace "`" "\u00ad`\u00ad")
       (str/replace "~" "\u00ad~\u00ad")))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *site-url*
   "The instance's site URL, bound by [[process-markdown]] from its `site-url` argument. A dynamic var rather
   than a threaded parameter because [[resolve-uri]] is reached through the AST multimethods and flexmark's

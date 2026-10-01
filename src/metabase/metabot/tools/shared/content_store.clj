@@ -29,6 +29,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *last-lookup-refused?*
   "Set to `true` by [[read-checked]] when a lookup was refused on permissions rather than simply
   missing.

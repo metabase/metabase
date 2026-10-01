@@ -28,9 +28,11 @@
    [metabase.util.performance :refer [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)]])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *mbql5-uuid->legacy-index*
   {})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *legacy-index->mbql5-uuid*
   {})
 
@@ -97,12 +99,14 @@
       clean-stage-schema-errors
       clean-stage-ref-errors))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *clean-query*
   "If true (this is the default), the query is cleaned.
   When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
   true)
 
 #?(:clj
+   #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
    (def ^:dynamic *card-clean-hook*
      "Set by [[metabase.lib-be.models.transforms]] to a function which expects to be called like
      `(f pre-cleaning-query post-cleaning-query)`, when [[clean]] makes material changes.
