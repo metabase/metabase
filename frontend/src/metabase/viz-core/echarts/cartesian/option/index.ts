@@ -121,7 +121,7 @@ const isNonCategoryYAxisOption = (
 
 export const ensureRoomForLabels = (
   axes: Axes,
-  { leftAxisModel, rightAxisModel }: CartesianChartModel,
+  { leftAxisModel, rightAxisModel, isRowChart }: CartesianChartModel,
   chartLayout: ChartLayout,
   seriesOption: EChartsSeriesOption[],
 ): Axes => ({
@@ -138,6 +138,19 @@ export const ensureRoomForLabels = (
       return axis;
     }
     const [min] = axisModel.extent;
+    if (min < 0 && isRowChart) {
+      // Rotated, negative labels sit left of their bars
+      const labelWidth = chartLayout.negativeDataLabelsWidth ?? 0;
+      const { padding, outerWidth } = chartLayout;
+      const plotWidth = outerWidth - padding.left - padding.right;
+      if (labelWidth === 0 || !isNonCategoryYAxisOption(axis)) {
+        return axis;
+      }
+      return {
+        ...axis,
+        boundaryGap: [labelWidth / Math.max(plotWidth - labelWidth, 1), 0],
+      };
+    }
     if (min < 0) {
       const { bounds } = chartLayout;
       const innerHeight = Math.abs(bounds.bottom - bounds.top);

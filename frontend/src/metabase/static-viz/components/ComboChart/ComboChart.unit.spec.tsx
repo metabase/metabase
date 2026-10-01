@@ -279,6 +279,28 @@ describe("static row chart", () => {
     );
   });
 
+  it("keeps a negative bar's value label clear of its category label", () => {
+    const values = [420, -380, 310, -260];
+    renderRowChart(
+      createGroupedRowSeries({
+        metricCount: 1,
+        settings: { "graph.show_values": true },
+        getValue: (rowIndex) => values[rowIndex],
+      }),
+    );
+
+    const { measureText, fontFamily, theme } = createStaticRenderingContext();
+    const labelWidth = measureText("-380", {
+      family: fontFamily,
+      size: theme.cartesian.label.fontSize,
+      weight: 700,
+    });
+    // Both labels are right-aligned at their anchor.
+    const [label] = getTextAnchors("-380");
+    const [category] = getTextAnchors("Gadget");
+    expect(label.x - labelWidth).toBeGreaterThan(category.x);
+  });
+
   it("keeps the goal label inside the chart when values are shown", () => {
     renderRowChart(
       createGroupedRowSeries({

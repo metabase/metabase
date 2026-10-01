@@ -1,3 +1,4 @@
+import type { BarSeriesOption } from "echarts/charts";
 import { BarChart } from "echarts/charts";
 import {
   BrushComponent,
@@ -323,6 +324,14 @@ describe("row chart bands", () => {
     for (const { length } of bars) {
       expect(length).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it("labels each bar at its end on the side it grows, including negative bars", () => {
+    // Row charts build an array of series options; the bar series comes first.
+    const [barSeries] = getRowChartOption([120, -80, 60, -40])
+      .series as BarSeriesOption[];
+
+    expect(barSeries.label?.position).toBe("outside");
   });
 
   it("lets ECharts keep metric tick labels inside the chart, but not move axis names", () => {

@@ -645,19 +645,20 @@ const buildEChartsBarSeries = (
           settings,
           stackModel,
         )
-      : buildEChartsLabelOptions(
-          seriesModel,
-          yAxisScaleTransforms,
-          renderingContext,
-          chartWidth,
-          labelFormatter,
-          settings,
-          chartDataDensity,
-          // Rotated labels sit past the bar end, so the vertical `labelLayout`
-          // below is skipped.
-          isRowChart ? "right" : ["50%", 0],
-          isRowChart,
-        ),
+      : {
+          ...buildEChartsLabelOptions(
+            seriesModel,
+            yAxisScaleTransforms,
+            renderingContext,
+            chartWidth,
+            labelFormatter,
+            settings,
+            chartDataDensity,
+            undefined,
+            isRowChart,
+          ),
+          position: isRowChart ? "outside" : ["50%", 0],
+        },
     labelLayout: isRowChart
       ? undefined
       : isStacked

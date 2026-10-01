@@ -1,6 +1,4 @@
 // Layout for row charts: a cartesian bar chart with the axes swapped.
-import type { RowValue } from "metabase-types/api";
-
 import type {
   ComputedVisualizationSettings,
   Padding,
@@ -58,54 +56,71 @@ const getRowChartTicksDimensions = (
   };
 };
 
-// Room on the right for data labels, which sit past a rotated bar's end.
-const getRowChartDataLabelsWidth = (
+// Room for data labels past each bar's end: right of positive bars, left of
+// negative ones.
+const getRowChartDataLabelsWidths = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   { measureText, fontFamily, theme }: RenderingContext,
-): number => {
+): { positive: number; negative: number } => {
   if (!settings["graph.show_values"]) {
-    return 0;
+    return { positive: 0, negative: 0 };
   }
+
+  const seriesKeys = (input.seriesModels ?? [])
+    .filter((series) => series.visible)
+    .map((series) => series.dataKey);
+  const stackedFormatter = Object.values(
+    input.stackedLabelsFormatters ?? {},
+  ).find((formatter) => formatter != null);
+  const sum = (values: number[]) =>
+    values.reduce((total, value) => total + value, 0);
+
+  // Every value label drawn. Stacked charts label each side's total, drawn when
+  // the row has a value on that side; other charts label every value.
+  const labels = getDataset(input).flatMap(
+    (datum): { value: number; formatter: LabelFormatter }[] => {
+      if (stackedFormatter != null) {
+        const values = seriesKeys
+          .map((dataKey) => datum[dataKey])
+          .filter((value): value is number => typeof value === "number");
+        return [
+          values.filter((value) => value >= 0),
+          values.filter((value) => value < 0),
+        ]
+          .filter((side) => side.length > 0)
+          .map((side) => ({ value: sum(side), formatter: stackedFormatter }));
+      }
+
+      return Object.entries(input.seriesLabelsFormatters ?? {}).flatMap(
+        ([dataKey, formatter]) => {
+          const value = datum[dataKey];
+          return formatter != null && typeof value === "number"
+            ? [{ value, formatter }]
+            : [];
+        },
+      );
+    },
+  );
 
   const fontStyle = {
     family: fontFamily,
     weight: CHART_STYLE.seriesLabels.weight,
     size: theme.cartesian.label.fontSize,
   };
+  const sideOf = (value: number) => (value < 0 ? "negative" : "positive");
+  const widestOn = (side: "positive" | "negative") => {
+    const widths = labels
+      .filter(({ value }) => sideOf(value) === side)
+      .map(({ value, formatter }) =>
+        measureText(String(formatter(value)), fontStyle),
+      );
+    return widths.length === 0
+      ? 0
+      : Math.max(...widths) + CHART_STYLE.seriesLabels.offset;
+  };
 
-  const dataset = getDataset(input);
-  const measure = (value: RowValue, formatter: LabelFormatter) =>
-    value == null ? 0 : measureText(String(formatter(value)), fontStyle);
-
-  const seriesKeys = (input.seriesModels ?? [])
-    .filter((series) => series.visible)
-    .map((series) => series.dataKey);
-
-  // Stacked charts label the total, which is the widest label on the row.
-  const stackedFormatter = Object.values(
-    input.stackedLabelsFormatters ?? {},
-  ).find((formatter) => formatter != null);
-
-  const widest = dataset.reduce((widestSoFar, datum) => {
-    if (stackedFormatter != null) {
-      const total = seriesKeys.reduce((sum, dataKey) => {
-        const value = datum[dataKey];
-        return typeof value === "number" ? sum + value : sum;
-      }, 0);
-      return Math.max(widestSoFar, measure(total, stackedFormatter));
-    }
-
-    return Object.entries(input.seriesLabelsFormatters ?? {}).reduce(
-      (widestForDatum, [dataKey, formatter]) =>
-        formatter == null
-          ? widestForDatum
-          : Math.max(widestForDatum, measure(datum[dataKey], formatter)),
-      widestSoFar,
-    );
-  }, 0);
-
-  return widest === 0 ? 0 : widest + CHART_STYLE.seriesLabels.offset;
+  return { positive: widestOn("positive"), negative: widestOn("negative") };
 };
 
 // Built in row terms because every reserve in `getCartesianChartPadding`
@@ -114,6 +129,7 @@ const getRowChartPadding = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   ticksDimensions: TicksDimensions,
+  dataLabelsWidth: number,
   renderingContext: RenderingContext,
 ): Padding => {
   const { fontSize } = renderingContext.theme.cartesian.label;
@@ -146,7 +162,7 @@ const getRowChartPadding = (
       CHART_STYLE.padding.x +
       ticksDimensions.yTicksWidthRight +
       (input.rightAxisModel?.label ? axisNameWidth : 0) +
-      getRowChartDataLabelsWidth(input, settings, renderingContext),
+      dataLabelsWidth,
   };
 };
 
@@ -164,10 +180,17 @@ export const getRowChartLayout = (
     renderingContext,
   );
 
+  const dataLabelsWidths = getRowChartDataLabelsWidths(
+    input,
+    settings,
+    renderingContext,
+  );
+
   const basePadding = getRowChartPadding(
     input,
     settings,
     ticksDimensions,
+    dataLabelsWidths.positive,
     renderingContext,
   );
 
@@ -190,6 +213,7 @@ export const getRowChartLayout = (
     ticksDimensions,
     padding,
     bounds,
+    negativeDataLabelsWidth: dataLabelsWidths.negative,
     // Rotated bars share the plot height, not its width.
     boundaryWidth:
       height - padding.top - padding.bottom - ticksDimensions.xTicksHeight,
