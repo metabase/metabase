@@ -95,10 +95,14 @@
 
 (deftest ^:parallel schedule->schedule-map-snake-case-string-values-test
   (testing "snake_case keys and string values normalize to the same result as kebab-case keywords"
-    (are [kebab-schedule snake-schedule] (= (metabot.tools.util/schedule->schedule-map kebab-schedule)
-                                            (metabot.tools.util/schedule->schedule-map snake-schedule))
-      {:frequency :weekly :hour 8 :day-of-week :monday}       {:frequency "weekly" :hour 8 :day_of_week "monday"}
-      {:frequency :monthly :hour 6 :day-of-month :first-mon}  {:frequency "monthly" :hour 6 :day_of_month "first-mon"})))
+    (are [kebab snake] (= (metabot.tools.util/schedule->schedule-map kebab)
+                          (metabot.tools.util/schedule->schedule-map snake))
+      ;; weekly, keyed by day of week
+      {:frequency :weekly,   :hour 8, :day-of-week  :monday}
+      {:frequency "weekly",  :hour 8, :day_of_week  "monday"}
+      ;; monthly, keyed by day of month
+      {:frequency :monthly,  :hour 6, :day-of-month :first-monday}
+      {:frequency "monthly", :hour 6, :day_of_month "first-monday"})))
 
 (deftest metabot-scope-query-test
   (testing "metabot-scope-query with collection hierarchy"
