@@ -274,9 +274,10 @@ describe("DataAppView", () => {
       expect(
         screen.getByText("Couldn’t load this data app"),
       ).toBeInTheDocument();
+      await settlePendingUpdates();
     });
 
-    it("shows an error when the iframe never signals it loaded", () => {
+    it("shows an error when the iframe never signals it loaded", async () => {
       jest.useFakeTimers();
       try {
         setupIframe();
@@ -292,6 +293,7 @@ describe("DataAppView", () => {
       } finally {
         jest.useRealTimers();
       }
+      await settlePendingUpdates();
     });
 
     it("does not error once the app reports ready before the timeout", () => {
@@ -316,7 +318,7 @@ describe("DataAppView", () => {
       }
     });
 
-    it("keeps the first error's reason — the timeout can't overwrite the CSP one", () => {
+    it("keeps the first error's reason — the timeout can't overwrite the CSP one", async () => {
       jest.useFakeTimers();
       try {
         setupIframe();
@@ -337,6 +339,7 @@ describe("DataAppView", () => {
       } finally {
         jest.useRealTimers();
       }
+      await settlePendingUpdates();
     });
   });
 });
