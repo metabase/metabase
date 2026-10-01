@@ -390,6 +390,18 @@
                   :attribute-lastname  "sn"}
                  (select-keys config [:attribute-email :attribute-firstname :attribute-lastname]))))))))
 
+(deftest build-oidc-config-blank-attribute-test
+  (testing "a blank claim name counts as unset, so login falls back to the default claim"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values
+        [oidc-providers [(assoc test-provider :attribute-map {"email"      ""
+                                                              "first_name" "  "
+                                                              "last_name"  "sn"})]]
+        (let [stored (sso-settings/get-oidc-provider "test-idp")
+              config (#'oidc.provider/build-oidc-config stored {:redirect-uri "http://localhost/callback"})]
+          (is (= {:attribute-lastname "sn"}
+                 (select-keys config [:attribute-email :attribute-firstname :attribute-lastname]))))))))
+
 (deftest oidc-group-sync-custom-attribute-test
   (testing "Non-default group attribute — using a custom claim name"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name (str "OIDC Custom Attr Group " (random-uuid))}]

@@ -7,6 +7,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.premium-features.core :as premium-features]
    [metabase.sso.core :as sso]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]))
 
@@ -25,7 +26,8 @@
              (:client-secret provider-config)
              (:issuer-uri provider-config))
     ;; the stored setting decodes with keyword keys, while the lookups below use strings
-    (let [attribute-map (update-keys (:attribute-map provider-config) name)]
+    ;; a blank claim counts as unset, so the default claim still applies
+    (let [attribute-map (update-vals (update-keys (:attribute-map provider-config) name) u/not-blank)]
       (cond-> {:client-id     (:client-id provider-config)
                :client-secret (:client-secret provider-config)
                :issuer-uri    (:issuer-uri provider-config)
