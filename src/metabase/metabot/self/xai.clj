@@ -31,10 +31,11 @@
   "xAI models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog.
 
+  `:lowest-effort` is the lowest `reasoning_effort` the model accepts, `none` where reasoning can be turned off.
   `:reasoning-summaries?` marks the models xAI documents as streaming summaries of their reasoning, as
   `delta.reasoning_content`: https://docs.x.ai/developers/model-capabilities/text/reasoning"
-  {"grok-4.3" {:display-name "Grok 4.3" :context-window 1000000}
-   "grok-4.7" {:display-name "Grok 4.7" :context-window 500000 :reasoning-summaries? true}})
+  {"grok-4.3" {:display-name "Grok 4.3" :context-window 1000000 :lowest-effort "none"}
+   "grok-4.7" {:display-name "Grok 4.7" :context-window 500000 :lowest-effort "low" :reasoning-summaries? true}})
 
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
@@ -63,21 +64,22 @@
 
   - The output cap is sent as `max_completion_tokens`, since xAI deprecates `max_tokens`. It caps visible output
     only, not reasoning or tool calls, so a small cap cannot cut off a forced tool call.
-  - Grok 4.7 cannot turn reasoning off, so the structured path, and a caller opting out of reasoning, get `low`,
-    the lowest effort both supported models accept. Chat keeps each model's default. Models off the allow-list
-    get no effort at all, since some of them (Grok 4.20) reject the parameter.
+  - The structured path, and a caller opting out of reasoning, get the model's `:lowest-effort` from
+    [[supported-models]], which turns reasoning off on Grok 4.3 and lowers it to `low` on Grok 4.7. Chat keeps each
+    model's default. Models off the allow-list get no effort at all, since some of them (Grok 4.20) reject the
+    parameter.
   - A `:prompt-cache-key`, the conversation id, is forwarded as `prompt_cache_key`, which routes a conversation's
     requests to the same server so its prompt cache hits."
   [{:keys [model prompt-cache-key reasoning? schema] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
-  (-> (chat-completions/request-body (assoc opts :model model))
-      (set/rename-keys {:max_tokens :max_completion_tokens})
-      (cond-> (and (contains? supported-models model)
-                   (or (some? schema) (not reasoning?)))
-        (assoc :reasoning_effort "low")
+  (let [lowest-effort (get-in supported-models [model :lowest-effort])]
+    (-> (chat-completions/request-body (assoc opts :model model))
+        (set/rename-keys {:max_tokens :max_completion_tokens})
+        (cond-> (and lowest-effort (or (some? schema) (not reasoning?)))
+          (assoc :reasoning_effort lowest-effort)
 
-        prompt-cache-key
-        (assoc :prompt_cache_key prompt-cache-key))))
+          prompt-cache-key
+          (assoc :prompt_cache_key prompt-cache-key)))))
 
 (mu/defn xai-raw
   "Perform a streaming request to the xAI Chat Completions API.

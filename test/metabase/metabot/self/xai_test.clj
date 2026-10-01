@@ -39,11 +39,11 @@
   (testing "chat keeps each model's default reasoning effort"
     (is (not (contains? (xai/xai-request-body {:input input :tools [(metabot.tu/get-time-tool)]})
                         :reasoning_effort))))
-  (testing "structured output, and a caller opting out of reasoning, drop to the lowest effort"
-    (doseq [model ["grok-4.7" "grok-4.3"]
-            opts  [{:schema {:type "object"}} {:reasoning? false}]]
+  (testing "structured output, and a caller opting out of reasoning, drop to the model's lowest effort"
+    (doseq [[model effort] {"grok-4.3" "none" "grok-4.7" "low"}
+            opts           [{:schema {:type "object"}} {:reasoning? false}]]
       (testing (str model " " opts)
-        (is (= "low" (:reasoning_effort (xai/xai-request-body (merge {:model model :input input} opts))))))))
+        (is (= effort (:reasoning_effort (xai/xai-request-body (merge {:model model :input input} opts))))))))
   (testing "a model off the allow-list gets no effort, since Grok 4.20 rejects the parameter"
     (is (not (contains? (xai/xai-request-body {:model  "grok-4.20-0309-reasoning"
                                                :input  input
