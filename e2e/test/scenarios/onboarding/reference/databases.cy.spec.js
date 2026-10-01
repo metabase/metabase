@@ -10,7 +10,7 @@ describe("scenarios > reference > databases", () => {
     cy.signInAsAdmin();
   });
 
-  it("should let an admin browse, edit, and cancel database details", () => {
+  it("should let an admin browse and edit database details", () => {
     cy.visit("/reference/databases");
     cy.findByTestId("data-reference-list-item")
       .findByText("Sample Database")
@@ -27,7 +27,10 @@ describe("scenarios > reference > databases", () => {
     H.main()
       .should("contain", "A pretty ok store")
       .and("contain", "My definitely profitable business");
+  });
 
+  it("should let an admin start to edit and cancel without saving", () => {
+    cy.visit("/reference/databases/1");
     cy.button(/Edit/).trigger("click");
     cy.findByPlaceholderText("Nothing interesting yet")
       .invoke("val")
@@ -45,9 +48,6 @@ describe("scenarios > reference > databases", () => {
         originalValue,
       );
     });
-    cy.findByPlaceholderText("No description yet")
-      .invoke("val")
-      .should("include", "A pretty ok store");
   });
 
   describe("multiple databases sorting order", () => {

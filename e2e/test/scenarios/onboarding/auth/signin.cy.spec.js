@@ -21,25 +21,28 @@ describe("scenarios > auth > signin", () => {
     H.getProfileLink().should("exist");
   });
 
-  it("should display an error for incorrect passwords", () => {
-    cy.visit("/");
-    cy.location("pathname").should("eq", "/auth/login");
-    cy.findByLabelText("Email address").type(admin.email);
-    cy.findByLabelText("Password").type("INVALID" + admin.password);
-    cy.button("Sign in").click();
-    cy.findByRole("alert")
-      .filter(':contains("did not match stored password")')
-      .should("be.visible");
-  });
-
-  it("should display same error for unknown users (to avoid leaking the existence of accounts)", () => {
-    cy.visit("/");
-    cy.findByLabelText("Email address").type("INVALID" + admin.email);
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByRole("alert")
-      .filter(':contains("did not match stored password")')
-      .should("be.visible");
+  [
+    {
+      name: "should display an error for incorrect passwords",
+      email: admin.email,
+      password: "INVALID" + admin.password,
+    },
+    {
+      name: "should display same error for unknown users (to avoid leaking the existence of accounts)",
+      email: "INVALID" + admin.email,
+      password: admin.password,
+    },
+  ].forEach(({ name, email, password }) => {
+    it(name, () => {
+      cy.visit("/");
+      cy.location("pathname").should("eq", "/auth/login");
+      cy.findByLabelText("Email address").type(email);
+      cy.findByLabelText("Password").type(password);
+      cy.button("Sign in").click();
+      cy.findByRole("alert")
+        .filter(':contains("did not match stored password")')
+        .should("be.visible");
+    });
   });
 
   it("should allow login regardless of login email case", () => {

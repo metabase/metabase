@@ -25,8 +25,9 @@ const locales = [
 ];
 
 describe("Pages accessible within one click from the homepage should work in popular locales", () => {
+  before(H.restore);
+
   beforeEach(() => {
-    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
   });
