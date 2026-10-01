@@ -1373,6 +1373,48 @@
                   (ex-data e)))
           (is (str/includes? (ex-message e) "Set `join-alias` to `P`")))))))
 
+(defn- products-table-join
+  "An explicit join onto the PRODUCTS table, on `condition`."
+  [condition]
+  {"lib/type"   "mbql/join"
+   "alias"      "P"
+   "strategy"   "left-join"
+   "stages"     [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]
+   "conditions" [condition]})
+
+(defn- execute-joined-products-table [condition]
+  (try (construct/execute-representations-query
+        (query-data
+         {"lib/type" "mbql/query"
+          "database" "Sample"
+          "stages"   [{"lib/type"    "mbql.stage/mbql"
+                       "source-card" card-entity-id
+                       "joins"       [(products-table-join condition)]
+                       "aggregation" [["count" {}]]}]}))
+       (catch clojure.lang.ExceptionInfo ex ex)))
+
+(deftest join-condition-portable-joined-side-resolves-test
+  (testing "a bare-name source column joined to a portable ref into the join's own table needs no `join-alias`"
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (is (=? {:structured-output
+                 {:query {:stages [{:joins [{:alias      "P"
+                                             :conditions [[:= {}
+                                                           [:field {:base-type :type/Integer} "PRODUCT_ID"]
+                                                           [:field {} 200]]]}]}]}}}
+                (execute-joined-products-table
+                 ["=" {} ["field" {} "PRODUCT_ID"] ["field" {} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]])))))))
+
+(deftest join-condition-portable-source-side-still-rejected-test
+  (testing "a portable ref into the stage's own table doesn't anchor a condition whose bare name lacks `join-alias`"
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (is (=? {:agent-error? true
+                 :error        :join-condition-missing-join-alias
+                 :join-alias   "P"}
+                (ex-data (execute-joined-products-table
+                          ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]] ["field" {} "ID"]]))))))))
+
 ;;; ============================================================
 ;;; Numeric-id dialect — accepted on the MCP v2 surface, rejected on the default (v1) surface
 ;;; ============================================================
