@@ -71,6 +71,7 @@
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-export :as query-export]
    [metabase.metabot.scope :as scope]
@@ -122,13 +123,46 @@
      :page  page
      :pages pages}))
 
+(def ^:private item-type->curation-model
+  "List-item `:type` -> the model [[curation/curated-ids]] judges it as, for data-bearing items that carry a
+   curation signal."
+  {"table"     "table"
+   "model"     "card"
+   "question"  "card"
+   "metric"    "card"
+   "dashboard" "dashboard"})
+
+(def ^:private uncuratable-item-types
+  "Data-bearing list-item types that can never be curated, so they're hidden under [[shared/curated-only?]]."
+  #{"transform"})
+
+(defn- curation-key
+  "The `[curation-model id]` pair [[curation/curated-ids]] judges `item` by, or nil for items without a curation
+   signal."
+  [{:keys [type id]}]
+  (when-let [model (item-type->curation-model type)]
+    [model id]))
+
+(defn- curated-items
+  "Keep the `items` a curated-only read may show: curated tables/cards/dashboards, plus navigation items (databases,
+   schemas, collections, documents, dashcards without a card, ...) that carry no data of their own."
+  [items]
+  (let [curated (curation/curated-ids (keep curation-key items))]
+    (filterv (fn [item]
+               (if-let [k (curation-key item)]
+                 (contains? curated k)
+                 (not (uncuratable-item-types (:type item)))))
+             items)))
+
 (defn- list-result
   "Build a structured-output map for a list of items.
    `list-type` is a keyword like :databases, :collection-items, :recents, etc.
-   `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string)."
+   `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string).
+   Under [[shared/curated-only?]], uncurated items are dropped before paginating so totals stay accurate."
   ([list-type items] (list-result list-type items nil))
   ([list-type items query-params]
-   (let [{:keys [items total page pages]} (paginate-list items (:page query-params))]
+   (let [items (cond-> items (shared/curated-only?) curated-items)
+         {:keys [items total page pages]} (paginate-list items (:page query-params))]
      {:structured-output
       {:result-type :metabot-list
        :list-type   list-type
@@ -352,14 +386,14 @@
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
                         :recents)
                     [])
-        items   (mapv (fn [{:keys [id name model timestamp]}]
+        items   (mapv (fn [{:keys [id model timestamp] item-name :name}]
                         (let [type (case model
-                                     "card"    "question"
-                                     "dataset" "model"
-                                     (or model "item"))]
+                                     :card    "question"
+                                     :dataset "model"
+                                     (name (or model "item")))]
                           {:type      type
                            :id        id
-                           :name      name
+                           :name      item-name
                            :timestamp timestamp
                            :uri       (llm-shape/metabase-uri (keyword type) id)}))
                       recents)]
@@ -388,12 +422,22 @@
                     (mapv present-card))]
     (list-result :database-models models query-params)))
 
+(defn- curated-table-schemas
+  "The schemas of the Database with `db-id` that hold at least one curated active Table."
+  [db-id]
+  (let [tables  (metabot.db/active-tables-for-database db-id)
+        curated (curation/curated-ids (map (fn [{:keys [id]}] ["table" id]) tables))]
+    (into #{}
+          (comp (filter (fn [{:keys [id]}] (contains? curated ["table" id])))
+                (keep :schema))
+          tables)))
+
 (defn- fetch-database-schemas [id-str query-params]
   (let [db-id   (parse-long id-str)
         _       (warehouses/get-database db-id)
         rows    (metabot.db/active-schemas-for-database db-id)
-        schemas (->> rows
-                     (keep :schema)
+        schemas (->> (cond->> (keep :schema rows)
+                       (shared/curated-only?) (filter (curated-table-schemas db-id)))
                      (mapv (fn [s]
                              {:type        "schema"
                               :name        s
@@ -668,6 +712,13 @@
                        (->> (metabot.db/unarchived-card-summaries card-ids)
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
+        ;; An action button's uri points at its backing model, which [[list-result]]'s curation filter can't see
+        ;; through, so under [[shared/curated-only?]] only curated models keep their uri.
+        linkable     (if (shared/curated-only?)
+                       (let [action-card-ids (into [] (keep #(when (:action_id %) (:card_id %))) dashcards)]
+                         (select-keys readable (keep (fn [[_model id]] id)
+                                                     (curation/curated-ids (map #(vector "card" %) action-card-ids)))))
+                       readable)
         ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
                        ;; action_id wins over card_id: an action button may reference its backing
                        ;; model through card_id but renders as a button — with a uri to that model
@@ -676,7 +727,7 @@
                          (when-let [card (get readable card_id)]
                            (assoc (present-card card) :dashcard_id id))
                          (cond-> (present-non-question-dashcard dashcard)
-                           (get readable card_id) (assoc :uri (:uri (present-card (get readable card_id)))))))
+                           (get linkable card_id) (assoc :uri (:uri (present-card (get linkable card_id)))))))
         items        (if (seq tabs)
                        ;; group by tab without emitting tab pseudo-items — those would inflate the
                        ;; paginated total; the tab list rides on the response as `:tabs` instead.
@@ -805,6 +856,50 @@
              :uri          uri
              :id-segment   id-seg}))))
 
+(defn- curation-subject
+  "What a single-entity URI must be curated as under [[shared/curated-only?]]: a `[curation-model id]` pair,
+   `::never` for entity types that can't be curated, or nil when the URI isn't gated — navigation, collections,
+   dashboards, documents, conversation state, and `table/{id}/derived` (whose listing is filtered instead), plus
+   measures and segments that don't exist (left to their handler's 404)."
+  [[type-seg id-seg aspect]]
+  (let [id (some-> id-seg parse-long)]
+    (when (and id (pos? id))
+      (case type-seg
+        "table"                       (when-not (= aspect "derived") ["table" id])
+        ("model" "question" "metric") ["card" id]
+        "measure"                     (some->> (metabot.db/measure-table-id id) (vector "table"))
+        "segment"                     (some->> (metabot.db/segment-table-id id) (vector "table"))
+        "transform"                   ::never
+        nil))))
+
+(defn check-curated-subject!
+  "Reject `subject` — a `[curation-model id]` pair, or `::never` for entities that can't be curated — unless it's
+  curated, naming it by `label` (a URI or a short description) rather than by the entity's own name. Callers decide
+  whether the session is curated-only. Exported for [[metabase.metabot.tools.metadata]]."
+  [label subject]
+  (when (or (= subject ::never)
+            (and subject (empty? (curation/curated-ids [subject]))))
+    (throw (ex-info (tru (str "`{0}` is not available: this Metabot only uses curated content (verified, official, or "
+                              "Library content). Use `search` to find curated tables, models, or metrics instead.")
+                         label)
+                    {:agent-error? true
+                     :status-code  403
+                     :label        label}))))
+
+(defn- check-curated-uri!
+  "Under [[shared/curated-only?]], reject a URI naming an entity that isn't curated, without naming the entity. Runs
+   before the handler, so a denied read does none of its work: `table/{id}/fields/{field}` would otherwise compute
+   and persist field values and a fingerprint for a table this Metabot may not use. The entity is read-checked
+   first, so a missing one still reads as missing rather than uncurated, and whether an unreadable one is curated
+   isn't revealed."
+  [uri segments]
+  (when (shared/curated-only?)
+    (when-let [subject (curation-subject segments)]
+      (when (vector? subject)
+        (let [[model id] subject]
+          (api/read-check (case model "table" :model/Table "card" :model/Card) id)))
+      (check-curated-subject! uri subject))))
+
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
    list of supported URI shapes — adding a new URI = adding a clause here + a handler.
@@ -814,6 +909,7 @@
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
     (check-numeric-id-segment! uri segments)
+    (check-curated-uri! uri segments)
     (->> (match/match-one segments
            ;; Navigation
            ["databases"]                                    (fetch-databases-list query-params)

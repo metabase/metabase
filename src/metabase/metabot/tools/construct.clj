@@ -8,16 +8,19 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -516,6 +519,77 @@
                table-fks))
      already-checked)))
 
+(defn- check-curated-query-sources!
+  "When the session's Metabot is restricted to curated content, require every Table and Card `pmbql-query` reads —
+  source, joined, and implicitly joined Tables, source Cards, and metrics — to be curated, or covered by curated
+  content the query reads, so an uncurated Table can't be queried by naming it directly rather than finding it
+  through `search` / `read_resource` (BOT-1649). A curated entity covers what `read_resource` exposes through it:
+  - a curated Table or Card covers the Tables one FK hop away (its related tables), but only as joins: the query's
+    own source must be curated itself, or be what a curated metric in the query is defined on, so a raw Table
+    can't be read in full by joining it to a curated one;
+  - a curated metric covers the Tables and Cards it's defined on, and their related tables;
+  - a curated Table or Card covers the metrics defined on it, as long as everything the metric's definition reads
+    is curated or covered too."
+  [metadata-provider pmbql-query]
+  (when (shared/curated-only?)
+    (let [mp             metadata-provider
+          query          (lib/query mp pmbql-query)
+          {:keys [table card metric]} (lib/all-referenced-entity-ids [query])
+          ;; `:card` also lists the metrics the query references; judge those as metrics, not as source Cards
+          card           (remove (set metric) card)
+          metric-queries (into {} (map (fn [id] [id (lib/query mp (:dataset-query (lib.metadata/card mp id)))])) metric)
+          ;; What each metric's definition reads, so an uncurated metric is judged by all of it rather than by its
+          ;; primary source: a metric on a curated Table may still join an unrelated raw one, and a metric on a
+          ;; curated model has no primary source Table at all.
+          metric-refs    (update-vals metric-queries #(lib/all-referenced-entity-ids [%]))
+          curated        (curation/curated-ids
+                          (concat (map #(vector "table" %) (concat table (mapcat :table (vals metric-refs))))
+                                  (map #(vector "card" %) (concat card metric (mapcat :card (vals metric-refs))))))
+          curated?       (fn [model id] (contains? curated [model id]))
+          curated-metric-queries (keep (fn [[id q]] (when (curated? "card" id) q)) metric-queries)
+          ;; The Tables and Cards curated metrics in the query are defined on: the only uncurated sources a query
+          ;; may be built on.
+          metric-sources (lib/all-referenced-entity-ids curated-metric-queries)
+          ;; Everything curated content in the query exposes through `read_resource`: itself and its related tables.
+          covered        (lib/all-referenced-entity-ids
+                          (concat (for [id table :when (curated? "table" id)] (lib/query mp (lib.metadata/table mp id)))
+                                  (for [id card  :when (curated? "card" id)] (lib/query mp (lib.metadata/card mp id)))
+                                  curated-metric-queries)
+                          {:include-implicitly-joinable? true})
+          source-table   (lib/primary-source-table-id query)
+          source-card    (lib/primary-source-card-id query)
+          allowed?       (fn [model id]
+                           (or (curated? model id)
+                               (contains? (get covered (keyword model)) id)))
+          source-allowed? (fn [model id]
+                            (or (curated? model id)
+                                (contains? (get metric-sources (keyword model)) id)))
+          uncurated      (into []
+                               cat
+                               [(for [id table
+                                      :when (not (if (= id source-table)
+                                                   (source-allowed? "table" id)
+                                                   (allowed? "table" id)))]
+                                  ["table" id])
+                                (for [id card
+                                      :when (not (if (= id source-card)
+                                                   (source-allowed? "card" id)
+                                                   (allowed? "card" id)))]
+                                  ["card" id])
+                                (for [[id refs] metric-refs
+                                      :when (not (or (curated? "card" id)
+                                                     (and (every? #(allowed? "table" %) (:table refs))
+                                                          (every? #(allowed? "card" %) (:card refs)))))]
+                                  ["card" id])])]
+      (when (seq uncurated)
+        (throw (ex-info (tru (str "This Metabot only uses curated content (verified, official, or Library content), "
+                                  "and the query reads a table, model, or metric that is not curated. Use `search` "
+                                  "to find curated tables, models, or metrics and build the query on those instead."))
+                        {:agent-error? true
+                         :status-code  403
+                         :error        :uncurated-source
+                         :uncurated    uncurated}))))))
+
 (defn resolve-database-id-from-first-stage
   "Resolve the application database id from the first stage's source.
 
@@ -737,6 +811,7 @@
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+            _curated      (check-curated-query-sources! mp pmbql-query)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
                             (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist, or an aggregation/window function (e.g. `offset`) was placed in `expressions:` (custom columns) where it is not allowed - move it to `aggregation:` or `order-by:`. Schema validation details: {0}"
                                                  (pr-str why))

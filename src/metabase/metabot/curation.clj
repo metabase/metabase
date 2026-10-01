@@ -1,5 +1,6 @@
 (ns metabase.metabot.curation
-  "Source-of-truth curation check for Metabot's recent-view context.
+  "Source-of-truth curation checks for Metabot: recent-view context, and the tools that must stay within curated
+  content when a Metabot has `use_verified_content` on (see [[curated-content-only?]]).
   Reads each item's curation signals straight from the source tables and applies the canonical
   [[metabase.collections.curation/curated?]] predicate, so it has no dependency on the search index being
   present, fresh, or complete, and can't drift from the rule.
@@ -9,6 +10,7 @@
   (:require
    [metabase.collections.curation :as curation]
    [metabase.collections.models.collection :as collection]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]))
 
 (def ^:private report-card-models
@@ -74,13 +76,33 @@
     (= "dashboard" model)      (moderatable-curation-signals model :model/Dashboard "dashboard" ids)
     (= "table" model)          (table-curation-signals ids)))
 
+(def ^:private curation-batch-size
+  "How many ids one curation lookup reads at a time. Curated-only listings can judge every table in a warehouse, and
+  one `IN (...)` over all of them could exceed the app DB's bind-parameter limit (65535 on Postgres)."
+  10000)
+
 (defn curated-ids
   "Of `model+ids` (`[search-model-string id]` pairs), return the subset that are curated.
   Reads each item's signals from the source tables and applies [[curation/curated?]], with no search-index
   dependency. Recognizes the Metabot recent-view models: card/dataset/metric, dashboard, table."
   [model+ids]
   (into #{}
-        (for [[model ids]  (update-vals (group-by first model+ids) #(mapv second %))
-              [id signals] (curation-signals model ids)
+        (for [[model ids]  (update-vals (group-by first model+ids) #(into [] (comp (map second) (distinct)) %))
+              batch        (partition-all curation-batch-size ids)
+              [id signals] (curation-signals model (vec batch))
               :when        (curation/curated? signals)]
           [model id])))
+
+(def ^:private curation-exempt-profiles
+  "Profiles whose tools aren't restricted by `use_verified_content`. The nlq profile discovers data through the curated
+  library tool, which carries its own scoping; `nlq-fallback` serves the same profile."
+  #{"nlq" "nlq-fallback"})
+
+(defn curated-content-only?
+  "Whether a Metabot tool running for `metabot-id` under `profile-id` may only reach curated content, i.e. the Metabot
+  has `use_verified_content` on. Extends the `:curated` filter Metabot search applies to the tools that read or query
+  entities directly, so uncurated tables and cards can't be reached around search (BOT-1649)."
+  [metabot-id profile-id]
+  (boolean
+   (and (not (curation-exempt-profiles (some-> profile-id name)))
+        (:use_verified_content (metabot.config/metabot-by-id metabot-id)))))
