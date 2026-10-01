@@ -735,15 +735,26 @@
                           :postgres))))
 
 (deftest ^:parallel param-test
-  (is (= ["UPDATE \"SETTING\" SET \"VALUE\" = ?, \"VALUE_WITH_AAD\" = ? WHERE \"KEY\" = ?"
-          "2026-10-01 18:37:49.894829"
-          "2026-10-01 18:37:49.894829"
-          :p17uc4hjfp068j]
-         (funnysql/format {:update [:setting]
-                           :set    {:value          "2026-10-01 18:37:49.894829"
-                                    :value_with_aad "2026-10-01 18:37:49.894829"}
-                           :where  [:= :key [:param :p17uc4hjfp068j]]}
-                          :h2))))
+  (testing ":param should look up value from options :parameters; should always compile as `?`"
+    (is (= ["UPDATE \"SETTING\" SET \"VALUE\" = ?, \"VALUE_WITH_AAD\" = ? WHERE \"KEY\" = ?"
+            "2026-10-01 18:37:49.894829"
+            "2026-10-01 18:37:49.894829"
+            100]
+           (funnysql/format {:update [:setting]
+                             :set    {:value          "2026-10-01 18:37:49.894829"
+                                      :value_with_aad "2026-10-01 18:37:49.894829"}
+                             :where  [:= :key [:param :p17uc4hjfp068j]]}
+                            :h2
+                            {:parameters {:p17uc4hjfp068j 100}})))
+    (testing "error on missing parameter"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Missing value for :param"
+           (funnysql/format {:update [:setting]
+                             :set    {:value          "2026-10-01 18:37:49.894829"
+                                      :value_with_aad "2026-10-01 18:37:49.894829"}
+                             :where  [:= :key [:param :p17uc4hjfp068j]]}
+                            :h2))))))
 
 (deftest ^:parallel over-test
   (are [form expected] (= expected

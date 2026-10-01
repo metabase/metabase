@@ -11,18 +11,20 @@
 (set! *warn-on-reflection* true)
 
 (defprotocol ^:private Context
+  (^:private engine [this])
+  (^:private options [this])
   (^:private append-sql! [this s])
   (^:private append-arg! [this arg])
-  (^:private engine [this])
   (^:private result! [this]))
 
-(defn- default-context [engine]
+(defn- default-context [engine options]
   (let [sb   (StringBuilder.)
         args (volatile! (transient []))]
     (reify Context
+      (engine      [_this]     engine)
+      (options     [_this]     options)
       (append-sql! [_this s]   (.append sb s))
       (append-arg! [_this arg] (vswap! args conj! arg))
-      (engine      [_this]     engine)
       (result!     [_this]     (into [(str sb)] (persistent! @args))))))
 
 (defprotocol ^:private Compile
@@ -157,7 +159,7 @@
   ;; support annoying forms like `[:varchar 26]` -- we still want to validate these so compile them recursively to a
   ;; string like `varchar(26)` so we can validate them
   (let [type-name-str (-> (if (vector? type-name)
-                            (let [recursive-context (default-context (engine context))]
+                            (let [recursive-context (default-context (engine context) (options context))]
                               (-simple-fn! (first type-name) (rest type-name) recursive-context)
                               (first (result! recursive-context)))
                             (name type-name))
@@ -594,6 +596,12 @@
     (map! m context))
   (append-sql! context ")"))
 
+(defn- param! [k context]
+  {:pre [(keyword? k)]}
+  (let [v (or (get-in (options context) [:parameters k])
+              (throw (ex-info "Missing value for :param" {:param k})))]
+    (object! v context)))
+
 (defn- -binary-operator! [f args context]
   (let [f-str (case f
                 :like     " LIKE "
@@ -710,7 +718,7 @@
     :not-in                 (-in! f args context)
     :or                     (-compound! " OR " args context)
     :over                   (over! (first args) context)
-    :param                  (lift! (first args) context)
+    :param                  (param! (first args) context)
     :timestampdiff          (timestamp-diff! args context)
 
     (:< :<= :> :>= :like :not-like :+ :- :/ :* :%)
@@ -791,13 +799,21 @@
 
 (mu/defn format :- [:cat :string [:* :any]]
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`."
-  [honeysql-form :- [:or
-                     [:map {:metabase.util.malli.registry/deliberately-open true}]
-                     vector?]
-   engine :- [:enum :h2 :postgres :mysql]]
-  (let [context (default-context engine)]
-    ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
-    ((if (map? honeysql-form)
-       map!
-       compile!) honeysql-form context)
-    (result! context)))
+  ([honeysql-form :- [:or
+                      [:map {:metabase.util.malli.registry/deliberately-open true}]
+                      vector?]
+    engine        :- [:enum :h2 :postgres :mysql]]
+   (format honeysql-form engine nil))
+  ([honeysql-form :- [:or
+                      [:map {:metabase.util.malli.registry/deliberately-open true}]
+                      vector?]
+    engine  :- [:enum :h2 :postgres :mysql]
+    options :- [:maybe [:map
+                        {:closed true}
+                        [:parameters {:optional true} [:maybe [:map-of {:metabase.util.malli.registry/deliberately-open true} :keyword :any]]]]]]
+   (let [context (default-context engine options)]
+     ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
+     ((if (map? honeysql-form)
+        map!
+        compile!) honeysql-form context)
+     (result! context))))
