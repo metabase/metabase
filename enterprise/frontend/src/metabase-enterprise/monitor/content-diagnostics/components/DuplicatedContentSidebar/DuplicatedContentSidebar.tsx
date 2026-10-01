@@ -106,7 +106,7 @@ function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
       entityId: entity.id,
       entityType: entity.entity_type,
     });
-  const linkLabel = t`${name}, ${typeLabel}`;
+  const linkLabel = `${name}, ${typeLabel}`;
 
   return (
     <Group

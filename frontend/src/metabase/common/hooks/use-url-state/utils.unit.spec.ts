@@ -8,6 +8,10 @@ describe("parsePage", () => {
     ["2", 2],
     ["-1", 0],
     ["1.5", 0],
+    ["1e21", 0],
+    ["0x10", 0],
+    ["9007199254740992", 0],
+    ["9007199254740991", Number.MAX_SAFE_INTEGER],
     ["invalid", 0],
   ])("parses %p as %p", (param, expected) => {
     expect(parsePage(param)).toBe(expected);

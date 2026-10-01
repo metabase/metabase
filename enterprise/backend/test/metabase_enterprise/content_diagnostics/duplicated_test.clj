@@ -712,7 +712,7 @@
                   (is (= {:id "root" :name "Transforms" :namespace "transforms" :effective_ancestors []}
                          (get-in (by-id coll-id) [:details :collection]))))
                 (is (= "transforms"
-                       (get-in (by-id xf-a) [:details :duplicate_entities 0 :namespace])))))))))))
+                       (:namespace (first (get-in (by-id xf-a) [:details :duplicate_entities])))))))))))))
 
 (deftest duplicated-api-collection-peers-hydrate-test
   (testing "GET /duplicated hydrates collection peers gated on the collection's own read visibility (its own :id)"

@@ -413,9 +413,10 @@
               :let  [model      (common/entity-type->model etype)
                      ids        (into #{} (map :entity_id) rows)
                      selectable (cond
-                                  ;; card_schema: Card's after-select throws on a row with query columns but no schema
+                                  ;; Include document_id so Card's write-permission check does not fetch the full
+                                  ;; Card (and parse unrelated legacy result_metadata) to resolve its parent Document.
                                   (= etype :card)
-                                  [model :id :collection_id :card_schema]
+                                  [model :id :collection_id :document_id :card_schema]
 
                                   (isa? common/hierarchy etype ::common/collection-item)
                                   [model :id :collection_id]
