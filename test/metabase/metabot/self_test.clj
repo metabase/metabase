@@ -60,7 +60,10 @@
     (doseq [[provider-type supported] supported-models-by-provider-type]
       (testing provider-type
         (is (contains? @supported (llm.provider/default-model provider-type)))
-        (is (contains? @supported (llm.provider/mini-model provider-type)))))))
+        (is (contains? @supported (llm.provider/mini-model provider-type)))
+        (testing "and a retired model reads as one the picker offers"
+          (doseq [successor (vals (:retired-models (llm.provider/provider-type provider-type)))]
+            (is (contains? @supported successor))))))))
 
 (deftest parse-provider-model-test
   (llm.tu/with-default-connections
@@ -79,8 +82,8 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
-      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
-              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
+      (is (=? {:provider "deepseek" :model "deepseek-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-flash")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "resolves the provider type, not the admin's name for the connection"

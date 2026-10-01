@@ -492,6 +492,46 @@
         (mt/with-temporary-setting-values [llm-mini-model nil]
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
 
+(deftest retired-model-reads-as-its-successor-test
+  (testing "a saved retired DeepSeek id reads as the model now serving it, so the admin picker shows it selected"
+    (with-connections [(connection "deepseek" "deepseek" {:api-key "sk-deepseek-test"})]
+      (with-selected-model "deepseek/deepseek-v4-flash"
+        (mt/with-temp-env-var-value! [mb-llm-mini-model nil]
+          (mt/with-temporary-raw-setting-values [llm-mini-model "deepseek/deepseek-v4-flash"]
+            (is (= "deepseek/deepseek-flash" (metabot.settings/llm-metabot-provider)))
+            (is (= "deepseek/deepseek-flash" (metabot.settings/explicit-mini-model)))
+            (is (= "deepseek/deepseek-flash" (metabot.settings/llm-mini-model)))
+            (is (true? (metabot.settings/llm-metabot-supports-reasoning?)))
+            (testing "including through the settings API the picker loads"
+              (let [values (into {}
+                                 (map (juxt :key :value))
+                                 (mt/user-http-request :crowberto :get 200 "setting"))]
+                (is (= "deepseek/deepseek-flash" (get values "llm-metabot-provider")))
+                (is (= "deepseek/deepseek-flash" (get values "llm-mini-model")))))))))))
+
+(deftest retired-model-is-stored-as-its-successor-test
+  (testing "writing a retired DeepSeek id stores the model now serving it, so saved values converge"
+    (with-connections [(connection "deepseek" "deepseek" {:api-key "sk-deepseek-test"})]
+      (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil
+                                    mb-llm-mini-model       nil]
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (metabot.settings/llm-metabot-provider! "deepseek/deepseek-v4-flash")
+          (metabot.settings/llm-mini-model! "deepseek/deepseek-v4-flash")
+          (is (= "deepseek/deepseek-flash" (setting/get-value-of-type :string :llm-metabot-provider)))
+          (is (= "deepseek/deepseek-flash" (setting/get-value-of-type :string :llm-mini-model))))))))
+
+(deftest retired-model-written-before-its-connection-test
+  (testing (str "a retired id written before its connection exists is stored as given, and reads as its successor "
+                "once the connection appears")
+    (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil]
+      (mt/discard-setting-changes [llm-metabot-provider]
+        ;; `my-deepseek` rather than `deepseek`: no environment variable can synthesize a connection under this key
+        (with-connections []
+          (metabot.settings/llm-metabot-provider! "my-deepseek/deepseek-v4-flash")
+          (is (= "my-deepseek/deepseek-v4-flash" (setting/get-value-of-type :string :llm-metabot-provider))))
+        (with-connections [(connection "my-deepseek" "deepseek" {:api-key "sk-deepseek-test"})]
+          (is (= "my-deepseek/deepseek-flash" (metabot.settings/llm-metabot-provider))))))))
+
 (deftest explicit-mini-model-reports-only-what-was-set-test
   (testing "the explicit reading is nil while the model is derived, so callers can tell a choice from a fallback"
     (with-connections [configured-anthropic]

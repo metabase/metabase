@@ -618,6 +618,25 @@
       (is (nil? (llm.provider/resolve-model-ref "openai/gpt-5.4")))
       (is (nil? (llm.provider/resolve-model-ref nil))))))
 
+(deftest resolve-model-ref-reads-a-retired-model-as-its-successor-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "deepseek" "deepseek" {:api-key "sk-deepseek-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id resolves to the model that now serves it"
+      (is (= "deepseek-flash" (:model (llm.provider/resolve-model-ref "deepseek/deepseek-v4-flash")))))
+    (testing "the same id under another provider type is not retired there"
+      (is (= "deepseek-v4-flash" (:model (llm.provider/resolve-model-ref "anthropic/deepseek-v4-flash")))))))
+
+(deftest canonical-model-ref-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "deepseek" "deepseek" {:api-key "sk-deepseek-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id reads as the model that now serves it"
+      (is (= "deepseek/deepseek-flash" (llm.provider/canonical-model-ref "deepseek/deepseek-v4-flash"))))
+    (testing "any other reference is returned unchanged"
+      (is (= "deepseek/deepseek-flash" (llm.provider/canonical-model-ref "deepseek/deepseek-flash")))
+      (is (= "anthropic/deepseek-v4-flash" (llm.provider/canonical-model-ref "anthropic/deepseek-v4-flash")))
+      (is (= "nope/deepseek-v4-flash" (llm.provider/canonical-model-ref "nope/deepseek-v4-flash")))
+      (is (nil? (llm.provider/canonical-model-ref nil))))))
+
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"
     (is (= "https://api.mistral.ai/v1"

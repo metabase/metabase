@@ -369,9 +369,7 @@
 (deftest ^:parallel reasoning-model-test
   (is (true? (deepseek/reasoning-model? "deepseek-flash")))
   (is (true? (deepseek/reasoning-model? "deepseek-v4-pro")))
-  (testing "a saved selection of the retired alias still reports reasoning"
-    (is (true? (deepseek/reasoning-model? "deepseek-v4-flash")))
-    (is (true? (deepseek/streams-reasoning? {:model "deepseek-v4-flash"}))))
+  (is (true? (deepseek/streams-reasoning? {:model "deepseek-flash"})))
   (is (false? (deepseek/reasoning-model? "deepseek-chat"))))
 
 ;;; ──────────────────────────────────────────────────────────────────

@@ -157,6 +157,10 @@
     :label         (deferred-tru "DeepSeek")
     :default-model "deepseek-v4-pro"
     :mini-model    "deepseek-flash"
+    ;; Ids of retired models, each mapped to the model that now serves it
+    ;; (https://api-docs.deepseek.com/quick_start/pricing). Saved selections may still name them, and they read as
+    ;; the successor, so keep an entry for as long as any instance may have it stored.
+    :retired-models {"deepseek-v4-flash" "deepseek-flash"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -874,6 +878,28 @@
   (when model-ref
     (second (str/split model-ref #"/" 2))))
 
+(def ^:private retired-model-ids
+  "Every model id some provider type has retired, so a reference naming none of them needs no connection lookup."
+  (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
+
+(defn- current-model
+  "The model now serving `model` on provider type `type-name`: its successor when the type retired it, otherwise
+  `model` itself."
+  [type-name model]
+  (get-in (provider-type type-name) [:retired-models model] model))
+
+(defn canonical-model-ref
+  "`model-ref` with a retired model id replaced by the model that now serves it, so a selection saved before a
+  rename reads as the current model. Returns any other `model-ref` unchanged.
+
+    \"deepseek/deepseek-v4-flash\" => \"deepseek/deepseek-flash\""
+  [model-ref]
+  (let [model (model-ref->model model-ref)]
+    (if-let [{:keys [key type]} (when (contains? retired-model-ids model)
+                                  (connection (model-ref->connection-key model-ref)))]
+      (str key "/" (current-model type model))
+      model-ref)))
+
 (defn strip-managed-prefix
   "Drop the `metabase/` routing prefix from a model reference, leaving the `provider/model` pair the proxy forwards.
   Returns `model-ref` unchanged when it has no such prefix."
@@ -905,7 +931,8 @@
   Returns `{:connection-key :type :model :credentials :ai-proxy?}`, or nil when no such connection exists. `:type`
   is the provider type whose adapter should serve the request: for the managed connection that is the wire family
   named by the model's own first segment (`metabase/anthropic/claude-...` is served by the Anthropic adapter over
-  the proxy), and `:model` is what remains."
+  the proxy), and `:model` is what remains. A retired model id resolves to the model that now serves it, as
+  in [[canonical-model-ref]]."
   [model-ref]
   (let [conn-key (model-ref->connection-key model-ref)
         model    (model-ref->model model-ref)]
@@ -918,7 +945,7 @@
          :ai-proxy?      true}
         {:connection-key conn-key
          :type           type
-         :model          model
+         :model          (current-model type model)
          :credentials    (with-field-defaults type config)
          :ai-proxy?      false}))))
 
