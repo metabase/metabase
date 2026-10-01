@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   useAdminSetting,
   useAdminSettings,
@@ -20,11 +19,13 @@ export type EmbeddingSettingKey =
 export type EmbeddingToggleProps = {
   settingKey: EmbeddingSettingKey;
   dependentSettingKeys?: EmbeddingSettingKey[];
+  requiresTerms?: boolean;
 } & Omit<SwitchProps, "onChange">;
 
 export function EmbeddingToggle({
   settingKey,
   dependentSettingKeys = [],
+  requiresTerms = false,
   labelPosition = "left",
   ...switchProps
 }: EmbeddingToggleProps) {
@@ -33,7 +34,6 @@ export function EmbeddingToggle({
     useAdminSettings(dependentSettingKeys);
 
   const showModularEmbedTerms = useSetting("show-modular-embed-terms");
-  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   const [
     isLegaleseModalOpen,
@@ -47,12 +47,8 @@ export function EmbeddingToggle({
   const isEnabled =
     Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
 
-  // The terms cover modular embedding and the modular embedding SDK, not guest
-  // embeds. The modular toggle also covers guest embeds, so gate it on the token
-  // feature to exclude them. The SDK row only renders with `embedding_sdk`.
   const shouldShowModularEmbedTerms =
-    (settingKey === "enable-embedding-modular" && hasSimpleEmbedding) ||
-    settingKey === "enable-embedding-sdk";
+    requiresTerms && isModularEmbeddingSettingKey(settingKey);
 
   const handleChange = (checked: boolean) => {
     if (showModularEmbedTerms && shouldShowModularEmbedTerms && checked) {
@@ -90,5 +86,14 @@ export function EmbeddingToggle({
         />
       )}
     </>
+  );
+}
+
+function isModularEmbeddingSettingKey(
+  settingKey: EmbeddingSettingKey,
+): settingKey is "enable-embedding-modular" | "enable-embedding-sdk" {
+  return (
+    settingKey === "enable-embedding-modular" ||
+    settingKey === "enable-embedding-sdk"
   );
 }
