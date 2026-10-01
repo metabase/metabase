@@ -229,7 +229,6 @@ describe("scenarios > search", () => {
 
     describe("created_by filter", () => {
       beforeEach(() => {
-        H.restore();
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
@@ -405,39 +404,29 @@ describe("scenarios > search", () => {
 
     describe("last_edited_by filter", () => {
       beforeEach(() => {
-        cy.signInAsAdmin();
-        // We'll create a question as a normal user, then edit it as an admin user
-        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
-          ({ body: { id: questionId } }) => {
-            cy.signOut();
-            cy.signInAsNormalUser();
-            cy.visit(`/question/${questionId}`);
-            H.summarize();
-            cy.findByTestId("sidebar-right").findByText("Done").click();
-            cy.findByTestId("qb-header-action-panel")
-              .findByText("Save")
-              .click();
-            cy.findByTestId("save-question-modal").within((modal) => {
-              cy.findByText("Save").click();
-            });
-          },
-        );
-
         // We'll create a question as an admin user, then edit it as a normal user
-        H.createQuestion(LAST_EDITED_BY_ADMIN_QUESTION).then(
-          ({ body: { id: questionId } }) => {
-            cy.signInAsAdmin();
-            cy.visit(`/question/${questionId}`);
-            H.summarize();
-            cy.findByTestId("sidebar-right").findByText("Done").click();
-            cy.findByTestId("qb-header-action-panel")
-              .findByText("Save")
-              .click();
-            cy.findByTestId("save-question-modal").within((modal) => {
-              cy.findByText("Save").click();
-            });
-          },
-        );
+        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION, {
+          wrapId: true,
+          idAlias: "editedByNormalUserQuestionId",
+        });
+
+        // We'll create a question as a normal user, then edit it as an admin user
+        cy.signInAsNormalUser();
+        H.createQuestion(LAST_EDITED_BY_ADMIN_QUESTION, {
+          wrapId: true,
+          idAlias: "editedByAdminQuestionId",
+        });
+
+        cy.wait(1000);
+
+        cy.get("@editedByNormalUserQuestionId").then((questionId) => {
+          cy.request("PUT", `/api/card/${questionId}`, { display: "scalar" });
+        });
+
+        cy.signInAsAdmin();
+        cy.get("@editedByAdminQuestionId").then((questionId) => {
+          cy.request("PUT", `/api/card/${questionId}`, { display: "scalar" });
+        });
       });
 
       it("should hydrate last_edited_by filter", () => {
@@ -724,25 +713,19 @@ describe("scenarios > search", () => {
 
     describe("last_edited_at filter", () => {
       beforeEach(() => {
+        // We'll create a question as an admin user, then edit it as a normal user
+        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION, {
+          wrapId: true,
+          idAlias: "editedByNormalUserQuestionId",
+        });
+
+        cy.wait(1000);
+
+        cy.signInAsNormalUser();
+        cy.get("@editedByNormalUserQuestionId").then((questionId) => {
+          cy.request("PUT", `/api/card/${questionId}`, { display: "scalar" });
+        });
         cy.signInAsAdmin();
-        // We'll create a question as a normal user, then edit it as an admin user
-        H.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
-          ({ body: { id: questionId } }) => {
-            cy.signOut();
-            cy.signInAsNormalUser();
-            cy.visit(`/question/${questionId}`);
-            H.summarize();
-            cy.findByTestId("sidebar-right").findByText("Done").click();
-            cy.findByTestId("qb-header-action-panel")
-              .findByText("Save")
-              .click();
-            cy.findByTestId("save-question-modal").within((modal) => {
-              cy.findByText("Save").click();
-            });
-            cy.signOut();
-            cy.signInAsAdmin();
-          },
-        );
       });
 
       it("should hydrate last_edited_at from the URL", () => {
