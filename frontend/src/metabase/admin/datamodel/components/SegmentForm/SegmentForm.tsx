@@ -14,7 +14,7 @@ import {
   getSegmentQuery,
   getSegmentQueryDefinition,
 } from "metabase/segments";
-import { Alert, Button } from "metabase/ui";
+import { Alert, Box, Button, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 
@@ -22,14 +22,9 @@ import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
 import FormTextArea from "../FormTextArea";
 
-import {
-  FormBody,
-  FormBodyContent,
-  FormFooter,
-  FormFooterContent,
-  FormRoot,
-  FormSection,
-} from "./SegmentForm.styled";
+import S from "./SegmentForm.module.css";
+
+const SECTION_PADDING_X = { base: "md", sm: "1.75rem", md: "xxxl" };
 
 export interface SegmentFormProps {
   segment?: Segment;
@@ -58,6 +53,9 @@ export const SegmentForm = ({
     });
   const definitionProps = getFieldProps("definition");
   const tableIdProps = getFieldProps("table_id");
+  const nameMeta = getFieldMeta("name");
+  const descriptionMeta = getFieldMeta("description");
+  const revisionMessageMeta = getFieldMeta("revision_message");
   const editorQuery = useSelector((state) =>
     getSegmentQuery(state, definitionProps.value, tableIdProps.value),
   );
@@ -75,8 +73,15 @@ export const SegmentForm = ({
   }, [dirty, onIsDirtyChange]);
 
   return (
-    <FormRoot onSubmit={handleSubmit}>
-      <FormBody>
+    <Box
+      component="form"
+      className={S.form}
+      w="100%"
+      h="100%"
+      bg="background_page-primary"
+      onSubmit={handleSubmit}
+    >
+      <Box px={SECTION_PADDING_X} py="xxl">
         {isReadOnly && (
           <Alert
             size="compact"
@@ -105,7 +110,7 @@ export const SegmentForm = ({
             readOnly={isReadOnly}
           />
         </FormLabel>
-        <FormBodyContent>
+        <Box maw="36rem">
           <FormLabel
             htmlFor="name"
             title={t`Name Your Segment`}
@@ -113,7 +118,8 @@ export const SegmentForm = ({
           >
             <FormInput
               {...getFieldProps("name")}
-              {...getFieldMeta("name")}
+              touched={nameMeta.touched}
+              error={nameMeta.error}
               id="name"
               placeholder={t`Something descriptive but not too long`}
               readOnly={isReadOnly}
@@ -126,7 +132,8 @@ export const SegmentForm = ({
           >
             <FormTextArea
               {...getFieldProps("description")}
-              {...getFieldMeta("description")}
+              touched={descriptionMeta.touched}
+              error={descriptionMeta.error}
               id="description"
               placeholder={t`This is a good place to be more specific about less obvious segment rules`}
               readOnly={isReadOnly}
@@ -140,26 +147,27 @@ export const SegmentForm = ({
               >
                 <FormTextArea
                   {...getFieldProps("revision_message")}
-                  {...getFieldMeta("revision_message")}
+                  touched={revisionMessageMeta.touched}
+                  error={revisionMessageMeta.error}
                   id="revision_message"
                   placeholder={t`This will show up in the revision history for this segment to help everyone remember why things changed`}
                 />
               </FormLabel>
-              <FormFooterContent>
+              <Flex align="center">
                 <SegmentFormActions isValid={isValid} />
-              </FormFooterContent>
+              </Flex>
             </FieldSet>
           )}
-        </FormBodyContent>
-      </FormBody>
+        </Box>
+      </Box>
       {isNew && !isReadOnly && (
-        <FormFooter>
-          <FormSection>
+        <Box className={S.footer} py="xxl">
+          <Box px={SECTION_PADDING_X}>
             <SegmentFormActions isValid={isValid} />
-          </FormSection>
-        </FormFooter>
+          </Box>
+        </Box>
       )}
-    </FormRoot>
+    </Box>
   );
 };
 
