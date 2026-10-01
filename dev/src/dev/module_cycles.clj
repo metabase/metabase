@@ -156,8 +156,8 @@
           " the name-module-cycle skill in .claude/skills/name-module-cycle.")
      (if-let [{:keys [name anchor]} proposal]
        (format "  Then add a line like `%s %s` to %s. Any member can be the anchor." name anchor clusters-file)
-       (str "  None of its modules is declared in .clj-kondo/config/modules/config.edn yet, so declare them first"
-            " (`./bin/mage fix-modules-config`), then anchor the name on one of them."))
+       (str "  None of its modules is declared in .clj-kondo/config/modules/config.edn yet. Add an entry with a :team"
+            " for each, run `./bin/mage fix-modules-config` to fill in the rest, then anchor the name on one of them."))
      "  If this is a brand new cycle instead, break it rather than naming it."])))
 
 (defn- dissolved-message [cluster-name anchor]
