@@ -75,8 +75,9 @@
                (:dataset_query structured)))))))
 
 (deftest document-construct-sql-chart-tool-reference-warnings-test
-  (testing "passes reference warnings from SQL validation on to the LLM with the chart draft"
-    (let [warnings ["Column `customer_name` was not found in any table, model, or question this query reads from."]]
+  (testing "passes reference warnings from SQL validation on to the LLM with the chart draft, without ending the turn"
+    (let [sql      "SELECT v.customer_name FROM {{#1}} AS v"
+          warnings ["Column `customer_name` was not found in any table, model, or question this query reads from."]]
       (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                   (fn [_]
                                     {:validation-result {:valid?   true
@@ -85,19 +86,19 @@
                                      :action-result     {:query-id "q-1"
                                                          :query    {:database 1
                                                                     :type     "native"
-                                                                    :native   {:query         "SELECT v.customer_name FROM {{#1}} AS v"
-                                                                               :template-tags {}}}}})
+                                                                    :native   {:query sql :template-tags {}}}}})
                                   qp/process-query (fn [_] nil)]
         (is (=? {:output            (str "Draft chart payload generated from SQL query.\n\n"
                                          (instructions/sql-reference-warnings-instructions warnings))
-                 :structured-output {:query_id "q-1"}}
+                 :structured-output {:query_id "q-1"}
+                 :non-terminal?     true}
                 (document-tools/document-construct-sql-chart-tool
                  {:database_id  1
                   :name         "Test Name"
                   :description  "Test Desc"
                   :analysis     "Test Analysis"
                   :approach     "Test Approach"
-                  :sql          "SELECT v.customer_name FROM {{#1}} AS v"
+                  :sql          sql
                   :viz_settings {:chart_type "bar"}})))))))
 
 (deftest document-construct-sql-chart-tool-test-2

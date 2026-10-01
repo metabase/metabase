@@ -137,13 +137,19 @@ Reference items using: [name](metabase://type/id)")
 
 (defn sql-reference-warnings-instructions
   "Instructions listing possible bad table/column references found in a constructed SQL query, or nil when there
-  are none. The check can report false positives, so the query is still created."
+  are none."
   [warnings]
   (when (seq warnings)
     (str "The query was created, but checking its table and column references against the database metadata found "
          "possible problems:\n"
          (apply str (map #(str "- " % "\n") warnings))
          "\n"
-         "This check can report false positives. Verify each reference against the metadata you read "
-         "(`read_resource` shows each table's `fully_qualified_name` and each model's fields); fix any that are "
-         "wrong, or tell the user if you are unsure.\n")))
+         "This check can report false positives. Verify each reference against the table and field metadata you "
+         "have gathered; fix any that are wrong, or tell the user if you are unsure.\n")))
+
+(defn with-sql-reference-warnings
+  "Append [[sql-reference-warnings-instructions]] for `warnings` to `text`, or return `text` when there are none."
+  [text warnings]
+  (if-let [warnings-text (sql-reference-warnings-instructions warnings)]
+    (str text "\n\n" warnings-text)
+    text))

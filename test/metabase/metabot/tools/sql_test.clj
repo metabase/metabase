@@ -38,27 +38,6 @@
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
 
-(deftest create-sql-query-reference-warnings-output-test
-  (testing "create_sql_query still creates the query and passes reference warnings on to the LLM"
-    (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                (fn [_]
-                                  {:validation-result {:valid?   true
-                                                       :dialect  "postgres"
-                                                       :warnings ["Column `customer_name` was not found in any table, model, or question this query reads from."]}
-                                   :action-result     {:query-id      "q-1"
-                                                       :query-content "SELECT v.customer_name FROM {{#1}} AS v"
-                                                       :query         {:database 1
-                                                                       :type     :native
-                                                                       :native   {:query "SELECT v.customer_name FROM {{#1}} AS v"}}
-                                                       :database      1}})]
-      (let [result (agent-sql/create-sql-query-tool {:database_id 1
-                                                     :sql_query   "SELECT v.customer_name FROM {{#1}} AS v"
-                                                     :title       "Results"})]
-        (is (= "q-1" (get-in result [:structured-output :query-id])))
-        (doseq [text [(:output result) (:instructions result)]]
-          (is (str/includes? text "possible problems"))
-          (is (str/includes? text "- Column `customer_name` was not found")))))))
-
 (deftest create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:postgres}
@@ -80,6 +59,39 @@
     (agent-sql/create-sql-query-code-edit-tool (merge {:sql_query "SELECT 1"
                                                        :title     "Results"}
                                                       args))))
+
+(defn- venues-model []
+  (let [mp (mt/metadata-provider)]
+    {:type          :model
+     :database_id   (mt/id)
+     :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}))
+
+(deftest create-sql-query-reference-warnings-test
+  (testing "create_sql_query checks templated SQL and passes reference warnings on to the LLM"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
+          (let [warned? #(str/includes? % "- Column `customer_name` was not found")]
+            (doseq [[tool-name run] [["create_sql_query" #(agent-sql/create-sql-query-tool (assoc % :title "Results"))]
+                                     ["create_sql_query (code editor)" create-sql-query-in-code-editor]]]
+              (testing tool-name
+                (testing "creates the query, warns, and doesn't end the turn so the model can act on the warning"
+                  (is (=? {:structured-output {:query-id string?}
+                           :output            warned?
+                           :instructions      warned?
+                           :non-terminal?     true}
+                          (run {:database_id (mt/id)
+                                :sql_query   (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")}))))
+                (testing "a query without warnings ends the turn as before"
+                  (let [result (run {:database_id (mt/id)
+                                     :sql_query   (str "SELECT v.name FROM {{#" card-id "}} AS v")})]
+                    (is (some? (:structured-output result)))
+                    (is (not (contains? result :non-terminal?)))))
+                (testing "a reference to a card that doesn't exist is returned to the LLM as a failure"
+                  (let [result (run {:database_id (mt/id)
+                                     :sql_query   (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v")})]
+                    (is (str/includes? (:output result) (str "Card " Integer/MAX_VALUE " does not exist")))
+                    (is (nil? (:structured-output result)))))))))))))
 
 (deftest create-sql-query-code-edit-agent-error-output-test
   (testing "create_sql_query in the code editor returns agent errors as output instead of throwing"
@@ -209,16 +221,12 @@
   (testing "edit_sql_query and replace_sql_query check templated SQL and pass reference warnings on to the LLM"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Card {card-id :id} {:type          :model
-                                                  :database_id   (mt/id)
-                                                  :dataset_query (let [mp (mt/metadata-provider)]
-                                                                   (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]
+        (mt/with-temp [:model/Card {card-id :id} (venues-model)]
           (let [query-id "test-reference-warnings-q"
                 good-sql (str "SELECT v.name FROM {{#" card-id "}} AS v")
+                stored   (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) good-sql))
                 run      (fn [tool args]
-                           (binding [shared/*memory-atom*
-                                     (atom {:state {:queries {query-id (-> (lib/native-query (mt/metadata-provider) good-sql)
-                                                                           lib/->legacy-MBQL)}}})]
+                           (binding [shared/*memory-atom* (atom {:state {:queries {query-id stored}}})]
                              (tool (merge {:query_id query-id :checklist "- [x] checked" :title "Results"} args))))
                 warned?  #(str/includes? % "- Column `customer_name` was not found")]
             (doseq [[tool-name tool args] [["edit_sql_query" agent-sql/edit-sql-query-tool
@@ -228,7 +236,8 @@
               (testing tool-name
                 (is (=? {:structured-output {:query-id query-id}
                          :output            warned?
-                         :instructions      warned?}
+                         :instructions      warned?
+                         :non-terminal?     true}
                         (run tool args)))))))))))
 
 (deftest edit-sql-query-viz-part-test

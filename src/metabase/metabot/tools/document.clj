@@ -170,9 +170,11 @@
                             :query_id      query-id
                             :query         query
                             :result-type   :chart-draft}]
-            {:output (str "Draft chart payload generated from SQL query."
-                          (some->> (instructions/sql-reference-warnings-instructions warnings) (str "\n\n")))
-             :structured-output structured}))))
+            (metabot.tools.u/non-terminal-when-warned
+             {:output            (instructions/with-sql-reference-warnings
+                                   "Draft chart payload generated from SQL query." warnings)
+              :structured-output structured}
+             warnings)))))
     (catch Exception e
       (metabot.tools.u/handle-agent-error e))))
 
