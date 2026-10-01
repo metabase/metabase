@@ -706,8 +706,11 @@ function computeComparisonStrPreviousValue({
   prevDate: string;
   nextDate: string | undefined;
 }) {
-  const isSameDay = dayjs.parseZone(prevDate).isSame(nextDate, "day");
-  const isSameYear = dayjs.parseZone(prevDate).isSame(nextDate, "year");
+  const parsedPrevDate = dayjs.parseZone(prevDate);
+  const parsedNextDate = dayjs.parseZone(nextDate);
+
+  const isSameDay = parsedPrevDate.isSame(parsedNextDate, "day");
+  const isSameYear = parsedPrevDate.isSame(parsedNextDate, "year");
 
   const options = {
     removeDay: isSameDay,
