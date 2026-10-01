@@ -74,6 +74,7 @@
     (is (= 'enterprise-transforms-python-knot
            (:name (module-cycles/propose '{enterprise/transforms.python #{x}, x #{enterprise/transforms.python}}
                                          '#{enterprise/transforms.python x}
+                                         '#{enterprise/transforms.python x}
                                          #{}))))))
 
 (deftest ^:parallel a-dissolved-cluster-fails-until-its-name-is-retired-test
@@ -88,7 +89,13 @@
     (is (=? [#"A cluster without a name: 2 modules, qp, sync\."
              #"galactic-center is anchored on qp, which is not a module\..*"]
             (mapv (comp first str/split-lines)
-                  (module-cycles/problems graph (disj modules 'qp) '{foundation app-db, galactic-center qp}))))))
+                  (module-cycles/problems graph (disj modules 'qp) '{foundation app-db, galactic-center qp})))))
+  (testing "a proposal only anchors on a configured module"
+    (is (=? [#".*`sync-knot sync`.*"]
+            (filter #(str/includes? % "line like")
+                    (-> (module-cycles/problems graph (disj modules 'qp) '{foundation app-db})
+                        first
+                        str/split-lines))))))
 
 (deftest ^:parallel malformed-names-throw-test
   (are [anchors msg] (thrown-with-msg? clojure.lang.ExceptionInfo msg (module-cycles/validate-anchors anchors))

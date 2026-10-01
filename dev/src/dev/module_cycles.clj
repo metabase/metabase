@@ -79,14 +79,15 @@
 
 (defn propose
   "A name and anchor for an unnamed `cluster` of `graph`, avoiding the names in `taken`.
-  The anchor is the member with the most edges inside the cluster, ties broken alphabetically, and the name is
-  derived from it: `sync` gives `sync-knot`, `enterprise/transforms.python` gives
+  The anchor is the configured member (one of `modules`) with the most edges inside the cluster, ties broken
+  alphabetically, and the name is derived from it: `sync` gives `sync-knot`, `enterprise/transforms.python` gives
   `enterprise-transforms-python-knot`."
-  [graph cluster taken]
-  (let [anchor     (first (sort-by (juxt #(- (degree graph cluster %)) str) cluster))
-        stem       (str (str/replace (str anchor) #"[/.]" "-") "-knot")
-        candidates (cons stem (map #(str stem "-" %) (iterate inc 2)))]
-    {:name   (symbol (first (remove (comp (set taken) symbol) candidates)))
+  [graph modules cluster taken]
+  (let [members (or (seq (filter modules cluster)) cluster)
+        anchor  (first (sort-by (juxt #(- (degree graph cluster %)) str) members))
+        stem    (str (str/replace (str anchor) #"[/.]" "-") "-knot")
+        names   (cons stem (map #(str stem "-" %) (iterate inc 2)))]
+    {:name   (symbol (first (remove (comp (set taken) symbol) names)))
      :anchor anchor}))
 
 (defn- module-list
@@ -173,7 +174,7 @@
         in-any    (into #{} cat clusters)
         unnamed   (filter (comp empty? anchors-in) clusters)
         proposals (first (reduce (fn [[acc taken] cluster]
-                                   (let [p (propose graph cluster taken)]
+                                   (let [p (propose graph modules cluster taken)]
                                      [(conj acc [cluster p]) (conj taken (:name p))]))
                                  [[] (set (keys anchors))]
                                  unnamed))]
@@ -211,13 +212,14 @@
   (let [config    (deps-graph/kondo-config)
         graph     (deps-graph/module-dependencies (deps-graph/dependencies))
         anchors   (read-anchors)
-        anchor->n (into {} (map (juxt val key)) anchors)]
+        modules   (set (keys config))
+        anchor->n (into {} (comp (filter (comp modules val)) (map (juxt val key))) anchors)]
     ;; Unnamed clusters first: they are the ones someone is here to name.
     (doseq [cluster (sort-by #(boolean (some anchor->n %)) (deps-graph/cyclic-components graph))
             :let    [named (sort (keep (fn [m] (when-let [n (anchor->n m)] [n m])) cluster))]]
       (println (if (seq named)
                  (str/join " + " (map (fn [[n m]] (format "%s (anchor %s)" n m)) named))
-                 (let [{:keys [name anchor]} (propose graph cluster (keys anchors))]
+                 (let [{:keys [name anchor]} (propose graph modules cluster (keys anchors))]
                    (format "unnamed (placeholder %s, anchor %s)" name anchor))))
       (println (format "  %d modules, teams: %s" (count cluster)
                        (str/join ", " (sort (distinct (keep #(get-in config [% :team]) cluster))))))
