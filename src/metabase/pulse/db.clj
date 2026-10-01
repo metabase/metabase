@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.proof.core :as proof]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -433,3 +434,16 @@
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
   [dashboard-id]
   (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))
+
+(defn apply-collection-cascade!
+  "Apply to the Pulses what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/contents-cascade-write`): set their archived flag, or delete
+  them."
+  [proof]
+  (let [{:keys [operation subject changes]} (proof/verify proof {:model        :model/Pulse
+                                                                 :operation    #{:update :delete}
+                                                                 :subject-kind :where
+                                                                 :columns      #{:archived}})]
+    (case operation
+      :update (t2/update! :model/Pulse (proof/where->conditions subject) changes)
+      :delete (t2/delete! :model/Pulse {:where subject}))))

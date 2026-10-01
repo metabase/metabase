@@ -84,3 +84,16 @@
                                             (when include-root? [:= :collection_id nil])]]
                                 :order-by serdes/stable-storage-order}
                          filter-column (sql.helpers/where :or [:in filter-column filter-ids]))))
+
+(defn apply-collection-cascade!
+  "Apply to the NativeQuerySnippets what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/contents-cascade-write`): set their archived flag, or delete
+  them."
+  [proof]
+  (let [{:keys [operation subject changes]} (proof/verify proof {:model        :model/NativeQuerySnippet
+                                                                 :operation    #{:update :delete}
+                                                                 :subject-kind :where
+                                                                 :columns      #{:archived}})]
+    (case operation
+      :update (t2/update! :model/NativeQuerySnippet (proof/where->conditions subject) changes)
+      :delete (t2/delete! :model/NativeQuerySnippet {:where subject}))))

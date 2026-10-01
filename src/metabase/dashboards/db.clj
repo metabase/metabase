@@ -8,6 +8,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
+   [metabase.proof.core :as proof]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -390,3 +391,16 @@
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."
   [tab-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/DashboardTab :id [:in tab-ids]))
+
+(defn apply-collection-cascade!
+  "Apply to the Dashboards what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/contents-cascade-write`): set their archived flag, or delete
+  them."
+  [proof]
+  (let [{:keys [operation subject changes]} (proof/verify proof {:model        :model/Dashboard
+                                                                 :operation    #{:update :delete}
+                                                                 :subject-kind :where
+                                                                 :columns      #{:archived}})]
+    (case operation
+      :update (t2/update! :model/Dashboard (proof/where->conditions subject) changes)
+      :delete (t2/delete! :model/Dashboard {:where subject}))))

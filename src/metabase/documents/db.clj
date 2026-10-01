@@ -7,6 +7,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.proof.core :as proof]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -163,3 +164,16 @@
                                                     document-id->timestamp))
                       :updated_at :updated_at}
              :where  [:in :id (keys document-id->timestamp)]}))
+
+(defn apply-collection-cascade!
+  "Apply to the Documents what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/contents-cascade-write`): set their archived flag, or delete
+  them."
+  [proof]
+  (let [{:keys [operation subject changes]} (proof/verify proof {:model        :model/Document
+                                                                 :operation    #{:update :delete}
+                                                                 :subject-kind :where
+                                                                 :columns      #{:archived}})]
+    (case operation
+      :update (t2/update! :model/Document (proof/where->conditions subject) changes)
+      :delete (t2/delete! :model/Document {:where subject}))))

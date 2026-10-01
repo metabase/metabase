@@ -7,6 +7,7 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.proof.core :as proof]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -539,3 +540,16 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(defn apply-collection-cascade!
+  "Apply to the Cards what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/contents-cascade-write`): set their archived flag, or delete
+  them."
+  [proof]
+  (let [{:keys [operation subject changes]} (proof/verify proof {:model        :model/Card
+                                                                 :operation    #{:update :delete}
+                                                                 :subject-kind :where
+                                                                 :columns      #{:archived}})]
+    (case operation
+      :update (t2/update! :model/Card (proof/where->conditions subject) changes)
+      :delete (t2/delete! :model/Card {:where subject}))))

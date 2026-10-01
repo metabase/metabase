@@ -62,6 +62,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/apply-cascade! :model/Card
+  [_model proof]
+  (queries.db/apply-collection-cascade! proof))
+
 (defmethod proof/cascade-write [:model/Card :model/Collection]
   [_child _parent parent-write]
   (collections/contents-cascade-write parent-write :archived-directly? true))

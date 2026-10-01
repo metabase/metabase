@@ -301,21 +301,6 @@
                                                        :columns      editable-collection-columns})]
     (t2/update! :model/Collection subject changes)))
 
-(defn- where->conditions
-  "The Toucan 2 conditions map for a cascade proof's where-clause: a conjunction of clauses on single columns, each
-  `[:= column value]` or `[operator column & args]`. Anything else is a programming error here, not a shape a
-  cascade proof from this module has."
-  [where]
-  (into {}
-        (map (fn [[op column & args :as clause]]
-               (when-not (and (keyword? op) (keyword? column) (seq args))
-                 (throw (ex-info (str "Cannot apply this where-clause as Toucan conditions: " (pr-str clause))
-                                 {:where where})))
-               [column (if (= op :=) (first args) (into [op] args))]))
-        (if (= (first where) :and)
-          (rest where)
-          [where])))
-
 (defn clear-remote-synced-flags!
   "Mark the Collections that `proof` names as not remote-synced, through the model's update hooks. The proof must
   cover exactly that change set."
@@ -327,7 +312,7 @@
     (when-not (= changes {:is_remote_synced false})
       (throw (ex-info "Invalid proof: clear-remote-synced-flags! only clears the flag"
                       {:status-code 500, :error :proof/invalid, :actual changes})))
-    (t2/update! :model/Collection (where->conditions subject) changes)))
+    (t2/update! :model/Collection (proof/where->conditions subject) changes)))
 
 (defn update-descendant-collections!
   "Apply the change set that the cascade `proof` covers (a move, archive or unarchive of the subtree) to the descendant
@@ -378,82 +363,6 @@
   (t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
                     {:where [:in (keyword (str (name (t2/table-name model)) ".id")) ids]
                      :join  [[:collection :c] [:= :collection_id :c.id]]}))
-
-(defn- update-contents!
-  "Apply the change set that the cascade `proof` covers, over `columns` only, to the `model` rows its where-clause
-  names, through the model's update hooks."
-  [proof model columns]
-  (let [{:keys [subject changes]} (proof/verify proof {:model        model
-                                                       :operation    :update
-                                                       :subject-kind :where
-                                                       :columns      columns})]
-    (t2/update! model (where->conditions subject) changes)))
-
-(defn- delete-contents!
-  "Delete the `model` rows that the cascade `proof` names."
-  [proof model]
-  (let [{:keys [subject]} (proof/verify proof {:model model, :operation :delete, :subject-kind :where})]
-    (t2/delete! model {:where subject})))
-
-(defn set-pulses-archived!
-  "Apply the archived flag that the cascade `proof` covers to the Pulses it names."
-  [proof]
-  (update-contents! proof :model/Pulse #{:archived}))
-
-(defn set-native-query-snippets-archived!
-  "Apply the archived flag that the cascade `proof` covers to the NativeQuerySnippets it names."
-  [proof]
-  (update-contents! proof :model/NativeQuerySnippet #{:archived}))
-
-(defn set-timelines-archived!
-  "Apply the archived flag that the cascade `proof` covers to the Timelines it names."
-  [proof]
-  (update-contents! proof :model/Timeline #{:archived}))
-
-(defn set-cards-archived!
-  "Apply the archived flag that the cascade `proof` covers to the Cards it names."
-  [proof]
-  (update-contents! proof :model/Card #{:archived}))
-
-(defn set-dashboards-archived!
-  "Apply the archived flag that the cascade `proof` covers to the Dashboards it names."
-  [proof]
-  (update-contents! proof :model/Dashboard #{:archived}))
-
-(defn set-documents-archived!
-  "Apply the archived flag that the cascade `proof` covers to the Documents it names."
-  [proof]
-  (update-contents! proof :model/Document #{:archived}))
-
-(defn set-explorations-archived!
-  "Apply the archived flag that the cascade `proof` covers to the Explorations it names."
-  [proof]
-  (update-contents! proof :model/Exploration #{:archived}))
-
-(defn delete-cards!
-  "Delete the Cards that the cascade `proof` names."
-  [proof]
-  (delete-contents! proof :model/Card))
-
-(defn delete-dashboards!
-  "Delete the Dashboards that the cascade `proof` names."
-  [proof]
-  (delete-contents! proof :model/Dashboard))
-
-(defn delete-native-query-snippets!
-  "Delete the NativeQuerySnippets that the cascade `proof` names."
-  [proof]
-  (delete-contents! proof :model/NativeQuerySnippet))
-
-(defn delete-pulses!
-  "Delete the Pulses that the cascade `proof` names."
-  [proof]
-  (delete-contents! proof :model/Pulse))
-
-(defn delete-timelines!
-  "Delete the Timelines that the cascade `proof` names."
-  [proof]
-  (delete-contents! proof :model/Timeline))
 
 (mu/defn dashboard-ids-in-collection
   "The IDs of the Dashboards in the ::collections.schema/collection with `collection-id` (nil for the root ::collections.schema/collection), excluding archived
@@ -520,18 +429,6 @@
   "The IDs of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
   (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
-
-(defn unpublish-tables!
-  "Apply the unpublishing change set that the cascade `proof` covers (no Collection, not published) to the Tables it
-  names."
-  [proof]
-  (update-contents! proof :model/Table #{:collection_id :is_published}))
-
-(defn unpublish-table-user-settings!
-  "Apply the unpublishing change set that the cascade `proof` covers (no Collection, not published) to the
-  TableUserSettings it names: the per-user overlay of the Tables' published state."
-  [proof]
-  (update-contents! proof :model/TableUserSettings #{:collection_id :is_published}))
 
 (mu/defn dashboard-ids-with-cards
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."

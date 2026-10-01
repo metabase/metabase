@@ -31,6 +31,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/apply-cascade! :model/Exploration
+  [_model proof]
+  (explorations.db/apply-collection-cascade! proof))
+
 (defmethod proof/cascade-write [:model/Exploration :model/Collection]
   [_child _parent parent-write]
   (collections/contents-cascade-write parent-write :archived-directly? true))

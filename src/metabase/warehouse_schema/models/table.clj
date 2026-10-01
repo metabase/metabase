@@ -93,6 +93,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/apply-cascade! :model/Table
+  [_model proof]
+  (warehouse-schema.db/apply-collection-cascade-to-tables! proof))
+
 (defmethod proof/cascade-write [:model/Table :model/Collection]
   [_child _parent parent-write]
   (collection/unpublish-cascade-write parent-write))

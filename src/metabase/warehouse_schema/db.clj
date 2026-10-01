@@ -7,6 +7,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.db :as models.db]
+   [metabase.proof.core :as proof]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -588,3 +589,23 @@
                                              :limit    1} :r]
                           [:= :r.moderated_item_id :c.id]]
               :where     [:in :c.id card-ids]}))
+
+(defn apply-collection-cascade-to-tables!
+  "Apply to the Tables what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/unpublish-cascade-write`): unpublish them."
+  [proof]
+  (let [{:keys [subject changes]} (proof/verify proof {:model        :model/Table
+                                                       :operation    :update
+                                                       :subject-kind :where
+                                                       :columns      #{:collection_id :is_published}})]
+    (t2/update! :model/Table (proof/where->conditions subject) changes)))
+
+(defn apply-collection-cascade-to-table-user-settings!
+  "Apply to the TableUserSettings (the per-user overlay of the Tables' published state) what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/unpublish-cascade-write`): unpublish them."
+  [proof]
+  (let [{:keys [subject changes]} (proof/verify proof {:model        :model/TableUserSettings
+                                                       :operation    :update
+                                                       :subject-kind :where
+                                                       :columns      #{:collection_id :is_published}})]
+    (t2/update! :model/TableUserSettings (proof/where->conditions subject) changes)))

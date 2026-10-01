@@ -635,7 +635,6 @@
                     :model/Permissions
                     :model/Pulse
                     :model/Table
-                    :model/TableUserSettings
                     :model/Timeline
                     :model/Transform
                     :model/User}}

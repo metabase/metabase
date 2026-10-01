@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.proof.core :as proof]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn- derived-write
   [child-model collection-id operation changes]
@@ -104,3 +105,16 @@
                               {:model :model/Card, :operation :update, :subject-kind :where})))
         (is (nil? (proof/cascade rename :model/Card))
             "a rename cannot be turned into any write on the contents")))))
+
+(deftest each-module-applies-its-own-cascade-test
+  (testing "deleting a Collection reaches every content model through its own module, Documents included"
+    (mt/with-temp [:model/Collection {id :id} {}
+                   :model/Card       {card-id :id} {:collection_id id}
+                   :model/Document   {document-id :id} {:collection_id id}]
+      (is (= #{:model/Card :model/Dashboard :model/Document :model/Exploration :model/NativeQuerySnippet
+               :model/Pulse :model/Table :model/TableUserSettings :model/Timeline}
+             (disj (proof/cascade-children :model/Collection) :model/Collection)))
+      (collection/delete-collection! (proof/test-only {:model :model/Collection, :operation :delete, :subject id}))
+      (is (nil? (t2/select-one :model/Card :id card-id)))
+      (is (nil? (t2/select-one :model/Document :id document-id))
+          "a Document used to be left behind in the root, since the collections module kept its own list"))))

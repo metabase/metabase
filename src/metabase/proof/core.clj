@@ -12,7 +12,9 @@
   authorize-create
   authorize-delete
   authorize-update
+  apply-cascade!
   cascade
+  cascade-children
   cascade-parents
   cascade-write
   proof?
@@ -20,4 +22,5 @@
   serdes-load
   subject-kind
   test-only
-  verify])
+  verify
+  where->conditions])

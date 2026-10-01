@@ -125,11 +125,11 @@
         ;; the contents are keyed by the operation id, which the Collections carry once the archive has marked them
         (collections.db/update-collection! a-proof)
         (collections.db/update-descendant-collections! (proof/cascade a-proof :model/Collection))
-        (collections.db/set-cards-archived! (proof/cascade a-proof :model/Card))
+        (proof/apply-cascade! :model/Card (proof/cascade a-proof :model/Card))
         (is (true? (archived? card-in-a)))
         (is (true? (archived? card-in-a-child)))
         (is (false? (archived? card-in-b))))
-      (testing "the content mutators refuse anything but a cascade proof for their model"
+      (testing "a content module's mutator refuses anything but a cascade proof for its model"
         (doseq [[label value] [["nil" nil]
                                ["the collection's own proof" a-proof]
                                ["a cascade proof for another model" (proof/cascade a-proof :model/Dashboard)]
@@ -140,12 +140,13 @@
                                                   :changes   {:archived true}})]]]
           (testing label
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Invalid proof"
-                                  (collections.db/set-cards-archived! value)))))
+                                  (proof/apply-cascade! :model/Card value)))))
         (is (false? (archived? card-in-b))))
-      (testing "the content mutators write only the columns they are named for"
+      (testing "a content module's mutator writes only the columns the cascade is for"
         (doseq [changes [{:name "forged"} {:archived true, :collection_id b}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Invalid proof.*other columns"
-                                (collections.db/set-cards-archived!
+                                (proof/apply-cascade!
+                                 :model/Card
                                  (proof/test-only {:model     :model/Card
                                                    :operation :update
                                                    :subject   [:= :collection_id a]

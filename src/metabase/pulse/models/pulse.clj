@@ -48,6 +48,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/apply-cascade! :model/Pulse
+  [_model proof]
+  (pulse.db/apply-collection-cascade! proof))
+
 (defmethod proof/cascade-write [:model/Pulse :model/Collection]
   [_child _parent parent-write]
   (collection/contents-cascade-write parent-write))

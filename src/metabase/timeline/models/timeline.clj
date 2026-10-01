@@ -16,6 +16,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/apply-cascade! :model/Timeline
+  [_model proof]
+  (timeline.db/apply-collection-cascade! proof))
+
 (defmethod proof/cascade-write [:model/Timeline :model/Collection]
   [_child _parent parent-write]
   (collection/contents-cascade-write parent-write))

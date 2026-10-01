@@ -23,6 +23,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/apply-cascade! :model/TableUserSettings
+  [_model proof]
+  (warehouse-schema.db/apply-collection-cascade-to-table-user-settings! proof))
+
 (defmethod proof/cascade-write [:model/TableUserSettings :model/Collection]
   [_child _parent parent-write]
   (collections/unpublish-cascade-write parent-write))

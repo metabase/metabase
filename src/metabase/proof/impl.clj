@@ -130,7 +130,7 @@
   effect (setting an archived flag, say) declares them so its name is a contract the proof cannot exceed."
   [:map {:closed true}
    [:model {:optional true} :keyword]
-   [:operation ::operation]
+   [:operation [:or ::operation [:set {:min 1} ::operation]]]
    [:subject-kind ::subject-kind]
    [:columns {:optional true} [:set {:min 1} :keyword]]])
 
@@ -164,15 +164,16 @@
   "Check `proof` against what the calling mutator `expects` and return the write it covers, or throw a 500. Every
   gated mutator calls this first and writes only what it returns.
 
-  `proof` must have been issued in this JVM for the current user; its operation and the kind of its subject must
-  match `expects`, and so must its model when `expects` names one. When `expects` declares `:columns`, every row or
-  change set the proof carries must write some of those columns and nothing else."
+  `proof` must have been issued in this JVM for the current user; its operation (one of them, when `expects` offers a
+  set, as a mutator that applies a cascade does) and the kind of its subject must match `expects`, and so must its
+  model when `expects` names one. When `expects` declares `:columns`, every row or change set the proof carries must
+  write some of those columns and nothing else."
   [proof :- ::proof
    {:keys [model operation columns], expected-kind :subject-kind, :as expects} :- ::expectations]
   (let [proof (ensure-proof! proof)]
     (when (and model (not= model (.-model proof)))
       (invalid-proof! "for another model" {:expected expects, :actual (.-model proof)}))
-    (when-not (= operation (.-operation proof))
+    (when-not (contains? (if (set? operation) operation #{operation}) (.-operation proof))
       (invalid-proof! "for another operation" {:expected expects, :actual (.-operation proof)}))
     (let [actual-kind (subject-kind (.-subject proof))]
       (when-not (= expected-kind actual-kind)
@@ -350,6 +351,40 @@
                (.-user-id parent)
                [:cascade (.-issuer parent)]
                nonce))))
+
+(defn cascade-children
+  "The models that declare `parent-model` in [[cascade-parents]], among the models loaded: the ones a proof for
+  `parent-model` can cascade to."
+  [parent-model]
+  (into (sorted-set-by #(compare (str %1) (str %2)))
+        (filter #(contains? (cascade-parents %) parent-model))
+        (keys (methods cascade-parents))))
+
+(defmulti apply-cascade!
+  "Apply the cascade `proof` for `child-model` through that model's own module: the declaration next to its
+  [[cascade-write]] hands the proof to a gated mutator in the module's db namespace, which verifies it and writes
+  exactly what it covers. A parent's module then drives its cascades without writing another module's rows:
+
+    (doseq [child (proof/cascade-children :model/Collection)]
+      (some->> (proof/cascade parent-proof child) (proof/apply-cascade! child)))"
+  {:arglists '([child-model proof])}
+  (fn [child-model _proof] child-model))
+
+(defn where->conditions
+  "The Toucan 2 conditions map for the where-clause subject of a cascade proof, for a mutator that applies it with
+  `t2/update!` (which takes conditions, not a where-clause): a conjunction of clauses on single columns, each
+  `[:= column value]` or `[operator column & args]`. Anything else is a programming error in the derivation, not a
+  shape a cascade proof has."
+  [where]
+  (into {}
+        (map (fn [[op column & args :as clause]]
+               (when-not (and (keyword? op) (keyword? column) (seq args))
+                 (throw (ex-info (str "Cannot apply this where-clause as Toucan conditions: " (pr-str clause))
+                                 {:where where})))
+               [column (if (= op :=) (first args) (into [op] args))]))
+        (if (= (first where) :and)
+          (rest where)
+          [where])))
 
 ;;; ------------------------------------------------- System issuers -------------------------------------------------
 

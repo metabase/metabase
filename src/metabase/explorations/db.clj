@@ -10,6 +10,7 @@
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.proof.core :as proof]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
@@ -839,3 +840,16 @@
                     :target_type     "exploration"
                     :child_target_id [:in child-target-ids]
                     :deleted_at      nil))
+
+(defn apply-collection-cascade!
+  "Apply to the Explorations what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/contents-cascade-write`): set their archived flag, or delete
+  them."
+  [proof]
+  (let [{:keys [operation subject changes]} (proof/verify proof {:model        :model/Exploration
+                                                                 :operation    #{:update :delete}
+                                                                 :subject-kind :where
+                                                                 :columns      #{:archived}})]
+    (case operation
+      :update (t2/update! :model/Exploration (proof/where->conditions subject) changes)
+      :delete (t2/delete! :model/Exploration {:where subject}))))

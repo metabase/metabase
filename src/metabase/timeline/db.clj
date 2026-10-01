@@ -5,6 +5,7 @@
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.proof.core :as proof]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -116,3 +117,16 @@
   "Delete the TimelineEvent with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/TimelineEvent :id id))
+
+(defn apply-collection-cascade!
+  "Apply to the Timelines what a Collection's write implies for them, under the cascade `proof` the collections module
+  derived for this model (see `metabase.collections.core/contents-cascade-write`): set their archived flag, or delete
+  them."
+  [proof]
+  (let [{:keys [operation subject changes]} (proof/verify proof {:model        :model/Timeline
+                                                                 :operation    #{:update :delete}
+                                                                 :subject-kind :where
+                                                                 :columns      #{:archived}})]
+    (case operation
+      :update (t2/update! :model/Timeline (proof/where->conditions subject) changes)
+      :delete (t2/delete! :model/Timeline {:where subject}))))

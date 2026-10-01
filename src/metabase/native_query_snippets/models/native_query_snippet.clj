@@ -42,6 +42,10 @@
   [_model]
   {:model/Collection :collection_id})
 
+(defmethod proof/apply-cascade! :model/NativeQuerySnippet
+  [_model proof]
+  (native-query-snippets.db/apply-collection-cascade! proof))
+
 (defmethod proof/cascade-write [:model/NativeQuerySnippet :model/Collection]
   [_child _parent parent-write]
   (collection/contents-cascade-write parent-write))

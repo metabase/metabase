@@ -1841,24 +1841,14 @@
                                                       [[:= :type library-data-collection-type]]))
        :changes unpublish})))
 
-(defn- unpublish-tables!
-  "Under `proof` for a collection, unpublish the Tables its write implies (see [[unpublish-cascade-write]]), in
-  `metabase_table` and in the per-user settings overlay."
+(defn- cascade-to-contents!
+  "Apply what `proof`, for a Collection, implies to the contents: every model that declares Collection as a cascade
+  parent derives its own write from it (see [[proof/cascade-write]]) and applies it through its own module (see
+  [[proof/apply-cascade!]]). This module writes no other module's rows and keeps no list of them; descendant
+  Collections are this module's own, ordered explicitly by each operation."
   [proof]
-  (some->> (proof/cascade proof :model/Table) collections.db/unpublish-tables!)
-  (some->> (proof/cascade proof :model/TableUserSettings) collections.db/unpublish-table-user-settings!))
-
-(defn- set-contents-archived!
-  "Under an archive or unarchive `proof` for a Collection, apply what it implies to each content model (see
-  [[contents-cascade-write]])."
-  [proof]
-  (some->> (proof/cascade proof :model/Pulse) collections.db/set-pulses-archived!)
-  (some->> (proof/cascade proof :model/NativeQuerySnippet) collections.db/set-native-query-snippets-archived!)
-  (some->> (proof/cascade proof :model/Timeline) collections.db/set-timelines-archived!)
-  (some->> (proof/cascade proof :model/Card) collections.db/set-cards-archived!)
-  (some->> (proof/cascade proof :model/Dashboard) collections.db/set-dashboards-archived!)
-  (some->> (proof/cascade proof :model/Document) collections.db/set-documents-archived!)
-  (some->> (proof/cascade proof :model/Exploration) collections.db/set-explorations-archived!))
+  (doseq [child (disj (proof/cascade-children :model/Collection) :model/Collection)]
+    (some->> (proof/cascade proof child) (proof/apply-cascade! child))))
 
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
@@ -1876,15 +1866,16 @@
       (let [descendants-proof (proof/cascade proof :model/Collection)]
         (collections.db/update-collection! proof)
         (collections.db/update-descendant-collections! descendants-proof))
-      ;; now the Collection and the descendants archived with it carry the operation id, so the contents are keyed by it
-      (set-contents-archived! proof)
+      ;; now the Collection and the descendants archived with it carry the operation id, so the contents are keyed by
+      ;; it; the Tables of its Library data Collections are unpublished along the way
       (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
             library-data-ids        (collections.db/collection-ids-of-type affected-collection-ids
-                                                                           library-data-collection-type)]
-        (when (seq library-data-ids)
-          (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
-            (unpublish-tables! proof)
-            (unpublish-downstream-fk-tables! published-table-ids))))
+                                                                           library-data-collection-type)
+            published-table-ids     (when (seq library-data-ids)
+                                      (collections.db/published-table-ids-in-collections library-data-ids))]
+        (cascade-to-contents! proof)
+        (when (seq published-table-ids)
+          (unpublish-downstream-fk-tables! published-table-ids)))
       ;; inside the transaction, so a refused archive rolls back
       (let [updated-collection (collections.db/collection (:id collection))]
         (when (:is_remote_synced updated-collection)
@@ -1920,7 +1911,7 @@
                                           (contains? updates :parent_id) (assoc :location new-location)))]
       (t2/with-transaction [_conn]
         ;; the contents and the descendants derive from the Collection's row while the operation id still marks it
-        (set-contents-archived! proof)
+        (cascade-to-contents! proof)
         (let [descendants-proof (proof/cascade proof :model/Collection)]
           (collections.db/update-collection! proof)
           (collections.db/update-descendant-collections! descendants-proof))
@@ -1973,21 +1964,16 @@
 
 (defn delete-collection!
   "Delete the Collection that `proof` (a delete proof for it, from [[proof/authorize-delete]]) names, with everything
-  inside it and its descendants: its published Tables are unpublished, and its Cards, Dashboards, snippets, Pulses and
-  Timelines and its descendant Collections are deleted."
+  inside it and its descendants: each content model applies what the delete implies for it (its published Tables are
+  unpublished, its contents deleted), then its descendant Collections and the Collection itself are deleted."
   [proof]
   (let [{:keys [subject]}       (proof/verify proof {:model :model/Collection, :operation :delete, :subject-kind :id})
         collection              (api/check-404 (collections.db/collection subject))
         affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
         published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
     (t2/with-transaction [_conn]
-      (unpublish-tables! proof)
+      (cascade-to-contents! proof)
       (unpublish-downstream-fk-tables! published-table-ids)
-      (some->> (proof/cascade proof :model/Card) collections.db/delete-cards!)
-      (some->> (proof/cascade proof :model/Dashboard) collections.db/delete-dashboards!)
-      (some->> (proof/cascade proof :model/NativeQuerySnippet) collections.db/delete-native-query-snippets!)
-      (some->> (proof/cascade proof :model/Pulse) collections.db/delete-pulses!)
-      (some->> (proof/cascade proof :model/Timeline) collections.db/delete-timelines!)
       (some->> (proof/cascade proof :model/Collection) collections.db/delete-descendant-collections!)
       (collections.db/delete-collection! proof))))
 
