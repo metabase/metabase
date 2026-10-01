@@ -102,7 +102,9 @@ describe("multi-convo support", () => {
       message: "test1",
       conversationId: conversationIdForAgent(store, "test_1"),
     } as const;
-    await store.dispatch(submitInput(msg1));
+    await act(async () => {
+      await store.dispatch(submitInput(msg1));
+    });
 
     mockAgentEndpoint({
       events: [
@@ -151,13 +153,15 @@ describe("multi-convo support", () => {
         { type: "data-conversation-title", data: "T" },
       ],
     });
-    await store.dispatch(
-      submitInput({
-        ...input,
-        message: "test",
-        conversationId: conversationIdForAgent(store, "test_1"),
-      }),
-    );
+    await act(async () => {
+      await store.dispatch(
+        submitInput({
+          ...input,
+          message: "test",
+          conversationId: conversationIdForAgent(store, "test_1"),
+        }),
+      );
+    });
     expect(convoForAgent(store, "test_1").messages).toHaveLength(2);
 
     await act(() => hook.current.startNewConversation({ agentId: "test_1" }));
