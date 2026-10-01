@@ -198,10 +198,16 @@ describe("scenarios > metrics > editing", () => {
       });
       saveNewMetric();
       verifyMetricAboutTimeseries({ yAxis: "Count" });
+      H.MetricPage.definitionTab().click();
+      H.getNotebookStep("filter")
+        .findByText("Product → Category is Gadget")
+        .should("be.visible");
     });
 
     it("should not allow to create a multi-stage metric", () => {
       startNewMetricWithSavedItem("Our analytics", "Orders Model");
+      H.getNotebookStep("data").findByText("Orders Model").should("be.visible");
+      H.getNotebookStep("summarize").findByText("Count").should("be.visible");
       H.MetricPage.queryEditor()
         .findByRole("button", { name: "Summarize" })
         .should("not.exist");
@@ -233,6 +239,13 @@ describe("scenarios > metrics > editing", () => {
       });
       saveNewMetric();
       verifyMetricAboutTimeseries({ yAxis: "Count" });
+      H.MetricPage.definitionTab().click();
+      H.getNotebookStep("join")
+        .findByLabelText("Right table")
+        .should("have.text", "Orders");
+      H.getNotebookStep("filter")
+        .findByText("User → State is CA")
+        .should("be.visible");
     });
 
     it("should not be possible to join a metric", () => {
@@ -332,6 +345,10 @@ describe("scenarios > metrics > editing", () => {
       H.popover().button("Update").should("not.be.disabled").click();
       saveNewMetric();
       verifyMetricAboutTimeseries({ yAxis: "Orders metric" });
+      verifyMetricDefinitionScalar({
+        aggregation: "Orders metric",
+        value: "9,380",
+      });
     });
   });
 

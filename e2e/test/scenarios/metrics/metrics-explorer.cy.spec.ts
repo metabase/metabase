@@ -564,9 +564,12 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("allows duplicates");
       addMetric("Count of products");
+      verifyMetricCount(3);
 
       cy.log("Should allow me to add measures");
       addMetricInputSequence([{ nameOrPath: testMeasurePath }]);
+      verifyMetricCount(4);
+      H.MetricsViewer.searchBarPills().should("contain.text", "Test Measure");
       H.expectUnstructuredSnowplowEvent({
         event: "metrics_viewer_metric_added",
         event_detail: "measure",
@@ -898,6 +901,7 @@ describe("scenarios > metrics > explorer", () => {
         .eq(1)
         .findByLabelText("Remove Count of orders")
         .click();
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
 
       cy.log(
         "First pill should still have breakout — multiple color indicators preserved",
@@ -1515,13 +1519,9 @@ describe("scenarios > metrics > explorer", () => {
 
         cy.wait("@dataset");
 
-        cy.log(
-          "Verify the pill shows 'Multiple dimensions' (non-default state)",
-        );
-        H.MetricsViewer.getDimensionPillBarContainer().should(
-          "contain.text",
-          "Multiple dimensions",
-        );
+        H.MetricsViewer.dimensionPickerSidebar()
+          .findByLabelText("Select dimension for Count of orders")
+          .should("have.value", "Birth Date");
         waitForSerializedDimensionBreakout();
 
         cy.log("Reload the page and verify the dimension choice persists");
@@ -1885,13 +1885,11 @@ describe("scenarios > metrics > explorer", () => {
 
       H.MetricsViewer.breakoutLegend()
         .findAllByTestId("breakout-legend-dot")
-        .then(($dots) => {
+        .should(($dots) => {
           expect($dots.length).to.be.lessThan(
             Object.keys(colorsBefore).length,
             "Filtering should reduce the number of legend items",
           );
-
-          const legendHexColors: string[] = [];
 
           $dots.each((_i, dot) => {
             const $dot = Cypress.$(dot);
@@ -1901,8 +1899,12 @@ describe("scenarios > metrics > explorer", () => {
               color,
               `Color for "${label}" should be stable after filtering`,
             );
-            legendHexColors.push(Color(color).hex());
           });
+        })
+        .then(($dots) => {
+          const legendHexColors = $dots
+            .toArray()
+            .map((dot) => Color(Cypress.$(dot).css("background-color")).hex());
 
           cy.log("Chart series colors should match legend colors");
           for (const hex of legendHexColors) {
@@ -2025,8 +2027,14 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should allow me to do brush style time range filtering", () => {
+      H.MetricsViewer.getMetricControls()
+        .findByRole("button", { name: /All time/i })
+        .should("be.visible");
       H.ensureChartIsActive();
       H.applyBrush(100, 250);
+      H.MetricsViewer.getMetricControls()
+        .findByRole("button", { name: /All time/i })
+        .should("not.exist");
       H.MetricsViewer.getMetricVisualization().within(() => {
         cy.findByText(/June/).should("be.visible");
         cy.findByText(/July/).should("be.visible");
@@ -2483,7 +2491,21 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
     it("does not share same-named dimensions from different source columns", () => {
       visitViewerWithMetrics(["People with renamed source", "Plain products"]);
 
-      H.MetricsViewer.openDimensionPickerSidebar().within(() => {
+      H.MetricsViewer.openDimensionPickerSidebar();
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "See all" })
+        .click();
+      getExpandedMetricAccordion("People with renamed source")
+        .findByRole("button", { name: "Category" })
+        .should("be.visible");
+      getExpandedMetricAccordion("Plain products")
+        .findByRole("button", { name: "Category" })
+        .should("be.visible");
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "Back" })
+        .click();
+
+      H.MetricsViewer.dimensionPickerSidebar().within(() => {
         cy.findByRole("button", { name: "Time" }).should("be.visible");
         cy.log(
           "People's renamed Source and Products' Category share a name but not a source column",
@@ -2495,7 +2517,21 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
     it("does not mix country and state geo dimensions", () => {
       visitViewerWithMetrics(["Accounts by country", "People by state"]);
 
-      H.MetricsViewer.openDimensionPickerSidebar().within(() => {
+      H.MetricsViewer.openDimensionPickerSidebar();
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "See all" })
+        .click();
+      getExpandedMetricAccordion("Accounts by country")
+        .findByRole("button", { name: "Country" })
+        .should("be.visible");
+      getExpandedMetricAccordion("People by state")
+        .findByRole("button", { name: "State" })
+        .should("be.visible");
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "Back" })
+        .click();
+
+      H.MetricsViewer.dimensionPickerSidebar().within(() => {
         cy.findByRole("button", { name: "Time" }).should("be.visible");
         cy.findByRole("button", { name: "Country" }).should("not.exist");
         cy.findByRole("button", { name: "State" }).should("not.exist");

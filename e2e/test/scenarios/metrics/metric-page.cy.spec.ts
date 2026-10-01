@@ -251,6 +251,7 @@ describe("scenarios > metrics > metric page", () => {
     H.MetricPage.overviewPage().should("be.visible");
 
     H.MetricPage.overviewPage().within(() => {
+      cy.findAllByText(/^By /).should("have.length", 4);
       cy.findAllByText(/^By /).then(($cards) => {
         expect($cards.map((_, card) => card.textContent).get()).to.deep.equal([
           "By Subtotal",
@@ -361,6 +362,7 @@ describe("scenarios > metrics > metric page", () => {
 
       cy.log("about page hides editing controls");
       H.MetricPage.aboutPage().should("be.visible");
+      H.MetricPage.header().findByText("Orders count").should("be.visible");
       cy.findByDisplayValue("Orders count").should("not.exist");
       H.MetricPage.moreMenu().click();
       H.popover().within(() => {
@@ -373,6 +375,7 @@ describe("scenarios > metrics > metric page", () => {
 
       cy.log("overview and definition tabs are hidden for read-only users");
       cy.realPress("Escape");
+      H.MetricPage.historyTab().should("be.visible");
       H.MetricPage.overviewTab().should("not.exist");
       H.MetricPage.definitionTab().should("not.exist");
     });
@@ -402,6 +405,7 @@ describe("scenarios > metrics > metric page", () => {
         cy.visit(`/data-studio/library/metrics/${metric.id}`);
         H.MetricPage.aboutPage().should("be.visible");
         H.MetricPage.moreMenu().click();
+        H.popover().findByText("Bookmark").should("be.visible");
         H.popover().findByText("Open in Data Studio").should("not.exist");
       });
     });
