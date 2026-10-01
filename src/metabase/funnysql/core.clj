@@ -131,8 +131,14 @@
 (defn- with! [sql ctes context]
   (append-sql! context sql)
   (letfn [(-cte [[identifier subquery]]
-            (check-identifier-form identifier)
-            (compile! identifier context)
+            (let [[identifier {:keys [columns]}] (if (sequential? identifier)
+                                                   identifier
+                                                   [identifier])]
+              (check-identifier-form identifier)
+              (compile! identifier context)
+              (when columns
+                (append-sql! context \space)
+                (-identifier-list! columns context)))
             (append-sql! context " AS (")
             (map! subquery context)
             (append-sql! context ")"))]
@@ -201,17 +207,40 @@
      #(append-sql! context ", ")))
   (append-sql! context ")"))
 
-(defn- insert-into! [identifier context]
-  (append-sql! context "INSERT INTO ")
-  (let [identifier (unwrap-identifier identifier)]
-    (check-identifier-form identifier)
-    (compile! identifier context)))
+(defn- insert-into! [x context]
+  (let [[identifier subquery] (if (and (vector? x)
+                                       (vector? (first x)))
+                                x
+                                [x])]
+    (append-sql! context "INSERT INTO ")
+    (let [[identifier columns] (if (sequential? identifier)
+                                 identifier
+                                 [identifier])]
+      (check-identifier-form identifier)
+      (compile! identifier context)
+      (when (seq columns)
+        (append-sql! context \space)
+        (-identifier-list! columns context)))
+    (when subquery
+      (append-sql! context \space)
+      (map! subquery context))))
 
 (defn- values! [rows context]
-  (let [columns (into (ordered-set/ordered-set) (mapcat keys) rows)]
-    (-identifier-list! columns context)
-    (append-sql! context " VALUES ")
-    (interpose-fn rows #(-list! (map (or % {}) columns) context) #(append-sql! context ", "))))
+  (when-not (and (coll? rows)
+                 (seq rows))
+    (throw (ex-info ":values cannot have empty or nil rows" {:rows rows})))
+  (if (map? (first rows))
+    ;; if rows are maps, infer columns from the map keys; look at all rows to get the complete set since some maps
+    ;; might be partial.
+    (let [columns (into (ordered-set/ordered-set) (mapcat keys) rows)]
+      (-identifier-list! columns context)
+      (append-sql! context " VALUES ")
+      (interpose-fn rows #(-list! (map (or % {}) columns) context) #(append-sql! context ", ")))
+    ;; otherwise assume columns have been specified with `:columns` and assume `rows` is a sequence of sequences, one
+    ;; for each row.
+    (do
+      (append-sql! context "VALUES ")
+      (interpose-fn rows #(-list! % context) #(append-sql! context ", ")))))
 
 (defn- update! [identifier context]
   (append-sql! context "UPDATE ")
@@ -284,24 +313,35 @@
   (compile! condition context))
 
 (defn- group-by! [cols context]
-  (append-sql! context "GROUP BY ")
-  (interpose-fn cols #(compile! % context) #(append-sql! context ", ")))
+  (when (seq cols)
+    (append-sql! context "GROUP BY ")
+    (interpose-fn cols #(compile! % context) #(append-sql! context ", "))))
 
 (defn- having! [condition context]
   (append-sql! context "HAVING ")
   (compile! condition context))
 
+(defn- partition-by! [xs context]
+  (when xs
+    (let [xs (if (coll? xs)
+               xs
+               [xs])]
+      (when (seq xs)
+        (append-sql! context "PARTITION BY ")
+        (-commas! xs context)))))
+
 (defn- order-by! [subclauses context]
-  (append-sql! context "ORDER BY ")
-  (letfn [(subclause! [subclause]
-            (let [[expr direction] (if (vector? subclause)
-                                     subclause
-                                     [subclause :asc])]
-              (compile! expr context)
-              (append-sql! context (case direction
-                                     :asc " ASC"
-                                     :desc " DESC"))))]
-    (interpose-fn subclauses subclause! #(append-sql! context ", "))))
+  (when (seq subclauses)
+    (append-sql! context "ORDER BY ")
+    (letfn [(subclause! [subclause]
+              (let [[expr direction] (if (vector? subclause)
+                                       subclause
+                                       [subclause :asc])]
+                (compile! expr context)
+                (append-sql! context (case direction
+                                       :asc  " ASC"
+                                       :desc " DESC"))))]
+      (interpose-fn subclauses subclause! #(append-sql! context ", ")))))
 
 (defn- inline? [x]
   (and (vector? x)
@@ -337,12 +377,29 @@
   (append-sql! context "DO UPDATE SET ")
   (-kvs-map! kvs context))
 
+(defn- for!
+  [what context]
+  (append-sql! context "FOR ")
+  (let [what (if (vector? what)
+               (first what)
+               what)]
+    (append-sql! context (case what
+                           :update "UPDATE"))))
+
 (defn- returning! [cols context]
   (append-sql! context "RETURNING ")
   (-commas! cols context))
 
 (defn- union! [sql subqueries context]
   (interpose-fn subqueries #(map! % context) #(append-sql! context sql)))
+
+(defn- nest! [x context]
+  (append-sql! context "(")
+  (if (and (map? x)
+           (:allow-subquery (meta x)))
+    (map! x context)
+    (compile! x context))
+  (append-sql! context ")"))
 
 (def ^:private clause-fns
   (ordered-map/ordered-map
@@ -351,6 +408,7 @@
    :create-table    create-table!
    :with-columns    with-columns!
    :insert-into     insert-into!
+   :columns         -identifier-list!
    :values          values!
    :update          update!
    :set             set!
@@ -365,15 +423,18 @@
    :where           where!
    :group-by        group-by!
    :having          having!
+   :partition-by    partition-by!
    :order-by        order-by!
    :limit           limit!
    :offset          offset!
    :for             for!
    :on-conflict     on-conflict!
    :do-update-set   do-update-set!
+   :for             for!
    :returning       returning!
    :union           (partial union! " UNION ")
-   :union-all       (partial union! " UNION ALL ")))
+   :union-all       (partial union! " UNION ALL ")
+   :nest            nest!))
 
 (def ^:private clause-rank
   (into {}
@@ -466,11 +527,24 @@
       (append-sql! context (case f
                              :in     " IN "
                              :not-in " NOT IN "))
-      (if (map? vs)
+      (cond
+        (map? vs)
         (do
           (append-sql! context "(")
           (map! vs context)
           (append-sql! context ")"))
+
+        ;; sequence of sequences
+        (sequential? (first vs))
+        (do
+          (append-sql! context "(")
+          (interpose-fn
+           vs
+           #(-list! % context)
+           #(append-sql! context ", "))
+          (append-sql! context ")"))
+
+        :else
         (-list! vs context)))))
 
 (defn- between! [[x y z] context]
@@ -533,8 +607,15 @@
 (defn- current-timestamp! [context]
   (append-sql! context "current_timestamp"))
 
-(defn- param-fn-call! [x context]
+(defn- lift! [x context]
   (object! x context))
+
+(defn- over! [[expr m :as args] context]
+  (compile! expr context)
+  (append-sql! context " OVER (")
+  (when-let [m (not-empty (select-keys m [:order-by :partition-by]))]
+    (map! m context))
+  (append-sql! context ")"))
 
 (defn- -binary-operator! [f args context]
   (let [f-str (case f
@@ -627,35 +708,44 @@
   (compile! rhs context))
 
 (defn- -fn-call! [[f & args] context]
-  ;; this `case` has no default/fallthrough clause on purpose: `f` can come from an attacker-derived `:%foo`
-  ;; keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the SQL raw.
-  ;; Do not add a default branch here that echoes `f`'s name into the output.
+  {:pre [(keyword? f)]}
+  ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from an attacker-derived
+  ;; `:%foo` keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the
+  ;; SQL raw. All allowed functions need to be explicitly whitelisted here.
+  ;;
+  ;; ⚠⚠⚠ DO NOT ADD SUPPORT FOR `:raw` -- IT IS NOT SUPPORTED ON PURPOSE ⚠⚠⚠
+  ;;
   (case f
-    :not                    (not!     args context)
-    :between                (between! args context)
-    :cast                   (cast!    args context)
-    :case                   (case!    args context)
-    (:= :is)                (-equals! " = "  " IS NULL"     args context)
     (:<> :!= :not= :is-not) (-equals! " <> " " IS NOT NULL" args context)
+    (:= :is)                (-equals! " = " " IS NULL" args context)
     :and                    (-compound! " AND " args context)
-    :or                     (-compound! " OR "  args context)
-    :in                     (-in! f args context)
-    :not-in                 (-in! f args context)
-    :exists                 (-exists! "EXISTS "     (first args) context)
-    :not-exists             (-exists! "NOT EXISTS " (first args) context)
-    :inline                 (inline! (first args) context)
-    :timestampdiff          (timestamp-diff! args context)
+    :between                (between! args context)
+    :case                   (case! args context)
+    :cast                   (cast! args context)
+    :composite              (-list! args context)
     :current-timestamp      (current-timestamp! context)
-    :param                  (param-fn-call! (first args) context)
+    :exists                 (-exists! "EXISTS " (first args) context)
+    :in                     (-in! f args context)
+    :inline                 (inline! (first args) context)
+    :lift                   (lift! (first args) context)
+    :not                    (not! args context)
+    :not-exists             (-exists! "NOT EXISTS " (first args) context)
+    :not-in                 (-in! f args context)
+    :or                     (-compound! " OR " args context)
+    :over                   (over! (first args) context)
+    :param                  (lift! (first args) context)
+    :timestampdiff          (timestamp-diff! args context)
 
-    ;; TODO (Cam 2026-09-29) confirm this is the correct way to implement `:lift`
-    :lift
-    (compile! (first args) context)
-
-    (:< :<= :> :>= :like :not-like :+ :- :/ :*)
+    (:< :<= :> :>= :like :not-like :+ :- :/ :* :%)
     (-binary-operator! f args context)
 
-    (:avg
+    ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
+    :call
+    (recur args context)
+
+    (:abs
+     :avg
+     :ceil
      :coalesce
      :concat
      :count
@@ -665,6 +755,7 @@
      :date_part
      :distinct
      :escape
+     :floor
      :greatest
      :least
      :isnull
@@ -674,11 +765,15 @@
      :now
      :regexp_replace
      :replace
+     :row_number
+     :round
      :sum
+     :to_regclass
      :to_tsquery
      :trim
      :ts_rank
-     :upper)
+     :upper
+     :year)
     (-simple-fn! f args context)
 
     ;; custom legacy `h2x/` operators
@@ -695,7 +790,11 @@
 
     ;; other custom operators
     :metabase.funnysql.core/postgres-full-text-search-match
-    (postgres-full-text-search-match args context)))
+    (postgres-full-text-search-match args context)
+
+    #_else
+    (throw (ex-info "Function is not currently supported; add it to metabase.funnysql.core/-fn-call! if it should be"
+                    {:f f, :args args}))))
 
 (defn- vector! [xs context]
   (if (keyword? (first xs))

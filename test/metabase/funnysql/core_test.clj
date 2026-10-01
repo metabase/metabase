@@ -77,7 +77,10 @@
 
 (deftest ^:parallel in-test
   (is (= ["WHERE \"table\".\"field\" IN (1, 2, 3)"]
-         (funnysql/format {:where [:in :table.field [1 2 3]]} :postgres))))
+         (funnysql/format {:where [:in :table.field [1 2 3]]} :postgres)))
+  (testing "multiple sequences (used in combination with `:composite`)"
+    (is (= ["WHERE \"table\".\"field\" IN ((1, 2, 3), (4, 5, 6))"]
+           (funnysql/format {:where [:in :table.field [[1 2 3] [4 5 6]]]} :postgres)))))
 
 (deftest ^:parallel not-in-test
   (is (= ["WHERE \"table\".\"field\" NOT IN (1, 2)"]
@@ -232,6 +235,16 @@
                            :select         [:id]
                            :from           [:cte]} :postgres))))
 
+(deftest ^:parallel with-recursive-columns-test
+  (is (= [(str "WITH RECURSIVE \"parents\" (\"id\", \"name\") AS (SELECT \"id\", \"name\" FROM \"metabase_field\")"
+               " SELECT \"id\" FROM \"parents\"")]
+         (funnysql/format {:with-recursive [[[:parents {:columns [:id :name]}]
+                                             {:select [:id :name]
+                                              :from   [:metabase_field]}]]
+                           :select         [:id]
+                           :from           [:parents]}
+                          :postgres))))
+
 (deftest ^:parallel union-test
   (is (= ["SELECT \"id\" FROM \"a\" UNION SELECT \"id\" FROM \"b\""]
          (funnysql/format {:union [{:select [:id] :from [:a]}
@@ -243,14 +256,52 @@
                                        {:select [:id] :from [:b]}]} :postgres))))
 
 (deftest ^:parallel insert-into-values-test
-  (is (= ["INSERT INTO \"my_table\" (\"a\", \"b\") VALUES (?, ?)" "x" "y"]
-         (funnysql/format {:insert-into :my_table
-                           :values      [{:a "x" :b "y"}]} :postgres))))
+  (are [table] (= ["INSERT INTO \"my_table\" (\"a\", \"b\") VALUES (?, ?)" "x" "y"]
+                  (funnysql/format {:insert-into table
+                                    :values      [{:a "x" :b "y"}]} :postgres))
+    :my_table
+    [:my_table]
+    [[:my_table]]))
 
 (deftest ^:parallel insert-into-multiple-rows-test
   (is (= ["INSERT INTO \"my_table\" (\"a\", \"b\", \"c\") VALUES (?, ?, NULL), (?, ?, ?)" "a1" "b1" "a2" "b2" "c2"]
          (funnysql/format {:insert-into :my_table
-                           :values      [{:a "a1", :b "b1"} {:a "a2", :b "b2", :c "c2"}]} :postgres))))
+                           :values      [{:a "a1", :b "b1"} {:a "a2", :b "b2", :c "c2"}]}
+                          :postgres))))
+
+(deftest ^:parallel insert-into-columns-test
+  (testing "`:columns` specified as separate top-level key"
+    (is (= ["INSERT INTO \"permissions\" (\"object\", \"group_id\") VALUES (?, 1)" "/db/1/"]
+           (funnysql/format {:insert-into :permissions
+                             :columns     [:object :group_id]
+                             :values      [["/db/1/" 1]]}
+                            :postgres)))))
+
+(deftest ^:parallel insert-from-table-with-columns-test
+  (testing "columns specified in `:insert-into` itself"
+    (is (= ["INSERT INTO \"my_table\" (\"a\", \"b\", \"c\") VALUES (1, 2, 3), (4, 5, 6)"]
+           (funnysql/format {:insert-into [:my_table [:a :b :c]]
+                             :values      [[1 2 3] [4 5 6]]}
+                            :postgres)))))
+
+(deftest ^:parallel insert-from-select-test
+  (testing "INSERT ... SELECT must not silently drop the column list and the SELECT"
+    (is (= [(str "INSERT INTO \"permissions_group_membership\" (\"group_id\", \"user_id\", \"is_group_manager\")"
+                 " SELECT \"g\".\"id\", \"u\".\"id\" FROM \"permissions_group\" AS \"g\""
+                 " JOIN \"core_user\" AS \"u\" ON \"u\".\"id\" = 1")]
+           (funnysql/format {:insert-into
+                             [[:permissions_group_membership [:group_id :user_id :is_group_manager]]
+                              {:select [:g.id :u.id]
+                               :from   [[:permissions_group :g]]
+                               :join   [[:core_user :u] [:= :u.id [:inline 1]]]}]}
+                            :postgres)))))
+
+(deftest ^:parallel degenerate-insert-test
+  (testing "an INSERT with nothing to insert must fail closed rather than emit invalid SQL"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #":values cannot have empty or nil rows"
+         (funnysql/format {:insert-into :permissions, :values []} :postgres)))))
 
 (deftest ^:parallel on-conflict-do-update-set-test
   (is (= ["INSERT INTO \"my_table\" (\"a\", \"b\") VALUES (?, ?) ON CONFLICT (\"a\") DO UPDATE SET \"b\" = ?, \"c\" = ?" "x" "y" "z" "a"]
@@ -653,3 +704,105 @@
                                     :value_with_aad "2026-10-01 18:37:49.894829"}
                            :where  [:= :key [:param :p17uc4hjfp068j]]}
                           :h2))))
+
+(deftest ^:parallel over-test
+  (are [form expected] (= expected
+                          (funnysql/format form :postgres))
+    {:select [:*
+              [[:over [[:row_number]
+                       {:partition-by :transform_id
+                        :order-by     [[:start_time :desc]]}]]
+               :rn]]
+     :from   [:transform_run]}
+    ["SELECT *, row_number() OVER (PARTITION BY \"transform_id\" ORDER BY \"start_time\" DESC) AS \"rn\" FROM \"transform_run\""]
+
+    {:select [[[:over [[:row_number]
+                       {:partition-by [:run_id]
+                        :order-by     [[:started_at :desc]]}]]
+               :rn]]
+     :from   [:task_history]}
+    ["SELECT row_number() OVER (PARTITION BY \"run_id\" ORDER BY \"started_at\" DESC) AS \"rn\" FROM \"task_history\""]
+
+    {:select [:* [[:over [[:count :*] {}]]
+                  :total_count]]
+     :from   [:collection]}
+    ["SELECT *, count(*) OVER () AS \"total_count\" FROM \"collection\""]))
+
+(deftest ^:parallel nest-test
+  (testing ":nest wraps a subquery in parens"
+    (is (= [(str "(SELECT \"dc\".\"card_id\" AS \"card_id\" FROM \"report_dashboardcard\" AS \"dc\")"
+                 " UNION ALL "
+                 "(SELECT \"dcs\".\"card_id\" AS \"card_id\" FROM \"dashboardcard_series\" AS \"dcs\")")]
+           (funnysql/format {:union-all [^:allow-subquery
+                                         {:nest ^:allow-subquery {:select [[:dc.card_id :card_id]]
+                                                                  :from   [[:report_dashboardcard :dc]]}}
+                                         ^:allow-subquery
+                                         {:nest ^:allow-subquery {:select [[:dcs.card_id :card_id]]
+                                                                  :from   [[:dashboardcard_series :dcs]]}}]}
+                            :postgres)))
+    (testing "don't splice in subqueries unless they are marked `^:allow-subquery`"
+      (is (= ["(?) UNION ALL (?)"
+              {:select [[:dc.card_id :card_id]], :from [[:report_dashboardcard :dc]]}
+              {:select [[:dcs.card_id :card_id]], :from [[:dashboardcard_series :dcs]]}]
+             (funnysql/format {:union-all [^:allow-subquery
+                                           {:nest {:select [[:dc.card_id :card_id]]
+                                                   :from   [[:report_dashboardcard :dc]]}}
+                                           ^:allow-subquery
+                                           {:nest {:select [[:dcs.card_id :card_id]]
+                                                   :from   [[:dashboardcard_series :dcs]]}}]}
+                              :postgres))))))
+
+(deftest ^:parallel composite-test
+  (testing ":composite builds a row constructor"
+    (are [form expected] (= expected
+                            (funnysql/format form :postgres))
+      {:select [[:f.id]]
+       :from   [:metabase_field]
+       :where  [:in
+                [:composite [:coalesce :t.schema "__null__"] :t.name :f.name]
+                [["public" "orders" "id"]]]}
+      [(str "SELECT \"f\".\"id\" FROM \"metabase_field\""
+            " WHERE (coalesce(\"t\".\"schema\", ?), \"t\".\"name\", \"f\".\"name\") IN ((?, ?, ?))")
+       "__null__" "public" "orders" "id"]
+
+      {:select [[[:count [:distinct [:composite :error_type :error_detail]]]]]
+       :from   [:analysis_finding_error]}
+      ["SELECT count(distinct((\"error_type\", \"error_detail\"))) FROM \"analysis_finding_error\""])))
+
+(deftest ^:parallel to-regclass-test
+  (is (= ["SELECT \"reltuples\", \"relpages\" FROM \"pg_class\" WHERE \"oid\" = to_regclass(?)" "search_index"]
+         (funnysql/format {:select [:reltuples :relpages]
+                           :from   [:pg_class]
+                           :where  [:= :oid [:to_regclass "search_index"]]}
+                          :postgres))))
+
+(deftest ^:parallel call-test
+  (testing "the h2x helpers built on sql/call emit [:call <fn> ...]"
+    (are [form expected] (= expected
+                            (funnysql/format form :postgres))
+      {:update :query
+       :set    {:average_execution_time (h2x/cast :integer
+                                                  (h2x/round (h2x/+ (h2x/* 2 :average_execution_time) 1)
+                                                             [:inline 0]))}
+       :where  [:= :id [:inline 1]]}
+      ["UPDATE \"query\" SET \"average_execution_time\" = CAST(round(2 * \"average_execution_time\" + 1, 0) AS integer) WHERE \"id\" = 1"]
+
+      {:select [[(h2x/abs :x)]] :from [:t]}   ["SELECT abs(\"x\") FROM \"t\""]
+      {:select [[(h2x/ceil :x)]] :from [:t]}  ["SELECT ceil(\"x\") FROM \"t\""]
+      {:select [[(h2x/floor :x)]] :from [:t]} ["SELECT floor(\"x\") FROM \"t\""]
+      {:select [[(h2x/year :x)]] :from [:t]}  ["SELECT year(\"x\") FROM \"t\""])))
+
+(deftest ^:parallel mod-test
+  (is (= ["SELECT \"x\" % 2 FROM \"t\""]
+         (funnysql/format {:select [[(h2x/mod :x 2)]] :from [:t]} :postgres))))
+
+(deftest ^:parallel for-test
+  (testing ":for accepts a vector as well as a bare keyword"
+    (are [for-clause] (= ["SELECT \"id\" FROM \"exploration_thread\" WHERE \"id\" = 1 FOR UPDATE"]
+                         (funnysql/format {:select [:id]
+                                           :from   [:exploration_thread]
+                                           :where  [:= :id [:inline 1]]
+                                           :for    for-clause}
+                                          :postgres))
+      :update
+      [:update])))
