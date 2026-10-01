@@ -523,38 +523,30 @@ describe("scenarios > question > read-only snippets", () => {
     H.setupGitSync();
   });
 
-  it("should not let you create or edit a snippet", () => {
+  it("should not let you create or edit a snippet or a snippet folder", () => {
     H.configureGitAndPullChanges("read-only");
     H.startNewNativeQuestion();
     cy.findByTestId("native-query-editor-action-buttons")
       .icon("snippet")
       .click();
-    cy.findByTestId("sidebar-content")
-      .findByText("Create snippet")
-      .should("not.exist");
-
-    cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("stuff-snippet").click();
-      cy.findByRole("button", { name: /pencil icon edit/i }).should(
-        "not.exist",
-      );
-    });
-  });
-
-  it("should not let you create or edit a snippet folder", () => {
-    H.configureGitAndPullChanges("read-only");
-    H.startNewNativeQuestion();
-    cy.icon("snippet").click();
-
-    cy.log("Menu that allows creating a snippet folder is not rendered");
-    cy.findByTestId("sidebar-right")
-      .as("sidebar")
-      .find(".Icon-add")
-      .should("not.exist");
 
     cy.findByTestId("sidebar-right").within(() => {
       cy.findByText("My favorite snippets").should("be.visible");
+      cy.findByText("stuff-snippet").should("be.visible");
+
+      cy.log("Menu that allows creating a snippet or a folder is not rendered");
+      cy.findByTestId("snippet-header-buttons")
+        .icon("search")
+        .should("be.visible");
+      cy.findByTestId("snippet-header-buttons").icon("add").should("not.exist");
       cy.findByRole("button", { name: "Snippet folder options" }).should(
+        "not.exist",
+      );
+
+      cy.log("An expanded snippet has no edit button");
+      cy.icon("chevrondown").click({ force: true });
+      cy.get("pre").should("have.text", "select 'snippet 1'");
+      cy.findByRole("button", { name: /pencil icon edit/i }).should(
         "not.exist",
       );
     });

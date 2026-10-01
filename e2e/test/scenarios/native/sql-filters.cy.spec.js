@@ -31,7 +31,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         "when there's a default value, enabling required sets it as a parameter value",
       );
       SQLFilter.setDefaultValue("default");
-      H.filterWidget().find("input").invoke("val", "");
+      H.filterWidget().find("input").clear();
+      H.filterWidget().find("input").blur();
+      H.filterWidget().find("input").should("have.value", "");
       SQLFilter.toggleRequired();
       H.filterWidget().find("input").should("have.value", "default");
 
@@ -86,7 +88,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         "when there's a default value, enabling required sets it as a parameter value",
       );
       SQLFilter.setDefaultValue("3");
-      H.filterWidget().find("input").invoke("val", "");
+      H.filterWidget().find("input").clear();
+      H.filterWidget().find("input").blur();
+      H.filterWidget().find("input").should("have.value", "");
       SQLFilter.toggleRequired();
       H.filterWidget().find("input").should("have.value", "3");
 

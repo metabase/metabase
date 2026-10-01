@@ -127,7 +127,12 @@ describe(
 
       cy.log("Pick the same database again");
       selectDatabase("Sample Database");
-      cy.get("@persistDatabase").should("be.null");
+
+      cy.log("Only picking a different database persists it");
+      cy.findByTestId("selected-database").click();
+      selectDatabase(postgresName);
+      cy.wait("@persistDatabase");
+      cy.get("@persistDatabase.all").should("have.length", 1);
     });
 
     it("selecting a database in native editor for model actions should not persist the database", () => {
@@ -138,7 +143,6 @@ describe(
       assertNoDatabaseSelected();
 
       selectDatabase("Sample Database");
-      cy.get("@persistDatabase").should("be.null");
 
       startNativeModel();
       assertNoDatabaseSelected();
@@ -147,6 +151,7 @@ describe(
       );
       selectDatabase(postgresName);
       cy.wait("@persistDatabase");
+      cy.get("@persistDatabase.all").should("have.length", 1);
 
       cy.visit("/");
       H.startNewAction();

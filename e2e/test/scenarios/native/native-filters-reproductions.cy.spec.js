@@ -16,7 +16,7 @@ describe("issue 9357", () => {
   });
 
   it(
-    "should reorder template tags by drag and drop (metabase#9357)",
+    "should reorder template tags by drag and drop, but not from popovers (metabase#9357, metabase#40232)",
     { viewportWidth: 800, viewportHeight: 600 },
     () => {
       H.startNewNativeQuestion();
@@ -37,6 +37,23 @@ describe("issue 9357", () => {
       cy.get("@variableField").first().findByText("nextparameter");
 
       cy.get("@variableField").eq(1).findByText("firstparameter");
+
+      cy.log(
+        "dragging from inside a filter popover does not reorder the filters (metabase#40232)",
+      );
+      cy.findAllByRole("radio", { name: "Search box" }).first().click();
+      H.filterWidget().first().should("contain.text", "Nextparameter").click();
+
+      H.popover().findByText("Add filter").as("popoverElement");
+      H.moveDnDKitElementByAlias("@popoverElement", {
+        vertical: 50,
+        useMouseEvents: true,
+      });
+
+      H.filterWidget()
+        .should("have.length", 3)
+        .first()
+        .should("contain.text", "Nextparameter");
     },
   );
 });
@@ -594,8 +611,8 @@ describe("issue 27257", () => {
   });
 });
 
-describe("issue 31606", { tags: "@external" }, () => {
-  const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE CATEGORY = {{test}}";
+describe("issue 31606", () => {
+  const SQL_QUERY = "SELECT COUNT(*) FROM PRODUCTS WHERE ID = {{test}}";
 
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -610,12 +627,11 @@ describe("issue 31606", { tags: "@external" }, () => {
     SQLFilter.enterParameterizedQuery(SQL_QUERY);
 
     // Text
-    SQLFilter.setWidgetValue("Gizmo");
+    SQLFilter.setWidgetValue("1");
     SQLFilter.runQuery();
 
-    H.queryBuilderMain()
-      .findByText(/missing required parameters/)
-      .should("not.exist");
+    cy.findByTestId("scalar-value").should("have.text", "1");
+    H.filterWidget().icon("close").should("be.visible");
 
     H.filterWidget().findByRole("textbox").clear();
 
@@ -634,9 +650,8 @@ describe("issue 31606", { tags: "@external" }, () => {
 
     SQLFilter.runQuery();
 
-    H.queryBuilderMain()
-      .findByText(/missing required parameters/)
-      .should("not.exist");
+    cy.findByTestId("scalar-value").should("have.text", "1");
+    H.filterWidget().icon("close").should("be.visible");
 
     H.filterWidget().findByRole("textbox").clear();
     SQLFilter.runQuery();
@@ -688,11 +703,7 @@ describe("issue 31606", { tags: "@external" }, () => {
     H.filterWidget().within(() => {
       cy.icon("close").should("be.visible");
     });
-
-    SQLFilter.runQuery();
-    H.queryBuilderMain()
-      .findByText(/missing required parameters/)
-      .should("not.exist");
+    H.filterWidget().should("contain.text", "23");
 
     H.filterWidget().click();
 
@@ -701,6 +712,7 @@ describe("issue 31606", { tags: "@external" }, () => {
       cy.findByText("Update filter").click();
     });
 
+    H.filterWidget().should("not.contain.text", "23");
     H.filterWidget().within(() => {
       cy.icon("close").should("not.exist");
     });
@@ -775,32 +787,6 @@ describe("issue 34129", () => {
     cy.wait("@cardQuery");
 
     H.filterWidget().findByText("Today").should("exist");
-  });
-});
-
-describe("issue 31606", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not start drag and drop from clicks on popovers", () => {
-    H.startNewNativeQuestion();
-
-    SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
-
-    cy.findAllByRole("radio", { name: "Search box" }).first().click();
-    H.filterWidget().first().click();
-
-    H.popover().findByText("Add filter").as("dragElement");
-    H.moveDnDKitElementByAlias("@dragElement", {
-      horizontal: 300,
-    });
-
-    H.filterWidget()
-      .should("have.length", 2)
-      .first()
-      .should("contain.text", "Foo");
   });
 });
 

@@ -278,7 +278,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
   describe("static list source with custom labels (dropdown)", () => {
     it("should be able to use a static list source in the query builder", () => {
       H.startNewNativeQuestion();
-      SQLFilter.enterParameterizedQuery("SELECT * FROM {{ tag }}");
+      SQLFilter.enterParameterizedQuery("SELECT {{ tag }} AS V");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
       H.setSearchBoxFilterType();
@@ -294,6 +294,8 @@ describe("scenarios > filters > sql filters > values source > number parameter",
         H.multiAutocompleteInput().type("Tw");
       });
 
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      H.popover().last().findByText("Twenty").should("be.visible");
       checkFilterValueNotInList("10");
       checkFilterValueNotInList("20");
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -305,6 +307,8 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
       cy.findByLabelText("Tag").should("contain.text", "Twenty");
       SQLFilter.runQuery("cardQuery");
+      H.assertQueryBuilderRowCount(1);
+      H.queryBuilderMain().findByText("20").should("be.visible");
     });
   });
 

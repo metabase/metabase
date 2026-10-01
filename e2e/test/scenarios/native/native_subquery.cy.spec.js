@@ -153,7 +153,9 @@ describe("scenarios > question > native subquery", () => {
           // so type it in two parts
           H.NativeEditor.focus().type(" ").type("another");
 
-          H.NativeEditor.completions("ANOTHER").should("be.visible");
+          H.NativeEditor.completion("ANOTHER_UNIQUE_COLUMN_NAME").should(
+            "be.visible",
+          );
         });
       });
     });

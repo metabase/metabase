@@ -548,9 +548,15 @@ describe("issue 22991", () => {
     H.startNewNativeQuestion();
     cy.get("@questionId").then((questionId) => {
       // can't use cy.type because it does not simulate the bug
-      H.NativeEditor.type(`select * from {{${questionId}}}`);
+      H.NativeEditor.type(`select * from {{#${questionId}`);
+      H.NativeEditor.get()
+        .find("[data-card='true']")
+        .should("contain.text", `#${questionId}`);
     });
 
+    cy.get("main").within(() => {
+      H.NativeEditor.get().should("be.visible");
+    });
     cy.get("main").should(
       "not.contain",
       "Sorry, you don’t have permission to see that",

@@ -52,9 +52,10 @@ describe("scenarios > question > native > suggestions", () => {
     H.NativeEditor.type("acc");
 
     H.NativeEditor.completions().within(() => {
-      H.NativeEditor.completion("ACCOUNT_ID")
-        .should("be.visible")
-        .should("have.length", 1);
+      cy.get(".cm-completionLabel")
+        .filter((_, element) => element.textContent === "ACCOUNT_ID")
+        .should("have.length", 1)
+        .and("be.visible");
     });
   });
 });
@@ -73,10 +74,11 @@ describe(
 
       H.NativeEditor.type('[{ "$grou');
       H.NativeEditor.completions().within(() => {
-        H.NativeEditor.completion("$group")
-          .should("be.visible")
+        cy.get(".cm-completionLabel")
+          .filter((_, element) => element.textContent === "$group")
           .should("have.length", 1)
-          .should("contain.text", "keyword");
+          .and("be.visible");
+        H.NativeEditor.completion("$group").should("contain.text", "keyword");
       });
 
       H.NativeEditor.type('p": { "pr');

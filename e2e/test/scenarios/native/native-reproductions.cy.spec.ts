@@ -165,12 +165,14 @@ describe("issue 38083", () => {
           dataset_query,
         }),
       )
-      .then((card) => H.visitQuestion(card.id));
+      .then((card) => {
+        cy.intercept("POST", `/api/card/${card.id}/query`).as("cardQuery");
+        cy.visit(`/question/${card.id}?state=CA`);
+      });
+    cy.wait("@cardQuery");
 
-    H.filterWidget()
-      .filter(`:contains("${QUERY.templateTags.state["display-name"]}")`)
-      .icon("revert")
-      .should("not.exist");
+    H.filterWidget().find("input").should("have.value", "CA");
+    H.filterWidget().icon("revert").should("not.exist");
   });
 });
 

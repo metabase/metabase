@@ -121,8 +121,9 @@ describe("scenarios > native > snippet tags", () => {
     cy.log("change the type");
     getEditorVisibilityToggler().click();
     getEditorTopBar().icon("variable").click();
-    getVariableTypeSelect().click();
+    getVariableTypeSelect().should("have.value", "Text").click();
     H.popover().findByText("Number").click();
+    getVariableTypeSelect().should("have.value", "Number");
 
     cy.log("verify that the parameter can be used");
     getEditorTopBar().findByPlaceholderText("Filter").type("10");
