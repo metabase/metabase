@@ -551,34 +551,6 @@ describe("issue 16756", () => {
   });
 });
 
-describe("issue 17490", () => {
-  function mockDatabaseTables() {
-    cy.intercept("GET", "/api/database?include=tables", (req) => {
-      req.reply((res) => {
-        const mockTables = new Array(7).fill({
-          id: 42, // id is hard coded, but it doesn't matter for this repro
-          db_id: 1,
-          name: "Z",
-          display_name: "ZZZ",
-          schema: "PUBLIC",
-        });
-
-        res.body.data = res.body.data.map((d) => ({
-          ...d,
-          tables: [...d.tables, ...mockTables],
-        }));
-      });
-    });
-  }
-
-  beforeEach(() => {
-    mockDatabaseTables();
-
-    H.restore();
-    cy.signInAsAdmin();
-  });
-});
-
 describe("issue 27257", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");

@@ -346,8 +346,6 @@ describe("scenarios > question > native", () => {
   });
 
   it("should not autorun ad-hoc native queries by default or native queries after updating a question (metabase#30165)", () => {
-    cy.intercept("POST", "/api/dataset").as("adhocDataset");
-
     H.visitQuestionAdhoc(
       {
         display: "scalar",
@@ -364,9 +362,8 @@ describe("scenarios > question > native", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear").should("be.visible");
-    cy.get("@adhocDataset.all").should("have.length", 0);
+    cy.get("@dataset.all").should("have.length", 0);
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
 
@@ -434,8 +431,6 @@ describe("scenarios > question > native", () => {
   });
 
   it("should be possible to format the native query using the keyboard shortcut", () => {
-    H.restore();
-    cy.signInAsNormalUser();
     H.startNewNativeQuestion({
       query: "SELECT COUNT(*) FROM ORDERS",
     });

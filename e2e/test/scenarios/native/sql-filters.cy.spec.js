@@ -225,7 +225,6 @@ describe("scenarios > filters > sql filters > multiple values", () => {
     values.forEach((value) => {
       H.tableInteractive().within(() => {
         cy.findAllByText(value).should("have.length.gte", 1);
-        cy.findAllByText(value).should("have.length.gte", 1);
       });
     });
   }

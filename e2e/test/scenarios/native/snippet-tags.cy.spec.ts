@@ -211,10 +211,6 @@ function createQuestionAndSnippet({
           },
         },
       },
-      enable_embedding: true,
-      embedding_params: {
-        filter: "enabled",
-      },
     }).then(({ body: card }) => {
       return { card, snippet };
     });

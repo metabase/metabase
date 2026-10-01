@@ -215,7 +215,6 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   const MYSQL_DB_NAME = "QA MySQL8";
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     H.restore("mysql-8");
@@ -266,7 +265,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.contains("37.65");
 
     // Save the query
-    H.saveQuestion("sql count", { wrapId: true });
+    H.saveQuestion("sql count");
     cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*$/);
   });
 });

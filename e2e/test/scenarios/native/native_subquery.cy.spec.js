@@ -26,7 +26,6 @@ describe("scenarios > question > native subquery", () => {
           name: "Count of People",
           native: { query: queryText },
         }).then(({ body: { id: questionId3 } }) => {
-          cy.wrap(questionId3).as("toplevelQuestionId");
           cy.visit(`/question/${questionId3}`);
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
@@ -130,7 +129,6 @@ describe("scenarios > question > native subquery", () => {
             },
           },
         }).then(({ body: { id: questionId3 } }) => {
-          cy.wrap(questionId3).as("toplevelQuestionId");
           cy.visit(`/question/${questionId3}`);
 
           // Refresh the state, so previously created questions need to be loaded again.
@@ -148,9 +146,6 @@ describe("scenarios > question > native subquery", () => {
           );
 
           H.NativeEditor.focus().type(` {{#${questionId2}}}`);
-
-          // Wait until another explicit autocomplete is triggered
-          // cy.wait(1000);
 
           // Again, typing in in one go doesn't always work
           // so type it in two parts

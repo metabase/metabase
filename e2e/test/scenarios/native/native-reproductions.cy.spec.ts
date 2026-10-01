@@ -797,7 +797,7 @@ describe("issue 59110", () => {
     });
   });
 });
-describe("issue 59356", () => {
+describe("issue 59356", { tags: "@external" }, () => {
   function typeRunShortcut() {
     cy.realPress([H.metaKey, "Enter"]);
   }

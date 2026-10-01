@@ -270,7 +270,6 @@ describe("scenarios > question > snippets (EE)", () => {
   });
 
   it("should let you create a snippet folder and move a snippet into it", () => {
-    cy.signInAsAdmin();
     // create snippet via API
     cy.request("POST", "/api/native-query-snippet", {
       content: "snippet 1",

@@ -244,8 +244,6 @@ describe("issue 31926", { tags: "@external" }, () => {
   });
 
   it("display the relevant error message in save question modal (metabase#21597)", () => {
-    cy.intercept({ method: "POST", url: "/api/card" });
-
     // Second DB (copy)
     H.addPostgresDatabase(databaseCopyName);
 
@@ -289,23 +287,9 @@ describe("issue 31926", { tags: "@external" }, () => {
   });
 });
 
-describe("issue 21597", { tags: "@external" }, () => {
-  /*
-   *
-   * Greetings and welcome to this weird test. It has a history! A long legacy! Allow me to explain:
-   *
-   * This test was originally using changing the DB on a native query with field filters to trigger an error that
-   * would show up in the save modal.
-   *
-   * PR#54453 fixes this error by removing the field filters that refer to the old database, which means that it won't
-   * save.
-   *
-   * So in order to trigger an error, we are intercepting the POST /api/card and manually responding with an error.
-   *
-   * We then assert that the message makes it to the save modal.
-   *
-   * The End
-   */
+describe("issue 21597", () => {
+  // The save request is stubbed with an error to check that its message
+  // shows in the save modal.
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

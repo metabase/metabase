@@ -26,9 +26,7 @@ describe("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.updateSetting("enable-public-sharing", true);
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
@@ -253,15 +251,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.updateSetting("enable-public-sharing", true);
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
-    cy.intercept("GET", "/api/card/*/params/*/values").as(
-      "cardParameterValues",
-    );
   });
 
   describe("static list source (dropdown)", () => {
@@ -389,7 +379,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
 const updateQuestion = () => {
   cy.findByText("Save").click();
-  cy.findByTestId("save-question-modal").within((modal) => {
+  cy.findByTestId("save-question-modal").within(() => {
     cy.findByText("Save").click();
   });
   cy.wait("@updateQuestion");
