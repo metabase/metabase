@@ -21,6 +21,8 @@ type GroupMappingsPanelProps = {
   readOnly?: boolean;
   // the env var that owns the mappings, which locks them and is named above the rows
   lockedEnvName?: string;
+  // the backend rejects bad names on write, so a failed save marks the name field
+  namesValidatedOnSave?: boolean;
   nameLabel: string;
   namePlaceholder: string;
 };
@@ -34,6 +36,7 @@ export function GroupMappingsPanel({
   disabled = false,
   readOnly = false,
   lockedEnvName,
+  namesValidatedOnSave,
   nameLabel,
   namePlaceholder,
 }: GroupMappingsPanelProps) {
@@ -43,7 +46,12 @@ export function GroupMappingsPanel({
     onDeletingChange,
     groupLookup,
   });
-  const editor = useMappingEditor({ mappings, saveMappings, groupLookup });
+  const editor = useMappingEditor({
+    mappings,
+    saveMappings,
+    groupLookup,
+    namesValidatedOnSave,
+  });
   // a mapping's ids only read right once the groups have arrived, so the panel waits for them too
   const isDisabled =
     disabled ||

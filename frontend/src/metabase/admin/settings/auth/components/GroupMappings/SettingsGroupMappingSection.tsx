@@ -19,6 +19,8 @@ type SettingsGroupMappingSectionProps = {
   description: string;
   // "internal" keeps tenant groups out of the picker, for providers whose users are never tenants
   tenancy?: "internal";
+  // the backend rejects bad names on write, so a failed save marks the name field
+  namesValidatedOnSave?: boolean;
   nameLabel: string;
   namePlaceholder: string;
   // the page form's fields that only apply while group mapping is on
@@ -33,6 +35,7 @@ export function SettingsGroupMappingSection({
   mappingsSettingKey,
   description,
   tenancy,
+  namesValidatedOnSave,
   nameLabel,
   namePlaceholder,
   children,
@@ -56,6 +59,7 @@ export function SettingsGroupMappingSection({
       <SettingsGroupMappings
         settingKey={mappingsSettingKey}
         tenancy={tenancy}
+        namesValidatedOnSave={namesValidatedOnSave}
         nameLabel={nameLabel}
         namePlaceholder={namePlaceholder}
       />
@@ -67,6 +71,7 @@ export function SettingsGroupMappingSection({
 type SettingsGroupMappingsProps = {
   settingKey: GroupMappingsSettingKey;
   tenancy?: "internal";
+  namesValidatedOnSave?: boolean;
   nameLabel: string;
   namePlaceholder: string;
 };
@@ -74,6 +79,7 @@ type SettingsGroupMappingsProps = {
 function SettingsGroupMappings({
   settingKey,
   tenancy,
+  namesValidatedOnSave,
   nameLabel,
   namePlaceholder,
 }: SettingsGroupMappingsProps) {
@@ -91,6 +97,7 @@ function SettingsGroupMappings({
       groupLookup={groupLookup}
       disabled={isFetching}
       lockedEnvName={envName}
+      namesValidatedOnSave={namesValidatedOnSave}
       nameLabel={nameLabel}
       namePlaceholder={namePlaceholder}
     />

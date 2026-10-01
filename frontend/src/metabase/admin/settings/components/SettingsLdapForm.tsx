@@ -294,6 +294,7 @@ export const SettingsLdapForm = () => {
                 nameLabel={t`LDAP group name`}
                 // mapping names are group DNs, which the backend validates on write
                 namePlaceholder="cn=people,ou=groups,dc=example,dc=org"
+                namesValidatedOnSave
                 data-testid="ldap-group-mapping-section"
                 disabled={!isConfigured}
                 onToggle={(enabled) => {

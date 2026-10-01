@@ -55,6 +55,7 @@ export function GroupMappingList({
     namePlaceholder,
     canSubmit: editor.canSave,
     nameError: editor.nameError,
+    saveError: editor.saveError,
     isSubmitting: disabled || editor.isSubmitting,
     onChange: editor.change,
     onCancel: editor.cancel,

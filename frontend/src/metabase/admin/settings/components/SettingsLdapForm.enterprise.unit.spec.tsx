@@ -68,6 +68,7 @@ describe("SettingsLdapForm (EE)", () => {
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
     });
 
     it("stays editable while LDAP is paused but configured", async () => {
@@ -79,6 +80,7 @@ describe("SettingsLdapForm (EE)", () => {
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
     });
 
     it("saves right away without touching the page form", async () => {
@@ -90,15 +92,21 @@ describe("SettingsLdapForm (EE)", () => {
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       await waitFor(() => expect(toggle).toBeEnabled());
+      expect(toggle).toBeChecked();
 
       await userEvent.click(toggle);
 
+      await waitFor(() => expect(toggle).not.toBeChecked());
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(
         /\/api\/setting\/ldap-user-provisioning-enabled%3F$/,
       );
+      expect(puts[0].body).toEqual({ value: false });
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeDisabled();
     });
   });
 

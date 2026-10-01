@@ -52,7 +52,8 @@ export function OidcGroupMappingSection({
   const applicationName = useSelector(getApplicationName);
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const groupLookup = useGroupLookup();
+  // OIDC users are never tenants, so tenant groups stay out of the picker
+  const groupLookup = useGroupLookup({ tenancy: "internal" });
   const { isFetching: isProvidersFetching } = useGetCustomOidcProvidersQuery();
   const [updateProvider, { isLoading: isUpdating }] =
     useUpdateCustomOidcMutation();

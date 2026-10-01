@@ -140,7 +140,7 @@ describe(
 
       enterLdapPort("389 ");
       cy.get("@portSection")
-        .findByText("That's not a valid port number")
+        .findByText("Port must be a whole number between 1 and 65535")
         .should("not.exist");
 
       cy.button("Save and enable").click();

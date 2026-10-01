@@ -25,6 +25,7 @@ type MappingEditorRowProps = {
   submitLabel: string;
   canSubmit: boolean;
   nameError: string | null;
+  saveError: string | null;
   isSubmitting: boolean;
   onChange: (draft: MappingDraft) => void;
   onCancel: () => void;
@@ -39,6 +40,7 @@ export function MappingEditorRow({
   submitLabel,
   canSubmit,
   nameError,
+  saveError,
   isSubmitting,
   onChange,
   onCancel,
@@ -46,6 +48,15 @@ export function MappingEditorRow({
 }: MappingEditorRowProps) {
   const applicationName = useSelector(getApplicationName);
   const errorId = useId();
+  // a failed save shows where a name error does, but only a name error marks the field invalid
+  const errorMessage = nameError ?? saveError;
+
+  // a read-only picker still drops its last group on Backspace, so edits wait for the save as well
+  const handleChange = (nextDraft: MappingDraft) => {
+    if (!isSubmitting) {
+      onChange(nextDraft);
+    }
+  };
 
   // the editor is inside the page form, so Enter must not reach its submit button
   const handleNameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -87,8 +98,10 @@ export function MappingEditorRow({
             placeholder={namePlaceholder}
             value={draft.name}
             error={nameError != null}
+            // read-only rather than disabled, so the field keeps the focus during the write
+            readOnly={isSubmitting}
             onChange={(event) =>
-              onChange({ ...draft, name: event.target.value })
+              handleChange({ ...draft, name: event.target.value })
             }
             onKeyDown={handleNameKeyDown}
             autoFocus
@@ -111,7 +124,8 @@ export function MappingEditorRow({
             }
             data={groupOptions}
             value={draft.groupValues}
-            onChange={(groupValues) => onChange({ ...draft, groupValues })}
+            readOnly={isSubmitting}
+            onChange={(groupValues) => handleChange({ ...draft, groupValues })}
             onKeyDown={handleGroupsKeyDown}
             searchable
           />
@@ -132,9 +146,9 @@ export function MappingEditorRow({
             </Button>
           </Flex>
         </Flex>
-        {nameError != null && (
+        {errorMessage != null && (
           <Text id={errorId} role="alert" c="error" fz="sm">
-            {nameError}
+            {errorMessage}
           </Text>
         )}
       </Stack>

@@ -270,15 +270,21 @@ describe("SettingsSAMLForm", () => {
         "saml-user-provisioning-enabled?": true,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeChecked();
 
       await userEvent.click(toggle);
 
+      await waitFor(() => expect(toggle).not.toBeChecked());
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(
         /\/api\/setting\/saml-user-provisioning-enabled%3F$/,
       );
+      expect(puts[0].body).toEqual({ value: false });
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeDisabled();
     });
 
     it("locks the switch while SCIM manages provisioning", async () => {
@@ -324,9 +330,9 @@ describe("SettingsSAMLForm", () => {
     it("stays editable while SAML is paused but configured", async () => {
       await setupConfigured({ ...IDP_SETTINGS, "saml-enabled": false });
 
-      expect(
-        screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeEnabled();
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
       expect(groupMappingSwitch()).toBeEnabled();
     });
   });
@@ -335,9 +341,11 @@ describe("SettingsSAMLForm", () => {
     it("keeps the group mapping card disabled until the identity provider is set up", async () => {
       await setup({ "saml-group-sync": true });
 
-      expect(
-        screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeEnabled();
+      const provisioningSwitch = screen.getByRole("switch", {
+        name: "User provisioning",
+      });
+      expect(provisioningSwitch).toBeEnabled();
+      expect(provisioningSwitch).not.toHaveAttribute("aria-disabled");
       expect(groupMappingSwitch()).toBeDisabled();
       expect(groupMappingSwitch()).toBeChecked();
       expect(

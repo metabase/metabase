@@ -16,6 +16,8 @@ export type MappingDraft = {
 export type MappingEditorState = {
   draft: MappingDraft | null;
   nameError: string | null;
+  // a failed save that says nothing about the name
+  saveError: string | null;
   canSave: boolean;
   isSubmitting: boolean;
   startNew: () => void;
@@ -30,10 +32,13 @@ export function useMappingEditor({
   mappings,
   saveMappings,
   groupLookup,
+  namesValidatedOnSave = false,
 }: {
   mappings: GroupMappings;
   saveMappings: SaveMappings;
   groupLookup: GroupLookup;
+  // the backend rejects bad names on write, so a failed save marks the name field
+  namesValidatedOnSave?: boolean;
 }): MappingEditorState {
   const [draft, setDraft] = useState<MappingDraft | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -52,9 +57,10 @@ export function useMappingEditor({
   let nameError: string | null = null;
   if (isDuplicateName) {
     nameError = t`A mapping for this group already exists`;
-  } else if (submitError != null) {
+  } else if (namesValidatedOnSave) {
     nameError = submitError;
   }
+  const saveError = namesValidatedOnSave ? null : submitError;
 
   const replaceDraft = (nextDraft: MappingDraft | null) => {
     setSubmitError(null);
@@ -93,6 +99,7 @@ export function useMappingEditor({
   return {
     draft,
     nameError,
+    saveError,
     canSave,
     isSubmitting,
     startNew: () =>

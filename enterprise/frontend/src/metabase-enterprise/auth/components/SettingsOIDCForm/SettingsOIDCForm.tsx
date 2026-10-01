@@ -209,7 +209,7 @@ export function SettingsOIDCForm() {
     providers && providers.length > 0 ? providers[0] : null;
   // the key names the provider, so it is fixed once one exists
   const isExisting = existingProvider != null;
-  // the cards below the server settings unlock on the flag the overview card reads too
+  // the group mapping card unlocks on the flag the overview card reads too
   const isConfigured = settingValues?.["oidc-configured"] ?? false;
   const providersSetting = settingDetails?.["oidc-providers"];
   // the env var holds every provider, so it locks the whole page rather than one field
@@ -398,11 +398,11 @@ export function SettingsOIDCForm() {
                 </Stack>
               </SettingsSection>
 
+              {/* the claims are form fields sent with the provider, so they can be set before the first save */}
               <CollapsibleSettingsSection
                 title={t`Attributes`}
                 description={t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
                 defaultOpened={hasCustomAttributes}
-                disabled={!isConfigured}
               >
                 <Stack gap="lg">
                   <FormTextInput

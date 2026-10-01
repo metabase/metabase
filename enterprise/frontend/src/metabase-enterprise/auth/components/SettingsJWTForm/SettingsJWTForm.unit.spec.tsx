@@ -481,17 +481,17 @@ describe("SettingsJWTForm", () => {
     it("stays editable while JWT is paused but configured", async () => {
       await setup({ jwtEnabled: false, configured: true });
 
-      expect(
-        screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeEnabled();
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
     });
 
     it("stays editable before the server settings are saved", async () => {
       await setup();
 
-      expect(
-        screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeEnabled();
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
     });
 
     it("keeps existing mappings when the shared secret is saved later", async () => {
@@ -522,12 +522,36 @@ describe("SettingsJWTForm", () => {
       expect(body).not.toHaveProperty("jwt-group-sync");
     });
 
+    it("keeps group mapping off when the shared secret is saved later", async () => {
+      await setup({ uriOnly: true, groupSync: false });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Set up key/ }),
+      );
+      await userEvent.clear(await screen.findByLabelText(/New secret key/));
+      await userEvent.type(
+        await screen.findByLabelText(/New secret key/),
+        ATTRS["jwt-shared-secret"],
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Done/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /Save and enable/ }),
+      );
+
+      const [{ body }] = await findRequests("PUT");
+      // the URI was saved before, so this is not a first save that turns automatic mapping on
+      expect(body).not.toHaveProperty("jwt-group-sync");
+      expect(body).not.toHaveProperty("jwt-group-mappings");
+    });
+
     it("stays editable while only the identity provider URI is saved", async () => {
       await setup({ uriOnly: true });
 
-      expect(
-        screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeEnabled();
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
       // the attribute card needs the shared secret too, which is what the backend flag checks
       expect(
         screen.getByRole("button", { name: /User attribute configuration/ }),
