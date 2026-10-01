@@ -144,15 +144,32 @@
                (into (disj todo id) (remove seen) nested)))
       acc)))
 
+(def ^:private max-metric-nesting
+  "Deepest chain of metric references the curation check follows. Deeper, or cyclic, references fail closed."
+  10)
+
+(defn- metric-context
+  "State for one judgement of a query's metrics: `:seen`, the metrics being judged up the current reference chain
+  (the cycle guard), and `:verdicts`, an atom memoizing each metric's verdict so a metric reachable through several
+  references is judged once."
+  []
+  {:seen #{} :verdicts (atom {})})
+
 (defn- metric-ok?
   "Whether the metric `id`, whose definition query is `definition` (nil when its Card no longer exists), may be used:
-  it's curated, or its definition passes [[uncurated-query-sources]] on its own. `seen` holds the metrics being
-  judged up the reference chain; a missing metric or a reference cycle fails closed."
-  [curated? id definition seen]
-  (or (curated? "card" id)
-      (and (some? definition)
-           (not (seen id))
-           (empty? (uncurated-query-sources definition (conj seen id))))))
+  it's curated, or its definition passes [[uncurated-query-sources]] on its own. A missing metric, a reference cycle,
+  or a chain deeper than [[max-metric-nesting]] fails closed."
+  [curated? id definition {:keys [seen verdicts] :as ctx}]
+  (if-some [verdict (get @verdicts id)]
+    verdict
+    (let [verdict (boolean
+                   (or (curated? "card" id)
+                       (and (some? definition)
+                            (not (seen id))
+                            (< (count seen) max-metric-nesting)
+                            (empty? (uncurated-query-sources definition (update ctx :seen conj id))))))]
+      (swap! verdicts assoc id verdict)
+      verdict)))
 
 (defn- query-coverage
   "What the curated content among the `table`s, `card`s, and `curated-metric-queries` a query reads exposes:
@@ -169,11 +186,11 @@
 
 (defn uncurated-query-sources
   "The `[\"table\" id]` / `[\"card\" id]` pairs `query` reads that a curated-only Metabot may not, or empty when the
-  query may run. Covers the source, joined, and implicitly joined Tables, source Cards, and metrics. `seen` is the
-  set of metric ids whose definitions are being judged up the call chain (see [[metric-ok?]])."
+  query may run. Covers the source, joined, and implicitly joined Tables, source Cards, and metrics. `ctx` is the
+  [[metric-context]] of the judgement this call is part of."
   ([query]
-   (uncurated-query-sources query #{}))
-  ([query seen]
+   (uncurated-query-sources query (metric-context)))
+  ([query ctx]
    (let [{:keys [table card metric]} (lib/all-referenced-entity-ids [query])
          ;; `:card` also lists the metrics the query references; judge those as metrics, not as source Cards
          card            (set/difference card metric)
@@ -195,7 +212,7 @@
             (for [id card
                   :when (not (if (= id source-card) (source-allowed? "card" id) (allowed? "card" id)))]
               ["card" id])
-            (for [id metric :when (not (metric-ok? curated? id (id->definition id) seen))]
+            (for [id metric :when (not (metric-ok? curated? id (id->definition id) ctx))]
               ["card" id])]))))
 
 (defn curated-metric?
@@ -206,4 +223,4 @@
    (when-let [{:keys [database_id dataset_query]} (metabot.db/card metric-id)]
      (let [mp       (lib-be/application-database-metadata-provider database_id)
            curated? (fn [model id] (seq (curated-ids [[model id]])))]
-       (metric-ok? curated? metric-id (lib/query mp dataset_query) #{})))))
+       (metric-ok? curated? metric-id (lib/query mp dataset_query) (metric-context))))))
