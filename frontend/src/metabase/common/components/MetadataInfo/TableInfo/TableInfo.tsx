@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+import cx from "classnames";
 import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
@@ -14,7 +15,7 @@ import {
   fetchTableForeignKeys,
   fetchTableMetadata,
 } from "metabase/redux/tables";
-import { Loader } from "metabase/ui";
+import { Loader, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { NormalizedTable, TableId } from "metabase-types/api";
 
@@ -23,7 +24,7 @@ import { AbsoluteContainer, Fade } from "../MetadataInfo.styled";
 
 import { ColumnCount } from "./ColumnCount";
 import { type ConnectedTable, ConnectedTables } from "./ConnectedTables";
-import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
+import S from "./TableInfo.module.css";
 
 export type TableInfoProps = {
   className?: string;
@@ -129,13 +130,13 @@ export function TableInfoInner({
   });
 
   return (
-    <InfoContainer className={className}>
+    <Stack className={cx(S.root, className)} pos="relative" gap="xxxs" p="lg">
       {description ? (
         <Description>{description}</Description>
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <MetadataContainer>
+      <Stack className={S.metadata} pos="relative" gap="sm" fz="sm">
         <Fade visible={!hasFetchedMetadata}>
           <AbsoluteContainer>
             <Loader size="md" color="core-brand" />
@@ -152,8 +153,8 @@ export function TableInfoInner({
             />
           )}
         </Fade>
-      </MetadataContainer>
-    </InfoContainer>
+      </Stack>
+    </Stack>
   );
 }
 
