@@ -1,7 +1,6 @@
 (ns metabase.session.api
   "/api/session endpoints"
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
@@ -466,23 +465,12 @@
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
-(defn- etag-matches?
-  [if-none-match etag]
-  (when-let [if-none-match (some-> if-none-match str/trim)]
-    (or (= "*" if-none-match)
-        (contains? (into #{}
-                         (map #(-> % (str/replace-first #"^W/" "") (str/replace #"^\"|\"$" "")))
-                         (str/split if-none-match #"\s*,\s*"))
-                   etag))))
-
 (api.macros/defendpoint :get "/illustration/:key" :- :any
   "Fetch the uploaded image of a custom illustration setting, e.g. `login-page-illustration-custom`."
   [{setting-name :key} :- [:map {:closed true}
                            [:key ms/NonBlankString]]
    {:keys [v]} :- [:map {:closed true}
-                   [:v {:optional true} :string]]
-   _body
-   request]
+                   [:v {:optional true} :string]]]
   (let [setting-key (keyword setting-name)
         _           (api/check-404 (contains? appearance/custom-illustration-settings setting-key))
         _           (api/check (setting/can-read-setting? setting-key (setting/current-user-readable-visibilities))
@@ -490,7 +478,6 @@
         {:keys [content-type media-type], image-bytes :bytes, image-hash :hash}
         (api/check-404 (appearance/illustration-image setting-key))
         headers (cond-> {"Content-Type"  content-type
-                         "ETag"          (format "\"%s\"" image-hash)
                          ;; `v` is the hash in the URL the setting getter returns, so that URL can be cached forever.
                          ;; `private` because middleware adds cookies to the response.
                          "Cache-Control" (if (= v image-hash)
@@ -498,9 +485,7 @@
                                            "private, no-cache")}
                   (= media-type "image/svg+xml")
                   (assoc "Content-Security-Policy" "default-src 'none'; style-src 'unsafe-inline'; sandbox"))]
-    (if (etag-matches? (get-in request [:headers "if-none-match"]) image-hash)
-      {:status 304, :headers headers, :body nil}
-      {:status 200, :headers headers, :body image-bytes})))
+    {:status 200, :headers headers, :body image-bytes}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

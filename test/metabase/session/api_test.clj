@@ -655,11 +655,10 @@
 
 (deftest illustration-test
   (do-with-each-uploaded-illustration!
-   (fn [setting-key image-hash]
+   (fn [setting-key _image-hash]
      (let [{:keys [body headers]} (fetch-illustration setting-key 200)]
        (is (= "png bytes" body))
        (is (= "image/png" (get headers "Content-Type")))
-       (is (= (format "\"%s\"" image-hash) (get headers "ETag")))
        (testing "no Cross-Origin-Resource-Policy, the React SDK loads it from the host app origin"
          (is (nil? (get headers "Cross-Origin-Resource-Policy"))))))))
 
@@ -673,26 +672,14 @@
 (deftest illustration-cache-test
   (do-with-each-uploaded-illustration!
    (fn [setting-key image-hash]
-     (let [etag   (format "\"%s\"" image-hash)
-           cached "private, max-age=31536000, immutable"]
+     (let [cached "private, max-age=31536000, immutable"]
        (testing "the URL without a hash is not cached"
          (is (= "private, no-cache" (get-in (fetch-illustration setting-key 200) [:headers "Cache-Control"]))))
        (testing "the URL with the current hash is cached"
          (is (= cached (get-in (fetch-illustration setting-key 200 :v image-hash) [:headers "Cache-Control"]))))
        (testing "a URL with another hash is not cached"
          (is (= "private, no-cache"
-                (get-in (fetch-illustration setting-key 200 :v "0000000000000000") [:headers "Cache-Control"]))))
-       (testing "304 when the ETag matches"
-         (doseq [if-none-match [etag (str "W/" etag) (str "\"other\", " etag) "*"]]
-           (testing if-none-match
-             (let [{:keys [headers]} (fetch-illustration setting-key 304
-                                                         {:request-options {:headers {"if-none-match" if-none-match}}}
-                                                         :v image-hash)]
-               (is (= etag (get headers "ETag")))
-               (is (= cached (get headers "Cache-Control")))
-               (is (= "image/png" (get headers "Content-Type")))))))
-       (testing "200 when the ETag does not match"
-         (fetch-illustration setting-key 200 {:request-options {:headers {"if-none-match" "\"other\""}}}))))))
+                (get-in (fetch-illustration setting-key 200 :v "0000000000000000") [:headers "Cache-Control"]))))))))
 
 (deftest illustration-authentication-test
   (testing "the landing page illustration needs a logged in user"
