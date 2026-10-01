@@ -264,7 +264,9 @@
   (some-> export (query-export/export->text shared.content-store/audited-store)))
 
 (def ^:private max-listed-columns
-  "Most columns [[query-columns-text]] lists; wide sources are truncated past this."
+  "Most columns [[query-columns-text]] lists; wide sources are truncated past this. Matches
+  `metabase.agent-lib.representations.repair/max-listed-column-names`, the cap on the column lists
+  in its unresolved-ref messages."
   100)
 
 (defn- query-column-line
