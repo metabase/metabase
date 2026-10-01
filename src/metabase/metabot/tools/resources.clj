@@ -892,12 +892,18 @@
                      :label        label}))))
 
 (defn- check-curated-uri!
-  "Under [[*curated-only?*]], reject a URI naming an entity that isn't curated, without naming the entity. Returns
-   `result`, the URI's already-fetched content, so it threads after the handler."
-  [uri segments result]
+  "Under [[*curated-only?*]], reject a URI naming an entity that isn't curated, without naming the entity. Runs
+   before the handler, so a denied read does none of its work: `table/{id}/fields/{field}` would otherwise compute
+   and persist field values and a fingerprint for a table this Metabot may not use. The entity is read-checked
+   first, so a missing one still reads as missing rather than uncurated, and whether an unreadable one is curated
+   isn't revealed."
+  [uri segments]
   (when *curated-only?*
-    (check-curated-subject! uri (curation-subject segments)))
-  result)
+    (when-let [subject (curation-subject segments)]
+      (when (vector? subject)
+        (let [[model id] subject]
+          (api/read-check (case model "table" :model/Table "card" :model/Card) id)))
+      (check-curated-subject! uri subject))))
 
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
@@ -908,6 +914,7 @@
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
     (check-numeric-id-segment! uri segments)
+    (check-curated-uri! uri segments)
     (->> (match/match-one segments
            ;; Navigation
            ["databases"]                                    (fetch-databases-list query-params)
@@ -966,9 +973,6 @@
            ;; Default — required to make match non-recursive
            _ (throw (ex-info (str "Unsupported URI: " uri)
                              {:uri uri :segments segments})))
-         ;; Gate curation after the handler, so its 404 and permission checks come first: a missing entity reads
-         ;; as missing rather than uncurated, and whether an unreadable entity is curated isn't revealed.
-         (check-curated-uri! uri segments)
          (attach-next-page-uri uri))))
 
 ;; ----- Display titles -----
