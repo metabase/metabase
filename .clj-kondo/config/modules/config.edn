@@ -1459,6 +1459,7 @@
               audit-app
               channel
               collections
+              dashboards
               documents
               driver
               events

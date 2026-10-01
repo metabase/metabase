@@ -10,17 +10,21 @@
   the SQL tools being absent."
   ["create_sql_query"])
 
+(defn- render-template-for-perms
+  [template perms active-tool-names]
+  (binding [scope/*current-user-metabot-permissions* perms]
+    (prompts/build-system-message-content
+     {:prompt-template template}
+     {:current_time "2026-03-25T12:00:00Z"}
+     (zipmap active-tool-names (repeat nil))
+     [])))
+
 (defn- render-internal-template
   "Render internal.selmer for `perms` and `active-tool-names` (default [[active-sql-tool-names]]).
   The prompt builder reads only tool names, so a name->nil map stands in for the real name->var one."
   ([perms] (render-internal-template perms active-sql-tool-names))
   ([perms active-tool-names]
-   (binding [scope/*current-user-metabot-permissions* perms]
-     (prompts/build-system-message-content
-      {:prompt-template "internal.selmer"}
-      {:current_time "2026-03-25T12:00:00Z"}
-      (zipmap active-tool-names (repeat nil))
-      []))))
+   (render-template-for-perms "internal.selmer" perms active-tool-names)))
 
 (def ^:private all-yes-perms
   {:permission/metabot-sql-generation :yes
@@ -87,11 +91,28 @@
                         :permission/metabot-nlq            :yes
                         :permission/metabot-other-tools    :no})]
     (testing "dashboard guidance included when permitted"
-      (is (re-find #"X-ray auto-generated dashboards" with-other)))
+      (is (re-find #"You can create dashboards two ways" with-other)))
     (testing "dashboard guidance excluded when not permitted"
-      (is (not (re-find #"X-ray auto-generated dashboards" without-other))))
+      (is (not (re-find #"You can create dashboards two ways" without-other))))
     (testing "explicit denial for other tools is included when not permitted"
-      (is (re-find #"You cannot create dashboards or documents" without-other)))))
+      (is (re-find #"You cannot create dashboards or documents" without-other)))
+    (testing "the scope section sends custom dashboards to the builder only without the dashboard tools"
+      (is (not (re-find #"dashboard builder" with-other)))
+      (is (re-find #"dashboard builder" without-other)))))
+
+(deftest ^:parallel nlq-prompts-gate-create-dashboard-guidance-test
+  (doseq [template ["natural-language-querying-only.selmer" "natural-language-querying-fallback.selmer"]]
+    (testing template
+      (let [with-other    (render-template-for-perms template all-yes-perms [])
+            without-other (render-template-for-perms template
+                                                     {:permission/metabot-sql-generation :no
+                                                      :permission/metabot-nlq            :yes
+                                                      :permission/metabot-other-tools    :no}
+                                                     [])]
+        (is (re-find #"create_dashboard" with-other))
+        (is (not (re-find #"dashboard builder" with-other)))
+        (is (not (re-find #"create_dashboard" without-other)))
+        (is (re-find #"dashboard builder" without-other))))))
 
 (deftest ^:parallel prompt-gates-query-tools-sections-test
   (let [with-queries    (render-internal-template all-yes-perms)

@@ -28,10 +28,12 @@ import {
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
 import {
+  expandAdhocDashboard,
   expandInlineDashboard,
   fetchDataOrError,
   getAllDashboardCards,
   getCurrentTabDashboardCards,
+  isUnsavedNativeAdhocDashcard,
 } from "metabase/dashboard/utils";
 import {
   paramFieldsFetched,
@@ -58,6 +60,7 @@ import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/param
 import type {
   Card,
   CardId,
+  DashCardDataMap,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -344,8 +347,7 @@ export const fetchCardDataAction = createAsyncThunk<
     const runQuery = makePivotAwareQueryRunner(dispatch, controller.signal);
 
     if (dashboardType === "public") {
-      // Unjustified type cast. FIXME
-      result = (await fetchDataOrError(
+      result = await fetchDataOrError(
         runQuery(publicApi.endpoints.getPublicDashcardQuery, question, {
           // In public dashboards `dashboard_id` holds the public UUID string.
           uuid: dashcard.dashboard_id as string,
@@ -356,10 +358,9 @@ export const fetchCardDataAction = createAsyncThunk<
             : undefined,
           ignore_cache: ignoreCache,
         }),
-      )) as Dataset | { error: unknown };
+      );
     } else if (dashboardType === "embed") {
-      // Unjustified type cast. FIXME
-      result = (await fetchDataOrError(
+      result = await fetchDataOrError(
         runQuery(embedApi.endpoints.getEmbedDashcardQuery, question, {
           // In embedded dashboards `dashboard_id` holds the embed token string.
           token: dashcard.dashboard_id as string,
@@ -370,17 +371,27 @@ export const fetchCardDataAction = createAsyncThunk<
           ),
           ignore_cache: ignoreCache,
         }),
-      )) as Dataset | { error: unknown };
-    } else if (dashboardType === "transient" || dashboardType === "inline") {
-      // Unjustified type cast. FIXME
-      result = (await fetchDataOrError(
+      );
+    } else if (dashboardType === "adhoc" && dashcard.card_id != null) {
+      result = await fetchDataOrError(
+        runQuery(cardApi.endpoints.getCardQuery, question, {
+          cardId: dashcard.card_id,
+          ignore_cache: ignoreCache,
+        }),
+      );
+    } else if (
+      dashboardType === "transient" ||
+      dashboardType === "inline" ||
+      dashboardType === "adhoc"
+    ) {
+      result = await fetchDataOrError(
         runAdhocDatasetQuery(
           dispatch,
           question,
           { ...datasetQuery, ignore_cache: ignoreCache },
           controller.signal,
         ),
-      )) as Dataset | { error: unknown };
+      );
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
         getState(),
@@ -399,17 +410,15 @@ export const fetchCardDataAction = createAsyncThunk<
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
       if (shouldUseCardQueryEndpoint) {
-        // Unjustified type cast. FIXME
-        result = (await fetchDataOrError(
+        result = await fetchDataOrError(
           runQuery(cardApi.endpoints.getCardQuery, question, {
             cardId: card.id,
             dashboardId: dashcard.dashboard_id,
             ignore_cache: ignoreCache,
           }),
-        )) as Dataset | { error: unknown };
+        );
       } else {
-        // Unjustified type cast. FIXME
-        result = (await fetchDataOrError(
+        result = await fetchDataOrError(
           runQuery(dashboardApi.endpoints.getDashboardCardQuery, question, {
             dashboardId: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -419,7 +428,7 @@ export const fetchCardDataAction = createAsyncThunk<
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
           }),
-        )) as Dataset | { error: unknown };
+        );
       }
     }
 
@@ -504,10 +513,15 @@ export const fetchDashboardCardData =
     const selectedTabId = getSelectedTabId(getState());
     const dashboardLoadId = uuid();
     const loadingIds = getLoadingDashCards(getState()).loadingIds;
+    const dashcardData = getState().dashboard.dashcardData;
     const nonVirtualDashcards = getCurrentTabDashboardCards(
       dashboard,
       selectedTabId,
-    ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
+    ).filter(
+      ({ dashcard }) =>
+        !isVirtualDashCard(dashcard) &&
+        !awaitsManualRun(dashboard.id, dashcard, dashcardData),
+    );
 
     let nonVirtualDashcardsToFetch = [];
     if (isRefreshing) {
@@ -579,6 +593,17 @@ export const fetchDashboardCardData =
     }
   };
 
+// like the query builder, an unsaved native query is never run on load
+// (#25675): the SQL comes straight from the URL, so the user has to run it
+const awaitsManualRun = (
+  dashboardId: DashboardId | undefined,
+  dashcard: DashboardCard,
+  dashcardData: DashCardDataMap,
+) =>
+  isQuestionDashCard(dashcard) &&
+  isUnsavedNativeAdhocDashcard(dashboardId, dashcard, dashcard.card) &&
+  getIn(dashcardData, [dashcard.id, dashcard.card.id]) == null;
+
 export const reloadDashboardCards =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const dashboard = getDashboardComplete(getState());
@@ -587,8 +612,13 @@ export const reloadDashboardCards =
       return;
     }
 
+    const dashcardData = getState().dashboard.dashcardData;
     const reloadTasks = getAllDashboardCards(dashboard)
-      .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
+      .filter(
+        ({ dashcard }) =>
+          !isVirtualDashCard(dashcard) &&
+          !awaitsManualRun(dashboard.id, dashcard, dashcardData),
+      )
       .map(({ card, dashcard }) => async () => {
         await dispatch(
           // TODO: fix the return type of getAllDashboardCards to make sure
@@ -826,6 +856,8 @@ export const fetchDashboard = createAsyncThunk(
             dashboard_id: dashId,
           })),
         };
+      } else if (dashboardType === "adhoc") {
+        result = expandAdhocDashboard(String(dashId));
       } else if (dashboardType === "inline") {
         // HACK: this is horrible but the easiest way to get "inline" dashboards up and running
         // pass the dashboard in as dashboardId, and replace the id with [object Object] because

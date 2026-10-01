@@ -4,6 +4,7 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
+  CollectionId,
   CreateCardRequest,
   DashboardId,
   DatabaseId,
@@ -18,6 +19,7 @@ import type {
   UnsavedCard,
   User,
   UserPermissions,
+  VisualizationSettings,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -367,6 +369,39 @@ export interface SaveMetabotEntityRequest {
   conversation_id: string;
   chart_id: string;
   card: CreateCardRequest;
+}
+
+export interface AdhocDashcard {
+  title: string;
+  display: CardDisplayType;
+  dataset_query: DatasetQuery;
+  visualization_settings?: VisualizationSettings;
+  row: number;
+  col: number;
+  size_x: number;
+  size_y: number;
+  chart_id?: string;
+  card_id?: number;
+}
+
+export interface SaveMetabotDashboardRequest {
+  conversation_id: string;
+  // the id the agent generated for the dashboard within the conversation (a
+  // string), unlike the saved dashboard's numeric id in the response
+  generated_dashboard_id: string;
+  dashboard: {
+    name: string;
+    description: string | null;
+    collection_id: CollectionId | null;
+    dashcards: AdhocDashcard[];
+  };
+}
+
+export interface SaveMetabotDashboardResponse {
+  id: number;
+  name: string;
+  description?: string | null;
+  collection_id: CollectionId | null;
 }
 
 export interface ForkMetabotConversationRequest {

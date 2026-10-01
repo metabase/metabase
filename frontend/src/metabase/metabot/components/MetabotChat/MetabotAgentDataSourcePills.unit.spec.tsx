@@ -9,6 +9,7 @@ import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   StructuredQuery,
+  TableId,
   TemplateTags,
 } from "metabase-types/api";
 import {
@@ -21,6 +22,7 @@ import {
 import {
   CodeEditTablePills,
   GeneratedCardTablePills,
+  GeneratedDashboardTablePills,
 } from "./MetabotAgentDataSourcePills";
 
 const SOURCE_FEEDBACK_ENDPOINT = "path:/api/metabot/source-feedback";
@@ -253,6 +255,87 @@ describe("MetabotAgentDataSourcePills", () => {
     expect(
       fetchMock.callHistory.calls(FIELD_TABLE_IDS_ENDPOINT, {
         body: { field_ids: [10, 11] },
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("lists each source table once across a generated dashboard's dashcards", async () => {
+    setupTableEndpoints(ORDERS_TABLE, PRODUCTS_TABLE);
+    const dashcard = (sourceTable: TableId, title: string) => ({
+      title,
+      display: "table" as const,
+      dataset_query: {
+        type: "query" as const,
+        database: 1,
+        query: { "source-table": sourceTable },
+      },
+      row: 0,
+      col: 0,
+      size_x: 12,
+      size_y: 6,
+    });
+
+    renderWithProviders(
+      <GeneratedDashboardTablePills
+        messageId="message-1"
+        value={{
+          type: "dashboard",
+          id: "dash-1",
+          title: "Ops overview",
+          dashcards: [
+            dashcard(ORDERS_TABLE.id, "Orders"),
+            dashcard(PRODUCTS_TABLE.id, "Products"),
+            dashcard(ORDERS_TABLE.id, "Orders again"),
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("link", { name: "Products" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Orders" })).toHaveLength(1);
+  });
+
+  it("extracts sources for a generated dashboard's native SQL dashcards", async () => {
+    const sql = "SELECT * FROM ORDERS";
+    setupNativeEndpoints();
+
+    renderWithProviders(
+      <GeneratedDashboardTablePills
+        messageId="message-6"
+        value={{
+          type: "dashboard",
+          id: "dash-2",
+          title: "SQL overview",
+          dashcards: [
+            {
+              title: "Orders",
+              display: "table",
+              dataset_query: {
+                type: "native",
+                database: 1,
+                native: { query: sql },
+              },
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 6,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(EXTRACT_SOURCES_ENDPOINT, {
+        body: { database_id: 1, sql },
       }),
     ).toHaveLength(1);
   });

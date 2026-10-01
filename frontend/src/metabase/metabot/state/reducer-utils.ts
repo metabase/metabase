@@ -469,6 +469,6 @@ export const getMetabotInitialState = (): MetabotState => {
     },
     titlePollingConversationIds: [],
     debugMode: false,
-    savedChartCardIds: {},
+    savedEntityIds: {},
   };
 };

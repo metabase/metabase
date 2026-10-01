@@ -9,7 +9,10 @@ import {
   useGetFieldTableIdsQuery,
   useGetTableQuery,
 } from "metabase/api";
-import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import type {
+  GeneratedAdhocDashboard,
+  GeneratedCard,
+} from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
@@ -39,9 +42,9 @@ import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
-  NativeDatasetQuery,
   TemplateTags,
 } from "metabase-types/api";
+import { isNativeDatasetQuery } from "metabase-types/guards/query";
 
 import { useSubmitMetabotSourceFeedbackMutation } from "../../api";
 
@@ -69,11 +72,6 @@ type SourceFeedbackTarget = Pick<
   MetabotSourceFeedback,
   "source_id" | "source_type"
 >;
-
-const isNativeDatasetQuery = (
-  datasetQuery: DatasetQuery,
-): datasetQuery is NativeDatasetQuery =>
-  "type" in datasetQuery && datasetQuery.type === "native";
 
 const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
   try {
@@ -661,6 +659,56 @@ export const GeneratedCardTablePills = ({
     datasetQuery={value.query.query}
   />
 );
+
+export const GeneratedDashboardTablePills = ({
+  messageId,
+  value,
+}: {
+  messageId?: string;
+  value: GeneratedAdhocDashboard;
+}) => {
+  const { mbql, native } = useMemo(() => {
+    const decoded = value.dashcards.map((dashcard) =>
+      decodeQuery(dashcard.dataset_query),
+    );
+    const mbqlQueries = decoded.flatMap((query) =>
+      query.kind === "mbql" ? [query] : [],
+    );
+    return {
+      mbql: {
+        tableIds: uniqueNumbers(mbqlQueries.flatMap((query) => query.tableIds)),
+        cardIds: uniqueNumbers(mbqlQueries.flatMap((query) => query.cardIds)),
+        fieldIds: uniqueNumbers(mbqlQueries.flatMap((query) => query.fieldIds)),
+      },
+      native: decoded.flatMap((query) =>
+        query.kind === "native" ? [query] : [],
+      ),
+    };
+  }, [value.dashcards]);
+
+  const hasMbqlContent =
+    mbql.tableIds.length > 0 ||
+    mbql.cardIds.length > 0 ||
+    mbql.fieldIds.length > 0;
+  if (!hasMbqlContent && native.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {hasMbqlContent && <MbqlSourcesRow {...mbql} messageId={messageId} />}
+      {native.map((query, index) => (
+        <NativeSourcesRow
+          key={index}
+          databaseId={query.databaseId}
+          messageId={messageId}
+          sql={query.sql}
+          templateTags={query.templateTags}
+        />
+      ))}
+    </>
+  );
+};
 
 export const NavigateToTablePills = ({
   messageId,

@@ -45,11 +45,12 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
-export const getSavedChartCardId = createSelector(
-  [getMetabotState, (_state: State, entityId: string) => entityId],
-  (metabotState, entityId): number | undefined =>
-    metabotState.savedChartCardIds[entityId],
-);
+export const getSavedEntityId = (
+  state: State,
+  conversationId: string,
+  entityId: string,
+): number | undefined =>
+  getMetabotState(state).savedEntityIds[conversationId]?.[entityId];
 
 export const getMetabotReactionsState = createSelector(
   getMetabotState,

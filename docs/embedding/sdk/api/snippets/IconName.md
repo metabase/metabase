@@ -8,6 +8,7 @@ type IconName =
   | "warning"
   | "collection"
   | "dashboard"
+  | "dashboard_layout"
   | "question"
   | "model"
   | "archive"

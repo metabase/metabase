@@ -45,6 +45,7 @@ export const MetabotConversationPage = () => {
       : urlConvoId,
     {
       pollingInterval: isInProgress ? IN_PROGRESS_POLL_MS : 0,
+      refetchOnMountOrArgChange: true,
     },
   );
 
@@ -63,6 +64,7 @@ export const MetabotConversationPage = () => {
           contextWindowTokens: conversation.context_window_tokens,
           messages: conversation.messages,
           state: conversation.state,
+          savedEntities: conversation.saved_entities,
           activeToolCalls: [],
         }),
       );
