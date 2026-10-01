@@ -81,14 +81,15 @@
   "A name and anchor for an unnamed `cluster` of `graph`, avoiding the names in `taken`.
   The anchor is the configured member (one of `modules`) with the most edges inside the cluster, ties broken
   alphabetically, and the name is derived from it: `sync` gives `sync-knot`, `enterprise/transforms.python` gives
-  `enterprise-transforms-python-knot`."
+  `enterprise-transforms-python-knot`.
+  Nil when no member is configured, since nothing could anchor the name yet."
   [graph modules cluster taken]
-  (let [members (or (seq (filter modules cluster)) cluster)
-        anchor  (first (sort-by (juxt #(- (degree graph cluster %)) str) members))
-        stem    (str (str/replace (str anchor) #"[/.]" "-") "-knot")
-        names   (cons stem (map #(str stem "-" %) (iterate inc 2)))]
-    {:name   (symbol (first (remove (comp (set taken) symbol) names)))
-     :anchor anchor}))
+  (when-let [members (seq (filter modules cluster))]
+    (let [anchor (first (sort-by (juxt #(- (degree graph cluster %)) str) members))
+          stem   (str (str/replace (str anchor) #"[/.]" "-") "-knot")
+          names  (cons stem (map #(str stem "-" %) (iterate inc 2)))]
+      {:name   (symbol (first (remove (comp (set taken) symbol) names)))
+       :anchor anchor})))
 
 (defn- module-list
   "`modules`, sorted, on one line, truncated so one large cluster cannot bury the rest of the report."
@@ -142,7 +143,7 @@
           to   (sort (filter cluster (get graph from)))]
       (str "    " from " -> " to))))
 
-(defn- unnamed-message [graph cluster {:keys [name anchor]}]
+(defn- unnamed-message [graph cluster proposal]
   (str/join
    "\n"
    (concat
@@ -153,7 +154,10 @@
           " You get to name the new one.")
      (str "  Names follow a space theme, with some link to what the cluster does. For ideas, ask your agent to use"
           " the name-module-cycle skill in .claude/skills/name-module-cycle.")
-     (format "  Then add a line like `%s %s` to %s. Any member can be the anchor." name anchor clusters-file)
+     (if-let [{:keys [name anchor]} proposal]
+       (format "  Then add a line like `%s %s` to %s. Any member can be the anchor." name anchor clusters-file)
+       (str "  None of its modules is declared in .clj-kondo/config/modules/config.edn yet, so declare them first"
+            " (`./bin/mage fix-modules-config`), then anchor the name on one of them."))
      "  If this is a brand new cycle instead, break it rather than naming it."])))
 
 (defn- dissolved-message [cluster-name anchor]
@@ -175,7 +179,7 @@
         unnamed   (filter (comp empty? anchors-in) clusters)
         proposals (first (reduce (fn [[acc taken] cluster]
                                    (let [p (propose graph modules cluster taken)]
-                                     [(conj acc [cluster p]) (conj taken (:name p))]))
+                                     [(conj acc [cluster p]) (cond-> taken p (conj (:name p)))]))
                                  [[] (set (keys anchors))]
                                  unnamed))]
     (concat
@@ -219,8 +223,9 @@
             :let    [named (sort (keep (fn [m] (when-let [n (anchor->n m)] [n m])) cluster))]]
       (println (if (seq named)
                  (str/join " + " (map (fn [[n m]] (format "%s (anchor %s)" n m)) named))
-                 (let [{:keys [name anchor]} (propose graph modules cluster (keys anchors))]
-                   (format "unnamed (placeholder %s, anchor %s)" name anchor))))
+                 (if-let [{:keys [name anchor]} (propose graph modules cluster (keys anchors))]
+                   (format "unnamed (placeholder %s, anchor %s)" name anchor)
+                   "unnamed (no declared module to anchor on)")))
       (println (format "  %d modules, teams: %s" (count cluster)
                        (str/join ", " (sort (distinct (keep #(get-in config [% :team]) cluster))))))
       (doseq [module (sort cluster)]

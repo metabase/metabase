@@ -95,6 +95,12 @@
             (filter #(str/includes? % "line like")
                     (-> (module-cycles/problems graph (disj modules 'qp) '{foundation app-db})
                         first
+                        str/split-lines)))))
+  (testing "a cycle of undeclared modules asks for them to be declared rather than proposing an anchor"
+    (is (=? [#".*None of its modules is declared.*fix-modules-config.*"]
+            (filter #(str/includes? % "declared")
+                    (-> (module-cycles/problems graph (disj modules 'qp 'sync) '{foundation app-db})
+                        first
                         str/split-lines))))))
 
 (deftest ^:parallel malformed-names-throw-test
