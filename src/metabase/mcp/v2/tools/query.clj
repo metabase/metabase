@@ -117,8 +117,12 @@
     (message/msg ["Query failed: unknown error"])))
 
 (defn- execute-page!
-  "[[query-execution/execute-page!]] recorded as an `:agent` run, with a failed run surfaced as a teaching error."
+  "Run [[query-execution/execute-page!]] as an `:agent` query, turning a failed run into a teaching error."
   [serialized-query row-limit]
+  ;; Only the key whitelist in [[query-execution/execute-page!]] keeps unknown keys away from the QP.
+  ;; A fresh `:query` is also rejected upstream by the closed `:metabase.lib.schema/query`, but that covers only the
+  ;; fresh path: a handle's stored query is checked shallowly and the `/drills` callback stores one verbatim, so an
+  ;; unknown key does reach here.
   (try
     (query-execution/execute-page! serialized-query row-limit :agent)
     (catch clojure.lang.ExceptionInfo e
