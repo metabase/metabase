@@ -1,5 +1,5 @@
 import type { StoryFn } from "@storybook/react";
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 
 import {
   Box,
@@ -32,6 +32,16 @@ const ICON_DATA = [
   { ariaLabel: "Preview", icon: "eye_filled", value: "preview" },
 ] satisfies SegmentedControlItem<string>[];
 
+const ICON_TOOLTIP_DATA = [
+  { ariaLabel: "Code", icon: "embed", value: "code", withTooltip: true },
+  {
+    ariaLabel: "Preview",
+    icon: "eye_filled",
+    value: "preview",
+    withTooltip: true,
+  },
+] satisfies SegmentedControlItem<string>[];
+
 const ICON_ELEMENT_DATA = [
   { ariaLabel: "Code", icon: <Icon name="embed" />, value: "code" },
   { ariaLabel: "Preview", icon: <Icon name="eye_filled" />, value: "preview" },
@@ -55,6 +65,11 @@ export const TextAndIcon = {
 export const IconOnly = {
   name: "Icon only",
   args: { data: ICON_DATA },
+};
+
+export const IconOnlyWithTooltip = {
+  name: "Icon only with tooltip",
+  args: { data: ICON_TOOLTIP_DATA },
 };
 
 export const FullWidth = {
@@ -113,6 +128,23 @@ const withSecondItemDisabled = (data: SegmentedControlItem<string>[]) =>
 const labelSelectorFor = (id: string) =>
   `[data-state-row="${id}"] .${S.SegmentedControlLabel}`;
 
+function HoveredTooltipExample() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const targets = ref.current?.querySelectorAll(
+      `.${S.SegmentedControlTooltipTarget}`,
+    );
+    targets?.[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  }, []);
+
+  return (
+    <Box ref={ref}>
+      <SegmentedControl data={ICON_TOOLTIP_DATA} defaultValue="code" />
+    </Box>
+  );
+}
+
 const gridStyle = {
   display: "grid",
   gridTemplateColumns: `9rem repeat(${CONTENT_KINDS.length}, max-content)`,
@@ -152,6 +184,17 @@ const OverviewTemplate: StoryFn = () => (
             ))}
           </Fragment>
         ))}
+      </Box>
+    </StorySection>
+
+    <StorySection title="Tooltip">
+      <StoryJsx>
+        {
+          '<SegmentedControl data={[{ ariaLabel: "Preview", icon: "eye_filled", withTooltip: true }, …]} />'
+        }
+      </StoryJsx>
+      <Box mt="3rem">
+        <HoveredTooltipExample />
       </Box>
     </StorySection>
 
