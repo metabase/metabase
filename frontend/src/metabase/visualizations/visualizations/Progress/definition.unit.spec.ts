@@ -29,7 +29,7 @@ describe("PROGRESS_CHART_DEFINITION", () => {
   describe("progress.goal widget", () => {
     const setting = PROGRESS_CHART_DEFINITION.settings?.["progress.goal"];
 
-    it("is dynamic and offers the columns of this question except the value", () => {
+    it("offers the columns of this question except the value", () => {
       const series = createSeries();
 
       expect(setting?.widget).toBe("goalValue");
@@ -45,7 +45,6 @@ describe("PROGRESS_CHART_DEFINITION", () => {
         data: series[0].data,
         datasetQuery: series[0].card.dataset_query,
         excludedSelfColumn: "count",
-        isDynamic: true,
         placeholder: "Enter goal value",
       });
     });

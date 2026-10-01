@@ -1,5 +1,3 @@
-import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
-
 import {
   GOAL_SETTINGS,
   getDynamicGoalSettingKeys,
@@ -31,20 +29,5 @@ describe("getDynamicGoalSettingKeys", () => {
     getDynamicGoalSettingKeys("gauge").forEach((key) =>
       expect(Object.keys(GOAL_SETTINGS)).toContain(key),
     );
-  });
-
-  describe("when mocked for specs", () => {
-    mockDynamicGoalSettingKeys(["graph.goal_value"]);
-
-    it("answers the mocked keys for every display", () => {
-      expect(getDynamicGoalSettingKeys("table")).toEqual(["graph.goal_value"]);
-      expect(getDynamicGoalSettingKeys(undefined)).toEqual([
-        "graph.goal_value",
-      ]);
-    });
-  });
-
-  it("is restored after a mocked describe", () => {
-    expect(getDynamicGoalSettingKeys("table")).toEqual([]);
   });
 });

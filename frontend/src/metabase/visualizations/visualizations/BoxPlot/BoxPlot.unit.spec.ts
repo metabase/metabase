@@ -136,7 +136,7 @@ describe("BoxPlot", () => {
   });
 
   describe("graph.goal_value widget", () => {
-    it("is dynamic and reads the raw series", () => {
+    it("reads the raw series", () => {
       const series = createGoalSeries();
       const setting = BOXPLOT_CHART_DEFINITION.settings?.["graph.goal_value"];
 
@@ -147,7 +147,6 @@ describe("BoxPlot", () => {
       ).toEqual({
         data: series[0].data,
         datasetQuery: series[0].card.dataset_query,
-        isDynamic: true,
         showSelfColumns: false,
       });
     });

@@ -102,7 +102,6 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
           datasetQuery: card.dataset_query,
           excludedSelfColumn: settings["progress.value"],
           formatOptions: column && settings.column?.(column),
-          isDynamic: true,
           placeholder: t`Enter goal value`,
         };
       },

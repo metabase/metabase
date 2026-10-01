@@ -52,8 +52,6 @@ export type ChartSettingGoalValueProps = {
   excludedSelfColumn?: string;
   formatOptions?: ColumnSettings;
   id: string;
-  // false for visualizations that don't support dynamic goals yet
-  isDynamic?: boolean;
   placeholder?: string;
   showSelfColumns?: boolean;
   value: GoalValue | null | undefined;

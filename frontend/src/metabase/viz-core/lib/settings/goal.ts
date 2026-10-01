@@ -5,11 +5,7 @@ import type { VisualizationSettings } from "metabase-types/api";
 import { getDefaultGoalLabel } from "../../shared/settings/cartesian-chart";
 import type { ChartGoal } from "../../shared/types/settings";
 import type { VisualizationSettingsDefinitions } from "../../types";
-import {
-  getGoalAxisValue,
-  getNumericGoalValue,
-  isDynamicGoalSetting,
-} from "../dynamic-goals";
+import { getGoalAxisValue, getNumericGoalValue } from "../dynamic-goals";
 
 import { getStackOffset } from "./stacking";
 
@@ -63,7 +59,6 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     getProps: ([{ card, data }]) => ({
       data,
       datasetQuery: card.dataset_query,
-      isDynamic: isDynamicGoalSetting(card.display, "graph.goal_value"),
       showSelfColumns: false,
     }),
   },
