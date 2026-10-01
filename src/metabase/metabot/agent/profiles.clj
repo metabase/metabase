@@ -122,6 +122,7 @@
   :max-iterations  15
   :tools           [#'tools/search-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/run-query-tool
                     #'tools/read-resource-tool
                     #'tools/create-sql-query-tool
                     #'tools/edit-sql-query-tool
