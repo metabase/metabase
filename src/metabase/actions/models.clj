@@ -650,6 +650,13 @@
   (when-let [model-id (actions.db/action-model-id id)]
     {["Card" model-id] {"Action" id}}))
 
+(defmethod serdes/storage-path "Action" [action {:keys [data-app-collections] :as ctx}]
+  ;; an action in a data app's resource collection is `data_apps/<slug>/resources/actions/<name>.yaml`, beside the
+  ;; app's files; elsewhere it sits in its collection's directory like a card
+  (if-let [resources (get data-app-collections (:collection_id action))]
+    (into resources [{:label "actions"} {:label (:name action) :key (:entity_id action)}])
+    (serdes/storage-default-collection-path action ctx)))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "action"

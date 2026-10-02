@@ -1,4 +1,9 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { DataApp } from "metabase-types/api";
+
 const { H } = cy;
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 /**
  * Drives a real remote-sync pull of a repo whose `data_apps/` holds two apps, each a `data_app.yaml` with its bundle
@@ -40,6 +45,18 @@ describe("scenarios > data apps > repo sync", () => {
     });
 
     cy.request("/api/apps/good/bundle").its("status").should("eq", 200);
+
+    // The good app's resources/ were loaded with it: its collection, and the
+    // saved question in it, addressed by the entity IDs the files carry.
+    cy.request<DataApp>("/api/apps/good").then(({ body: app }) => {
+      cy.request("/api/collection/goodAppCollection0000")
+        .its("body.id")
+        .should("eq", app.resource_collection_id);
+      cy.request("/api/card/goodAppOrdersQuestion")
+        .its("body.collection_id")
+        .should("eq", app.resource_collection_id);
+      expect(app.table_ids).to.deep.eq([ORDERS_ID]);
+    });
   });
 
   it("removes an app whose directory is removed from the repo on the next sync", () => {
@@ -58,6 +75,12 @@ describe("scenarios > data apps > repo sync", () => {
       ]);
     });
     cy.request({ url: "/api/apps/good", failOnStatusCode: false })
+      .its("status")
+      .should("eq", 404);
+    cy.request({
+      url: "/api/card/goodAppOrdersQuestion",
+      failOnStatusCode: false,
+    })
       .its("status")
       .should("eq", 404);
   });

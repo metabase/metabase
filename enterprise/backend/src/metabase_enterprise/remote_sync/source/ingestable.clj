@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.source.ingestable
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
@@ -31,6 +32,26 @@
   [file-content]
   (serdes/restore-path
    (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key}))))
+
+(defn check-data-app-files!
+  "Throws, naming each file, when a data app entity file in `snapshot` (a manifest, or a file in an app's
+  `resources/`) holds what a load can't take as the author meant it. Serialization trusts what it reads, so this is
+  what keeps an app's resources to its own collection; it runs on the whole snapshot before any import, since an
+  incremental import ingests only the changed files. A file that doesn't parse is left to ingestion to report."
+  [snapshot]
+  (let [files    (for [path (source.p/list-files snapshot)
+                       :when (and (str/starts-with? path "data_apps/")
+                                  (serialization/entity-file-path? path))
+                       :let [entity (try
+                                      (ingest-content (source.p/read-file snapshot path))
+                                      (catch Exception _ nil))]
+                       :when entity]
+                   {:path path :entity entity})
+        problems (data-apps/problems files)]
+    (when (seq problems)
+      (throw (ex-info (str/join " " (map (fn [{:keys [file message]}] (format "Invalid data app file %s: %s" file message))
+                                         problems))
+                      {:files (mapv :file problems)})))))
 
 (defn- ingest-all
   "Returns {:entities {stripped-hierarchy {:content <yaml-string> :path <repo-path>}}, :errors [Exception...]}.

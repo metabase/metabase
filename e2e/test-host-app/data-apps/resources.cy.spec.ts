@@ -1,8 +1,13 @@
+import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { PortableTable } from "e2e/support/helpers";
+import type { Card, CollectionItem } from "metabase-types/api";
 
 const { H } = cy;
 const { ORDERS_ID } = SAMPLE_DATABASE;
+
+/** The app is published under its directory's name. */
+const APP_SLUG = "vite-6-data-app-host-app";
 
 const APP_ROOT = () => H.dataAppHostAppRoot();
 const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
@@ -39,10 +44,14 @@ const ordersQuestion = (entityId: string, stage = {}) =>
     stage,
   });
 
+const metricAggregation = (metric: string) => ({
+  aggregation: [["metric", { "lib/uuid": crypto.randomUUID() }, metric]],
+});
+
 /**
- * Runs the app's resources tooling against the dev host app, a real vite data
- * app with the published SDK installed: the CLI an author runs and the build
- * guard.
+ * Runs the app's resources end to end against the dev host app, a real vite
+ * data app with the published SDK installed: the CLI an author runs, the build
+ * guard, and the repository pull that loads what the author wrote.
  */
 describe("Embedding SDK: data-app resources (queries)", () => {
   beforeEach(() => {
@@ -140,6 +149,130 @@ describe("Embedding SDK: data-app resources (queries)", () => {
         expect(stderr).to.contain(
           "is a resource that is not referenced anywhere.",
         );
+      });
+    });
+  });
+
+  it("publishes the saved question with a pull, readable by the app's group alone", () => {
+    const question = H.newEntityId();
+    H.declareDataAppQueries(APP_ROOT(), [
+      { name: "Orders", tableId: ORDERS_ID, savedQuestionEntityId: question },
+    ]);
+    H.writeDataAppResources(APP_ROOT(), {
+      collection: collection(),
+      cards: [ordersQuestion(question)],
+    });
+    H.publishDataApp(APP_ROOT(), APP_SLUG).then((app) => {
+      expect(app.table_ids).to.deep.eq([ORDERS_ID]);
+
+      cy.request<Card>(`/api/card/${question}`).then(({ body: card }) => {
+        expect(card.collection_id).to.eq(app.resource_collection_id);
+        expect(card.name).to.eq("Orders");
+
+        H.addUserToGroup(app.permission_group_id, USERS.normal.email);
+
+        cy.signInAsNormalUser();
+        cy.request(`/api/card/${question}`)
+          .its("body.id")
+          .should("eq", card.id);
+
+        cy.signIn("nocollection");
+        cy.request({ url: `/api/card/${question}`, failOnStatusCode: false })
+          .its("status")
+          .should("eq", 403);
+      });
+    });
+  });
+
+  it("publishes a copy of the metric a query uses, readable by the app's group alone", () => {
+    H.createQuestion({
+      name: "Orders count",
+      type: "metric",
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+    }).then(({ body: metric }) => {
+      const question = H.newEntityId();
+      const metricCopy = H.newEntityId();
+
+      H.declareDataAppQueries(APP_ROOT(), [
+        {
+          name: "OrdersCount",
+          tableId: ORDERS_ID,
+          metricId: metric.id,
+          savedQuestionEntityId: question,
+        },
+      ]);
+      H.writeDataAppResources(APP_ROOT(), {
+        collection: collection(),
+        cards: [
+          ordersQuestion(question, metricAggregation(metricCopy)),
+          H.resourceCard({
+            entityId: metricCopy,
+            name: "Orders count",
+            type: "metric",
+            collection: COLLECTION,
+            table: ORDERS_TABLE,
+            stage: {
+              aggregation: [["count", { "lib/uuid": crypto.randomUUID() }]],
+            },
+          }),
+        ],
+      });
+      H.publishDataApp(APP_ROOT(), APP_SLUG).then((app) => {
+        cy.request<{ data: CollectionItem[] }>(
+          `/api/collection/${app.resource_collection_id}/items?models=metric`,
+        ).then(({ body: { data: metrics } }) => {
+          expect(metrics.map(({ name }) => name)).to.deep.eq(["Orders count"]);
+          const [copy] = metrics;
+          expect(copy.id, "a copy, not the source metric").not.to.eq(metric.id);
+
+          H.addUserToGroup(app.permission_group_id, USERS.normal.email);
+
+          cy.signInAsNormalUser();
+          cy.request(`/api/card/${copy.id}`).its("status").should("eq", 200);
+          cy.request<Card>(`/api/card/${question}`).then(({ body: card }) => {
+            cy.request("POST", `/api/card/${card.id}/query`)
+              .its("body.data.rows.0.0")
+              .should("be.greaterThan", 0);
+          });
+
+          cy.signIn("nocollection");
+          cy.request({ url: `/api/card/${copy.id}`, failOnStatusCode: false })
+            .its("status")
+            .should("eq", 403);
+        });
+      });
+    });
+  });
+
+  it("refuses resources that read a card outside the app, and loads none of them", () => {
+    H.createQuestion({
+      name: "Orders count",
+      type: "metric",
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+    }).then(({ body: metric }) => {
+      const question = H.newEntityId();
+
+      H.declareDataAppQueries(APP_ROOT(), [
+        {
+          name: "OrdersCount",
+          tableId: ORDERS_ID,
+          metricId: metric.id,
+          savedQuestionEntityId: question,
+        },
+      ]);
+      // The question reads the source metric instead of a copy in the app.
+      H.writeDataAppResources(APP_ROOT(), {
+        collection: collection(),
+        cards: [ordersQuestion(question, metricAggregation(metric.entity_id))],
+      });
+
+      H.publishDataAppExpectingRefusal(APP_ROOT(), APP_SLUG).then((error) => {
+        expect(error).to.contain(
+          `references Card ${metric.entity_id}, which is not one of the app's resources`,
+        );
+        cy.request({ url: `/api/card/${question}`, failOnStatusCode: false })
+          .its("status")
+          .should("eq", 404);
       });
     });
   });

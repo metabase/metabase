@@ -119,7 +119,9 @@
 
 (t2/define-after-insert :model/DataApp
   [app]
-  (merge app (data-app.resources/ensure-resources! app)))
+  ;; The permission group is the app's own; its resource collection comes with it from the repository, or is created
+  ;; for an app made through the API (see `metabase-enterprise.data-apps.apps`).
+  (merge app (data-app.resources/ensure-resources! app {:create-collection? false})))
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.
@@ -187,6 +189,16 @@
 
 (defmethod serdes/descendants "DataApp" [_model-name id _opts]
   ;; An app's resource collection, and through it what it holds, travel with the app.
+  (when-let [collection-id (data-apps.db/resource-collection-id id)]
+    {["Collection" collection-id] {"DataApp" id}}))
+
+(defmethod serdes/deserialization-dependencies "DataApp" [{:keys [collection]}]
+  ;; The resource collection the manifest names loads first, so the app links to it as it lands.
+  (when collection
+    [[{:model "Collection" :id collection}]]))
+
+(defmethod serdes/descendants "DataApp" [_model-name id _opts]
+  ;; An app's resource collection, and through it the copies it holds, travel with the app.
   (when-let [collection-id (data-apps.db/resource-collection-id id)]
     {["Collection" collection-id] {"DataApp" id}}))
 

@@ -13,6 +13,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
@@ -730,13 +731,14 @@
 
 (defn should-sync-collection?
   "Check if a collection should be synced - either remote-synced, transforms-namespace with setting enabled,
-   or snippets-namespace with Library synced."
+   snippets-namespace with Library synced, or a data app's resource collection, whose files sit beside the app's."
   [collection]
   (or (collections/remote-synced-collection? collection)
       (and (rs-settings/remote-sync-transforms)
            (transforms-namespace-collection? collection))
       (and (rs-settings/library-is-remote-synced?)
-           (library-namespace-collection? collection))))
+           (library-namespace-collection? collection))
+      (data-apps/resource-collection? (:id collection))))
 
 (defn all-syncable-collection-ids
   "Returns a vector of all collection IDs that are eligible for remote sync.
@@ -744,6 +746,7 @@
    - Collections with is_remote_synced=true
    - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
    - Snippets- and data-actions-namespace collections (when Library is remote-synced)
+   - Data apps' resource collections
 
    Used by import cleanup to determine which collections to scope deletions to."
   []
@@ -755,7 +758,8 @@
          (when (rs-settings/library-is-remote-synced?)
            (remote-sync.db/collection-ids-in-namespace "snippets"))
          (when (rs-settings/library-is-remote-synced?)
-           (remote-sync.db/collection-ids-in-namespace (name collections/data-actions-ns)))]))
+           (remote-sync.db/collection-ids-in-namespace (name collections/data-actions-ns)))
+         (data-apps/resource-collection-ids)]))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -1274,7 +1278,8 @@
          (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace "snippets")))
        (when (rs-settings/library-is-remote-synced?)
          (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace
-                           (name collections/data-actions-ns))))))
+                           (name collections/data-actions-ns))))
+       (collection-keys (data-apps/unarchived-resource-collection-ids))))
     :derived
     (library-synced-root-export-roots spec)))
 

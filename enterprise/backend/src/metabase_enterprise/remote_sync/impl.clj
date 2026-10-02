@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
+   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
@@ -635,11 +636,15 @@
   (let [sync-timestamp (t/instant)]
     (try
       (let [snapshot-version      (source.p/version snapshot)
+            ;; Before anything is read for loading: an app's resource files are confined to its own collection.
+            _                     (source.ingestable/check-data-app-files! snapshot)
             last-imported-version (remote-sync.task/last-version)
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
             finalize!             (fn []
+                                    ;; The resources that landed decide the tables each app reads.
+                                    (data-apps/record-table-dependencies!)
                                     (remote-sync.task/set-version! task-id snapshot-version))
             report                (import-progress-reporter task-id)
             path-filters          (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)

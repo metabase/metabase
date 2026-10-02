@@ -108,8 +108,9 @@
 
 (def shared-top-level-paths
   "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
-  source code, to the name of the entity files in them."
-  {"data_apps" "data_app.yaml"})
+  source code, to the entity files in them: `:entity-file` is the one entity file directly in each directory, and
+  every YAML file under its `:entity-dir` subdirectory is an entity file too (a data app's `resources/`)."
+  {"data_apps" {:entity-file "data_app.yaml" :entity-dir "resources"}})
 
 (def replaced-top-level-paths
   "The [[legal-top-level-paths]] a full export may replace wholesale."
@@ -120,14 +121,15 @@
   of the [[legal-top-level-paths]], with the entity file name of its directory when that is one of the
   [[shared-top-level-paths]]."
   [^String path]
-  (let [top       (first (str/split path #"/" 2))
+  (let [[top _dir subdir :as _segments] (str/split path #"/")
         file-name (subs path (inc (or (str/last-index-of path "/") -1)))]
     (boolean (and (str/includes? path "/")
                   (str/ends-with? file-name ".yaml")
                   (not (str/starts-with? file-name "."))
                   (contains? legal-top-level-paths top)
-                  (if-let [entity-file-name (get shared-top-level-paths top)]
-                    (= entity-file-name file-name)
+                  (if-let [{:keys [entity-file entity-dir]} (get shared-top-level-paths top)]
+                    (or (= entity-file file-name)
+                        (= entity-dir subdir))
                     true)))))
 
 (defn- path-interner

@@ -120,6 +120,8 @@ Exporting an app's resources also needs a superuser.
 | Namespace             | Responsibility                                                                                      |
 | --------------------- | --------------------------------------------------------------------------------------------------- |
 | `apps.clj`            | Creating apps; the connected repository's URL.                                                      |
+| `apps.clj`            | Creating apps, with the group and collection they own; the connected repository's URL.             |
+| `core.clj`            | What other modules ask: owned collections, resource file problems, table dependencies.             |
 | `config.clj`          | The serialized layout and data app contract version constants.                                     |
 | `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
@@ -127,6 +129,8 @@ Exporting an app's resources also needs a superuser.
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
 | `resource_serialization.clj` | The serialization an app's resource files are written from: built queries, actions, metrics. |
 | `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
+| `resource_validation.clj` | What an app's resource files may hold, checked on the whole snapshot before an import.          |
+| `resource_tables.clj` | The tables an app's resources read, recorded on the app after an import.                           |
 | `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
