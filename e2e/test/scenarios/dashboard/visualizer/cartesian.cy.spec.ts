@@ -187,12 +187,14 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.switchToAddMoreData();
       H.selectDataset(ORDERS_COUNT_BY_CREATED_AT.name);
       H.switchToColumnsList();
-      // Shouldn't this be automatic though?
       H.selectColumnFromColumnsList(ORDERS_COUNT_BY_CREATED_AT.name, "Count");
 
-      // VIZ-668 pivot-grouping is an internal column sued byt he pivot table and shouldn't be
+      // VIZ-668 pivot-grouping is an internal column used by the pivot table and shouldn't be
       // shown in the columns list
-      cy.findByText("pivot-grouping").should("not.exist");
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Count").should("exist");
+      H.dataSource(PIVOT_TABLE_CARD.name)
+        .findByText("pivot-grouping")
+        .should("not.exist");
 
       H.verticalWell().within(() => {
         cy.findByText("Count").should("exist");
@@ -468,6 +470,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
         H.verticalWell().within(() => {
           cy.findByText("Count").should("exist");
+          cy.findByText(`Count (${Q2_NAME})`).should("exist");
         });
         H.horizontalWell().findByText("Created At: Month").should("exist");
 
@@ -504,7 +507,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.chartLegendItems().should("have.length", 2);
 
         // Remove all count columns from the well
-        // TODO maybe put that into a function
         H.verticalWell().within(() => {
           cy.findAllByTestId("well-item")
             .first()
@@ -526,7 +528,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.assertDataSourceColumnSelected(Q2_NAME, "Created At: Month", false);
         H.chartLegend().should("not.exist");
 
-        //   // Add all columns back
+        // Add all columns back
         H.dataSourceColumn(Q1_NAME, "Count").click();
         H.dataSourceColumn(Q1_NAME, "Created At: Month").click();
         H.dataSourceColumn(Q2_NAME, "Count").click();
