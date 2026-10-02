@@ -63,9 +63,7 @@ Scope parameters:
 
 Combine library scopes when the app needs both tables and curated metrics.
 
-Use `include-actions=true` when the app needs any saved action; it includes every readable action, unless `database` scopes them to one database. It can be combined with `library-collections`, `include-data-library`, or `include-metric-library` so one schema can include selected tables/metrics plus all readable actions.
-
-If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-actions=true` in the typed-schema URL. Do this even when the user names one specific action, because actions are only discoverable through the generated schema.
+Add `include-actions=true` for any write flow — creating, updating, deleting, submitting, approving, running an action — even when the user names one specific action: actions are discoverable only through the generated schema. It combines with the library scopes, so one schema can hold selected tables and metrics plus every readable action.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up

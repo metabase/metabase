@@ -17,7 +17,7 @@ A Metabase **action** is a saved, parameterized SQL write against the data wareh
 
 Action entries are only generated when the typed schema includes actions. Before writing action-invoking code, make sure the schema was generated with `include-actions=true`; with `database=<name-or-id>&include-actions=true`, Metabase includes the actions for that database only.
 
-Before writing any action-invoking code, enumerate what's available under `schema.actions`. The schema is your **complete** catalog of the actions the app can run. Anything not present doesn't exist as far as the Data App is concerned.
+Before writing any action-invoking code, enumerate what's available under `schema.actions`. The schema is your **complete** catalog of the actions the app can run. Anything not present doesn't exist as far as the Data App is concerned: when the app needs a write the schema lacks, ask the user to create that query action in Metabase (on a database with actions enabled), then regenerate the schema.
 
 ## The hook
 

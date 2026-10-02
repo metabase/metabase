@@ -9,6 +9,7 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
+import { createTestNativeQuery } from "./api";
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
@@ -218,56 +219,43 @@ export function createDataAppScoreboardAction({
   name = "Add team",
   collectionId = null,
 }: { name?: string; collectionId?: CollectionId | null } = {}) {
-  return cy
-    .request<WritebackAction>("POST", "/api/action", {
-      name,
-      type: "query",
-      database_id: WRITABLE_DB_ID,
-      collection_id: collectionId,
-      dataset_query: {
-        database: WRITABLE_DB_ID,
-        type: "native",
-        native: {
-          query:
-            "INSERT INTO scoreboard_actions (team_name, score) VALUES ({{team_name}}, {{score}})",
-          "template-tags": {
-            team_name: {
-              id: "team_name",
-              name: "team_name",
-              "display-name": "Team name",
-              type: "text",
-              required: true,
-            },
-            score: {
-              id: "score",
-              name: "score",
-              "display-name": "Score",
-              type: "number",
-              required: true,
-            },
+  return createTestNativeQuery({
+    database: WRITABLE_DB_ID,
+    query:
+      "INSERT INTO scoreboard_actions (team_name, score) VALUES ({{team_name}}, {{score}})",
+    templateTags: {
+      team_name: { type: "text", "display-name": "Team name", required: true },
+      score: { type: "number", "display-name": "Score", required: true },
+    },
+  }).then((datasetQuery) =>
+    cy
+      .request<WritebackAction>("POST", "/api/action", {
+        name,
+        type: "query",
+        database_id: WRITABLE_DB_ID,
+        collection_id: collectionId,
+        dataset_query: datasetQuery,
+        parameters: [
+          {
+            id: "team_name",
+            slug: "team_name",
+            name: "Team name",
+            type: "string/=",
+            target: ["variable", ["template-tag", "team_name"]],
+            required: true,
           },
-        },
-      },
-      parameters: [
-        {
-          id: "team_name",
-          slug: "team_name",
-          name: "Team name",
-          type: "string/=",
-          target: ["variable", ["template-tag", "team_name"]],
-          required: true,
-        },
-        {
-          id: "score",
-          slug: "score",
-          name: "Score",
-          type: "number/=",
-          target: ["variable", ["template-tag", "score"]],
-          required: true,
-        },
-      ],
-    })
-    .then(({ body: action }) => cy.wrap(action, { log: false }));
+          {
+            id: "score",
+            slug: "score",
+            name: "Score",
+            type: "number/=",
+            target: ["variable", ["template-tag", "score"]],
+            required: true,
+          },
+        ],
+      })
+      .then(({ body: action }) => cy.wrap(action, { log: false })),
+  );
 }
 
 /**
