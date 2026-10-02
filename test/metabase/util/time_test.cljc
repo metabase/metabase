@@ -336,6 +336,37 @@
       :saturday "2021-01-01" 52
       :saturday "2021-01-02" 1)))
 
+(defn- consecutive-dates
+  "The `n` dates from `start` on, as yyyy-MM-dd strings."
+  [start n]
+  (for [i (range n)]
+    #?(:clj  (str (.plusDays (t/local-date start) i))
+       :cljs (.format (.add (dayjs start) i "day") "YYYY-MM-DD"))))
+
+(deftest ^:parallel week-of-year-rules-test
+  ;; States the numbering rules day by day instead of restating the formula, for every first day of the week.
+  (let [dates (consecutive-dates "2015-01-01" (+ (* 16 365) 4)) ; through 2030, a Thursday onwards
+        ;; Days of the week as indexes, Sunday = 0. Jan 1, 2015 was a Thursday.
+        day-of-week (fn [i] (mod (+ i 4) 7))]
+    (doseq [[start-index start-of-week] (map-indexed vector [:sunday :monday :tuesday :wednesday
+                                                             :thursday :friday :saturday])]
+      (testing start-of-week
+        (let [weeks (mapv #(parse-long (shared.ut/format-unit {:start-of-week start-of-week} % :week-of-year))
+                          dates)]
+          (is (= []
+                 (for [i     (range 1 (count dates))
+                       :let  [date     (nth dates i)
+                              week     (nth weeks i)
+                              previous (nth weeks (dec i))
+                              expected (cond
+                                         ;; A week keeps its number until the next one starts.
+                                         (not= start-index (day-of-week i)) previous
+                                         ;; Week 1 is the first week that starts in the new year.
+                                         (<= (compare date (str (subs date 0 4) "-01-07")) 0) 1
+                                         :else (inc previous))]
+                       :when (not= expected week)]
+                   [date week expected]))))))))
+
 (deftest week-of-year-number->timestamp-test
   (with-redefs [internal/now (fn [] (from test-epoch))] ; in 2022, where Jan 1 is a Saturday
     (letfn [(round-trip [start-of-week week]
@@ -343,13 +374,12 @@
                 (shared.ut/extract config
                                    (shared.ut/coerce-to-timestamp week (assoc config :unit :week-of-year))
                                    :week-of-year)))]
-      (testing "every week round-trips when weeks start on Jan 1"
-        (doseq [week (range 1 54)]
-          (is (= week (round-trip :saturday week)))))
-      ;; The last Sunday of 2022 is Dec 25, so that year has no week 53 when weeks start on Sunday.
-      (testing "every week round-trips when Jan 1 falls mid-week"
-        (doseq [week (range 1 53)]
-          (is (= week (round-trip :sunday week))))))))
+      ;; 2022 starts and ends on a Saturday, so only weeks that start on Saturday reach week 53 that year.
+      (testing "every week round-trips, for every first day of the week"
+        (doseq [start-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]
+                :let          [weeks (range 1 (if (= start-of-week :saturday) 54 53))]]
+          (testing start-of-week
+            (is (= weeks (map #(round-trip start-of-week %) weeks)))))))))
 
 (deftest parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]

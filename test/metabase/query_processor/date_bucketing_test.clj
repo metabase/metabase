@@ -1024,18 +1024,27 @@
                       (take 3)))))))))
 
 (deftest week-of-year-label-matches-query-test
-  (mt/test-driver :h2
-    (doseq [start-of-week [:sunday :monday]
-            date          ["2018-12-30" "2019-01-01"]]
-      (mt/with-temporary-setting-values [start-of-week start-of-week]
-        (testing (str start-of-week " " date)
-          (let [mp         (mt/metadata-provider)
-                query      (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                created-at (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :week-of-year)
-                filter     (lib/= created-at date)
-                query      (-> query (lib/filter filter) (lib/breakout created-at))]
-            (is (= [(lib/filter-args-display-name query -1 filter)]
-                   (map (comp str first) (mt/rows (qp/process-query query)))))))))))
+  (testing "a week-of-year filter's name is the week its query returns, for every first day of the week"
+    (mt/test-drivers (mt/normal-drivers)
+      (doseq [start-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]]
+        (mt/with-temporary-setting-values [start-of-week start-of-week]
+          (testing start-of-week
+            (let [mp           (mt/metadata-provider)
+                  created-at   (lib.metadata/field mp (mt/id :orders :created_at))
+                  week-of-year (lib/with-temporal-bucket created-at :week-of-year)
+                  ;; Each year starts on a different day of the week, so the first week falls differently in each.
+                  query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                   (lib/filter (lib/or (lib/between created-at "2017-12-25" "2018-01-08")
+                                                       (lib/between created-at "2018-12-25" "2019-01-08")
+                                                       (lib/between created-at "2019-12-25" "2020-01-08")))
+                                   (lib/breakout (lib/with-temporal-bucket created-at :day))
+                                   (lib/breakout week-of-year))
+                  rows         (for [[day week] (mt/rows (qp/process-query query))]
+                                 [(subs (str day) 0 10) (str week)])]
+              (is (= 45 (count rows)))
+              (is (= (for [[day _] rows]
+                       [day (lib/filter-args-display-name query -1 (lib/= week-of-year day))])
+                     rows)))))))))
 
 ;;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;;; difference is how the beginning of hte month is represented, since we always return times with our dates
