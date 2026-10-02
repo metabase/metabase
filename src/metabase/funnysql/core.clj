@@ -175,9 +175,15 @@
 (declare -simple-fn!)
 
 (defn- -raw-type-name! [type-name context]
-  ;; support annoying forms like `[:varchar 26]` -- we still want to validate these so compile them recursively to a
-  ;; string like `varchar(26)` so we can validate them
-  (let [type-name-str (-> (if (vector? type-name)
+  ;; `[::h2x/raw-type-name "<type>"]` is how `h2x/cast` carries an already-validated type name through Honey SQL,
+  ;; which has no other form that splices one without mangling it. Here the name is just the name, so unwrap it.
+  (let [type-name (if (and (vector? type-name)
+                           (= (first type-name) ::h2x/raw-type-name))
+                    (second type-name)
+                    type-name)
+        ;; support annoying forms like `[:varchar 26]` -- we still want to validate these so compile them recursively
+        ;; to a string like `varchar(26)` so we can validate them
+        type-name-str (-> (if (vector? type-name)
                             (let [recursive-context (default-context (engine context) (options context))]
                               (-simple-fn! (first type-name) (rest type-name) recursive-context)
                               (first (result! recursive-context)))
@@ -785,6 +791,7 @@
     :metabase.util.honey-sql-2/collate           (h2x-collate! args context)
     :metabase.util.honey-sql-2/at-time-zone      (h2x-at-time-zone! args context)
     :metabase.util.honey-sql-2/typed             (compile! (first args) context)
+    :metabase.util.honey-sql-2/raw-type-name     (-raw-type-name! (first args) context)
     :metabase.util.honey-sql-2/postgres-interval (-h2x-interval! :postgres args context)
     :metabase.util.honey-sql-2/mysql-interval    (-h2x-interval! :mysql args context)
 
