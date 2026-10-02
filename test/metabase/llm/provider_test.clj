@@ -226,7 +226,7 @@
            clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
            (llm.provider/validate-config! "bedrock" {})))
       (testing "the pair is a mandatory set, so the form marks each of its fields required"
-        (is (= {:access-key-id true :secret-access-key true :region false :session-token false}
+        (is (= {:access-key-id true :secret-access-key true :region false :model-id false :session-token false}
                (->> (llm.provider/provider-type "bedrock")
                     :fields
                     (into {} (map (juxt :key (comp boolean :required?))))))))
