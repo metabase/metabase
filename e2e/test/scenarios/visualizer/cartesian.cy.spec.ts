@@ -266,7 +266,7 @@ describe("scenarios > visualizer > cartesian", () => {
     });
   });
 
-  it("should preserve default colors and remap columns when changing a viz type (VIZ-1211)", () => {
+  it("should preserve default colors (VIZ-1211)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
     H.openQuestionsSidebar();
@@ -283,7 +283,17 @@ describe("scenarios > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.chartPathWithFillColor("#509EE3").should("have.length", 4);
+    });
+  });
 
+  it("should remap columns when changing a viz type", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
+
+    H.modal().within(() => {
       // Turn into a pie chart
       cy.findByTestId("viz-picker-main").icon("pie").click();
       H.assertDataSourceColumnSelected(

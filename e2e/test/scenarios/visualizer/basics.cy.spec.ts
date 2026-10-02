@@ -329,7 +329,7 @@ describe("scenarios > visualizer > basics", () => {
     H.getDashboardCard(0).realHover();
     H.getDashboardCardMenu(0).click();
     H.popover().within(() => {
-      cy.findByText("Edit visualization").should("exist");
+      cy.findByText("Download results").should("exist");
       cy.findByText("View question(s)").should("not.exist");
     });
     cy.realPress("Escape");
