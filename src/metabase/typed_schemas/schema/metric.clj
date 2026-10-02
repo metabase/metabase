@@ -301,11 +301,10 @@
     (and (= (:lib/type query) :mbql/query)
          (boolean (seq (lib/all-source-card-ids query))))))
 
-(defn metric-schemas
-  "Returns metric schemas, with optional database and collection scopes."
-  [database-ids collection-ids]
-  (for [metric (remove source-card-id
-                       (schema.common/select-schema-cards :metric database-ids collection-ids))
+(defn metric-schemas-for-cards
+  "Returns metric schemas for selected metric cards."
+  [cards]
+  (for [metric (remove source-card-id cards)
         ;; Sync only supports metrics that resolve entirely from tables, and the CLI aborts
         ;; `sync-resources` on one that does not. `source-card-id` sees only stage 0, so a
         ;; table-sourced metric joining a saved question reached the CLI and failed there;
@@ -314,3 +313,8 @@
         :let [details (metric-details metric)]
         :when details]
     (metric-schema details metric)))
+
+(defn metric-schemas
+  "Returns metric schemas, with optional database and collection scopes."
+  [database-ids collection-ids]
+  (metric-schemas-for-cards (schema.common/select-schema-cards :metric database-ids collection-ids)))

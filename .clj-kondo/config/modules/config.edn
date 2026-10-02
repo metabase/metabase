@@ -3086,6 +3086,7 @@
            models
            permissions
            queries
+           remote-sync
            system
            util
            warehouse-schema-overlay}

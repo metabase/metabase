@@ -26,6 +26,11 @@
   the module's data-access surface enumerable and every downstream stage
   testable with literal values."
   (:require
+   [clojure.set :as set]
+   [metabase.collections.core :as collections]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.typed-schemas.db :as typed-schemas.db]
+   [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.metric :as schema.metric]
    [metabase.typed-schemas.schema.model :as schema.model]
    [metabase.typed-schemas.schema.question :as schema.question]
@@ -59,6 +64,41 @@
   (library-tables [source library-scope]
     "Published table rows in the library scope's data collections."))
 
+(defn- previously-synced
+  [model-key rows]
+  (let [ids (remote-sync/previously-synced-ids model-key (into #{} (map :id) rows))]
+    (filterv #(contains? ids (:id %)) rows)))
+
+(defn- curated-library-ids
+  [collection-type requested-ids]
+  (let [library (collections/library-collection)
+        ids     (if (:is_remote_synced library)
+                  (into #{} (comp (filter #(= collection-type (:type %))) (map :id))
+                        (typed-schemas.db/synced-library-collections (:id library)))
+                  #{})]
+    (if requested-ids (set/intersection ids requested-ids) ids)))
+
+(defn- curated-tables
+  [database-ids table-ids]
+  (let [collection-ids (curated-library-ids collections/library-data-collection-type nil)
+        published-ids  (into #{} (map :id)
+                             (schema.table/select-library-tables {:data-collection-ids collection-ids}))
+        table-ids      (if table-ids (set/intersection published-ids (set table-ids)) published-ids)]
+    (previously-synced :model/Table (schema.table/select-tables database-ids table-ids))))
+
+(defn- curated-models
+  [database-ids]
+  (let [models         (schema.common/select-schema-cards :model database-ids nil)
+        collection-ids (into #{} (keep :collection_id) models)
+        synced-ids     (into #{} (comp (filter :is_remote_synced) (map :id))
+                             (when (seq collection-ids) (typed-schemas.db/collections collection-ids)))
+        models         (previously-synced :model/Card
+                                          (filter #(contains? synced-ids (:collection_id %)) models))
+        action-rows    (when (seq models)
+                         (previously-synced :model/Action
+                                            (typed-schemas.db/model-actions (into #{} (map :id) models))))]
+    (schema.model/model-schemas-for-actions models action-rows)))
+
 (def app-db-source
   "The production [[SchemaSource]], backed by the application database."
   (reify SchemaSource
@@ -71,10 +111,19 @@
     (questions [_ database-ids collection-ids]
       (vec (schema.question/question-schemas database-ids collection-ids)))
     (models [_ database-ids]
-      (schema.model/model-schemas database-ids nil))
+      (curated-models database-ids))
     (metrics [_ database-ids collection-ids]
-      (vec (schema.metric/metric-schemas database-ids collection-ids)))
+      (vec (schema.metric/metric-schemas-for-cards
+            (previously-synced
+             :model/Card
+             (schema.common/select-schema-cards
+              :metric database-ids
+              (curated-library-ids collections/library-metrics-collection-type collection-ids))))))
     (tables [_ database-ids table-ids]
-      (vec (schema.table/table-schemas (schema.table/select-tables database-ids table-ids))))
+      (vec (schema.table/table-schemas (curated-tables database-ids table-ids))))
     (library-tables [_ library-scope]
-      (vec (schema.table/select-library-tables library-scope)))))
+      (previously-synced
+       :model/Table
+       (schema.table/select-library-tables
+        {:data-collection-ids (curated-library-ids collections/library-data-collection-type
+                                                   (:data-collection-ids library-scope))})))))

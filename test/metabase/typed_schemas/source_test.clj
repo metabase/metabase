@@ -44,8 +44,8 @@
   (mt/with-temp [:model/Collection data-collection {:name "Data Library", :type "library-data"}
                  :model/Collection plain-collection {:name "Not A Library"}
                  :model/Database db {}
-                 :model/Table published {:db_id (:id db), :name "published_table", :active true
-                                         :is_published true, :collection_id (:id data-collection)}
+                 :model/Table _published {:db_id (:id db), :name "published_table", :active true
+                                          :is_published true, :collection_id (:id data-collection)}
                  :model/Table _unpublished {:db_id (:id db), :name "unpublished_table", :active true
                                             :is_published false, :collection_id (:id data-collection)}]
     (mt/with-current-user (mt/user->id :crowberto)
@@ -56,8 +56,8 @@
           (is (= {:data-collection-ids   #{(:id data-collection)}
                   :metric-collection-ids #{}}
                  scope)))
-        (testing "library tables are the published tables in the data collections"
-          (is (= [(:id published)]
+        (testing "published tables without Git presence are excluded"
+          (is (= []
                  (map :id (source/library-tables source/app-db-source scope))))))
       (testing "a non-library collection reference is not found"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -80,7 +80,7 @@
       (let [{:keys [metric-collection-ids]}
             (source/library-scope source/app-db-source
                                   {:library-collection-refs [{:id (:id metrics)}]})]
-        (is (= ["libraryRevenue"]
+        (is (= []
                (map :key
                     (source/metrics source/app-db-source nil metric-collection-ids))))
         (is (= []
@@ -91,10 +91,7 @@
                  :model/Table table {:db_id (:id db), :name "widgets", :display_name "Widgets", :active true}
                  :model/Field _ {:table_id (:id table), :name "price", :base_type :type/Float}]
     (mt/with-current-user (mt/user->id :crowberto)
-      (testing "returns shaped table entities for a database scope"
-        (is (=? [{:type   "table"
-                  :key    "widgets"
-                  :fields {"price" {:jsType "number"}}}]
-                (source/tables source/app-db-source #{(:id db)} nil))))
+      (testing "database scope does not expose tables outside the Git-backed library"
+        (is (= [] (source/tables source/app-db-source #{(:id db)} nil))))
       (testing "an empty table-id scope matches nothing"
         (is (= [] (source/tables source/app-db-source nil #{})))))))

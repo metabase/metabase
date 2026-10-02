@@ -116,6 +116,15 @@
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
+(defn synced-library-collections
+  "Returns unarchived library surface collections selected for Git sync."
+  [library-id]
+  (t2/select [:model/Collection :id :type]
+             :type [:in [collection/library-data-collection-type collection/library-metrics-collection-type]]
+             :location [:like (str "/" library-id "/%")]
+             :archived false
+             :is_remote_synced true))
+
 (mu/defn collections-by-entity-ids
   "The Collections with `entity-ids`."
   [entity-ids :- [:set :string]]
