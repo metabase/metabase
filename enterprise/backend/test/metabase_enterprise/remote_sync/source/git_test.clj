@@ -881,6 +881,33 @@
               (is (= 1 @clones) "the first uses clone once")))
           (finally (forget-clones! url)))))))
 
+(deftest concurrent-failing-first-uses-clone-once-test
+  (testing (str "concurrent first uses of a URL whose clone fails make one clone attempt and all fail together, "
+                "so that a slow failure does not make each waiting request wait for its own attempt")
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url    (remote-url (init-remote! remote-dir))
+            clones (atom 0)
+            start  (promise)]
+        (try
+          (mt/with-dynamic-fn-redefs [git/clone-repository! (fn [_path _args]
+                                                              (swap! clones inc)
+                                                              (Thread/sleep 1000)
+                                                              (throw (ex-info "Connection timed out" {})))]
+            (let [t0      (System/nanoTime)
+                  uses    (mapv (fn [_] (future
+                                          (deref start 10000 nil)
+                                          (try (git/git-source url "master" nil ingest/legal-top-level-paths)
+                                               (catch Exception e (str "threw: " (ex-message e))))))
+                                (range 4))
+                  _       (deliver start true)
+                  results (mapv #(deref % 30000 ::timeout) uses)
+                  ms      (quot (- (System/nanoTime) t0) 1000000)]
+              (is (every? #(and (string? %) (str/includes? % "Connection timed out")) results)
+                  "each first use fails with the error of the clone")
+              (is (= 1 @clones) "the first uses make one clone attempt")
+              (is (< ms 2500) (str "the four first uses took " ms " ms"))))
+          (finally (forget-clones! url)))))))
+
 (deftest concurrent-stale-cache-recoveries-clone-once-test
   (testing "two concurrent stale-cache recoveries of one clone share one fresh clone"
     (mt/with-temp-dir [remote-dir nil]
