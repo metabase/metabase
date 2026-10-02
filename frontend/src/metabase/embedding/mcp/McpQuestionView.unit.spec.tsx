@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -43,6 +45,8 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { McpQuestionView } from "./McpQuestionView";
+import type { DerivedQuery } from "./api";
+import type { McpDeriveOperation } from "./derive";
 
 const TEST_DATABASE = createSampleDatabase();
 
@@ -94,6 +98,9 @@ const BOOTSTRAP = createMockMcpAppsBootstrapResponse({
 
 function setup() {
   const { user, settings } = BOOTSTRAP;
+  const deriveQuery = jest.fn<Promise<DerivedQuery>, [McpDeriveOperation[]]>(
+    () => new Promise(() => {}),
+  );
 
   // Reproduces the widening `useMcpUserAndSettingsFetch` does when it seeds the cache: at
   // runtime the store holds a `User` carrying only these fields.
@@ -131,13 +138,20 @@ function setup() {
       withEditorButton={false}
       withChartTypeSelector={false}
     >
-      <McpQuestionView queryKey="test-query" safeAreaPaddingTop={0} />
+      <McpQuestionView
+        queryKey="test-query"
+        safeAreaPaddingTop={0}
+        deriveQuery={deriveQuery}
+        applyOperationsRef={{ current: null }}
+      />
     </SdkQuestion>,
     {
       componentProviderProps: { authConfig: createMockSdkConfig() },
       storeInitialState: state,
     },
   );
+
+  return { deriveQuery };
 }
 
 describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", () => {
@@ -166,5 +180,16 @@ describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", ()
       expect(screen.queryByText(/gone wrong/i)).not.toBeInTheDocument();
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("asks the server to derive a rebucketed query rather than building one", async () => {
+    const { deriveQuery } = setup();
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Month" }));
+
+    expect(deriveQuery).toHaveBeenCalledWith([
+      { type: "temporal-bucket/set", unit: "month" },
+    ]);
   });
 });

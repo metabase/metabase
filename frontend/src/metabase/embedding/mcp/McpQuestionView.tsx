@@ -1,13 +1,23 @@
-import type { CSSProperties } from "react";
+import {
+  type CSSProperties,
+  type MutableRefObject,
+  useCallback,
+  useEffect,
+} from "react";
 
+import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { Box, Divider, Flex } from "metabase/ui";
 
 import { ChartTypePicker } from "./ChartTypePicker/ChartTypePicker";
 import { McpQuestionTitle } from "./McpQuestionTitle";
+import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
 import { TimeGranularityControl } from "./TimeControlBar/TimeGranularityControl";
 import { TimeRangeControl } from "./TimeControlBar/TimeRangeControl";
+import type { DerivedQuery } from "./api";
+import type { ApplyMcpOperations, McpDeriveOperation } from "./derive";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
+import { setCurrentMcpQueryHandle } from "./requests";
 
 export const MCP_CONTENT_HEIGHT = "500px";
 
@@ -17,12 +27,59 @@ const RECLAIMED_CONTENT_BOTTOM_PADDING = "var(--mantine-spacing-xl)";
 export interface McpQuestionViewProps {
   queryKey: string | null;
   safeAreaPaddingTop: number;
+  deriveQuery: (operations: McpDeriveOperation[]) => Promise<DerivedQuery>;
+  applyOperationsRef: MutableRefObject<ApplyMcpOperations | null>;
+}
+
+/**
+ * Applies operations by asking the server to derive a new query handle, then
+ * shows that handle's query. Runs of the question then go through the new
+ * handle, so the question never runs a query the iframe built.
+ */
+function useApplyMcpOperations(
+  deriveQuery: McpQuestionViewProps["deriveQuery"],
+): ApplyMcpOperations {
+  const { question, updateQuestion } = useSdkQuestionContext();
+
+  return useCallback(
+    (operations) => {
+      if (!question) {
+        return;
+      }
+
+      deriveQuery(operations)
+        .then(({ handle, query }) => {
+          const derived = getMcpDeserializedQuery(query);
+
+          if (!derived) {
+            throw new Error("The derived query could not be read.");
+          }
+
+          setCurrentMcpQueryHandle(handle);
+          updateQuestion(question.setDatasetQuery(derived.card.dataset_query), {
+            run: true,
+          });
+        })
+        .catch((error) => {
+          console.error("Error changing the MCP query", error);
+        });
+    },
+    [deriveQuery, question, updateQuestion],
+  );
 }
 
 export function McpQuestionView({
   queryKey,
   safeAreaPaddingTop,
+  deriveQuery,
+  applyOperationsRef,
 }: McpQuestionViewProps) {
+  const applyOperations = useApplyMcpOperations(deriveQuery);
+
+  useEffect(() => {
+    applyOperationsRef.current = applyOperations;
+  }, [applyOperations, applyOperationsRef]);
+
   const {
     hasChartTypeSelector,
     hasTimeControls,
@@ -31,7 +88,7 @@ export function McpQuestionView({
     chartTypes,
     currentChartType,
     onChartTypeChange,
-  } = useMcpQueryControls(queryKey);
+  } = useMcpQueryControls(queryKey, applyOperations);
 
   const isTableVisualization = currentChartType === "table";
 

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { fetchQueryByHandle } from "../api";
 import { useMcpUiAuth } from "../auth";
+import { setCurrentMcpQueryHandle } from "../requests";
 import {
   getMcpQueryFetchErrorMessage,
   getMcpQueryFetchErrorType,
@@ -154,6 +155,8 @@ export function useMcpApp(): McpAppState {
             return;
           }
 
+          // Before the query: the question built from it runs through this handle.
+          setCurrentMcpQueryHandle(queryHandle);
           setQuery(resolved.query);
           setPrompt(resolved.prompt ?? prompt ?? null);
         } catch (error) {

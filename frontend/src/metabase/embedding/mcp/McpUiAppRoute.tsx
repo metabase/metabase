@@ -1,4 +1,10 @@
-import { type CSSProperties, useEffect, useMemo } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -12,10 +18,17 @@ import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
-import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
+import { type DerivedQuery, deriveMcpQuery } from "./api";
+import { createMcpClickActionMode } from "./clickActions";
+import type { ApplyMcpOperations, McpDeriveOperation } from "./derive";
+import {
+  useHandleMcpDrill,
+  useHandleMcpDrillThrough,
+} from "./hooks/useHandleMcpDrillThrough";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
 import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
+import { getCurrentMcpQueryHandle } from "./requests";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 
 const store = getSdkStore();
@@ -117,11 +130,41 @@ function McpUiAppRouteContent({
   const isHosted = useSetting("is-hosted?");
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 
-  const handleDrillThrough = useHandleMcpDrillThrough({
+  const handleDrillThrough = useHandleMcpDrillThrough({ app });
+
+  // Set by the question view, which can update the question the SDK shows.
+  const applyOperationsRef = useRef<ApplyMcpOperations | null>(null);
+
+  const handleDrill = useHandleMcpDrill({
     app,
     uiCredential,
     mcpSessionId,
+    applyOperationsRef,
   });
+
+  const clickActionMode = useMemo(
+    () => createMcpClickActionMode(handleDrill),
+    [handleDrill],
+  );
+
+  const deriveQuery = useCallback(
+    (operations: McpDeriveOperation[]): Promise<DerivedQuery> => {
+      const queryHandle = getCurrentMcpQueryHandle();
+
+      if (!instanceUrl || !uiCredential || !mcpSessionId || !queryHandle) {
+        return Promise.reject(new Error("The query cannot be changed here."));
+      }
+
+      return deriveMcpQuery({
+        instanceUrl,
+        uiCredential,
+        mcpSessionId,
+        queryHandle,
+        operations,
+      });
+    },
+    [instanceUrl, mcpSessionId, uiCredential],
+  );
 
   const deserializedQuery = useMemo(() => {
     if (!query) {
@@ -211,6 +254,8 @@ function McpUiAppRouteContent({
         <McpQuestionView
           queryKey={query}
           safeAreaPaddingTop={safeAreaPadding.top}
+          deriveQuery={deriveQuery}
+          applyOperationsRef={applyOperationsRef}
         />
 
         <McpCardFooter
@@ -235,6 +280,7 @@ function McpUiAppRouteContent({
         // we should never show query builder in chat interfaces
         withEditorButton={false}
         withChartTypeSelector={false}
+        clickActionMode={clickActionMode}
         onDrillThrough={handleDrillThrough}
       >
         {renderSdkQuestionContent()}

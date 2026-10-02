@@ -17,10 +17,16 @@ export interface McpUiAuth {
   sessionId: string;
 }
 
-export function installMcpUiCredential(credential: string) {
+export function installMcpUiCredential({ credential, sessionId }: McpUiAuth) {
   PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- request header name
-    async () => ({ headers: { "X-Metabase-Mcp-Ui-Auth": credential } });
+    async () => ({
+      headers: {
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- request header name
+        "X-Metabase-Mcp-Ui-Auth": credential,
+        // The iframe's routes check the credential against the MCP session it was minted for.
+        "Mcp-Session-Id": sessionId,
+      },
+    });
 }
 
 export async function refreshMcpUiAuth(

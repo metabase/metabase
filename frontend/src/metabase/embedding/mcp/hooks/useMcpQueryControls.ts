@@ -1,10 +1,15 @@
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 
+import type { ApplyMcpOperations } from "../derive";
+
 import { useDateFilter } from "./useDateFilter";
 import { useMcpVisualizationSelector } from "./useMcpVisualizationSelector";
 import { useTemporalGranularity } from "./useTemporalGranularity";
 
-export function useMcpQueryControls(queryKey: string | null) {
+export function useMcpQueryControls(
+  queryKey: string | null,
+  applyOperations: ApplyMcpOperations,
+) {
   const { question, updateQuestion, queryResults } = useSdkQuestionContext();
 
   const { sensibleChartTypes, selectedChartType, handleDisplayChange } =
@@ -22,7 +27,7 @@ export function useMcpQueryControls(queryKey: string | null) {
     availableItems,
     bucketLabel,
     handleBucketChange,
-  } = useTemporalGranularity(question, updateQuestion);
+  } = useTemporalGranularity(question, applyOperations);
 
   const {
     dateFilterClause,
@@ -31,7 +36,7 @@ export function useMcpQueryControls(queryKey: string | null) {
     datePickerUnits,
     handleDateFilterChange,
     handleDateFilterClear,
-  } = useDateFilter(question, updateQuestion, rawTemporalColumn);
+  } = useDateFilter(question, applyOperations, rawTemporalColumn);
 
   const timeRange =
     rawTemporalColumn !== null
