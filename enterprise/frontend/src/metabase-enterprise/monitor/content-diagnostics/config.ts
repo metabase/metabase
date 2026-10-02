@@ -74,8 +74,8 @@ type CreateContentDiagnosticsConfigOptions<
   TThresholdUserParam extends string,
 > = {
   key: TKey;
-  entityTypes: TEntityType[];
-  sortColumns: TSortColumn[];
+  entityTypes: readonly TEntityType[];
+  sortColumns: readonly TSortColumn[];
   threshold?: ThresholdConfig<TThresholdParam, TThresholdUserParam>;
 };
 
