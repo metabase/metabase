@@ -14,7 +14,8 @@
    [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.ollama.capabilities :as ollama.capabilities]
    [metabase.test :as mt]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture])
   (:import
    (java.net SocketTimeoutException)))
 
@@ -393,6 +394,9 @@
         {:status 200 :body (cond-> {:model model}
                              (:capabilities entry) (assoc :capabilities (:capabilities entry)))})
 
+      (re-find #"/api/version$" (str url))
+      {:status 200 :body {:version "0.12.0"}}
+
       (re-find #"/api/ps$" (str url))
       {:status 200 :body {:models (for [{:keys [id context-length]} models
                                         :when context-length]
@@ -515,6 +519,29 @@
            (get-in (probe! [{:id "m0" :context-length 4096} {:id "m1" :context-length 32768}]
                            tool-calling-message)
                    [:connection-info :probed-model])))))
+
+(deftest connect-warns-when-ollamas-own-api-is-out-of-reach-test
+  (let [serve   (probing-server [{:id "good-model"}]
+                                {:tools      {:message tool-calling-message :finish_reason "tool_calls"}
+                                 :structured structured-success})
+        connect (fn [handler]
+                  (with-clean-capabilities!
+                    (fn []
+                      (mt/with-dynamic-fn-redefs [http/request handler]
+                        (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.ollama :warn]]
+                          (ollama/list-models {:credentials credentials :probe? true})
+                          (messages))))))]
+    (testing (str "a proxy that forwards only /v1 connects fine and degrades quietly, so connecting says so "
+                  "where an operator will see it, without the response the error carries")
+      (let [messages (connect (fn [{:keys [url] :as req}]
+                                (if (re-find #"/api/" (str url))
+                                  (throw (ex-info "404 Not Found" {:status 404 :body "secret response"}))
+                                  (serve req))))]
+        (is (=? [{:message #"Ollama at http://ollama\.internal:11434/v1 did not answer /api/version \(404 Not Found\)\..*"}]
+                messages))
+        (is (not-any? #(re-find #"secret response" (str (:message %) (:e %))) messages))))
+    (testing "a server whose own API answers is not warned about"
+      (is (empty? (connect serve))))))
 
 (deftest preflight-says-so-when-no-model-can-chat-test
   (testing "a server that rules every model out is told so, rather than handed one to probe"

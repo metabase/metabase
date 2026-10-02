@@ -287,6 +287,24 @@
     (catch Exception e
       (adapter/rethrow! provider e))))
 
+(defn- check-native-api!
+  "Warn when Ollama's own API is out of reach, typically behind a proxy that forwards only `/v1`.
+
+  Nothing on it is required, so connecting still succeeds, but the `/api/show` and `/api/ps` lookups
+  then fail quietly on every request: thinking models get the smaller token budget and the context-window
+  check is skipped. `/api/version` because it takes nothing and both deployments serve it. The message is
+  logged, not the exception, whose ex-data can carry the response."
+  [credentials]
+  (try
+    (adapter/request! conn/native-provider
+                      {:credentials credentials :method :get :path "/api/version" :as :json}
+                      (control-timeouts))
+    (catch Exception e
+      (log/warnf (str "Ollama at %s did not answer /api/version (%s). A proxy in front of it has to forward /api/ "
+                      "as well as /v1/, or thinking models get the smaller token budget and the context window "
+                      "check is skipped.")
+                 (conn/base-url credentials) (ex-message e)))))
+
 (defn- loaded-context-length
   "The context window Ollama loaded `model` with, from `/api/ps`, or nil when it would not say.
 
@@ -358,6 +376,7 @@
   the next chat model, newest first, up to [[max-fallback-candidates]] of them. A failure every model
   would share — see [[preflight-ex]] — ends the search."
   [req entries requested-model]
+  (check-native-api! (:credentials req))
   (if requested-model
     (preflight-model! req (:id (probe-target entries requested-model)))
     (let [candidates (->> entries (filter ::chat?) (map :id) (take max-fallback-candidates))
