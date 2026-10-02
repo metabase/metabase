@@ -477,23 +477,13 @@
   {:discouraged-var       #{'clojure.core/eval 'clojure.core/println}
    :discouraged-namespace #{'clojure.tools.logging}})
 
-(deftest attribute-discouraged-test
+(deftest attribute-discouraged-counting-test
   (testing "each ignore counts once per distinct symbol it covers; one covering nothing is unattributed"
     (is (= {:actual       {:discouraged-var       {:clojure.core/eval 2, :clojure.core/println 1}
                            :discouraged-namespace {}}
             :unattributed [{:file "a.clj", :line 6, :linters [:discouraged-var]}]
             :unresolved   []}
            (kondo-ratchet/attribute-discouraged {"a.clj" a-clj} eval-and-println [] known))))
-  (testing "a finding kondo also reports with the ignores in place isn't charged to the ignore before it"
-    (is (= {:actual       {:discouraged-var       {:clojure.core/eval 1, :clojure.core/println 1}
-                           :discouraged-namespace {}}
-            :unattributed [{:file "a.clj", :line 4, :linters [:discouraged-var]}
-                           {:file "a.clj", :line 6, :linters [:discouraged-var]}]
-            :unresolved   []}
-           (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
-                                                eval-and-println
-                                                [{:filename "a.clj", :row 5, :col 1, :type "discouraged-var"}]
-                                                known))))
   (testing "two findings of one symbol under one ignore count once"
     (is (= {:clojure.core/eval 1}
            (-> (kondo-ratchet/attribute-discouraged
@@ -512,7 +502,24 @@
                           ["c.clj" 2 1 'clojure.core/eval])
                 []
                 known)
-               (get-in [:actual :discouraged-var])))))
+               (get-in [:actual :discouraged-var]))))))
+
+(deftest attribute-discouraged-suppression-test
+  (testing "a finding kondo also reports with the ignores in place isn't charged to the ignore before it"
+    (is (= {:actual       {:discouraged-var       {:clojure.core/eval 1, :clojure.core/println 1}
+                           :discouraged-namespace {}}
+            :unattributed [{:file "a.clj", :line 4, :linters [:discouraged-var]}
+                           {:file "a.clj", :line 6, :linters [:discouraged-var]}]
+            :unresolved   []}
+           (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
+                                                eval-and-println
+                                                [{:filename "a.clj", :row 5, :col 1, :type "discouraged-var"}]
+                                                known))))
+  (testing "findings in files outside `contents` are ignored"
+    (is (= {}
+           (get-in (kondo-ratchet/attribute-discouraged {} eval-and-println [] known) [:actual :discouraged-var])))))
+
+(deftest attribute-discouraged-symbol-test
   (testing "a namespace finding resolves through its namespace usage"
     (is (= {:clojure.tools.logging 1}
            (-> (kondo-ratchet/attribute-discouraged
@@ -555,10 +562,7 @@
             (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
                                                  eval-and-println
                                                  []
-                                                 (assoc known :discouraged-var #{'clojure.core/eval}))))))
-  (testing "findings in files outside `contents` are ignored"
-    (is (= {}
-           (get-in (kondo-ratchet/attribute-discouraged {} eval-and-println [] known) [:actual :discouraged-var])))))
+                                                 (assoc known :discouraged-var #{'clojure.core/eval})))))))
 
 (deftest parse-kondo-output-test
   (testing "a run that reported findings still parses"
