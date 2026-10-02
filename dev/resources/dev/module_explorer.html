@@ -141,6 +141,8 @@ main{flex:1;display:flex;min-height:0}
 .bridge .arrow{color:var(--cycle);font-size:1.25em;line-height:1}
 .chip.bridge.dull{opacity:.35}
 .chip.bridge.teambridge{background:color-mix(in srgb,var(--team) 22%,var(--chip));border-color:var(--team)}
+.chip.bridge.teambridge.inbound{background:color-mix(in srgb,var(--team) 9%,var(--chip));
+  border-color:color-mix(in srgb,var(--team) 45%,transparent)}
 .bridge .end.other{opacity:.5}
 .bridge .end.link{cursor:pointer}
 .bridge .end.link:hover{color:var(--accent);text-decoration:underline}
@@ -689,10 +691,14 @@ function renderCycles(){
       const bb=document.createElement('div');
       for(const [a,b] of c['strong-bridges']){
         const br=bridgeEl(a, b);
-        // with teams picked, a bridge takes the colour of the picked team it touches (its source's first),
+        // with teams picked, a bridge takes the colour of the picked team it touches (its source's first);
+        // one the team can cut (the source is theirs) is full strength, one that only reaches into the team is fainter,
         // and bridges touching none of their modules fade so the team's own stand out
         const owner = [a, b].map(id => byId[id]).find(ownedByFocusTeam);
-        if(owner){ br.classList.add('teambridge'); br.style.setProperty('--team', teamColor[owner.team]); }
+        if(owner){
+          br.classList.add('teambridge'); br.style.setProperty('--team', teamColor[owner.team]);
+          if(owner.id !== a) br.classList.add('inbound');
+        }
         else if(focusTeams.size) br.classList.add('dull');
         bb.appendChild(br);
       }
