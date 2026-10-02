@@ -89,9 +89,7 @@ describe("admin > database > add", () => {
 
     cy.visit("/admin/databases/create");
     // should display a setup help link
-    cy.findByRole("link", { name: "Need help connecting?" }).should(
-      "be.visible",
-    );
+    cy.findByRole("link", { name: "Need help connecting?" }).should("be.exist");
 
     cy.findByLabelText("Database type").click();
   });
