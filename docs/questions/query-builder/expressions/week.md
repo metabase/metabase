@@ -25,13 +25,15 @@ The result will be summarized by week number (as opposed to week _dates_, like w
 
 ## How Metabase numbers weeks of the year
 
-By default, when you group by Week of year in the query builder, Metabase will find the first Sunday of the year and call that week “week 1”. Any day before the first Sunday is considered to be part of the last week of the previous year (week 52 or 53).
+When you group by Week of year in the query builder, Metabase finds the first week that starts in the new year and calls it “week 1”. Any day before that week is part of the last week of the previous year (week 52 or 53).
+
+Weeks start on the first day of the week set in [localization settings](../../../configuring-metabase/localization.md), which is Sunday by default. For example, if weeks start on Sunday, week 1 begins on the first Sunday of the year. If weeks start on Monday, week 1 begins on the first Monday of the year.
+
+Filters on Week of year use the same numbering, so a filter's name matches the week that the grouping returns.
 
 ### Using a different first week of the year
 
-Even if your instance has a different first day of the week set in [localization settings](../../../configuring-metabase/localization.md), the query builder's default week of year grouping will _always_ use Sunday as the start of the week.
-
-The way to use your instance's localization settings is to use the `week` function in a custom expression with the `"Instance"` mode, like so: `week([Created At], "Instance")` (see below).
+None of the `week` custom expression's modes match the Week of year grouping. The `"Instance"` mode uses the same first day of the week, but it counts the week that contains January 1 as week 1, so the two can disagree for days near the start of the year.
 
 The `week` custom expression provides three alternative algorithms for computing first week of the year. To use an alternative algorithm for summarizing, you can create a custom column that extracts the week number from a date column using the `week` expression, then group by that custom column.
 
