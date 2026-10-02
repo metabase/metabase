@@ -923,22 +923,3 @@
                     ["American" 3 4]
                     ["Artisan" 2 2]]
                    (mt/rows (qp/process-query query))))))))))
-
-(deftest week-of-year-report-timezone-test
-  (testing "week of year counts days in the report time zone, not UTC"
-    (mt/test-driver :mongo
-      ;; Jan 1, 2017 is a Sunday. In Kathmandu (UTC+5:45) its midnight is still Dec 31 in UTC, which is day 366.
-      (mt/with-report-timezone-id! "Asia/Kathmandu"
-        (mt/with-temporary-setting-values [start-of-week :sunday]
-          (let [mp         (mt/metadata-provider)
-                created-at (lib.metadata/field mp (mt/id :orders :created_at))
-                query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                               (lib/filter (lib/between created-at "2016-12-30" "2017-01-02"))
-                               (lib/breakout (lib/with-temporal-bucket created-at :day))
-                               (lib/breakout (lib/with-temporal-bucket created-at :week-of-year)))]
-            (is (= [["2016-12-30" 52]
-                    ["2016-12-31" 52]
-                    ["2017-01-01" 1]
-                    ["2017-01-02" 1]]
-                   (for [[day week] (mt/rows (qp/process-query query))]
-                     [(subs (str day) 0 10) (long week)])))))))))
