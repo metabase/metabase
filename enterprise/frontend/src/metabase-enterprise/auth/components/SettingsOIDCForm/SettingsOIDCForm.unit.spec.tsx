@@ -353,3 +353,33 @@ describe("SettingsOIDCForm - user provisioning", () => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
 });
+
+describe("SettingsOIDCForm - connection check", () => {
+  it("sends the scopes from the form to the connection check", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Optional settings" }),
+    );
+    const scopesInput = screen.getByLabelText("Scopes");
+    await userEvent.clear(scopesInput);
+    await userEvent.type(
+      scopesInput,
+      "openid, https://graph.microsoft.com/.default",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Check connection" }),
+    );
+
+    await waitFor(async () => {
+      const checks = (await findRequests("POST")).filter(({ url }) =>
+        url.includes("/api/ee/sso/oidc/check"),
+      );
+      expect(checks).toHaveLength(1);
+      expect(checks[0].body.scopes).toEqual([
+        "openid",
+        "https://graph.microsoft.com/.default",
+      ]);
+    });
+  });
+});

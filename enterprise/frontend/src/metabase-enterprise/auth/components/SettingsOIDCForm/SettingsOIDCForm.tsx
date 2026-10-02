@@ -128,16 +128,20 @@ function providerToFormValues(
   };
 }
 
-function formValuesToProvider(
-  values: OIDCFormValues,
-  groupMappings: Record<string, number[]>,
-): Partial<CustomOidcConfig> {
-  const scopes = values.scopes
-    ? values.scopes
+function parseScopes(scopes: string | null): string[] {
+  return scopes
+    ? scopes
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
     : DEFAULT_SCOPES;
+}
+
+function formValuesToProvider(
+  values: OIDCFormValues,
+  groupMappings: Record<string, number[]>,
+): Partial<CustomOidcConfig> {
+  const scopes = parseScopes(values.scopes);
 
   const attributeMap: Record<string, string> = {};
   if (values["attribute-email"]) {
@@ -207,6 +211,7 @@ export function SettingsOIDCForm() {
       const req: OidcCheckRequest = {
         "issuer-uri": values["issuer-uri"],
         "client-id": values["client-id"],
+        scopes: parseScopes(values.scopes),
       };
       if (values["client-secret"]) {
         req["client-secret"] = values["client-secret"];
