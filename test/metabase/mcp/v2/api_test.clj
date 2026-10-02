@@ -10,6 +10,7 @@
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
+   [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
@@ -664,9 +665,8 @@
           (is (= 401 (:status (client/client-full-response :get 401 "collection"
                                                            {:request-options {:headers headers}})))))
         (testing "and the iframe still boots, on the endpoint built for it"
-          (is (= 200 (:status (client/client-full-response
-                               :get 200 "embed-mcp/bootstrap"
-                               {:request-options {:headers (assoc headers "mcp-session-id" session-id)}})))))
+          (is (= 200 (:status (ui.tu/ui-request {:credential credential :session-id session-id}
+                                                :get 200 "embed-mcp/bootstrap")))))
         (testing "a dataset route is refused: the credential is not a query credential outside the iframe routes"
           (is (= 401 (:status (client/client-full-response :post 401 "dataset"
                                                            {:request-options {:headers headers}}

@@ -218,7 +218,7 @@
    request :- ::request.schema/request]
   (when (and extract-token (init-status/complete?))
     (when-let [token (extract-token request)]
-      (when-let [{:keys [user-id scopes resource]} (resolve-token token)]
+      (when-let [{:keys [user-id token-id scopes resource]} (resolve-token token)]
         (let [mcp-token? (mcp-resource? resource)]
           ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
           (when (and (seq scopes)
@@ -227,7 +227,8 @@
                     (assoc :token-scopes            (if mcp-token?
                                                       scopes
                                                       (oauth-token->token-scopes full-access-scope scopes))
-                           :authenticated-via-oauth? true))))))))
+                           :authenticated-via-oauth? true)
+                    (cond-> mcp-token? (assoc :oauth-token-id token-id)))))))))
 
 (defn- auth-method
   [session-info api-key-info oauth-info embedding-route]

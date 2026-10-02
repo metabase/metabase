@@ -42,7 +42,7 @@
     (mcp.session/get-or-create-embedding-session! owner-session owner)
     {:user-id    (mt/user->id :rasta)
      :session-id owner-session
-     :credential (mcp.session/issue-ui-credential owner-session (mt/user->id :rasta) ui.tu/query-scopes)}))
+     :credential (ui.tu/credential! owner-session (mt/user->id :rasta) ui.tu/query-scopes)}))
 
 (deftest iframe-routes-do-not-break-the-api-docs-test
   (testing "the iframe routes are plain Ring handlers, and the /api OpenAPI spec still generates around them"
@@ -76,7 +76,7 @@
     (testing "invalid and expired credentials are rejected"
       (is (= 401 (:status (post-drill (assoc auth :credential "not-a-credential") 401))))
       (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
-        (is (= 401 (:status (post-drill (assoc auth :credential (mcp.session/issue-ui-credential
+        (is (= 401 (:status (post-drill (assoc auth :credential (ui.tu/credential!
                                                                  session-id user-id ui.tu/query-scopes))
                                         401))))))))
 

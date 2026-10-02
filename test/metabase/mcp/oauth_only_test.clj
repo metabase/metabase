@@ -89,7 +89,7 @@
         crowberto (mt/user->id :crowberto)
         mcp-res   (oauth-server.tu/mcp-resource)
         ui-cred   (let [sid (mcp.session/create! rasta)]
-                    (mcp.session/issue-ui-credential sid rasta mcp.tu/all-scopes))
+                    (mcp.session/issue-ui-credential sid rasta mcp.tu/all-scopes nil))
         revoked   (mint! rasta client-id mcp.tu/all-scopes :resource mcp-res)]
     (oidc.store/revoke-token (:token-store (oauth-server/get-provider)) revoked)
     (concat

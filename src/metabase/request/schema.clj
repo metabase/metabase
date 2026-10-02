@@ -18,7 +18,8 @@
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked {:optional true} :boolean]
    [:data-app-scoped?     {:optional true} :boolean]
-   [:authenticated-via-oauth? {:optional true} :boolean]])
+   [:authenticated-via-oauth? {:optional true} :boolean]
+   [:oauth-token-id          {:optional true} [:maybe :int]]])
 
 (mr/def ::json-value
   "A JSON-shaped value: a scalar, a sequence of JSON values, or a string-keyed JSON object."
@@ -105,4 +106,5 @@
    [:token-scopes            {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked    {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]
+   [:oauth-token-id          {:optional true} [:maybe :int]]
    [:data-app-scoped?        {:optional true} :boolean]])
