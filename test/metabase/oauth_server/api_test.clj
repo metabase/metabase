@@ -1193,11 +1193,14 @@
                    {:request-options request-options}
                    params)))
 
-(deftest token-refresh-resource-outside-the-grant-keeps-the-generic-description-test
-  (testing "GHY-4542: oidc-provider raises `invalid_target` for a refresh whose `resource` is not in the original
-            grant, carrying no description of its own. That is a well-formed absolute URI, so answering it with the
-            description for an unparseable one would send the client chasing a syntax problem it does not have: only
-            this endpoint's own resource check knows the URI was malformed."
+(def ^:private refresh-binding-mismatch-description
+  "This refresh token was not issued for the requested resource. Authorize again for this resource.")
+
+(deftest token-refresh-resource-outside-the-grant-is-invalid-grant-test
+  (testing "GHY-4542: a refresh whose `resource` is not in the original grant names a well-formed absolute URI, so
+            answering it with the description for an unparseable one would send the client chasing a syntax problem
+            it does not have. The refresh token can never serve that resource, so the answer is RFC 6749
+            `invalid_grant`, telling the client to authorize again rather than retry the refresh."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [client_id client_secret]} (create-test-client!)
@@ -1230,8 +1233,8 @@
                                                 :redirect_uri "https://example.com/callback"}
                                                :authorization (basic-auth-header client_id client_secret))]
           (is (some? (:refresh_token tokens)) "the original grant carries the resource it was issued for")
-          (is (= {:error             "invalid_target"
-                  :error_description invalid-token-request-description}
+          (is (= {:error             "invalid_grant"
+                  :error_description refresh-binding-mismatch-description}
                  (token-request! {:grant_type    "refresh_token"
                                   :refresh_token (:refresh_token tokens)
                                   :resource      "https://other.example.com/api/mcp"}
@@ -2449,7 +2452,9 @@
                                                 :resource      "http://localhost:3000/api"}
                                                :expected-status 400
                                                :authorization basic)]
-                  (is (= "invalid_target" (:error response)))))
+                  (is (= {:error             "invalid_grant"
+                          :error_description refresh-binding-mismatch-description}
+                         (select-keys response [:error :error_description])))))
               (testing "a refresh that names the same resource, spelled differently, keeps the stored binding"
                 (let [again (token-request! {:grant_type    "refresh_token"
                                              :refresh_token (:refresh_token refreshed)
@@ -2466,7 +2471,9 @@
                                               :resource      (mcp-resource-uri)}
                                              :expected-status 400
                                              :authorization basic)]
-                (is (= "invalid_target" (:error response))))
+                (is (= {:error             "invalid_grant"
+                        :error_description refresh-binding-mismatch-description}
+                       (select-keys response [:error :error_description]))))
               (testing "and without a resource it refreshes as a REST token"
                 (is (nil? (access-token-resource (token-request! {:grant_type    "refresh_token"
                                                                   :refresh_token rest-refresh}
