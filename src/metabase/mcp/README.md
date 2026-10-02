@@ -46,7 +46,8 @@ The flow for a first-time connection:
 3. The user is redirected to Metabase to log in and approve the connection.
 4. The client receives an access token scoped to the user's Metabase permissions.
 
-Browser-based sessions (cookie auth) are also supported and receive unrestricted scopes.
+Only OAuth access tokens issued for this endpoint are accepted. Cookie sessions, API keys and any other credential get
+the same 401 as an unauthenticated request, so the client starts the OAuth flow.
 
 ### Scopes
 
@@ -195,8 +196,7 @@ The implementation lives in these files:
 - **[`v2/registry.clj`](v2/registry.clj)** - The v2 tool registry. Tools self-register via `deftool`; the registry
   checks scopes, validates arguments, dispatches calls, and records usage.
 
-- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
-  `::unrestricted` sentinel for session-based auth.
+- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches and wildcard patterns.
 
 ### Request flow
 
@@ -204,7 +204,7 @@ The implementation lives in these files:
 MCP client
   -> POST /api/metabase-mcp (JSON-RPC)
   -> Origin + session validation
-  -> Auth: OAuth bearer token or browser session
+  -> Auth: OAuth bearer token bound to the MCP resource (anything else is a 401)
   -> Scope check against requested tool
   -> Synthetic request to Agent API endpoint
   -> Response materialized as MCP content

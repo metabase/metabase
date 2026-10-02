@@ -219,9 +219,8 @@
       ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
       ;; state apart by which 403 message it got back.
-      (let [token-scopes (:token-scopes claims)]
-        (when-not (or (contains? token-scopes ::scope/unrestricted)
-                      (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run))
+      (let [token-scopes (into #{} (filter string?) (:token-scopes claims))]
+        (when-not (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run)
           (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run
                                " scope, which this client was not granted.")
                           {:status-code 403}))))

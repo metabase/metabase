@@ -3,11 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -84,7 +84,7 @@
             is not in the eid-translation map, so a string could only ever fail — as a sanitized \"Internal
             error\", for an input the published inputSchema said was valid."
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+      (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                               {:method "create" :name "Tag probe"
                                :native {:database_id (mt/id)
                                         :sql "SELECT * FROM VENUES WHERE PRICE = {{d}}"
@@ -574,7 +574,7 @@
 (deftest update-question-rename-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:name "Before" :dataset_query (orders-query)}]
-      (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+      (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                               {:method "update" :id (:id card) :description "new desc"})]
         (is (not (:isError result)) (-> result :content first :text))
         (is (= "new desc" (t2/select-one-fn :description :model/Card :id (:id card))))))))
@@ -585,7 +585,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "an update that sets them"
         (mt/with-temp [:model/Card card {:name "Chart" :display :line :dataset_query (orders-query)}]
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "update" :id (:id card)
                                    :visualization_settings {"graph.show_goal"  true
                                                             "graph.goal_value" 50000}})]
@@ -597,14 +597,14 @@
                                          :display                :line
                                          :dataset_query          (orders-query)
                                          :visualization_settings {"graph.goal_value" 10}}]
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "update" :id (:id card) :description "d"})]
             (is (not (:isError result)) (-> result :content first :text))
             (is (= {:graph.goal_value 10}
                    (:visualization_settings (payload result)))))))
       (testing "a card with nothing stored echoes {}"
         (mt/with-model-cleanup [:model/Card]
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "create" :name "Plain"
                                    :query  {:database (mt/id)
                                             :stages   [{:source-table (mt/id :orders)}]}})]
@@ -624,7 +624,7 @@
             downstream — the save-cycle graph and the readback select, not just the write check"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:name "By eid" :dataset_query (orders-query)}]
-        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+        (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                 {:method "update"
                                  :id     (:entity_id card)
                                  :query  {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
@@ -640,7 +640,7 @@
     (mt/with-temp [:model/Card card {:name "Mine" :creator_id (mt/user->id :rasta) :dataset_query (orders-query)}]
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method          "update"
                                    :id              (:id card)
                                    ;; a different table than the stored query's, so this is a query
@@ -660,7 +660,7 @@
     (mt/with-temp [:model/Card card {:name "Mine" :creator_id (mt/user->id :rasta) :dataset_query (orders-query)}]
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method          "update"
                                    :id              (:id card)
                                    :column_metadata [{:name "NOT_A_COLUMN" :description "guess"}]})
@@ -676,7 +676,7 @@
     (mt/with-temp [:model/Card card {:name "Mine" :creator_id (mt/user->id :rasta) :dataset_query (orders-query)}]
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
-          (is (:isError (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (is (:isError (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                    {:method          "update"
                                     :id              (:id card)
                                     :column_metadata [{:name "TOTAL" :description "the total"}]})))))
@@ -695,32 +695,32 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "a chart display is normalized away"
         (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "update" :id card-id :card_type "model"})]
             (is (not (:isError result)) (-> result :content first :text))
             (is (= :table (t2/select-one-fn :display :model/Card :id card-id))))))
       (testing "pivot — the display that changes what the query processor returns"
         (mt/with-temp [:model/Card {card-id :id} {:display :pivot :dataset_query (orders-query)}]
-          (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                      {:method "update" :id card-id :card_type "model"})
           (is (= :table (t2/select-one-fn :display :model/Card :id card-id)))))
       (testing "a display passed in the same call is normalized too, as REST does. (REST leaves an
                 explicit `list` alone, but this tool's display enum has no `list`, so that carve-out
                 is unreachable here — the schema refuses it before the handler runs.)"
         (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "update" :id card-id :card_type "model" :display "line"})]
             (is (not (:isError result)) (-> result :content first :text)))
           (is (= :table (t2/select-one-fn :display :model/Card :id card-id))))
         (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "update" :id card-id :card_type "model" :display "list"})]
             (is (not (:isError result)) (-> result :content first :text)))
           (is (= :list (t2/select-one-fn :display :model/Card :id card-id))
               "an explicit list survives the normalization — the model list view is a real choice")))
       (testing "a model can be created directly in the list view"
         (mt/with-model-cleanup [:model/Card]
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "create" :name "List model" :card_type "model"
                                    :display "list"
                                    :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})]
@@ -729,23 +729,23 @@
                                            :id (:id (payload result))))))))
       (testing "a card that stays a question keeps its display"
         (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
-          (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                      {:method "update" :id card-id :name "renamed"})
           (is (= :bar (t2/select-one-fn :display :model/Card :id card-id))))))))
 
 (deftest update-archive-restore-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:archived false :dataset_query (orders-query)}]
-      (let [archive-result (call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived true})]
+      (let [archive-result (call-tool mcp.tu/all-scopes nil "question_write" {:method "update" :id (:id card) :archived true})]
         (is (not (:isError archive-result)) (-> archive-result :content first :text)))
       (is (true? (t2/select-one-fn :archived :model/Card :id (:id card))))
-      (let [restore-result (call-tool #{::scope/unrestricted} nil "question_write" {:method "update" :id (:id card) :archived false})]
+      (let [restore-result (call-tool mcp.tu/all-scopes nil "question_write" {:method "update" :id (:id card) :archived false})]
         (is (not (:isError restore-result)) (-> restore-result :content first :text)))
       (is (false? (t2/select-one-fn :archived :model/Card :id (:id card)))))))
 
 (deftest update-not-found-collapses-test
   (mt/with-current-user (mt/user->id :rasta)
-    (let [result (call-tool #{::scope/unrestricted} nil "question_write"
+    (let [result (call-tool mcp.tu/all-scopes nil "question_write"
                             {:method "update" :id 999999999 :name "x"})]
       (is (:isError result))
       (is (re-find #"not found" (-> result :content first :text))))))
@@ -754,7 +754,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
       (let [new-query {:database (mt/id) :stages [{:source-table (mt/id :products)}]}
-            result    (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+            result    (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                  {:method "update" :id (:id card) :query new-query})]
         (is (not (:isError result)) (-> result :content first :text))
         (is (=? {:stages [{:source-table (mt/id :products)}]}
@@ -771,7 +771,7 @@
                       {:lib/type "mbql/query"
                        :stages   [{:lib/type     "mbql.stage/mbql"
                                    :source-table (mt/id :products)}]})
-              result (call-tool #{::scope/unrestricted} sid "question_write"
+              result (call-tool mcp.tu/all-scopes sid "question_write"
                                 {:method "update" :id (:id card) :query_handle handle})]
           (is (not (:isError result)) (-> result :content first :text))
           (is (=? {:stages [{:source-table (mt/id :products)}]}
@@ -786,7 +786,7 @@
                                       :name "Update Model"
                                       :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
             card-id (:id (payload create-result))
-            update-result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+            update-result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                      {:method "update" :id card-id
                                       :column_metadata [{:name "TOTAL" :display_name "Total $"
                                                          :semantic_type "type/Currency"}]})
@@ -812,7 +812,7 @@
                                         :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
               card-id       (:id (payload create-result))
               annotate!     (fn [column_metadata]
-                              (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+                              (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                          {:method "update" :id card-id :column_metadata column_metadata}))]
           ;; first annotate TOTAL, then — in a separate call that never mentions TOTAL — annotate ID
           (is (not (:isError (annotate! [{:name "TOTAL" :display_name "Total $" :semantic_type "type/Currency"}]))))
@@ -835,7 +835,7 @@
                                         :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
                                         :column_metadata [{:name "TOTAL" :semantic_type "type/Currency"}]})
               card-id       (:id (payload create-result))
-              clear-result  (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+              clear-result  (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                        {:method "update" :id card-id
                                         :column_metadata [{:name "TOTAL" :semantic_type nil}]})]
           (is (not (:isError clear-result)) (-> clear-result :content first :text))
@@ -873,7 +873,7 @@
       (mt/with-temp [:model/Collection dash-coll {}
                      :model/Dashboard dash {:collection_id (:id dash-coll)}
                      :model/Card card {:dataset_query (orders-query) :collection_id nil}]
-        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+        (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                 {:method "update" :id (:id card) :dashboard_id (:id dash)})]
           (is (not (:isError result)) (-> result :content first :text))
           (is (= (:id dash) (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))
@@ -887,7 +887,7 @@
         (mt/with-temp [:model/Collection dash-coll {}
                        :model/Dashboard dash {:collection_id (:id dash-coll)}
                        :model/Card card {:archived true :archived_directly true :dataset_query (orders-query)}]
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "update" :id (:id card) :dashboard_id (:id dash)})]
             (is (not (:isError result)) (-> result :content first :text))
             (is (=? {:archived          false
@@ -903,7 +903,7 @@
       (mt/with-temp [:model/Collection dash-coll {}
                      :model/Dashboard dash {:collection_id (:id dash-coll)}
                      :model/Card card {:archived false :dataset_query (orders-query)}]
-        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+        (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                 {:method "update" :id (:id card) :dashboard_id (:id dash) :archived true})]
           (is (:isError result))
           (is (re-find #"Can't move a card into a dashboard while also archiving it"
@@ -916,7 +916,7 @@
   (testing "a numeric dashboard_id with no matching row is a clean not-found on update too (GHY-4352)"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
-        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+        (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                 {:method "update" :id (:id card) :dashboard_id 999999999})]
           (is (:isError result))
           (is (re-find #"Dashboard 999999999 not found"
@@ -929,7 +929,7 @@
     (mt/with-temp [:model/Dashboard dash {:collection_id nil}
                    :model/Collection coll {}
                    :model/Card card {:dataset_query (orders-query)}]
-      (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+      (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                               {:method "update" :id (:id card)
                                :dashboard_id (:id dash) :collection_id (:id coll)})]
         (is (:isError result))
@@ -953,7 +953,7 @@
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll-b)
       (mt/with-current-user (mt/user->id :rasta)
-        (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+        (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                 {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]
           (is (:isError result))
           (is (re-find #"You don't have permissions to do that"
@@ -976,17 +976,17 @@
                                               :dataset_query (count-metric-query)}]
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "a field update is refused, naming the card's type and the tool that owns it"
-          (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                   {:method "update" :id card-id :name "nope"})
                 msg    (-> result :content first :text)]
             (is (:isError result))
             (is (str/includes? msg "metric_write"))
             (is (str/includes? msg "metric"))))
         (testing "a card_type that would retype the metric is refused, not honored"
-          (is (:isError (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (is (:isError (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                    {:method "update" :id card-id :card_type "question"}))))
         (testing "storing a native query on the metric is refused rather than corrupting it"
-          (is (:isError (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+          (is (:isError (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                    {:method "update" :id card-id
                                     :native {:database_id (mt/id) :sql "SELECT 1"}}))))
         (testing "the card is untouched"
@@ -1003,7 +1003,7 @@
           (with-redefs [queries/check-card-can-be-saved! (fn [query card-type]
                                                            (reset! seen card-type)
                                                            (original query card-type))]
-            (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
+            (let [result (call-tool mcp.tu/all-scopes (str (random-uuid)) "question_write"
                                     {:method "update" :id card-id :name "renamed"})]
               (is (not (:isError result)) (-> result :content first :text))))
           (is (= :model @seen)))))))
