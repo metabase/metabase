@@ -170,10 +170,11 @@
             (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
                                                            (serdes/extract-order-columns model-name opts))))
 
-(defmethod serdes/deserialization-dependencies "DataApp" [{:keys [collection]}]
-  ;; The resource collection the manifest names loads first, so the app links to it as it lands.
-  (when collection
-    [[{:model "Collection" :id collection}]]))
+(defmethod serdes/deserialization-dependencies "DataApp" [{:keys [collection resource_collection_id]}]
+  ;; The resource collection the manifest names loads first, so the app links to it as it lands. A manifest names it
+  ;; as `collection`; serialization's own checks ask by the column.
+  (when-let [collection-entity-id (or collection resource_collection_id)]
+    [[{:model "Collection" :id collection-entity-id}]]))
 
 (defmethod serdes/descendants "DataApp" [_model-name id _opts]
   ;; An app's resource collection, and through it the copies it holds, travel with the app.

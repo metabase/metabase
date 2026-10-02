@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import type {
   Collection,
@@ -353,6 +353,7 @@ export const resourceCard = ({
   display: type === "metric" ? "scalar" : "table",
   entity_id: entityId,
   collection_id: collection,
+  creator_id: USERS.admin.email,
   dataset_query: {
     "lib/type": "mbql/query",
     database: table[0],
@@ -382,6 +383,7 @@ export const resourceImplicitAction = ({
   type: "implicit",
   entity_id: entityId,
   collection_id: collection,
+  creator_id: USERS.admin.email,
   model_id: model,
   implicit: [{ kind }],
   query: [],

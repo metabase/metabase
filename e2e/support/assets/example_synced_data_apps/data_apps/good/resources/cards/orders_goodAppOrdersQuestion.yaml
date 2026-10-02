@@ -3,6 +3,7 @@ entity_id: goodAppOrdersQuestion
 type: question
 display: table
 collection_id: goodAppCollection0000
+creator_id: admin@metabase.test
 dataset_query:
   lib/type: mbql/query
   database: Sample Database
