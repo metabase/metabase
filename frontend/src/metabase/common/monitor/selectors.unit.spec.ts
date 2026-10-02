@@ -165,7 +165,7 @@ describe("canAccessContentDiagnostics", () => {
     expect(canAccessContentDiagnostics(state)).toBe(true);
   });
 
-  it("returns true when user is analyst", () => {
+  it("returns true when user is entitled analyst", () => {
     expect(canAccessContentDiagnostics(createAnalystState())).toBe(true);
   });
 
