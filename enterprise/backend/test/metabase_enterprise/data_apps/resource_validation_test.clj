@@ -127,9 +127,23 @@
            resources        (data-apps.tu/build-resources collection-eid
                                                           [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                                                           [implicit-id])
-           tree             (edit-file (shop resources) "data_apps/shop/resources/actions/" #(assoc % :model_id source-model-eid))]
+           action-path      "data_apps/shop/resources/actions/"
+           tree             (edit-file (shop resources) action-path #(assoc % :model_id source-model-eid))]
        (is (some #(str/includes? % "must belong to a model in the app's resources") (messages tree)))
        (is (= [] (messages (shop resources))) "on the app's model copy it is fine")
+       (testing "an implicit action has to have a model, where a query action can sit in the collection alone"
+         (is (some #(str/includes? % "is an implicit action, so it must belong to a model")
+                   (messages (edit-file (shop resources) action-path #(assoc % :model_id nil)))))
+         (is (= [] (messages (edit-file (shop resources) action-path
+                                        #(assoc % :model_id nil :type "query" :implicit []
+                                                :query [{:database_id "test-data (h2)"
+                                                         :dataset_query {:database "test-data (h2)"
+                                                                         :lib/type "mbql/query"
+                                                                         :stages [{:lib/type "mbql.stage/native"
+                                                                                   :native "DELETE FROM venues"}]}}]))))))
+       (testing "an action is in the app's collection, like a card"
+         (is (some #(str/includes? % (str "must be in the collection " collection-eid))
+                   (messages (edit-file (shop resources) action-path #(assoc % :collection_id "elsewhere0000000000a"))))))
        (is (pos? metric-id))))))
 
 (deftest refuses-what-this-app-does-not-own-test

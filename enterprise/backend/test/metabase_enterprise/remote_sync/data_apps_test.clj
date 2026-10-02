@@ -65,7 +65,8 @@
   `(search.tu/with-index-disabled
      (mt/with-premium-features #{:data-apps}
        (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true remote-sync-transforms false]
-         (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+         ;; the cleanup deletes without hooks, so what a pull loads into an app's collection is listed too
+         (mt/with-model-cleanup [:model/DataApp :model/Action :model/Card :model/Collection :model/PermissionsGroup]
            ~@body)))))
 
 (deftest pull-imports-and-prunes-data-apps-test

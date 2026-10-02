@@ -330,20 +330,22 @@ export const resourceImplicitAction = ({
   entityId,
   name,
   kind,
+  collection,
   model,
 }: {
   entityId: string;
   name: string;
   kind: "row/create" | "row/update" | "row/delete";
+  collection: string;
   model: string;
 }): ResourceEntity => ({
   name,
   type: "implicit",
   entity_id: entityId,
+  collection_id: collection,
   model_id: model,
   implicit: [{ kind }],
   query: [],
-  http: [],
   parameters: [],
   parameter_mappings: [],
   "serdes/meta": serdesMeta("Action", entityId, name),

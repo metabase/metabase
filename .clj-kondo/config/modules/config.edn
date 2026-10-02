@@ -3752,7 +3752,8 @@
            util
            warehouse-schema-overlay
            enterprise/serialization}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/DataPermissions
                     :model/Database

@@ -99,6 +99,7 @@ describe(
             entityId,
             name,
             kind,
+            collection: COLLECTION,
             model: modelIdOfActions,
           }),
         ),
