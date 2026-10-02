@@ -1,4 +1,32 @@
 categories:
+  - name: "Courses"
+    pages:
+      - name: "Getting started"
+        url: "metabase-basics/getting-started/"
+        pages:
+          - name: "Basic concepts"
+            url: "metabase-basics/overview/concepts"
+          - name: "Ask a business question"
+            url: "metabase-basics/getting-started/ask-business-question"
+          - name: "Find data"
+            url: "metabase-basics/getting-started/find-data"
+          - name: "Ask a question"
+            url: "metabase-basics/getting-started/ask-a-question"
+          - name: "Create a dashboard"
+            url: "metabase-basics/getting-started/create-dashboards"
+          - name: "Explore dashboards"
+            url: "metabase-basics/getting-started/explore-data"
+          - name: "Filter and limit data"
+            url: "metabase-basics/getting-started/filter"
+          - name: "Summarize data"
+            url: "metabase-basics/getting-started/summarize"
+          - name: "Add custom columns"
+            url: "metabase-basics/getting-started/custom-columns"
+          - name: "Use dashboard filters"
+            url: "metabase-basics/getting-started/dashboard-filters"
+          - name: "Build models"
+            url: "metabase-basics/querying-and-dashboards/models"
+
   - name: "Analytics"
     pages:
       - name: "Getting started"
