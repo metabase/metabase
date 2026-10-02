@@ -1,6 +1,6 @@
 import { type Dayjs, dayjs } from "metabase/dayjs";
 
-import type { ContinuousDomain } from "../../../shared/types/scale";
+import type { Extent } from "../../../types";
 import type { ChartLayout } from "../layout/types";
 import type {
   TimeSeriesAxisFormatter,
@@ -42,7 +42,7 @@ export const getTicksOptions = (
       throw new Error(`Invalid range dates: ${JSON.stringify(range)}`);
     }
     return adjustedDate.valueOf();
-  }) as ContinuousDomain;
+  }) as Extent;
 
   const isSingleItem = xDomain[0] === xDomain[1];
   const padding = getPadding(intervalsCount);

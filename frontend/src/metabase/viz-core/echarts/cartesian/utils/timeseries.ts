@@ -14,7 +14,7 @@ import {
   multipleTimezoneWarning,
   unexpectedTimezoneWarning,
 } from "../../../lib/warnings";
-import type { ContinuousDomain } from "../../../shared/types/scale";
+import type { Extent } from "../../../types";
 import type { ShowWarning } from "../../types";
 import type { ChartLayout } from "../layout/types";
 import type {
@@ -195,7 +195,7 @@ export function getTimeSeriesIntervalDuration(interval: TimeSeriesInterval) {
 // Counts interval boundary crossings within the domain
 export function expectedTickCount(
   interval: TimeSeriesInterval,
-  xDomain: ContinuousDomain,
+  xDomain: Extent,
 ): number {
   const { unit, count } = interval;
   const start = dayjs.utc(xDomain[0]);
@@ -241,7 +241,7 @@ export function expectedTickCount(
 /// Get the appropriate tick interval option from the TIMESERIES_INTERVALS above based on the xAxis bucketing
 /// and the max number of ticks we want to show (itself calculated from chart width).
 export function computeTimeseriesTicksInterval(
-  xDomain: ContinuousDomain,
+  xDomain: Extent,
   xInterval: TimeSeriesInterval,
   chartLayout: ChartLayout,
   formatter: TimeSeriesAxisFormatter,

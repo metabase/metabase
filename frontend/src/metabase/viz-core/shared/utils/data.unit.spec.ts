@@ -8,9 +8,8 @@ import type {
   BreakoutChartColumns,
   MultipleMetricsChartColumns,
 } from "../../lib/graph/columns";
-import type { ColumnFormatter } from "../types/format";
 
-import { getSeries } from "./data";
+import { type ColumnFormatter, getSeries } from "./data";
 
 const columnFormatter: ColumnFormatter = (value: any) => String(value);
 

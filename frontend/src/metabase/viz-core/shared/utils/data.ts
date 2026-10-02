@@ -1,5 +1,5 @@
-import { formatNullable } from "metabase/utils/formatting";
 import {
+  type DatasetColumn,
   type DatasetData,
   type RowValue,
   getRowsForStableKeys,
@@ -10,8 +10,23 @@ import type {
   ColumnDescriptor,
 } from "../../lib/graph/columns";
 import type { ComputedVisualizationSettings } from "../../types";
-import type { GroupedDatum, Series, SeriesInfo } from "../types/data";
-import type { ColumnFormatter } from "../types/format";
+
+export type ColumnFormatter = (
+  value: RowValue,
+  column: DatasetColumn,
+) => string;
+
+export type SeriesInfo = {
+  metricColumn: DatasetColumn;
+  dimensionColumn: DatasetColumn;
+  breakoutValue?: RowValue;
+};
+
+type SeriesDefinition = {
+  seriesKey: string;
+  seriesName: string;
+  seriesInfo: SeriesInfo;
+};
 
 const getBreakoutDistinctValues = (
   data: DatasetData,
@@ -45,21 +60,13 @@ const getBreakoutSeries = (
   metric: ColumnDescriptor,
   dimension: ColumnDescriptor,
   settings: ComputedVisualizationSettings,
-): Series<GroupedDatum, SeriesInfo>[] => {
+): SeriesDefinition[] => {
   return Array.from(breakoutValues.entries()).map(
     ([breakoutKey, displayValue]) => {
       const customName = settings?.series_settings?.[breakoutKey]?.title;
       return {
         seriesKey: breakoutKey,
         seriesName: customName ?? displayValue,
-        yAccessor: (datum: GroupedDatum) =>
-          formatNullable(
-            typeof datum.dimensionValue === "object"
-              ? JSON.stringify(datum.dimensionValue)
-              : datum.dimensionValue,
-          ),
-        xAccessor: (datum: GroupedDatum) =>
-          datum.breakout?.[breakoutKey]?.metrics[metric.column.name] ?? null,
         seriesInfo: {
           metricColumn: metric.column,
           dimensionColumn: dimension.column,
@@ -74,7 +81,7 @@ const getMultipleMetricSeries = (
   dimension: ColumnDescriptor,
   metrics: ColumnDescriptor[],
   settings: ComputedVisualizationSettings,
-): Series<GroupedDatum, SeriesInfo>[] => {
+): SeriesDefinition[] => {
   return metrics.map((metric) => {
     const seriesKey = metric.column.name;
     const customName = settings?.series_settings?.[seriesKey]?.title;
@@ -82,12 +89,6 @@ const getMultipleMetricSeries = (
     return {
       seriesKey,
       seriesName: customName ?? defaultName,
-      yAccessor: (datum: GroupedDatum) =>
-        datum.dimensionValue !== null &&
-        typeof datum.dimensionValue === "object"
-          ? JSON.stringify(datum.dimensionValue)
-          : datum.dimensionValue,
-      xAccessor: (datum: GroupedDatum) => datum.metrics[metric.column.name],
       seriesInfo: {
         dimensionColumn: dimension.column,
         metricColumn: metric.column,
@@ -101,7 +102,7 @@ export const getSeries = (
   chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
   settings: ComputedVisualizationSettings,
-): Series<GroupedDatum, SeriesInfo>[] => {
+): SeriesDefinition[] => {
   if ("breakout" in chartColumns) {
     const breakoutValues = getBreakoutDistinctValues(
       data,

@@ -432,13 +432,7 @@ export {
 } from "./shared/settings/pie";
 export { getSeriesColors, SERIES_SETTING_KEY } from "./shared/settings/series";
 export { getTreemapRows } from "./shared/settings/treemap";
-export type {
-  GroupedDatum,
-  MetricDatum,
-  SeriesInfo,
-} from "./shared/types/data";
-export type { ContinuousDomain } from "./shared/types/scale";
-export { getSeries } from "./shared/utils/data";
+export { type SeriesInfo, getSeries } from "./shared/utils/data";
 export { getSizeInPx } from "./shared/utils/size-in-px";
 export {
   getDefaultSize,
@@ -476,6 +470,7 @@ export type {
   TooltipRowModel,
 } from "./types/hover";
 export type {
+  Extent,
   Padding,
   RenderingContext,
   StaticVisualizationProps,
