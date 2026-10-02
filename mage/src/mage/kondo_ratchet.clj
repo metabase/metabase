@@ -127,7 +127,10 @@
   ;; Known gap: nested ignores undercount. The last ignore before a finding isn't always the one whose form
   ;; holds it, so with an ignore inside another for the same linter, the inner one also takes the outer one's
   ;; later findings. The outer ignore then counts toward no budget, leaving its symbol's budget one short, and
-  ;; is reported as unattributed even though removing it would surface a warning.
+  ;; is reported as unattributed even though removing it would surface a warning. So a new ignore wrapped
+  ;; around an existing one needs no budget.
+  ;; TODO: charge each finding to the ignore that covers it alone. Also lint copies of files with nested
+  ;; ignores, one ignore disabled per copy, and charge a finding that only copy i reveals to ignore i.
   (let [ignores   (update-vals contents discouraged-ignores)
         offsets   (update-vals contents offset-fn)
         reported? (set (map (juxt :filename :row :col :type) baseline))
