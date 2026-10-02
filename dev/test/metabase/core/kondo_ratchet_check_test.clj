@@ -222,8 +222,8 @@
   (let [ratchets    {:ignore-counts {}}
         occurrences [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}]
         attribution {:actual {}, :unattributed [], :unresolved []}
-        ;; check attributes the prod and test occurrences separately; only the prod ones carry anything here
-        attribute   (fn [m] {:attribute #(if (seq %) (merge attribution m) attribution)})]
+        ;; check attributes the prod and test occurrences in one call; only the prod ones carry anything here
+        attribute   (fn [m] {:attribute (fn [[_prod _test]] [(merge attribution m) attribution])})]
     (testing "without an :attribute, a discouraged-var ignore fails instead of counting as zero"
       (is (=? {:lines   [#"attributing :discouraged-var/:discouraged-namespace ignores needs a kondo run.*"]
                :thrown? true}

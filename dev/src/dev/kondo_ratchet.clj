@@ -284,11 +284,16 @@
       (when (map? entries)
         (keys entries)))))
 
+(defn kondo-config
+  "The parsed `.clj-kondo/config.edn`."
+  []
+  (edn/read-string (slurp kondo-config-file)))
+
 (defn discouraged-symbols
   "Every symbol configured under `linter` anywhere in `config` (default: `.clj-kondo/config.edn`), including
   the `:config-in-ns` and `:config-in-call` scopes."
   ([linter]
-   (discouraged-symbols linter (edn/read-string (slurp kondo-config-file))))
+   (discouraged-symbols linter (kondo-config)))
   ([linter config]
    ;; A scope can add a symbol that is missing at the top level, but it only narrows where a policy applies,
    ;; so every scope's symbols go into one set.
@@ -330,7 +335,7 @@
   "The [[discouraged-count-key]] of every symbol configured under `linter` ([[discouraged-symbols]]).
   Throws when two symbols share a key."
   ([linter]
-   (discouraged-count-keys linter (edn/read-string (slurp kondo-config-file))))
+   (discouraged-count-keys linter (kondo-config)))
   ([linter config]
    (let [by-key (group-by discouraged-count-key (discouraged-symbols linter config))]
      ;; two symbols on one key would share a budget without anyone noticing
@@ -737,7 +742,7 @@
   group an entry came from instead of summing by linter name, and top-level `:linters`/`:config-in-comment`
   entries would still have no test/prod home -- real effort for a softer guarantee than :ignore-counts."
   ([]
-   (config-suppressions (edn/read-string (slurp kondo-config-file))))
+   (config-suppressions (kondo-config)))
   ([config]
    (let [counts (fn [linters-map]
                   (into {}
@@ -1234,13 +1239,13 @@
 (defn- no-attribution
   "The default `:attribute` for [[check]] and [[fix!]], for a tree with no [[discouragement-linters]] ignores.
   Throws when there are some."
-  [occurrences]
+  [groups]
   ;; Without a kondo run every per-symbol count would read as zero, and fix! would drop those budgets.
-  (when (some #(some discouragement-linters (:linters %)) occurrences)
+  (when (some #(some discouragement-linters (:linters %)) (apply concat groups))
     (throw (ex-info (str "attributing :discouraged-var/:discouraged-namespace ignores needs a kondo run;"
                          " pass `:attribute mage.kondo-ratchet/attribute-occurrences!`")
                     {})))
-  {:actual {}, :unattributed [], :unresolved []})
+  (vec (repeat (count groups) {:actual {}, :unattributed [], :unresolved []})))
 
 (defn- lowered-policies
   "The inline-ignore budgets of `ratchets`, one ratchets file's policies, lowered to the counts in
@@ -1262,9 +1267,9 @@
   `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count and bounds an unlimited
   one, independently in whichever file(s) actually have occurrences for it; see [[resolve-seed]] for
   seeding [[discouragement-linters]] budgets.
-  `:attribute` (default [[no-attribution]]) takes occurrences from [[scan]] and returns the per-symbol counts
-  of the [[discouragement-linters]] ignores among them, `{:actual {linter {key count}}, :unattributed _,
-  :unresolved _}`.
+  `:attribute` (default [[no-attribution]]) takes a seq of occurrence seqs from [[scan]] and returns, for each
+  in order, the per-symbol counts of the [[discouragement-linters]] ignores among them,
+  `{:actual {linter {key count}}, :unattributed _, :unresolved _}`.
   Throws before writing when any `:unresolved` finding has no symbol to budget it under.
   Prints a [[change-report]] per file, or `unchanged` on a no-op.
   Does nothing, including seeding, when [[*ratchets-file*]] sets `:disabled` to `true`; the test ratchets
@@ -1286,8 +1291,7 @@
              _                (validate-seed! (:ignore-counts seeds) known)
              occurrences      (scan)
              {test-occ true, prod-occ false} (group-by test-occurrence? occurrences)
-             attribution      (attribute prod-occ)
-             test-attribution (if test-disabled? (no-attribution []) (attribute test-occ))
+             [attribution test-attribution] (attribute [prod-occ (if test-disabled? [] test-occ)])
              unresolved       (concat (:unresolved attribution) (:unresolved test-attribution))
              _                (when (seq unresolved)
                                 (throw (ex-info (str/join "\n" (cons unresolved-header (unresolved-lines unresolved)))
@@ -1424,8 +1428,7 @@
                  test-disabled?   (disabled? test-ratchets)
                  occurrences      (scan)
                  {test-occ true, prod-occ false} (group-by test-occurrence? occurrences)
-                 attribution      (attribute prod-occ)
-                 test-attribution (if test-disabled? (no-attribution []) (attribute test-occ))
+                 [attribution test-attribution] (attribute [prod-occ (if test-disabled? [] test-occ)])
                  lines            (concat
                                    (check-report ratchets module-ratchets prod-occ attribution
                                                  (config-suppressions) (module-escape-hatches)

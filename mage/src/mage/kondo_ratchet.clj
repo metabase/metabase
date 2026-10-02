@@ -142,43 +142,54 @@
                               :when (nil? symbol)]
                           {:file file, :line line, :linters [linter]}))}))
 
-(defn attribute-occurrences!
-  "Per-symbol attribution of the [[kondo-ratchet/discouragement-linters]] ignores among `occurrences`, as
-  [[attribute-discouraged]] returns it; the `:attribute` that [[dev.kondo-ratchet/check]] and `fix!` take."
-  [occurrences]
+(defn- lint-with-ignores-disabled!
+  "Kondo's JSON output, as [[attribute-discouraged]] takes it, for `contents` (a map of file to text) with
+  their [[kondo-ratchet/discouragement-linters]] ignores disabled, plus its findings for the files as they
+  are: `[output baseline]`."
+  [contents]
   ;; Lints the files and, in the same run, copies with the discouraged ignores disabled, under a temp
   ;; directory. Kondo configures a copy the same as the original because every ns-group matches on namespace
   ;; names, not paths.
-  (let [files    (into (sorted-set)
-                       (comp (filter #(some kondo-ratchet/discouragement-linters (:linters %)))
-                             (map :file))
-                       occurrences)
-        contents (into {} (map (juxt identity slurp)) files)
-        known    (into {} (map (juxt identity kondo-ratchet/discouraged-symbols))
-                       kondo-ratchet/discouragement-linters)]
-    (if (empty? files)
-      (attribute-discouraged {} {} [] known)
-      (let [dir      (fs/create-temp-dir {:prefix "kondo-ratchet-attribution"})
-            original (into {} (map (juxt #(str (fs/path dir %)) identity)) files)
-            ;; keeps only the copies' entries, renamed to their originals
-            restore  (partial keep #(some->> (original (:filename %)) (assoc % :filename)))]
-        (try
-          (doseq [[copy file] original
-                  :let        [content (contents file)]]
-            (fs/create-dirs (fs/parent copy))
-            (spit copy (disable-ignores content (discouraged-ignores content))))
-          (let [output (run-kondo! :json
-                                   {:output {:analysis {:var-usages true, :namespace-usages true}}}
-                                   (concat files (keys original)))]
-            (attribute-discouraged contents
-                                   (-> output
-                                       (update :findings restore)
-                                       (update-in [:analysis :var-usages] restore)
-                                       (update-in [:analysis :namespace-usages] restore))
-                                   (filter (comp files :filename) (:findings output))
-                                   known))
-          (finally
-            (fs/delete-tree dir)))))))
+  (let [dir      (fs/create-temp-dir {:prefix "kondo-ratchet-attribution"})
+        original (into {} (map (juxt #(str (fs/path dir %)) identity)) (keys contents))
+        ;; keeps only the copies' entries, renamed to their originals
+        restore  (partial keep #(some->> (original (:filename %)) (assoc % :filename)))]
+    (try
+      (doseq [[copy file] original
+              :let        [content (contents file)]]
+        (fs/create-dirs (fs/parent copy))
+        (spit copy (disable-ignores content (discouraged-ignores content))))
+      (let [output (run-kondo! :json
+                               {:output {:analysis {:var-usages true, :namespace-usages true}}}
+                               (concat (keys contents) (keys original)))]
+        [(-> output
+             (update :findings restore)
+             (update-in [:analysis :var-usages] restore)
+             (update-in [:analysis :namespace-usages] restore))
+         (filter (comp contents :filename) (:findings output))])
+      (finally
+        (fs/delete-tree dir)))))
+
+(defn attribute-occurrences!
+  "Per-symbol attribution of the [[kondo-ratchet/discouragement-linters]] ignores in each of `groups`, a seq
+  of occurrence seqs, as [[attribute-discouraged]] returns it, in the same order; the `:attribute` that
+  [[dev.kondo-ratchet/check]] and `fix!` take."
+  [groups]
+  ;; One kondo run covers every group, since a JVM start and a lint pass dominate the cost.
+  (let [file-groups       (mapv #(into (sorted-set)
+                                       (comp (filter (fn [{:keys [linters]}]
+                                                       (some kondo-ratchet/discouragement-linters linters)))
+                                             (map :file))
+                                       %)
+                                groups)
+        contents          (into {} (map (juxt identity slurp)) (reduce into #{} file-groups))
+        config            (kondo-ratchet/kondo-config)
+        known             (into {} (map (juxt identity #(kondo-ratchet/discouraged-symbols % config)))
+                                kondo-ratchet/discouragement-linters)
+        [output baseline] (if (empty? contents)
+                            [{} []]
+                            (lint-with-ignores-disabled! contents))]
+    (mapv #(attribute-discouraged (select-keys contents %) output baseline known) file-groups)))
 
 (def keep-marker
   "Comment token marking an ignore as a verified `:redundant-ignore` false positive.

@@ -506,7 +506,8 @@
         (testing "an unresolved finding throws before writing"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"f.clj:1: :discouraged-var finding not resolved"
                                 (kondo-ratchet/fix! {:attribute (constantly
-                                                                 (assoc no-findings :unresolved occurrences))}))))
+                                                                 [(assoc no-findings :unresolved occurrences)
+                                                                  no-findings])}))))
         (is (= before (slurp budgets)))))))
 
 (deftest ^:synchronized fix-splits-discouraged-counts-by-file-test
@@ -521,11 +522,13 @@
         occurrences  [{:file "src/f.clj", :line 1, :linters [:discouraged-var]}
                       {:file "test/g.clj", :line 1, :linters [:discouraged-var]}]
         ;; stands in for kondo: one finding per prod occurrence, two per test occurrence
-        attribute    (fn [occs]
-                       (assoc no-findings :actual {:discouraged-var {:a/x (reduce + (for [{:keys [file]} occs]
-                                                                                      (if (str/starts-with? file "test/")
-                                                                                        2
-                                                                                        1)))}}))]
+        attribute    (fn [groups]
+                       (mapv (fn [occs]
+                               (assoc no-findings :actual {:discouraged-var {:a/x (reduce + (for [{:keys [file]} occs]
+                                                                                              (if (str/starts-with? file "test/")
+                                                                                                2
+                                                                                                1)))}}))
+                             groups))]
     (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
               kondo-ratchet/*module-ratchets-file* (.getPath modules)
               kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
@@ -572,7 +575,7 @@
         (is (= [(str "dropped stale :ignore-counts entry for :discouraged-var in " (.getPath budgets)
                      " (tracked per-symbol in :discouraged-var-counts now)")
                 (str "wrote " (.getPath budgets))]
-               (str/split-lines (with-out-str (kondo-ratchet/fix! {:attribute (constantly no-findings)}))))
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:attribute (constantly [no-findings no-findings])}))))
             "the stale flat entry is dropped without needing --seed")
         (is (= {:ignore-counts                {:a 1}
                 :discouraged-var-counts       {}
