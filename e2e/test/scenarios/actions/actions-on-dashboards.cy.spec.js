@@ -252,14 +252,6 @@ const MODEL_NAME = "Test Action Model";
         it("adds implicit update and delete actions to dashboards and runs them", () => {
           const actionName = "Update";
 
-          H.queryWritableDB(
-            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
-            dialect,
-          ).then((result) => {
-            expect(result.rows.length).to.equal(1);
-            expect(result.rows[0].id).to.equal(3);
-          });
-
           cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "update",
@@ -309,6 +301,14 @@ const MODEL_NAME = "Test Action Model";
           });
 
           cy.log("delete a row via an implicit delete action");
+          H.queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
+            dialect,
+          ).then((result) => {
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].id).to.equal(3);
+          });
+
           cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "delete",
@@ -553,7 +553,6 @@ const MODEL_NAME = "Test Action Model";
             idFilter: true,
           });
 
-          cy.wait("@getModel");
           cy.findByRole("button", { name: "Update" });
 
           H.filterWidget().click();
