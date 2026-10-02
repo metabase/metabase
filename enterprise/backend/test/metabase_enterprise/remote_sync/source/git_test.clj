@@ -745,6 +745,74 @@
           (is (= ["branch-1" "master"] (source.p/branches fresh-source))
               "branches works again after the dir was deleted, without an instance restart"))))))
 
+(deftest stale-cache-recovery-keeps-in-flight-clone-usable-test
+  (testing "recovering from a stale cache (a \"Missing commit\" error, e.g. after an upstream force-push) re-clones
+            without deleting the clone another operation is still using: a snapshot and a source taken before the
+            recovery keep reading and fetching"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            in-flight       (source.p/snapshot source)
+            real-snapshot*  (mt/original-fn #'git/snapshot*)
+            real-clone!     (mt/original-fn #'git/clone-repository!)
+            thrown?         (atom false)
+            ;; What another operation holding the pre-recovery source and snapshot sees while the recovery re-clones.
+            during-reclone  (atom nil)
+            attempt         (fn [thunk] (try (thunk) (catch Exception e (str "threw: " (ex-message e)))))]
+        (mt/with-dynamic-fn-redefs [git/snapshot*         (fn [s]
+                                                            (if (compare-and-set! thrown? false true)
+                                                              (throw (ex-info "Missing commit 0123456789abcdef" {}))
+                                                              (real-snapshot* s)))
+                                    git/clone-repository! (fn [path args]
+                                                            (reset! during-reclone
+                                                                    {:read     (attempt #(source.p/read-file in-flight "master.txt"))
+                                                                     :branches (attempt #(source.p/branches source))})
+                                                            (real-clone! path args))]
+          (let [recovered (source.p/snapshot source)]
+            (is @thrown? "precondition: the stale-cache recovery ran")
+            (is (= "File in master" (source.p/read-file recovered "master.txt"))
+                "the recovered snapshot reads from its fresh clone")))
+        (is (= {:read "File in master" :branches ["master"]} @during-reclone)
+            "while the recovery re-clones, the clone in use by earlier operations is still there to read")
+        (is (= "File in master" (source.p/read-file in-flight "master.txt"))
+            "a snapshot taken before the recovery still reads")
+        (git-working-add! remote "after.txt" "Added after recovery")
+        (git-working-commit! remote "Add after.txt")
+        (is (= "Added after recovery" (source.p/read-file (source.p/snapshot source) "after.txt"))
+            "a source created before the recovery still fetches and reads new commits")
+        (is (= "Added after recovery"
+               (source.p/read-file (source.p/snapshot (->source! "master" remote)) "after.txt"))
+            "a source created after the recovery uses the fresh clone")))))
+
+(deftest stale-cache-recovery-with-token-test
+  (testing "after a stale-cache recovery of a source with a token, a new source for the same URL and token gets the
+            clone that the recovery made, and the recovery clones with that token"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[_ remote]   (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            remote-url   (-> ^Git (:git remote) .getRepository .getDirectory .toURI .toURL .toExternalForm)
+            token        "a-token"
+            source       (git/git-source remote-url "master" token ingest/legal-top-level-paths)
+            real-snapshot* (mt/original-fn #'git/snapshot*)
+            real-clone!  (mt/original-fn #'git/clone-repository!)
+            thrown?      (atom false)
+            clone-tokens (atom [])]
+        (is (= "File in master" (source.p/read-file (source.p/snapshot source) "master.txt"))
+            "precondition: a file:// remote accepts a source with a token")
+        (mt/with-dynamic-fn-redefs [git/snapshot*         (fn [s]
+                                                            (if (compare-and-set! thrown? false true)
+                                                              (throw (ex-info "Missing commit 0123456789abcdef" {}))
+                                                              (real-snapshot* s)))
+                                    git/clone-repository! (fn [path args]
+                                                            (swap! clone-tokens conj (:token args))
+                                                            (real-clone! path args))]
+          (let [recovered (source.p/snapshot source)
+                ^Git recovered-git (:git recovered)
+                later     (git/git-source remote-url "master" token ingest/legal-top-level-paths)]
+            (is @thrown? "precondition: the stale-cache recovery ran")
+            (is (= [token] @clone-tokens) "the recovery clones once, with the source's token")
+            (is (identical? recovered-git (:git later))
+                "a new source for the same URL and token uses the clone that the recovery made")
+            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))))))))
+
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
     (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
