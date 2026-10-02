@@ -1,6 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <!-- ALL Tecnologias: logo PROVISÓRIO. Substitua este arquivo pelo logo oficial (SVG, de preferência quadrado). -->
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="#1E4FD8"/>
-  <text x="32" y="41" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif"
-        font-size="22" font-weight="900" fill="#FFFFFF" letter-spacing="1">ALL</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="225 46 550 551" width="64" height="64">
+  <!-- ALL Tecnologias: símbolo (chip) -->
+  <path fill="#35A8E0" d="M351 46 H775 V484 A115 113 0 0 1 660 597 H225 V159 A126 113 0 0 1 351 46 Z"/>
+  <g fill="#FFFFFF">
+    <rect x="361" y="180" width="280" height="281" rx="20"/>
+    <rect x="412" y="145" width="16" height="40"/><rect x="412" y="456" width="16" height="42"/><rect x="453" y="145" width="16" height="40"/><rect x="453" y="456" width="16" height="42"/><rect x="494" y="145" width="16" height="40"/><rect x="494" y="456" width="16" height="42"/><rect x="535" y="145" width="16" height="40"/><rect x="535" y="456" width="16" height="42"/><rect x="576" y="145" width="16" height="40"/><rect x="576" y="456" width="16" height="42"/><rect x="326" y="232" width="40" height="16"/><rect x="636" y="232" width="44" height="16"/><rect x="326" y="273" width="40" height="16"/><rect x="636" y="273" width="44" height="16"/><rect x="326" y="314" width="40" height="16"/><rect x="636" y="314" width="44" height="16"/><rect x="326" y="355" width="40" height="16"/><rect x="636" y="355" width="44" height="16"/><rect x="326" y="397" width="40" height="16"/><rect x="636" y="397" width="44" height="16"/>
+  </g>
+  <rect x="421" y="239" width="165" height="164" fill="none" stroke="#3BA7CD" stroke-width="16"/>
+  <path d="M510 270 H554 V315 M451 328 V373 H495" fill="none" stroke="#35A8E0" stroke-width="1.6"/>
 </svg>

@@ -9,7 +9,7 @@ Base atual: `v0.63.18.4` · Branch: `all-branding`
 
 | O quê | Onde editar |
 |---|---|
-| Nome "ALL Tecnologias" na interface, mensagens de carregamento, links do metabase.com ocultos | `frontend/src/metabase/branding/config.ts` |
+| Nome "B.i ALL Tecnologias" na interface, mensagens de carregamento, links do metabase.com ocultos | `frontend/src/metabase/branding/config.ts` |
 | Nome no título da aba/e-mails, **cores da marca**, logo padrão | `src/metabase/appearance/settings.clj` (valores `:default`) |
 | Logo da barra superior | `resources/frontend_client/app/assets/img/all-logo.svg` |
 | Favicon | `resources/frontend_client/app/assets/img/favicon.ico` (+ `favicon-16x16.png`, `favicon-32x32.png`) |
@@ -17,7 +17,7 @@ Base atual: `v0.63.18.4` · Branch: `all-branding`
 
 Arquivos de apoio: `.github/workflows/all-build.yml` (build da imagem), `bin/all-upgrade.sh` (atualização de versão).
 
-> Os logos atuais são **provisórios**. Substitua pelos oficiais mantendo os mesmos nomes de arquivo.
+> Logo oficial (símbolo do chip) vetorizado em `all-logo.svg`; cor da marca `#35A8E0`. Para trocar, mantenha os mesmos nomes de arquivo.
 
 ### Como funciona (resumo técnico)
 As configurações de aparência do Metabase (`application-name`, `application-colors`,
@@ -60,7 +60,7 @@ services:
 ```
 
 Depois do primeiro start:
-1. **Admin → Configurações → Geral → Nome do site**: troque para "ALL Tecnologias" (o valor antigo
+1. **Admin → Configurações → Geral → Nome do site**: troque para "B.i ALL Tecnologias" (o valor antigo
    fica salvo no banco e tem prioridade sobre o padrão do fork).
 2. Confirme a **URL do site** — o logo dos e-mails depende dela.
 3. Faça backup do banco antes de trocar a imagem, como em qualquer upgrade.

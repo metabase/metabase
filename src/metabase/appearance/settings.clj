@@ -19,13 +19,13 @@
   :audit      :getter
   :feature    :whitelabel
   ;; ALL Tecnologias: nome padrão do fork
-  :default    "ALL Tecnologias")
+  :default    "B.i ALL Tecnologias")
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
                 (setting/application-name-for-setting-descriptions application-name))
   :encryption :no
-  :default    "ALL Tecnologias"
+  :default    "B.i ALL Tecnologias"
   :audit      :getter
   :visibility :settings-manager
   :export?    true)
@@ -105,7 +105,7 @@
   :type       :json
   :feature    :whitelabel
   ;; ALL Tecnologias: paleta padrão do fork (edite aqui as cores da marca)
-  :default    {:brand     "#1E4FD8"
+  :default    {:brand     "#35A8E0"
                :filter    "#7B61FF"
                :summarize "#16A34A"}
   :audit      :getter
@@ -179,7 +179,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defn application-color
   "The primary color, a.k.a. brand color"
   []
-  (or (:brand (application-colors)) "#1E4FD8"))
+  (or (:brand (application-colors)) "#35A8E0"))
 
 (defn secondary-chart-color
   "The first 'Additional chart color'"

@@ -20,7 +20,7 @@ interface BrandConfig {
 
 export const BRAND: BrandConfig = {
   /** Substitui a palavra "Metabase" em toda a interface. */
-  name: "ALL Tecnologias",
+  name: "B.i ALL Tecnologias",
 
   /** URL do logo (importado pelo bundler). */
   logoUrl,
