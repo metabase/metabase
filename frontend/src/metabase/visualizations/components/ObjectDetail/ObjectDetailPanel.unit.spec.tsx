@@ -275,9 +275,8 @@ function setup(
 describe("ObjectDetailPanel", () => {
   it("renders an object detail component", async () => {
     setup({ question: mockQuestion });
-    await settlePendingUpdates();
 
-    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Product/i)).toBeInTheDocument();
     expect(
       screen.getByText(checkNotNull(testDataset.rows[0][2]).toString()),
     ).toBeInTheDocument();
@@ -349,9 +348,10 @@ describe("ObjectDetailPanel", () => {
       setupDatabasesEndpoints([databaseWithActionsEnabled]);
       setupActionsEndpoints(actions);
       setup({ question: mockDataset });
-      // The action modal prefetches its initial values, which resolves after
-      // these tests have finished asserting.
-      await settlePendingUpdates();
+      // `ActionExecuteModal` initialises its values state after this render.
+      // Nothing observable changes when it does, and it issues no request to
+      // wait on, so flush that update rather than leaving it for the next test.
+      await waitFor(() => {});
     });
 
     it("should not show implicit create action", async () => {

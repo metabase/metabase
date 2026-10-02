@@ -8,12 +8,7 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  renderWithProviders,
-  screen,
-  settlePendingUpdates,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -374,9 +369,8 @@ describe("AggregationPicker", () => {
 
     it("should open the editor when a named expression with operator is used", async () => {
       setup({ query: createQueryWithInlineExpressionWithOperator() });
-      await settlePendingUpdates();
 
-      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(await screen.findByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("My count")).toBeInTheDocument();
     });
 
@@ -406,9 +400,8 @@ describe("AggregationPicker", () => {
         query: createQueryWithInlineExpression(),
         allowCustomExpressions: false,
       });
-      await settlePendingUpdates();
 
-      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(await screen.findByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
     });
   });
