@@ -3756,8 +3756,7 @@
                     :model/Database
                     :model/Permissions
                     :model/PermissionsGroup
-                    :model/Table
-                    :model/User}}
+                    :model/Table}}
 
   enterprise/data-studio
   {:team "UX West"
