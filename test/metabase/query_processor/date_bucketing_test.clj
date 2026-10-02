@@ -1030,11 +1030,12 @@
         (mt/with-temporary-setting-values [start-of-week start-of-week]
           (testing start-of-week
             (let [mp           (mt/metadata-provider)
+                  orders       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                   created-at   (lib.metadata/field mp (mt/id :orders :created_at))
                   week-of-year (lib/with-temporal-bucket created-at :week-of-year)
                   ;; Each year starts on a different day of the week, so the first week falls differently in each.
                   ;; 2016 is a leap year ending on a Saturday, so a week that starts on its day 366 is week 53.
-                  query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                  query        (-> orders
                                    (lib/filter (lib/or (lib/between created-at "2016-12-25" "2017-01-08")
                                                        (lib/between created-at "2017-12-25" "2018-01-08")
                                                        (lib/between created-at "2018-12-25" "2019-01-08")
@@ -1047,7 +1048,15 @@
               (is (= 60 (count rows)))
               (is (= (for [[day _] rows]
                        [day (lib/filter-args-display-name query -1 (lib/= week-of-year day))])
-                     rows)))))))))
+                     rows))
+              ;; A filter on a date selects the week holding that date, which each driver works out from the literal.
+              (doseq [day ["2017-01-01" "2018-01-01" "2019-01-01" "2020-01-01"]
+                      :let [week     (lib/= week-of-year day)
+                            filtered (-> orders (lib/filter week) (lib/breakout week-of-year))]]
+                (testing day
+                  (is (= [(lib/filter-args-display-name filtered -1 week)]
+                         (for [[week-number] (mt/rows (qp/process-query filtered))]
+                           (str (long week-number))))))))))))))
 
 ;;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;;; difference is how the beginning of hte month is represented, since we always return times with our dates
