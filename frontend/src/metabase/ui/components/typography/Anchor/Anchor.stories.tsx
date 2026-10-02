@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 import { Fragment } from "react";
 
 import { Anchor, type AnchorProps, Box, Text } from "metabase/ui";
-import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
+import { StoryBoard, StoryJsx } from "metabase/ui/stories/showcase";
 
 import S from "./Anchor.module.css";
 
@@ -11,8 +11,6 @@ const WEIGHTS = [
   { value: 400, props: {} },
   { value: 700, props: { fw: 700 } },
 ] as const;
-// Loki cannot force Mantine's media-guarded underline; the unit test verifies
-// the default hover mode, while this prop captures its visual state.
 const STATES = [
   { id: "default", label: "Default", underline: undefined },
   { id: "hover", label: "Hover", underline: "always" },
@@ -52,7 +50,7 @@ const DefaultTemplate = (args: AnchorProps) => (
 );
 
 const OverviewTemplate: StoryFn<AnchorProps> = () => (
-  <StoryShowcase title="Anchor">
+  <StoryBoard title="Anchor" padding="2rem">
     <Box
       style={{
         display: "grid",
@@ -95,7 +93,7 @@ const OverviewTemplate: StoryFn<AnchorProps> = () => (
         </Fragment>
       ))}
     </Box>
-  </StoryShowcase>
+  </StoryBoard>
 );
 
 export default {
@@ -115,6 +113,6 @@ export const Overview = {
     pseudo: {
       hover: anchorSelectorFor("hover"),
     },
-    controls: { include: ["theme"] },
+    controls: { disable: true },
   },
 };
