@@ -43,22 +43,6 @@ describe("Metabot Query Builder", () => {
     cy.url().should("include", "/metabot/conversation/");
   });
 
-  it("should render a generated chart inline without leaving the page", () => {
-    cy.visit("/question/ask");
-    H.metabotChatInput().should("be.visible");
-
-    H.mockMetabotResponse({
-      body: mockGeneratedEntityResponse(allOrdersQuestion.dataset_query),
-    });
-    H.sendMetabotMessage("Show me all orders");
-
-    cy.wait("@metabotAgent");
-    // the chart renders inline rather than in the query builder
-    cy.findByTestId("metabot-inline-chart").should("be.visible");
-    cy.findByTestId("qb-header").should("not.exist");
-    cy.url().should("include", "/metabot/conversation/");
-  });
-
   it("should support clicking suggested prompts", () => {
     // mock suggested prompts
     cy.intercept("GET", "/api/metabot/metabot/*/prompt-suggestions*", {
@@ -78,6 +62,7 @@ describe("Metabot Query Builder", () => {
     // the chart renders inline rather than in the query builder
     cy.wait("@metabotAgent");
     cy.findByTestId("metabot-inline-chart").should("be.visible");
+    cy.findByTestId("qb-header").should("not.exist");
     cy.url().should("include", "/metabot/conversation/");
   });
 
