@@ -63,11 +63,11 @@
                   :description   "Pipeline health"
                   :path          "dist/index.js"
                   :allowed_hosts ["https://api.example.com"]}
-                 (dissoc (yaml/from-file (io/file dump-dir "data_apps" "sales_ops" "data_app.yaml"))
+                 (dissoc (yaml/from-file (io/file dump-dir "data_apps" "sales-ops" "data_app.yaml"))
                          :created_at))))
         (testing "the bundle is a plain file at its path next to the manifest"
           (is (= "console.log(1)"
-                 (slurp (io/file dump-dir "data_apps" "sales_ops" "dist" "index.js")))))))))
+                 (slurp (io/file dump-dir "data_apps" "sales-ops" "dist" "index.js")))))))))
 
 (deftest drafts-are-not-exported-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -100,7 +100,7 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-update-"]
         (let [app (insert-app! :enabled false)]
-          (write-app-files! dump-dir "sales_ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
+          (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
                                                            :path "./dist/index.js")
                             {"dist/index.js" "console.log(2)"})
           (import! dump-dir)
@@ -159,7 +159,7 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-description-"]
         (let [app (insert-app! :description "Pipeline health")]
-          (write-app-files! dump-dir "sales_ops" (app-yaml (:entity_id app) "sales-ops") {"dist/index.js" "B"})
+          (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops") {"dist/index.js" "B"})
           (import! dump-dir)
           (is (nil? (t2/select-one-fn :description :model/DataApp :id (:id app)))))))))
 
@@ -168,7 +168,7 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]
         (let [app (insert-app!)]
-          (write-app-files! dump-dir "sales_ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
+          (write-app-files! dump-dir "sales-ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
           (is (=? {:entity_id (:entity_id app)} (t2/select-one :model/DataApp :id (:id app)))))))))
 

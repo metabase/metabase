@@ -13,14 +13,14 @@
 
 (defn slugify-name
   "Slugify a name for use as a file or directory name: lowercase, replace special chars with underscores,
-  preserve dots and unicode, escape slashes. Truncated for filesystem safety."
+  preserve dashes, dots and unicode, escape slashes. Truncated for filesystem safety."
   [^String s]
   (when (seq s)
     (-> s
         u/lower-case-en
         (str/replace "\\" "__BACKSLASH__")
         (str/replace "/"  "__SLASH__")
-        (str/replace #"[^\p{L}\p{N}_.]" "_")
+        (str/replace #"[^\p{L}\p{N}_.\-]" "_")
         (u.str/limit-bytes max-label-bytes)
         (u.str/limit-chars max-label-length))))
 

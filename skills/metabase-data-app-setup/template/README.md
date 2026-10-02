@@ -5,7 +5,7 @@ SDK) that Metabase renders inside an isolated, sandboxed iframe at
 `/apps/<slug>`.
 
 Data apps are delivered through **Git**: this directory lives at
-`data_apps/<dir>/` inside a repository connected to Metabase via remote sync.
+`data_apps/<slug>/` inside a repository connected to Metabase via remote sync.
 You commit the built bundle (`dist/index.js`), and on the next remote-sync
 import Metabase materializes the app and serves it.
 

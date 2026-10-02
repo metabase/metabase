@@ -6,4 +6,4 @@ entity_id: JyvrOkPvwWQAQCwUEd1bb
 serdes/meta:
 - model: DataApp
   id: JyvrOkPvwWQAQCwUEd1bb
-  label: kitchen_sink
+  label: kitchen-sink

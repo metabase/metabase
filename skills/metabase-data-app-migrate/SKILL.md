@@ -35,8 +35,7 @@ Every step below follows from these. Never break them.
 
 ## Step 0 - Locate the app and read its state
 
-Work from the app directory, `<repo>/data_apps/<dir>/`; `<slug>` is the `slug` in its
-`data_app.yaml`. Resolve the repo root
+Work from the app directory, `<repo>/data_apps/<slug>/`. Resolve the repo root
 with `ROOT="$(git rev-parse --show-toplevel)"`. The final build needs the
 repo-root `.env.local` credentials (`DATA_APP_MB_URL`, `DATA_APP_MB_API_KEY`).
 Check them by sourcing the file in a subshell and printing only whether both are
@@ -52,7 +51,7 @@ Read three numbers:
 
 ```bash
 # version committed at HEAD (absent line means 1)
-git show HEAD:data_apps/<dir>/data_app.yaml | grep -E '^version:' || echo "version: 1"
+git show HEAD:data_apps/<slug>/data_app.yaml | grep -E '^version:' || echo "version: 1"
 # version in the working tree
 grep -E '^version:' data_app.yaml || echo "version: 1"
 # target: the highest upgrade guide shipped with this skill (no guides means 1)
@@ -71,9 +70,9 @@ Then decide:
 | HEAD version  | working tree                   | do                                                                                                                                                                                                                                |
 | ------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | equals target | clean                          | Nothing to migrate. Say so; run the final gates only if the user asked to verify.                                                                                                                                                 |
-| above target  | any                            | **Stop.** There is no downgrade. Either Metabase, the SDK, and the skills are older than the app, or a bump was committed against the wrong instance (`git log -- data_apps/<dir>/data_app.yaml` shows it). Wait for the answer. |
+| above target  | any                            | **Stop.** There is no downgrade. Either Metabase, the SDK, and the skills are older than the app, or a bump was committed against the wrong instance (`git log -- data_apps/<slug>/data_app.yaml` shows it). Wait for the answer. |
 | below target  | clean                          | Start at _Step 1_.                                                                                                                                                                                                                |
-| any           | dirty under `data_apps/<dir>` | A previous session was interrupted. Go to _Resuming_ first.                                                                                                                                                                       |
+| any           | dirty under `data_apps/<slug>` | A previous session was interrupted. Go to _Resuming_ first.                                                                                                                                                                       |
 
 ## Step 1 - Preflight, once
 
@@ -108,7 +107,7 @@ For each `N` from the HEAD version up to `target - 1`:
 4. Run the guide's _Done-check summary_. Every line must print `ok`.
 5. Only now set `version: N+1` in `data_app.yaml`. This is the one edit to that line.
 6. If `N+1 < target`: from the repo root,
-   `git add data_apps/<dir> && git commit -m "Migrate <slug> data app to data-app version N+1" -- data_apps/<dir>`.
+   `git add data_apps/<slug> && git commit -m "Migrate <slug> data app to data-app version N+1" -- data_apps/<slug>`.
    The pathspec keeps anything staged outside the app out of the commit.
    No push, no typecheck, no build. If the user asks why, say the app cannot
    compile until the last upgrade.
@@ -138,7 +137,7 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    changed, and the package lockfile if the SDK was re-pinned. Anything else
    inside the app directory is a user edit; say so before committing.
 5. From the repo root,
-   `git add data_apps/<dir> && git commit -m "Migrate <slug> data app to data-app version M" -- data_apps/<dir>`,
+   `git add data_apps/<slug> && git commit -m "Migrate <slug> data app to data-app version M" -- data_apps/<slug>`,
    push, and tell the user to **Pull changes** under Admin > Data apps.
 6. Prove it. After the pull:
    ```bash
@@ -153,7 +152,7 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
 ## Resuming an interrupted migration
 
 A fresh session has no memory of the previous one and needs none. Read the
-three numbers from _Step 0_ and `git status --porcelain -- data_apps/<dir>`,
+three numbers from _Step 0_ and `git status --porcelain -- data_apps/<slug>`,
 then:
 
 | tree  | working-tree version              | meaning                                                                                                          | do                                                                                                                                                                       |
@@ -161,9 +160,9 @@ then:
 | clean | equals HEAD                       | every finished upgrade is a commit; nothing half done                                                            | continue the loop from the HEAD version                                                                                                                                  |
 | dirty | equals HEAD                       | upgrade `HEAD -> HEAD+1` was in progress and its checks had not all passed                                       | re-run every **Done when** of that upgrade; apply only the steps whose command fails; continue from loop item 4                                                          |
 | dirty | equals HEAD + 1                   | all checks passed and the bump was written, but the commit is missing (or the final gates failed after the bump) | re-run that upgrade's _Done-check summary_ (all `ok`, or someone edited after the bump: stop and show `git diff`); if it is the target, run the final gates; commit      |
-| any   | more than HEAD + 1, or below HEAD | an invariant was broken                                                                                          | **Stop.** Show `git diff -- data_apps/<dir>/data_app.yaml` and ask whether to take that one file back to HEAD and re-derive, or to stash the tree. Wait for the answer. |
+| any   | more than HEAD + 1, or below HEAD | an invariant was broken                                                                                          | **Stop.** Show `git diff -- data_apps/<slug>/data_app.yaml` and ask whether to take that one file back to HEAD and re-derive, or to stash the tree. Wait for the answer. |
 
-Files dirty outside `data_apps/<dir>` are not yours: never `git add` them.
+Files dirty outside `data_apps/<slug>` are not yours: never `git add` them.
 
 ## Reporting
 

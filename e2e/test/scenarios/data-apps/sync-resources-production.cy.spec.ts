@@ -31,7 +31,7 @@ const AUTHORED_MANIFEST = [
   "serdes/meta:",
   "- model: DataApp",
   "  id: 4vxutiAe703DZgttXwORO",
-  "  label: synced_app",
+  "  label: synced-app",
   "",
 ].join("\n");
 

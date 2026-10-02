@@ -20,4 +20,4 @@ entity_id: replace-entity-id-xxx
 serdes/meta:
 - model: DataApp
   id: replace-entity-id-xxx
-  label: data_app_template
+  label: data-app-template

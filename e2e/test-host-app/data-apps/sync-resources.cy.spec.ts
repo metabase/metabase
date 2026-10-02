@@ -39,7 +39,7 @@ entity_id: qxpaPkU_WRE2ZQu0cmpqD
 serdes/meta:
 - model: DataApp
   id: qxpaPkU_WRE2ZQu0cmpqD
-  label: vite_6_data_app_host_app
+  label: vite-6-data-app-host-app
 `;
 
 /**

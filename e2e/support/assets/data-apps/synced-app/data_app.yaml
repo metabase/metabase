@@ -6,4 +6,4 @@ entity_id: 4vxutiAe703DZgttXwORO
 serdes/meta:
 - model: DataApp
   id: 4vxutiAe703DZgttXwORO
-  label: synced_app
+  label: synced-app

@@ -7,7 +7,7 @@ description: Scaffold a new Metabase data-app into the connected remote-sync rep
 
 A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server that previews the app against a real Metabase **through the same Near Membrane sandbox + distortion rules Metabase uses in production** — so `npm run dev` behaves like production, including for third-party libraries the app bundles — and `npm run build` producing a single `dist/index.js`. (Because the sandbox runs a built bundle, a change rebuilds it and does a *soft reload* — re-evaluates the bundle in the sandbox and remounts the app, keeping auth/SDK loaded — rather than hot-swapping modules; component state resets, but there's no full browser refresh.) The dev preview also shows a corner **⚠ Diagnostics** toolbar that captures runtime errors — including the sandbox's otherwise-opaque blocked-API messages — so failures surface instead of being swallowed. The same data is served as JSON at `http://localhost:5174/__data-app/diagnostics`, which is how *you* read it (see "Reading the diagnostics feed" below) — you have a shell, not a browser, and these failures are invisible from the terminal otherwise.
 
-**Data apps are served from Git** (they can also be created and updated through `/api/apps`). A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<dir>/` inside that repo — its source, a `data_app.yaml` (slug/name/path), and the committed built bundle at the `path` its `data_app.yaml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes each app and serves it at `/apps/<slug>`, where the slug is the `slug` its `data_app.yaml` declares. So this skill always scaffolds **into the connected repo's `data_apps/<dir>/` directory**, never as a standalone project.
+**Data apps are served from Git** (they can also be created and updated through `/api/apps`). A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<slug>/` inside that repo — its source, a `data_app.yaml` (slug/name/path), and the committed built bundle at the `path` its `data_app.yaml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes each app and serves it at `/apps/<slug>`, where the slug is the `slug` its `data_app.yaml` declares. So this skill always scaffolds **into the connected repo's `data_apps/<slug>/` directory**, never as a standalone project.
 
 **The scaffold ships inside this skill at `./template/`** — a Vite + React + TypeScript project that was installed alongside the skill. Step 3 just copies it into the app directory; the skill then guides you through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, or `src/index.tsx` by hand, stop — copy the template instead.
 
@@ -34,13 +34,12 @@ Data apps live inside the Git repository connected to Metabase via remote-sync. 
 ## Step 2 — Name the app and create its directory
 
 1. Settle on the app's **slug** before scaffolding — the `/apps/<slug>` URL — so it **must be dash-cased**: lowercase letters, numbers, and single dashes (`[a-z0-9]+(?:-[a-z0-9]+)*`), e.g. `sales-overview`. Anything else (uppercase, spaces, underscores) is rejected on sync. If the purpose isn't clear yet, ask a one-line "what's this app for?" and propose a slug; confirm it.
-2. The app's directory `<dir>` is the slug with dashes replaced by underscores (`sales_overview`) — where Metabase writes the app back to the repo.
-3. Ensure `<repo>/data_apps/` exists; create it if missing.
-4. Create `<repo>/data_apps/<dir>/`. **If it already exists**, treat it as an existing project (see below) — never overwrite without confirmation.
+2. Ensure `<repo>/data_apps/` exists; create it if missing.
+3. Create `<repo>/data_apps/<slug>/`. **If it already exists**, treat it as an existing project (see below) — never overwrite without confirmation.
 
 ### Detecting an existing app
 
-If `<repo>/data_apps/<dir>/` already holds a project, verify it matches the current `data-app-template`. Check **all** of:
+If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the current `data-app-template`. Check **all** of:
 
 1. `vite.config.ts` is a one-liner: `export default dataAppConfig()`
    (from `@metabase/embedding-sdk-react/data-app-dev/config`). There is **no**
@@ -68,7 +67,7 @@ Never overwrite existing files without explicit confirmation.
 The template ships **inside this skill** at `./template/` (installed alongside the skill via `skills add metabase/metabase/skills#release-x.<major>.x`). Copy it into the app directory:
 
 ```bash
-APP_DIR="<repo>/data_apps/<dir>"
+APP_DIR="<repo>/data_apps/<slug>"
 # `<skill-dir>` = the directory this SKILL.md was loaded from
 # (e.g. `.claude/skills/metabase-data-app-setup`); the template is its `template/` subfolder.
 cp -R "<skill-dir>/template/." "$APP_DIR/"
@@ -80,7 +79,7 @@ The copy includes two root-level directories, `queries/` and `actions/`, each ho
 
 ## Step 4 — Customize
 
-Once the template is in `<repo>/data_apps/<dir>/` (run everything below from that directory):
+Once the template is in `<repo>/data_apps/<slug>/` (run everything below from that directory):
 
 1. Edit `package.json` `name` to match the slug.
 2. Pin `@metabase/embedding-sdk-react` to the published data-apps tag (the template ships with `*`):
@@ -147,7 +146,7 @@ Once the template is in `<repo>/data_apps/<dir>/` (run everything below from tha
    serdes/meta:
    - model: DataApp
      id: Xq2v9LbN0mTz4wRk7YsJd
-     label: sales_app
+     label: sales-app
    ```
 
    Commit it alongside the built bundle (the file `path` points at).
@@ -536,7 +535,7 @@ Data apps are delivered by Git — you commit the app directory and Metabase pul
 1. `npm run build` → produces the bundle at your `data_app.yaml` `path` (the template builds to `dist/index.js`).
 2. From the **repo root**, commit the app directory — its `data_app.yaml`, the built bundle (the file `path` points at), the source, and the lockfile — and **push**:
    ```bash
-   git add data_apps/<dir>
+   git add data_apps/<slug>
    git commit -m "Add <slug> data app"
    git push
    ```

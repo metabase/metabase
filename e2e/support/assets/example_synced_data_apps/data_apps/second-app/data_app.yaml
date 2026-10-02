@@ -6,4 +6,4 @@ entity_id: A-0Jd9Jt80EIbt1hOavWS
 serdes/meta:
 - model: DataApp
   id: A-0Jd9Jt80EIbt1hOavWS
-  label: second_app
+  label: second-app
