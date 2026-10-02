@@ -1395,3 +1395,19 @@
                (testing "success if recipients matches allowed domains"
                  (mt/user-http-request :crowberto :post 204 "notification/send"
                                        (assoc notification :handlers success-handlers)))))))))))
+
+(deftest send-unsaved-notification-echoed-creator-test
+  (testing "POST /api/notification/send accepts a saved notification sent back as fetched, creator included"
+    (notification.tu/with-card-notification
+      [{notification-id :id}
+       {:handlers      [{:channel_type :channel/email
+                         :recipients   [{:type    :notification-recipient/user
+                                         :user_id (mt/user->id :crowberto)}]}]
+        :subscriptions [{:type          :notification-subscription/cron
+                         :cron_schedule "0 0 0 * * ?"}]}]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (let [echoed (mt/user-http-request :crowberto :get 200 (format "notification/%d" notification-id))]
+          (is (some? (get-in echoed [:creator :date_joined])))
+          (is (=? {:channel/email [{:recipients ["crowberto@metabase.com"]}]}
+                  (notification.tu/with-captured-channel-send!
+                    (mt/user-http-request :crowberto :post 204 "notification/send" echoed)))))))))
