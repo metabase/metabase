@@ -1,0 +1,97 @@
+## Keeps an ended session on record instead of deleting it: when it ended, why, and who ended it.
+##
+## Ending a session clears its key_hashed, so that column becomes nullable. The rollback deletes the
+## ended sessions before restoring NOT NULL, since a pre-65 instance has no concept of them and would
+## have deleted those rows outright.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-17T12:54:19
+      author: johnswanson
+      comment: Add ended_at to core_session
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: When the session ended (revoked, expired, timed out, or its user or tenant deactivated); null while live
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: ended_at
+
+  - changeSet:
+      id: v65.2026-09-17T12:54:20
+      author: johnswanson
+      comment: Add end_reason to core_session
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: end_reason
+                  type: varchar(32)
+                  remarks: Why the session ended, e.g. admin, logout, password-change, expired; null while live
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: end_reason
+
+  - changeSet:
+      id: v65.2026-09-17T12:54:21
+      author: johnswanson
+      comment: Add ended_by_user_id to core_session
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: ended_by_user_id
+                  type: int
+                  remarks: The user who ended the session, when a person did
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: core_session
+            columnName: ended_by_user_id
+
+  - changeSet:
+      id: v65.2026-09-17T12:54:22
+      author: johnswanson
+      comment: FK core_session.ended_by_user_id -> core_user.id, cleared when that user is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_session
+            baseColumnNames: ended_by_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_core_session_ended_by_user_id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: core_session
+            constraintName: fk_core_session_ended_by_user_id
+
+  - changeSet:
+      id: v65.2026-09-17T12:54:23
+      author: johnswanson
+      comment: Make core_session.key_hashed nullable, since ending a session clears its key
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_session
+            columnName: key_hashed
+            columnDataType: varchar(254)
+      rollback:
+        - sql:
+            sql: DELETE FROM core_session WHERE key_hashed IS NULL;
+        - addNotNullConstraint:
+            tableName: core_session
+            columnName: key_hashed
+            columnDataType: varchar(254)
