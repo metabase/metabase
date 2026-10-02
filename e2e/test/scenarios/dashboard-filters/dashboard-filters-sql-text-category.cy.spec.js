@@ -23,8 +23,6 @@ GROUP BY PRODUCTS.CATEGORY`;
     H.queryQADB(
       "UPDATE PRODUCTS SET CATEGORY = 'New Category' where CATEGORY = 'Doohickey';",
     );
-
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   afterEach(() => {

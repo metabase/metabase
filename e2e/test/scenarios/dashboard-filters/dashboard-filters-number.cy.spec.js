@@ -7,8 +7,6 @@ import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
 
 describe("scenarios > dashboard > filters > number", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
-
     H.restore();
     cy.signInAsAdmin();
 
