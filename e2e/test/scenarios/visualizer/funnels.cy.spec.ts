@@ -14,30 +14,12 @@ describe("scenarios > visualizer > funnels", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.signInAsNormalUser();
-
-    H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {
-      idAlias: "landingPageViewsScalarQuestionId",
-      wrapId: true,
-    });
-    H.createNativeQuestion(SCALAR_CARD.CHECKOUT_PAGE_VIEWS, {
-      idAlias: "checkoutPageViewsScalarQuestionId",
-      wrapId: true,
-    });
-    H.createNativeQuestion(SCALAR_CARD.PAYMENT_DONE_PAGE_VIEWS, {
-      idAlias: "paymentDonePageViewsScalarQuestionId",
-      wrapId: true,
-    });
-    H.createNativeQuestion(STEP_COLUMN_CARD, {
-      idAlias: "stepColumnQuestionId",
-      wrapId: true,
-    });
-    H.createNativeQuestion(VIEWS_COLUMN_CARD, {
-      idAlias: "viewsColumnQuestionId",
-      wrapId: true,
-    });
   });
 
   it("should build a funnel", () => {
+    H.createNativeQuestion(STEP_COLUMN_CARD);
+    H.createNativeQuestion(VIEWS_COLUMN_CARD);
+
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 
@@ -139,6 +121,10 @@ describe("scenarios > visualizer > funnels", () => {
   it("should build a funnel of several scalar cards (VIZ-678)", () => {
     const { LANDING_PAGE_VIEWS, CHECKOUT_PAGE_VIEWS, PAYMENT_DONE_PAGE_VIEWS } =
       SCALAR_CARD;
+
+    H.createNativeQuestion(LANDING_PAGE_VIEWS);
+    H.createNativeQuestion(CHECKOUT_PAGE_VIEWS);
+    H.createNativeQuestion(PAYMENT_DONE_PAGE_VIEWS);
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();

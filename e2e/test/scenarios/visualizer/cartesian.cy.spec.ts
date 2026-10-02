@@ -49,6 +49,9 @@ describe("scenarios > visualizer > cartesian", () => {
       idAlias: "productsCountByCategoryQuestionId",
       wrapId: true,
     });
+  });
+
+  it("should allow to change cartesian and pie viz settings (metabase#61197)", () => {
     H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {
       idAlias: "landingPageViewsScalarQuestionId",
       wrapId: true,
@@ -69,9 +72,7 @@ describe("scenarios > visualizer > cartesian", () => {
       idAlias: "viewsColumnQuestionId",
       wrapId: true,
     });
-  });
 
-  it("should allow to change cartesian and pie viz settings (metabase#61197)", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
 
