@@ -272,7 +272,7 @@ describe("issue 65908 (UXW-2293)", () => {
     });
   });
 
-  it("should not take into account the height of cards with no results when calculating dashboard height", () => {
+  it("should not take into account the height of cards with no results when calculating dashboard height (metabase#65908)", () => {
     cy.get("@dashboardId").then((dashboardId: any) => {
       H.visitDashboard(dashboardId);
 

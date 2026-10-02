@@ -564,10 +564,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@undoButton").click();
       H.goalLine().should("not.exist");
 
-      // // Ensure UI state isn't tracked in history
+      // Ensure UI state isn't tracked in history
       cy.findByTestId("chartsettings-sidebar").should("be.visible");
 
-      // // Redo goal line
+      // Redo goal line
       cy.get("@redoButton").click();
       H.goalLine().should("exist");
 
@@ -613,7 +613,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     // edit the dashboard
     H.editDashboard();
 
-    // add a new card to the first tab
+    // add a new card to the remaining tab
     H.openQuestionsSidebar();
     H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
     cy.wait("@cardQuery");
