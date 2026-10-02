@@ -88,11 +88,7 @@
                              :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
-    (u/prog1 (if action-id
-               (actions/select-action :id action-id)
-               ;; t2/insert! does not return a value when used with h2
-               ;; so we return the most recently updated http action.
-               (last (actions/select-actions nil :type action-type)))
+    (u/prog1 (actions/select-action :id action-id)
       (events/publish-event! :event/action-create {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

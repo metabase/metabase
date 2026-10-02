@@ -2387,12 +2387,11 @@
                                                                             :action_id              action-id
                                                                             :visualization_settings {:label "Update"}}]
                                                                :tabs      []}))))
-              (is (partial= {:dashcards [{:action (cond-> {:visualization_settings {:hello true}
-                                                           :type (name action-type)
-                                                           :parameters [{:id "id"}]
-                                                           :database_enabled_actions true}
-                                                    (#{:query :implicit} action-type)
-                                                    (assoc :database_id (mt/id)))}]}
+              (is (partial= {:dashcards [{:action {:visualization_settings   {:hello true}
+                                                   :type                     (name action-type)
+                                                   :parameters               [{:id "id"}]
+                                                   :database_enabled_actions true
+                                                   :database_id              (mt/id)}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
 (deftest dashcard-action-database-enabled-actions-test

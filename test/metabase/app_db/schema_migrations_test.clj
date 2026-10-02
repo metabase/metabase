@@ -3561,3 +3561,45 @@
         (is (nil? (t2/select-one-fn :collection_id :action :id in-root)))
         (testing "an action can be inserted without a model"
           (is (pos-int? (insert-action! nil))))))))
+
+(deftest drop-http-actions-test
+  (testing "v65.2026-10-02T00:00:01: HTTP actions and the dashboard buttons that ran them are deleted, other actions stay"
+    (impl/test-migrations ["v65.2026-10-02T00:00:00" "v65.2026-10-02T00:00:01"] [migrate!]
+      (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
+                                                                :last_name   "Owner"
+                                                                :email       "http-action-owner@metabase.com"
+                                                                :password    "superstrong"
+                                                                :entity_id   (u/generate-nano-id)
+                                                                :date_joined :%now})
+            dash-id        (t2/insert-returning-pk! :report_dashboard {:name       "Buttons"
+                                                                       :creator_id user-id
+                                                                       :parameters "[]"
+                                                                       :entity_id  (u/generate-nano-id)
+                                                                       :created_at :%now
+                                                                       :updated_at :%now})
+            insert-action! (fn [action-type]
+                             (t2/insert-returning-pk! :action {:name       "Action"
+                                                               :entity_id  (u/generate-nano-id)
+                                                               :type       action-type
+                                                               :created_at :%now
+                                                               :updated_at :%now}))
+            insert-button! (fn [action-id]
+                             (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id dash-id
+                                                                             :action_id    action-id
+                                                                             :parameter_mappings "[]"
+                                                                             :visualization_settings "{}"
+                                                                             :entity_id    (u/generate-nano-id)
+                                                                             :size_x       4
+                                                                             :size_y       4
+                                                                             :row          0
+                                                                             :col          0
+                                                                             :created_at   :%now
+                                                                             :updated_at   :%now}))
+            http-id        (insert-action! "http")
+            implicit-id    (insert-action! "implicit")
+            http-button    (insert-button! http-id)
+            other-button   (insert-button! implicit-id)]
+        (t2/insert! :http_action {:action_id http-id :template "{}"})
+        (migrate!)
+        (is (= #{implicit-id} (t2/select-pks-set :action)))
+        (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))

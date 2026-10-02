@@ -195,11 +195,6 @@
   [entity-id :- :string]
   (t2/select :model/Action :entity_id entity-id))
 
-(mu/defn actions-of-type
-  "The Actions of `action-type`."
-  [action-type :- :keyword]
-  (t2/select :model/Action :type action-type))
-
 (mu/defn unarchived-actions-for-models
   "The unarchived Actions whose `:model_id` is in `model-ids`."
   [model-ids :- [:sequential ms/PositiveInt]]

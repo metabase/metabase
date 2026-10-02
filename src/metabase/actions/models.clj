@@ -289,15 +289,12 @@
   (if (and (= 1 (count options)) (not (keyword? (first options))))
     (actions.db/actions-with-id (first options))
     (let [opts (apply hash-map options)
-          {:keys [id entity_id model_id type archived]} opts]
+          {:keys [id entity_id archived]} opts]
       (cond
         (contains? opts :id)        (if (false? archived)
                                       (actions.db/unarchived-action-with-id id)
                                       (actions.db/actions-with-id id))
         (contains? opts :entity_id) (actions.db/action-with-entity-id entity_id)
-        (and (contains? opts :model_id) (contains? opts :type))
-        (actions.db/unarchived-actions-for-models [model_id])
-        (contains? opts :type)      (actions.db/actions-of-type type)
         :else                       (throw (ex-info "Unsupported Action query options" {:options options}))))))
 
 (defn- normalize-actions-by-type

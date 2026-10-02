@@ -281,14 +281,13 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (testing "Non-implicit actions are archived directly, and their dashboard buttons deleted, if their model is converted to a saved question"
-        (doseq [type [:query]]
-          (mt/with-actions [{:keys [action-id model-id]} {:type type}]
-            (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
-                           :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
-              (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-              (t2/update! :model/Card model-id {:type :question})
-              (is (= [true true] ((juxt :archived :archived_directly) (t2/select-one :model/Action :id action-id))))
-              (is (not (t2/exists? :model/DashboardCard :id dashcard-id)))))))
+        (mt/with-actions [{:keys [action-id model-id]} {:type :query}]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
+            (is (false? (t2/select-one-fn :archived :model/Action action-id)))
+            (t2/update! :model/Card model-id {:type :question})
+            (is (= [true true] ((juxt :archived :archived_directly) (t2/select-one :model/Action :id action-id))))
+            (is (not (t2/exists? :model/DashboardCard :id dashcard-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action action-id)))
