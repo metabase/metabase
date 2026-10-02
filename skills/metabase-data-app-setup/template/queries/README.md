@@ -58,7 +58,9 @@ export function Overview() {
 
 Rules:
 
-- This directory sits beside `package.json`, not under `src/`.
+- This directory sits beside `package.json`, not under `src/`. The CLI scans
+  only `queries/` and `actions/`, so a definition anywhere else never gets a
+  saved question and fails in production.
 - Keep a definition static. A clause whose value comes from a control (a
   selected filter, a date range, a search box) goes in the hook's second
   argument, never inside `defineQuery`.
@@ -66,8 +68,11 @@ Rules:
   helper queries are queries too.
 - Pass the export itself to the hook. Never spread or copy it.
 - Each definition carries `savedQuestionEntityId`, the entity ID of its saved
-  question in the app's collection. Production runs that saved question instead
-  of the table; the dev preview runs the table, so the app works before the
-  saved question exists.
+  question in `resources/cards/`. After adding or changing a definition, update
+  that card (`npm run print-resources` shows what it must hold). A metric it
+  aggregates is copied into `resources/cards/` too, written from what the same
+  command prints. Then run `npm run check-resources`, and
+  commit the definitions and `resources/` together. `npm run build` fails until
+  they match.
 - Never copy a `savedQuestionEntityId` to another definition, or remove it while
   its card exists.

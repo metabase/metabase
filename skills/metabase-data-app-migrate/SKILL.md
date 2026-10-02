@@ -31,13 +31,15 @@ Every step below follows from these. Never break them.
    or build. Do not run them earlier and do not "fix" their failures earlier.
 4. **Nothing generated is edited by hand.** `dist/` is written by
    `npm run build` and `src/metabase.data.ts` by the typed-schema export, never
-   by you. The entity IDs a definition names (`savedQuestionEntityId`,
-   `copiedActionEntityId`) change only where an upgrade guide says so.
+   by you. The app's `resources/` and the entity IDs its definitions name
+   (`savedQuestionEntityId`, `copiedActionEntityId`) change only where an
+   upgrade guide says so, following the data-app guidance on writing an app's
+   `resources/` (use skill discovery).
 
 ## Step 0 - Locate the app and read its state
 
 Work from the app directory, `<repo>/data_apps/<slug>/`. Resolve the repo root
-with `ROOT="$(git rev-parse --show-toplevel)"`. The final build needs the
+with `ROOT="$(git rev-parse --show-toplevel)"`. The instance checks need the
 repo-root `.env.local` credentials (`DATA_APP_MB_URL`, `DATA_APP_MB_API_KEY`).
 Check them by sourcing the file in a subshell and printing only whether both are
 set; never print the file or its variables. The key must belong to an admin:
@@ -122,7 +124,9 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    names an SDK symbol no upgrade guide mentions is a gap in the guides, not a user
    problem: surface the exact error, say which guide should have covered it, and
    stop. Otherwise, at most three fix rounds, then stop and ask.
-2. `npm run build`. Follow its messages; it doesn't call Metabase.
+2. `npm run validate-resources`, `npm run check-resources`, then
+   `npm run build`, which refuses to bundle when `resources/` doesn't back the
+   definitions. Follow their messages; none of them calls Metabase.
 3. `npm run dev`, then take the preview URL from the `Local:` line Vite prints.
    The template asks for port 5174, but Vite moves to the next free port when
    that one is taken, so never assume it. Open that URL, then read the
@@ -133,9 +137,9 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    Expect `clients: 1` and no entry with `"alert": true`. `clients: 0` means no
    preview tab is open, so an empty feed proves nothing.
 4. `git status` from the repo root must show only: the upgrade edits,
-   `data_app.yaml`, the built bundle, and the package lockfile if the SDK was
-   re-pinned. Anything else
-   inside the app directory is a user edit; say so before committing.
+   `data_app.yaml`, the built bundle, `resources/` if an upgrade changed it,
+   and the package lockfile if the SDK was re-pinned. Anything else inside the
+   app directory is a user edit; say so before committing.
 5. From the repo root,
    `git add data_apps/<slug> && git commit -m "Migrate <slug> data app to data-app version M" -- data_apps/<slug>`,
    push, and tell the user to **Pull changes** under Admin > Data apps.
@@ -176,7 +180,7 @@ few representative diagnostics rather than pasting it whole.
 - Set or edit `version` before the upgrade's checks pass, or by more than one at a time.
 - Skip an upgrade, or apply two upgrades' steps at once.
 - Run `npm run typecheck` or `npm run build` before the last upgrade, or push before the final gates pass.
-- Hand-edit `dist/` or `src/metabase.data.ts`.
+- Hand-edit `dist/` or `src/metabase.data.ts`, or change `resources/` or a definition's entity ID beyond what an upgrade guide says.
 - Copy a step's outcome from the previous session's chat instead of re-running its **Done when**.
 - Migrate with a checklist of your own when an upgrade guide exists; when one does not exist for an upgrade you need, stop and say so.
 

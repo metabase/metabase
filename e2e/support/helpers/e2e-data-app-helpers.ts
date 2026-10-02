@@ -1,3 +1,5 @@
+import yaml from "js-yaml";
+
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import type {
@@ -172,7 +174,7 @@ export function assertNoDataAppScopeDenials() {
     expect(
       scopeDenials,
       `data-app scope rejections:\n${scopeDenials.join("\n")}`,
-    ).to.be.empty;
+    ).to.deep.eq([]);
   });
 }
 
@@ -292,6 +294,242 @@ export function createDataAppScoreboardAction({
   );
 }
 
+/**
+ * The dev host app is a real vite data app with the published SDK installed, so
+ * its CLI and build are the ones an author actually runs.
+ */
+export const dataAppHostAppRoot = () =>
+  `${Cypress.config("projectRoot")}/${DATA_APP_DEV_HOST_APP_DIR}`;
+
+/**
+ * Clears what the resource specs write into the host app. They drive the same
+ * checked-in directory, so each has to start from a clean tree.
+ */
+export function resetDataAppHostAppSources() {
+  const appRoot = dataAppHostAppRoot();
+
+  return cy.task("removeDataAppPaths", {
+    paths: [`${appRoot}/queries`, `${appRoot}/actions`, `${appRoot}/resources`],
+  });
+}
+
+const ENTITY_ID_ALPHABET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+
+/** A new entity ID, as `representations generate-entity-id` makes one for an author. */
+export const newEntityId = () =>
+  Array.from(
+    crypto.getRandomValues(new Uint8Array(21)),
+    (byte) => ENTITY_ID_ALPHABET[byte & 63],
+  ).join("");
+
+/**
+ * A table as serialized YAML references it: database, schema, and table name.
+ * The schema is null for a database without schemas.
+ */
+export type PortableTable = [
+  database: string,
+  schema: string | null,
+  table: string,
+];
+
+type ResourceEntity = Record<string, unknown>;
+
+/** The slug serialization labels an entity with, from its name. */
+const slugOf = (name: string) => name.toLowerCase().replace(/\W+/g, "_");
+
+const serdesMeta = (model: string, entityId: string, name: string) => [
+  { id: entityId, label: slugOf(name), model },
+];
+
+/** The app's `resources/collection.yaml`. */
+export const resourceCollection = (
+  entityId: string,
+  name: string,
+): ResourceEntity => ({
+  name,
+  entity_id: entityId,
+  "serdes/meta": serdesMeta("Collection", entityId, "data_app"),
+});
+
+/**
+ * A card in `resources/cards/`, as an author writes it: a saved question from a
+ * query definition, or a copy of a model or metric from the repository. `stage`
+ * holds the clauses besides the source table.
+ */
+export const resourceCard = ({
+  entityId,
+  name,
+  type,
+  collection,
+  table,
+  stage = {},
+}: {
+  entityId: string;
+  name: string;
+  type: "question" | "model" | "metric";
+  collection: string;
+  table: PortableTable;
+  stage?: ResourceEntity;
+}): ResourceEntity => ({
+  name,
+  type,
+  display: type === "metric" ? "scalar" : "table",
+  entity_id: entityId,
+  collection_id: collection,
+  dataset_query: {
+    "lib/type": "mbql/query",
+    database: table[0],
+    stages: [
+      { "lib/type": "mbql.stage/mbql", "source-table": table, ...stage },
+    ],
+  },
+  visualization_settings: {},
+  "serdes/meta": serdesMeta("Card", entityId, name),
+});
+
+export const resourceImplicitAction = ({
+  entityId,
+  name,
+  kind,
+  model,
+}: {
+  entityId: string;
+  name: string;
+  kind: "row/create" | "row/update" | "row/delete";
+  model: string;
+}): ResourceEntity => ({
+  name,
+  type: "implicit",
+  entity_id: entityId,
+  model_id: model,
+  implicit: [{ kind }],
+  query: [],
+  http: [],
+  parameters: [],
+  parameter_mappings: [],
+  "serdes/meta": serdesMeta("Action", entityId, name),
+});
+
+const fileName = (entity: ResourceEntity) =>
+  `${slugOf(String(entity.name))}_${String(entity.entity_id)}.yaml`;
+
+/** Writes an app's `resources/` as YAML, replacing what was there. */
+export function writeDataAppResources(
+  appRoot: string,
+  {
+    collection,
+    cards = [],
+    actions = [],
+  }: {
+    collection: ResourceEntity;
+    cards?: ResourceEntity[];
+    actions?: ResourceEntity[];
+  },
+) {
+  const resourcesRoot = `${appRoot}/resources`;
+
+  cy.task("removeDataAppPaths", { paths: [resourcesRoot] });
+
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${resourcesRoot}/collection.yaml`]: yaml.dump(collection),
+      ...Object.fromEntries(
+        cards.map((card) => [
+          `${resourcesRoot}/cards/${fileName(card)}`,
+          yaml.dump(card),
+        ]),
+      ),
+      ...Object.fromEntries(
+        actions.map((action) => [
+          `${resourcesRoot}/actions/${fileName(action)}`,
+          yaml.dump(action),
+        ]),
+      ),
+    },
+  });
+}
+
+export function declareDataAppActions(
+  appRoot: string,
+  actions: Array<{
+    exportName: string;
+    sourceActionId: number;
+    copiedActionEntityId: string;
+  }>,
+) {
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${appRoot}/actions/orders.action.ts`]: [
+        'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
+        ...actions.map(
+          ({ exportName, sourceActionId, copiedActionEntityId }) =>
+            `export const ${exportName} = defineAction({ copiedActionEntityId: "${copiedActionEntityId}", action: { id: ${sourceActionId}, parameters: [] } });`,
+        ),
+      ].join("\n"),
+    },
+  });
+}
+
+/** Declares one `defineQuery` per entry, as an app author would, with the ID of its saved question. */
+export function declareDataAppQueries(
+  appRoot: string,
+  declarations: Array<{
+    name: string;
+    tableId: number;
+    savedQuestionEntityId: string;
+    limit?: number;
+    metricId?: number;
+  }>,
+) {
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${appRoot}/queries/orders.query.ts`]: [
+        'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+        ...declarations.map(
+          ({ name, tableId, savedQuestionEntityId, limit, metricId }) => {
+            const clauses = [
+              metricId === undefined
+                ? ""
+                : `, aggregations: [{ type: "metric", id: ${metricId} }]`,
+              limit === undefined ? "" : `, limit: ${limit}`,
+            ].join("");
+            return `export const ${name} = defineQuery({ savedQuestionEntityId: "${savedQuestionEntityId}", source: { type: "table", id: ${tableId} }${clauses} });`;
+          },
+        ),
+      ].join("\n"),
+    },
+  });
+}
+
+/**
+ * Runs the data app CLI the host app has installed, the one an author runs:
+ * `embedding-sdk-react data-apps <command>`. `check-resources` never calls Metabase; `print-resources`
+ * reaches it through `env` (see `dataAppCliEnv`).
+ */
+export function runDataAppCli(command: string, env?: Record<string, string>) {
+  return cy.exec(
+    `cd "${dataAppHostAppRoot()}" && ./node_modules/.bin/embedding-sdk-react data-apps ${command}`,
+    { failOnNonZeroExit: false, timeout: 60_000, env },
+  );
+}
+
+/**
+ * The instance and an admin API key a data-app command reaches Metabase with,
+ * as the environment variables `.env.local` would otherwise hold.
+ */
+export function dataAppCliEnv() {
+  return cy
+    .request("POST", "/api/api-key", {
+      name: `data-app-cli-e2e-${Date.now()}`,
+      group_id: USER_GROUPS.ADMIN_GROUP,
+    })
+    .then(({ body }) => ({
+      DATA_APP_MB_URL: String(Cypress.config("baseUrl")),
+      DATA_APP_MB_API_KEY: String(body.unmasked_key),
+    }));
+}
+
 export const copySyncedDataAppsFixture = () =>
   cy.task("copyDirectory", {
     source: `${Cypress.config("projectRoot")}/e2e/support/assets/example_synced_data_apps`,
@@ -300,8 +538,8 @@ export const copySyncedDataAppsFixture = () =>
 
 /**
  * Pulls `example_synced_data_apps` through a real remote-sync import, so a spec
- * gets real app rows, each with its resource collection and permission group:
- * `good` and `second-app`.
+ * gets real app rows. `good` is served, with its resource collection and an
+ * Orders saved question; `broken-bundle` fails to sync.
  */
 export function pullExampleDataApps() {
   setupGitSync();
@@ -311,7 +549,77 @@ export function pullExampleDataApps() {
   configureGitAndPullChanges("read-write");
 }
 
-/** Puts a user in the app's own permission group, as granting app access does. */
+export function publishDataApp(
+  appRoot: string,
+  slug: string,
+  {
+    initializeRepo = true,
+    expectSynced = true,
+  }: { initializeRepo?: boolean; expectSynced?: boolean } = {},
+) {
+  const appDir = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
+
+  if (initializeRepo) {
+    setupGitSync();
+    copySyncedCollectionFixture();
+  }
+  cy.task("removeDataAppPaths", { paths: [`${appDir}/resources`] });
+  cy.task("copyDirectory", {
+    source: `${appRoot}/resources`,
+    destination: `${appDir}/resources`,
+  });
+  cy.readFile(`${appRoot}/data_app.yaml`).then((manifest: string) =>
+    cy.task("writeDataAppFiles", {
+      files: {
+        [`${appDir}/data_app.yaml`]: manifest,
+        [`${appDir}/dist/index.js`]: "// served by the spec",
+      },
+    }),
+  );
+  commitToRepo(`Publish ${slug}`);
+  configureGitAndPullChanges("read-write");
+
+  // Read from the admin list: an app whose resources were refused has no
+  // collection, and `/api/apps/:slug` answers 409 for it.
+  return cy.request<DataApp[]>("/api/apps").then(({ body: apps }) => {
+    const app = apps.find(({ name }) => name === slug);
+
+    if (!app) {
+      throw new Error(`Data app ${slug} was not synced.`);
+    }
+
+    if (expectSynced) {
+      expect(app.sync_error, `${slug} synced`).to.eq(null);
+    }
+
+    return cy.wrap(app, { log: false });
+  });
+}
+
+/**
+ * Runs the host app's own production build. The SDK's `metabase-resource-check`
+ * plugin runs on `buildStart`, so this is what refuses to bundle an app whose
+ * `resources/` don't back its definitions.
+ */
+export function buildDataAppHostApp() {
+  return cy.exec(`cd "${dataAppHostAppRoot()}" && npm run build`, {
+    failOnNonZeroExit: false,
+    timeout: 180_000,
+  });
+}
+
+export function dataAppPermissionGroupId(slug: string) {
+  return cy.request<DataApp>(`/api/apps/${slug}`).then(({ body }) => {
+    const groupId = body.permission_group_id;
+
+    if (typeof groupId !== "number") {
+      throw new Error(`Data app ${slug} has no permission group.`);
+    }
+
+    return cy.wrap(groupId, { log: false });
+  });
+}
+
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 
