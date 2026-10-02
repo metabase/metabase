@@ -11,7 +11,8 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [dev.deps-graph :as deps-graph]))
+   [dev.deps-graph :as deps-graph]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -168,9 +169,14 @@
   "A function of a cluster returning the `[name anchor]` pairs inside it, sorted by name.
   Only anchors among `modules` count, so a name on an undeclared module never names anything."
   [modules anchors]
-  (let [anchor->name (into {} (comp (filter (comp modules val)) (map (juxt val key))) anchors)]
+  (let [anchor->name (u/for-map [[cluster-name anchor] anchors
+                                 :when (modules anchor)]
+                       [anchor cluster-name])]
     (fn [cluster]
-      (sort (keep (fn [module] (some-> (anchor->name module) (vector module))) cluster)))))
+      (sort (for [module cluster
+                  :let  [cluster-name (anchor->name module)]
+                  :when cluster-name]
+              [cluster-name module])))))
 
 (defn problems
   "Messages for every way the cyclic clusters of `graph` and `anchors` disagree, empty when each cluster holds
