@@ -836,7 +836,7 @@ describe("scenarios > visualizer > basics", () => {
 
     it("visualizer cards should work in public and embedded dashboards", () => {
       cy.signInAsAdmin();
-      createDashboardWithVisualizerDashcards({ enable_embedding: true });
+      createDashboardWithVisualizerDashcards();
 
       cy.log("Visit public dashboard");
       cy.get("@dashboardId")
@@ -849,6 +849,11 @@ describe("scenarios > visualizer > basics", () => {
       ensureVisualizerCardsAreRendered();
 
       cy.log("Visit embedded dashboard");
+      cy.get("@dashboardId").then((dashboardId) => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          enable_embedding: true,
+        });
+      });
       cy.get("@dashboardId").then((dashboard: any) => {
         H.visitEmbeddedPage({
           resource: { dashboard: dashboard },
