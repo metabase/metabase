@@ -7,6 +7,7 @@ import type {
   CollectionId,
   CollectionPermission,
   CollectionPermissionsGraph,
+  CreateApiKeyResponse,
   DataApp,
   WritebackAction,
 } from "metabase-types/api";
@@ -449,13 +450,13 @@ export function runDataAppCli(command: string, env?: Record<string, string>) {
  */
 export function dataAppCliEnv() {
   return cy
-    .request("POST", "/api/api-key", {
+    .request<CreateApiKeyResponse>("POST", "/api/api-key", {
       name: `data-app-cli-e2e-${Date.now()}`,
       group_id: USER_GROUPS.ADMIN_GROUP,
     })
     .then(({ body }) => ({
       DATA_APP_MB_URL: String(Cypress.config("baseUrl")),
-      DATA_APP_MB_API_KEY: String(body.unmasked_key),
+      DATA_APP_MB_API_KEY: body.unmasked_key,
     }));
 }
 

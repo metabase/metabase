@@ -150,6 +150,15 @@ describe("exporting what resources are written from", () => {
     );
   });
 
+  it("fails when the response lacks a requested action", async () => {
+    const appRoot = appWithDefinitions();
+    mockExport(new Response(JSON.stringify({ ...EXPORTED, actions: [] })));
+
+    await expect(exportResources(appRoot)).rejects.toThrow(
+      "The export response has an unexpected body.",
+    );
+  });
+
   it("fails with the response when the export request fails", async () => {
     const appRoot = appWithDefinitions();
     mockExport(new Response("Unauthenticated", { status: 401 }));

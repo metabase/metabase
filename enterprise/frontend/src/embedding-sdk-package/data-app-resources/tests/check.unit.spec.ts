@@ -137,6 +137,15 @@ describe("resource check", () => {
     await expect(checkResources(appRoot)).rejects.toThrow(message);
   });
 
+  it("reports an action no definition names even when a query names the same ID", async () => {
+    const appRoot = checkedApp();
+    writeResource(appRoot, "actions/stale.yaml", actionFile(QUESTION));
+
+    await expect(checkResources(appRoot)).rejects.toThrow(
+      "resources/actions/stale.yaml is an action no definition names. Delete it.",
+    );
+  });
+
   it("reports a question file without an entity ID even when a definition lacks one too", async () => {
     const appRoot = checkedApp();
     fs.appendFileSync(
