@@ -204,9 +204,9 @@
                (scopes-of #{metabot.scope/agent-content-read metabot.scope/agent-query-run}))))
       (testing "an empty grant round-trips as an empty set, not as nil"
         (is (= #{} (scopes-of #{}))))
-      (testing "the unrestricted sentinel round-trips as the keyword, not as a string"
-        (is (= #{::scope/unrestricted} (scopes-of #{::scope/unrestricted}))))
-      (testing "a granted scope that spells the sentinel out cannot become it — the sentinel rides its own claim"
+      (testing "the unrestricted sentinel is dropped: a claim carries only scope strings"
+        (is (= #{} (scopes-of #{::scope/unrestricted}))))
+      (testing "a granted scope that spells the sentinel out stays a plain string"
         (is (= #{(str ::scope/unrestricted)}
                (scopes-of #{(str ::scope/unrestricted)}))))
       (testing "a credential minted before the claim existed fails closed rather than reading as unrestricted"

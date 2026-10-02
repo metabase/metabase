@@ -32,10 +32,13 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at least one read scope"
                               (v2.write/readback #{"agent:content:write"} empty-scopes row [:bookmarked])))))))
 
-(deftest ^:parallel readback-unrestricted-callers-get-the-row-test
-  (testing "the unrestricted sentinel and nil token-scopes (internal callers) both read back in full"
-    (is (= row (v2.write/readback #{::api.scope/unrestricted} ["agent:content:read"] row [:bookmarked])))
+(deftest ^:parallel readback-internal-callers-get-the-row-test
+  (testing "nil token-scopes (internal callers) read back in full"
     (is (= row (v2.write/readback nil ["agent:content:read"] row [:bookmarked])))))
+
+(deftest ^:parallel readback-unrestricted-sentinel-is-not-a-scope-test
+  (testing "the unrestricted sentinel holds no MCP scope, so it gets the minimal ack, not the row"
+    (is (not= row (v2.write/readback #{::api.scope/unrestricted} ["agent:content:read"] row [:bookmarked])))))
 
 (deftest ^:parallel readback-note-pluralizes-test
   (testing "one missing scope reads `scope`, several read `scopes`, and all are named"

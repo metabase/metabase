@@ -53,7 +53,7 @@
   [surface-scopes token-scopes required]
   ;; Held scopes ride along because a client may replace its grant with the challenged scope. They are matched, not
   ;; looked up, so a wildcard grant such as `agent:content:*` keeps the surface scopes it covers. Only scope strings
-  ;; count: nil and the unrestricted sentinel match everything but are never challenged.
+  ;; count.
   (let [held (set (filter string? token-scopes))]
     (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
       (not (some #{required} surface-scopes)) (conj required))))

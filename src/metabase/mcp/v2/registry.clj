@@ -259,8 +259,7 @@
    `initialize` instructions promising that a failed call always names its fix.
 
    `required` is a scope string or a set of alternatives ([[metabase.mcp.scope/matches?]] accepts either);
-   `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its strings, which is not a
-   scope a caller can request, so only strings are listed back."
+   only the scope strings in `token-scopes` are listed back."
   [action required token-scopes]
   (let [held  (sort (filter string? token-scopes))
         needs (if (set? required)

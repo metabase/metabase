@@ -9,7 +9,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -630,7 +629,7 @@
                             "Invalid arguments")))))
 
 (deftest ^:parallel internal-caller-bypasses-scopes-test
-  (testing "GHY-4146: a cookie-session caller (the unrestricted sentinel) is not scope-gated"
+  (testing "GHY-4146: an internal caller (nil token-scopes) is not scope-gated"
     (is (re-find #"not found"
-                 (tool-error (call-tool! :crowberto #{::scope/unrestricted} "metric_write"
+                 (tool-error (call-tool! :crowberto nil "metric_write"
                                          {:method "update" :id 13371337 :name "x"}))))))

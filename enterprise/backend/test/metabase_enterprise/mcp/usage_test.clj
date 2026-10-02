@@ -5,13 +5,12 @@
   :none`); PII is gated by `analytics-pii-retention-enabled` (itself `:audit-app`-gated)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.usage :as usage]
    [metabase.mcp.v2.registry :as v2.registry]
    [metabase.mcp.v2.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -333,19 +332,18 @@
   (cond-> {:jsonrpc "2.0" :method method :params params}
     id (assoc :id id)))
 
-(deftest ^:parallel three-write-points-integration-test
+(deftest three-write-points-integration-test
   (testing "initialize -> tools/call -> DELETE records session, tool-call, and ended_at"
     ;; Collection runs on any EE instance (:feature :none), so no premium feature is needed here.
     (let [crowberto (mt/user->id :crowberto)
           ;; Unique per run so parallel tests can't collide: the version rides onto the session and,
           ;; via the denormalized identity, onto every tool-call row — a precise lookup/cleanup key.
           ver       (str (random-uuid))
-          init-resp (client/client-full-response
-                     (test.users/username->token :crowberto)
-                     :post "mcp"
-                     (jsonrpc "initialize"
-                              {:clientInfo {:name "claude-ai" :version ver} :capabilities {}}
-                              1))
+          init-resp (mcp.tu/client-full-response! :crowberto
+                                                  :post "mcp"
+                                                  (jsonrpc "initialize"
+                                                           {:clientInfo {:name "claude-ai" :version ver} :capabilities {}}
+                                                           1))
           sid       (get-in init-resp [:headers "Mcp-Session-Id"])]
       (try
         (testing "initialize writes exactly one session row with handshake identity"
@@ -357,15 +355,14 @@
             (is (= crowberto (:user_id row)))
             (is (nil? (:ended_at row)))))
         ;; complete the handshake, then call a tool
-        (client/client-full-response (test.users/username->token :crowberto)
-                                     :post "mcp"
-                                     {:request-options {:headers {"mcp-session-id" sid}}}
-                                     (jsonrpc "notifications/initialized" {} nil))
-        (let [call-resp (client/client-full-response
-                         (test.users/username->token :crowberto)
-                         :post "mcp"
-                         {:request-options {:headers {"mcp-session-id" sid}}}
-                         (jsonrpc "tools/call" {:name "test_echo" :arguments {}} 2))]
+        (mcp.tu/client-full-response! :crowberto
+                                      :post "mcp"
+                                      {:request-options {:headers {"mcp-session-id" sid}}}
+                                      (jsonrpc "notifications/initialized" {} nil))
+        (let [call-resp (mcp.tu/client-full-response! :crowberto
+                                                      :post "mcp"
+                                                      {:request-options {:headers {"mcp-session-id" sid}}}
+                                                      (jsonrpc "tools/call" {:name "test_echo" :arguments {}} 2))]
           (testing "successful tools/call writes a success row with identity denormalized on it"
             (is (= 200 (:status call-resp)))
             (is (false? (boolean (get-in call-resp [:body :result :isError]))))
@@ -378,11 +375,10 @@
                 (is (= "claude" (:client_name row)))
                 (is (= ver (:client_version row)))))))
         (testing "an unknown tool records a status=error row and the error propagates to the client"
-          (let [err-resp (client/client-full-response
-                          (test.users/username->token :crowberto)
-                          :post "mcp"
-                          {:request-options {:headers {"mcp-session-id" sid}}}
-                          (jsonrpc "tools/call" {:name "no_such_tool" :arguments {}} 3))]
+          (let [err-resp (mcp.tu/client-full-response! :crowberto
+                                                       :post "mcp"
+                                                       {:request-options {:headers {"mcp-session-id" sid}}}
+                                                       (jsonrpc "tools/call" {:name "no_such_tool" :arguments {}} 3))]
             ;; The bare alias now serves v2, whose registry rejects an unknown tool before dispatch:
             ;; that is `{:error ...}`, not a handler result carrying `:isError`.
             (is (boolean (or (get-in err-resp [:body :error])
@@ -397,10 +393,9 @@
           ;; answers 405 instead, so nothing on this path ends the session row. `record-mcp-session-end!`
           ;; is now callerless -- tracked separately rather than wired up here, since choosing where a
           ;; v2 session ends is a design question, not a test fix.
-          (is (= 405 (:status (client/client-full-response
-                               (test.users/username->token :crowberto)
-                               :delete "mcp"
-                               {:request-options {:headers {"mcp-session-id" sid}}})))))
+          (is (= 405 (:status (mcp.tu/client-full-response! :crowberto
+                                                            :delete "mcp"
+                                                            {:request-options {:headers {"mcp-session-id" sid}}})))))
         (finally
           (cleanup-calls! :client_version ver)
           (cleanup! sid))))))

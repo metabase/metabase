@@ -64,12 +64,9 @@
    Credentials minted before the scope claim existed decode to an empty scope set, so a rolling deploy
    degrades a credential to the routes that cost no scope rather than to full access.
 
-   `::scope/unrestricted` in the claim satisfies every route, matching `enforce-scope` and
-   `ensure-scopes-checked` rather than making this table the one place the sentinel means less. It only
-   appears when the minting MCP session was itself unrestricted (a cookie or API-key session, or a bearer token
-   carrying `mb:full`), so the credential reaches nothing its holder could not already reach with that session."
+   Only literal scopes count: credentials are minted only from OAuth MCP sessions, whose scopes are literal MCP
+   scopes, so the unrestricted sentinel satisfies nothing here."
   [method uri {:keys [token-scopes]}]
   (when-let [entry (surface-entry method uri)]
     (boolean (or (nil? (val entry))
-                 (contains? token-scopes ::scope/unrestricted)
-                 (scope/scope-satisfied? token-scopes (val entry))))))
+                 (scope/scope-satisfied? (into #{} (filter string?) token-scopes) (val entry))))))

@@ -137,8 +137,8 @@
    to native passes these, `query_handle` included — holding a handle is not proof the gates were
    spent (`construct_native_query` mints under `agent:sql:construct` and never consults the kill
    switch, and a handle resolves on `core_session.user_id`, so any credential of that user can spend
-   one minted by another). No-op on the scope half for unscoped callers (cookie sessions bind the
-   unrestricted sentinel, which matches everything)."
+   one minted by another). No-op on the scope half for internal callers, which pass nil
+   scopes."
   [token-scopes]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (common/throw-insufficient-scope!
