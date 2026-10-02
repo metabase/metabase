@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import {
   getShallowTableFieldIds,
   getShallowTableForeignKeys,
@@ -24,7 +25,6 @@ import { AbsoluteContainer, Fade } from "../MetadataInfo.styled";
 
 import { ColumnCount } from "./ColumnCount";
 import { type ConnectedTable, ConnectedTables } from "./ConnectedTables";
-import S from "./TableInfo.module.css";
 
 export type TableInfoProps = {
   className?: string;
@@ -130,13 +130,18 @@ export function TableInfoInner({
   });
 
   return (
-    <Stack className={cx(S.root, className)} pos="relative" gap="xxxs" p="lg">
+    <Stack
+      className={cx(CS.overflowAuto, className)}
+      pos="relative"
+      gap="xxxs"
+      p="lg"
+    >
       {description ? (
         <Description>{description}</Description>
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <Stack className={S.metadata} pos="relative" gap="sm" fz="sm">
+      <Stack className={CS.overflowHidden} pos="relative" gap="sm" fz="sm">
         <Fade visible={!hasFetchedMetadata}>
           <AbsoluteContainer>
             <Loader size="md" color="core-brand" />
