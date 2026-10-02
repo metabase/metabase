@@ -23,7 +23,7 @@ describe("Metabot Query Builder", () => {
     H.setupAnthropicLlmProvider();
   });
 
-  it("should render the agent's reply inline without leaving the page", () => {
+  it("should render the agent's reply inline, support clicking suggested prompts, and handle errors", () => {
     cy.visit("/question/ask");
     H.metabotChatInput().should("be.visible");
 
@@ -41,9 +41,8 @@ describe("Metabot Query Builder", () => {
 
     // ...and we move to the conversation's permalink
     cy.url().should("include", "/metabot/conversation/");
-  });
 
-  it("should support clicking suggested prompts", () => {
+    cy.log("suggested prompts");
     // mock suggested prompts
     cy.intercept("GET", "/api/metabot/metabot/*/prompt-suggestions*", {
       prompts: [{ prompt: "Show me all orders" }],
@@ -64,9 +63,8 @@ describe("Metabot Query Builder", () => {
     cy.findByTestId("metabot-inline-chart").should("be.visible");
     cy.findByTestId("qb-header").should("not.exist");
     cy.url().should("include", "/metabot/conversation/");
-  });
 
-  it("should handle errors", () => {
+    cy.log("errors");
     // visit AI exploration page
     cy.visit("/question/ask");
     H.metabotChatInput().should("be.visible");
