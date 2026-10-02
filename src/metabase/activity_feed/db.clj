@@ -18,7 +18,7 @@
               :id :name :collection_id :description :display
               :dataset_query :type :archived :card_schema
               ;; required alongside :card_schema for the Card schema upgrade
-              :result_metadata :dimensions :dimension_mappings
+              :entity_id :result_metadata :dimensions :dimension_mappings
               :collection.authority_level [:collection.name :collection_name]
               [:dashboard.name :dashboard_name] :dashboard_id]
              {:where     [:in :report_card.id ids]

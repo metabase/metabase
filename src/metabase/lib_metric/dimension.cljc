@@ -159,7 +159,10 @@
                  (let [persisted-dim (find-persisted-by-target (:target mapping)
                                                                persisted-mappings
                                                                persisted-dims-by-id)
-                       dim-id        (or (:id persisted-dim) (random-uuid-str))
+                       ;; A computed dimension arrives with an id already derived from its entity and target, and
+                       ;; so is stable across recomputation; the random fallback only covers callers that build
+                       ;; pairs by hand without one.
+                       dim-id        (or (:id persisted-dim) (:id dimension) (random-uuid-str))
                        merged-dim    (-> dimension
                                          (assoc :id dim-id)
                                          (assoc :status :status/active)

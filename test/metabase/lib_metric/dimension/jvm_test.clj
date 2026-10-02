@@ -38,7 +38,7 @@
           table  (lib.metadata/table (mt/metadata-provider) (mt/id :venues))
           query  (-> (lib/query (mt/metadata-provider) table)
                      (lib/aggregate (lib/count)))
-          pairs  (dimension.jvm/compute-dimension-pairs mp query)]
+          pairs  (dimension.jvm/compute-dimension-pairs mp "owner" query)]
       (is (seq pairs) "should produce at least one dimension pair")
       (testing "each pair has :dimension and :mapping"
         (doseq [pair pairs]
@@ -80,7 +80,7 @@
             card-meta (lib.metadata/card db-mp (:id model))
             query     (-> (lib/query db-mp card-meta)
                           (lib/aggregate (lib/count)))
-            pairs     (dimension.jvm/compute-dimension-pairs mp query)]
+            pairs     (dimension.jvm/compute-dimension-pairs mp "owner" query)]
         (is (seq pairs)
             "should resolve dimensions from the card's result_metadata")
         (is (= #{"ID" "NAME" "CATEGORY_ID"}
@@ -93,7 +93,7 @@
           table  (lib.metadata/table (mt/metadata-provider) (mt/id :venues))
           query  (-> (lib/query (mt/metadata-provider) table)
                      (lib/aggregate (lib/count)))
-          pairs  (dimension.jvm/compute-dimension-pairs mp query)
+          pairs  (dimension.jvm/compute-dimension-pairs mp "owner" query)
           cat-dim (first (filter #(= "CATEGORY_ID" (get-in % [:dimension :name])) pairs))]
       (is (some? cat-dim) "CATEGORY_ID dimension should exist")
       (is (some? (get-in cat-dim [:dimension :has-field-values]))

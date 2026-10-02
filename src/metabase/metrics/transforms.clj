@@ -34,6 +34,10 @@
            [:default-temporal-unit {:optional true} [:or :string :keyword]]
            [:default               {:optional true} [:maybe :boolean]]]]
   (cond-> dim
+    ;; `:lib/source` arrives as a keyword on a computed dimension and as a string once it has been through the
+    ;; JSON column. Keywordizing it here, like every other enum below, is what keeps a metric's serialization the
+    ;; same before and after the backfill is persisted.
+    (:lib/source dim)            (update :lib/source keyword)
     (:status dim)                (update :status keyword)
     (:effective-type dim)        (update :effective-type keyword)
     (:semantic-type dim)         (update :semantic-type keyword)

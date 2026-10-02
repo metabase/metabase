@@ -689,6 +689,10 @@
 ;; implicitly-joined dimension set, so every existing mapping still corresponds to a live dimension.
 ;; Only un-curated metrics (`:dimensions` still nil) are touched; once a metric is curated (any write),
 ;; its `card_schema` is bumped to current and this upgrade no longer runs, so removals stay sticky.
+;;
+;; This runs on every read of an un-curated metric and persists nothing, so the dimension ids it hands out have to
+;; be the same every time — hence the `:entity_id` seed, and hence `:entity_id`'s place in
+;; [[card-schema/schema-upgrade-triggers]]. See `metabase.lib-metric.dimension.jvm/dimension-id`.
 (defmethod upgrade-card-schema-to 24
   [card _schema-version]
   (cond
@@ -701,7 +705,8 @@
     ;; If the `:dimensions` are unset, populate them with the present representation but with pre-curation semantics:
     ;; all implicitly joinable columns become dimensions, not just "available" dimensions.
     :else
-    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
+    (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:entity_id card)
+                                                                                      (:dataset_query card))]
       (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))))
 
 (defn- schema-governed-select?
