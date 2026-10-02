@@ -30,6 +30,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -1096,7 +1097,7 @@
   (if (= "default" unit)
     literal
     (let [parsed  (u.date/parse literal)
-          t       (u.date/truncate parsed (keyword unit))
+          t       (u.date/truncate (lib-be/time-config) parsed (keyword unit))
           ;; a `Z`-suffixed literal parses to a `ZonedDateTime`, which renders back as
           ;; `2025-06-01T00:00Z[UTC]` - that would reach the `/question#` hash and the LLM-facing
           ;; export verbatim, so a rewrite that is not ISO is dropped rather than emitted

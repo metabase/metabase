@@ -26,6 +26,7 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -163,7 +164,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :write_data_details :admin_details :schedules))
+                   (dissoc :details :write_data_details :admin_details :initial_sync_error :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -397,10 +398,13 @@
     (testing "create a db with default scan options"
       (with-db-scheduler-setup!
         (with-test-driver-available!
-          (let [resp (mt/user-http-request :crowberto :post 200 "database"
-                                           {:name    (mt/random-name)
-                                            :engine  (u/qualified-name ::test-driver)
-                                            :details {:db "my_db"}})
+          ;; The create event starts a sync on another thread. If it gets as far as the dbms-version step before the
+          ;; row is read back, `dbms_version` is no longer its default, so keep it from running.
+          (let [resp (mt/with-dynamic-fn-redefs [quick-task/submit-task! (constantly nil)]
+                       (mt/user-http-request :crowberto :post 200 "database"
+                                             {:name    (mt/random-name)
+                                              :engine  (u/qualified-name ::test-driver)
+                                              :details {:db "my_db"}}))
                 db   (t2/select-one :model/Database (:id resp))]
             (is (malli= [:merge
                          (into [:map] (m/map-vals (fn [v] [:= {} v]) (mt/object-defaults :model/Database)))
@@ -873,7 +877,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1200,7 +1204,7 @@
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details :write_data_details :admin_details))]
+                                (disj :details :write_data_details :admin_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -1812,6 +1816,41 @@
                 "Sync-now must complete the sync even when disable-auto-sync is on")
             (is (pos? (t2/count :model/Table :db_id db-id))
                 "Sync-now must populate tables even when disable-auto-sync is on")))))))
+
+(deftest sync-schema-failure-cause-is-readable-through-api-test
+  (testing (str "GHY-3856: when Sync-now fails because the metadata fetch throws (e.g. Athena credentials lacking "
+                "glue:GetDatabases), GET /api/database/:id tells the admin why, not only that initial sync aborted")
+    (let [details (:details (mt/db))
+          cause   "User: arn:aws:iam::123:user/x is not authorized to perform: glue:GetDatabases"]
+      (mt/with-temporary-setting-values [disable-auto-sync true]
+        (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
+                                                    :details             details
+                                                    :initial_sync_status "incomplete"}]
+          (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (fn [_] (throw (ex-info cause {})))
+                                      quick-task/submit-task!    (fn [f]
+                                                                   (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                     (try (f) (catch Throwable _))))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+          (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+            (is (= "aborted" (:initial_sync_status response)))
+            (testing "the admin page reads the failure cause from the database"
+              (is (str/includes? (str (:initial_sync_error response)) "glue:GetDatabases"))))
+          (testing "GET /api/database, which the sync status panel reads, carries the cause too"
+            (is (str/includes? (->> (mt/user-http-request :crowberto :get 200 "database")
+                                    :data
+                                    (some #(when (= db-id (:id %)) %))
+                                    :initial_sync_error
+                                    str)
+                               "glue:GetDatabases"))))))))
+
+(deftest initial-sync-error-hidden-without-write-perms-test
+  (testing "GHY-3856: the sync failure cause can name connection details, so only users who can edit the database see it"
+    (mt/with-temp [:model/Database {db-id :id} {:initial_sync_status "aborted"
+                                                :initial_sync_error  "boom"}]
+      (is (= "boom"
+             (:initial_sync_error (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id)))))
+      (is (not (contains? (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))
+                          :initial_sync_error))))))
 
 (deftest sync-schema-does-not-refetch-database-per-field-test
   (testing (str "GHY-3289: POST /api/database/:id/sync_schema must not read the Database row from the app DB once "
