@@ -182,4 +182,13 @@ describe("file-paths.yaml", () => {
   ])("runs CI-script tests when %s changes", (file) => {
     expect(matches("ci_scripts", file)).toBe(true);
   });
+
+  it("runs the module cycles test when a cluster is named", () => {
+    expect(
+      matches(
+        "project_backend_checks",
+        ".clj-kondo/config/modules/cycle-clusters.edn",
+      ),
+    ).toBe(true);
+  });
 });
