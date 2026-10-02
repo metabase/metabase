@@ -79,3 +79,10 @@
   metabase-enterprise.api-keys.usage
   [_request _response _extra-info]
   nil)
+
+(defenterprise flush-pending-writes!
+  "Synchronously flush any pending [[record-api-key-usage!]] writes instead of waiting for the
+  scheduled interval. OSS no-op."
+  metabase-enterprise.api-keys.usage
+  []
+  nil)
