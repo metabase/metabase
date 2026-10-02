@@ -12,6 +12,7 @@
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
    [dev.module-cycle-names :as cycle-names]
+   [dev.module-graph :as module-graph]
    [hooks.common.modules :as modules]
    [metabase.util :as u]))
 
@@ -104,7 +105,7 @@
   - `:anchor-left`, a name whose anchor is in no cycle: `:name`, `:anchor`
   - `:undeclared-anchor`, a name anchored on a module not among `modules`: `:name`, `:anchor`"
   [graph modules anchors]
-  (let [components   (deps-graph/cyclic-components graph)
+  (let [components   (module-graph/cyclic-components graph)
         clusters     (map (juxt identity (names-in modules anchors)) components)
         in-any       (into #{} cat components)
         undeclared   (into #{} (remove modules) (vals anchors))
@@ -228,7 +229,7 @@
   (let [{:keys [config graph modules anchors]} (repository)
         named-in     (names-in modules anchors)
         ;; Unnamed clusters first: they are the ones someone is here to name.
-        clusters     (sort-by #(boolean (seq (named-in %))) (deps-graph/cyclic-components graph))
+        clusters     (sort-by #(boolean (seq (named-in %))) (module-graph/cyclic-components graph))
         placeholders (proposals graph modules anchors (remove (comp seq named-in) clusters))]
     (doseq [cluster clusters
             :let    [named (named-in cluster)]]
