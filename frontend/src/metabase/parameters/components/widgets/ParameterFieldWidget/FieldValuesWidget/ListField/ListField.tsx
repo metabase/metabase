@@ -6,14 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
-import {
-  Box,
-  Checkbox,
-  Ellipsified,
-  Input,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { Box, Checkbox, Input, Text, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
@@ -209,10 +202,9 @@ export const ListField = ({
         {filteredOptions.map((option, index) => (
           <Box component="li" key={index} py="sm" px="xxxs">
             <Checkbox
-              classNames={{ labelWrapper: S.labelWrapper }}
               data-testid={`${option[0]}-filter-value`}
               checked={selectedValues.has(option[0])}
-              label={<Ellipsified>{optionRenderer(option)}</Ellipsified>}
+              label={optionRenderer(option)}
               onChange={() => handleToggleOption(option[0])}
             />
           </Box>

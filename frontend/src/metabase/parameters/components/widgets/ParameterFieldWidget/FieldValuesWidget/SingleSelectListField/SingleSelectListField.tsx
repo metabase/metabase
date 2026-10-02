@@ -6,7 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
-import { Box, Ellipsified, Input, TextInput } from "metabase/ui";
+import { Box, Input, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
@@ -191,7 +191,7 @@ export const SingleSelectListField = ({
                 onClick={() => onClickOption(option[0])}
                 onMouseDown={(e) => e.preventDefault()}
               >
-                <Ellipsified>{optionRenderer(option)}</Ellipsified>
+                {optionRenderer(option)}
               </Box>
             </li>
           );
