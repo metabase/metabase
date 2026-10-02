@@ -99,21 +99,32 @@ export const OAuthClientsTable = ({
       // a name sorts A-Z on the first click; only the dates and counts below read better largest-first
       sortDescFirst: false,
       accessorFn: (client) => getOAuthClientName(client),
-      cell: ({ row }) => (
-        <Stack gap={0} miw={0}>
-          <Flex gap="sm" align="center" miw={0}>
-            <Ellipsified>{getOAuthClientName(row.original)}</Ellipsified>
-            {row.original.current && (
-              <Badge variant="light" color="brand" size="xs" flex="0 0 auto">
-                {t`This client`}
-              </Badge>
-            )}
-          </Flex>
-          <Text size="sm" c="text-secondary" lh="1rem" truncate>
-            {row.original.client_id}
-          </Text>
-        </Stack>
-      ),
+      cell: ({ row }) => {
+        const name = getOAuthClientName(row.original);
+        return (
+          <Stack gap={0} miw={0}>
+            <Flex gap="sm" align="center" miw={0}>
+              <Ellipsified tooltip={name} alwaysShowTooltip>
+                {name}
+              </Ellipsified>
+              {row.original.current && (
+                <Badge variant="light" color="brand" size="xs" flex="0 0 auto">
+                  {t`This client`}
+                </Badge>
+              )}
+            </Flex>
+            {/* `fz`, not `size`: Ellipsified forwards text props over its own `fz="inherit"` */}
+            <Ellipsified
+              tooltip={row.original.client_id}
+              fz="sm"
+              c="text-secondary"
+              lh="1rem"
+            >
+              {row.original.client_id}
+            </Ellipsified>
+          </Stack>
+        );
+      },
     };
 
     const redirectUrisColumn: TreeTableColumnDef<OAuthClientRow> = {

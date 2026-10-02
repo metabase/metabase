@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { DateTime } from "metabase/common/components/DateTime";
 import {
   DetailsRow,
   DetailsTable,
   SidebarSection,
 } from "metabase/monitor/components/DetailSidebar";
+import { MonitorDateValue } from "metabase/monitor/components/MonitorDateValue";
 import { Box, Stack, Text } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 
@@ -13,12 +13,6 @@ import { getRegistrationTypeLabel, getRevokerName } from "../utils";
 
 import S from "./OAuthClientDetailSidebar.module.css";
 import type { ClientDetailsProps } from "./types";
-
-const DateValue = ({ value }: { value: string }) => (
-  <Text size="md" c="text-primary">
-    <DateTime value={value} unit="minute" />
-  </Text>
-);
 
 /** One value per line, so a client with several redirect URIs or scopes stays readable. */
 const ListValue = ({ values }: { values: readonly string[] }) =>
@@ -77,7 +71,7 @@ export const ClientDetails = ({ client, detail }: ClientDetailsProps) => {
             label={t`Last used`}
             value={
               client.last_used_at ? (
-                <DateValue value={client.last_used_at} />
+                <MonitorDateValue value={client.last_used_at} />
               ) : (
                 t`Never used`
               )
@@ -85,14 +79,14 @@ export const ClientDetails = ({ client, detail }: ClientDetailsProps) => {
           />
           <DetailsRow
             label={t`Registered`}
-            value={<DateValue value={client.created_at} />}
+            value={<MonitorDateValue value={client.created_at} />}
           />
           {isRevoked && (
             <DetailsRow
               label={t`Revoked`}
               value={
                 client.revoked_at ? (
-                  <DateValue value={client.revoked_at} />
+                  <MonitorDateValue value={client.revoked_at} />
                 ) : (
                   EMPTY_CELL_PLACEHOLDER
                 )
