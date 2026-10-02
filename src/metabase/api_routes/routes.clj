@@ -226,7 +226,7 @@
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                (+auth metabase.channel.rest.api/email-routes)
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
-   "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
+   "/embed-mcp"            metabase.mcp.callback-api/routes
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/embedding-hub"        metabase.embedding-hub.api/routes
    "/embedding-sdk"        (+auth metabase.embedding-rest.api/sdk-routes)
