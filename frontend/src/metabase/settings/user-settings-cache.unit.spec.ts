@@ -1,8 +1,8 @@
-import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
+import { waitFor } from "__support__/ui";
 import { Api, userApi } from "metabase/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
