@@ -14,6 +14,7 @@ import {
   FixedSizeIcon,
   Group,
   Stack,
+  Text,
   Tooltip,
 } from "metabase/ui";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
@@ -192,7 +193,7 @@ function InfoSection({ finding, extraInfo }: InfoSectionProps) {
         {description != null && description.length > 0 ? (
           <Box className={S.wrap}>{description}</Box>
         ) : (
-          <Box c="text-secondary">{t`No description`}</Box>
+          <Text c="text-secondary">{t`No description`}</Text>
         )}
       </InfoSectionItem>
       {creator != null && (
@@ -209,7 +210,7 @@ function InfoSection({ finding, extraInfo }: InfoSectionProps) {
         {created_at != null ? (
           <DateTime value={created_at} unit="day" />
         ) : (
-          <Box c="text-secondary">{t`Unknown`}</Box>
+          <Text c="text-secondary">{t`Unknown`}</Text>
         )}
       </InfoSectionItem>
       {view_count != null && (
@@ -234,9 +235,9 @@ type InfoSectionItemProps = {
 function InfoSectionItem({ label, children }: InfoSectionItemProps) {
   return (
     <Stack className={S.section} p="md" gap="xs">
-      <Box className={S.wrap} c="text-secondary" fz="sm" lh="h5">
+      <Text className={S.wrap} c="text-secondary" fz="sm" lh="h5">
         {label}
-      </Box>
+      </Text>
       <Group lh="h4" justify="space-between" wrap="nowrap">
         {children}
       </Group>

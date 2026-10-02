@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
 import { msgid, ngettext, t } from "ttag";
 
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
@@ -100,7 +100,7 @@ export function ContentDiagnosticsBulkTrashBar({
 }: ContentDiagnosticsBulkTrashBarProps) {
   const dispatch = useDispatch();
   const trashFindings = useBulkTrashFindings();
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isConfirmOpen, { open, close }] = useDisclosure();
 
   const count = selectedFindings.length;
   const transformCount = selectedFindings.filter(
@@ -111,14 +111,14 @@ export function ContentDiagnosticsBulkTrashBar({
 
   const handleConfirm = async () => {
     if (selectedFindings.length === 0) {
-      setIsConfirmOpen(false);
+      close();
       return;
     }
     const { total, failedFindings } = await trashFindings(
       selectedFindings,
       tab,
     );
-    setIsConfirmOpen(false);
+    close();
 
     if (failedFindings.length > 0) {
       dispatch(
@@ -160,7 +160,7 @@ export function ContentDiagnosticsBulkTrashBar({
               )}
             </Text>
             <Flex gap="sm" align="center">
-              <BulkActionButton danger onClick={() => setIsConfirmOpen(true)}>
+              <BulkActionButton danger onClick={open}>
                 {trashCopy.actionLabel}
               </BulkActionButton>
             </Flex>
@@ -173,7 +173,7 @@ export function ContentDiagnosticsBulkTrashBar({
         message={trashCopy.message}
         confirmButtonText={trashCopy.confirmLabel}
         onConfirm={handleConfirm}
-        onClose={() => setIsConfirmOpen(false)}
+        onClose={close}
       />
     </>
   );

@@ -396,7 +396,7 @@ describe("ImbalancedContentPage", () => {
       await waitForListToLoad();
 
       const header = screen.getByRole("columnheader", {
-        name: "Content count",
+        name: /^Content count/,
       });
       expect(header).not.toHaveAttribute("aria-sort");
       await userEvent.click(header);

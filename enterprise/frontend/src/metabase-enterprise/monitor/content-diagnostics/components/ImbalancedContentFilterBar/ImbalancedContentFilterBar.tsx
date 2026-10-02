@@ -34,7 +34,7 @@ export function ImbalancedContentFilterBar({
     <Group gap="md" align="center" wrap="nowrap">
       <DiagnosticsSearchInput query={query} onQueryChange={onQueryChange} />
       <ImbalancedContentFilterPicker
-        availableTypes={[...config.entityTypes]}
+        availableTypes={config.entityTypes}
         filterOptions={filterOptions}
         isDisabled={isLoading}
         hasDefaultOptions={hasDefaultFilterOptions}

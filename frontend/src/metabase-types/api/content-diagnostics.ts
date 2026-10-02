@@ -156,8 +156,6 @@ export type ContentDiagnosticsBaseFindingDetails = {
   view_count?: number;
 };
 
-// The diagnostics API returns numeric entity ids; collection root and dashboard
-// slug identifiers are not part of this wire contract.
 export type ContentDiagnosticsEntityId =
   | CardId
   | Extract<CollectionId, number>

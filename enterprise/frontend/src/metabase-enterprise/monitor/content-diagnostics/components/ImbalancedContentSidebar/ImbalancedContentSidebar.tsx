@@ -1,6 +1,5 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { Box } from "metabase/ui";
 import type {
   ContentDiagnosticsImbalancedFinding,
   ContentDiagnosticsImbalancedFindingType,
@@ -39,7 +38,7 @@ export function ImbalancedContentSidebar({
       onClose={onClose}
       extraInfo={{
         label: t`Content count`,
-        children: <Box>{contentCountLabel}</Box>,
+        children: contentCountLabel,
       }}
     />
   );

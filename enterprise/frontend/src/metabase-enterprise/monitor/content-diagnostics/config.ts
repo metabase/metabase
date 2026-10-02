@@ -74,8 +74,8 @@ type CreateContentDiagnosticsConfigOptions<
   TThresholdUserParam extends string,
 > = {
   key: TKey;
-  entityTypes: readonly TEntityType[];
-  sortColumns: readonly TSortColumn[];
+  entityTypes: TEntityType[];
+  sortColumns: TSortColumn[];
   threshold?: ThresholdConfig<TThresholdParam, TThresholdUserParam>;
 };
 
@@ -413,7 +413,6 @@ const imbalancedContentConfigs = {
   crowded: createContentDiagnosticsConfig({
     key: "crowded",
     entityTypes: CROWDED_ENTITY_TYPES,
-    // Counts are measured in different units across crowded findings.
     sortColumns: CROWDED_SORT_COLUMNS,
   }),
 };

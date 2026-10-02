@@ -144,7 +144,7 @@ export function ContentDiagnosticsContent<
     (finding) => finding.id === selectedFindingId,
   );
   const selectedFindings = findings.filter(
-    (finding) => rowSelection[String(finding.id)],
+    (finding) => rowSelection[finding.id],
   );
 
   useEffect(() => {
@@ -280,7 +280,7 @@ export function ContentDiagnosticsContent<
               selectedFindings={selectedFindings}
               onSettled={(failedIds) =>
                 setRowSelection(
-                  Object.fromEntries(failedIds.map((id) => [String(id), true])),
+                  Object.fromEntries(failedIds.map((id) => [id, true])),
                 )
               }
             />

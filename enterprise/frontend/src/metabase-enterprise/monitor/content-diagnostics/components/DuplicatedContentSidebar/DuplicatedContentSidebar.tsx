@@ -3,7 +3,6 @@ import { c, msgid, ngettext, t } from "ttag";
 import { Link } from "metabase/router";
 import {
   Anchor,
-  Box,
   Card,
   FixedSizeIcon,
   Group,
@@ -64,9 +63,9 @@ function DuplicatesSection({
 
   return (
     <Stack gap="sm" role="region" aria-label={t`Duplicates`}>
-      <Box c="text-secondary" fz="sm" lh="h5">
+      <Text c="text-secondary" fz="sm" lh="h5">
         {title}
-      </Box>
+      </Text>
       {duplicateEntities.length > 0 && (
         <Card p={0} shadow="none" withBorder>
           {duplicateEntities.map((entity) => (
