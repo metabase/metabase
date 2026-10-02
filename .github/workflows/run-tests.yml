@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       base:
-        description: Branch to compare against. Empty means the default branch. Pull request runs use the PR base.
+        description: Branch to compare against, to test only what changed. Empty runs the full suite.
         type: string
         default: ""
 
@@ -29,6 +29,9 @@ jobs:
   # Only the lowest unmerged PR of a stack runs CI: it is the one whose base
   # ref is the stack base. Every PR above it is force-skipped and gets tested
   # once it reaches the bottom of the stack.
+  #
+  # A run started by hand runs everything, unless it passes `base` to test only
+  # what changed against that branch.
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -48,6 +51,7 @@ jobs:
         env:
           VERDICT: >-
             ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
+            || github.event_name == 'workflow_dispatch' && inputs.base == '' && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
             || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
@@ -305,10 +309,8 @@ jobs:
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.backend_all != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-      # Without it, a run started by hand compares the branch with itself and skips the drivers it touched.
-      base-ref: >-
-        ${{ github.event_name == 'workflow_dispatch' &&
-        (inputs.base || github.event.repository.default_branch) || '' }}
+      # Without it, a narrowed run started by hand compares the branch with itself and skips the drivers it touched.
+      base-ref: ${{ inputs.base }}
 
   frontend-tests:
     needs: [should-run, files-changed, create-test-plan]
