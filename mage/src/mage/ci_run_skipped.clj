@@ -101,25 +101,26 @@
 
 (defn poll
   "Call `f` until it returns non-nil, sleeping for each of `pauses` seconds in turn.
-  Returns nil if it never does; `what` names the thing being waited for in progress messages."
-  [what pauses f]
+  Returns nil if it never does."
+  [pauses f]
   (loop [pauses pauses]
     (or (f)
         (when-let [[wait & more] (seq pauses)]
-          (info (format "Waiting %ss for %s to decide." wait what))
+          (info (format "Waiting %ss for a verdict." wait))
           (Thread/sleep (long (* 1000 wait)))
           (recur more)))))
 
 (defn- decided-pr-run
   "The latest PR run for `sha` with its `:verdict`, waiting about a minute for a fresh push to get one."
   [branch sha]
-  (poll "the PR run" [10 20 30]
+  (poll [10 20 30]
         #(when-let [run (first (runs branch sha "pull_request"))]
            (some->> (verdict (:databaseId run)) (assoc run :verdict)))))
 
 (defn next-step
   "What to do given the PR run (with its `:verdict`) and the runs started by hand for the same commit.
-  Only a run that has not finished is reused. Returns one of:
+  Only a run that has not finished is reused.
+  Returns one of:
 
     {:step :not-skipped,     :run pr-run}
     {:step :already-started, :run started-run}
@@ -139,13 +140,13 @@
   ["workflow" "run" workflow "-R" repo "--ref" branch "-f" (str "base=" base)])
 
 (defn- start-run!
-  "Start the workflow and return the new run's URL, or the workflow's run list when `gh` prints none."
+  "Start the workflow and return the new run's URL."
   [branch base]
   (let [hint {:pattern #"(?i)unexpected inputs"
               :text    (str "The branch's " workflow " predates the `base` input; rebase it.")}
         out  (apply gh {:hint hint} (dispatch-args branch base))]
     (or (re-find #"https://github\.com/\S+/actions/runs/\d+" out)
-        (format "https://github.com/%s/actions/workflows/%s" repo workflow))))
+        (fail! 3 (str "gh printed no run URL: " out)))))
 
 (defn ci-run-skipped!
   "Print a \"Run tests\" run URL for the current branch.
