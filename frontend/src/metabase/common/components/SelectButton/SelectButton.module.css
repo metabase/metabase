@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   min-width: 104px;
-  min-height: 2.5rem;
+  min-height: 2rem;
   padding: 0 0.75rem 0 0.6875rem;
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-xxs);
