@@ -46,7 +46,6 @@ import { UserProvisioningSection } from "metabase-enterprise/auth/components/Use
 
 import { OidcGroupMappingSection } from "./OidcGroupMappingSection";
 import {
-  DEFAULT_EMAIL_ATTRIBUTE,
   DEFAULT_FIRST_NAME_ATTRIBUTE,
   DEFAULT_GROUP_ATTRIBUTE,
   DEFAULT_LAST_NAME_ATTRIBUTE,
@@ -70,7 +69,6 @@ function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
       ? Yup.string().nullable().default(null)
       : Yup.string().required(t`Client secret is required`),
     scopes: Yup.string().nullable().default(null),
-    "attribute-email": Yup.string().nullable().default(null),
     "attribute-firstname": Yup.string().nullable().default(null),
     "attribute-lastname": Yup.string().nullable().default(null),
     "group-attribute": Yup.string().nullable().default(null),
@@ -84,7 +82,6 @@ interface OIDCFormValues {
   "client-id": string;
   "client-secret": string | null;
   scopes: string | null;
-  "attribute-email": string | null;
   "attribute-firstname": string | null;
   "attribute-lastname": string | null;
   "group-attribute": string | null;
@@ -107,7 +104,6 @@ function providerToFormValues(
       "client-id": "",
       "client-secret": null,
       scopes: null,
-      "attribute-email": null,
       "attribute-firstname": null,
       "attribute-lastname": null,
       "group-attribute": null,
@@ -125,10 +121,6 @@ function providerToFormValues(
     scopes: withoutDefault(
       provider.scopes?.join(", "),
       DEFAULT_SCOPES.join(", "),
-    ),
-    "attribute-email": withoutDefault(
-      attributeMap["email"],
-      DEFAULT_EMAIL_ATTRIBUTE,
     ),
     "attribute-firstname": withoutDefault(
       attributeMap["first_name"],
@@ -156,10 +148,8 @@ function formValuesToProvider(
         .filter(Boolean)
     : DEFAULT_SCOPES;
 
+  // login always takes the email from the standard claim, so only the name claims are sent
   const attributeMap: Record<string, string> = {};
-  if (values["attribute-email"]) {
-    attributeMap["email"] = values["attribute-email"];
-  }
   if (values["attribute-firstname"]) {
     attributeMap["first_name"] = values["attribute-firstname"];
   }
@@ -229,7 +219,6 @@ export function SettingsOIDCForm() {
   );
   // the card opens by itself once a claim was customized
   const hasCustomAttributes = [
-    initialValues["attribute-email"],
     initialValues["attribute-firstname"],
     initialValues["attribute-lastname"],
   ].some((value) => value != null);
@@ -402,17 +391,10 @@ export function SettingsOIDCForm() {
               {/* the claims are form fields sent with the provider, so they can be set before the first save */}
               <CollapsibleSettingsSection
                 title={t`Attributes`}
-                description={t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
+                description={t`Map OIDC claims to the first name and last name fields in ${applicationName}. The email always comes from the standard email claim.`}
                 defaultOpened={hasCustomAttributes}
               >
                 <Stack gap="lg">
-                  <FormTextInput
-                    name="attribute-email"
-                    label={t`Email attribute key`}
-                    placeholder={DEFAULT_EMAIL_ATTRIBUTE}
-                    nullable
-                    readOnly={isLocked}
-                  />
                   <FormTextInput
                     name="attribute-firstname"
                     label={t`First name attribute key`}

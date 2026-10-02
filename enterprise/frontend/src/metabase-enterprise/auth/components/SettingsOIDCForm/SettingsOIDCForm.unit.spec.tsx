@@ -400,15 +400,16 @@ describe("SettingsOIDCForm", () => {
 
       await expandAttributes();
 
-      const email = screen.getByLabelText("Email attribute key");
-      expect(email).toHaveValue("");
-      expect(email).toHaveAttribute("placeholder", "email");
       const firstName = screen.getByLabelText("First name attribute key");
       expect(firstName).toHaveValue("");
       expect(firstName).toHaveAttribute("placeholder", "given_name");
       const lastName = screen.getByLabelText("Last name attribute key");
       expect(lastName).toHaveValue("");
       expect(lastName).toHaveAttribute("placeholder", "family_name");
+      // the email always comes from the standard claim, so the page offers no mapping for it
+      expect(
+        screen.queryByLabelText("Email attribute key"),
+      ).not.toBeInTheDocument();
     });
 
     it("shows the group attribute default as a placeholder and leaves the field empty", async () => {
@@ -443,7 +444,7 @@ describe("SettingsOIDCForm", () => {
             scopes: ["openid", "email"],
             "attribute-map": {
               ...EXISTING_PROVIDER["attribute-map"],
-              email: "mail",
+              first_name: "givenName",
             },
           },
         ],
@@ -453,8 +454,38 @@ describe("SettingsOIDCForm", () => {
         screen.getByRole("button", { name: "Attributes" }),
       ).toHaveAttribute("aria-expanded", "true");
       expect(screen.getByLabelText(/^Scopes/)).toHaveValue("openid, email");
-      expect(screen.getByLabelText("Email attribute key")).toHaveValue("mail");
-      expect(screen.getByLabelText("First name attribute key")).toHaveValue("");
+      expect(screen.getByLabelText("First name attribute key")).toHaveValue(
+        "givenName",
+      );
+      expect(screen.getByLabelText("Last name attribute key")).toHaveValue("");
+    });
+
+    it("drops an email claim mapping saved earlier on the next save", async () => {
+      await setup({
+        providers: [
+          {
+            ...EXISTING_PROVIDER,
+            "attribute-map": { email: "mail", first_name: "givenName" },
+          },
+        ],
+      });
+
+      await userEvent.type(
+        screen.getByLabelText("Last name attribute key"),
+        "surname",
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save changes" }),
+      );
+
+      await waitFor(async () =>
+        expect(await getOidcPutCalls()).toHaveLength(1),
+      );
+      const [{ body }] = await getOidcPutCalls();
+      expect(body["attribute-map"]).toEqual({
+        first_name: "givenName",
+        last_name: "surname",
+      });
     });
 
     it("falls back to the default scopes and claims when the fields stay empty", async () => {
@@ -489,9 +520,11 @@ describe("SettingsOIDCForm", () => {
       expect(
         screen.getByRole("button", { name: "Attributes" }),
       ).toHaveAttribute("aria-expanded", "true");
-      const emailAttribute = screen.getByLabelText("Email attribute key");
-      await waitFor(() => expect(emailAttribute).toBeVisible());
-      await userEvent.type(emailAttribute, "upn");
+      const firstNameAttribute = screen.getByLabelText(
+        "First name attribute key",
+      );
+      await waitFor(() => expect(firstNameAttribute).toBeVisible());
+      await userEvent.type(firstNameAttribute, "givenName");
 
       await userEvent.click(
         screen.getByRole("button", { name: "Save and enable" }),
@@ -503,7 +536,7 @@ describe("SettingsOIDCForm", () => {
       const [{ body }] = (await findRequests("POST")).filter(({ url }) =>
         url.endsWith("/api/ee/sso/oidc"),
       );
-      expect(body["attribute-map"]).toEqual({ email: "upn" });
+      expect(body["attribute-map"]).toEqual({ first_name: "givenName" });
     });
   });
 

@@ -28,14 +28,12 @@
     ;; the stored setting decodes with keyword keys, while the lookups below use strings
     ;; a blank claim counts as unset, so the default claim still applies
     (let [attribute-map (update-vals (update-keys (:attribute-map provider-config) name) u/not-blank)]
+      ;; the email picks the account, and email_verified only covers the standard claim, so it is never remapped
       (cond-> {:client-id     (:client-id provider-config)
                :client-secret (:client-secret provider-config)
                :issuer-uri    (:issuer-uri provider-config)
                :scopes        (or (:scopes provider-config) ["openid" "email" "profile"])
                :redirect-uri  (:redirect-uri request)}
-        (get attribute-map "email")
-        (assoc :attribute-email (get attribute-map "email"))
-
         (get attribute-map "first_name")
         (assoc :attribute-firstname (get attribute-map "first_name"))
 

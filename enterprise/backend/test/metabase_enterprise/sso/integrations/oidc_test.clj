@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sso.integrations.oidc-test
   (:require
+   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
@@ -7,7 +8,9 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.sso.oidc.discovery :as oidc.discovery]
    [metabase.sso.oidc.state :as oidc.state]
+   [metabase.sso.oidc.tokens :as oidc.tokens]
    [metabase.sso.test-helpers :as sso.test-helpers]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -375,7 +378,7 @@
                (is (not (contains? group-ids group-b-id)))))))))))
 
 (deftest build-oidc-config-attribute-map-test
-  (testing "custom attribute keys survive the setting's JSON round trip into the OIDC config"
+  (testing "custom name claims survive the setting's JSON round trip into the OIDC config, and the email claim is never remapped"
     (mt/with-additional-premium-features #{:sso-oidc}
       (mt/with-temporary-setting-values
         [oidc-providers [(assoc test-provider :attribute-map {"email"      "mail"
@@ -385,10 +388,43 @@
               config (#'oidc.provider/build-oidc-config stored {:redirect-uri "http://localhost/callback"})]
           (testing "the stored map comes back with keyword keys"
             (is (= "mail" (get-in stored [:attribute-map :email]))))
-          (is (= {:attribute-email     "mail"
-                  :attribute-firstname "gn"
+          (is (= {:attribute-firstname "gn"
                   :attribute-lastname  "sn"}
                  (select-keys config [:attribute-email :attribute-firstname :attribute-lastname]))))))))
+
+(deftest authenticate-ignores-custom-email-claim-test
+  (testing "login takes the email from the standard claim that email_verified covers, whatever the provider maps"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values
+        [oidc-providers [(assoc test-provider :attribute-map {"email"      "mail"
+                                                              "first_name" "gn"})]]
+        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                    (fn [_issuer]
+                                      {:authorization_endpoint "https://test.idp.example.com/authorize"
+                                       :token_endpoint         "https://test.idp.example.com/token"
+                                       :jwks_uri               "https://test.idp.example.com/jwks"})
+                                    http/post
+                                    (fn [_url _opts]
+                                      {:status 200
+                                       :body   {:id_token     "valid-token"
+                                                :access_token "access-token"}})
+                                    oidc.tokens/validate-id-token
+                                    (fn [_token _config _nonce]
+                                      {:valid? true
+                                       :claims {:sub            "sam-rivera"
+                                                :email          "sam.rivera@example.com"
+                                                :email_verified true
+                                                :mail           "admin@example.com"
+                                                :gn             "Sam"}})]
+          (let [result (auth-identity/authenticate :provider/custom-oidc
+                                                   {:oidc-provider-key "test-idp"
+                                                    :code              "auth-code"
+                                                    :state             "state-token"
+                                                    :redirect-uri      "http://localhost/auth/sso/test-idp/callback"})]
+            (is (true? (:success? result)) (str "authenticate result: " (pr-str (dissoc result :claims))))
+            (is (= "sam.rivera@example.com" (get-in result [:user-data :email])))
+            (testing "the name claims still follow the mapping"
+              (is (= "Sam" (get-in result [:user-data :first_name]))))))))))
 
 (deftest build-oidc-config-blank-attribute-test
   (testing "a blank claim name counts as unset, so login falls back to the default claim"
