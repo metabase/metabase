@@ -12,6 +12,30 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
+- Date and time functions that depended on the `start-of-week` setting now take a `time-config` map as their first
+  argument. Drivers should call the `driver-api` versions instead, which take the old arguments and fill in the
+  instance's time config:
+
+  - `metabase.util.date-2/extract` → `driver-api/date-extract`
+  - `metabase.util.date-2/truncate` → `driver-api/date-truncate`
+  - `metabase.util.date-2/bucket` → `driver-api/date-bucket`
+  - `metabase.util.date-2/range` → `driver-api/date-range`
+  - `metabase.util.date-2/comparison-range` → `driver-api/date-comparison-range`
+  - `metabase.lib.core/desugar-filter-clause` → `driver-api/desugar-filter-clause`
+  - `metabase.lib.core/negate-boolean-expression` → `driver-api/negate-boolean-expression`
+
+  Drivers that call the `driver-api` versions will not need to change if the time config gains more options, or these
+  functions gain more arguments.
+
+  The `metabase.util.date-2` arities without `t`, which used the current time, have been removed.
+  With a config argument in front, a call written for the old signature, such as `(truncate t :day)`, would have
+  quietly matched one of them and used the current time instead of `t`.
+  Without them it fails with an arity error, and so will calls that miss any argument added later.
+  Callers of those arities should pass the current time as `t`, e.g. `(t/zoned-date-time)`.
+
+  The `:first-day-of-week`, `:first-week-of-year`, and `:week-of-year` methods of `metabase.util.date-2/adjuster` now
+  take the start of the week as their last argument, e.g. `(driver-api/start-of-week)`.
+
 - `metabase.driver.sql.normalize/default-schema` now takes the database as well as the driver:
   `[driver database]`. The schema an unqualified table reference resolves to is a property of the connection for a
   driver that opens a database where others have a default schema — ClickHouse now answers with the database its

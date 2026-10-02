@@ -9,10 +9,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
    [metabase.initialization-status.core :as init-status]
-   [metabase.oauth-server.api :as oauth-server.api]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
-   [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
    [metabase.server.routes.static :as static]
@@ -102,14 +100,20 @@
       (api-routes request respond raise))))
 
 (mu/defn make-routes :- ::api.macros/handler
-  "Create the top-level Ring route handler for Metabase."
-  [api-routes :- ::api.macros/handler]
+  "Create the top-level Ring route handler for Metabase from the handlers that modules above `server` supply:
+  `:api` for `/api`, `:auth` for `/auth`, and `:oauth` and `:well-known` for the OAuth provider."
+  [{:keys [api auth oauth well-known]} :- [:map
+                                           {:closed true}
+                                           [:api        ::api.macros/handler]
+                                           [:auth       ::api.macros/handler]
+                                           [:oauth      ::api.macros/handler]
+                                           [:well-known ::api.macros/handler]]]
   ;; top-level routes defined outside the api.macros surface (SPA shell, health, redirects) have no OpenAPI metadata
   #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
-   auth-wrapper/routes
-   (context "/.well-known" [] oauth-server.api/well-known-routes)
-   (context "/oauth" [] oauth-server.api/oauth-routes)
+   auth
+   (context "/.well-known" [] well-known)
+   (context "/oauth" [] oauth)
    ;; ^/$ -> index.html
    (GET "/" [] index/index)
    (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))
@@ -123,7 +127,7 @@
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
    ;; ^/api/ -> All other API routes
-   (context "/api" [] (api-handler api-routes))
+   (context "/api" [] (api-handler api))
    ;; ^/app/ -> static files under frontend_client/app
    (context "/app" [] static-files-handler)
    ;; ^/public/ -> Public frontend and download routes

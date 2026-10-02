@@ -1,12 +1,15 @@
 (ns metabase.appearance.settings
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.appearance.db :as appearance.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.jvm :as u.jvm]))
 
 (set! *warn-on-reflection* true)
 
@@ -223,6 +226,57 @@ See [fonts](../configuring-metabase/fonts.md).")
   :feature    :whitelabel
   :default    "default")
 
+(def ^:private image-data-uri-header
+  ;; possessive `*+`: a plain `*` recurses per parameter and overflows the stack on long headers
+  #"(?i)(image/[\w.+-]+)((?:;[\w.+-]+=[\w.+-]+)*+);base64")
+
+(defn- parse-image-data-uri
+  "Parse a base64 `data:image/...` URI into `{:content-type :media-type :bytes :hash}`, or nil if `s` is not one."
+  [^String s]
+  (when-let [comma (and (str/starts-with? s "data:") (str/index-of s ","))]
+    (when-let [[_ media-type params] (re-matches image-data-uri-header (subs s 5 comma))]
+      (try
+        {:content-type (str (u/lower-case-en media-type) params)
+         :media-type   (u/lower-case-en media-type)
+         :bytes        (u.jvm/decode-base64-to-bytes (subs s (inc comma)))
+         :hash         (subs (codecs/bytes->hex (buddy-hash/sha256 s)) 0 16)}
+        (catch IllegalArgumentException _
+          nil)))))
+
+(def custom-illustration-settings
+  "The settings that hold a custom illustration, uploaded as a data URI or given as a URL."
+  #{:login-page-illustration-custom
+    :landing-page-illustration-custom
+    :no-data-illustration-custom
+    :no-object-illustration-custom})
+
+(def ^:private parsed-illustrations
+  "The last raw value of each custom illustration setting and its parsed image, as `{setting-key [raw parsed]}`."
+  (atom {}))
+
+(defn- parsed-illustration
+  [setting-key raw]
+  (let [[cached-raw cached] (get @parsed-illustrations setting-key)
+        ;; `raw` is usually the same String instance, but any setting change reloads all settings and gives a new
+        ;; instance. with only `=`, the cache would keep the old instance (same content, different reference), so
+        ;; every later read would do a content comparison. that's why we also use `identical?` to store the new
+        ;; instance: it costs one content comparison per reload, then reads only compare references. with only
+        ;; `identical?`, every reload would parse the image again.
+        parsed              (if (= raw cached-raw) cached (some-> raw parse-image-data-uri))]
+    (when-not (identical? raw cached-raw)
+      (swap! parsed-illustrations assoc setting-key [raw parsed]))
+    parsed))
+
+;; keep uploaded images out of the bootstrap and session properties, they are served by
+;; `GET /api/session/illustration/:key`
+(defn- illustration-getter
+  [setting-key]
+  (fn []
+    (let [raw (setting/get-value-of-type :string setting-key)]
+      (if-let [{image-hash :hash} (parsed-illustration setting-key raw)]
+        (str "api/session/illustration/" (name setting-key) "?v=" image-hash)
+        raw))))
+
 (defsetting login-page-illustration-custom
   (deferred-tru "The custom illustration for the login page.")
   :encryption :no
@@ -230,7 +284,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :string
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :getter     (illustration-getter :login-page-illustration-custom))
 
 (defsetting landing-page-illustration
   (deferred-tru "Options for displaying the illustration on the landing page.")
@@ -249,7 +304,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :string
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :getter     (illustration-getter :landing-page-illustration-custom))
 
 (defsetting no-data-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after running a question.")
@@ -268,7 +324,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :string
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :getter     (illustration-getter :no-data-illustration-custom))
 
 (defsetting no-object-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after searching.")
@@ -287,7 +344,16 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :string
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :getter     (illustration-getter :no-object-illustration-custom))
+
+(defn illustration-image
+  "The uploaded image of the custom illustration setting `setting-key` as `{:content-type :media-type :bytes :hash}`,
+  or nil if there is none."
+  [setting-key]
+  (when (and (contains? custom-illustration-settings setting-key)
+             (setting/get setting-key))
+    (parsed-illustration setting-key (setting/get-value-of-type :string setting-key))))
 
 (def ^:private help-link-options
   #{:metabase :hidden :custom})

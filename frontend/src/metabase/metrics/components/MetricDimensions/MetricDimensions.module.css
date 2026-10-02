@@ -126,8 +126,8 @@
 
 .column .deleteIconButton {
   border: 1px solid var(--mb-color-border);
-  height: 2.25rem;
-  width: 2.25rem;
+  height: 2rem;
+  width: 2rem;
 
   &:hover {
     border: 1px solid var(--mb-color-border-strong);
