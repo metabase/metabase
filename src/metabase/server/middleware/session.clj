@@ -181,6 +181,13 @@
    [:resolve-credential ifn?]
    [:scope-satisfied?   ifn?]])
 
+(mu/defn user-info-for-id :- [:maybe ::request.schema/current-user-info]
+  "The current-user-info a request authenticated as the active User `user-id` carries, or nil when no active User
+  has that id."
+  [user-id :- ms/PositiveInt]
+  (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
+          (m/update-existing :is-group-manager? boolean)))
+
 (def ^:private full-access-token-scopes
   "The `:token-scopes` value that grants a bearer-authenticated request access to the general
    REST API as its user. The `::scope/unrestricted` keyword sentinel (not the `\"*\"` string)
@@ -224,11 +231,10 @@
           ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
           (when (and (seq scopes)
                      (= mcp-token? (mcp-endpoint-request? (:uri request))))
-            (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
-                    (m/update-existing :is-group-manager? boolean)
-                    (assoc :token-scopes             (if mcp-token?
-                                                       scopes
-                                                       (oauth-token->token-scopes full-access-scope scopes))
+            (some-> (user-info-for-id user-id)
+                    (assoc :token-scopes            (if mcp-token?
+                                                      scopes
+                                                      (oauth-token->token-scopes full-access-scope scopes))
                            :authenticated-via-oauth? true))))))))
 
 (defn- current-user-info-for-mcp-ui-credential
