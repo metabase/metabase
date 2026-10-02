@@ -233,15 +233,6 @@
              :from   [[:data_app :d]]
              :join   [[:collection :c] [:= :c.id :d.resource_collection_id]]}))
 
-(mu/defn data-app-resource-actions
-  "The entity id of every action on a model in a data app's resource collection, with that collection's entity id."
-  []
-  (t2/query {:select [[:a.entity_id :action_entity_id] [:c.entity_id :collection_entity_id]]
-             :from   [[:action :a]]
-             :join   [[:report_card :m] [:= :m.id :a.model_id]
-                      [:collection :c] [:= :c.id :m.collection_id]
-                      [:data_app :d] [:= :d.resource_collection_id :c.id]]}))
-
 (mu/defn dashboard-entity-ids-and-names
   "The entity id and name of every Dashboard."
   []

@@ -2,8 +2,8 @@
   "What a data app's resource files may hold. Serialization loads them like any other entity files (see
   `metabase-enterprise.serialization.v2.ingest/shared-top-level-paths`), and a load trusts what it reads: it updates
   whatever row carries an entity ID and resolves references to any local entity. These checks run on the ingested
-  files first, so an app's `resources/` can only define its own collection, cards in it, and actions on its model
-  copies, referencing nothing else of Metabase's but what already exists."
+  files first, so an app's `resources/` can only define its own collection and cards and actions in it, the actions
+  on its model copies when they have a model, referencing nothing else of Metabase's but what already exists."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -52,16 +52,16 @@
       (name t))))
 
 (defn- action-children-problems
-  "Serdes loads an action's implicit, query, and HTTP rows whatever its type, so a file must carry exactly the one its
-  type uses."
+  "Serdes loads an action's implicit and query rows whatever its type, so a file must carry exactly the one its type
+  uses."
   [{:keys [path entity]}]
-  (let [counts   (update-vals (select-keys entity [:implicit :query :http]) count)
+  (let [counts   (update-vals (select-keys entity [:implicit :query]) count)
         expected (case (type-name entity)
                    "implicit" {:implicit 1}
                    "query"    {:query 1}
                    nil)]
     (when (and expected (not= expected (into {} (remove (comp zero? val)) counts)))
-      [(problem path (tru "{0} must carry exactly the row its action type uses, and no HTTP request." path))])))
+      [(problem path (tru "{0} must carry exactly the row its action type uses." path))])))
 
 (defn- parameter-source-problems
   "An action's parameters can take their values from a card, which its dependencies don't include."
@@ -97,9 +97,13 @@
 
     "Action"
     (concat
+     (when (not= collection-entity-id (:collection_id entity))
+       [(problem path (tru "{0} must be in the collection {1}." path collection-entity-id))])
      (when-not (action-types (type-name entity))
        [(problem path (tru "{0} must be an implicit or query action." path))])
-     (when-not (contains? model-entity-ids (:model_id entity))
+     (when (and (= "implicit" (type-name entity)) (nil? (:model_id entity)))
+       [(problem path (tru "{0} is an implicit action, so it must belong to a model." path))])
+     (when (and (some? (:model_id entity)) (not (contains? model-entity-ids (:model_id entity))))
        [(problem path (tru "{0} must belong to a model in the app''s resources." path))])
      (when (:archived entity)
        [(problem path (tru "{0} must not be archived." path))])

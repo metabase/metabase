@@ -119,9 +119,7 @@
 
 (t2/define-after-insert :model/DataApp
   [app]
-  ;; The permission group is the app's own; its resource collection comes with it from the repository, or is created
-  ;; for an app made through the API (see `metabase-enterprise.data-apps.apps`).
-  (merge app (data-app.resources/ensure-resources! app {:create-collection? false})))
+  (merge app (data-app.resources/ensure-resources! app)))
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.
