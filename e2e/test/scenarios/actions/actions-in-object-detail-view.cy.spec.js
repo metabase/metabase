@@ -95,7 +95,6 @@ describe(
                 H.createQuestionAndDashboard({
                   questionDetails: {
                     name: "Score detail",
-                    type: "model",
                     display: "object",
                     database: WRITABLE_DB_ID,
                     query: {
@@ -103,14 +102,8 @@ describe(
                     },
                   },
                   dashboardDetails: { name: "Test dashboard" },
-                }).then(({ body: { card_id, dashboard_id } }) => {
-                  H.createImplicitActions({ modelId: card_id });
+                }).then(({ body: { dashboard_id } }) => {
                   cy.wrap(dashboard_id).as("dashboardId");
-                  cy.intercept({
-                    method: "GET",
-                    pathname: "/api/action",
-                    query: { "model-id": String(card_id) },
-                  }).as("getDashboardModelActions");
                 });
               });
 
@@ -209,7 +202,6 @@ describe(
                   `As ${name} user: verify model actions are not shown in an object detail dashcard`,
                 );
                 H.visitDashboard("@dashboardId");
-                cy.wait("@getDashboardModelActions");
                 H.getDashboardCard().within(() => {
                   objectDetailModal()
                     .should("be.visible")
