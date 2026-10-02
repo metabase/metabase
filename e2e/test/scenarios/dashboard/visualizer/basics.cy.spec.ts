@@ -6,7 +6,6 @@ import {
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY,
-  PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
   SCALAR_CARD,
   STEP_COLUMN_CARD,
@@ -19,20 +18,11 @@ import {
 // this should be fixed in the future
 const DASHCARD_QUERY_WAIT_TIME = 1000;
 
-// There's a race condition when saving a dashboard
-// and then immediately editing it again. After saving,
-// we exit the edit mode and that can happen after
-// `H.editDashboard` is called for some reason
-
 describe("scenarios > dashboard > visualizer > basics", () => {
   beforeEach(() => {
     H.restore();
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
     cy.intercept("GET", "/api/setting/version-info", {});
 
     cy.signInAsNormalUser();
@@ -51,10 +41,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
       idAlias: "productsCountByCategoryQuestionId",
-      wrapId: true,
-    });
-    H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE, {
-      idAlias: "productsCountByCategoryPieQuestionId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {

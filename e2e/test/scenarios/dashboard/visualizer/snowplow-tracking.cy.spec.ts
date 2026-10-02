@@ -1,8 +1,6 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT,
-  ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PRODUCTS_COUNT_BY_CREATED_AT,
 } from "e2e/support/test-visualizer-data";
 
@@ -16,11 +14,7 @@ describe("Snowplow tracking", () => {
       cy.signInAsAdmin();
       H.enableTracking();
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
       cy.intercept("GET", "/api/setting/version-info", {});
 
       cy.signInAsNormalUser();
@@ -29,17 +23,8 @@ describe("Snowplow tracking", () => {
         idAlias: "ordersCountByCreatedAtQuestionId",
         wrapId: true,
       });
-      H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
-        idAlias: "ordersCountByProductCategoryQuestionId",
-        wrapId: true,
-      });
       H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
         idAlias: "productsCountByCreatedAtQuestionId",
-        wrapId: true,
-      });
-
-      H.createQuestion(ACCOUNTS_COUNT_BY_CREATED_AT, {
-        idAlias: "accountsCountByCreatedAtQuestionId",
         wrapId: true,
       });
     });

@@ -4,7 +4,6 @@ import {
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY,
-  PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
   SCALAR_CARD,
   STEP_COLUMN_CARD,
@@ -18,9 +17,6 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
 
     cy.signInAsNormalUser();
 
@@ -38,10 +34,6 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
       idAlias: "productsCountByCategoryQuestionId",
-      wrapId: true,
-    });
-    H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE, {
-      idAlias: "productsCountByCategoryPieQuestionId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {

@@ -10,9 +10,7 @@ import {
   PIVOT_TABLE_CARD,
   PRODUCTS_AVERAGE_BY_CREATED_AT,
   PRODUCTS_COUNT_BY_CATEGORY,
-  PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
-  PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY,
   SCALAR_CARD,
   STEP_COLUMN_CARD,
   VIEWS_COLUMN_CARD,
@@ -23,11 +21,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
   beforeEach(() => {
     H.restore();
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
 
     cy.signInAsNormalUser();
 
@@ -47,20 +41,12 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       idAlias: "productsCountByCreatedAtQuestionId",
       wrapId: true,
     });
-    H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY, {
-      idAlias: "productsCountByCreatedAtAndCategoryQuestionId",
-      wrapId: true,
-    });
     H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
       idAlias: "productsAvgByCreatedAtQuestionId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
       idAlias: "productsCountByCategoryQuestionId",
-      wrapId: true,
-    });
-    H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE, {
-      idAlias: "productsCountByCategoryPieQuestionId",
       wrapId: true,
     });
     H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {
