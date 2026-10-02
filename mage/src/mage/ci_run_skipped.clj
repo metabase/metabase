@@ -26,13 +26,14 @@
 
 (defn- gh
   "Run `gh` with `args` and return its trimmed stdout.
-  On failure, returns nil when `soft?` is set.
+  On failure, returns nil when the error matches `retry-on`.
   Otherwise exits with `gh`'s error message, adding `hint`'s `:text` when the error matches its `:pattern`."
-  [{:keys [soft? hint]} & args]
-  (let [{:keys [exit out err]} @(apply p/process {:out :string :err :string :in nil} "gh" args)]
+  [{:keys [retry-on hint]} & args]
+  (let [{:keys [exit out err]} @(apply p/process {:out :string :err :string :in nil} "gh" args)
+        retry?                 (some-> retry-on (re-find err))]
     (cond
       (zero? exit) (str/trim out)
-      soft?        nil
+      retry?       nil
       :else        (let [hint? (some-> (:pattern hint) (re-find err))]
                      (fail! 3 (cond-> (str "gh " (first args) " failed: " (str/trim err))
                                 hint? (str "\n" (:text hint))))))))
@@ -94,8 +95,9 @@
     (when (= "completed" (:status job))
       (when (not= "success" (:conclusion job))
         (fail! 3 (format "%s ended %s: %s" decide-job (:conclusion job) (run-url run-id))))
-      ;; The logs can lag a few seconds behind the job, so a failed fetch means "ask again".
-      (when-let [log (gh {:soft? true} "api" (format "repos/%s/actions/jobs/%s/logs" repo (:databaseId job)))]
+      ;; The logs can 404 for a few seconds after the job completes, so that means "ask again".
+      (when-let [log (gh {:retry-on #"HTTP 404"}
+                         "api" (format "repos/%s/actions/jobs/%s/logs" repo (:databaseId job)))]
         (or (parse-verdict log)
             (fail! 3 (str "No verdict in the decide job's log: " (run-url run-id))))))))
 
@@ -140,13 +142,14 @@
   ["workflow" "run" workflow "-R" repo "--ref" branch "-f" (str "base=" base)])
 
 (defn- start-run!
-  "Start the workflow and return the new run's URL."
+  "Start the workflow and return the new run's URL, or the workflow's run list when `gh` prints none."
   [branch base]
   (let [hint {:pattern #"(?i)unexpected inputs"
               :text    (str "The branch's " workflow " predates the `base` input; rebase it.")}
         out  (apply gh {:hint hint} (dispatch-args branch base))]
     (or (re-find #"https://github\.com/\S+/actions/runs/\d+" out)
-        (fail! 3 (str "gh printed no run URL: " out)))))
+        (do (info "Started a run, but gh printed no URL for it; it is at the top of the workflow's runs.")
+            (format "https://github.com/%s/actions/workflows/%s" repo workflow)))))
 
 (defn ci-run-skipped!
   "Print a \"Run tests\" run URL for the current branch.
