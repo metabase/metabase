@@ -29,10 +29,10 @@ describe("metabase#31587", () => {
         cy.viewport(width, height);
       });
 
-      it("should not allow action buttons to overflow when editing dashboard", () => {
+      it("should not allow action buttons to overflow when editing dashboard or viewing info sidebar (metabase#31587)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         H.editDashboard();
-        cy.button("Add action").click();
+        cy.findByLabelText("Add action").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
           actionButtonContainer().then((actionButtonElem) => {
@@ -43,12 +43,6 @@ describe("metabase#31587", () => {
             });
           });
         });
-      });
-
-      it("should not allow action buttons to overflow when viewing info sidebar", () => {
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.editDashboard();
-        cy.findByLabelText("Add action").click();
 
         H.saveDashboard();
         cy.icon("info").click();
@@ -506,12 +500,27 @@ describe("issue 32750", () => {
     cy.visit("/");
   });
 
-  it("modal do not dissapear on viewport change", () => {
+  it("action creator keeps its query and template tag parameters across viewport changes (metabase#32750)", () => {
     H.startNewAction();
+
+    cy.log("only variable template tags become parameters");
+    H.fillActionQuery("{{#1-orders-model}}");
+    H.fillActionQuery("{{snippet:101}}");
+    H.fillActionQuery("{{id}}");
+    cy.findByLabelText("ID").should("be.visible");
+    cy.findByLabelText("#1 Orders Model").should("not.exist");
+    cy.findByLabelText("Snippet:101").should("not.exist");
+    cy.findAllByTestId("form-field-container").should("have.length", 1);
+
     cy.viewport(320, 800);
     cy.findByTestId("action-creator").should("be.visible");
+    H.NativeEditor.get().should("contain", "{{id}}");
+    cy.findByLabelText("ID").should("exist");
+
     cy.viewport(1440, 800);
     cy.findByTestId("action-creator").should("be.visible");
+    H.NativeEditor.get().should("contain", "{{id}}");
+    cy.findByLabelText("ID").should("be.visible");
   });
 });
 
