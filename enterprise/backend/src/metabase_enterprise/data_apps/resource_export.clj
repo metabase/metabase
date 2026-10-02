@@ -181,8 +181,6 @@
       (let [label (tru "Action {0}" (str action-id))]
         (when-not (and action (mi/can-read? action))
           (fail (tru "{0} does not exist, or you can''t read it." label)))
-        (when (= :http (keyword (:type action)))
-          (fail (tru "{0} is an HTTP action, which a data app can''t copy." label)))
         (check-copyable label "Action" action exported #{(:model_id action)})
         (when model-error
           (fail (tru "{0} can''t be copied because its model can''t: {1}" label model-error)))

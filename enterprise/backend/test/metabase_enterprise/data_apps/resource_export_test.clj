@@ -136,9 +136,7 @@
                                                            :type          :metric
                                                            :database_id   (mt/id)
                                                            :dataset_query model-count}]
-         (let [http-id           (actions/insert! {:name "Ping" :type :http :model_id model-id
-                                                   :template {:method "GET" :url "https://example.com"}})
-               card-sql-id       (actions/insert! {:name          "Read a card"
+         (let [card-sql-id       (actions/insert! {:name          "Read a card"
                                                    :type          :query
                                                    :model_id      model-id
                                                    :database_id   (mt/id)
@@ -150,19 +148,17 @@
                                             :aggregations [{:type "metric" :id reading-metric-id}]}]}
                response          (export! :crowberto 200
                                           {:queries [{:export "ReadsMetric" :query reads-metric}]
-                                           :actions [http-id card-sql-id on-reading-model Integer/MAX_VALUE]})]
-           (testing "an HTTP action"
-             (is (=? {:id http-id :error #".*is an HTTP action.*"} (nth (:actions response) 0))))
+                                           :actions [card-sql-id on-reading-model Integer/MAX_VALUE]})]
            (testing "a query action whose SQL reads a card"
              (is (=? {:id card-sql-id :error (re-pattern (str ".*reads card " metric-id ".*"))}
-                     (nth (:actions response) 1))))
+                     (nth (:actions response) 0))))
            (testing "an action whose model reads a card, with the model's reason"
              (is (=? {:id on-reading-model :error #".*because its model can't: Model \d+ reads card.*"}
-                     (nth (:actions response) 2)))
+                     (nth (:actions response) 1)))
              (is (=? {:id reading-model-id :error (re-pattern (str ".*reads card " metric-id ".*"))}
                      (some #(when (= reading-model-id (:id %)) %) (:models response)))))
            (testing "an action that does not exist"
-             (is (=? {:error #".*does not exist.*"} (nth (:actions response) 3))))
+             (is (=? {:error #".*does not exist.*"} (nth (:actions response) 2))))
            (testing "a metric that reads a card; the query that aggregates it is still built"
              (is (=? {:queries [{:export "ReadsMetric" :entity map?}]
                       :metrics [{:id reading-metric-id :error (re-pattern (str ".*reads card " model-id ".*"))}]}
@@ -223,7 +219,8 @@
                (export! :crowberto 200 {:actions [implicit-id]})))
        (t2/update! :model/Action :id implicit-id {:archived false})
        (t2/update! :model/Card :id model-id {:archived true})
-       (is (=? {:actions [{:id implicit-id :error #".*because its model can't: Model \d+ is archived.*"}]
+       ;; archiving a model archives its actions with it
+       (is (=? {:actions [{:id implicit-id :error #".*is archived.*"}]
                 :models  [{:id model-id :error #".*is archived.*"}]}
                (export! :crowberto 200 {:actions [implicit-id]})))))))
 
