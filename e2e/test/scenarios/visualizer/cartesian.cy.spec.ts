@@ -2,30 +2,26 @@ const { H } = cy;
 
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  ACCOUNTS_COUNT_BY_COUNTRY,
+  COUNTRY_CODES,
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PIVOT_TABLE_CARD,
   PRODUCTS_AVERAGE_BY_CREATED_AT,
   PRODUCTS_COUNT_BY_CATEGORY,
-  PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
-  PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY,
   SCALAR_CARD,
   STEP_COLUMN_CARD,
   VIEWS_COLUMN_CARD,
   createDashboardWithVisualizerDashcards,
 } from "e2e/support/test-visualizer-data";
 
-describe("scenarios > dashboard > visualizer > cartesian", () => {
+describe("scenarios > visualizer > cartesian", () => {
   beforeEach(() => {
     H.restore();
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
 
     cy.signInAsNormalUser();
 
@@ -45,10 +41,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       idAlias: "productsCountByCreatedAtQuestionId",
       wrapId: true,
     });
-    H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY, {
-      idAlias: "productsCountByCreatedAtAndCategoryQuestionId",
-      wrapId: true,
-    });
     H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
       idAlias: "productsAvgByCreatedAtQuestionId",
       wrapId: true,
@@ -57,10 +49,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       idAlias: "productsCountByCategoryQuestionId",
       wrapId: true,
     });
-    H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE, {
-      idAlias: "productsCountByCategoryPieQuestionId",
-      wrapId: true,
-    });
+  });
+
+  it("should allow to change cartesian and pie viz settings (metabase#61197)", () => {
     H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS, {
       idAlias: "landingPageViewsScalarQuestionId",
       wrapId: true,
@@ -81,9 +72,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       idAlias: "viewsColumnQuestionId",
       wrapId: true,
     });
-  });
 
-  it("should allow to change viz settings", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
 
@@ -93,6 +82,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.goalLine().should("not.exist");
       cy.findByTestId("chartsettings-sidebar").findByText("Goal line").click();
       H.goalLine().should("exist");
+
+      cy.findByTestId("chartsettings-sidebar").findByText("Trend line").click();
+      H.trendLine().should("have.length", 2);
 
       // Ensure the chart legend contains original series name
       H.chartLegend().within(() => {
@@ -120,6 +112,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     const assertUpdatedVizSettingsApplied = () => {
       H.goalLine().should("exist");
+      H.trendLine().should("have.length", 2);
       // Ensure the chart legend contains renamed series
       H.chartLegend().within(() => {
         cy.findByText("Series B").should("exist");
@@ -137,6 +130,36 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     H.getDashboardCard(0).within(() => {
       assertUpdatedVizSettingsApplied();
     });
+
+    // Pie chart
+    H.getDashboardCard(2).within(() => {
+      H.echartsContainer().findByText("Total").should("exist");
+    });
+    H.showDashcardVisualizerModalSettings(2);
+    H.modal().within(() => {
+      cy.findByText("Display").click();
+
+      H.echartsContainer().within(() => {
+        cy.findByText("200").should("exist");
+        cy.findByText("Total").should("exist");
+      });
+      cy.findByTestId("chartsettings-sidebar").findByText("Show total").click();
+      H.echartsContainer().within(() => {
+        cy.findByText("200").should("not.exist");
+        cy.findByText("Total").should("not.exist");
+      });
+    });
+    H.saveDashcardVisualizerModalSettings();
+
+    // Hovering a pie slice hides the total, so move the pointer away first
+    H.getDashboardCard(0).realHover();
+    H.getDashboardCard(2).within(() => {
+      H.pieSlices().should("have.length", 4);
+      H.echartsContainer().within(() => {
+        cy.findByText("200").should("not.exist");
+        cy.findByText("Total").should("not.exist");
+      });
+    });
   });
 
   it("should work correctly when built from a non-cartesian chart", () => {
@@ -151,12 +174,14 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.switchToAddMoreData();
       H.selectDataset(ORDERS_COUNT_BY_CREATED_AT.name);
       H.switchToColumnsList();
-      // Shouldn't this be automatic though?
       H.selectColumnFromColumnsList(ORDERS_COUNT_BY_CREATED_AT.name, "Count");
 
-      // VIZ-668 pivot-grouping is an internal column sued byt he pivot table and shouldn't be
+      // VIZ-668 pivot-grouping is an internal column used by the pivot table and shouldn't be
       // shown in the columns list
-      cy.findByText("pivot-grouping").should("not.exist");
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Count").should("exist");
+      H.dataSource(PIVOT_TABLE_CARD.name)
+        .findByText("pivot-grouping")
+        .should("not.exist");
 
       H.verticalWell().within(() => {
         cy.findByText("Count").should("exist");
@@ -187,10 +212,18 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
-      H.assertWellItemsCount({ vertical: 2 });
       H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
-      H.assertWellItemsCount({ vertical: 3 });
+      H.assertWellItems({
+        vertical: ["Count", "Count (Products by Created At (Month))"],
+      });
+      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+      H.assertWellItems({
+        vertical: [
+          "Count",
+          "Count (Products by Created At (Month))",
+          "Average of Price",
+        ],
+      });
     });
 
     H.saveDashcardVisualizerModal({ mode: "create" });
@@ -253,6 +286,90 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.chartPathWithFillColor("#509EE3").should("have.length", 4);
+    });
+  });
+
+  it("should remap columns when changing a viz type", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
+
+    H.modal().within(() => {
+      // Turn into a pie chart
+      cy.findByTestId("viz-picker-main").icon("pie").click();
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+        "Count",
+      );
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+        "Product → Category",
+      );
+      H.pieMetricWell().findByText("Count").should("exist");
+      H.pieDimensionWell().findByText("Product → Category").should("exist");
+      H.echartsContainer().findByText("18,760").should("exist"); // total value
+
+      // Turn into a funnel
+      cy.findByTestId("viz-picker-main").icon("funnel").click();
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+        "Count",
+      );
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+        "Product → Category",
+      );
+      H.verticalWell().findByText("Count").should("exist");
+      H.horizontalWell().within(() => {
+        cy.findByText("Product → Category").should("exist");
+        cy.findByText("Doohickey").should("exist");
+        cy.findByText("Gadget").should("exist");
+        cy.findByText("Gizmo").should("exist");
+        cy.findByText("Widget").should("exist");
+        cy.findAllByTestId("well-item").should("have.length", 5);
+      });
+    });
+  });
+
+  it("should preserve column mapping when switching between cartesian and pie", () => {
+    H.createQuestion(ACCOUNTS_COUNT_BY_COUNTRY);
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.visitDashboard(dashboardId);
+    });
+
+    H.editDashboard();
+
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ACCOUNTS_COUNT_BY_COUNTRY.name);
+
+    H.modal().within(() => {
+      H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
+
+      cy.log("cartesian (starting point) -> funnel -> scatter");
+      H.selectVisualization("funnel");
+      H.assertWellItems({
+        horizontal: ["Country", ...COUNTRY_CODES],
+        vertical: ["Count"],
+      });
+      H.selectVisualization("scatter");
+      H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
+
+      cy.log("Resetting the visualization to cartesian");
+      H.clickUndoButton();
+      H.clickUndoButton();
+
+      cy.log("cartesian (starting point) -> pie -> funnel -> scatter");
+      H.selectVisualization("pie");
+      H.assertWellItems({ pieDimensions: ["Country"], pieMetric: ["Count"] });
+      H.selectVisualization("funnel");
+      H.assertWellItems({
+        horizontal: ["Country", ...COUNTRY_CODES],
+        vertical: ["Count"],
+      });
+      H.selectVisualization("scatter");
+      H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
     });
   });
 
@@ -334,23 +451,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
   });
 
-  it("should support trend lines (metabase #61197)", () => {
-    createDashboardWithVisualizerDashcards();
-    H.editDashboard();
-
-    H.showDashcardVisualizerModalSettings(0);
-
-    H.modal().within(() => {
-      cy.findByText("Trend line").click();
-      H.trendLine().should("have.length", 2);
-      cy.findByText("Save").click();
-    });
-
-    H.getDashboardCard(0).within(() => {
-      H.trendLine().should("have.length", 2);
-    });
-  });
-
   describe("timeseries breakout", () => {
     it("should automatically use new columns whenever possible", () => {
       const Q1_NAME = ORDERS_COUNT_BY_CREATED_AT.name;
@@ -369,6 +469,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
         H.verticalWell().within(() => {
           cy.findByText("Count").should("exist");
+          cy.findByText(`Count (${Q2_NAME})`).should("exist");
         });
         H.horizontalWell().findByText("Created At: Month").should("exist");
 
@@ -405,7 +506,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.chartLegendItems().should("have.length", 2);
 
         // Remove all count columns from the well
-        // TODO maybe put that into a function
         H.verticalWell().within(() => {
           cy.findAllByTestId("well-item")
             .first()
@@ -427,7 +527,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.assertDataSourceColumnSelected(Q2_NAME, "Created At: Month", false);
         H.chartLegend().should("not.exist");
 
-        //   // Add all columns back
+        // Add all columns back
         H.dataSourceColumn(Q1_NAME, "Count").click();
         H.dataSourceColumn(Q1_NAME, "Created At: Month").click();
         H.dataSourceColumn(Q2_NAME, "Count").click();

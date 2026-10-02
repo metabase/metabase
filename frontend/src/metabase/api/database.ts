@@ -22,6 +22,8 @@ import type {
   SchemaName,
   Table,
   UpdateDatabaseRequest,
+  ValidateDatabaseRequest,
+  ValidateDatabaseResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -169,6 +171,16 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: [listTag("field")],
+    }),
+    validateDatabase: builder.mutation<
+      ValidateDatabaseResponse,
+      ValidateDatabaseRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/database/validate",
+        body,
+      }),
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: (body) => ({
@@ -319,6 +331,7 @@ export const {
   useLazyListDatabaseSchemaTablesQuery,
   useListVirtualDatabaseTablesQuery,
   useListDatabaseIdFieldsQuery,
+  useValidateDatabaseMutation,
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
   useDeleteDatabaseMutation,

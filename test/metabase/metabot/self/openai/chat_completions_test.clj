@@ -4,7 +4,8 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
-   [metabase.metabot.test-util :as metabot.tu]))
+   [metabase.metabot.test-util :as metabot.tu]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -232,6 +233,42 @@
                                             :input       [{:role :user :content "hi"}]
                                             :temperature 0.2
                                             :max-tokens  128})))))
+
+(deftest ^:parallel request-body-replays-nested-tool-arguments-test
+  (testing "a streamed tool call whose arguments nest objects replays into the next request"
+    (let [query {:lib/type "mbql/query"
+                 :stages   [{:lib/type "mbql.stage/mbql", :source-table ["Sample Database" nil "ORDERS"]}]}
+          call  {:type      :tool-input
+                 :id        "call-1"
+                 :function  "construct_notebook_query"
+                 :arguments {:query query}}
+          ;; the stream parser decodes the arguments with keyword keys at every depth
+          parts (into [] (self.core/aisdk-xf) (metabot.tu/parts->aisdk-chunks [call]))]
+      (is (=? {:messages [{:role       "assistant"
+                           :tool_calls [{:function {:name      "construct_notebook_query"
+                                                    :arguments #(= {:query query} (json/decode+kw %))}}]}]}
+              (chat-completions/request-body {:model "some/model" :input parts}))))))
+
+(deftest ^:parallel request-body-tool-arguments-schema-test
+  (let [replay (fn [arguments]
+                 (chat-completions/request-body
+                  {:model "some/model"
+                   :input [{:type      :tool-input
+                            :id        "call-1"
+                            :function  "f"
+                            :arguments arguments}]}))]
+    (testing "decoded JSON replays at any depth, keyed by strings, keywords or both"
+      (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
+                           (replay arguments))
+        ;; keyword keys, as the stream decodes them
+        {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
+        ;; string keys, as replayed history decodes them
+        {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
+        ;; both
+        {:a {"b" [{:c {"d" [{:e 1}]}}]}}))
+    (testing "a value JSON cannot hold is rejected, however deep"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {:a {"b" [{:c (java.time.Instant/now)}]}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
