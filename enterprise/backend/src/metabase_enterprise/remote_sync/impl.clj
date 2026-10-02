@@ -76,10 +76,7 @@
           :let [entity-ids (get by-entity-id (:model-type model-spec) [])]]
     (remote-sync.db/delete-removed-instances!
      model-key
-     {:scope-key             (get-in model-spec [:removal :scope-key])
-      :synced-collection-ids synced-collection-ids
-      :entity-ids            entity-ids
-      :removal-conditions    (spec/removal-conditions model-spec)})))
+     (spec/removal-opts model-spec synced-collection-ids entity-ids))))
 
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."

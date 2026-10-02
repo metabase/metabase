@@ -3461,8 +3461,8 @@
 
 (deftest action-collection-id-backfill-test
   (testing "v65.2026-10-01T00:00:06: each action takes its model's collection, model_id becomes nullable, and
-            already-archived actions count as archived directly"
-    (impl/test-migrations ["v65.2026-10-01T00:00:00" "v65.2026-10-01T00:00:06"] [migrate!]
+            already-archived actions count as archived directly, and archived models' actions get archived"
+    (impl/test-migrations ["v65.2026-10-01T00:00:00" "v65.2026-10-01T00:00:07"] [migrate!]
       (let [user-id   (t2/insert-returning-pk! :core_user {:first_name "Action"
                                                            :last_name  "Owner"
                                                            :email      "action-owner@metabase.com"
@@ -3478,7 +3478,7 @@
                                                             :slug      "models"
                                                             :entity_id (u/generate-nano-id)
                                                             :location "/"})
-            insert-model! (fn [collection-id]
+            insert-model! (fn [collection-id & {:keys [archived]}]
                             (t2/insert-returning-pk! :report_card {:name                   "Model"
                                                                    :entity_id              (u/generate-nano-id)
                                                                    :type                   "model"
@@ -3488,6 +3488,7 @@
                                                                    :creator_id             user-id
                                                                    :database_id            db-id
                                                                    :collection_id          collection-id
+                                                                   :archived               (boolean archived)
                                                                    :created_at             :%now
                                                                    :updated_at             :%now}))
             insert-action! (fn [model-id & {:keys [archived]}]
@@ -3500,10 +3501,13 @@
                                                                :updated_at :%now}))
             in-coll   (insert-action! (insert-model! coll-id))
             in-root   (insert-action! (insert-model! nil))
-            archived  (insert-action! (insert-model! coll-id) :archived true)]
+            archived  (insert-action! (insert-model! coll-id) :archived true)
+            on-trashed-model (insert-action! (insert-model! coll-id :archived true))]
         (migrate!)
         (is (true? (t2/select-one-fn :archived_directly :action :id archived)))
         (is (false? (t2/select-one-fn :archived_directly :action :id in-coll)))
+        (testing "the actions of an archived model are archived with it"
+          (is (= [true false] ((juxt :archived :archived_directly) (t2/select-one :action :id on-trashed-model)))))
         (is (= coll-id (t2/select-one-fn :collection_id :action :id in-coll)))
         (is (nil? (t2/select-one-fn :collection_id :action :id in-root)))
         (testing "an action can be inserted without a model"

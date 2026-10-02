@@ -127,7 +127,7 @@
   [{model-id :model_id, :as action}]
   (let [changed? (fn [k] (contains? (t2/changes action) k))]
     (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
-               (and model-id (or (changed? :model_id) (changed? :collection_id)))
+               (and model-id (changed? :model_id))
                set-model-collection)
       (when (and (implicit? action) (or (changed? :type) (changed? :model_id)))
         (check-implicit-action-model model-id)
@@ -228,7 +228,8 @@
 (mu/defn- update*!
   [{:keys [id] :as updates} :- ::actions.schema/action.for-update
    existing-action          :- ::actions.schema/action]
-  (let [updates (assoc updates :type (or (:type updates) (:type existing-action)))]
+  (let [updates (cond-> (assoc updates :type (or (:type updates) (:type existing-action)))
+                  (get updates :model_id (:model_id existing-action)) (dissoc :collection_id))]
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
         (actions.db/update-action! id action-row))

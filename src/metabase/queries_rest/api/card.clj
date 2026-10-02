@@ -732,7 +732,7 @@
                                                      :when (not (:collection_position card))]
                                                  (u/the-id card)))]
           (queries-rest.db/set-cards-collection-raw! (set cards-without-position) new-collection-id-or-nil)
-          (queries-rest.db/move-actions-of-models! (set cards-without-position) new-collection-id-or-nil))
+          (queries/move-actions-of-models! (set cards-without-position) new-collection-id-or-nil))
         (doseq [card cards]
           (collection/check-for-remote-sync-update card)))))
 

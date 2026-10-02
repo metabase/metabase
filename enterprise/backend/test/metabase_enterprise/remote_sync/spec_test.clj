@@ -354,7 +354,7 @@
      (fn [{:keys [synced-coll synced-action plain-action]}]
        (remote-sync.db/delete-removed-instances!
         :model/Action
-        (#'spec/removal-opts (spec/spec-for-model-key :model/Action) [synced-coll] #{}))
+        (spec/removal-opts (spec/spec-for-model-key :model/Action) [synced-coll] #{}))
        (is (not (t2/exists? :model/Action :id synced-action)))
        (is (t2/exists? :model/Action :id plain-action))))))
 

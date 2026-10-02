@@ -99,3 +99,16 @@ databaseChangeLog:
         - sql:
             sql: UPDATE action SET archived_directly = TRUE WHERE archived = TRUE;
       rollback: # nothing to do; rolling back the preceding changeset drops the column
+
+  - changeSet:
+      id: v65.2026-10-01T00:00:07
+      author: ranquild
+      comment: Archive the actions of models that are already archived, as archiving a model now does
+      changes:
+        - sql:
+            sql: >-
+              UPDATE action
+              SET archived = TRUE, archived_directly = FALSE
+              WHERE archived = FALSE
+                AND EXISTS (SELECT 1 FROM report_card WHERE report_card.id = action.model_id AND report_card.archived = TRUE);
+      rollback: # nothing to do; rolling back the preceding changesets drops the column

@@ -99,9 +99,6 @@
 
 (defn- execute-custom-action! [action request-parameters opts]
   (actions/check-actions-enabled action)
-  ;; the query executes against its own :database; fall back to the derived column if absent
-  (actions/check-actions-enabled-for-database
-   (actions.db/database (or (:database (:dataset_query action)) (:database_id action))))
   (try
     (execute-query-action! action request-parameters opts)
     (catch Exception e

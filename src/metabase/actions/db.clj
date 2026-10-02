@@ -11,18 +11,19 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(def ^:private action-database-joins
+(defn- action-database-joins
   "The joins from `action` to the Database `db` of its query, or of its model Card for an implicit action."
-  [[:query_action :qa]      [:= :qa.action_id :action.id]
-   [:report_card :card]     [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
-   [:metabase_database :db] [:= :db.id [:coalesce :qa.database_id :card.database_id]]])
+  []
+  [[(t2/table-name :model/QueryAction) :qa] [:= :qa.action_id :action.id]
+   [(t2/table-name :model/Card) :card]      [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
+   [(t2/table-name :model/Database) :db]    [:= :db.id [:coalesce :qa.database_id :card.database_id]]])
 
 (mu/defn database-for-action
   "The Database the Action with `action-id` runs against: its query's, or its model's for an implicit action, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/Database {:select    [:db.*]
-                                  :from      :action
-                                  :left-join action-database-joins
+                                  :from      [[(t2/table-name :model/Action) :action]]
+                                  :left-join (action-database-joins)
                                   :where     [:and [:= :action.id action-id] [:not= :db.id nil]]}))
 
 (mu/defn table-database-id
@@ -213,8 +214,8 @@
   "The id and Database settings of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/query {:select    [:action.id :db.settings]
-             :from      :action
-             :left-join action-database-joins
+             :from      [[(t2/table-name :model/Action) :action]]
+             :left-join (action-database-joins)
              :where     [:and [:in :action.id action-ids] [:not= :db.id nil]]}))
 
 (mu/defn card-scope-columns

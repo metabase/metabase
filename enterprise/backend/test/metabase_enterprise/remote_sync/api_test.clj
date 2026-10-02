@@ -967,14 +967,14 @@
      (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))
      (f ctx))))
 
-(deftest push-after-model-becomes-question-removes-implicit-actions-test
-  (testing "turning a pushed model into a question removes its implicit actions from the repo on the next push"
+(deftest push-after-model-becomes-question-removes-actions-test
+  (testing "turning a pushed model into a question removes its actions from the repo on the next push"
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (mt/user-http-request :crowberto :put 200 (str "card/" (:id model)) {:type "question"})
        (is (remote-sync.task/successful? (push!)))
        (is (nil? (repo-file "collections/main/synced/create_venue.yaml")))
-       (is (some? (repo-file "collections/main/synced/rename_venue.yaml")) "the query action stays")))))
+       (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))))))
 
 (deftest push-after-model-query-drops-implicit-actions-test
   (testing "GHY-4722: a model query that no longer supports implicit actions removes them from the repo on the next push"

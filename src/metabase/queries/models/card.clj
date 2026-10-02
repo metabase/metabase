@@ -582,9 +582,11 @@
                  (= (:type old-card-info) :model)
                  (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: implicit actions can't run without a model
+      ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
+        (queries.db/delete-dashcards-for-model-actions! id)
+        (queries.db/archive-explicit-actions-for-model! id)
         (queries.db/delete-implicit-actions-for-model! id))
       (when (contains? changes :archived)
         (queries.db/set-actions-of-model-archived! id (boolean (:archived changes))))
@@ -854,11 +856,6 @@
         public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (:type <>) (:collection_id <>))))
 
-(t2/define-after-update :model/Card
-  [card]
-  (u/prog1 card
-    (queries.db/move-actions-of-model! (:id card) (:collection_id card))))
-
 (t2/define-after-insert :model/Card
   [card]
   (u/prog1 card
@@ -866,6 +863,13 @@
       (log/info "Card references Fields in params:" field-ids)
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+
+(defn- move-model-actions
+  "Moves the Actions of `card` into its Collection when the update changes it, returning `card`."
+  [card original]
+  (u/prog1 card
+    (when (not= (:collection_id card) (:collection_id original))
+      (queries.db/move-actions-of-models! #{(:id card)} (:collection_id card)))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -921,6 +925,7 @@
         (populate-query-fields (contains? changes :dataset_query))
         (clear-metabot-origin changes)
         (pre-update changes)
+        (move-model-actions original)
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 

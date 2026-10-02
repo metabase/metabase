@@ -217,6 +217,17 @@
       (is (false? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
       (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id old-action)))))))
 
+(deftest unarchive-collection-keeps-actions-of-archived-models-test
+  (testing "restoring a Collection does not restore the Actions of a model that is still in the trash"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       model      {:type :model :collection_id (u/the-id collection)}
+                   :model/Action     action     {:type :query :name "Rename" :model_id (u/the-id model)}]
+      (t2/update! :model/Card (u/the-id model) {:archived true :archived_directly true})
+      (archive-collection! collection)
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id (u/the-id model))))
+      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action)))))))
+
 (deftest delete-collection-deletes-actions-test
   (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
     (mt/with-temp [:model/Collection collection {}

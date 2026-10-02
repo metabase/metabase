@@ -1757,11 +1757,11 @@
       (collections.db/set-pulse-archived-in-collections! affected-collection-ids false)
       (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids false)
       (collections.db/set-timeline-archived-in-collections! affected-collection-ids false)
-      (collections.db/set-action-archived-in-collections! affected-collection-ids false)
       (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
       (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
+      (collections.db/set-action-archived-in-collections! affected-collection-ids false)
       (when (:is_remote_synced collection)
         (check-non-remote-synced-dependencies collection)))))
 

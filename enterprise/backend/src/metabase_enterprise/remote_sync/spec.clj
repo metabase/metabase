@@ -632,7 +632,7 @@
              :message  (format "Import contains %s but local instance has unsynced %s namespace collections"
                                category category)}))))
 
-(defn- removal-opts
+(defn removal-opts
   "The `metabase-enterprise.remote-sync.db` removal-opts (`:scope-key`, `:synced-collection-ids`, `:entity-ids`,
   `:removal-conditions`) for removing the entity-id `spec`'s rows not in the import, scoped to
   `synced-collection-ids` when the spec has a `:scope-key`, minus the imported `entity-ids`."

@@ -176,13 +176,6 @@
    collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/update! (t2/table-name :model/Card) {:id [:in card-ids]} {:collection_id collection-id}))
 
-(mu/defn move-actions-of-models!
-  "Move the Actions of the model Cards with `model-ids` to the Collection with `collection-id`, returning the number
-  updated."
-  [model-ids     :- [:set ::lib.schema.id/card]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
-
 (mu/defn stored-result
   "The StoredResult with `id`, or nil."
   [id :- ms/PositiveInt]
