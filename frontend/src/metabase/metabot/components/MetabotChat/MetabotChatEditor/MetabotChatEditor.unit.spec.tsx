@@ -7,11 +7,12 @@ import {
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders } from "__support__/ui";
+import { mockGetBoundingClientRect, renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -186,6 +187,7 @@ describe("MetabotChatEditor", () => {
             q: "test",
             models: asFetchMockModelParams([
               "table",
+              "database",
               "card",
               "dashboard",
               "collection",
@@ -215,6 +217,7 @@ describe("MetabotChatEditor", () => {
             q: "test",
             models: asFetchMockModelParams([
               "table",
+              "database",
               "card",
               "dashboard",
               "collection",
@@ -223,6 +226,41 @@ describe("MetabotChatEditor", () => {
         }),
       ).toBeTruthy();
     });
+  });
+
+  it("can mention a database found by search", async () => {
+    mockGetBoundingClientRect();
+    const onChange = jest.fn();
+    setup(
+      { onChange },
+      {
+        searchItems: [
+          createMockSearchResult({ id: 1, name: "DB 1", model: "database" }),
+        ],
+      },
+    );
+
+    await userEvent.type(await input(), "@DB");
+    await userEvent.click(await screen.findByText("DB 1"));
+
+    expect(onChange).toHaveBeenLastCalledWith("[DB 1](metabase://database/1)");
+  });
+
+  it("can mention a database picked in the browse all modal", async () => {
+    mockGetBoundingClientRect();
+    setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+    const onChange = jest.fn();
+    setup({ onChange });
+
+    await userEvent.type(await input(), "@");
+    await userEvent.click(await screen.findByText("Browse all"));
+    await userEvent.click(await screen.findByText("Databases"));
+    await userEvent.click(await screen.findByRole("link", { name: /DB 1/ }));
+    await userEvent.click(
+      await screen.findByTestId("entity-picker-select-button"),
+    );
+
+    expect(onChange).toHaveBeenLastCalledWith("[DB 1](metabase://database/1)");
   });
 
   it("should handle paste events with metabase protocol links", async () => {
