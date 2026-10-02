@@ -104,7 +104,7 @@ describe("Metabot UI", () => {
         cy.wait("@xrayCandidates");
       });
 
-      it("should be controlled via keyboard shortcut and be able to be opened and closed", () => {
+      it("should be controlled via keyboard shortcut, be able to be opened and closed, send a message to the agent, handle successful or failed responses, and start a new conversation via /metabot/new", () => {
         H.openMetabotViaShortcutKey();
         H.expectUnstructuredSnowplowEvent({
           event: "metabot_chat_opened",
@@ -133,9 +133,8 @@ describe("Metabot UI", () => {
           1,
         );
         H.closeMetabotViaCloseButton();
-      });
 
-      it("should allow a user to send a message to the agent, handle successful or failed responses, and start a new conversation via /metabot/new", () => {
+        cy.log("send a message and handle successful or failed responses");
         H.openMetabotViaSearchButton();
         H.chatMessages().should("not.exist");
 
