@@ -83,7 +83,13 @@
 
       ;; Numbered the way queries group weeks, like the labels from `u.time/format-unit`.
       (= unit :week-of-year)
-      (u.time/format-unit time-config (if (and (not (number? value)) (u.time/valid? t)) t value) :week-of-year)
+      (u.time/format-unit time-config
+                          (cond
+                            (number? value)   value
+                            (u.time/valid? t) t
+                            ;; Not a date. Formatting the input keeps its text.
+                            :else             value)
+                          :week-of-year)
 
       ;; Weeks in tooltips and cells get formatted specially.
       (and (= unit :week) (#{"tooltip" "cell"} type) (not no-range))

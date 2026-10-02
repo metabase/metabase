@@ -72,8 +72,9 @@
 
 ;; Numbers weeks the way the query processor buckets `:week-of-year`: by the day of year the week starts on.
 ;; A week that starts in late December keeps that year's number, even when it holds Jan 1.
-;; Keep in step with the copy in impl.cljs and with `sql.qp/date [:sql :week-of-year]`;
-;; `week-of-year-label-matches-query-test` fails if they drift apart.
+;; Keep in step with the copy in impl.cljs and with `sql.qp/date [:sql :week-of-year]`.
+;; The rules test, `week-of-year-rules-test`, holds both copies to the same rules, and
+;; `week-of-year-label-matches-query-test` checks labels against what each driver returns.
 (defn- week-of-year [time-config t]
   (let [week-start (t/adjust t :previous-or-same-day-of-week (start-of-week time-config))]
     (-> (t/as week-start :day-of-year) (+ 6) (quot 7))))
@@ -568,7 +569,8 @@
       (t/format format t))))
 
 (defn extract
-  "Extract a field such as `:minute-of-hour` from a temporal value `t`."
+  "Extract a field such as `:minute-of-hour` from a temporal value `t`.
+  Week-of-year numbers match how queries group `:week-of-year`, whatever the locale."
   [time-config t unit]
   (if (= unit :week-of-year)
     (week-of-year time-config t)

@@ -63,7 +63,8 @@
 (dayjs/extend objectSupport)
 (dayjs/extend quarterOfYear)
 (dayjs/extend utc)
-;; The `wo` pattern in the date formatters needs it.
+;; TODO (Chris 2026-10-02) -- the date formatters' locale `wo` week pattern is this plugin's only CLJS use, and
+;; nothing reaches it now that labels number weeks like queries. Drop both unless the frontend relies on the plugin.
 (dayjs/extend weekOfYear)
 
 (defn- now [] (dayjs))
@@ -135,8 +136,9 @@
 
 ;; Numbers weeks the way the query processor buckets `:week-of-year`: by the day of year the week starts on.
 ;; A week that starts in late December keeps that year's number, even when it holds Jan 1.
-;; Keep in step with the copy in impl.clj and with `sql.qp/date [:sql :week-of-year]`;
-;; `week-of-year-rules-test` holds both copies to the same rules.
+;; Keep in step with the copy in impl.clj and with `sql.qp/date [:sql :week-of-year]`.
+;; The rules test, `week-of-year-rules-test`, holds both copies to the same rules, and
+;; `week-of-year-label-matches-query-test` checks labels against what each driver returns.
 (defn- week-of-year [time-config ^dayjs value]
   (-> (.dayOfYear (truncate-to-week time-config value)) (+ 6) (quot 7)))
 
@@ -248,8 +250,8 @@
   (-> (magic-base-date) (.dayOfYear value) (.startOf "day")))
 
 (defmethod common/number->timestamp :week-of-year [value options]
-  (let [^dayjs earliest-start (-> (now) (.startOf "year") (.add (dec value) "week"))]
-    (.add earliest-start (mod (- (start-of-week-index options) (.day earliest-start)) 7) "day")))
+  ;; The first week start on or after Jan 1 plus `value - 1` weeks, like the JVM's `:next-or-same-day-of-week`.
+  (truncate-to-week options (-> (now) (.startOf "year") (.add (dec value) "week") (.add 6 "day"))))
 
 (defmethod common/number->timestamp :month-of-year [value _]
   ;; Day.js uses 0-based months, so we need to subtract 1
@@ -762,7 +764,8 @@
       (.format d "YYYY-MM-DD"))))
 
 (defn extract
-  "Extract a field such as `:minute-of-hour` from a temporal value `t`."
+  "Extract a field such as `:minute-of-hour` from a temporal value `t`.
+  Week-of-year numbers match how queries group `:week-of-year`, whatever the locale."
   [time-config ^dayjs t unit]
   (let [time-config (common/require-time-config time-config)]
     (case unit
