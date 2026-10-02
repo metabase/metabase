@@ -103,7 +103,7 @@ Supported models:
 | GPT-5.6 Luna           | `openai/gpt-5.6-luna`             | 922,000                 |
 | GPT-5.6 Sol            | `openai/gpt-5.6-sol`              | 922,000                 |
 | GPT-5.6 Terra          | `openai/gpt-5.6-terra`            | 922,000                 |
-| Qwen3.8 Max            | `qwen/qwen3.8-max`                | 1,000,000               |
+| Qwen3.8 Max 0902       | `qwen/qwen3.8-max-0902`           | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
 | GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
 
@@ -182,6 +182,24 @@ Credentials:
 
 - **API key** (required). [Where do I find this?](https://platform.deepseek.com/api_keys) You can also set it with the environment variable `MB_LLM_DEEPSEEK_API_KEY`.
 - **API base URL** (advanced). The root both surfaces hang off; leave off any /anthropic or /v1 path. Defaults to `https://api.deepseek.com`. You can also set it with the environment variable `MB_LLM_DEEPSEEK_API_BASE_URL`.
+
+## xAI
+
+- Provider key: `xai`
+- Default model: `grok-4.7`
+- Model for short tasks like naming a conversation: `grok-4.3`
+
+Supported models:
+
+| Model    | Model ID   | Context window (tokens) |
+| -------- | ---------- | ----------------------- |
+| Grok 4.3 | `grok-4.3` | 1,000,000               |
+| Grok 4.7 | `grok-4.7` | 500,000                 |
+
+Credentials:
+
+- **API key** (required). [Where do I find this?](https://console.x.ai/team/default/api-keys) You can also set it with the environment variable `MB_LLM_XAI_API_KEY`.
+- **API base URL** (advanced). Defaults to `https://api.x.ai/v1`. You can also set it with the environment variable `MB_LLM_XAI_API_BASE_URL`.
 
 ## Google Gemini Enterprise
 

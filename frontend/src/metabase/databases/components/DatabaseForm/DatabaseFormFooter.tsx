@@ -10,11 +10,12 @@ import type {
 } from "metabase/databases/types";
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { useSetting } from "metabase/settings";
-import { Button, Flex, Text } from "metabase/ui";
+import { ActionIcon, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
 import { DatabaseFormError } from "../DatabaseFormError";
 
+import { DatabaseTestConnectionButton } from "./DatabaseTestConnectionButton";
 import { useHasConnectionError, useIsFormDirty } from "./utils";
 
 interface DatabaseFormFooterProps {
@@ -34,6 +35,7 @@ export const DatabaseFormFooter = ({
 }: DatabaseFormFooterProps) => {
   const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
+  const isFullPage = location === "full-page";
   const hasConnectionError = useHasConnectionError();
   const isDirty = useIsFormDirty();
 
@@ -44,25 +46,25 @@ export const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <FormFooter
-        data-testid="form-footer"
-        px={location === "full-page" ? undefined : "xxl"}
-      >
+      <FormFooter data-testid="form-footer" px={isFullPage ? undefined : "xxl"}>
         <Flex justify="space-between" align="center" w="100%">
-          {isNew ? (
-            <ExternalLink
-              key="link"
-              href={docsUrl}
-              style={{ fontWeight: 500, fontSize: ".875rem" }}
-            >
-              {t`Need help connecting?`}
-            </ExternalLink>
-          ) : (
-            <div />
-          )}
+          <Flex gap="sm" align="center">
+            <DatabaseTestConnectionButton />
+            {isNew && (
+              <Tooltip label={t`Need help connecting?`}>
+                <ActionIcon
+                  component={ExternalLink}
+                  href={docsUrl}
+                  aria-label={t`Need help connecting?`}
+                >
+                  <Icon name="question" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Flex>
 
           <Flex gap="sm">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            {!isFullPage && <Button onClick={onCancel}>{t`Cancel`}</Button>}
             <FormSubmitButton
               disabled={!isDirty}
               label={isNew ? t`Save` : t`Save changes`}

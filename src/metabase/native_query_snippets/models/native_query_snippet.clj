@@ -9,6 +9,7 @@
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.native-query-snippets.schema]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -90,8 +91,20 @@
   (u/prog1 (t2.realize/realize snippet)
     (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
 
+(defenterprise pre-update-check-sandbox-constraints-for-snippet
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_ _])
+
+(defenterprise pre-delete-check-sandbox-constraints-for-snippet
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.sandbox
+  [_])
+
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
+  ;; additional checks (Enterprise Edition only)
+  (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
@@ -107,6 +120,8 @@
 
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]
+  ;; additional checks (Enterprise Edition only)
+  (pre-delete-check-sandbox-constraints-for-snippet snippet)
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 

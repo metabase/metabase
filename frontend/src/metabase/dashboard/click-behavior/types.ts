@@ -8,6 +8,7 @@ import type {
   ClickBehavior,
   ClickBehaviorParameterMapping,
   ClickBehaviorType,
+  DashboardCard,
   DashboardId,
   DashboardTabId,
   ParameterId,
@@ -22,6 +23,7 @@ export type DashboardDrillType =
   | "dashboard-reset";
 
 export interface DrillExtraData extends ClickBehaviorExtraData {
+  dashcard?: DashboardCard;
   questions?: Record<CardId, Card>;
 }
 

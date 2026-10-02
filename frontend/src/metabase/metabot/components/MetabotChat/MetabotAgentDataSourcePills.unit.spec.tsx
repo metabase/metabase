@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import type {
@@ -108,6 +108,7 @@ const setupNativeEndpoints = ({ delay = 0 }: { delay?: number } = {}) => {
     },
     { delay },
   );
+  fetchMock.get(`path:/api/table/${ORDERS_TABLE.id}`, ORDERS_TABLE);
   fetchMock.get("path:/api/database/1", DATABASE);
 };
 
@@ -341,7 +342,7 @@ describe("MetabotAgentDataSourcePills", () => {
     );
   });
 
-  it("does not show Library in a model source path for normal collections", async () => {
+  it("collects feedback for several sources via a modal", async () => {
     const sql = "SELECT * FROM {{#4-revenue_model}}";
     const templateTags: TemplateTags = {
       "#4-revenue_model": {
@@ -353,7 +354,16 @@ describe("MetabotAgentDataSourcePills", () => {
       },
     };
     fetchMock.post(EXTRACT_SOURCES_ENDPOINT, {
-      tables: [],
+      tables: [
+        {
+          id: ORDERS_TABLE.id,
+          name: ORDERS_TABLE.name,
+          schema: ORDERS_TABLE.schema,
+          display_name: ORDERS_TABLE.display_name,
+          description: null,
+          columns: [],
+        },
+      ],
       card_ids: [4],
     });
     fetchMock.get(
@@ -368,10 +378,12 @@ describe("MetabotAgentDataSourcePills", () => {
         }),
       }),
     );
-    fetchMock.get("path:/api/database/1", DATABASE);
+    setupTableEndpoints(ORDERS_TABLE);
+    fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, 204);
 
     renderWithProviders(
       <GeneratedCardTablePills
+        messageId="message-11"
         value={createNativeCard(sql, 1, templateTags)}
       />,
     );
@@ -379,8 +391,40 @@ describe("MetabotAgentDataSourcePills", () => {
     expect(
       await screen.findByRole("link", { name: "Revenue Model" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Marketing & Growth")).toBeInTheDocument();
-    expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Source is correct"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Give feedback" }),
+    );
+
+    const modal = await screen.findByRole("dialog");
+    expect(within(modal).getByText("Marketing & Growth")).toBeInTheDocument();
+    expect(within(modal).getByText(/Sample Database/)).toBeInTheDocument();
+    expect(within(modal).queryByText("Library")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(modal).getAllByRole("button", { name: "Source is wrong" })[1],
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(SOURCE_FEEDBACK_ENDPOINT, {
+          body: {
+            metabot_id: FIXED_METABOT_IDS.DEFAULT,
+            message_id: "message-11",
+            source_id: 4,
+            source_type: "model",
+            positive: false,
+          },
+        }),
+      ).toHaveLength(1),
+    );
+
+    await userEvent.click(within(modal).getByRole("button", { name: "Done" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 
   it("shows source links without feedback buttons when message id is not provided", async () => {
@@ -395,6 +439,7 @@ describe("MetabotAgentDataSourcePills", () => {
     const sourceLink = await screen.findByRole("link", { name: "Orders" });
 
     expect(sourceLink).toHaveAttribute("href", "/table/2-orders");
+    expect(fetchMock.callHistory.calls("path:/api/database/1")).toHaveLength(0);
     expect(
       screen.queryByLabelText("Source is correct"),
     ).not.toBeInTheDocument();

@@ -17,6 +17,8 @@
 .DashboardHeader {
   container-type: inline-size;
   container-name: dashboard-header;
+  /* Clips the tab row's full-bleed border to the header's edges */
+  overflow-x: clip;
 }
 
 .HeaderContainer {

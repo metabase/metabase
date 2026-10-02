@@ -19,6 +19,7 @@
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -2497,6 +2498,18 @@
                 (mt/user-http-request :rasta :delete 204 (str "card/" (u/the-id card)))
                 (t2/select-one :model/Card :id (u/the-id card)))))))
 
+(deftest delete-model-publishes-action-delete-events-test
+  (testing "GHY-4722: deleting a model announces the deletion of each of its actions, which the database removes with it"
+    (mt/with-temp [:model/Card   {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                   :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
+                   :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
+      (let [published (atom #{})]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic {:keys [object]}]
+                                                            (when (= :event/action-delete topic)
+                                                              (swap! published conj (:id object))))]
+          (mt/user-http-request :crowberto :delete 204 (str "card/" model-id)))
+        (is (= #{query archived} @published))))))
+
 ;; deleting a card that doesn't exist should return a 404 (#1957)
 (deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-
   (is (= "Not found."
@@ -3166,6 +3179,18 @@
     (is (= {:response    {:status "ok"}
             :collections ["New Collection" "New Collection"]}
            (POST-card-collections! :crowberto 200 new-collection [card-1 card-2])))))
+
+(deftest bulk-move-moves-model-actions-test
+  (testing "bulk-moving models moves their actions too"
+    (mt/with-temp [:model/Collection old-collection {}
+                   :model/Collection new-collection {}
+                   :model/Card       model-1        {:type :model :collection_id (u/the-id old-collection)}
+                   :model/Card       model-2        {:type :model :collection_id (u/the-id old-collection)}
+                   :model/Action     action-1       {:type :query :name "One" :model_id (u/the-id model-1)}
+                   :model/Action     action-2       {:type :query :name "Two" :model_id (u/the-id model-2)}]
+      (POST-card-collections! :crowberto 200 new-collection [model-1 model-2])
+      (is (= #{(u/the-id new-collection)}
+             (t2/select-fn-set :collection_id :model/Action :id [:in [(u/the-id action-1) (u/the-id action-2)]]))))))
 
 (deftest test-that-we-can-bulk-remove-some-cards-from-a-collection
   (mt/with-temp [:model/Collection  collection {}
