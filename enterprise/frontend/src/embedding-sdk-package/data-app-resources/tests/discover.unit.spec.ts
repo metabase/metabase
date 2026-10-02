@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { discoverActions, discoverQueries } from "../discover";
 
 import { makeApp, setupResourceTests, writeAction, writeQuery } from "./setup";
@@ -35,6 +38,23 @@ describe("query discovery", () => {
     await expect(discoverQueries(appRoot)).rejects.toThrow(
       `Saved question ${QUESTION_10} is referenced by`,
     );
+  });
+
+  it("counts a definition another file re-exports once, and skips exports that aren't objects", async () => {
+    const appRoot = makeApp();
+    writeQuery(
+      appRoot,
+      `export const Orders = defineQuery({ savedQuestionEntityId: "${QUESTION_10}", source: { type: "table", id: 1 } });
+       export const LIMIT = 5;`,
+    );
+    fs.writeFileSync(
+      path.join(appRoot, "queries/index.ts"),
+      'export { Orders } from "./orders.query";\n',
+    );
+
+    await expect(discoverQueries(appRoot)).resolves.toEqual([
+      expect.objectContaining({ exportName: "Orders" }),
+    ]);
   });
 
   it("rejects an invalid saved question ID", async () => {
@@ -128,19 +148,6 @@ describe("action discovery", () => {
 
     await expect(discoverActions(appRoot)).rejects.toThrow(
       "has an invalid copiedActionEntityId",
-    );
-  });
-
-  it("requires a definition to initialize an exported variable", async () => {
-    const appRoot = makeApp();
-
-    writeAction(
-      appRoot,
-      `const Create = defineAction({ action: { id: 51, parameters: [] } });`,
-    );
-
-    await expect(discoverActions(appRoot)).rejects.toThrow(
-      "defineAction must directly initialize a named exported variable",
     );
   });
 });

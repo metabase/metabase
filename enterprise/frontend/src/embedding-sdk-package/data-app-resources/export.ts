@@ -1,9 +1,12 @@
 import path from "node:path";
 
-import { QUERY_DEFINITIONS } from "./ast/definition-source";
-import { discoverActions, discoverQueries } from "./discover";
+import {
+  QUERY_DEFINITIONS,
+  discoverActions,
+  discoverQueries,
+} from "./discover";
 import { getMetabaseCredentials } from "./env";
-import { isRecord } from "./guards";
+import { isObject } from "./guards";
 
 interface ExportedResources {
   queries: Record<string, unknown>[];
@@ -12,14 +15,14 @@ interface ExportedResources {
   metrics: unknown[];
 }
 
-const isRecordArray = (value: unknown): value is Record<string, unknown>[] =>
-  Array.isArray(value) && value.every(isRecord);
+const isObjectArray = (value: unknown): value is Record<string, unknown>[] =>
+  Array.isArray(value) && value.every(isObject);
 
 function isExportedResources(value: unknown): value is ExportedResources {
   return (
-    isRecord(value) &&
-    isRecordArray(value.queries) &&
-    isRecordArray(value.actions) &&
+    isObject(value) &&
+    isObjectArray(value.queries) &&
+    isObjectArray(value.actions) &&
     Array.isArray(value.models) &&
     Array.isArray(value.metrics)
   );

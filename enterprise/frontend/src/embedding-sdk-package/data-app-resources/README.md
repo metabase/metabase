@@ -69,13 +69,13 @@ is `validate-schema`'s job (the template's `npm run validate-resources`), and th
 rules (the collection, where copies live, duplicate or foreign entity IDs, the layout) are the pull's.
 Nothing checks that a saved question's query matches its definition.
 
-## Discovery is deliberately strict
+## Discovery evaluates the definitions
 
-Each file is read twice over. `ast/definition-source.ts` walks the TypeScript AST to locate
-`defineQuery`/`defineAction` calls and enforces that each one directly initializes a **named
-exported** variable with a single object literal. `discover.ts` then bundles the file with esbuild,
-evaluates it **twice**, and compares the two results, so a definition that isn't deterministic can't print differently from what the YAML was
-written from.
+`discover.ts` bundles every file under `queries/` (or `actions/`) into one module with esbuild,
+evaluates it, and takes every exported object as a definition: `defineQuery` and `defineAction`
+return their argument as is, and the two directories hold nothing else. A definition a second file
+re-exports keeps its identity through the single bundle, so it counts once. Anything that isn't a
+definition is rejected by the export endpoint's schema, not here.
 
 ## Dev preview vs production build
 
