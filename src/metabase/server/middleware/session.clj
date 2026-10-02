@@ -215,12 +215,13 @@
    request                                                :- ::request.schema/request]
   (when (and extract-token (init-status/complete?))
     (when-let [token (extract-token request)]
-      (when-let [{:keys [user-id scopes]} (resolve-token token)]
+      (when-let [{:keys [user-id token-id scopes]} (resolve-token token)]
         ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
         (when (seq scopes)
           (some-> (user-info-for-id user-id)
                   (assoc :token-scopes             (oauth-token->token-scopes full-access-scope scopes)
-                         :authenticated-via-oauth? true)))))))
+                         :authenticated-via-oauth? true
+                         :oauth-token-id           token-id)))))))
 
 (defn- auth-method
   [session-info api-key-info oauth-info embedding-route]

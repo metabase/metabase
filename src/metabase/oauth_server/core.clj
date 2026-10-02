@@ -257,7 +257,8 @@
 
 (defn resolve-access-token
   "Validate an OAuth bearer access token string against the token store. Returns
-   `{:user-id <int> :scopes <set-of-strings>}` on success, or nil on failure (unknown,
+   `{:user-id <int> :token-id <int> :scopes <set-of-strings>}` on success, where `:token-id` is the token's row id,
+   or nil on failure (unknown,
    expired, or revoked token, a token with no associated user, or a token whose user has since
    been deactivated).
 
@@ -283,5 +284,18 @@
                      (oauth-server.db/oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               (when (oauth-server.db/active-user-exists? user-id)
-                {:user-id user-id
-                 :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+                {:user-id  user-id
+                 :token-id (:id token-data)
+                 :scopes   (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+
+(defn live-mcp-access-token?
+  "Whether the access token with row id `token-id` still authenticates `user-id`: it exists, is unrevoked and
+  unexpired, belongs to `user-id`, was issued to a client that still exists, and its user is active."
+  [token-id user-id]
+  (boolean
+   (when (and (pos-int? token-id) (pos-int? user-id))
+     (when-let [{:keys [expiry client_id] :as row} (oauth-server.db/unrevoked-access-token-by-id token-id)]
+       (and (= user-id (:user_id row))
+            (or (nil? expiry) (> expiry (System/currentTimeMillis)))
+            (oauth-server.db/oauth-client-exists? client_id)
+            (oauth-server.db/active-user-exists? user-id))))))

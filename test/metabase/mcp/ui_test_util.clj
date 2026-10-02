@@ -1,13 +1,16 @@
 (ns metabase.mcp.ui-test-util
   "Helpers for tests that call the `/api/embed-mcp` handlers the way the MCP Apps iframe does: with a UI credential
-  and the MCP session id it was minted for."
+  and the MCP session id it was minted for. A credential is minted from a live OAuth access token, as the MCP
+  endpoint's sessions are."
   (:require
    [metabase.lib.core :as lib]
    [metabase.mcp.session :as mcp.session]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [oidc-provider.util :as oidc.util]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,17 +18,50 @@
   "The scopes the iframe's query routes cost."
   #{"agent:query:run"})
 
+(def ^:private client-id
+  "The `client_id` of the OAuth client the access tokens behind these credentials are issued to."
+  "mcp-ui-test-util-client")
+
+(defn- ensure-client! []
+  (when-not (t2/exists? :model/OAuthClient :client_id client-id)
+    (t2/insert! :model/OAuthClient {:client_id         client-id
+                                    :redirect_uris     ["https://example.com/callback"]
+                                    :grant_types       ["authorization_code"]
+                                    :response_types    ["code"]
+                                    :scopes            ["openid"]
+                                    :registration_type "static"})))
+
+(defn access-token-id!
+  "The id of a new OAuth access token row for `user-id` holding `scopes`, written the way an issued token is: hashed,
+  against a live client. It expires an hour from now unless `:expiry` says otherwise."
+  [user-id scopes & {:keys [expiry]}]
+  (ensure-client!)
+  (t2/insert-returning-pk! :model/OAuthAccessToken
+                           {:token     (oidc.util/hash-token (str (random-uuid)))
+                            :user_id   user-id
+                            :client_id client-id
+                            :scope     (vec scopes)
+                            :expiry    (or expiry (+ (System/currentTimeMillis) 3600000))}))
+
+(defn credential!
+  "A UI credential for `user-id` on MCP session `session-id` holding `scopes`, minted from a new live MCP access
+  token."
+  [session-id user-id scopes]
+  (mcp.session/issue-ui-credential session-id user-id scopes (access-token-id! user-id scopes)))
+
 (defn ui-auth!
   "A fresh MCP session for `username` and a UI credential minted for it holding `scopes` (default
-  [[query-scopes]]), as `{:user-id :session-id :credential}`."
+  [[query-scopes]]), as `{:user-id :session-id :token-id :credential}`."
   ([username]
    (ui-auth! username query-scopes))
   ([username scopes]
    (let [user-id    (mt/user->id username)
-         session-id (mcp.session/create! user-id)]
+         session-id (mcp.session/create! user-id)
+         token-id   (access-token-id! user-id scopes)]
      {:user-id    user-id
       :session-id session-id
-      :credential (mcp.session/issue-ui-credential session-id user-id scopes)})))
+      :token-id   token-id
+      :credential (mcp.session/issue-ui-credential session-id user-id scopes token-id)})))
 
 (defn encode-query
   "`query`, a lib query, in the base64 form a query handle stores."

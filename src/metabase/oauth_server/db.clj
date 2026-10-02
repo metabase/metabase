@@ -140,6 +140,11 @@
   [token :- :string]
   (t2/select-one :model/OAuthAccessToken :token token :revoked_at nil))
 
+(mu/defn unrevoked-access-token-by-id
+  "The unrevoked OAuthAccessToken with row id `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/OAuthAccessToken :id id :revoked_at nil))
+
 (mu/defn insert-refresh-token!
   "Insert the OAuthRefreshToken `row`, returning the number inserted."
   [row :- ::oauth-server.schema/oauth-refresh-token.update]
