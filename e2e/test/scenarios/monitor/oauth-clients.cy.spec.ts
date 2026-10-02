@@ -48,7 +48,9 @@ describe("scenarios > monitor > oauth clients", () => {
     cy.signInAsAdmin();
 
     cy.log("An admin reaches the page from the Monitor nav");
-    cy.visit("/monitor");
+    // A leaf section rather than `/monitor`, which redirects to the first section this admin can see and lands in
+    // two hops; the second one commits after the click below and replaces it. Any Monitor page carries the same nav.
+    cy.visit("/monitor/logs");
     cy.findByTestId("monitor-nav")
       .findByRole("link", { name: "OAuth clients" })
       .click();
@@ -60,12 +62,12 @@ describe("scenarios > monitor > oauth clients", () => {
         .should("contain", CLIENT_NAME)
         .and("contain", clientId);
 
-      // The Active tab's columns are Client, Redirect URIs, Users, Live tokens, Registered, one gridcell each, and
-      // the counts render as bare numbers with nothing to anchor on but their position. The length assertion is
-      // what keeps the two indices below honest if the columns ever change.
+      // The Active tab's columns are Client, Redirect URIs, Users, Live tokens, Last used, Registered, one gridcell
+      // each, and the counts render as bare numbers with nothing to anchor on but their position. The length
+      // assertion is what keeps the two indices below honest if the columns ever change.
       clientRow(clientId)
         .findAllByRole("gridcell")
-        .should("have.length", 5)
+        .should("have.length", 6)
         .then(($cells) => {
           expect($cells.eq(2).text().trim(), "Users").to.eq("1");
           expect($cells.eq(3).text().trim(), "Live tokens").to.eq("1");
