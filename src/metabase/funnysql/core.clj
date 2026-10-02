@@ -392,12 +392,6 @@
   (append-sql! context "OFFSET ")
   (compile! n context))
 
-(defn- for!
-  [what context]
-  (append-sql! context "FOR ")
-  (append-sql! context (case what
-                         :update "UPDATE")))
-
 (defn- on-conflict!
   [columns context]
   (append-sql! context "ON CONFLICT ")
@@ -451,7 +445,6 @@
    :for             for!
    :on-conflict     on-conflict!
    :do-update-set   do-update-set!
-   :for             for!
    :returning       returning!
    :union           (partial -interpose! " UNION ")
    :union-all       (partial -interpose! " UNION ALL ")
