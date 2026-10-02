@@ -414,6 +414,148 @@ describe("MetabaseAIProviderSetup", () => {
     });
   });
 
+  describe("setting-up modal", () => {
+    /**
+     * Provisioning has landed: the instance now reports the managed AI feature
+     * and a configured provider, matching what the server returns once the
+     * connection exists.
+     */
+    function completeProvisioning() {
+      setupPropertiesEndpoints(
+        createMockSettings({
+          "is-hosted?": true,
+          "llm-metabot-configured?": true,
+          "token-features": createMockTokenFeatures({
+            hosting: true,
+            "metabase-ai-managed": true,
+          }),
+          "token-status": createMockTokenStatus({
+            features: ["metabase-ai-managed"],
+          }),
+        }),
+      );
+    }
+
+    async function startPurchase() {
+      await userEvent.click(
+        await screen.findByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+    }
+
+    // `useTokenRefreshUntil` polls once a second, which races RTL's 1s default.
+    const POLL_TIMEOUT = { timeout: 5000 };
+
+    async function waitForConnectionCreated() {
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/llm/providers", {
+            method: "POST",
+            body: { type: "metabase" },
+          }),
+        ).toBe(true);
+      });
+    }
+
+    it("shows the setting-up modal while the purchase is in flight", async () => {
+      setup();
+
+      await startPurchase();
+
+      expect(
+        await screen.findByText("Setting up Metabot AI, please wait"),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps waiting while provisioning is still pending", async () => {
+      const onConnect = jest.fn();
+      setup({ onConnect });
+
+      await startPurchase();
+      await waitForConnectionCreated();
+
+      // The token refresh keeps reporting no managed AI feature, so the modal
+      // must not advance or complete the flow on its own.
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(
+            "path:/api/premium-features/token/refresh",
+            { method: "POST" },
+          ),
+        ).toBe(true);
+      }, POLL_TIMEOUT);
+
+      expect(
+        screen.getByText("Setting up Metabot AI, please wait"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Done" }),
+      ).not.toBeInTheDocument();
+      expect(onConnect).not.toHaveBeenCalled();
+    });
+
+    it("does not complete the flow until the user acknowledges the ready state", async () => {
+      const onConnect = jest.fn();
+      setup({ onConnect });
+
+      await startPurchase();
+      expect(
+        await screen.findByText("Setting up Metabot AI, please wait"),
+      ).toBeInTheDocument();
+
+      // The connection is created, but the caller must not tear the form down
+      // yet or the modal unmounts before it can show the ready state.
+      await waitForConnectionCreated();
+      expect(onConnect).not.toHaveBeenCalled();
+
+      completeProvisioning();
+
+      expect(
+        await screen.findByText("Metabot AI is ready", undefined, POLL_TIMEOUT),
+      ).toBeInTheDocument();
+      expect(onConnect).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(onConnect).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Metabot AI is ready"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("completes the flow once even if Done is clicked twice", async () => {
+      const onConnect = jest.fn();
+      setup({ onConnect });
+
+      await startPurchase();
+      await waitForConnectionCreated();
+      completeProvisioning();
+      await screen.findByText("Metabot AI is ready", undefined, POLL_TIMEOUT);
+
+      await userEvent.dblClick(screen.getByRole("button", { name: "Done" }));
+
+      expect(onConnect).toHaveBeenCalledTimes(1);
+    });
+
+    it("closes the modal and does not complete the flow when the purchase fails", async () => {
+      const onConnect = jest.fn();
+      setup({ purchaseCloudAddOnResponse: 500, onConnect });
+
+      await startPurchase();
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Setting up Metabot AI, please wait"),
+        ).not.toBeInTheDocument();
+      });
+      expect(onConnect).not.toHaveBeenCalled();
+    });
+  });
+
   describe("connected state with managed AI feature", () => {
     it("shows the locked state UI when the user has run out of tokens", async () => {
       setup({

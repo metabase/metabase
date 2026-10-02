@@ -78,10 +78,14 @@ export function MetabaseAIProviderSetup({
   const [createLlmProvider, createLlmProviderResult] =
     useCreateLlmProviderMutation();
 
-  const handleConnect = useCallback(async () => {
+  const createProviderConnection = useCallback(async () => {
     await createLlmProvider({ type: "metabase" }).unwrap();
+  }, [createLlmProvider]);
+
+  const handleConnect = useCallback(async () => {
+    await createProviderConnection();
     onConnect?.();
-  }, [onConnect, createLlmProvider]);
+  }, [createProviderConnection, onConnect]);
 
   const {
     pricing: metabaseManagedAiPricing,
@@ -101,11 +105,22 @@ export function MetabaseAIProviderSetup({
       await metabaseManagedAiPurchase.purchaseMetabaseManagedAi(
         hasAcceptedTerms,
       );
-      await handleConnect();
+      // Deliberately not `handleConnect`: `onConnect` tears this component down,
+      // which would unmount <MetabotSettingUpModal> before it can poll for the
+      // provisioned feature and report that setup finished. The modal's Done
+      // button completes the flow instead, via `handleSettingUpModalClose`.
+      await createProviderConnection();
     } catch {
       setIsSettingUpModalOpen(false);
     }
-  }, [handleConnect, hasAcceptedTerms, metabaseManagedAiPurchase]);
+  }, [createProviderConnection, hasAcceptedTerms, metabaseManagedAiPurchase]);
+
+  // Only reachable from the modal's Done button: it renders without a close
+  // button and ignores click-outside and Escape.
+  const handleSettingUpModalClose = useCallback(() => {
+    setIsSettingUpModalOpen(false);
+    onConnect?.();
+  }, [onConnect]);
 
   const connectAction = match({
     hasMetabaseManagedAiProviderFeature,
@@ -256,7 +271,7 @@ export function MetabaseAIProviderSetup({
             metabaseManagedAiPurchase.isLoading)
         }
         opened={isSettingUpModalOpen}
-        onClose={() => setIsSettingUpModalOpen(false)}
+        onClose={handleSettingUpModalClose}
       />
     </>
   );
