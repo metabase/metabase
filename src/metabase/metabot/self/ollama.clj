@@ -563,10 +563,36 @@
   (chat-completions/chat-completions->aisdk-chunks-xf chat-completions/stop-reasons
                                                       {:forward-reasoning? true}))
 
+(defn- unfinished-stream-xf
+  "Fail a stream that ends without saying why it ended.
+
+  When generation fails after the first token — the runner crashing, or a model's parser rejecting a
+  malformed tool call — Ollama's OpenAI layer sends the error as an empty chunk and closes the stream with
+  no `finish_reason` and no `[DONE]`. Passed through, the partial text would read as a complete answer.
+  Its own error chunk, emitted before the stream completes, lets the shared translation close whatever
+  block is open and fail the turn the way a reported error does. A consumer that stopped reading early
+  ended the stream itself, so nothing is added then."
+  []
+  (fn [rf]
+    ;; set once the stream said why it ended, or the consumer ended it
+    (let [done? (volatile! false)]
+      (fn
+        ([] (rf))
+        ([result]
+         (rf (if @done?
+               result
+               (unreduced (rf result {:error {:message (tru "The Ollama server ended the response before finishing it.")}})))))
+        ([result {:keys [choices error] :as chunk}]
+         (let [result (rf result chunk)]
+           (when (or (reduced? result) (some? error) (some :finish_reason choices))
+             (vreset! done? true))
+           result))))))
+
 (defn ollama
   "Call an Ollama server's Chat Completions API, return AISDK stream."
   [{:keys [credentials] :as opts}]
   (let [plan (forced/plan opts (conn/cloud? credentials))]
     (eduction (comp (or (forced/read-back-xf plan) identity)
+                    (unfinished-stream-xf)
                     (ollama->aisdk-chunks-xf))
               (ollama-raw opts plan))))

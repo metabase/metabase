@@ -873,6 +873,13 @@
   {:id "chatcmpl-1" :model "good-model" :choices []
    :usage {:prompt_tokens 10 :completion_tokens 5}})
 
+(defn- chat-opts
+  "An ordinary chat request: no schema, no tools."
+  []
+  {:model       "good-model"
+   :input       [{:role :user :content "hi"}]
+   :credentials credentials})
+
 (defn- structured-opts
   "A `:schema` request against `creds` — the shape `call-llm-structured` sends."
   ([] (structured-opts credentials))
@@ -1008,11 +1015,22 @@
     (let [result (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
                                     (chunk-with {:content "hello"})
                                     (chunk-with {} "stop")]]
-                                  {:model       "good-model"
-                                   :input       [{:role :user :content "hi"}]
-                                   :credentials credentials})]
+                                  (chat-opts))]
       (is (= 1 (:calls result)))
-      (is (= ["hello"] (mapv :text (parts-of result :text)))))))
+      (is (= ["hello"] (mapv :text (parts-of result :text))))
+      (is (empty? (parts-of result :error))
+          "a stream that says why it ended is complete"))))
+
+(deftest a-stream-that-ends-without-a-finish-reason-fails-the-turn-test
+  (testing (str "Ollama reports a generation that failed after the first token as an empty chunk and closes "
+                "the stream with no finish reason, so the half answer must not pass as a complete one")
+    (let [result (streamed-parts! [[(chunk-with {:role "assistant" :content ""})
+                                    (chunk-with {:content "The answer is"})
+                                    {:id "chatcmpl-1" :model "good-model" :choices []}]]
+                                  (chat-opts))]
+      (is (= ["The answer is"] (mapv :text (parts-of result :text))))
+      (is (=? [{:error {:message "The Ollama server ended the response before finishing it."}}]
+              (parts-of result :error))))))
 
 (deftest a-request-without-a-model-fails-before-any-io-test
   (testing "a blank model is a configuration problem, not something to discover from the server"
