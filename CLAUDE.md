@@ -125,11 +125,11 @@ cluster, name the new half: the failure proposes a name and anchor to add. When 
 another way; the failure shows the requires joining them. When an anchor leaves every cycle, anchor its name on
 another member if the cluster survives, or remove the line.
 
-`:discouraged-var` and `:discouraged-namespace` are budgeted per symbol, not per linter, in both files:
-`--seed :discouraged-var/clojure.core/println` seeds one symbol's budget, and a bare `--seed :discouraged-var`
-(or `:discouraged-namespace`) seeds every symbol configured under that linter. `./bin/mage kondo-ratchets`
-resolves which symbol an ignore covers with a scoped `clojure -M:kondo` run over the files carrying one of
-these two ignores, so it needs the Clojure CLI as well as Babashka.
+Ignores for `:discouraged-var` and `:discouraged-namespace` are budgeted per symbol, not per linter, in both
+files. Use `--seed :discouraged-var/clojure.core/println` to seed one symbol's budget, or a bare
+`--seed :discouraged-var` (or `:discouraged-namespace`) to seed every symbol configured under that linter.
+To learn which symbol an ignore covers, `./bin/mage kondo-ratchets` runs `clojure -M:kondo` over the files
+carrying one, so it needs the Clojure CLI as well as Babashka.
 
 ## Tool Preferences
 

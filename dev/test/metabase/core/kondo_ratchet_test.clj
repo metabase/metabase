@@ -1125,7 +1125,7 @@
             "lowered :dv-lower 5 -> 2"
             "WARNING: :dv-over is over budget (1 recorded, 4 actual) -- remove ignores, or accept them all with `--seed :discouraged-var/dv-over`"
             "WARNING: :dv-new has 1 ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed :discouraged-var/dv-new`"
-            "WARNING: h.clj:9 ignores :discouraged-var but kondo reports no such finding under it -- probably stale (or in a reader branch kondo skips)"
+            "WARNING: h.clj:9 ignores :discouraged-var but kondo reports no such finding under it -- probably stale, under a nested ignore for the same linter, or in a reader branch kondo skips"
             "dropped config :cfg-gone (no suppressions left)"
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"

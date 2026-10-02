@@ -311,9 +311,7 @@
                   (project-tests/run!)))}
 
   kondo-ratchets
-  {:doc "Validate the kondo and module ratchet files against the source tree (Babashka scan, seconds; plus a
-         scoped kondo pass, seconds more, only over files carrying a :discouraged-var/:discouraged-namespace
-         ignore -- to attribute those to their per-symbol budget)."
+  {:doc "Validate the kondo and module ratchet files against the source tree (about half a minute, most of it a kondo run over the files with a discouraged-var or discouraged-namespace ignore)."
    :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/check {:attribute mage.kondo-ratchet/attribute-occurrences!}))}

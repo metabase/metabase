@@ -229,7 +229,7 @@
                :thrown? true}
               (check-with! ratchets occurrences))))
     (testing "an ignore covering no finding warns without failing"
-      (is (= {:lines   ["WARNING: f.clj:1 ignores :discouraged-var but kondo reports no such finding under it -- probably stale (or in a reader branch kondo skips)"
+      (is (= {:lines   ["WARNING: f.clj:1 ignores :discouraged-var but kondo reports no such finding under it -- probably stale, under a nested ignore for the same linter, or in a reader branch kondo skips"
                         "ok -- 1 ignore forms within 0 policies"
                         "ok -- 0 test ignore forms within 0 test policies"]
               :thrown? false}

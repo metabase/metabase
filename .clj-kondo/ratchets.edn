@@ -1,13 +1,14 @@
 ;; Budgets for kondo suppressions: inline `:clj-kondo/ignore` forms per linter (:ignore-counts), and
 ;; config-level waivers in .clj-kondo/config.edn (:config-counts -- :off switches and :exclude entries).
-;; :discouraged-var-counts and :discouraged-namespace-counts budget those linters' inline ignores per
-;; symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened to `ee.`.
+;; The :discouraged-var-counts and :discouraged-namespace-counts fields budget those linters' inline
+;; ignores per symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened
+;; to `ee.`.
 ;; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other
 ;; budget is a non-negative integer.
 ;; Checks fail when a count exceeds its numeric budget; unused budget is allowed.
 ;; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.
 ;; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one;
-;; `--seed :discouraged-var/clojure.core/println` seeds one symbol; `--seed :discouraged-var` seeds all.
+;; a seed like `:discouraged-var/clojure.core/println` seeds one symbol, and `:discouraged-var` all of them.
 ;; The workflow runs it on master, so feature branches do not need to record reductions.
 ;; Raising or adding a budget (`--seed` for inline ignores, a manual edit otherwise) or widening the
 ;; exemptions must be explained in the PR.

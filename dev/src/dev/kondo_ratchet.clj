@@ -283,8 +283,7 @@
 (defn discouraged-symbols
   "Every symbol configured under `linter` in `config`, including its `:config-in-ns` and `:config-in-call` scopes."
   [linter config]
-  ;; A scope can add a symbol that is missing at the top level, but it only narrows where a policy applies,
-  ;; so every scope's symbols go into one set.
+  ;; A scoped entry still names a discouraged symbol, so every scope counts.
   (into #{}
         (comp (map linter)
               (filter map?)
@@ -364,7 +363,7 @@
                       {:unknown (vec unknown)})))))
 
 (defn configured-count-keys
-  "[[discouraged-count-keys]] for each of the [[discouragement-linters]], reading the config once."
+  "[[discouraged-count-keys]] for each of the [[discouragement-linters]]."
   []
   (let [config (kondo-config)]
     (into {} (for [linter discouragement-linters]
@@ -393,7 +392,8 @@
         :let   [budgeted (keys (get ratchets (discouraged-count-field linter)))
                 unknown  (sort-by str (remove (configured linter) budgeted))]
         :when  (seq unknown)]
-    (format "WARNING: %s budgets %s symbols no longer configured in %s: %s -- `./bin/mage kondo-ratchets-shrink` drops them"
+    (format (str "WARNING: %s budgets %s symbols no longer configured in %s: %s"
+                 " -- `./bin/mage kondo-ratchets-shrink` drops them")
             ratchets-file linter kondo-config-file (str/join ", " unknown))))
 
 (defn- validate-test-config-counts!
@@ -757,14 +757,15 @@
      [linter entry])))
 
 (def ^:private shared-header
-  (str ";; :discouraged-var-counts and :discouraged-namespace-counts budget those linters' inline ignores per\n"
-       ";; symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened to `ee.`.\n"
+  (str ";; The :discouraged-var-counts and :discouraged-namespace-counts fields budget those linters' inline\n"
+       ";; ignores per symbol, keyed by the symbol with `metabase.` dropped and `metabase-enterprise.` shortened\n"
+       ";; to `ee.`.\n"
        ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other\n"
        ";; budget is a non-negative integer.\n"
        ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
        ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
        ";; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one;\n"
-       ";; `--seed :discouraged-var/clojure.core/println` seeds one symbol; `--seed :discouraged-var` seeds all.\n"
+       ";; a seed like `:discouraged-var/clojure.core/println` seeds one symbol, and `:discouraged-var` all of them.\n"
        ";; The workflow runs it on master, so feature branches do not need to record reductions.\n"
        ";; Raising or adding a budget (`--seed` for inline ignores, a manual edit otherwise) or widening the\n"
        ";; exemptions must be explained in the PR.\n"
@@ -980,7 +981,8 @@
   (a custom reader conditional like `:cljs-dev`)."
   [unattributed]
   (for [{:keys [file line linters]} unattributed]
-    (format "WARNING: %s:%d ignores %s but kondo reports no such finding under it -- probably stale (or in a reader branch kondo skips)"
+    (format (str "WARNING: %s:%d ignores %s but kondo reports no such finding under it -- probably stale, under a"
+                 " nested ignore for the same linter, or in a reader branch kondo skips")
             file line (str/join ", " linters))))
 
 (defn unresolved-lines
