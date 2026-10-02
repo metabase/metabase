@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -253,32 +254,65 @@
                               (settings/check-git-settings! {:remote-sync-url   url
                                                              :remote-sync-token nil})))))))
 
+(defn- init-no-head-remote!
+  "Creates a git repo in `dir` that has only the branch main, and whose HEAD names the missing branch master. Returns
+  its file:// URL. A bare repository that `git init --bare` makes with the initial branch master, followed by a push
+  of only main, is in this state."
+  [^String dir]
+  (let [url (test-helpers/init-local-git-remote! dir :branches ["main"])]
+    (with-open [remote-git (Git/open (io/file dir))]
+      (let [remote-repo (.getRepository remote-git)
+            link-head!  (fn [^String target] (.link (.updateRef remote-repo "HEAD") target))]
+        (link-head! "refs/heads/main")
+        (-> (.updateRef remote-repo "refs/heads/master") (doto (.setForceUpdate true)) (.delete))
+        (link-head! "refs/heads/master")
+        (is (nil? (.resolve remote-repo "HEAD")) "Precondition: the remote HEAD resolves to no commit")))
+    (is (= ["main"] (git/remote-branches url nil)) "Precondition: the remote has only the branch main")
+    url))
+
 (deftest check-git-settings-accepts-only-cloneable-remote-without-head-test
   (testing "a remote whose HEAD names a missing branch is either rejected by the check or can be cloned"
     (mt/with-temp-dir [remote-dir nil]
-      (let [url (test-helpers/init-local-git-remote! remote-dir :branches ["main"])]
-        ;; The state that `git init --bare` with initial branch `master` and a push of only `main` gives.
-        (with-open [remote-git (Git/open (io/file remote-dir))]
-          (let [remote-repo (.getRepository remote-git)
-                link-head!  (fn [^String target] (.link (.updateRef remote-repo "HEAD") target))]
-            (link-head! "refs/heads/main")
-            (-> (.updateRef remote-repo "refs/heads/master") (doto (.setForceUpdate true)) (.delete))
-            (link-head! "refs/heads/master")
-            (is (nil? (.resolve remote-repo "HEAD")) "Precondition: the remote HEAD resolves to no commit")))
-        (is (= ["main"] (git/remote-branches url nil)) "Precondition: the remote has only the branch main")
-        (let [accepted?   (try
-                            (settings/check-git-settings! {:remote-sync-url    url
-                                                           :remote-sync-token  nil
-                                                           :remote-sync-branch "main"
-                                                           :remote-sync-type   :read-write})
-                            true
-                            (catch clojure.lang.ExceptionInfo _ false))
-              clone-error (when accepted?
-                            (try
-                              (git/git-source url "main" nil nil)
+      (let [url         (init-no-head-remote! remote-dir)
+            accepted?   (try
+                          (settings/check-git-settings! {:remote-sync-url    url
+                                                         :remote-sync-token  nil
+                                                         :remote-sync-branch "main"
+                                                         :remote-sync-type   :read-write})
+                          true
+                          (catch clojure.lang.ExceptionInfo _ false))
+            clone-error (when accepted?
+                          (try
+                            (git/git-source url "main" nil nil)
+                            nil
+                            (catch Exception e (ex-message e))))]
+        (is (nil? clone-error) "A remote that the settings check accepts can be cloned")))))
+
+(deftest blank-branch-read-only-save-of-remote-without-head-test
+  (testing "a read-only save with a blank branch of a remote whose HEAD names a missing branch: the check rejects the
+            remote, or the setup fills in a branch of the remote"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url (init-no-head-remote! remote-dir)]
+        (mt/with-temporary-setting-values [remote-sync-url    nil
+                                           remote-sync-branch nil
+                                           remote-sync-type   nil
+                                           remote-sync-token  nil]
+          (let [check-error (try
+                              (settings/check-and-update-remote-settings! {:remote-sync-url    url
+                                                                           :remote-sync-token  nil
+                                                                           :remote-sync-branch ""
+                                                                           :remote-sync-type   :read-only})
                               nil
-                              (catch Exception e (ex-message e))))]
-          (is (nil? clone-error) "A remote that the settings check accepts can be cloned"))))))
+                              (catch Exception e (ex-message e)))]
+            (when-not check-error
+              (let [setup-error (try
+                                  (mt/with-dynamic-fn-redefs [impl/async-import! (constantly {:id 1})]
+                                    (impl/finish-remote-config!))
+                                  nil
+                                  (catch Exception e (ex-message e)))]
+                (is (nil? setup-error) "The check accepted the remote, so the setup must not fail")
+                (is (= "main" (settings/remote-sync-branch))
+                    "The setup fills in the branch that a clone of the remote gets")))))))))
 
 (deftest settings-save-rejects-wrong-token-with-cached-clone-test
   (testing "a read-write settings save with a wrong token fails even when this process already holds a clone of the URL"
