@@ -748,7 +748,6 @@ const MODEL_NAME = "Test Action Model";
       });
 
       describe("editing action before executing it", () => {
-        const PG_DB_ID = 2;
         const WRITABLE_TEST_TABLE = "scoreboard_actions";
 
         const TEST_PARAMETER = createMockActionParameter({
@@ -771,7 +770,7 @@ const MODEL_NAME = "Test Action Model";
           name: "Demo Action",
           type: "query",
           parameters: [TEST_PARAMETER],
-          database_id: PG_DB_ID,
+          database_id: WRITABLE_DB_ID,
           dataset_query: {
             type: "native",
             native: {
@@ -780,7 +779,7 @@ const MODEL_NAME = "Test Action Model";
                 [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
               },
             },
-            database: PG_DB_ID,
+            database: WRITABLE_DB_ID,
           },
           visualization_settings: {
             fields: {
@@ -1101,7 +1100,6 @@ describe(
 
 function createDashboardWithActionButton({
   actionName,
-  modelName = MODEL_NAME,
   idFilter = false,
   hideField,
 }) {
@@ -1130,7 +1128,7 @@ function createDashboardWithActionButton({
   waitForValidActions();
 
   cy.findByRole("dialog").within(() => {
-    cy.findByText(modelName).click();
+    cy.findByText(MODEL_NAME).click();
     cy.findByText(actionName).click();
   });
 
