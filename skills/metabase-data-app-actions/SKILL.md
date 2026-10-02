@@ -5,24 +5,19 @@ description: Use when a Metabase data app needs to trigger a write or mutation �
 
 # Triggering actions from a Metabase data app
 
-A Metabase **action** is a server-defined write operation against the data warehouse — either a basic CRUD operation (insert / update / delete) on a model, or a custom SQL command. Actions are configured ahead of time on the Metabase instance, with their parameters, model bindings, and permissions already set. A data app's job is to **invoke** an action with the right parameters when the user does something — clicking a button, submitting a form, confirming a destructive prompt.
+A Metabase **action** is a saved, parameterized SQL write against the data warehouse — an `INSERT`, `UPDATE`, or `DELETE`. Actions are configured ahead of time on the Metabase instance, with their parameters and permissions already set. A data app's job is to **invoke** an action with the right parameters when the user does something — clicking a button, submitting a form, confirming a destructive prompt.
 
 ## The mental model
 
-Actions belong to a model. They mutate that model's rows. Concretely:
-
-- Every action has a parent model. In the schema it appears as `schema.models.<modelName>.actions.<actionName>`.
-- Model entries are included here only to catalog actions. Do not render models as questions, pass model ids to `InteractiveQuestion`, or fetch model rows; use semantic-layer queries/questions for read views.
-- An action's `type` is either `"implicit"` (CRUD on the model) or `"query"` (custom SQL the user authored).
-- Implicit actions have an `implicitKind` that says what they do: `"row/create"`, `"row/update"`, `"row/delete"`, or `"bulk/*"` variants.
+- Every action the app can run appears in the schema as `schema.actions.<actionName>`, with `type: "query"`.
 - Each action publishes a `parameters` list. Each parameter has a `slug` (the key the Data App sends), a `jsType` (`"string"` / `"number"` / `"Date"` / `"boolean"` / `"unknown"`), and an optional `required` flag.
-- Use `action.parameters` to know which fields to render and submit. A create result may include `result["created-row"]`, but that row is only typed as `Record<string, RowValue>`; use it for lightweight confirmation, then refresh the existing table/question/query data already used by the page. Do not fetch or render the parent model itself.
+- Use `action.parameters` to know which fields to render and submit. The result reports `result["rows-affected"]`; use it for lightweight confirmation, then refresh the table/question/query data the page already shows.
 
 ## What's in the schema (and what isn't)
 
-Action entries are only generated when the typed schema includes models. Before writing action-invoking code, make sure the schema was generated with `include-models=true`; with `database=<name-or-id>&include-models=true`, Metabase includes models/actions for that database only. Do not rely on `question-collections` for actions; question collections only add saved questions.
+Action entries are only generated when the typed schema includes actions. Before writing action-invoking code, make sure the schema was generated with `include-actions=true`; with `database=<name-or-id>&include-actions=true`, Metabase includes the actions for that database only.
 
-Before writing any action-invoking code, look at the schema and enumerate what's available under `schema.models.<m>.actions` across the models the app cares about. The schema is your **complete** catalog of actions for the instance, not a catalog of model data to display. If a model's `actions` entry has `create`, `update`, `delete`, those are the actions invokable. Anything not present doesn't exist as far as the Data App is concerned.
+Before writing any action-invoking code, enumerate what's available under `schema.actions`. The schema is your **complete** catalog of the actions the app can run. Anything not present doesn't exist as far as the Data App is concerned: when the app needs a write the schema lacks, ask the user to create that query action in Metabase (on a database with actions enabled), then regenerate the schema.
 
 ## The hook
 
@@ -33,8 +28,8 @@ const { execute, isExecuting, result, error, reset } = useAction(MyAction);
 ```
 
 - **Import it from `@metabase/embedding-sdk-react/data-app`.** That entry's `useAction` is the data-app form: it accepts a `defineAction(...)` export or `null` and nothing else. The main entry's `useAction` is the general SDK hook, which also takes plain objects and raw ids, so it cannot enforce the definition; a data app that imports it from the main entry compiles with an unsynchronized action and fails in production.
-- **The argument** is the `defineAction(...)` export itself, declared in the app's root-level `actions/` directory (one `<topic>.action.ts` file per topic, beside `package.json`, never under `src/`) — pass `MyAction`, not `MyAction.copiedActionId`. The hook accepts nothing else in a data app: an inline `{ action: ... }` object, the schema entry, or a spread copy of a definition fails to compile with `Property 'definedWithDefineAction' is missing`. Fix that by adding the export to `actions/`, not with a cast and not by calling `defineAction(...)` at the hook, which compiles but is never synchronized. A production build then runs the synchronized copy, whose model sits in the app's own collection; the dev preview keeps running the authored action, so an app works before it has ever been synchronized. Do **not** pass `schema.models.<model>.actions.<action>` or its `.id`: the entry is a compile error, and the raw id belongs to the original model, which the app's users cannot read, so the call fails on permissions in production.
-- **Don't write the generics.** The definition carries its schema entry, so the hook infers both the parameters object and the discriminated `result` from it: `parameters[]` becomes a keyed object (`required: true` entries are required keys, each value typed from its `jsType`), and `implicitKind` / `type` become the kind (`"row/create"` → `"create"`, `"row/update"` → `"update"`, `"row/delete"` → `"delete"`, any `"bulk/*"` → `"bulk"`, `type === "query"` → `"sql"`). The raw-id form exists only on the SDK's `useAction` from the main entry, where `useAction<TParameters, TKind>(42)` needs them spelled out since an id describes nothing; a data app never names an action by id.
+- **The argument** is the `defineAction(...)` export itself, declared in the app's root-level `actions/` directory (one `<topic>.action.ts` file per topic, beside `package.json`, never under `src/`) — pass `MyAction`, not `MyAction.copiedActionId`. The hook accepts nothing else in a data app: an inline `{ action: ... }` object, the schema entry, or a spread copy of a definition fails to compile with `Property 'definedWithDefineAction' is missing`. Fix that by adding the export to `actions/`, not with a cast and not by calling `defineAction(...)` at the hook, which compiles but is never synchronized. A production build then runs the synchronized copy in the app's own collection; the dev preview keeps running the authored action, so an app works before it has ever been synchronized. Do **not** pass `schema.actions.<action>` or its `.id`: the entry is a compile error, and the raw id names the authored action, which the app's users cannot read, so the call fails on permissions in production.
+- **Don't write the generics.** The definition carries its schema entry, so the hook infers both the parameters object and the discriminated `result` from it: `parameters[]` becomes a keyed object (`required: true` entries are required keys, each value typed from its `jsType`), and `type: "query"` makes the kind `"sql"`. The raw-id form exists only on the SDK's `useAction` from the main entry, where `useAction<TParameters, TKind>(42)` needs them spelled out since an id describes nothing; a data app never names an action by id.
 - **`execute(parameters)`** — triggers the action. Parameters object is keyed by parameter `slug`; parameters declared `required: true` are required keys, everything else optional. Returns the response body on success AND throws on failure (the error is also written to `error` state for render-time consumers). Resolves to `null` (without making a request) when `actionId` is `null` or the SDK is not yet initialized — guard the call site if those cases are reachable.
 - **No `enabled` / `options` argument.** The hook only ever runs when `execute(...)` is called, so a gate option would be redundant. Skip the action by branching in the event handler:
   ```ts
@@ -44,7 +39,7 @@ const { execute, isExecuting, result, error, reset } = useAction(MyAction);
   };
   ```
 - **`isExecuting`** — `true` between the call and its resolution. Drive button `disabled` from this so the user can't double-click into duplicate requests.
-- **`result`** — the response body, discriminated by `TKind` (or the `AnyActionResult` union when `TKind` is omitted). `null` before the first call and after `reset()`. Use it for lightweight confirmation (`result?.["created-row"]` after an insert, `result?.["rows-affected"]` after a SQL action), but do not treat create rows as richly typed model rows; refresh surrounding data instead — see *After an action runs*.
+- **`result`** — the response body, discriminated by `TKind` (or the `AnyActionResult` union when `TKind` is omitted). `null` before the first call and after `reset()`. Use it for lightweight confirmation (`result?.["rows-affected"]`), then refresh surrounding data — see *After an action runs*.
 - **`error`** — the last thrown error, typed `ActionExecuteError | null`. Read fields directly with no cast: `error?.data?.message`, `error?.status`, `error?.isCancelled`.
 - **`reset()`** — clears `result` and `error` back to `null`. Useful after the user acknowledges success or dismisses an error.
 
@@ -159,7 +154,7 @@ Each `parameters[]` entry on a schema action exposes `slug`, `displayName`, `jsT
 - **`required: true` parameters cannot be omitted.** Reflected in the TS type: required keys are required.
 - **`displayName`** is for labels; never use it as a key.
 
-For implicit actions, the slugs match the model's column names (slugified). For custom SQL actions, slugs are whatever the action's author named the SQL parameters in Metabase. Either way, the schema is the source of truth.
+Slugs are whatever the action's author named the SQL parameters in Metabase; the schema is the source of truth.
 
 ## Form-side validation — match the main app
 
@@ -188,17 +183,16 @@ When an action appears to succeed but the screen doesn't update, or a call fails
 
 1. Log `result`, `error`, and `isExecuting` after `await execute(...)` to confirm the request actually went through and succeeded.
 2. Confirm `useAction` was called with the `defineAction(...)` export imported from `actions/`. Passing the schema entry, an inline object, or a spread copy is a compile error; passing its `.id` compiles but leaves `execute` untyped and 403s in production, since the authored action is not the one an app's users can run. Calling `defineAction(...)` inside the component compiles too, but `sync-resources` scans only `actions/`, so that action is never copied and also 403s.
-3. Log the object passed to `execute({ ... })`. Every key must match a parameter `slug` from `schema.models.<model>.actions.<action>.parameters`; every value must match its declared `jsType`.
-4. List every data view on the screen that reads from the mutated model. Confirm each one's data hook is mounted ABOVE the action trigger so its refresh callback can be passed down.
+3. Log the object passed to `execute({ ... })`. Every key must match a parameter `slug` from `schema.actions.<action>.parameters`; every value must match its declared `jsType`.
+4. List every data view on the screen that reads the rows the action writes. Confirm each one's data hook is mounted ABOVE the action trigger so its refresh callback can be passed down.
 5. Confirm the refresh callback is called AFTER `await execute(...)` AND that the refresh itself is awaited. When multiple refreshes apply, confirm they're awaited together (`Promise.all`).
-6. For implicit actions, confirm the right `implicitKind` matches what you intend (`row/create` vs `row/update` vs `row/delete`) — picking the wrong action publishes the wrong write.
-7. If the schema doesn't list an action you expect, the action isn't defined on the instance or the schema file is stale. Regenerate the schema.
+6. If the schema doesn't list an action you expect, the action isn't defined on the instance or the schema file is stale. Regenerate the schema.
 
 ## Common Mistakes
 
 - Importing `useAction` from `@metabase/embedding-sdk-react` instead of `@metabase/embedding-sdk-react/data-app`. The main entry's hook is the general SDK one and accepts anything, so the definition check never runs.
 - Declaring the action anywhere but root-level `actions/`: inline at the hook, wrapped in `defineAction(...)` inside a component, or under `src/actions/`. Only `actions/` is synchronized.
-- Passing `schema.models.<model>.actions.<action>.id` to `useAction` instead of the `defineAction(...)` export. `execute` then accepts any `Record<string, unknown>`, typos like `{ wrongKey: 1 }` slip through, and production 403s because the authored action is not the one an app's users can run.
+- Passing `schema.actions.<action>.id` to `useAction` instead of the `defineAction(...)` export. `execute` then accepts any `Record<string, unknown>`, typos like `{ wrongKey: 1 }` slip through, and production 403s because the authored action is not the one an app's users can run.
 - Forgetting to refresh after a successful action. The UI keeps rendering stale data with no error or warning.
 - Rendering `"Failed"` / `"Something went wrong"` / `String(error)` instead of the real backend message. Always extract `error.data.message` / `error.data.errors` (the diagnostic the user needs is in there) and render it verbatim — see *Showing the error message*.
 - Calling the refresh callback without `await`ing it. The modal dismisses or the form clears before fresh data arrives, leaving the user staring at the stale view for a beat.

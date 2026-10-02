@@ -34,9 +34,9 @@
    [:include-metric-library {:optional true}
     [:maybe {:description "Whether to include the entire metric library."}
      :boolean]]
-   [:include-models {:optional true}
-    [:maybe {:description (str "Include models with actions. Database scope filters models; "
-                               "library scope does not. Without a scope, returns models only.")}
+   [:include-actions {:optional true}
+    [:maybe {:description (str "Include query actions that belong to no model. Database scope filters them; "
+                               "library scope does not. Without a scope, returns actions only.")}
      :boolean]]])
 
 (api.macros/defendpoint :get "/v1/typescript" :- :any

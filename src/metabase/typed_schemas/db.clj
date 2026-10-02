@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -56,12 +55,23 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn model-actions
-  "The id, model id, name, and type of the unarchived Actions of the model Cards with `model-ids`."
-  [model-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/Action :id :model_id :name :type]
-             :model_id [:in model-ids]
-             :archived false))
+(mu/defn model-less-query-actions
+  "The unarchived query Actions without a model in collections the current user can see, among `database-ids` (nil
+  for unscoped), in name then id order."
+  [database-ids :- [:maybe [:set ::lib.schema.id/database]]]
+  (t2/select :model/Action
+             {:where    [:and
+                         [:= :model_id nil]
+                         [:= :type "query"]
+                         [:= :archived false]
+                         (collection/visible-collection-filter-clause :collection_id)
+                         (when database-ids
+                           [:exists ^:allow-subquery {:select [1]
+                                                      :from   [[(t2/table-name :model/QueryAction) :qa]]
+                                                      :where  [:and
+                                                               [:= :qa.action_id :action.id]
+                                                               (scope-filter-clause database-ids :qa.database_id)]}])]
+              :order-by [[:name :asc] [:id :asc]]}))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
