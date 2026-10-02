@@ -272,6 +272,23 @@
                 used-module
                 (symbol (str/replace used-module #"[.-]rest$" ""))))))
 
+(defn- enterprise-namespace? [ns-symb]
+  (str/starts-with? (str ns-symb) "metabase-enterprise."))
+
+(deftest oss-namespaces-reach-enterprise-through-defenterprise-test
+  (testing "OSS code reaches EE through `defenterprise` hooks; only startup and route wiring require EE namespaces"
+    (is (= '#{[metabase.api-routes.routes      metabase-enterprise.api-routes.routes]
+              [metabase.core.config-from-file  metabase-enterprise.advanced-config.file]
+              [metabase.core.init              metabase-enterprise.core.init]
+              [metabase.core.remote-sync       metabase-enterprise.remote-sync.core]
+              [metabase.sso.auth-wrapper       metabase-enterprise.sso.api.routes]}
+           (set (for [{:keys [namespace deps]} (dev.deps-graph/dependencies)
+                      :when                    (not (enterprise-namespace? namespace))
+                      {dep :namespace}         deps
+                      :when                    (enterprise-namespace? dep)]
+                  [namespace dep])))
+        "Declare a `defenterprise` hook in the OSS namespace and implement it in EE, instead of requiring an EE namespace.")))
+
 ;;;; Model boundary tests
 
 (deftest model-boundaries-test
