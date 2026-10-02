@@ -1066,16 +1066,21 @@
 (deftest preflight-cancels-the-sibling-probe-on-failure-test
   (testing "the first verdict returns immediately and its sibling is cancelled — an abandoned future would
            keep generating against the operator's server after the admin already has a 400"
-    (let [interrupted (promise)
-          never       (CountDownLatch. 1)]
+    (let [interrupted       (promise)
+          sibling-in-flight (CountDownLatch. 1)
+          never             (CountDownLatch. 1)]
       (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
                                                  (if (re-find #"/models$" (str url))
                                                    {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
                                                    (case (:tool_choice (json/decode+kw (str body)))
-                                                     "auto"     {:status 200
-                                                                 :body   {:choices [{:message {:content    "I'll record orders."
-                                                                                               :tool_calls []}}]}}
+                                                     ;; Fails only once the sibling is in flight: a future
+                                                     ;; cancelled before it starts never runs.
+                                                     "auto"     (do (is (.await sibling-in-flight 10 TimeUnit/SECONDS))
+                                                                    {:status 200
+                                                                     :body   {:choices [{:message {:content    "I'll record orders."
+                                                                                                   :tool_calls []}}]}})
                                                      "required" (try
+                                                                  (.countDown sibling-in-flight)
                                                                   (.await never 10 TimeUnit/SECONDS)
                                                                   (deliver interrupted false)
                                                                   {:status 200 :body {:choices [{:message tool-calling-message}]}}
