@@ -44,7 +44,7 @@
                  "(:discouraged-var-counts); run `./bin/mage kondo-ratchets-shrink` to drop the stale entry")]
            (report-lines ratchets (occurrences {:discouraged-var 3, :a 1}) (kondo-ratchet/render ratchets)))
         "a flat entry for a linter with its own per-symbol field fails the check even when its count
-         happens to match, since it silently double-counts once a real over-budget symbol shows up")))
+         happens to match, since nothing reads it and it would only mislead")))
 
 (deftest ^:parallel over-budget-test
   (let [ratchets {:ignore-counts {:a 1}}]

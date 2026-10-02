@@ -372,7 +372,7 @@
 (defn discouraged-in-ignore-counts
   "The [[discouragement-linters]] with a stale flat budget in `ignore-counts`, sorted."
   [ignore-counts]
-  ;; Their ignores are budgeted per symbol, so a flat budget would count them a second time.
+  ;; Their ignores are budgeted per symbol, so a flat budget here is never read.
   (into (sorted-set-by #(compare (str %1) (str %2)))
         (filter discouragement-linters)
         (keys ignore-counts)))
