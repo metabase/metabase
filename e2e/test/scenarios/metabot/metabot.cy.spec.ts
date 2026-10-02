@@ -125,6 +125,13 @@ describe("Metabot UI", () => {
           event: "metabot_chat_opened",
           triggered_from: "header",
         });
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "metabot_chat_opened",
+            triggered_from: "keyboard_shortcut",
+          },
+          1,
+        );
         H.closeMetabotViaCloseButton();
       });
 

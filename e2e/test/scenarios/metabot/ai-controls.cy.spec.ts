@@ -621,7 +621,13 @@ describe("AI Controls > Tenant usage limits", () => {
       .findByText("Test Corp")
       .should("be.visible");
     cy.findByLabelText("Max total monthly tokens for Test Corp").type("10");
-    cy.wait("@updateTenantLimit").its("response.statusCode").should("eq", 200);
+    cy.wait("@updateTenantLimit").then(({ request, response }) => {
+      expect(request.url).to.match(
+        new RegExp(`/api/ee/ai-controls/usage/tenant/${tenantId}$`),
+      );
+      expect(request.body).to.deep.equal({ max_usage: 10 });
+      expect(response?.statusCode).to.eq(200);
+    });
 
     cy.log("no tenant limit: the user gets an LLM response");
     cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {

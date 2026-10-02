@@ -149,7 +149,10 @@ describe("Native SQL generation", () => {
       generateButton().click();
       cy.wait("@metabotAgent");
 
-      errorMessage().should("be.visible");
+      errorMessage().should(
+        "have.text",
+        "Sorry, I ran into an error. Could you please try that again?",
+      );
       acceptButton().should("not.exist");
 
       cy.log("manage conversation state");
