@@ -34,27 +34,72 @@ describe("executeAction", () => {
     EMBEDDING_SDK_CONFIG.isDataAppDev = false;
   });
 
-  describe("an action definition", () => {
+  describe("an action definition with a copied action", () => {
     const AUTHORED_ID = 51;
+    const COPIED_ENTITY_ID = "copiedActionEntity091";
+    const definition = {
+      action: { id: AUTHORED_ID },
+      copiedActionEntityId: COPIED_ENTITY_ID,
+    };
 
-    it.each([
-      ["a deployed data app", { isDataApp: true, isDataAppDev: false }],
-      ["the dev preview", { isDataApp: true, isDataAppDev: true }],
-      ["outside a data app", { isDataApp: false, isDataAppDev: false }],
-    ])("runs the authored action in %s", async (_, config) => {
-      Object.assign(EMBEDDING_SDK_CONFIG, config);
-      fetchMock.post(`path:/api/action/${AUTHORED_ID}/execute`, {
+    const expectExecuted = async (
+      id: number | string,
+      actionId: Parameters<ReturnType<typeof executeAction>>[0]["actionId"],
+    ) => {
+      fetchMock.post(`path:/api/action/${id}/execute`, {
         status: 200,
         body: { "rows-affected": 1 },
       });
 
-      await executeAction(setup())({
-        actionId: { action: { id: AUTHORED_ID } },
-      });
+      await executeAction(setup())({ actionId });
 
       expect(
-        fetchMock.callHistory.calls(`path:/api/action/${AUTHORED_ID}/execute`),
+        fetchMock.callHistory.calls(`path:/api/action/${id}/execute`),
       ).toHaveLength(1);
+    };
+
+    it("runs the copy in a production build", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+
+      await expectExecuted(COPIED_ENTITY_ID, definition);
+    });
+
+    it("runs the authored action in the dev preview", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+      EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+      await expectExecuted(AUTHORED_ID, definition);
+    });
+
+    it("runs the authored action outside a data app, where no copy exists", async () => {
+      await expectExecuted(AUTHORED_ID, { action: { id: AUTHORED_ID } });
+    });
+
+    it("refuses a definition without a copied action in a production build", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+
+      await expect(
+        executeAction(setup())({ actionId: { action: { id: AUTHORED_ID } } }),
+      ).rejects.toThrow(
+        "This action has no copy. Copy it into the app's `resources/actions/`",
+      );
+    });
+
+    it("refuses a raw id inside a data app", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+
+      await expect(
+        executeAction(setup())({ actionId: AUTHORED_ID }),
+      ).rejects.toThrow("passed to `useAction` as a raw id");
+    });
+
+    it("refuses a raw id in the dev preview, before it can reach production", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+      EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+      await expect(
+        executeAction(setup())({ actionId: AUTHORED_ID }),
+      ).rejects.toThrow("passed to `useAction` as a raw id");
     });
   });
 
