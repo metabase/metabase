@@ -44,7 +44,9 @@ describe("document comments", () => {
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
       testCommentingOnNode(documentId, HEADING_1_ID, H.getHeading1);
-      cy.findByRole("link", { name: "Show all comments" }).should("be.visible");
+      cy.findByRole("link", { name: "Show all comments" })
+        .scrollIntoView()
+        .should("be.visible");
       testCommentingOnNode(documentId, HEADING_2_ID, H.getHeading2);
       testCommentingOnNode(documentId, HEADING_3_ID, H.getHeading3);
       testCommentingOnNode(documentId, PARAGRAPH_ID, H.getParagraph);
@@ -661,14 +663,7 @@ describe("document comments", () => {
   });
 
   describe("comment editor", () => {
-    it("supports formatting via keyboard shortcuts, markdown, and the formatting menu, emojis, and mentions", () => {
-      cy.request("post", "/api/user", { email: "no-name@metabase.test" });
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/search",
-        query: { q: "tAbLes" },
-      }).as("searchTables");
-
+    it("supports formatting via keyboard shortcuts, markdown, and the formatting menu, and emojis", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.log("supports basic formatting with keyboard shortcuts");
@@ -818,9 +813,18 @@ describe("document comments", () => {
           cy.contains("🍆").should("be.visible");
           cy.contains("🥚").should("be.visible");
         });
+    });
 
-      cy.log("supports mentions, including yourself");
-      Comments.getNewThreadInput().click();
+    it("supports mentions, including yourself and users without first and last names", () => {
+      cy.request("post", "/api/user", { email: "no-name@metabase.test" });
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/search",
+        query: { q: "tAbLes" },
+      }).as("searchTables");
+
+      startNewCommentIn1ParagraphDocument();
+
       cy.realType("@");
       H.documentMentionDialog().within(() => {
         cy.findByText("Lorem ipsum").should("be.visible");
@@ -871,8 +875,8 @@ describe("document comments", () => {
       });
 
       Comments.getAllComments()
-        .should("have.length", 5)
-        .eq(4)
+        .should("have.length", 1)
+        .eq(0)
         .within(() => {
           cy.findByText("a few seconds ago").should("be.visible");
           cy.findByText("@Bobby Tables").should("be.visible");
@@ -885,7 +889,7 @@ describe("document comments", () => {
       Comments.getNewThreadInput().type("needs to see this");
       cy.realPress([META_KEY, "Enter"]);
 
-      Comments.getAllComments().should("have.length", 6);
+      Comments.getAllComments().should("have.length", 2);
       // mention is it's own span, so we need to search for the pieces individually
       Comments.getCommentByText("@no-name@metabase.test").should("exist");
       Comments.getCommentByText("needs to see this").should("exist");
@@ -1381,15 +1385,18 @@ describe("document comments", () => {
       );
 
       cy.log("blockquote shortcut is disabled");
-      // CustomBlockquote drops tiptap's Mod-Shift-b to keep default browser behavior
+      // CustomBlockquote and CustomBold leave Mod-Shift-b to the browser.
+      // Shift+b is sent as key "B", like a real keyboard: a lowercase "b" with
+      // shiftKey makes ProseMirror fall back to the Mod-b (bold) binding.
       Comments.getNewThreadInput().click();
       cy.realType("not a quote");
-      cy.realPress([META_KEY, "Shift", "b"]);
+      cy.realPress([META_KEY, "Shift", "B"]);
       cy.realType(" after shortcut");
       Comments.getNewThreadInput()
         .find("p")
         .should("have.text", "not a quote after shortcut");
       Comments.getNewThreadInput().find("blockquote").should("not.exist");
+      Comments.getNewThreadInput().find("strong").should("not.exist");
       cy.realPress([META_KEY, "Enter"]);
       Comments.getAllComments().should("have.length", 7);
       Comments.getCommentByText("not a quote after shortcut")

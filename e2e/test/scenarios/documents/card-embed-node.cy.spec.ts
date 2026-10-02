@@ -311,7 +311,7 @@ describe("documents card embed node custom logic", () => {
         .closest("button")
         .should("be.enabled");
       cy.realPress("Escape");
-      H.popover().should("not.exist");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
       cy.log("a standalone card dropped onto a 2-card flexContainer joins it");
       H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
@@ -342,7 +342,7 @@ describe("documents card embed node custom logic", () => {
         .closest("button")
         .should("have.attr", "data-disabled");
       cy.realPress("Escape");
-      H.popover().should("not.exist");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
       cy.log("a fourth card is rejected");
       addNewStandaloneCard("Orders Model");

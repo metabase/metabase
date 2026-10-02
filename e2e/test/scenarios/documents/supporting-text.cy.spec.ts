@@ -116,7 +116,7 @@ describe("documents supporting text", () => {
       .closest("button")
       .should("have.attr", "data-disabled");
     cy.realPress("Escape");
-    H.popover().should("not.exist");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
     cy.log("empty supporting text is removed on Backspace");
     // Click into the supporting text

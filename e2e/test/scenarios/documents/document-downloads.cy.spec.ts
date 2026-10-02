@@ -76,11 +76,11 @@ describe("scenarios > documents > downloads", () => {
         .should("be.visible")
         .and("be.enabled");
       [
-        "Add supporting text",
-        "Edit Visualization",
-        "Edit Query",
-        "Replace",
-        "Remove Chart",
+        /Add supporting text/,
+        /Edit Visualization/,
+        /Edit Query/,
+        /Replace/,
+        /Remove Chart/,
       ].forEach((name) => {
         cy.findByRole("menuitem", { name }).should("be.disabled");
       });
@@ -153,7 +153,7 @@ describe("scenarios > documents > downloads", () => {
 
     // Verify that Download results is not shown
     H.popover().within(() => {
-      cy.findByRole("menuitem", { name: "Edit Query" }).should("be.disabled");
+      cy.findByRole("menuitem", { name: /Edit Query/ }).should("be.disabled");
       cy.findByRole("menuitem", { name: /Download results/i }).should(
         "not.exist",
       );

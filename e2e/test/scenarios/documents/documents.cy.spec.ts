@@ -743,8 +743,19 @@ describe("documents", () => {
 
         assertOnlyOneOptionActive(/Quote/);
 
+        cy.intercept({
+          method: "GET",
+          pathname: "/api/search",
+          query: { q: "pro" },
+        }).as("searchPro");
         H.addToDocument("pro", false);
 
+        // Results for the partial queries render first, and a change in their
+        // count resets the active option
+        cy.wait("@searchPro");
+        H.commandSuggestionDialog()
+          .findAllByRole("option")
+          .should("have.length", 2);
         assertOnlyOneOptionActive(/Products by Category/);
 
         cy.realPress("{downarrow}");
@@ -808,6 +819,25 @@ describe("documents", () => {
         });
 
         H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).should("exist");
+
+        cy.log("resize a card");
+        H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then(($card) => {
+          // Unjustified type cast. FIXME
+          const ogHeight = $card.height() as number;
+          const resizeNode = H.getDocumentCardResizeContainer(
+            ACCOUNTS_COUNT_BY_CREATED_AT.name,
+          );
+
+          H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), {
+            y: 200,
+          });
+
+          H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).should(
+            ($resized) => {
+              expect($resized.height()).to.be.closeTo(ogHeight + 200, 3);
+            },
+          );
+        });
 
         cy.realPress("{downarrow}");
 
@@ -919,27 +949,6 @@ describe("documents", () => {
           .should("not.exist");
 
         H.getDocumentCard("Orders").should("exist");
-
-        cy.log("resize a card");
-        H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
-          const ogHeight = el.height();
-          const resizeNode = H.getDocumentCardResizeContainer(
-            ACCOUNTS_COUNT_BY_CREATED_AT.name,
-          );
-
-          H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), {
-            y: 200,
-          });
-
-          H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
-            const newHeight = el.height();
-
-            cy.log(`${ogHeight}, ${newHeight}`);
-
-            // Unjustified type cast. FIXME
-            expect(newHeight).to.be.closeTo((ogHeight as number) + 200, 3);
-          });
-        });
       });
 
       it("should copy an added card on save", () => {
@@ -1328,7 +1337,10 @@ describe("documents", () => {
         });
 
       cy.log("Verify document can be saved with a new question");
-      cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+      cy.findByRole("button", { name: "Save" })
+        .scrollIntoView()
+        .should("be.visible")
+        .click();
       cy.findByRole("button", { name: "Save" }).should("not.exist");
 
       H.undoToast().findByText("Document saved").should("exist");
