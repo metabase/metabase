@@ -89,6 +89,20 @@
           (is (= 202 (:status response)))
           (is (= [[1]] (rows response))))))))
 
+(deftest kill-switches-test
+  (mt/with-full-data-perms-for-all-users!
+    (testing "with mcp-execute-sql-enabled off, a native handle is refused even to a credential with agent:sql:run"
+      (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
+        (let [response (handle-post! #{"agent:query:run" "agent:sql:run"} "run" (native-query))]
+          (is (= 403 (:status response)))
+          (is (re-find #"mcp-execute-sql-enabled" (str (:body response)))))
+        (testing "while an MBQL handle still runs"
+          (is (= 202 (:status (handle-post! ui.tu/query-scopes "run" (venues-query))))))))
+    (testing "with the MCP server disabled, every iframe route is refused"
+      (mt/with-temporary-setting-values [mcp-enabled? false]
+        (is (= 403 (:status (handle-post! ui.tu/query-scopes "run" (venues-query)))))
+        (is (= 403 (:status (ui.tu/ui-request! (ui.tu/ui-auth! :rasta) :get 403 "embed-mcp/bootstrap"))))))))
+
 (deftest card-source-runs-only-when-the-user-may-read-the-card-test
   (testing "A handle whose source is a saved question runs only if its user may read the collection the question
             lives in"
