@@ -7,8 +7,8 @@
   Every resource carries a `:scope`, matched with [[metabase.mcp.scope/matches?]], and is listed whatever the token's
   scopes. A data resource is read only by a token holding its scope. A UI shell is read by any token, so it must carry
   no data: its `:scope` is the scope of the tool that renders it, and only a token holding it gets a UI credential
-  in the render. The data behind the shell stays gated by that tool, `refresh_ui_credential`, and
-  [[metabase.mcp.ui-surface/request-surface]].
+  in the render. The data behind the shell stays gated by that tool, `refresh_ui_credential`, and the iframe routes
+  in [[metabase.mcp.callback-api]].
 
    Rendering and the `_meta.ui` sandbox block come from [[metabase.mcp.ui-resource]]."
   (:require

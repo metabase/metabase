@@ -133,8 +133,7 @@
      {:closed true}
      [:origins-fn         ifn?]
      [:sandbox-origin?-fn ifn?]]]
-   [:oauth-bearer       ::mw.session/oauth-bearer]
-   [:mcp-ui-credentials ::mw.session/mcp-ui-credentials]])
+   [:oauth-bearer ::mw.session/oauth-bearer]])
 
 (def ^:private OptionsOrVar
   [:or Options [:fn {:error/message "a var holding handler options"} var?]])
