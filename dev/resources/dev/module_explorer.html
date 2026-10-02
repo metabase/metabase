@@ -182,6 +182,12 @@ main{flex:1;display:flex;min-height:0}
 .graph .viewbar{margin-bottom:0}
 #cy{flex:1;min-height:0}
 .graph .note{color:var(--ink-soft);font-size:12px;padding:40px;text-align:center}
+.graphinfo{flex-basis:100%;display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft)}
+.graphinfo b{color:var(--ink);font-weight:600}
+.ghelp{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;
+  border:1px solid var(--line-strong);cursor:help;font-size:11px}
+.gnote{margin-left:auto}
+.gnote code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--uses)}
 .glegend{display:inline-flex;align-items:center;gap:10px;color:var(--ink-soft);font-size:12px}
 .glegend i{display:inline-block;width:20px;border-top:2px solid;vertical-align:middle;margin-right:4px}
 .glegend .l-cyc{border-color:var(--cycle)}
@@ -879,15 +885,22 @@ function renderGraphBar(visible){
   if(hidden.size) btn('Show '+hidden.size+' hidden', [...hidden].sort().join(', '), () => { hidden.clear(); syncHash(true); renderGraph(); });
   if(expanded.size) btn('Collapse all', 'Hide every API namespace', () => { expanded.clear(); syncHash(true); renderGraph(); });
   if(cy && focus.size) btn('Re-layout', 'Run the layout again', runLayout);
-  const d = document.createElement('span'); d.className = 'desc';
-  d.textContent = (visible ? visible.size+' modules · '+cy.edges().length+' edges · ' : '') +
-    'click selects · shift-click adds to focus · double-click focuses · right-click for more' +
-    (NS_EDGES ? '' : ' · run (dev.module-explorer/open!) in a dev REPL for namespace-level edges');
-  bar.appendChild(d);
+  // second row: what is drawn, what the lines mean, and how to drive it
+  const info = document.createElement('div'); info.className = 'graphinfo';
+  if(visible){ const n=document.createElement('span'); n.className='gstats';
+    n.innerHTML=`<b>${visible.size}</b> modules · <b>${cy.edges().length}</b> edges`; info.appendChild(n); }
   const lg = document.createElement('span'); lg.className = 'glegend';
-  lg.innerHTML = `<span><i class=l-plain></i>uses</span><span><i class=l-focus></i>touches focus</span>`+
-    `<span><i class=l-cyc></i>inside a cycle</span><span title='${STRONG_BRIDGE_HELP}'><i class=l-bridge></i>strong bridge</span>`;
-  bar.appendChild(lg);
+  lg.innerHTML = `<span><i class=l-plain></i>depends on</span><span><i class=l-focus></i>touches focus</span>`+
+    `<span><i class=l-cyc></i>inside a cycle</span>`+
+    `<span class=hint title='${STRONG_BRIDGE_HELP}'><i class=l-bridge></i>strong bridge: cutting it splits the cycle</span>`;
+  info.appendChild(lg);
+  const help = document.createElement('span'); help.className = 'ghelp'; help.textContent = '?';
+  help.title = 'Click a module to select it\nShift-click to add it to the focus\nDouble-click to focus only it\n'+
+    'Right-click for more';
+  info.appendChild(help);
+  if(!NS_EDGES){ const note=document.createElement('span'); note.className='gnote';
+    note.innerHTML='Namespace-level edges: run <code>(dev.module-explorer/open!)</code> in a dev REPL'; info.appendChild(note); }
+  bar.appendChild(info);
 }
 function runLayout(){
   if(layout) layout.stop();
