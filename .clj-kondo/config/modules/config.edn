@@ -3771,7 +3771,6 @@
            models
            permissions
            premium-features
-           query-permissions
            remote-sync
            request
            settings
