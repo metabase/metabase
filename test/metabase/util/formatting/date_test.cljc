@@ -196,7 +196,7 @@
         "7"                        "day-of-month"
         "Wednesday"                "day-of-week"
         "341"                      "day-of-year"
-        #?(:clj "50" :cljs "50th") "week-of-year"))))
+        "49"                       "week-of-year"))))
 
 (deftest ^:parallel format-datetime-with-unit-test-2b
   (testing "general dates"
