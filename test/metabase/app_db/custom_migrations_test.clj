@@ -40,6 +40,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
@@ -111,6 +112,9 @@
                             :details       (json/encode {:channel "general"})
                             :schedule_type "daily"
                             :schedule_hour 15})
+      :report_dashboard  (with-timestamped
+                           {:name       (mt/random-name)
+                            :parameters "[]"})
       :metabase_table    (with-timestamped
                            {:name (mt/random-name)
                             :active true})
@@ -1806,9 +1810,19 @@
       ;; but we need to re-bind that to global here because the InitSendPulseTriggers job will need access to the scheduler,
       ;; and since quartz job is running in a different thread other than this test's thread, we need to bind it globally
       (with-redefs [task.impl/*quartz-scheduler* task.impl/*quartz-scheduler*]
-        (let [user-id  (:id (new-instance-with-default :core_user))
-              pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
-              pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
+        ;; this test migrates all the way up to the latest schema, where `entity_id` is `NOT NULL` for these tables
+        ;; (see `v64.2026-07-23T12:00:XX`), so we have to generate them ourselves -- we're inserting against the raw
+        ;; table names, so the `:hook/entity-id` Toucan hook doesn't apply.
+        (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
+              dash-id  (:id (new-instance-with-default :report_dashboard {:creator_id user-id
+                                                                          :entity_id  (u/generate-nano-id)}))
+              ;; InitSendPulseTriggers only restores triggers for *dashboard subscriptions*
+              ;; (see `pulse.db/active-dashboard-subscription-channels`), so this Pulse needs a Dashboard
+              pulse-id (:id (new-instance-with-default :pulse {:creator_id   user-id
+                                                               :dashboard_id dash-id
+                                                               :entity_id    (u/generate-nano-id)}))
+              pc       (new-instance-with-default :pulse_channel {:pulse_id  pulse-id
+                                                                  :entity_id (u/generate-nano-id)})]
           ;; trigger this so we schedule a trigger for send-pulse
           (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
           (testing "sanity check that we have a send pulse trigger and 2 jobs"
@@ -1817,7 +1831,14 @@
                      "metabase.task.send-pulses.init-send-pulse-triggers.job"}
                    (scheduler-job-keys))))
           (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
-            (migrate! :down 49)
+            ;; `impl/test-migrations` binds `*allow-temp-scheduling*` to `false` so migrations don't touch the
+            ;; scheduler, but this test is specifically about two migrations that do, so turn it back on.
+            ;; `do-with-temp-schedule` also refuses to run against an already-started scheduler, since it would shut
+            ;; the real one down when it finished -- but the scheduler `with-send-pulse-setup!` installs is in-memory
+            ;; and has `qs/shutdown` stubbed out, so it's safe for the migration to borrow it.
+            (binding [custom-migrations.util/*allow-temp-scheduling* true]
+              (mt/with-dynamic-fn-redefs [qs/started? (constantly false)]
+                (migrate! :down 49)))
             (is (= #{} (scheduler-job-keys))))
           (testing "the init-send-pulse-triggers job should be re-run after migrate up"
             (migrate!)
@@ -1826,10 +1847,14 @@
               ;; simulate starting MB after migrate up, which will trigger this function
               (task/init! ::task.send-pulses/SendPulses)
               ;; wait a bit for the InitSendPulseTriggers to run
-              (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
-                       :done? #(= 1 %)})
+              ;; `send-pulse-triggers` returns a set, so `:done?` has to count it -- comparing the set itself to 1
+              ;; is never true, and the poll just burned its timeout before checking anything
+              (u/poll {:thunk      #(pulse-channel-test/send-pulse-triggers pulse-id)
+                       :done?      #(= 1 (count %))
+                       :timeout-ms 5000})
               (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
-                (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
+                (is (= #{(pulse-channel-test/pulse->trigger-info
+                          pulse-id (select-keys pc u.cron/schedule-keys) [(:id pc)])}
                        (pulse-channel-test/send-pulse-triggers pulse-id)))
                 (is (= #{"metabase.task.send-pulses.send-pulse.job"
                          "metabase.task.send-pulses.init-send-pulse-triggers.job"}
