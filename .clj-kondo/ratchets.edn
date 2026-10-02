@@ -47,7 +47,7 @@
                                 :unused-namespace                                          2
                                 :unused-private-var                                        5
                                 :unused-value                                              1}
- :discouraged-namespace-counts {:cheshire.core         5
+ :discouraged-namespace-counts {:cheshire.core         4
                                 :clojure.tools.logging 3
                                 :grouper.core          1
                                 :legacy-mbql.normalize 14

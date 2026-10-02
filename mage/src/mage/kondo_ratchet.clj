@@ -4,9 +4,7 @@
   symbols they cover, and bulk-insert ignores when landing a new linter."
   (:require
    [babashka.fs :as fs]
-   ;; mage runs under babashka, which bundles cheshire; metabase.util.json isn't on its classpath
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [cheshire.core :as json]
+   [babashka.json :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [dev.kondo-ratchet :as kondo-ratchet]
@@ -31,7 +29,7 @@
         parsed                 (when (#{0 2 3} exit)
                                  (case output-format
                                    :edn  (edn/read-string (str/join "\n" out))
-                                   :json (json/parse-string (str/join "\n" out) true)))]
+                                   :json (json/read-str (str/join "\n" out) {:key-fn keyword})))]
     (when-not (map? parsed)
       (throw (ex-info (format "clj-kondo run failed (exit %d):\n%s" exit (str/join "\n" (take-last 20 err)))
                       {:exit exit})))
