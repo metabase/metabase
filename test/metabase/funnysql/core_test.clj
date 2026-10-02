@@ -52,8 +52,12 @@
       [:!=     nil :field] "WHERE \"field\" IS NOT NULL"
       [:not=   nil :field] "WHERE \"field\" IS NOT NULL"
       [:is-not nil :field] "WHERE \"field\" IS NOT NULL"))
-  (testing "a non-trivial LHS still gets parenthesized when it moves to the left of `IS NULL`"
-    (is (= ["WHERE (lower(\"field\")) IS NULL"]
+  (testing "a bare predicate moved to the left of `IS NULL` still gets parenthesized, since `a AND b IS NULL` would
+            otherwise parse as `a AND (b IS NULL)`"
+    (is (= ["WHERE ((\"a\" = 1) AND (\"b\" = 2)) IS NULL"]
+           (funnysql/format {:where [:= nil [:and [:= :a 1] [:= :b 2]]]} :postgres))))
+  (testing "a self-delimiting LHS like a function call does not need the parens"
+    (is (= ["WHERE lower(\"field\") IS NULL"]
            (funnysql/format {:where [:= nil [:lower :field]]} :postgres))))
   (testing "`nil` on both sides keeps a literal NULL"
     (is (= ["WHERE NULL IS NULL"]
@@ -706,10 +710,11 @@
                        (funnysql/format [:inline x] :mysql))
     6    "6"
     true "true")
-  (is (thrown-with-msg?
-       clojure.lang.ExceptionInfo
-       #":inline is only allowed for numbers and booleans"
-       (funnysql/format [:inline "s"] :mysql))))
+  (testing "a value that can't be inlined is not inlined: `inline!` logs a warning and the value falls through to the
+            ordinary `?`-parameter handling, so nothing is spliced into the SQL. See the TODO on
+            metabase.funnysql.core/inline!, which plans to make this an error instead of a warning."
+    (is (= ["?" "s"]
+           (funnysql/format [:inline "s"] :mysql)))))
 
 (deftest ^:parallel map-recursion-blocked-test
   (testing "a map used as an ordinary value must never be compiled/recursed into as SQL -- only the top-level
@@ -796,6 +801,18 @@
 (deftest ^:parallel date-part-test
   (is (= ["date_part(?, \"started_at\")" "year"]
          (funnysql/format [:date_part "year" :started_at] :postgres))))
+
+(deftest ^:parallel ilike-test
+  (testing "`:ilike` is an infix operator like `:like`, not a function call"
+    (is (= ["WHERE \"name\" ILIKE ?" "%foo%"]
+           (funnysql/format {:where [:ilike :name "%foo%"]} :postgres)))))
+
+(deftest ^:parallel unknown-function-is-rejected-test
+  (testing "a function that isn't whitelisted in `-fn-call!` must throw rather than being spliced into the SQL"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Function :nope-not-a-real-function is not currently supported"
+         (funnysql/format {:where [:= :field [:nope-not-a-real-function :x]]} :postgres)))))
 
 (deftest ^:parallel escape-test
   (testing "`:escape` is a postfix operator on a LIKE pattern, not a function call"

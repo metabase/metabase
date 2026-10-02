@@ -516,6 +516,24 @@
     :else
     (-identifier! (name k) context)))
 
+(def ^:private predicate-operators
+  "Operators that compile to a bare SQL predicate -- `x IS NULL`, `a AND b`, `x IN (...)`, `x < 1`. Used as the operand
+  of a comparison these have to be parenthesized; everything else ([[-simple-fn!]] calls, `:cast`, the `h2x/` forms,
+  arithmetic) either brings its own delimiters or binds tighter than a comparison already, and wrapping those would
+  just add noise."
+  #{:= :is :<> :!= :not= :is-not
+    :< :<= :> :>= :like :ilike :not-like
+    :and :or :not
+    :in :not-in :between :exists :not-exists
+    :escape
+    :metabase.funnysql.core/postgres-full-text-search-match})
+
+(defn- predicate-call?
+  "Whether `x` is a [[fn-call?]] for one of the [[predicate-operators]]."
+  [x]
+  (and (fn-call? x)
+       (contains? predicate-operators (first x))))
+
 (defn- -equals! [sql nil-sql [x y] context]
   ;; A `nil` on *either* side becomes `IS [NOT] NULL` against whichever side is non-`nil`, matching Honey SQL's
   ;; `:transform-null-equals`. This has to cover `[:= nil x]` as well as `[:= x nil]`: compiling the `nil` as a plain
@@ -523,8 +541,8 @@
   ;; `[:= nil nil]` keeps a literal `NULL` on the left, giving `NULL IS NULL`.
   (letfn [(operand! [v]
             ;; make sure if the operand is itself something like `[:= x nil]` we get `(x IS NULL) = <y>` instead of
-            ;; `x IS NULL = y`
-            ((if (fn-call? v)
+            ;; the unparsable `x IS NULL = y`
+            ((if (predicate-call? v)
                -parens!
                compile!) v context))]
     (if (or (nil? x) (nil? y))
@@ -708,6 +726,7 @@
 (defn- -binary-operator! [f args context]
   (let [f-str (case f
                 :like     " LIKE "
+                :ilike    " ILIKE "
                 :not-like " NOT LIKE "
                 (str \space (name f) \space))]
     (-interpose! f-str args context)))
@@ -832,7 +851,7 @@
     :param                  (param! (first args) context)
     :timestampdiff          (timestamp-diff! args context)
 
-    (:< :<= :> :>= :like :not-like :+ :- :/ :* :%)
+    (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :%)
     (-binary-operator! f args context)
 
     ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
@@ -856,49 +875,53 @@
     :metabase.funnysql.core/postgres-full-text-search-match
     (postgres-full-text-search-match args context)
 
-    ;; TODO (Cam 2026-10-01) require all functions to be whitelisted; disabling for now in the interest of getting
-    ;; tests green without spending forever compiling a whitelist
-    #_(:abs
-       :avg
-       :ceil
-       :coalesce
-       :concat
-       :count
-       :current_database
-       :current_schema
-       :database
-       :date_part
-       :dateadd
-       :day
-       :distinct
-       :floor
-       :greatest
-       :least
-       :isnull
-       :jsonb_build_object
-       :jsonb_path_exists
-       :lower
-       :max
-       :min
-       :now
-       :regexp_replace
-       :replace
-       :row_number
-       :round
-       :sum
-       :to_regclass
-       :to_tsquery
-       :trim
-       :ts_rank
-       :upper
-       :year)
-    #_else
+    (:abs
+     :avg
+     :ceil
+     :coalesce
+     :concat
+     :count
+     :current_database
+     :current_schema
+     :database
+     :date_part
+     :dateadd
+     :datediff
+     :day
+     :distinct
+     :floor
+     :greatest
+     :least
+     :isnull
+     :jsonb_build_object
+     :jsonb_path_exists
+     :left
+     :length
+     :locate
+     :lower
+     :max
+     :min
+     :month
+     :now
+     :rand
+     :regexp_replace
+     :replace
+     :row_number
+     :round
+     :sum
+     :substring
+     :to_regclass
+     :to_tsquery
+     :trim
+     :ts_rank
+     :upper
+     :year)
     (-simple-fn! f args context)
 
     #_else
-    #_(throw (ex-info (clojure.core/format "Function %s is not currently supported; add it to metabase.funnysql.core/-fn-call! if it should be"
-                                           (pr-str f))
-                      {:f f, :args args}))))
+    (throw (ex-info (clojure.core/format "Function %s is not currently supported; add it to metabase.funnysql.core/-fn-call! if it should be"
+                                         (pr-str f))
+                    {:f f, :args args}))))
 
 (defn- sequence! [xs context]
   (if (fn-call? xs)
