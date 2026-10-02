@@ -29,10 +29,9 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
-   [metabase.revisions.core :as revisions]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.util :as transforms.u]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -475,7 +474,7 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
@@ -890,7 +889,7 @@
    :last_edit_timestamp  :timestamp})
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
-(mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
+(mu/defn- coalesce-edit-info :- ::revisions.schema/maybe-annotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row :- [:map {:closed true}
