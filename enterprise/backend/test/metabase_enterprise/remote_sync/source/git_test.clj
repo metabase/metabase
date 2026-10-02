@@ -11,6 +11,7 @@
   (:import (java.io File)
            (java.nio.file Files Paths)
            (java.nio.file.attribute FileAttribute)
+           (java.util.concurrent CyclicBarrier TimeUnit)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.dircache DirCacheEditor DirCacheEditor$PathEdit DirCacheEntry)
@@ -812,6 +813,141 @@
             (is (identical? recovered-git (:git later))
                 "a new source for the same URL and token uses the clone that the recovery made")
             (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))))))))
+
+(defn- remote-url
+  "The file:// URL of a test 'remote' repo."
+  [{:keys [^Git git]}]
+  (-> (.getRepository git) .getDirectory .toURI .toURL .toExternalForm))
+
+(defn- clone-siblings
+  "The fresh sibling directories (`<repo-path>-<uuid>`) on disk that stale-cache recoveries made for `url`."
+  [url]
+  (let [^File path (#'git/repo-path {:remote-url url})
+        prefix     (str (.getName path) "-")]
+    (filter #(str/starts-with? (.getName ^File %) prefix) (.listFiles (.getParentFile path)))))
+
+(defn- forget-clones!
+  "Drops `url`'s cached Git instance and retired-clone entries, as a stop that runs no shutdown hook does. Unless
+  `keep-dirs?`, also deletes its clone directory and fresh siblings."
+  [url & {:keys [keep-dirs?]}]
+  (let [^File path (#'git/repo-path {:remote-url url})]
+    (swap! @#'git/jgit dissoc (.getPath path))
+    (swap! @#'git/retired-clones (fn [dirs] (into #{} (remove #(str/starts-with? (str %) (str path))) dirs)))
+    (when-not keep-dirs?
+      (run! #(FileUtils/deleteQuietly ^File %) (cons path (clone-siblings url))))))
+
+(defn- recover-stale-clone!
+  "Takes a snapshot of `source` with one injected \"Missing commit\" error, so that a stale-cache recovery runs.
+  Returns the recovered snapshot."
+  [source]
+  (let [real-snapshot* (mt/original-fn #'git/snapshot*)
+        thrown?        (atom false)]
+    (mt/with-dynamic-fn-redefs [git/snapshot* (fn [s]
+                                                (if (compare-and-set! thrown? false true)
+                                                  (throw (ex-info "Missing commit 0123456789abcdef" {}))
+                                                  (real-snapshot* s)))]
+      (u/prog1 (source.p/snapshot source)
+        (is @thrown? "precondition: the stale-cache recovery ran")))))
+
+(deftest concurrent-first-use-clones-once-test
+  (testing "two concurrent first uses of a URL share one clone, and both get a source"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url          (remote-url (init-remote! remote-dir))
+            real-clone!  (mt/original-fn #'git/clone-repository!)
+            clones       (atom 0)
+            second-clone (promise)
+            first-done   (promise)
+            start        (promise)]
+        (try
+          (mt/with-dynamic-fn-redefs [git/clone-repository!
+                                      (fn [path args]
+                                        (if (= 1 (swap! clones inc))
+                                          ;; Holds the first clone until a second one starts, or for 2 s if none does.
+                                          (try (deref second-clone 2000 nil)
+                                               (real-clone! path args)
+                                               (finally (deliver first-done true)))
+                                          (do (deliver second-clone true)
+                                              (deref first-done 10000 nil)
+                                              (real-clone! path args))))]
+            (let [uses (mapv (fn [_] (future
+                                       (deref start 10000 nil)
+                                       (try (git/git-source url "master" nil ingest/legal-top-level-paths)
+                                            (catch Exception e (str "threw: " (ex-message e))))))
+                             (range 2))
+                  _    (deliver start true)
+                  results (mapv #(deref % 30000 ::timeout) uses)]
+              (is (= [] (remove #(instance? Git (:git %)) results))
+                  "both first uses get a source")
+              (is (= 1 @clones) "the first uses clone once")))
+          (finally (forget-clones! url)))))))
+
+(deftest concurrent-stale-cache-recoveries-clone-once-test
+  (testing "two concurrent stale-cache recoveries of one clone share one fresh clone"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _]     (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url            (:remote-url source)
+            real-snapshot* (mt/original-fn #'git/snapshot*)
+            real-clone!    (mt/original-fn #'git/clone-repository!)
+            threw-in       (atom #{})
+            both-stale     (CyclicBarrier. 2)
+            clones         (atom 0)]
+        (try
+          (mt/with-dynamic-fn-redefs [git/snapshot*         (fn [s]
+                                                              (let [t (Thread/currentThread)]
+                                                                (if (contains? @threw-in t)
+                                                                  (real-snapshot* s)
+                                                                  (do (swap! threw-in conj t)
+                                                                      (.await both-stale 10 TimeUnit/SECONDS)
+                                                                      (throw (ex-info "Missing commit 0123456789abcdef" {}))))))
+                                      git/clone-repository! (fn [path args]
+                                                              (swap! clones inc)
+                                                              (real-clone! path args))]
+            (let [reads (mapv (fn [_] (future (source.p/read-file (source.p/snapshot source) "master.txt")))
+                              (range 2))]
+              (is (= ["File in master" "File in master"] (mapv #(deref % 30000 ::timeout) reads))
+                  "both snapshots recover and read")))
+          (is (= 2 (count @threw-in)) "precondition: each thread ran a stale-cache recovery")
+          (is (= 1 @clones) "the recoveries clone once")
+          (is (= 1 (count (clone-siblings url))) "one fresh sibling exists on disk")
+          (finally (forget-clones! url)))))))
+
+(deftest first-use-after-hard-stop-following-recovery-test
+  (testing "after a recovery and a stop that runs no shutdown hook, the next first use of the URL removes the fresh
+            sibling and does not open the clone that the recovery found stale"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _]  (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url         (:remote-url source)
+            ^File path  (#'git/repo-path {:remote-url url})
+            stale-mark  "stale-clone-marker"]
+        (try
+          (recover-stale-clone! source)
+          (spit (io/file path stale-mark) "")
+          (forget-clones! url :keep-dirs? true)
+          (let [later (git/git-source url "master" nil ingest/legal-top-level-paths)]
+            (is (= [] (map #(.getName ^File %) (clone-siblings url)))
+                "no fresh sibling stays on disk")
+            (is (not (.exists (io/file (#'git/git-dir (:git later)) stale-mark)))
+                "the source does not open the stale clone")
+            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt"))))
+          (finally (forget-clones! url)))))))
+
+(deftest first-use-after-fresh-clone-deleted-test
+  (testing "if the fresh clone of a recovery is deleted, the next first use does not open a clone that the recovery
+            retired"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url        (:remote-url source)
+            ^File path (#'git/repo-path {:remote-url url})]
+        (try
+          (recover-stale-clone! source)
+          (let [^File fresh (#'git/git-dir (get @@#'git/jgit (.getPath path)))]
+            (is (not= (str path) (str fresh)) "precondition: the recovery cached a fresh sibling")
+            (FileUtils/deleteDirectory fresh))
+          (let [later (git/git-source url "master" nil ingest/legal-top-level-paths)]
+            (is (not (contains? (set (map str @@#'git/retired-clones)) (str (#'git/git-dir (:git later)))))
+                "the source does not use a retired clone")
+            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt"))))
+          (finally (forget-clones! url)))))))
 
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
