@@ -14,7 +14,7 @@ import {
   getSegmentQuery,
   getSegmentQueryDefinition,
 } from "metabase/segments";
-import { Alert, Box, Button, Flex } from "metabase/ui";
+import { Alert, Box, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 
@@ -153,18 +153,14 @@ export const SegmentForm = ({
                   placeholder={t`This will show up in the revision history for this segment to help everyone remember why things changed`}
                 />
               </FormLabel>
-              <Flex align="center">
-                <SegmentFormActions isValid={isValid} />
-              </Flex>
+              <SegmentFormActions isValid={isValid} />
             </FieldSet>
           )}
         </Box>
       </Box>
       {isNew && !isReadOnly && (
-        <Box className={S.footer} py="xxl">
-          <Box px={SECTION_PADDING_X}>
-            <SegmentFormActions isValid={isValid} />
-          </Box>
+        <Box className={S.footer} px={SECTION_PADDING_X} py="xxl">
+          <SegmentFormActions isValid={isValid} />
         </Box>
       )}
     </Box>
