@@ -1,6 +1,13 @@
+import { createMockOAuthClient } from "metabase-types/api/mocks";
+
 import { PAGE_SIZE } from "./constants";
 import type { OAuthClientsUrlState } from "./types";
-import { buildListParams, getTabChange, urlStateConfig } from "./utils";
+import {
+  buildListParams,
+  getTabChange,
+  isOAuthClientRevokedBy,
+  urlStateConfig,
+} from "./utils";
 
 const DEFAULT_STATE: OAuthClientsUrlState = {
   page: 0,
@@ -247,6 +254,44 @@ describe("OAuthClientsPage/utils", () => {
         sort_column: "created_at",
         sort_direction: "desc",
       });
+    });
+  });
+
+  describe("isOAuthClientRevokedBy", () => {
+    const client = createMockOAuthClient({ client_id: "shown" });
+
+    it.each([
+      { description: "revoking everything", request: {}, expected: true },
+      {
+        description: "revoking its id",
+        request: { ids: ["shown"] },
+        expected: true,
+      },
+      {
+        description: "revoking other ids",
+        request: { ids: ["other"] },
+        expected: false,
+      },
+      {
+        // the row does not say who holds its tokens, so this counts as a hit
+        description: "revoking by a user it may hold a token for",
+        request: { "user-id": 3 },
+        expected: true,
+      },
+    ])(
+      "is $expected for an active client when $description",
+      ({ request, expected }) => {
+        expect(isOAuthClientRevokedBy(client, request)).toBe(expected);
+      },
+    );
+
+    it("is false for a revoked or current client, whatever the criteria", () => {
+      expect(isOAuthClientRevokedBy({ ...client, status: "revoked" }, {})).toBe(
+        false,
+      );
+      expect(isOAuthClientRevokedBy({ ...client, current: true }, {})).toBe(
+        false,
+      );
     });
   });
 });

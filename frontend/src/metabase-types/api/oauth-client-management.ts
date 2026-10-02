@@ -40,6 +40,24 @@ export type OAuthClient = {
   current: boolean;
 };
 
+/** One user a client holds a live token for: whom revoking it would cut off, and whom to warn. */
+export type OAuthClientUser = {
+  id: UserId;
+  email: string;
+  common_name: string | null;
+  /** Unrevoked, unexpired access tokens of this client held by this user. */
+  live_tokens: number;
+  /** The user's latest consent to this client, or null when the client's token predates any approval on record. */
+  last_approved_at: string | null;
+};
+
+/** One client as the detail view shows it: the list item plus what it registered and who holds its live tokens. */
+export type OAuthClientDetail = OAuthClient & {
+  scopes: string[];
+  contacts: string[];
+  users: OAuthClientUser[];
+};
+
 export const OAUTH_CLIENT_SORT_COLUMNS = [
   "created_at",
   "client_name",

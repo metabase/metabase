@@ -8,5 +8,10 @@ const oauthClientsPage = () =>
   }));
 
 export function getOAuthClientManagementRoutes() {
-  return <Route index lazy={oauthClientsPage} />;
+  return (
+    <>
+      <Route index lazy={oauthClientsPage} />
+      <Route path=":clientId" lazy={oauthClientsPage} />
+    </>
+  );
 }

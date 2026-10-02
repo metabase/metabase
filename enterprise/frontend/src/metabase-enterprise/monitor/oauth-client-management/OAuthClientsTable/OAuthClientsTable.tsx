@@ -5,7 +5,7 @@ import type {
   SortingState,
   Updater,
 } from "@tanstack/react-table";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -19,7 +19,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { OAuthClient } from "metabase-types/api";
+import type { OAuthClient, OAuthClientId } from "metabase-types/api";
 
 import type { OAuthClientRow } from "./types";
 import { getColumnWidths, getColumns } from "./utils";
@@ -31,10 +31,12 @@ type OAuthClientsTableProps = {
   isRevokedTab: boolean;
   page: number;
   rowSelection: RowSelectionState;
+  selectedClientId: OAuthClientId | undefined;
   sorting: SortingState;
   emptyLabel: string;
   onSortingChange: (sorting: SortingState) => void;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
+  onRowClick: (clientId: OAuthClientId) => void;
 };
 
 const NO_CLIENTS: OAuthClientRow[] = [];
@@ -58,11 +60,15 @@ export const OAuthClientsTable = ({
   isRevokedTab,
   page,
   rowSelection,
+  selectedClientId,
   sorting,
   emptyLabel,
   onSortingChange,
   onRowSelectionChange,
+  onRowClick,
 }: OAuthClientsTableProps) => {
+  const selectedRowId = selectedClientId ?? null;
+
   const handleSortingChange = useCallback(
     (updater: Updater<SortingState>) => {
       const next = typeof updater === "function" ? updater(sorting) : updater;
@@ -75,6 +81,13 @@ export const OAuthClientsTable = ({
 
   const rows = useMemo(() => clients?.map(toRow), [clients]);
 
+  const handleRowActivate = useCallback(
+    (row: Row<OAuthClientRow>) => {
+      onRowClick(row.original.client_id);
+    },
+    [onRowClick],
+  );
+
   const instance = useTreeTableInstance<OAuthClientRow>({
     data: rows ?? NO_CLIENTS,
     columns,
@@ -85,7 +98,14 @@ export const OAuthClientsTable = ({
     rowSelection,
     onRowSelectionChange,
     onSortingChange: handleSortingChange,
+    onRowActivate: handleRowActivate,
+    selectedRowId,
   });
+
+  const { setActiveRowId } = instance;
+  useEffect(() => {
+    setActiveRowId(selectedRowId);
+  }, [selectedRowId, setActiveRowId]);
 
   useScrollToTop({
     ref: instance.containerRef,
@@ -133,6 +153,7 @@ export const OAuthClientsTable = ({
             onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
             headerCheckboxAriaLabel={t`Select all`}
             ariaLabel={t`OAuth clients`}
+            onRowClick={handleRowActivate}
             getRowProps={getRowProps}
             emptyState={<MonitorEmptyState label={emptyLabel} />}
           />

@@ -1,7 +1,8 @@
 (ns metabase.oauth-server.query
   "The HoneySQL the OAuth server module owns but does not run: the `oauth_client` row with the admin who revoked it,
-  a client's derived status, and aggregates over the access tokens it still holds. Anything that lists or counts
-  registered clients composes on these, so no other module names an OAuth table itself."
+  a client's derived status, aggregates over the access tokens it still holds, and the users holding them. Anything
+  that lists, counts, filters or opens a registered client composes on these, so no other module names an OAuth
+  table itself."
   (:require
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -63,3 +64,35 @@
   [:or
    (unrevoked-token-exists-expr :oauth_access_token user-id)
    (unrevoked-token-exists-expr :oauth_refresh_token user-id)])
+(def ^:private last-approved-expr
+  "When the `u` user last consented to the `c` client, or null if the client holds a token of theirs with no approval
+  on record — a token inserted directly, or one from before the event log existed."
+  ;; a correlated scalar subquery, deliberately: see [[metabase.app-db.honeysql-guard]]
+  ^:allow-subquery {:select [[[:max :e.created_at]]]
+                    :from   [[:oauth_client_event :e]]
+                    :where  [:and
+                             [:= :e.oauth_client_id :c.id]
+                             [:= :e.user_id :u.id]
+                             [:= :e.event_type "approved"]]})
+
+(defn client-token-holders-query
+  "A whole query — not a fragment — for the users holding an access token of the client registered under `client-id`
+  that still works at `now-ms`: one row per user with how many such tokens they hold and when they last consented."
+  [client-id now-ms]
+  {:select   [[:u.id :id]
+              [:u.email :email]
+              [:u.first_name :first_name]
+              [:u.last_name :last_name]
+              [[:count [:inline 1]] :live_tokens]
+              [last-approved-expr :last_approved_at]]
+   :from     [[:oauth_access_token :t]]
+   :join     [[:oauth_client :c] [:= :t.client_id :c.client_id]
+              [:core_user :u]    [:= :t.user_id :u.id]]
+   ;; the live tokens, not every unrevoked one, so these rows are the same users `live-token-user-count-expr`
+   ;; counts: an admin reading the Users list against the Users column is reading one number
+   :where    [:and
+              [:= :c.client_id client-id]
+              [:= :t.revoked_at nil]
+              [:> :t.expiry now-ms]]
+   :group-by [:u.id :u.email :u.first_name :u.last_name :c.id]
+   :order-by [[:u.email :asc]]})

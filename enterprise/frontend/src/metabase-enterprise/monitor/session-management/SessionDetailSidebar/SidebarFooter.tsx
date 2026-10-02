@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { Button, Group } from "metabase/ui";
+import { SidebarFooter as DetailSidebarFooter } from "metabase/monitor/components/DetailSidebar";
+import { Button } from "metabase/ui";
 
-import S from "./SessionDetailSidebar.module.css";
 import type { SidebarFooterProps } from "./types";
 
 export const SidebarFooter = ({
@@ -13,7 +13,7 @@ export const SidebarFooter = ({
   onRevokeSession,
   onRevokeUserSessions,
 }: SidebarFooterProps) => (
-  <Group className={S.footer} gap="sm" grow>
+  <DetailSidebarFooter>
     {canRevokeSession && (
       <Button disabled={isRevoking} onClick={() => onRevokeSession(session)}>
         {t`Revoke session`}
@@ -27,5 +27,5 @@ export const SidebarFooter = ({
         {t`Revoke active sessions`}
       </Button>
     )}
-  </Group>
+  </DetailSidebarFooter>
 );

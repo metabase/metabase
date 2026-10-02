@@ -1,6 +1,10 @@
 export * from "./constants";
+export * from "./DetailSidebarShell";
 export * from "./DetailsRow";
 export * from "./DetailsTable";
+export * from "./SidebarFooter";
 export * from "./SidebarNavButton";
 export * from "./SidebarSection";
+export * from "./use-copy-detail-link";
+export * from "./use-detail-sidebar-routing";
 export type * from "./types";

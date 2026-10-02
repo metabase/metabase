@@ -14,10 +14,30 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- client-select
+  "The columns every registered-client read selects, with the live-token counts computed in SQL against `now-ms`
+  (epoch milliseconds). No hash is among them, so none can leave the database."
+  [now-ms]
+  [[:c.client_id :client_id]
+   [:c.client_name :client_name]
+   [:c.client_uri :client_uri]
+   [:c.logo_uri :logo_uri]
+   [:c.redirect_uris :redirect_uris]
+   [:c.application_type :application_type]
+   [:c.registration_type :registration_type]
+   [:c.created_at :created_at]
+   [oauth-server/client-status-expr :status]
+   [:c.revoked_at :revoked_at]
+   [:c.revoked_by_user_id :revoked_by_user_id]
+   [:revoker.email :revoked_by_email]
+   [:revoker.first_name :revoked_by_first_name]
+   [:revoker.last_name :revoked_by_last_name]
+   [(oauth-server/live-token-count-expr now-ms) :live_tokens]
+   [(oauth-server/live-token-user-count-expr now-ms) :user_count]])
+
 (mu/defn clients :- [:sequential :map]
   "The registered clients matching `filters` — active ones unless `:status` says otherwise — ordered per
-  `sort-column`/`sort-direction`, at most `limit` from `offset`. The live-token and distinct-user counts are computed
-  in SQL against `now-ms` (epoch milliseconds). No hash is selected, so none can leave the database."
+  `sort-column`/`sort-direction`, at most `limit` from `offset`."
   [filters        :- ::ocm.schema/client-filters
    sort-column    :- ::ocm.schema/client-sort-column
    sort-direction :- [:enum :asc :desc]
@@ -26,26 +46,30 @@
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/query
    (cond-> (merge oauth-server/client-from-and-joins
-                  {:select   [[:c.client_id :client_id]
-                              [:c.client_name :client_name]
-                              [:c.client_uri :client_uri]
-                              [:c.logo_uri :logo_uri]
-                              [:c.redirect_uris :redirect_uris]
-                              [:c.application_type :application_type]
-                              [:c.registration_type :registration_type]
-                              [:c.created_at :created_at]
-                              [oauth-server/client-status-expr :status]
-                              [:c.revoked_at :revoked_at]
-                              [:c.revoked_by_user_id :revoked_by_user_id]
-                              [:revoker.email :revoked_by_email]
-                              [:revoker.first_name :revoked_by_first_name]
-                              [:revoker.last_name :revoked_by_last_name]
-                              [(oauth-server/live-token-count-expr now-ms) :live_tokens]
-                              [(oauth-server/live-token-user-count-expr now-ms) :user_count]]
+                  {:select   (client-select now-ms)
                    :where    (ocm.query/client-where filters)
                    :order-by (ocm.query/client-order-by sort-column sort-direction)})
      limit  (assoc :limit limit)
      offset (assoc :offset offset))))
+
+(mu/defn client :- [:maybe :map]
+  "The one registered client under `client-id`, revoked or not, or nil. Carries what [[clients]] selects plus the
+  scopes and contacts it registered with, which the list leaves out."
+  [client-id :- :string
+   now-ms    :- :int]
+  (t2/query-one
+   (merge oauth-server/client-from-and-joins
+          {:select (conj (client-select now-ms)
+                         [:c.scopes :scopes]
+                         [:c.contacts :contacts])
+           :where  (ocm.query/client-where {:ids [client-id], :status :all})})))
+
+(mu/defn client-token-holders :- [:sequential :map]
+  "The users holding a live access token of `client-id` at `now-ms`, with how many each holds and when they last
+  consented — whom a revoke would cut off, and whom to warn."
+  [client-id :- :string
+   now-ms    :- :int]
+  (t2/query (oauth-server/client-token-holders-query client-id now-ms)))
 
 (mu/defn- count-where :- ms/IntGreaterThanOrEqualToZero
   "How many `oauth_client` rows satisfy `where`."

@@ -2,6 +2,8 @@ import fetchMock from "fetch-mock";
 
 import type {
   OAuthClient,
+  OAuthClientDetail,
+  OAuthClientId,
   OAuthClientListResponse,
   RevokeOAuthClientsResponse,
 } from "metabase-types/api";
@@ -23,6 +25,21 @@ export const setupListOAuthClientsEndpoint = (
 
 export const setupListOAuthClientsErrorEndpoint = () => {
   fetchMock.get("path:/api/ee/oauth-client-management", { status: 500 });
+};
+
+export const setupGetOAuthClientEndpoint = (client: OAuthClientDetail) => {
+  fetchMock.get(
+    `path:/api/ee/oauth-client-management/${client.client_id}`,
+    client,
+  );
+};
+
+export const setupGetOAuthClientNotFoundEndpoint = (
+  clientId: OAuthClientId,
+) => {
+  fetchMock.get(`path:/api/ee/oauth-client-management/${clientId}`, {
+    status: 404,
+  });
 };
 
 export const setupRevokeOAuthClientsEndpoint = (

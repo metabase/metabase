@@ -12,7 +12,9 @@ import {
 import { parseTimePreset } from "metabase/monitor/time-presets";
 import {
   OAUTH_CLIENT_STATUSES,
+  type OAuthClient,
   type OAuthClientListParams,
+  type RevokeOAuthClientsRequest,
   type UserId,
 } from "metabase-types/api";
 
@@ -109,3 +111,15 @@ export const getTabChange = (
         }),
   };
 };
+
+// Mirrors the endpoint as far as a list row can be read: only an active client other than the caller's own is
+// revoked, and an `ids` list ends only the clients it names. Any other criterion is about something the row does
+// not carry -- which users hold its tokens -- so it counts as a hit rather than quietly keeping a row the revoke
+// may well have ended.
+export const isOAuthClientRevokedBy = (
+  client: OAuthClient,
+  request: RevokeOAuthClientsRequest,
+): boolean =>
+  client.status === "active" &&
+  !client.current &&
+  (request.ids === undefined || request.ids.includes(client.client_id));

@@ -29,10 +29,12 @@ const setup = ({ clients, isRevokedTab = false }: SetupOpts) => {
       isRevokedTab={isRevokedTab}
       page={0}
       rowSelection={{}}
+      selectedClientId={undefined}
       sorting={[{ id: "created_at", desc: true }]}
       emptyLabel="No clients"
       onSortingChange={jest.fn()}
       onRowSelectionChange={jest.fn()}
+      onRowClick={jest.fn()}
     />,
   );
 };
