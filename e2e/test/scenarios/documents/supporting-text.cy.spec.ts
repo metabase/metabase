@@ -294,7 +294,11 @@ describe("documents supporting text", () => {
     H.visitDocument("@documentId");
 
     H.openDocumentCardMenu("Orders");
-    H.popover().findByText("Add supporting text").click();
+    H.popover()
+      .findByText("Add supporting text")
+      .closest("button")
+      .should("be.enabled")
+      .click();
     cy.realType("Lorem ipsum");
 
     const targetCardTitle = "Orders, Count, Grouped by Created At (year)";

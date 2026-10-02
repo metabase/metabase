@@ -616,10 +616,6 @@ describe("document comments", () => {
       // after we click into the document below.
       Comments.getNewThreadInput().find(".ProseMirror-focused").should("exist");
 
-      cy.realType("Test comment");
-      cy.realPress([META_KEY, "Enter"]);
-      Comments.getCommentByText("Test comment").should("be.visible");
-
       cy.get("main").within(() => {
         H.documentContent().click();
         H.documentContent().find(".ProseMirror-focused").should("exist");
@@ -632,6 +628,14 @@ describe("document comments", () => {
           .should("be.visible");
         H.documentFormattingMenu().should("not.exist");
       });
+
+      Comments.getNewThreadInput().click();
+      Comments.getNewThreadInput().find(".ProseMirror-focused").should("exist");
+      cy.realType("Test comment");
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getCommentByText("Test comment").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).should("be.visible");
+      H.getParagraph("Lorem ipsum dolor sit amet.test").should("be.visible");
 
       cy.log("allows opening comments when document has changes");
       Comments.closeSidebar();
@@ -1306,6 +1310,22 @@ describe("document comments", () => {
       H.getBulletList("ul", Comments.getNewThreadInput()).should("be.visible");
       cy.realPress([META_KEY, "Enter"]);
       Comments.getAllComments().should("have.length", 2);
+
+      cy.log("blockquote shortcut is disabled");
+      // CustomBlockquote drops tiptap's Mod-Shift-b to keep default browser behavior
+      Comments.getNewThreadInput().click();
+      cy.realType("not a quote");
+      cy.realPress([META_KEY, "Shift", "b"]);
+      cy.realType(" after shortcut");
+      Comments.getNewThreadInput()
+        .find("p")
+        .should("have.text", "not a quote after shortcut");
+      Comments.getNewThreadInput().find("blockquote").should("not.exist");
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 3);
+      Comments.getCommentByText("not a quote after shortcut")
+        .find("blockquote")
+        .should("not.exist");
 
       cy.log("code block");
       Comments.getNewThreadInput().click();

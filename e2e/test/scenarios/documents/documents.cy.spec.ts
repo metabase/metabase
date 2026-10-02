@@ -862,16 +862,9 @@ describe("documents", () => {
         );
         H.getDocumentSidebar().findByRole("button", { name: /close/ }).click();
 
-        cy.log("rename a card");
-        H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).realHover();
+        cy.log("edit the query of an unnamed card");
+        H.openDocumentCardMenu(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
         H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
-          .find(".Icon-pencil")
-          .click();
-        cy.realType("New name{enter}");
-
-        // Edit the Query. Assert on the number of breakouts
-        H.openDocumentCardMenu("New name");
-        H.getDocumentCard("New name")
           .findByRole("list")
           .findAllByRole("listitem")
           .should("have.length", 4);
@@ -881,11 +874,35 @@ describe("documents", () => {
         H.addSummaryGroupingField({ field: "Price" });
         H.modal().findByRole("button", { name: "Save and use" }).click();
 
-        cy.log("the new name is preserved after editing the query");
+        H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
+          .findByRole("list")
+          .findAllByRole("listitem")
+          .should("have.length", 7);
+
+        cy.log("rename a card");
+        H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).realHover();
+        H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
+          .find(".Icon-pencil")
+          .click();
+        cy.realType("New name{enter}");
+
+        cy.log("edit the query of a renamed card");
+        H.openDocumentCardMenu("New name");
         H.getDocumentCard("New name")
           .findByRole("list")
           .findAllByRole("listitem")
           .should("have.length", 7);
+        H.popover().findByText("Edit Query").click();
+
+        H.removeSummaryGroupingField({ field: "Price: Auto binned" });
+        H.addSummaryGroupingField({ field: "Category" });
+        H.modal().findByRole("button", { name: "Save and use" }).click();
+
+        cy.log("the new name is preserved after editing the query");
+        H.getDocumentCard("New name")
+          .findByRole("list")
+          .findAllByRole("listitem")
+          .should("have.length", 4);
 
         //Replace Card
         H.openDocumentCardMenu("New name");

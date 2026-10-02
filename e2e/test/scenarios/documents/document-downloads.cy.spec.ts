@@ -84,6 +84,7 @@ describe("scenarios > documents > downloads", () => {
       ].forEach((name) => {
         cy.findByRole("menuitem", { name }).should("be.disabled");
       });
+      cy.findAllByRole("menuitem").should("have.length", 6);
     });
 
     // Click Download results
