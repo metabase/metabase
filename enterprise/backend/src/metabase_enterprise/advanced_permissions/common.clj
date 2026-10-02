@@ -88,6 +88,12 @@
   (or api/*is-superuser?*
       (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* perm-type)))
 
+(defenterprise has-advanced-setting-access?
+  "Check if `*current-user*` has permissions to edit settings."
+  :feature :advanced-permissions
+  []
+  (current-user-has-application-permissions? :setting))
+
 (defn current-user-is-manager-of-group?
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
