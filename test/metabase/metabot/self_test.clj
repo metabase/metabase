@@ -18,6 +18,7 @@
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.deepseek :as deepseek]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
@@ -220,7 +221,43 @@
               (is (thrown? clojure.lang.ExceptionInfo (call!)))
               (is (=? {:message "invalid x-api-key" :fatal? true} (llm.health/failure "anthropic")))
               (finally
+                (llm.health/record-success! "anthropic")))))
+        (testing "an error streamed after the tool call is not cleared by the tool call that preceded it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude
+                                      (fn [_]
+                                        (test-util/mock-llm-response
+                                         [{:type :tool-input :id "c1" :function "json" :arguments {:answer 42}}
+                                          {:type :error :errorText "upstream is overloaded"}]))]
+            (try
+              (mt/with-log-level [metabase.metabot.self :fatal]
+                (call!))
+              (is (=? {:message "upstream is overloaded" :fatal? false} (llm.health/failure "anthropic")))
+              (finally
                 (llm.health/record-success! "anthropic")))))))))
+
+(deftest call-llm-records-only-provider-failures-from-gemini-streams-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(stream! [events]
+                (mt/with-dynamic-fn-redefs [google/google-raw (constantly events)]
+                  (mt/with-log-level [metabase.metabot.self :fatal]
+                    (into [] (self/call-llm "google/google/gemini-3.5-flash" nil [] {}
+                                            {:tag "agent" :required-permission :permission/metabot}
+                                            nil)))))]
+        (llm.health/record-success! "google")
+        (try
+          (testing "a blocked prompt is about the prompt, so the connection stays healthy"
+            (stream! [{:responseId "r1" :promptFeedback {:blockReason "PROHIBITED_CONTENT"}}])
+            (is (true? (llm.health/healthy? "google"))))
+          (testing "a malformed function call is about the response, so the connection stays healthy"
+            (stream! [{:responseId "r2" :candidates [{:finishReason "MALFORMED_FUNCTION_CALL"}]}])
+            (is (true? (llm.health/healthy? "google"))))
+          (testing "an error envelope in the middle of the stream is the provider failing"
+            (stream! [{:responseId "r3" :candidates [{:content {:role "model" :parts [{:text "Hi"}]}}]}
+                      {:error {:code 503 :message "The model is overloaded."}}])
+            (is (=? {:message "The model is overloaded." :fatal? false} (llm.health/failure "google"))))
+          (finally
+            (llm.health/record-success! "google")))))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections

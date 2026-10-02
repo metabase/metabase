@@ -470,10 +470,11 @@
     ;; Internally-generated error parts (usage limits, agent-loop exceptions) already carry an `:error` map
     ;; and whatever `:error-code` fits; pass those through unchanged.
     :error                 (if (:errorText chunk)
-                             {:type  :error
-                              :error (merge (when (map? (:error chunk)) (:error chunk))
-                                            {:message    (:errorText chunk)
-                                             :error-code "provider_error"})}
+                             (cond-> {:type  :error
+                                      :error (merge (when (map? (:error chunk)) (:error chunk))
+                                                    {:message    (:errorText chunk)
+                                                     :error-code "provider_error"})}
+                               (:request-specific? chunk) (assoc :request-specific? true))
                              chunk)
     :text-start            {:type :text
                             :id   (:id chunk)
