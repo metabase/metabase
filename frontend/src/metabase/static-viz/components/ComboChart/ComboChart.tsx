@@ -55,7 +55,7 @@ export const ComboChart = ({
 
   const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
 
-  // Fold before layout, off the plot height, as the interactive path does.
+  // Fold before layout, off the chart height, as the interactive path does.
   const chartModel = baseChartModel.isRowChart
     ? foldRowChartModel(baseChartModel, chartHeight, settings)
     : baseChartModel;

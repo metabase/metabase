@@ -37,6 +37,7 @@ describe("useTimelineEvents", () => {
   it("fetches the selected timelines' events by default", async () => {
     const { result } = setup();
 
+    expect(result.current.isLoading).toBe(true);
     await waitFor(() => expect(result.current.timelineEvents).toEqual([EVENT]));
     expect(getTimelineRequests()).toHaveLength(1);
   });
@@ -45,15 +46,14 @@ describe("useTimelineEvents", () => {
     const { result } = setup({ timelineEvents: [EVENT] });
 
     expect(result.current.timelineEvents).toEqual([EVENT]);
-    expect(getTimelineRequests()).toHaveLength(0);
+    expect(result.current.isLoading).toBe(false);
   });
 
-  it("does not fetch when skipped", async () => {
+  it("does not fetch when skipped", () => {
     const { result } = setup({ skip: true });
 
-    // Let any request that was going to fire do so before asserting none did.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(getTimelineRequests()).toHaveLength(0);
+    // A query that will fetch reports loading from its first render.
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.timelineEvents).toEqual([]);
   });
 

@@ -125,12 +125,15 @@ export function getGoalLineSeriesOption(
       // edge, as the legacy renderer did.
       const labelMargin = CHART_STYLE.goalLine.label.margin;
       const labelText = settings["graph.goal_label"] ?? "";
-      const labelWidth = renderingContext.measureText(labelText, {
-        family: renderingContext.fontFamily,
-        size: fontSize,
-        weight: CHART_STYLE.goalLine.label.weight,
-      });
-      const flipLabel = isRowChart && goalX + labelWidth > xEnd;
+      const flipLabel =
+        isRowChart &&
+        goalX +
+          renderingContext.measureText(labelText, {
+            family: renderingContext.fontFamily,
+            size: fontSize,
+            weight: CHART_STYLE.goalLine.label.weight,
+          }) >
+          xEnd;
 
       const align: "left" | "right" = isRowChart
         ? flipLabel

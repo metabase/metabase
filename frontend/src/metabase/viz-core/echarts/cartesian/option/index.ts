@@ -324,9 +324,9 @@ export const getCartesianChartOption = (
       // (`inverse` keeps the first row on top). Axis names are re-sited to match.
       const { ticksDimensions } = chartLayout;
 
-      // X and Y axis option types are structurally compatible but don't overlap.
-      xAxis = (axes.yAxis as unknown as XAXisOption[]).map((axis) => ({
+      xAxis = axes.yAxis.map(({ mainType: _omitMainType, ...axis }) => ({
         ...axis,
+        position: axis.position === "right" ? "top" : "bottom",
         nameGap:
           getAxisNameGap(ticksDimensions.xTicksHeight) +
           CHART_STYLE.rowChartAxisName.metricGapExtra,
@@ -339,13 +339,15 @@ export const getCartesianChartOption = (
           },
         },
       }));
-      // Same swap in the other direction; see above.
-      const rotatedDimensionAxis = {
-        ...axes.xAxis,
-        inverse: true,
-        nameGap: getAxisNameGap(ticksDimensions.yTicksWidthLeft),
-      } as unknown as YAXisOption;
-      yAxis = [rotatedDimensionAxis];
+      const { mainType: _omitMainType, ...dimensionAxis } = axes.xAxis;
+      yAxis = [
+        {
+          ...dimensionAxis,
+          position: "left",
+          inverse: true,
+          nameGap: getAxisNameGap(ticksDimensions.yTicksWidthLeft),
+        },
+      ];
     } else {
       xAxis = axes.xAxis;
       yAxis = axes.yAxis;

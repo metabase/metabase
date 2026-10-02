@@ -864,7 +864,7 @@ describe("row chart folded Other row", () => {
   const COUNT_KEY = "count";
   const CATEGORIES = ["A", "B", "C", "D", "E"];
 
-  // Five rows in a plot tall enough for two: one kept row plus "Other (4)".
+  // Five rows in a chart tall enough for two: one kept row plus "Other (4)".
   const getFoldedChartModel = () => {
     const dataset: Datum[] = CATEGORIES.map((category, index) => ({
       [X_AXIS_DATA_KEY]: category,

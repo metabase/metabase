@@ -13,10 +13,8 @@ import type { CartesianChartModel, ChartDataset, Datum } from "./types";
 // email: each band (per series, or one when stacked) needs MIN_BAR_HEIGHT.
 export const MIN_BAR_HEIGHT = 24;
 
-export const getRowChartBudget = (
-  plotHeight: number,
-  bandCount: number,
-): number => Math.max(Math.floor(plotHeight / (MIN_BAR_HEIGHT * bandCount)), 1);
+const getRowChartBudget = (chartHeight: number, bandCount: number): number =>
+  Math.max(Math.floor(chartHeight / (MIN_BAR_HEIGHT * bandCount)), 1);
 
 const sumInto = (target: Datum, source: Datum, keys: string[]) => {
   keys.forEach((key) => {
@@ -54,19 +52,19 @@ const foldDataset = (
 
 export const foldRowChartModel = (
   chartModel: CartesianChartModel,
-  plotHeight: number,
+  chartHeight: number,
   settings: ComputedVisualizationSettings,
 ): CartesianChartModel => {
   const visibleSeries = chartModel.seriesModels.filter(
     (series) => series.visible,
   );
-  if (visibleSeries.length === 0 || plotHeight <= 0) {
+  if (visibleSeries.length === 0 || chartHeight <= 0) {
     return chartModel;
   }
 
-  const stackType = settings["stackable.stack_type"] ?? null;
-  const bandCount = stackType != null ? 1 : visibleSeries.length;
-  const budget = getRowChartBudget(plotHeight, bandCount);
+  const isStacked = chartModel.stackModels.length > 0;
+  const bandCount = isStacked ? 1 : visibleSeries.length;
+  const budget = getRowChartBudget(chartHeight, bandCount);
 
   if (chartModel.dataset.length <= budget) {
     return chartModel;
@@ -74,7 +72,11 @@ export const foldRowChartModel = (
 
   // Fold the untransformed values, then re-run the chart's own transforms, so
   // "Other" is normalized and scaled like every other row.
-  const seriesKeys = chartModel.seriesModels.map((series) => series.dataKey);
+  // Grouped series too, so the re-run transforms can total the "Other" series.
+  const seriesKeys = [
+    ...chartModel.seriesModels,
+    ...(chartModel.groupedSeriesModels ?? []),
+  ].map((series) => series.dataKey);
   const dataset = foldDataset(chartModel.dataset, budget, seriesKeys);
   const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,
@@ -97,7 +99,7 @@ export const foldRowChartModel = (
         chartModel.leftAxisModel.seriesKeys,
         chartModel.stackModels,
         transformedDataset,
-        stackType,
+        settings["stackable.stack_type"],
       ),
     },
   };
