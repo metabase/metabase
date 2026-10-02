@@ -20,7 +20,7 @@
           mp     (mt/metadata-provider)
           handle (ui.tu/store-query-handle! session-id user-id
                                             (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
-      (get-in (ui.tu/ui-request auth :post 202 (str "embed-mcp/queries/" handle "/run") {})
+      (get-in (ui.tu/ui-request! auth :post 202 (str "embed-mcp/queries/" handle "/run") {})
               [:body :data :rows]))))
 
 (deftest sandboxed-user-credential-gets-only-sandboxed-rows-test

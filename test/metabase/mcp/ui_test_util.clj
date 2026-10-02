@@ -87,11 +87,11 @@
     credential (assoc "x-metabase-mcp-ui-auth" credential)
     session-id (assoc "mcp-session-id" session-id)))
 
-(defn ui-request
+(defn ui-request!
   "Send `method` to `url` with the iframe's headers for `auth`, and `body` when given. `expected-status` may be nil.
   Returns the full response. Runs with the Site URL the credential's access token was bound under."
   ([auth method expected-status url]
-   (ui-request auth method expected-status url nil))
+   (ui-request! auth method expected-status url nil))
   ([auth method expected-status url body]
    (mcp.tu/do-with-site-url!
     #(apply client/client-full-response
