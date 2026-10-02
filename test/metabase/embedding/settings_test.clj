@@ -88,7 +88,6 @@
   ;; These tests intentionally exercise deprecated settings.
   #_{:clj-kondo/ignore [:deprecated-var]}
   (case embedding-method
-    :sdk    (embed.settings/enable-embedding-sdk)
     :simple (embed.settings/enable-embedding-simple)
     :static (embed.settings/enable-embedding-static)))
 
@@ -127,7 +126,7 @@
       (let [origin-value (str "localhost:* " other-ip " "
                               (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        (is (not (and (legacy-setting :sdk)
+        (is (not (and (embed.settings/enable-embedding-sdk)
                       (embed.settings/embedding-app-origins-sdk))))))))
 
 (defn- depricated-setting-throws [f env & [reason]]
@@ -162,9 +161,9 @@
   (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false})))
   (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-static true})))
   (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-interactive false})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-sdk false})))
   ;; Not OK: the modular value would silently override each of these.
   (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding-static true})
-  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-sdk false})
   (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-simple false})
   (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding true}))
 
@@ -189,24 +188,24 @@
   ;; reads the deprecated enable-embedding setting on purpose; the sync under test bridges from it
   (let [unsyncd-settings {:enable-embedding             #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
-                          :enable-embedding-sdk         (legacy-setting :sdk)
+                          :enable-embedding-sdk         (embed.settings/enable-embedding-sdk)
                           :enable-embedding-static      (legacy-setting :static)}]
     ;; called for side effects:
     (#'embed.settings/sync-enable-settings! env)
     (cond
       (= expected-behavior :no-op)
       (do (is (= [:no-op (:enable-embedding-interactive unsyncd-settings)] [:no-op (embed.settings/enable-embedding-interactive)]))
-          (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op (legacy-setting :sdk)]))
+          (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op (embed.settings/enable-embedding-sdk)]))
           (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op (legacy-setting :static)])))
 
       (= expected-behavior :sets-all-true)
       (do (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-interactive)]))
-          (is (= [expected-behavior true] [:sets-all-true (legacy-setting :sdk)]))
+          (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-sdk)]))
           (is (= [expected-behavior true] [:sets-all-true (legacy-setting :static)])))
 
       (= expected-behavior :sets-all-false)
       (do (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-interactive)]))
-          (is (= [expected-behavior false] [:sets-all-false (legacy-setting :sdk)]))
+          (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-sdk)]))
           (is (= [expected-behavior false] [:sets-all-false (legacy-setting :static)])))
 
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
@@ -326,18 +325,17 @@
                    (embed.settings/embedding-app-origins-interactive)))))))))
 
 (deftest enable-embedding-modular-falls-back-to-the-settings-it-replaces-test
-  (testing "With nothing set, the merged setting stands for the three it replaces"
-    (doseq [legacy-setting [:enable-embedding-simple :enable-embedding-sdk :enable-embedding-static]]
+  (testing "With nothing set, the merged setting stands for the two it replaces"
+    (doseq [legacy-setting [:enable-embedding-simple :enable-embedding-static]]
       (testing (str "on when only " legacy-setting " is on")
         (mt/with-temporary-setting-values [enable-embedding-simple false
-                                           enable-embedding-sdk false
                                            enable-embedding-static false]
           (mt/with-temporary-setting-values [enable-embedding-modular nil]
             (setting/set-value-of-type! :boolean legacy-setting true)
             (is (true? (embed.settings/enable-embedding-modular))))))))
-  (testing "off when all three are off"
+  (testing "off when both are off, even with the SDK on, since the SDK has its own setting"
     (mt/with-temporary-setting-values [enable-embedding-simple false
-                                       enable-embedding-sdk false
+                                       enable-embedding-sdk true
                                        enable-embedding-static false
                                        enable-embedding-modular nil]
       (is (false? (embed.settings/enable-embedding-modular)))))

@@ -4,7 +4,15 @@ import { t } from "ttag";
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Modal, type ModalProps, Text } from "metabase/ui";
 
-export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
+type EmbeddingLegaleseModalProps = ModalProps & {
+  settingKey: "enable-embedding-modular" | "enable-embedding-sdk";
+};
+
+export const EmbeddingLegaleseModal = ({
+  opened,
+  onClose,
+  settingKey,
+}: EmbeddingLegaleseModalProps) => {
   const [loading, setLoading] = useState(false);
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -12,7 +20,7 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
     setLoading(true);
 
     await updateSettings({
-      "enable-embedding-modular": true,
+      [settingKey]: true,
       "show-modular-embed-terms": false,
     });
 
