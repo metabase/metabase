@@ -11,5 +11,7 @@ build
 # debug
 npm-debug.log*
 
-# generated test action declarations
+# written at test time by the data-app resource specs
 /actions/
+/queries/
+/resources/

@@ -1,0 +1,112 @@
+import path from "node:path";
+
+import { QUERY_DEFINITIONS } from "./ast/definition-source";
+import { discoverActions, discoverQueries } from "./discover";
+import { getMetabaseCredentials } from "./env";
+import { isRecord } from "./guards";
+
+interface ExportedResources {
+  queries: Record<string, unknown>[];
+  actions: Record<string, unknown>[];
+  models: unknown[];
+  metrics: unknown[];
+}
+
+const isRecordArray = (value: unknown): value is Record<string, unknown>[] =>
+  Array.isArray(value) && value.every(isRecord);
+
+function isExportedResources(value: unknown): value is ExportedResources {
+  return (
+    isRecord(value) &&
+    isRecordArray(value.queries) &&
+    isRecordArray(value.actions) &&
+    Array.isArray(value.models) &&
+    Array.isArray(value.metrics)
+  );
+}
+
+async function requestExport(
+  appRoot: string,
+  body: { queries: unknown[]; actions: number[] },
+): Promise<ExportedResources> {
+  const { metabaseUrl, apiKey } = getMetabaseCredentials(appRoot);
+  const response = await fetch(`${metabaseUrl}/api/apps/export-resources`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `The export request failed (${response.status}): ${await response.text()}`,
+    );
+  }
+
+  const exported: unknown = await response.json();
+
+  if (!isExportedResources(exported)) {
+    throw new Error("The export response has an unexpected body.");
+  }
+
+  return exported;
+}
+
+/**
+ * What the app's `resources/` files are written from, as JSON, for the
+ * definitions in `file` (relative to the app root, as files are printed) or
+ * every definition: Metabase builds each `defineQuery` definition's query and
+ * exports it, each `defineAction`'s action, the models they belong to, and the
+ * metrics the queries aggregate, all as serialization writes them. One request
+ * to the Metabase instance and API key in `.env.local`.
+ */
+export async function exportResources(appDirectory: string, file?: string) {
+  const appRoot = path.resolve(appDirectory);
+  const filePath = file === undefined ? undefined : path.resolve(appRoot, file);
+  const inFile = ({ filePath: definitionPath }: { filePath: string }) =>
+    filePath === undefined || definitionPath === filePath;
+  const queries = (await discoverQueries(appRoot)).filter(inFile);
+  const actions = (await discoverActions(appRoot)).filter(inFile);
+
+  if (filePath !== undefined && queries.length + actions.length === 0) {
+    throw new Error(
+      `${path.relative(appRoot, filePath)} has no defineQuery or defineAction definitions.`,
+    );
+  }
+
+  const exported = await requestExport(appRoot, {
+    queries: queries.map(({ exportName, query }) => {
+      const { [QUERY_DEFINITIONS.idKey]: _entityId, ...definition } = query;
+      return { export: exportName, query: { stages: [definition] } };
+    }),
+    actions: actions.map(({ sourceActionId }) => sourceActionId),
+  });
+
+  if (exported.queries.length !== queries.length) {
+    throw new Error("The export response has an unexpected body.");
+  }
+
+  const exportedActions = new Map(
+    exported.actions.map((action) => [action.id, action]),
+  );
+
+  return JSON.stringify(
+    {
+      queries: queries.map((query, index) => ({
+        export: query.exportName,
+        file: path.relative(appRoot, query.filePath),
+        savedQuestionEntityId: query.savedQuestionEntityId ?? null,
+        ...exported.queries[index],
+      })),
+      actions: actions.map((action) => ({
+        export: action.exportName,
+        file: path.relative(appRoot, action.filePath),
+        copiedActionEntityId: action.copiedActionEntityId ?? null,
+        ...exportedActions.get(action.sourceActionId),
+      })),
+      models: exported.models,
+      metrics: exported.metrics,
+    },
+    null,
+    2,
+  );
+}
