@@ -35,26 +35,14 @@ describe("metabase#31587", () => {
         cy.findByLabelText("Add action").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          actionButtonContainer().then((actionButtonElem) => {
-            dashCard().then((dashCardElem) => {
-              expect(actionButtonElem[0].scrollHeight).to.eq(
-                dashCardElem[0].scrollHeight,
-              );
-            });
-          });
+          assertActionButtonFitsDashcard();
         });
 
         H.saveDashboard();
         cy.icon("info").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          actionButtonContainer().then((actionButtonElem) => {
-            dashCard().then((dashCardElem) => {
-              expect(actionButtonElem[0].scrollHeight).to.eq(
-                dashCardElem[0].scrollHeight,
-              );
-            });
-          });
+          assertActionButtonFitsDashcard();
         });
       });
     });
@@ -530,12 +518,20 @@ function setupBasicActionsInModel() {
   cy.button(/Create basic actions/).click();
 }
 
-const actionButtonContainer = () =>
-  cy.findByTestId("action-button-full-container");
-
-const dashCard = () =>
+function assertActionButtonFitsDashcard() {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy
-    .findAllByTestId("dashcard-container")
+  cy.findAllByTestId("dashcard-container")
     .last()
     .should("have.text", "Click Me");
+
+  cy.findByTestId("action-button-full-container")
+    .find("button")
+    .should(($button) => {
+      const button = $button[0].getBoundingClientRect();
+      const dashcard = $button
+        .closest('[data-testid="dashcard-container"]')[0]
+        .getBoundingClientRect();
+      expect(button.bottom).to.be.at.most(dashcard.bottom + 0.5);
+      expect(button.top).to.be.at.least(dashcard.top - 0.5);
+    });
+}
