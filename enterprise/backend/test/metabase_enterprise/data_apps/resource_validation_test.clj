@@ -115,6 +115,11 @@
                "NO_SUCH_TABLE"))
     (testing "resources without a manifest"
       (refused (dissoc (shop (question-resources)) "data_apps/shop/data_app.yaml") "needs a data_app.yaml"))
+    (testing "a manifest that doesn't identify the app, which ingestion would pass over"
+      (refused (edit-file (shop (question-resources)) "data_apps/shop/data_app.yaml" #(dissoc % :serdes/meta))
+               "must hold a single DataApp whose serdes/meta ID is its entity_id")
+      (refused (edit-file (shop nil :collection nil) "data_apps/shop/data_app.yaml" #(dissoc % :entity_id))
+               "must hold a single DataApp whose serdes/meta ID is its entity_id"))
     (testing "a manifest naming no collection beside resources"
       (refused (shop (question-resources) :collection nil) "must name the app's resource collection"))
     (testing "resources without the collection file"

@@ -229,8 +229,13 @@
                     (assoc file :model (resource-model relative-path)))
         unknown   (filter (comp nil? :model) resources)
         resources (remove (comp nil? :model) resources)
-        collection-entity-id (-> manifest :entity :collection)]
+        collection-entity-id (-> manifest :entity :collection)
+        ;; ingestion passes over a file that doesn't identify its entity, which for a manifest means no app
+        manifest-problems (when manifest (identity-problems (assoc manifest :model "DataApp")))]
     (cond
+      (seq manifest-problems)
+      manifest-problems
+
       (empty? resources)
       (map #(problem (:path %) (tru "{0} is not a data app resource." (:path %))) unknown)
 
