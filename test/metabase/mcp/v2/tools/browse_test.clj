@@ -248,6 +248,16 @@
       (is (nil? (:error (browse {:id (:id c) :namespace "content"}))))
       (is (nil? (:error (browse {:id (:id c)})))))))
 
+(deftest ^:parallel no-transform-folders-test
+  (testing "GHY-4746: MCP v2 has no transforms, so browse_collection has no transforms namespace, and a transform
+            folder reads as not found, the same answer a missing id gets"
+    (testing "namespace \"transforms\" fails the argument schema"
+      (is (some? (:error (browse {:id "root" :namespace "transforms"})))))
+    (mt/with-temp [:model/Collection folder {:name "browse-transform-folder" :namespace "transforms"}]
+      (doseq [mode ["items" "tree"]]
+        (testing mode
+          (is (re-find #"not found" (:error (browse {:id (:id folder) :mode mode})))))))))
+
 ;;; -------------------------------------------- argument validation -----------------------------------------------
 
 (deftest ^:parallel tree-mode-rejects-items-args-test
