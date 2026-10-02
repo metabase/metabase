@@ -296,6 +296,7 @@ describe("scenarios > data studio > table collection permissions", () => {
         cy.findByText("Reviews").should("be.visible");
         cy.findByText("Orders").click();
       });
+      H.queryBuilderHeader().findByText("Orders").should("be.visible");
       H.tableInteractive().should("be.visible");
       H.tableHeaderColumn("Product ID").should("be.visible");
     });

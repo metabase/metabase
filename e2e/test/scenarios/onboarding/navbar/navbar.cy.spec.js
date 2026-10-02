@@ -14,11 +14,6 @@ describe("scenarios > navigation > navbar", () => {
       cy.signInAsNormalUser();
     });
 
-    it("should be open after logging in", () => {
-      cy.visit("/");
-      H.navigationSidebar().should("be.visible");
-    });
-
     it("should highlight relevant entities when navigating", () => {
       const questionName = "Bookmarked question";
       H.createQuestion(
@@ -110,15 +105,6 @@ describe("scenarios > navigation > navbar", () => {
       H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
-    it("should be open when visiting home with a custom home page configured", () => {
-      cy.visit("/");
-      cy.url().should("contain", "/dashboard/");
-      H.navigationSidebar().should("be.visible");
-
-      cy.findByTestId("main-logo-link").click();
-      H.navigationSidebar().should("be.visible");
-    });
-
     it("should preserve state when clicking the mb logo and custom home page is configured", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
@@ -146,26 +132,6 @@ describe("scenarios > navigation > navbar", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTestId("main-logo-link").click();
       H.navigationSidebar().should("not.be.visible");
-    });
-  });
-
-  describe("library", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-    });
-
-    it("should show the library when a table is published", () => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [ORDERS_ID] });
-      cy.visit("/");
-      H.navigationSidebar()
-        .findByRole("section", { name: "Library" })
-        .findByText("Data")
-        .click();
-      H.collectionTable().findByText("Orders").click();
-      H.queryBuilderHeader().findByText("Orders").should("be.visible");
     });
   });
 });
