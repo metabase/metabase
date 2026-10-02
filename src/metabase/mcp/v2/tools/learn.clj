@@ -8,7 +8,7 @@
    carries the catalog inline, so even a model that ignores every per-tool pointer sees the
    topics in its tool list. Knowledge is not sensitive — it describes the API, not the
    instance's data — but what it documents is the content tools, so it rides their
-   `agent:content:read` rather than adding a sixth scope to the v2 surface. Declaring some scope
+   `agent:content:read` rather than adding another scope to the v2 surface. Declaring some scope
    is not optional: the v2 gate denies a nil `:scope` outright, so omitting it would hide the
    tool rather than make it public."
   (:require

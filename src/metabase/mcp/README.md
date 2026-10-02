@@ -54,17 +54,16 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope | Tools it grants |
 | ----- | --------------- |
-| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search` |
+| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search`; also the `catalog://metabase/fields` resource (see [Resources](#resources)) |
 | `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write`, `transform_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
-| `agent:resource:read` | No tools: it gates reading the `catalog://metabase/fields` data resource (see [Resources](#resources)). |
 
 Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
 
 Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
-challenge both list only `agent:content:read agent:query:run agent:resource:read`: a fresh connection can read,
+challenge both list only `agent:content:read agent:query:run`: a fresh connection can read,
 query, and chart. Writes (`agent:content:write`), raw SQL (`agent:sql:run`), and alerts and subscriptions
 (`agent:delivery:write`) need a step-up. The surface still accepts every scope in the table, and the authorization
 server metadata still advertises all of them.
@@ -152,7 +151,7 @@ clients can fetch supplementary content by URI without inflating tool descriptio
 | ------------ | ----- | ----------- |
 | `ui://metabase/visualize-query.html` | `agent:query:run` (UI credential only) | The MCP Apps iframe shell `visualize_query` points a capable client at. |
 | `ui://metabase/render-drill-through.html` | `agent:query:run` (UI credential only) | The shell `render_drill_through` points at. |
-| `catalog://metabase/fields` | `agent:resource:read` | The dot-paths each content type accepts in `fields` arguments. |
+| `catalog://metabase/fields` | `agent:content:read` | The dot-paths each content type accepts in `fields` arguments. |
 
 Every resource is listed whatever the token's scopes. A data resource, such as the fields catalog, is read only by a
 token holding its scope; otherwise the read gets the 403 `insufficient_scope` challenge described under

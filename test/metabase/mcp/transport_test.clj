@@ -894,8 +894,8 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (oauth-server.tu/with-oauth-client [client-id]
         (mt/with-model-cleanup [:model/OAuthAccessToken]
-          (let [;; One per-entity scope the v2 surface never gates on, plus `agent:resource:read`, which gates a
-                ;; resource rather than any tool.
+          (let [;; One per-entity scope the v2 surface never gates on, plus `agent:resource:read`, which gates only the
+                ;; agent API and no longer anything on the MCP surface.
                 token     (issue-bearer! (mt/user->id :rasta) client-id
                                          ["agent:question:create" "agent:resource:read"])
                 headers   (fn [& {:as extra}]
