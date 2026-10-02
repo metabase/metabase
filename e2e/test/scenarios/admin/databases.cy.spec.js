@@ -88,9 +88,10 @@ describe("admin > database > add", () => {
     cy.intercept("GET", "/api/database/:id").as("getDatabase");
 
     cy.visit("/admin/databases/create");
-    // should display a setup help card
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Need help connecting?");
+    // should display a setup help link
+    cy.findByRole("link", { name: "Need help connecting?" }).should(
+      "be.visible",
+    );
 
     cy.findByLabelText("Database type").click();
   });
