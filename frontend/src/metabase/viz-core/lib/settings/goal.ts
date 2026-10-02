@@ -1,10 +1,18 @@
 import { t } from "ttag";
 
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  VisualizationSettings,
+} from "metabase-types/api";
 
+import { getFormattingOptionsWithoutScaling } from "../../echarts/cartesian/model/util";
 import { getDefaultGoalLabel } from "../../shared/settings/cartesian-chart";
 import type { ChartGoal } from "../../shared/types/settings";
-import type { VisualizationSettingsDefinitions } from "../../types";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationSettingsDefinitions,
+} from "../../types";
 import { getGoalAxisValue, getNumericGoalValue } from "../dynamic-goals";
 
 import { getStackOffset } from "./stacking";
@@ -56,9 +64,10 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
     useRawSeries: true, // see getRawSeries
-    getProps: ([{ card, data }]) => ({
+    getProps: ([{ card, data }], settings) => ({
       data,
       datasetQuery: card.dataset_query,
+      formatOptions: getGoalFormatOptions(data.cols, settings),
       showSelfColumns: false,
     }),
   },
@@ -74,3 +83,27 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.show_goal"],
   },
 };
+
+// Matches the chart's goal line tooltip: y-axis formatting without the column's
+// `scale` multiplier, which applies to series data but not to the goal line
+function getGoalFormatOptions(
+  cols: DatasetColumn[],
+  settings: ComputedVisualizationSettings,
+): ColumnSettings | undefined {
+  const column = cols.find(
+    (col) => col.name === settings["graph.metrics"]?.[0],
+  );
+
+  if (column == null) {
+    return undefined;
+  }
+
+  if (settings["stackable.stack_type"] === "normalized") {
+    return { column, number_style: "percent", scale: 0.01 };
+  }
+
+  return getFormattingOptionsWithoutScaling({
+    column,
+    ...settings.column?.(column),
+  });
+}

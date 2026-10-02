@@ -9,7 +9,11 @@ import {
   getMinSize,
   validateGoalReferences,
 } from "metabase/viz-core";
-import type { DatasetData } from "metabase-types/api/dataset";
+import type {
+  DatasetColumn,
+  DatasetData,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Number`,
@@ -57,11 +61,16 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getProps: ([{ card, data }]) => ({
-        canRemoveAll: true,
-        data,
-        datasetQuery: card.dataset_query,
-      }),
+      getProps: ([{ card, data }], settings) => {
+        const column = findScalarColumn(data.cols, settings);
+
+        return {
+          canRemoveAll: true,
+          data,
+          datasetQuery: card.dataset_query,
+          formatOptions: column && settings.column?.(column),
+        };
+      },
     },
     ...columnSettings({
       getColumns: (
@@ -71,9 +80,7 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
           },
         ],
         settings,
-      ) => [
-        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
-      ],
+      ) => [findScalarColumn(cols, settings)],
       readDependencies: ["scalar.field"],
     }),
     // used by metrics viewer
@@ -119,3 +126,12 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
     click_behavior: {},
   },
 };
+
+function findScalarColumn(
+  cols: DatasetColumn[],
+  settings: VisualizationSettings,
+): DatasetColumn {
+  return (
+    _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0]
+  );
+}

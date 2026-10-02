@@ -147,6 +147,7 @@ describe("BoxPlot", () => {
       ).toEqual({
         data: series[0].data,
         datasetQuery: series[0].card.dataset_query,
+        formatOptions: expect.any(Object),
         showSelfColumns: false,
       });
     });

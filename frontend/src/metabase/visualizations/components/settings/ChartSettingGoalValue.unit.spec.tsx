@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import type { GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
@@ -73,5 +73,20 @@ describe("ChartSettingGoalValue", () => {
     expect(
       screen.getByRole("menuitem", { name: /Value from another question/ }),
     ).toBeInTheDocument();
+  });
+
+  it("formats values with the chart's format options", () => {
+    renderWithProviders(
+      <ChartSettingGoalValue
+        data={DATA}
+        formatOptions={{ prefix: "~" }}
+        id="goal"
+        value="count"
+        onChange={jest.fn()}
+      />,
+    );
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(within(pill).getByText("~10")).toBeInTheDocument();
   });
 });

@@ -21,6 +21,7 @@ import { api, shouldShowNotAuthorizedPage } from "metabase/api/client";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import type {
+  ColumnSettings,
   DatasetData,
   GoalForeignColumnRef,
   GoalValue,
@@ -62,6 +63,7 @@ const DATASET_QUERY = createMockStructuredDatasetQuery();
 type SetupOpts = {
   data?: DatasetData;
   excludedSelfColumn?: string;
+  formatOptions?: ColumnSettings;
   referencedEntities?: ReferencedEntity[];
   showSelfColumns?: boolean;
   value?: GoalValue | null;
@@ -70,6 +72,7 @@ type SetupOpts = {
 function setup({
   data = DATA,
   excludedSelfColumn,
+  formatOptions,
   referencedEntities = [],
   showSelfColumns,
   value = 0,
@@ -81,6 +84,7 @@ function setup({
       data={data}
       datasetQuery={DATASET_QUERY}
       excludedSelfColumn={excludedSelfColumn}
+      formatOptions={formatOptions}
       id="goal-value"
       referencedEntities={referencedEntities}
       showSelfColumns={showSelfColumns}
@@ -638,6 +642,85 @@ describe("GoalValueInput", () => {
     expect(
       within(screen.getByRole("menuitem", { name: /Total/ })).getByText("250"),
     ).toBeInTheDocument();
+  });
+
+  describe("formatting with the chart's format options", () => {
+    const FORMAT_OPTIONS: ColumnSettings = { prefix: "~" };
+
+    it("formats the columns of this question", async () => {
+      setup({ formatOptions: FORMAT_OPTIONS });
+
+      await openMenu();
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: /Value from this question/ }),
+      );
+
+      const item = await screen.findByRole("menuitem", {
+        name: /Sum of Total/,
+      });
+      expect(within(item).getByText("~42")).toBeInTheDocument();
+    });
+
+    it("formats a reference to a column of this question", () => {
+      setup({ formatOptions: FORMAT_OPTIONS, value: "sum" });
+
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("~42")).toBeInTheDocument();
+    });
+
+    it("formats a reference to another question and that question's columns", async () => {
+      setupCardEndpoints(
+        createMockCard({
+          id: 9,
+          name: "Orders",
+          result_metadata: [
+            createMockField({
+              name: "total",
+              display_name: "Total",
+              base_type: "type/Integer",
+            }),
+            createMockField({
+              name: "avg",
+              display_name: "Average",
+              base_type: "type/Integer",
+            }),
+          ],
+        }),
+      );
+      setupCardDatasetWithReferencedEntities({
+        card: {
+          9: {
+            status: "completed",
+            data: {
+              cols: [
+                createMockColumn({ name: "total" }),
+                createMockColumn({ name: "avg" }),
+              ],
+              rows: [[250, 12]],
+            },
+          },
+        },
+      });
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: createMockReferencedEntitiesResults({
+            column: "total",
+            value: 250,
+          }),
+        }),
+        formatOptions: FORMAT_OPTIONS,
+        value: { type: "card", id: 9, column: "total" },
+      });
+
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("~250")).toBeInTheDocument();
+
+      await userEvent.click(pill);
+
+      const item = await screen.findByRole("menuitem", { name: /Average/ });
+      expect(await within(item).findByText("~12")).toBeInTheDocument();
+    });
   });
 
   it("offers another question as a source when this question has no numeric columns", async () => {

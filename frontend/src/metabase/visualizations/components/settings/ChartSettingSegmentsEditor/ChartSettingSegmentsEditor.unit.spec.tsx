@@ -10,6 +10,7 @@ import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Card,
+  ColumnSettings,
   DatasetData,
   GoalSegment,
   Measure,
@@ -47,6 +48,7 @@ type SetupOpts = {
   canRemoveAll?: boolean;
   card?: Card;
   data?: DatasetData;
+  formatOptions?: ColumnSettings;
   measure?: Measure;
   value?: GoalSegment[];
 };
@@ -55,6 +57,7 @@ function setup({
   canRemoveAll,
   card = createMockCard({ id: CARD_ID, name: "Orders" }),
   data,
+  formatOptions,
   measure = createMockMeasure({ id: MEASURE_ID, name: "Revenue" }),
   value = DEFAULT_VALUE,
 }: SetupOpts = {}) {
@@ -68,6 +71,7 @@ function setup({
       canRemoveAll={canRemoveAll}
       data={data}
       datasetQuery={DATASET_QUERY}
+      formatOptions={formatOptions}
       value={value}
       onChange={onChange}
     />,
@@ -106,6 +110,26 @@ describe("ChartSettingSegmentsEditor", () => {
     expect(
       screen.getAllByRole("button", { name: "Pick a dynamic value" }),
     ).toHaveLength(inputsPerSegmentCount * segmentsCount);
+  });
+
+  it("formats the bounds with the chart's format options", () => {
+    setup({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({ name: "low", base_type: "type/Integer" }),
+          createMockColumn({ name: "high", base_type: "type/Integer" }),
+        ],
+        rows: [[10, 20]],
+      }),
+      formatOptions: { prefix: "~" },
+      value: [createMockSegment({ min: "low", max: "high" })],
+    });
+
+    const [minPill, maxPill] = screen.getAllByRole("button", {
+      name: "Change value source",
+    });
+    expect(within(minPill).getByText("~10")).toBeInTheDocument();
+    expect(within(maxPill).getByText("~20")).toBeInTheDocument();
   });
 
   it("labels each range and its bounds distinctly", () => {

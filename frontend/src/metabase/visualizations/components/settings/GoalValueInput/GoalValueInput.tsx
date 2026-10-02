@@ -21,6 +21,7 @@ import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered
 import { type GoalRefError, resolveGoalValue } from "metabase/viz-core";
 import type {
   CardId,
+  ColumnSettings,
   DatasetData,
   DatasetQuery,
   GoalForeignColumnRef,
@@ -59,6 +60,13 @@ export type GoalValueInputProps = {
   data: DatasetData;
   datasetQuery: DatasetQuery | undefined;
   excludedSelfColumn?: string;
+  /**
+   * Formatting settings of the current chart, not of the card the dynamic goal
+   * value comes from. This is intentional: values should be formatted the same
+   * way the chart formats its own values (Progress and Gauge also show them as
+   * labels on the chart).
+   */
+  formatOptions?: ColumnSettings;
   id: string;
   placeholder?: string;
   referencedEntities?: ReferencedEntity[];
@@ -72,6 +80,7 @@ export const GoalValueInput = ({
   data,
   datasetQuery,
   excludedSelfColumn,
+  formatOptions,
   id,
   placeholder,
   referencedEntities,
@@ -274,6 +283,7 @@ export const GoalValueInput = ({
           {hasRef ? (
             <GoalValuePill
               aria-label={ariaLabel}
+              formatOptions={formatOptions}
               isMenuOpen={isMenuOpen}
               resolved={resolved}
               tooltip={pillTooltip}
@@ -350,6 +360,7 @@ export const GoalValueInput = ({
               {selfColumns.map((column) => (
                 <GoalColumnMenuItem
                   key={column.name}
+                  formatOptions={formatOptions}
                   label={column.label}
                   resolvedValue={resolveGoalValue(data, column.name).value}
                   selected={value === column.name}
@@ -388,6 +399,7 @@ export const GoalValueInput = ({
                   return columns.map((column) => (
                     <GoalColumnMenuItem
                       key={column.name}
+                      formatOptions={formatOptions}
                       label={column.label}
                       resolvedValue={resolveEntityColumnValue(column.name)}
                       selected={foreignRef?.column === column.name}
