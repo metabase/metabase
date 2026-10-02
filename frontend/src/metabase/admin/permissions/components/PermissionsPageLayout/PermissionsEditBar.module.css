@@ -12,3 +12,10 @@
   padding-left: 2.5rem;
   padding-right: 3.5rem;
 }
+
+/* Two attributes in the `:not` to beat EditBar's two-class `.root.brand` background, which paints the lighter `core-brand`. */
+.hubEditBar:not(
+  [data-css-specificity-hack="🌊"][data-css-specificity-hack="🌊"]
+) {
+  background-color: var(--mb-color-background_surface-brand-strong);
+}
