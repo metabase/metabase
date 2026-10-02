@@ -38,10 +38,11 @@
   (cond-> x (nil? x) vec, (sequential? x) (-> distinct vec)))
 
 (mr/def ::slug
-  "A data app's slug, used verbatim in its URL: lowercase letters and numbers separated by single dashes."
+  "A data app's slug, used verbatim in its URL and as its directory name: lowercase letters and numbers separated by
+  single dashes, at most 100 characters."
   [:and
    {:error/message "must be lowercase letters, numbers, and dashes"}
-   :string
+   [:string {:max 100}]
    [:re #"\A[a-z0-9]+(?:-[a-z0-9]+)*\z"]
    [:fn {:error/message "must not be a reserved slug"} (complement reserved-slugs)]])
 

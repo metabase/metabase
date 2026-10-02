@@ -89,7 +89,7 @@
    :transform {:created_at (serdes/date)}})
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
-  [{:label "python_libraries"} {:label (:path entity) :key (:entity_id entity)}])
+  [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
 
 ;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
 

@@ -186,7 +186,7 @@ To get an item's Entity ID in Metabase:
 
 You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. This ID also appears in the `serdes/meta → id` field (these IDs must match).
 
-Metabase uses simplified versions of entity names for file and directory names in exports. Names are lowercased, and special characters other than dashes and dots are replaced with underscores. Names are also truncated for filesystem compatibility.
+Metabase uses simplified versions of entity names for file and directory names in exports. Names are lowercased, and special characters are replaced with underscores. Names are also truncated for filesystem compatibility.
 
 ```
 products_by_week.yaml

@@ -13,27 +13,29 @@
 
 (defn slugify-name
   "Slugify a name for use as a file or directory name: lowercase, replace special chars with underscores,
-  preserve dashes, dots and unicode, escape slashes. Truncated for filesystem safety."
+  preserve dots and unicode, escape slashes. Truncated for filesystem safety."
   [^String s]
   (when (seq s)
     (-> s
         u/lower-case-en
         (str/replace "\\" "__BACKSLASH__")
         (str/replace "/"  "__SLASH__")
-        (str/replace #"[^\p{L}\p{N}_.\-]" "_")
+        (str/replace #"[^\p{L}\p{N}_.]" "_")
         (u.str/limit-bytes max-label-bytes)
         (u.str/limit-chars max-label-length))))
 
 (defn- resolve-path
-  "Given a storage path (vector of `{:label ... :key ...}` maps), resolves to a vector of strings
+  "Given a storage path (vector of `{:label ... :key ... :style ...}` maps), resolves to a vector of strings
   with deduplication per folder."
   [unique-name-fns path]
   (loop [remaining    path
          resolved     []]
     (if (empty? remaining)
       resolved
-      (let [{:keys [label key]} (first remaining)
-            slug (slugify-name label)
+      (let [{:keys [label key style] :or {style :name}} (first remaining)
+            slug (case style
+                   :name (slugify-name label)
+                   :slug label)
             gen  (or (get @unique-name-fns resolved)
                      (let [g (lib/non-truncating-unique-name-generator)]
                        (swap! unique-name-fns assoc resolved g)

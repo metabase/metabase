@@ -166,7 +166,9 @@
                                                            (serdes/extract-order-columns model-name opts))))
 
 (defmethod serdes/storage-path "DataApp" [app _ctx]
-  [{:label data-app.config/apps-dir} {:label (:slug app) :key (:entity_id app)} {:label "data_app"}])
+  [{:label data-app.config/apps-dir}
+   {:label (:slug app) :key (:entity_id app) :style :slug}
+   {:label "data_app"}])
 
 (defmethod serdes/resource-paths "DataApp" [ingested]
   [(ingested-bundle-path ingested)])
