@@ -68,7 +68,8 @@ jobs:
       # changes. A run started by hand checks out the branch tip, so it diffs against where the branch split off.
       - name: Find where the branch split off
         id: merge-base
-        if: inputs.base-ref != '' && inputs.base-ref != github.ref_name
+        # A forced run ignores the diff, so it skips the lookup.
+        if: inputs.base-ref != '' && inputs.base-ref != github.ref_name && !inputs.force-run
         uses: actions/github-script@v9
         env:
           BASE: ${{ inputs.base-ref }}
