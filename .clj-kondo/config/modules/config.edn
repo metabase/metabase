@@ -365,7 +365,6 @@
    :uses #{auth-provider
            connection-pool
            funnysql
-           task
            task.secure-delegate
            util
            util.classloader
