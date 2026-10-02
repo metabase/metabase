@@ -25,17 +25,25 @@
 }
 
 .track {
+  position: relative;
   overflow: hidden;
+  border-radius: 0.25rem;
 }
 
 .pointer {
+  border: 0.125rem solid var(--mb-color-background_page-primary);
+  border-radius: 50%;
   pointer-events: none;
 }
 
 .saturationPointer {
+  width: 0.875rem;
+  height: 0.875rem;
   transform: translate(-50%, -50%);
 }
 
 .huePointer {
+  width: 0.625rem;
+  height: 0.625rem;
   transform: translate(-50%, -0.0625rem);
 }

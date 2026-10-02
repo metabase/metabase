@@ -14,21 +14,19 @@ const saturationStyles = {
   },
 };
 
-const POINTER_BORDER = "0.125rem solid var(--mb-color-background_page-primary)";
-
 export const ColorPickerControls = CustomPicker(function ColorControls(
   props: CustomPickerInjectedProps,
 ) {
   return (
     <Box className={S.controls}>
-      <Box className={S.track} pos="relative" h="10rem" mb="lg" bdrs="xxs">
+      <Box className={S.track} h="10rem" mb="lg">
         <Saturation
           {...props}
           pointer={SaturationPointer}
           style={saturationStyles}
         />
       </Box>
-      <Box className={S.track} pos="relative" h="0.5rem" bdrs="xxs">
+      <Box className={S.track} h="0.5rem">
         <Hue {...props} pointer={HuePointer} />
       </Box>
     </Box>
@@ -36,25 +34,9 @@ export const ColorPickerControls = CustomPicker(function ColorControls(
 });
 
 function SaturationPointer() {
-  return (
-    <Box
-      className={cx(S.pointer, S.saturationPointer)}
-      w="0.875rem"
-      h="0.875rem"
-      bd={POINTER_BORDER}
-      bdrs="50%"
-    />
-  );
+  return <Box className={cx(S.pointer, S.saturationPointer)} />;
 }
 
 function HuePointer() {
-  return (
-    <Box
-      className={cx(S.pointer, S.huePointer)}
-      w="0.625rem"
-      h="0.625rem"
-      bd={POINTER_BORDER}
-      bdrs="50%"
-    />
-  );
+  return <Box className={cx(S.pointer, S.huePointer)} />;
 }
