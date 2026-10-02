@@ -209,9 +209,9 @@
   single unbounded one. On a wide instance that is the difference between reading a page and reading everything."
   [location options offset]
   (let [rows (collections.children/select-collections (assoc options
-                                        :locations #{location}
-                                        :offset   (or offset 0)
-                                        :limit    (inc lazy-tree-page-size)))]
+                                                             :locations #{location}
+                                                             :offset   (or offset 0)
+                                                             :limit    (inc lazy-tree-page-size)))]
     [(take lazy-tree-page-size rows) (> (count rows) lazy-tree-page-size)]))
 
 (defn- read-one-level-deeper
@@ -223,7 +223,7 @@
   (let [child-locations (into #{} (map collection/children-location) collections)]
     (when (seq child-locations)
       (let [[deeper complete?] (collections.children/select-collections-up-to (assoc options :locations child-locations)
-                                                         lazy-tree-lookahead-budget)]
+                                                                              lazy-tree-lookahead-budget)]
         (when complete?
           {:collections deeper, :locations child-locations})))))
 
@@ -252,7 +252,7 @@
                                    loaded
                                    truncated
                                    (collections.children/occupied-locations (into #{} (map collection/children-location) collections)
-                                                       options))
+                                                                            options))
      :has_more    (boolean (second (get pages primary)))
      ;; The FE cannot work this out from what it received: the page is filtered after the limit is applied, so the
      ;; number of rows it holds is not where the next page starts.
