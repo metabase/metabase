@@ -337,49 +337,61 @@
       :saturday "2021-01-02" 1)))
 
 (defn- consecutive-dates
-  "The `n` dates from `start` on, as yyyy-MM-dd strings."
-  [start n]
-  (for [i (range n)]
-    #?(:clj  (str (.plusDays (t/local-date start) i))
-       :cljs (.format (.add (dayjs start) i "day") "YYYY-MM-DD"))))
+  "Each date from `start` up to `end` as `[yyyy-MM-dd day-of-week]`, where Sunday is day 0."
+  [start end]
+  #?(:clj  (for [date (iterate #(.plusDays ^java.time.LocalDate % 1) (t/local-date start))
+                 :while (.isBefore ^java.time.LocalDate date (t/local-date end))]
+             [(str date) (mod (.getValue (.getDayOfWeek ^java.time.LocalDate date)) 7)])
+     :cljs (for [date (iterate #(.add ^js % 1 "day") (dayjs start))
+                 :while (.isBefore date (dayjs end))]
+             [(.format date "YYYY-MM-DD") (.day date)])))
+
+(def ^:private days-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday])
 
 (deftest ^:parallel week-of-year-rules-test
   ;; States the numbering rules day by day instead of restating the formula, for every first day of the week.
-  (let [dates (consecutive-dates "2015-01-01" (+ (* 16 365) 4)) ; through 2030, a Thursday onwards
-        ;; Days of the week as indexes, Sunday = 0. Jan 1, 2015 was a Thursday.
-        day-of-week (fn [i] (mod (+ i 4) 7))]
-    (doseq [[start-index start-of-week] (map-indexed vector [:sunday :monday :tuesday :wednesday
-                                                             :thursday :friday :saturday])]
-      (testing start-of-week
-        (let [weeks (mapv #(parse-long (shared.ut/format-unit {:start-of-week start-of-week} % :week-of-year))
-                          dates)]
-          (is (= []
-                 (for [i     (range 1 (count dates))
-                       :let  [date     (nth dates i)
-                              week     (nth weeks i)
-                              previous (nth weeks (dec i))
-                              expected (cond
-                                         ;; A week keeps its number until the next one starts.
-                                         (not= start-index (day-of-week i)) previous
-                                         ;; Week 1 is the first week that starts in the new year.
-                                         (<= (compare date (str (subs date 0 4) "-01-07")) 0) 1
-                                         :else (inc previous))]
-                       :when (not= expected week)]
-                   [date week expected]))))))))
+  ;; 2015 through 2030 starts a year on every day of the week and includes leap years. The other ranges cross century
+  ;; years: 1900 and 2100 are not leap years, while 2000 is.
+  (doseq [[start end] [["2015-01-01" "2031-01-01"]
+                       ["1899-12-01" "1901-02-01"]
+                       ["1999-12-01" "2001-02-01"]
+                       ["2099-12-01" "2101-02-01"]]
+          :let        [dates (consecutive-dates start end)]
+          [start-index start-of-week] (map-indexed vector days-of-week)]
+    (testing (str start " to " end ", " start-of-week)
+      (let [weeks (mapv (fn [[date _]]
+                          (parse-long (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year)))
+                        dates)]
+        (is (= []
+               (for [i     (range 1 (count dates))
+                     :let  [[date day-of-week] (nth dates i)
+                            week     (nth weeks i)
+                            previous (nth weeks (dec i))
+                            expected (cond
+                                       ;; A week keeps its number until the next one starts.
+                                       (not= start-index day-of-week) previous
+                                       ;; Week 1 is the first week that starts in the new year.
+                                       (<= (compare date (str (subs date 0 4) "-01-07")) 0) 1
+                                       :else (inc previous))]
+                     :when (not= expected week)]
+                 [date week expected])))))))
 
 (deftest week-of-year-number->timestamp-test
-  (with-redefs [internal/now (fn [] (from test-epoch))] ; in 2022, where Jan 1 is a Saturday
-    (letfn [(round-trip [start-of-week week]
-              (let [config {:start-of-week start-of-week}]
-                (shared.ut/extract config
-                                   (shared.ut/coerce-to-timestamp week (assoc config :unit :week-of-year))
-                                   :week-of-year)))]
-      ;; 2022 starts and ends on a Saturday, so only weeks that start on Saturday reach week 53 that year.
-      (testing "every week round-trips, for every first day of the week"
-        (doseq [start-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]
-                :let          [weeks (range 1 (if (= start-of-week :saturday) 54 53))]]
-          (testing start-of-week
-            (is (= weeks (map #(round-trip start-of-week %) weeks)))))))))
+  (testing "every week round-trips, for every first day of the week"
+    (is (= []
+           (for [year          (range 2015 2031)
+                 start-of-week days-of-week
+                 :let          [config {:start-of-week start-of-week}
+                                ;; The week holding Dec 31 is the year's last.
+                                weeks  (parse-long (shared.ut/format-unit config (str year "-12-31") :week-of-year))]
+                 week          (range 1 (inc weeks))
+                 :let          [round-trip (with-redefs [internal/now (fn [] (from (str year "-06-15T12:00:00")))]
+                                             (shared.ut/extract config
+                                                                (shared.ut/coerce-to-timestamp
+                                                                 week (assoc config :unit :week-of-year))
+                                                                :week-of-year))]
+                 :when         (not= week round-trip)]
+             [year start-of-week week round-trip])))))
 
 (deftest parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]

@@ -1033,15 +1033,17 @@
                   created-at   (lib.metadata/field mp (mt/id :orders :created_at))
                   week-of-year (lib/with-temporal-bucket created-at :week-of-year)
                   ;; Each year starts on a different day of the week, so the first week falls differently in each.
+                  ;; 2016 is a leap year ending on a Saturday, so a week that starts on its day 366 is week 53.
                   query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                   (lib/filter (lib/or (lib/between created-at "2017-12-25" "2018-01-08")
+                                   (lib/filter (lib/or (lib/between created-at "2016-12-25" "2017-01-08")
+                                                       (lib/between created-at "2017-12-25" "2018-01-08")
                                                        (lib/between created-at "2018-12-25" "2019-01-08")
                                                        (lib/between created-at "2019-12-25" "2020-01-08")))
                                    (lib/breakout (lib/with-temporal-bucket created-at :day))
                                    (lib/breakout week-of-year))
                   rows         (for [[day week] (mt/rows (qp/process-query query))]
                                  [(subs (str day) 0 10) (str week)])]
-              (is (= 45 (count rows)))
+              (is (= 60 (count rows)))
               (is (= (for [[day _] rows]
                        [day (lib/filter-args-display-name query -1 (lib/= week-of-year day))])
                      rows)))))))))
