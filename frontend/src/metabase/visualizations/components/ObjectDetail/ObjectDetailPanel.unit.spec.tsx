@@ -351,7 +351,7 @@ describe("ObjectDetailPanel", () => {
       // `ActionExecuteModal` initialises its values state after this render.
       // Nothing observable changes when it does, and it issues no request to
       // wait on, so flush that update rather than leaving it for the next test.
-      await waitFor(() => {});
+      await waitForRequestsToSettle();
     });
 
     it("should not show implicit create action", async () => {

@@ -8,7 +8,8 @@ import {
   createMockState,
   createMockUpload,
 } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
 import type { DownloadsState } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
 import type { Database } from "metabase-types/api";
@@ -94,7 +95,7 @@ describe("StatusListing", () => {
     setup({ isAdmin: true, upload: { [mockUpload.id]: mockUpload } });
     // The listing finishes loading with no change these tests can observe,
     // so flush that update rather than leaving it for the next test.
-    await waitFor(() => {});
+    await waitForRequestsToSettle();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
     expect(mockEvent.returnValue).toEqual(
@@ -109,7 +110,7 @@ describe("StatusListing", () => {
     setup({ isAdmin: true });
     // The listing finishes loading with no change these tests can observe,
     // so flush that update rather than leaving it for the next test.
-    await waitFor(() => {});
+    await waitForRequestsToSettle();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
     expect(mockEvent.returnValue).toBeUndefined();

@@ -4,8 +4,8 @@ import {
   setupActionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { getNextId } from "__support__/utils";
+import { renderWithProviders, screen } from "__support__/ui";
+import { getNextId, waitForRequestsToSettle } from "__support__/utils";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   createMockColumn,
@@ -86,7 +86,7 @@ describe("DetailViewSidesheet", () => {
     const { onNextClick, onPreviousClick } = setup();
     // `ActionExecuteModal` initialises its values state after this render,
     // with nothing observable to wait on, so flush that update here.
-    await waitFor(() => {});
+    await waitForRequestsToSettle();
 
     fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
     expect(onPreviousClick).toHaveBeenCalledTimes(1);
@@ -97,7 +97,7 @@ describe("DetailViewSidesheet", () => {
 
   it("does not navigate rows with arrow keys when keyboard navigation is disabled", async () => {
     const { onNextClick, onPreviousClick } = setup({ showNav: false });
-    await waitFor(() => {});
+    await waitForRequestsToSettle();
 
     fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
     expect(onPreviousClick).not.toHaveBeenCalled();
