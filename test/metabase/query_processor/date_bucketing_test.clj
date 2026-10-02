@@ -1041,8 +1041,9 @@
                                                        (lib/between created-at "2019-12-25" "2020-01-08")))
                                    (lib/breakout (lib/with-temporal-bucket created-at :day))
                                    (lib/breakout week-of-year))
+                  ;; Some drivers return the week as a decimal, such as 52.0.
                   rows         (for [[day week] (mt/rows (qp/process-query query))]
-                                 [(subs (str day) 0 10) (str week)])]
+                                 [(subs (str day) 0 10) (str (long week))])]
               (is (= 60 (count rows)))
               (is (= (for [[day _] rows]
                        [day (lib/filter-args-display-name query -1 (lib/= week-of-year day))])
