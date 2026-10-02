@@ -10,8 +10,7 @@ description: Version control your dashboards, questions, and transforms. Sync yo
 Remote Sync lets you develop analytics content in your Metabase and automatically deploy it to a read-only production Metabase through Git. Remote Sync can sync:
 
 - Top-level collections (dashboards, questions, models, metrics)
-- Library content (published tables and their segments and measures)
-- Snippets
+- Library content (published tables with their segments and measures, plus metrics, snippets, and the glossary)
 - Transforms
 
 Metabase doesn't sync any of your data. What it stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) describing your analytics content. Your actual data stays in your databases and never leaves your Metabase.
@@ -138,21 +137,21 @@ In the Metabase instance that you use for development:
 
 6. (Optional) If you have [multi-tenant user strategy enabled](../embedding/tenants.md#enable-multi-tenant-strategy), you can also choose which [shared collection](../embedding/tenants.md#changing-tenant-strategy) to sync.
 
+> If you only want to sync your Library and transforms, you can set up remote sync from Data Studio instead: click **Set up remote sync** at the bottom of the Data Studio sidebar.
+
 ### 4. Select what to sync
 
 Select what you [want to sync](#you-choose-what-to-sync).
 
 ### 5. Push your changes to your repository
 
-![Push your changes](./images/push-changes.png)
-
 Once you've added content, you'll see a yellow dot on the synced collections indicating uncommitted changes.
 
-1. At the top of the screen, choose which branch to push to and click the up arrow (push) icon.
+1. At the top of the screen, click the branch name and select **Push changes**.
 
-2. Enter a commit message describing your changes (e.g., "Added dashboard on mammoth populations").
+2. (Optional) Describe your changes (e.g., "Added dashboard on mammoth populations").
 
-3. Click "Push changes" to commit and push your changes to your repository.
+3. Click **Push changes** to commit and push your changes to your repository.
 
 Check your repository; you should see the collection.
 
@@ -267,7 +266,7 @@ Let's say your team wants to build a new analytics dashboard. Here's a workflow 
 
 ### Step 1: Create a new branch
 
-In your development Metabase, click the branch dropdown at the top of the screen to [create a new branch](#branch-management) for your work, like `feature/megafauna-dashboard`.
+In your development Metabase, go to **Admin** > **Settings** > **Remote sync** and [create a new branch](#creating-a-branch) for your work, like `feature/megafauna-dashboard`.
 
 ### Step 2: Create content in your development Metabase
 
@@ -275,10 +274,7 @@ Create a dashboard called "Megafauna Analytics" and add some questions. Save the
 
 ### Step 3: Push to your development branch
 
-1. You should see a yellow dot on your synced collection (indicating local changes).
-2. Click the up arrow (push) icon at the top of the screen.
-3. Enter a commit message: "Add Megafauna Analytics dashboard".
-4. Metabase commits your changes to the branch you're working on and pushes them to your repo.
+[Push your changes](#committing-and-pushing-your-changes) to `feature/megafauna-dashboard` with a commit message like "Add Megafauna Analytics dashboard".
 
 ### Step 4: Create a pull request
 
@@ -304,13 +300,11 @@ On your production Metabase instance:
 
 ### Synced collections in the UI
 
-You can select any top-level collection under Our Analytics to sync with Git. Synced collections show their current state with visual indicators: a yellow dot indicates unsynced local changes that need to be committed. At the top of the screen, you'll see up/down arrows that provide sync controls for pulling and pushing changes.
+You can select any top-level collection under Our Analytics to sync with Git. Synced collections show their current state with visual indicators: a yellow dot indicates unsynced local changes that need to be committed. At the top of the screen (in Data Studio, at the top of the sidebar), click the branch name to push or pull changes.
 
 If you are using [tenants](../embedding/tenants.md), you can also sync shared collections. You'll see the same yellow dot indicator for shared collections.
 
 In Read-only mode, synced collections appear in the regular collections list (not in a separate "Synced Collections" section) with a special icon to indicate they're versioned and read-only.
-
-When transforms syncing is enabled, you'll find your transforms in the Transforms section of the Admin settings. Synced transforms are also read-only in Read-only mode.
 
 ### Moving and deleting content in synced collections
 
@@ -361,7 +355,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Documents
 - Timelines and events
 - Collection structure and metadata
-- Library content (published tables, metrics, snippets, segments, measures)
+- Library content (published tables, metrics, snippets, segments, measures, glossary)
 - Transforms (including jobs and folders)
 
 **What doesn't sync:**
@@ -378,44 +372,36 @@ Branching is only available in Read-write mode.
 
 ### Creating a branch
 
-You can create branches in Metabase or directly in your Git repository. Branches created in Git will appear in the Metabase branch dropdown once Metabase syncs with your repository.
+You can create branches in Metabase or directly in your Git repository. Branches created in Git will appear in Metabase once Metabase syncs with your repository.
 
 Before creating branches, push an initial commit to your main branch.
 
 To create a new branch in Metabase:
 
-1. Click the branch dropdown at the top of the screen.
-2. Type a name for the new branch in the search box.
-3. Press Enter to create the branch.
+1. Go to **Admin** > **Settings** > **Remote sync**.
+2. Under **Sync branch**, click the current branch.
+3. Type a name for the new branch and click **Create branch "[name]"**.
 
-The new branch is created from your current commit (not the latest commit from the remote).
+The new branch is created from your current commit (not the latest commit from the remote), and Metabase switches to it.
 
 ### Switching branches
 
-At the top of the screen, you'll see a branch dropdown:
-
-![Choose branches from the dropdown](./images/branch-dropdown.png)
-
-1. Click the branch dropdown to see available branches.
-2. Select a different branch. This will change the branch for everyone in your Metabase (see [limitations](#branching-limitations)).
+1. Go to **Admin** > **Settings** > **Remote sync**.
+2. Under **Sync branch**, click the current branch and select a different branch. This will change the branch for everyone in your Metabase (see [limitations](#branching-limitations)).
 
 If the branch doesn't appear, ensure it exists in your Git repository and that the name matches exactly (branch names are case-sensitive).
 
-If you have unsynced changes, Metabase will show a dialog asking what you want to do:
+If you have unsynced changes, Metabase lists them and asks what to do:
 
-- **Push changes to the current branch:** Commits your changes to the current branch before switching.
-- **Create a new branch and push changes there:** Saves your work to a new branch, keeping the original branch clean.
-- **Discard these changes:** Throws away your uncommitted changes (can't be undone).
+- **Push changes to the current branch, [branch]:** Commits your changes to the current branch. You stay on that branch, so pick the other branch again afterward.
+- **Create a new branch and push changes there:** Commits your changes to a new branch and switches you to it.
+- **Delete unsynced changes (can't be undone):** Throws away your uncommitted changes and switches you to the branch you picked.
 
-The dialog shows you exactly which items have changed, so you can make an informed decision.
-
-If you switch modes (from Read-write to Read-only or vice versa) with unpushed changes, you'll be prompted to save or discard them. You cannot switch to Read-only mode with uncommitted changes.
-
-If changes don't appear after switching modes: Hard refresh your browser (Cmd/Ctrl + Shift + R).
+You can't switch to Read-only mode while you have unpushed changes.
 
 ### Branching limitations
 
-- **Only admins can manage branches**. Non-admins won't see the branch dropdown at all.
+- **Only admins can manage branches**. Non-admins don't see the branch controls.
 - **The current branch is instance-wide**. This means that everyone on the same Metabase is on the same branch at the same time. You can't have different people working on different branches in a single Metabase.
 
 Limiting a Metabase to a single branch at a time means that the typical Git feature-branch workflow is a bit different here: only admins can switch branches, create new branches, or push and pull changes. If you need multiple branches worked on simultaneously, the workaround is to spin up multiple Metabases in Read-write mode, one Metabase per branch.
@@ -428,22 +414,19 @@ You can only push changes in a Metabase with Remote Sync set to Read-write mode.
 
 When you make changes to items in a synced collection, a yellow dot appears on your synced collection (indicating uncommitted changes). To commit and push your changes:
 
-1. Click the up arrow (push) icon at the top of the screen (make sure you're pushing to the right branch).
-2. Enter a descriptive commit message explaining your changes.
-3. Click "Continue" to push your changes to Git.
+1. At the top of the screen, click the branch name and select **Push changes**.
+2. (Optional) Describe your changes.
+3. Click **Push changes** to push your changes to Git.
 
-If you see a message that "Remote is ahead of local", that means someone else pushed to the branch from another Metabase in Read-write mode. Pull the latest changes before pushing again.
+If the branch has new commits since you last pulled, Metabase asks how to handle them before it pushes yours: merge them with yours (when they don't conflict), push your changes to a new branch, or force push over them.
 
 ## Pulling changes from Git
 
 You can pull changes when in Read-write or Read-only mode.
 
-In Read-write mode, you can get the latest changes from your Git repository:
+In Read-write mode, click the branch name at the top of the screen and select **Pull changes**. Metabase imports the latest content from Git.
 
-1. Click the down arrow (pull) icon at the top of the screen.
-2. Review any summary of incoming changes if shown.
-3. Confirm the import.
-4. Metabase updates your collections with the latest content from Git.
+In Read-only mode, go to **Admin** > **Settings** > **Remote sync** and click **Pull changes now**.
 
 If changes don't appear after pulling:
 
@@ -451,15 +434,14 @@ If changes don't appear after pulling:
 - Hard refresh your browser (Cmd/Ctrl + Shift + R).
 - If you encounter sync errors, review error messages in the sync dialog, manually resolve conflicts in your Git repository, then pull again.
 
-In Read-only mode, go to **Admin** > **Settings** > **Remote sync** and click **Pull changes**.
+### Handling unsynced changes when you pull
 
-### Handling unsynced changes
+If you have local uncommitted changes when you pull, Metabase lists them and asks what to do:
 
-If you have local uncommitted changes when trying to pull or switch branches, Metabase will prompt you with options:
-
-- **Push changes to the current branch:** Commit your changes first, then proceed.
-- **Create a new branch and push changes there:** Preserve your work on a new branch.
-- **Discard these changes:** Throw away your uncommitted changes to accept what's in Git.
+- **Merge the remote changes into your local content:** Only offered when the changes merge cleanly.
+- **Create a new branch and push changes there:** Saves your work to a new branch.
+- **Force push to [branch], discarding and overwriting everything (can't be undone):** Overwrites the remote branch with your local content.
+- **Delete unsynced changes (can't be undone):** Throws away your uncommitted changes to accept what's in Git.
 
 When in doubt, create a new branch and push changes to that branch. That way you won't lose any work.
 
