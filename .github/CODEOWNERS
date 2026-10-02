@@ -51,7 +51,7 @@ docs/embedding/eajs/snippets # auto-generated
 
 # These files are left unowned on purpose.
 # They change in most backend PRs, so an owning team would review many changes for little benefit.
-# Ratchet budgets may split per module, which would give each module's team its own file.
+# Ratchet budgets may split per module in future, which would give each module's team its own file.
 # .clj-kondo/ratchets.edn @metabase/devexp
 # .clj-kondo/ratchets-test.edn @metabase/devexp
 # .clj-kondo/config.edn @metabase/devexp
