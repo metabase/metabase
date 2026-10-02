@@ -63,9 +63,8 @@
   Takes a sequence of remote-synced collection IDs and imported-data map from spec/extract-imported-entities.
   For each entity-id based model, deletes entities whose entity_id is not in the imported set.
 
-  Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :model_id through
-  the model Card for Action, :collection_id for others). Models without :scope-key (like TransformTag) are deleted
-  globally by entity_id.
+  Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :collection_id
+  for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id.
 
   Path-based models (Table, Field) are not removed here - they are controlled by published table settings.
 

@@ -447,6 +447,17 @@
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps allow-int-ids? parameters))))
 
+(defn- without-unloaded-action-dashcards
+  "`ingested` without the dashcards whose action has no local row."
+  [{:keys [dashcards] :as ingested}]
+  (if-let [action-eids (not-empty (into #{} (keep :action_id) dashcards))]
+    (let [loaded (dashboards.db/action-entity-ids-in action-eids)]
+      (assoc ingested :dashcards (filterv #(or (nil? (:action_id %)) (contains? loaded (:action_id %))) dashcards)))
+    ingested))
+
+(defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
+  (serdes/default-load-one! (without-unloaded-action-dashcards ingested) maybe-local))
+
 (defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
   (dashboard-deps false dashboard))
 
