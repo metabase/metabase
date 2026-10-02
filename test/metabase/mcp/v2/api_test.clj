@@ -945,14 +945,14 @@
       (is (= ["s:a" "x:y"] (step-up-scopes surface #{"s:a"} "x:y"))))
     (testing "no token scopes at all yields just the required one"
       (is (= ["s:c"] (step-up-scopes surface nil "s:c"))))
-    (testing "GHY-4543: a held wildcard keeps every surface scope it covers, though none is held literally, so a client
-              that replaces its grant with the challenged scope loses no coverage"
-      (is (= ["agent:content:read" "agent:content:write" "agent:sql:run"]
+    (testing "a held wildcard grants nothing at the MCP endpoint, which honors only literal scopes, so it covers no
+              surface scope and is not echoed back"
+      (is (= ["agent:sql:run"]
              (step-up-scopes ["agent:content:read" "agent:content:write" "agent:query:run" "agent:sql:run"]
                              #{"agent:content:*"}
                              "agent:sql:run")))
-      (testing "and a bare `*` covers the whole surface"
-        (is (= surface (step-up-scopes surface #{"*"} "s:b")))))))
+      (testing "nor does a bare `*`"
+        (is (= ["s:b"] (step-up-scopes surface #{"*"} "s:b")))))))
 
 (defn- bearer-session-post!
   "Handshake with bearer `headers` and return a fn `(post! expected-status body & {:keys [path extra-headers]})` that
