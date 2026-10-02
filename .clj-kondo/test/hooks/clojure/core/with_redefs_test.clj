@@ -144,12 +144,26 @@
                        (stub-ns-analysis %))))))
   (testing "a form kondo lints as cljs, where `with-dynamic-fn-redefs` doesn't exist"
     (is (= [] (lint '(with-redefs [plain-fn (fn [x] x)] :body) stub-ns-analysis :cljs))))
+  (testing "a re-export source with no clj cache entry might be where the var comes from"
+    (is (= [] (lint '(with-redefs [proxied-clash (fn [& _] nil)] :body)
+                    #(if (= 'example.other-ns %)
+                       {:cljs other-proxied-vars}
+                       (stub-ns-analysis %))))))
   (testing "a cljc re-export source that is a defn only on the cljs side"
     (is (= [] (lint '(with-redefs [proxied-multi (fn [& _] nil)] :body)
                     #(if (= 'example.real-ns %)
                        {:clj  proxied-vars
                         :cljs {'proxied-multi {:ns 'example.real-ns, :name 'proxied-multi, :fixed-arities #{1}}}}
                        (stub-ns-analysis %)))))))
+
+(deftest ^:synchronized follows-nested-re-exports-test
+  (testing "a defn reached both directly and through a second re-export"
+    (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
+            (lint '(with-redefs [proxied-fn (fn [& _] nil)] :body)
+                  {'example.ns     {:clj (assoc stub-vars :proxied-namespaces '(example.facade example.real-ns))}
+                   'example.facade {:clj {'proxied-fn          {:ns 'example.facade, :name 'proxied-fn}
+                                          :proxied-namespaces '(example.real-ns)}}
+                   'example.real-ns {:clj proxied-vars}})))))
 
 (deftest ^:synchronized terminates-on-cyclic-re-exports-test
   (testing "two namespaces that re-export from each other"
@@ -241,7 +255,7 @@
         (finally (delete-tree! tmp-dir))))))
 
 (deftest ^:synchronized integration-deprecated-cljc-namespace-smoke-test
-  (testing "real kondo run: a var in a deprecated cljc namespace, whose cache kondo can't read, is skipped without error"
+  (testing "real kondo run: a var in a deprecated cljc namespace is skipped without a hook error"
     (let [tmp-dir   (.toFile (java.nio.file.Files/createTempDirectory
                               "with-redefs-deprecated-smoke" (into-array java.nio.file.attribute.FileAttribute [])))
           cache-dir (str tmp-dir "/cache")
