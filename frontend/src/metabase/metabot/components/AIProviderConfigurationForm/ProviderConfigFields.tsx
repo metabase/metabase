@@ -29,8 +29,8 @@ export function ProviderConfigFields({
   onChange: (key: string, value: string) => void;
   disabled?: boolean;
   // fields the environment owns: either shadowed by an MB_LLM_* variable, or part of a destination one of
-  // those variables pins (a base URL pins the deployment that decides whether it is read). The backend
-  // refuses a write to any of them, so they are disabled rather than silently ignored
+  // those variables pins (a base URL pins the deployment that decides whether it is read). Saving ignores
+  // them, so they are disabled
   disabledFields?: string[];
   autoFocusFirstField?: boolean;
 }) {
