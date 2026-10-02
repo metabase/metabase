@@ -120,9 +120,10 @@ require graph by an anchor module: the cluster holding the anchor carries the na
 so a named cluster can grow and shrink without an edit. The big one is `galactic-center`. Names follow a space
 theme; the `name-module-cycle` skill helps pick one.
 
-`metabase.core.module-cycles-test` fails until every cluster holds exactly one anchor. When you split a cluster,
-name the new half: the failure proposes a name and anchor to add. When two named clusters merge, find another way;
-the failure shows the requires joining them. When a cluster dissolves, remove its line.
+The test `metabase.core.module-cycles-test` fails until every cluster holds exactly one anchor. When you split a
+cluster, name the new half: the failure proposes a name and anchor to add. When two named clusters merge, find
+another way; the failure shows the requires joining them. When an anchor leaves every cycle, anchor its name on
+another member if the cluster survives, or remove the line.
 
 ## Tool Preferences
 

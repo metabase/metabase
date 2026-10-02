@@ -27,10 +27,12 @@
   (is (empty? (module-cycles/problems graph modules '{foundation app-db, galactic-center qp}))))
 
 (deftest ^:parallel growing-and-shrinking-pass-test
-  (testing "membership is never recorded, so a named cluster can gain and lose modules"
-    (is (empty? (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{'qp})
-                                        (conj modules 'lib)
-                                        '{foundation app-db, galactic-center qp})))))
+  (let [modules (conj modules 'lib)
+        anchors '{foundation app-db, galactic-center qp}]
+    (testing "a named cluster can gain a module"
+      (is (empty? (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{'qp}) modules anchors))))
+    (testing "a named cluster can lose a module"
+      (is (empty? (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{}) modules anchors))))))
 
 (deftest ^:parallel a-merge-fails-and-shows-the-joining-requires-test
   (let [merged (assoc graph 'settings #{'app-db 'qp})
@@ -39,7 +41,8 @@
              #".*Please find another way\."
              #"  foundation reaches galactic-center through app-db -> settings -> qp"
              #"  galactic-center reaches foundation through qp -> sync -> settings -> app-db"
-             #".*"
+             #"  The require that joined them .*"
+             #"  If instead only an anchor moved.*"
              #".*remove all but one of the names.*"]
             (str/split-lines msg)))))
 
@@ -78,8 +81,14 @@
                                          #{}))))))
 
 (deftest ^:parallel a-dissolved-cluster-fails-until-its-name-is-retired-test
-  (is (= ["galactic-center is no longer a cycle: qp is not in any cluster. Nice work."]
-         (headlines (assoc graph 'sync #{'settings}) modules '{foundation app-db, galactic-center qp}))))
+  (testing "a cycle that is gone asks for its name to be retired"
+    (is (= ["galactic-center is anchored on qp, which is no longer in any cycle."]
+           (headlines (assoc graph 'sync #{'settings}) modules '{foundation app-db, galactic-center qp}))))
+  (testing "an anchor that left a surviving cycle is reported with the cycle it left"
+    (let [graph (assoc graph 'qp #{} 'sync #{'lib} 'lib #{'sync})]
+      (is (=? [#"A cluster without a name: 2 modules, lib, sync\."
+               #"galactic-center is anchored on qp, which is no longer in any cycle\."]
+              (headlines graph (conj modules 'lib) '{foundation app-db, galactic-center qp}))))))
 
 (deftest ^:parallel an-anchor-must-be-a-module-test
   (is (=? [#"A cluster without a name.*"

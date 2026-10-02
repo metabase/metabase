@@ -12,6 +12,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
+   [hooks.common.modules :as modules]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -128,8 +129,11 @@
       [(str "  The require that joined them is most likely on one of these chains, probably one your change added."
             " Cut it, for example by moving the code that needs it, or by inverting the dependency with an event or"
             " a multimethod.")
+       (str "  If instead only an anchor moved, and the cluster it left is still a cycle, anchor that name on a module"
+            " still in it.")
        (str "  Only if there is truly no way around it: remove all but one of the names from "
             clusters-file " and explain why in the PR.")]))))
+
 (defn- requires-within
   "The requires between members of `cluster` as `from -> to` lines, or nil for a cluster of more than ten modules."
   [graph cluster]
@@ -150,7 +154,8 @@
      (str "  Names follow a space theme, with some link to what the cluster does. For ideas, ask your agent to use"
           " the name-module-cycle skill in .claude/skills/name-module-cycle.")
      (if-let [{:keys [name anchor]} proposal]
-       (format "  Then add a line like `%s %s` to %s. Any member can be the anchor." name anchor clusters-file)
+       (format "  Then add a line like `%s %s` to %s. Any declared member can be the anchor." name anchor
+               clusters-file)
        (str "  None of its modules is declared in .clj-kondo/config/modules/config.edn yet. Add an entry with a :team"
             " for each, run `./bin/mage fix-modules-config` to fill in the rest, then anchor the name on one of them."))
      "  If this is a brand new cycle instead, break it rather than naming it."])))
@@ -158,8 +163,10 @@
 (defn- dissolved-message [cluster-name anchor]
   (str/join
    "\n"
-   [(format "%s is no longer a cycle: %s is not in any cluster. Nice work." cluster-name anchor)
-    (format "  Remove its line from %s to retire the name." clusters-file)]))
+   [(format "%s is anchored on %s, which is no longer in any cycle." cluster-name anchor)
+    (str "  If the rest of the cluster is still a cycle, reported above without a name, keep the name and anchor it"
+         " on one of its modules instead.")
+    (format "  Otherwise the cycle is gone. Nice work. Remove its line from %s to retire the name." clusters-file)]))
 
 (defn- names-in
   "A function of a cluster returning the `[name anchor]` pairs inside it, sorted by name.
@@ -174,26 +181,30 @@
                   :when cluster-name]
               [cluster-name module])))))
 
+(defn- proposals
+  "Map each of the `unnamed` clusters to its [[propose]] result, no two placeholders sharing a name."
+  [graph modules anchors unnamed]
+  (first (reduce (fn [[acc taken] cluster]
+                   (let [p (propose graph modules cluster taken)]
+                     [(assoc acc cluster p) (cond-> taken p (conj (:name p)))]))
+                 [{} (set (keys anchors))]
+                 unnamed)))
+
 (defn problems
   "Failure messages for every way the cyclic clusters of `graph` disagree with the cluster names in `anchors`.
   Empty when each cluster holds exactly one anchor, and each anchor is among `modules` and in a cluster."
   [graph modules anchors]
-  (let [components (deps-graph/cyclic-components graph)
-        clusters   (map (juxt identity (names-in modules anchors)) components)
-        in-any     (into #{} cat components)
-        unnamed    (keep (fn [[cluster named]] (when (empty? named) cluster)) clusters)
-        ;; Each placeholder takes a name the next one must avoid.
-        proposals  (first (reduce (fn [[acc taken] cluster]
-                                    (let [p (propose graph modules cluster taken)]
-                                      [(conj acc [cluster p]) (cond-> taken p (conj (:name p)))]))
-                                  [[] (set (keys anchors))]
-                                  unnamed))]
+  (let [components   (deps-graph/cyclic-components graph)
+        clusters     (map (juxt identity (names-in modules anchors)) components)
+        in-any       (into #{} cat components)
+        unnamed      (keep (fn [[cluster named]] (when (empty? named) cluster)) clusters)
+        placeholders (proposals graph modules anchors unnamed)]
     (concat
      (for [[cluster named] clusters
            :when (< 1 (count named))]
        (merge-message graph cluster named))
-     (for [[cluster proposal] proposals]
-       (unnamed-message graph cluster proposal))
+     (for [cluster unnamed]
+       (unnamed-message graph cluster (placeholders cluster)))
      (keep (fn [[cluster-name anchor]]
              (cond
                (not (modules anchor))
@@ -213,7 +224,7 @@
   []
   (let [config (deps-graph/kondo-config)]
     {:config  config
-     :graph   (deps-graph/module-dependencies (deps-graph/dependencies))
+     :graph   (deps-graph/module-dependencies (deps-graph/dependencies (modules/build-prefix->module config)))
      :modules (set (keys config))
      :anchors (read-anchors)}))
 
@@ -228,13 +239,15 @@
   Run it with `clojure -X:dev dev.module-cycles/print-clusters`."
   [_]
   (let [{:keys [config graph modules anchors]} (repository)
-        named-in (names-in modules anchors)]
-    ;; Unnamed clusters first: they are the ones someone is here to name.
-    (doseq [cluster (sort-by #(boolean (seq (named-in %))) (deps-graph/cyclic-components graph))
+        named-in     (names-in modules anchors)
+        ;; Unnamed clusters first: they are the ones someone is here to name.
+        clusters     (sort-by #(boolean (seq (named-in %))) (deps-graph/cyclic-components graph))
+        placeholders (proposals graph modules anchors (remove (comp seq named-in) clusters))]
+    (doseq [cluster clusters
             :let    [named (named-in cluster)]]
       (println (if (seq named)
                  (str/join " + " (map (fn [[n m]] (format "%s (anchor %s)" n m)) named))
-                 (if-let [{:keys [name anchor]} (propose graph modules cluster (keys anchors))]
+                 (if-let [{:keys [name anchor]} (placeholders cluster)]
                    (format "unnamed (placeholder %s, anchor %s)" name anchor)
                    "unnamed (no declared module to anchor on)")))
       (println (format "  %d modules, teams: %s" (count cluster)
