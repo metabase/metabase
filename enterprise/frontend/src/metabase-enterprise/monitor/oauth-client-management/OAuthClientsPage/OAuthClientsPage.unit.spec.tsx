@@ -10,6 +10,7 @@ import {
   setupRevokeOAuthClientsErrorEndpoint,
   setupSettingsEndpoints,
   setupUserKeyValueEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -25,6 +26,7 @@ import type {
   OAuthClient,
   OAuthClientListResponse,
   RevokeOAuthClientsResponse,
+  UserListResult,
 } from "metabase-types/api";
 import {
   createMockOAuthClient,
@@ -33,6 +35,7 @@ import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserListResult,
 } from "metabase-types/api/mocks";
 
 import { OAuthClientsPage } from "./OAuthClientsPage";
@@ -46,7 +49,11 @@ type MockCell = {
 
 type MockHeader = {
   id: string;
-  column: { columnDef: { header?: unknown } };
+  column: {
+    columnDef: { header?: unknown };
+    getCanSort: () => boolean;
+    getToggleSortingHandler: () => (() => void) | undefined;
+  };
   getContext: () => unknown;
 };
 
@@ -102,9 +109,19 @@ jest.mock("metabase/ui/components/data-display/TreeTable/TreeTable", () => {
             <div key={group.id}>
               {group.headers.map((header) => (
                 <span key={header.id} role="columnheader">
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
+                  {header.column.getCanSort() ? (
+                    // the real header is a button when the column sorts; render one so a spec can click it
+                    <button onClick={header.column.getToggleSortingHandler()}>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                    </button>
+                  ) : (
+                    flexRender(
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )
                   )}
                 </span>
               ))}
@@ -142,7 +159,13 @@ type SetupOpts = {
   revokeResponse?: RevokeOAuthClientsResponse;
   revokeError?: boolean;
   initialRoute?: string;
+  users?: UserListResult[];
 };
+
+const FILTERABLE_USER = createMockUserListResult({
+  id: 7,
+  common_name: "Rasta Toucan",
+});
 
 const setup = ({
   clients = [createMockOAuthClient()],
@@ -151,6 +174,7 @@ const setup = ({
   revokeResponse,
   revokeError = false,
   initialRoute = PATHNAME,
+  users = [FILTERABLE_USER],
 }: SetupOpts = {}) => {
   if (listError) {
     setupListOAuthClientsErrorEndpoint();
@@ -163,6 +187,8 @@ const setup = ({
   } else {
     setupRevokeOAuthClientsEndpoint(revokeResponse);
   }
+
+  setupUsersEndpoints(users);
 
   return renderWithProviders(
     <Route
@@ -549,6 +575,308 @@ describe("OAuthClientsPage", () => {
       expect(url).toContain(`offset=${page * PAGE_SIZE}`);
     },
   );
+
+  it("searches by name, client ID or redirect URI, and sends the terms as `query`", async () => {
+    const { router } = setup({ clients: [createMockOAuthClient()] });
+
+    await findLoadedTable();
+    await userEvent.type(
+      screen.getByPlaceholderText("Search by name, client ID or redirect URI…"),
+      "reporting bot",
+    );
+
+    await waitFor(() =>
+      expect(lastListCallUrl()).toContain("query=reporting+bot"),
+    );
+    await waitFor(() =>
+      expect(router?.location.search).toContain("query=reporting+bot"),
+    );
+  });
+
+  it("starts the search again from the first page", async () => {
+    setup({
+      clients: [createMockOAuthClient()],
+      listOverrides: { total: PAGE_SIZE * 3, limit: PAGE_SIZE, offset: 0 },
+      initialRoute: `${PATHNAME}?page=2`,
+    });
+
+    await findLoadedTable();
+    await userEvent.type(
+      screen.getByPlaceholderText("Search by name, client ID or redirect URI…"),
+      "claude",
+    );
+
+    await waitFor(() => expect(lastListCallUrl()).toContain("query=claude"));
+    expect(lastListCallUrl()).toContain("offset=0");
+  });
+
+  it("filters by when a client registered and by who connected it, back on the first page", async () => {
+    const { router } = setup({
+      clients: [createMockOAuthClient()],
+      listOverrides: { total: PAGE_SIZE * 3, limit: PAGE_SIZE, offset: 0 },
+      initialRoute: `${PATHNAME}?page=2`,
+    });
+
+    await findLoadedTable();
+    await userEvent.click(screen.getByRole("button", { name: "Show filters" }));
+    await userEvent.click(screen.getByPlaceholderText("Any time"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Past week" }),
+    );
+    await userEvent.click(screen.getByPlaceholderText("Any user"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Rasta Toucan" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    await waitFor(() => expect(lastListCallUrl()).toContain("user-id=7"));
+    expect(lastListCallUrl()).toContain("registered-after=");
+    expect(lastListCallUrl()).toContain("offset=0");
+    await waitFor(() =>
+      expect(router?.location.search).toContain("registered=week"),
+    );
+    expect(router?.location.search).toContain("user=7");
+    expect(router?.location.search).not.toContain("page=2");
+  });
+
+  it("clears the filters, back on the first page", async () => {
+    const { router } = setup({
+      clients: [createMockOAuthClient()],
+      listOverrides: { total: PAGE_SIZE * 3, limit: PAGE_SIZE, offset: 0 },
+      initialRoute: `${PATHNAME}?page=2&registered=week&user=7`,
+    });
+
+    await findLoadedTable();
+    await userEvent.click(screen.getByRole("button", { name: "Show filters" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear filters" }),
+    );
+
+    await waitFor(() =>
+      expect(lastListCallUrl()).not.toContain("registered-after="),
+    );
+    expect(lastListCallUrl()).not.toContain("user-id=");
+    expect(lastListCallUrl()).toContain("offset=0");
+    await waitFor(() =>
+      expect(router?.location.search).not.toContain("registered=week"),
+    );
+    expect(router?.location.search).not.toContain("user=7");
+    expect(router?.location.search).not.toContain("page=2");
+  });
+
+  it("offers the registered window on the Revoked tab but not the user filter, which can never match there", async () => {
+    setup({
+      clients: [createMockOAuthClient({ status: "revoked" })],
+      initialRoute: `${PATHNAME}?tab=revoked`,
+    });
+
+    await findLoadedTable();
+    await userEvent.click(screen.getByRole("button", { name: "Show filters" }));
+
+    expect(screen.getByPlaceholderText("Any time")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Any user")).not.toBeInTheDocument();
+  });
+
+  it("does not ask the endpoint to filter by user on the Revoked tab", async () => {
+    setup({
+      clients: [createMockOAuthClient({ status: "revoked" })],
+      initialRoute: `${PATHNAME}?tab=revoked&user=7`,
+    });
+
+    await findLoadedTable();
+
+    expect(lastListCallUrl()).toContain("status=revoked");
+    expect(lastListCallUrl()).not.toContain("user-id=");
+  });
+
+  it("sorts on a count header largest first, then smallest, keeping the sort in the URL", async () => {
+    const { router } = setup({
+      clients: [createMockOAuthClient()],
+      listOverrides: { total: PAGE_SIZE * 3, limit: PAGE_SIZE, offset: 0 },
+      initialRoute: `${PATHNAME}?page=2`,
+    });
+
+    const table = await findLoadedTable();
+    await userEvent.click(within(table).getByRole("button", { name: "Users" }));
+
+    await waitFor(() =>
+      expect(lastListCallUrl()).toContain("sort-column=user_count"),
+    );
+    expect(lastListCallUrl()).toContain("sort-direction=desc");
+    expect(lastListCallUrl()).toContain("offset=0");
+    await waitFor(() =>
+      expect(router?.location.search).toContain("sort_column=user_count"),
+    );
+    expect(router?.location.search).not.toContain("page=2");
+
+    await userEvent.click(within(table).getByRole("button", { name: "Users" }));
+
+    await waitFor(() =>
+      expect(lastListCallUrl()).toContain("sort-direction=asc"),
+    );
+  });
+
+  it("sorts the name header A-Z first, where largest-first would read backwards", async () => {
+    setup({ clients: [createMockOAuthClient()] });
+
+    const table = await findLoadedTable();
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Client" }),
+    );
+
+    await waitFor(() =>
+      expect(lastListCallUrl()).toContain("sort-column=client_name"),
+    );
+    expect(lastListCallUrl()).toContain("sort-direction=asc");
+  });
+
+  it("offers no sort on the columns the endpoint cannot order by", async () => {
+    setup({ clients: [createMockOAuthClient()] });
+
+    const table = await findLoadedTable();
+
+    expect(
+      within(table).queryByRole("button", { name: "Redirect URIs" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).getByRole("button", { name: "Registered" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sorts the Revoked tab by when each client was revoked", async () => {
+    setup({
+      clients: [createMockOAuthClient({ status: "revoked" })],
+      initialRoute: `${PATHNAME}?tab=revoked`,
+    });
+
+    const table = await findLoadedTable();
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Revoked" }),
+    );
+
+    await waitFor(() =>
+      expect(lastListCallUrl()).toContain("sort-column=revoked_at"),
+    );
+  });
+
+  it.each([
+    {
+      name: "the search",
+      act: async () => {
+        await userEvent.type(
+          screen.getByPlaceholderText(
+            "Search by name, client ID or redirect URI…",
+          ),
+          "x",
+        );
+      },
+    },
+    {
+      name: "a filter",
+      act: async () => {
+        await userEvent.click(
+          screen.getByRole("button", { name: "Show filters" }),
+        );
+        await userEvent.click(screen.getByPlaceholderText("Any time"));
+        await userEvent.click(
+          await screen.findByRole("option", { name: "Past day" }),
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+      },
+    },
+    {
+      name: "the sort",
+      act: async () => {
+        await userEvent.click(screen.getByRole("button", { name: "Users" }));
+      },
+    },
+  ])("clears the selection when $name changes", async ({ act }) => {
+    setup({ clients: [createMockOAuthClient()] });
+
+    const table = await findLoadedTable();
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Select row" }),
+    );
+    expect(await screen.findByText("1 client selected")).toBeInTheDocument();
+
+    await act();
+
+    await waitFor(() =>
+      expect(screen.queryByText("1 client selected")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("revokes every active client from the Active tab, with the all-variant copy and an empty body", async () => {
+    setup({
+      clients: [createMockOAuthClient()],
+      revokeResponse: createMockRevokeOAuthClientsResponse({ revoked: 4 }),
+    });
+
+    await findLoadedTable();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Revoke all clients" }),
+    );
+
+    const modal = await screen.findByTestId("confirm-modal");
+    expect(
+      within(modal).getByText("Revoke all OAuth clients?"),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).getByText(
+        "Every connected client will lose access and need to be approved again. This can't be undone.",
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Revoke" }),
+    );
+
+    expect(await screen.findByText("Revoked 4 clients")).toBeInTheDocument();
+    expect(lastRevokeBody()).toEqual({});
+  });
+
+  it("offers nothing to revoke all of on the Revoked tab, or when nothing is registered", async () => {
+    setup({
+      clients: [createMockOAuthClient({ status: "revoked" })],
+      initialRoute: `${PATHNAME}?tab=revoked`,
+    });
+
+    await findLoadedTable();
+
+    expect(
+      screen.queryByRole("button", { name: "Revoke all clients" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps Revoke all clients available while a search narrows the list away, since it ignores the filters", async () => {
+    setup({
+      clients: [],
+      listOverrides: { total: 0 },
+      initialRoute: `${PATHNAME}?query=nothing-matches-this`,
+    });
+
+    await findLoadedTable();
+
+    expect(
+      screen.getByRole("button", { name: "Revoke all clients" }),
+    ).toBeEnabled();
+  });
+
+  it("marks the client the caller is acting through, and only that one", async () => {
+    setup({
+      clients: [
+        createMockOAuthClient({ client_id: "client-current", current: true }),
+        createMockOAuthClient({ client_id: "client-other" }),
+      ],
+    });
+
+    await findLoadedTable();
+
+    const currentRow = screen.getByTestId("oauth-client-row-client-current");
+    const otherRow = screen.getByTestId("oauth-client-row-client-other");
+    expect(within(currentRow).getByText("This client")).toBeInTheDocument();
+    expect(within(otherRow).queryByText("This client")).not.toBeInTheDocument();
+  });
 
   it("renders no rows when the list request fails", async () => {
     setup({ listError: true });

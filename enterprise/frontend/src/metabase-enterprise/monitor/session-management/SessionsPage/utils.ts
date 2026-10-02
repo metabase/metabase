@@ -6,10 +6,11 @@ import {
   getAllParamValues,
   getFirstParamValue,
   parsePage,
+  parseQuery,
   parseSortColumn,
   parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
-import { dayjs } from "metabase/dayjs";
+import { parseTimePreset } from "metabase/monitor/time-presets";
 import {
   type RevokeSessionsRequest,
   SESSION_END_REASONS,
@@ -29,16 +30,9 @@ import {
 } from "./constants";
 import {
   SESSIONS_TABS,
-  SESSIONS_TIME_PRESETS,
   type SessionsTab,
-  type SessionsTimePreset,
   type SessionsUrlState,
 } from "./types";
-
-const parseQuery = (param: QueryParam): string => {
-  const value = getFirstParamValue(param);
-  return typeof value === "string" ? value.trim() : "";
-};
 
 const isProvider = (value: string): value is SessionProvider =>
   SESSION_PROVIDERS.some((provider) => provider === value);
@@ -54,14 +48,6 @@ export const isTab = (value: string): value is SessionsTab =>
 const parseTab = (param: QueryParam): SessionsTab => {
   const value = getFirstParamValue(param);
   return typeof value === "string" && isTab(value) ? value : DEFAULT_TAB;
-};
-
-export const isTimePreset = (value: string): value is SessionsTimePreset =>
-  SESSIONS_TIME_PRESETS.some((preset) => preset === value);
-
-const parseTimePreset = (param: QueryParam): SessionsTimePreset | null => {
-  const value = getFirstParamValue(param);
-  return typeof value === "string" && isTimePreset(value) ? value : null;
 };
 
 export const isEndReason = (value: string): value is SessionEndReason =>
@@ -110,11 +96,6 @@ export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
         : state.sort_direction,
   }),
 };
-
-export const getTimePresetCutoff = (
-  preset: SessionsTimePreset | null,
-): string | undefined =>
-  preset === null ? undefined : dayjs().subtract(1, preset).toISOString();
 
 export const buildListParams = (
   state: SessionsUrlState,

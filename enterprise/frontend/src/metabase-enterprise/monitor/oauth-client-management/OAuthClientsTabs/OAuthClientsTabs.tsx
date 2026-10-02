@@ -3,14 +3,11 @@ import { t } from "ttag";
 import { Icon, Tabs } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import type {
-  OAuthClientsTab,
-  OAuthClientsUrlState,
-} from "../OAuthClientsPage/types";
+import type { OAuthClientsTab } from "../OAuthClientsPage/types";
 
 type OAuthClientsTabsProps = {
   tab: OAuthClientsTab;
-  onChange: (patch: Partial<OAuthClientsUrlState>) => void;
+  onChange: (tab: OAuthClientsTab) => void;
 };
 
 type TabConfig = {
@@ -28,7 +25,7 @@ export const OAuthClientsTabs = ({ tab, onChange }: OAuthClientsTabsProps) => {
   const handleTabChange = (value: string | null) => {
     const next = tabs.find((config) => config.value === value);
     if (next !== undefined) {
-      onChange({ tab: next.value });
+      onChange(next.value);
     }
   };
 

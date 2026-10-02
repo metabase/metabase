@@ -14,6 +14,7 @@
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.users.models.user :as user]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -25,18 +26,65 @@
   "How many `client_id`s one request may name."
   1000)
 
-(mr/def ::ListParams
+(mr/def ::FilterParams
+  "The criteria the list and the revoke share: every one of them can match an active client."
   [:map {:closed true}
-   [:status {:default :active} ::ocm.schema/client-status]
    ;; a single `?ids=` arrives as a bare string; coerce so one id and many behave the same. `:and` decodes through
    ;; its first child only, so the coercion runs before the length check
-   [:ids    {:optional true}   [:and (ms/QueryVectorOf :string) [:vector {:max max-ids} :string]]]])
+   [:ids               {:optional true} [:and (ms/QueryVectorOf :string) [:vector {:max max-ids} :string]]]
+   [:user-id           {:optional true} ms/PositiveInt]
+   [:registered-before {:optional true} ms/TemporalString]
+   [:registered-after  {:optional true} ms/TemporalString]])
 
-(mr/def ::RevokeParams
-  ;; `ids` is required: an omitted one is a 400, never a sweep of every active client
+(mr/def ::SortParams
   [:map {:closed true}
-   ;; in a JSON body `ids` arrives as a real array, so it needs none of the single-value coercion a query string does
-   [:ids [:sequential {:max max-ids} :string]]])
+   [:sort-column    {:default :created_at} ::ocm.schema/client-sort-column]
+   [:sort-direction {:default :desc}       [:enum :asc :desc]]])
+
+(mr/def ::ListParams
+  "The list's criteria: [[::FilterParams]], the sort, `query`, and `status` with the filters that only match revoked
+  clients."
+  ;; `query` lives here rather than in ::FilterParams because the revoke endpoint merges those filters, and revoking
+  ;; every client whose name happens to match a substring is far easier to get wrong than revoking by explicit criteria.
+  [:merge
+   ::FilterParams
+   ::SortParams
+   [:map {:closed true}
+    [:status         {:default :active} ::ocm.schema/client-status]
+    [:query          {:optional true}   ms/NonBlankString]
+    [:revoked-before {:optional true}   ms/TemporalString]
+    [:revoked-after  {:optional true}   ms/TemporalString]]])
+
+(defn- refused-key
+  "A schema for a request key that is declared only so it can be rejected, answering `message`.
+
+  Declared rather than left out, because [[metabase.api.macros]]'s `strip-extra-keys-transformer` strips an
+  undeclared key of a closed map instead of refusing it — so a caller who meant to narrow a revoke would have the
+  narrowing dropped and sweep every active client. Every value is refused, `null` included, for the same reason: a
+  null bound is not a narrower revoke."
+  [message]
+  [:fn {:error/message message} (constantly false)])
+
+(def ^:private revoked-only-criterion
+  "The refusal `revoked-before` and `revoked-after` share: both can only ever match a client that is already revoked,
+  which is not a client a revoke can act on."
+  (refused-key "only active clients can be revoked, so a filter that only matches revoked ones is not allowed"))
+
+(mr/def ::RevokeByCriteriaParams
+  ;; [[::FilterParams]] rather than [[::ListParams]]: a revoked client has nothing left to revoke, so a `status` other
+  ;; than `active` — or `revoked-before`/`revoked-after`, which only match revoked clients — is a 400 rather than
+  ;; something silently narrowed away
+  [:merge
+   ::FilterParams
+   [:map {:closed true}
+    [:status          {:optional true} [:enum {:error/message "only active clients can be revoked"} :active]]
+    [:revoked-before  {:optional true} revoked-only-criterion]
+    [:revoked-after   {:optional true} revoked-only-criterion]
+    ;; in a JSON body `ids` arrives as a real array, so it needs none of the single-value coercion a query string does
+    [:ids             {:optional true} [:sequential {:max max-ids} :string]]
+    [:exclude-current {:default true}  :boolean]
+    [:query           {:optional true}
+     (refused-key "not supported when revoking; list the clients first, then revoke them by `ids`")]]])
 
 (mr/def ::Actor
   [:map {:closed true}
@@ -77,6 +125,20 @@
    [:user_ids       [:sequential ms/PositiveInt]]
    [:remaining      ms/IntGreaterThanOrEqualToZero]])
 
+(defn- params->filters
+  "Turn the request params into the filter map [[metabase-enterprise.oauth-client-management.query/client-where]]
+  takes, parsing the date strings into instants."
+  [{:keys [status ids user-id query registered-before registered-after revoked-before revoked-after]}]
+  {:status            status
+   :ids               ids
+   :user-id           user-id
+   ;; only the list endpoint can send these three; the revoke endpoint's schema rejects them, so they arrive nil there
+   :query             query
+   :revoked-before    (some-> revoked-before u.date/parse)
+   :revoked-after     (some-> revoked-after u.date/parse)
+   :registered-before (some-> registered-before u.date/parse)
+   :registered-after  (some-> registered-after u.date/parse)})
+
 (defn- revoked-by
   "The admin who revoked the client in `row`, or nil for an active client — or a revoked one whose admin has since
   been deleted, which nulls the FK."
@@ -90,8 +152,10 @@
         (select-keys [:id :email :common_name]))))
 
 (defn- ->response-item
-  "One `::Client` from a [[metabase-enterprise.oauth-client-management.db/clients]] row."
-  [{:keys [client_id client_name client_uri logo_uri redirect_uris application_type registration_type created_at
+  "One `::Client` from a [[metabase-enterprise.oauth-client-management.db/clients]] row, marked `current` when it is
+  `current-client-id` — the client that issued the bearer this request authenticated with."
+  [current-client-id
+   {:keys [client_id client_name client_uri logo_uri redirect_uris application_type registration_type created_at
            status revoked_at live_tokens user_count]
     :as   row}]
   {:client_id         client_id
@@ -108,34 +172,45 @@
    :revoked_by        (revoked-by row)
    :live_tokens       (long live_tokens)
    :user_count        (long user_count)
-   ;; marking the client that issued the caller's bearer token needs the resolver to put its `client_id` on the
-   ;; request, which `exclude-current` brings with it
-   :current           false})
+   ;; compared in Clojure rather than as a SQL `CASE`, unlike the sessions list's `current`: that one compares a
+   ;; hashed session key, which must never leave the database, while a `client_id` is already in every row
+   :current           (= client_id current-client-id)})
 
 (api.macros/defendpoint :get "/" :- ::ClientsResponse
   "List the OAuth clients registered against this instance, newest registration first. By default the active ones —
   the ones that can still act as a user. `status=revoked` lists instead the clients an admin has revoked, which stay
-  on record for good with when they were revoked and by whom; `status=all` lists both. `ids` narrows to an explicit
-  set of `client_id`s. `total` counts whatever the filters match.
+  on record for good with when they were revoked and by whom; `status=all` lists both. `total` counts whatever the
+  filters match.
+
+  Every filter is optional and they are ANDed, so the list narrows the way an admin reads an incident report:
+  `ids` to an explicit set of `client_id`s, `user-id` to the clients one person still holds a token on,
+  `registered-before`/`registered-after` and `revoked-before`/`revoked-after` to half-open time ranges, and `query`
+  to a free-text search over the name, the `client_id` and the redirect URIs, where every whitespace-separated term
+  has to match one of the three. `sort-column` and `sort-direction` order the result.
 
   `live_tokens` is how many unrevoked, unexpired access tokens the client holds right now, and `user_count` how many
-  distinct users those belong to — between them, who a revoke would cut off. No client secret or token hash is ever
-  returned.
+  distinct users those belong to — between them, who a revoke would cut off. `current` marks the client that issued
+  the bearer token this request authenticated with, and is false throughout for a request that came with a session
+  cookie or an API key. No client secret or token hash is ever returned.
 
   Superuser only."
   [_route-params
-   params :- [:maybe ::ListParams]
+   {:keys [sort-column sort-direction] :as params} :- [:maybe ::ListParams]
    _body
-   _request]
+   {current-client-id :metabase/authed-oauth-client-id, :as _request}]
   (api/check-superuser)
-  (let [filters (select-keys params [:status :ids])
+  (let [filters (params->filters params)
         limit   (request/limit)
         offset  (request/offset)]
     {:total  (ocm.db/client-count filters)
      :limit  limit
      :offset offset
-     :data   (mapv ->response-item
-                   (ocm.db/clients filters (System/currentTimeMillis) limit offset))}))
+     :data   (mapv (partial ->response-item current-client-id)
+                   (ocm.db/clients filters
+                                   (or sort-column :created_at)
+                                   (or sort-direction :desc)
+                                   (System/currentTimeMillis)
+                                   limit offset))}))
 
 (defn- record-revocation!
   "Write the audit trail for the `revocation` that `criteria` produced: one `:event/oauth-clients-revoked` summary row
@@ -161,31 +236,48 @@
       (log/warn e "Error recording an OAuth client revocation in the audit log"))))
 
 (api.macros/defendpoint :post "/revoke" :- ::RevokeResult
-  "Revoke the registered OAuth clients named by `ids`. Each one loses its current grants at once: its live access and
-  refresh tokens stop authenticating, its pending authorization codes are deleted, and it can no longer obtain
-  consent, exchange or refresh a token, or read its own registration. The rows stay on record as revoked, with who
-  revoked them and when.
+  "Revoke every active registered OAuth client matching the given criteria, which are the filters the list endpoint
+  takes. All of them have to hold, so a revoke ends exactly the clients the same filters would have listed. An empty
+  body matches every active client: that is how an admin cuts off everything at once.
 
-  This cannot be undone. Ids that are unknown or already revoked are simply not matched, so repeating a revoke is a
-  harmless no-op.
+  Each revoked client loses its current grants immediately: its live access and refresh tokens stop authenticating,
+  its pending authorization codes are deleted, and it can no longer obtain consent, exchange or refresh a token, or
+  read its own registration. The rows stay on record as revoked, with who revoked them and when.
+
+  Only active clients can be revoked, so `status` may only be `active` (or absent), and `revoked-before` and
+  `revoked-after` — which only match revoked clients — are rejected with a 400. So is `query`: revoking every client
+  whose name happens to contain a substring is far easier to get wrong than revoking by an explicit criterion, so an
+  admin lists by `query` first and then revokes the ids.
+
+  `exclude-current` (default true) holds back the client that issued the caller's own bearer token, so a sweep run
+  through the CLI does not cut the CLI off mid-command. Pass false to revoke it too. A request authenticated with a
+  session cookie or an API key has no current client, and the flag has nothing to do.
+
+  This cannot be undone. Clients that are unknown or already revoked are simply not matched, so repeating a revoke is
+  a harmless no-op.
 
   Returns how many clients were `revoked`, how many access and refresh tokens that stamped (`tokens_revoked`), the
-  `user_ids` who held one of them, and how many active clients still match the ids afterwards (`remaining`).
+  `user_ids` who held one of them, and how many active clients still match the criteria afterwards (`remaining`,
+  non-zero only when a registration raced the revoke).
 
   `tokens_revoked` and `user_ids` cover every token that was not already revoked, expired ones included, so they can
   be non-zero for a client the list shows with `live_tokens 0`: the list counts what still works, the revoke reports
   what it stamped. Superuser only."
   [_route-params
    _query-params
-   {:keys [ids]} :- ::RevokeParams
-   _request]
+   body :- [:maybe ::RevokeByCriteriaParams]
+   {current-client-id :metabase/authed-oauth-client-id, :as _request}]
   (api/check-superuser)
-  (let [criteria   {:ids ids}
-        ;; the ids *are* the criteria here, so they go straight to the primitive, which matches only the active ones
-        revocation (oauth-server/revoke-clients! ids api/*current-user-id*)
-        ;; always 0 while the criteria are ids: a `client_id` is a UUID, so nothing can register into the set that
-        ;; was just revoked. It is reported anyway because revoking by criteria can race a registration.
-        remaining  (ocm.db/active-client-count criteria)]
+  (let [exclude-current? (get body :exclude-current true)
+        ;; part of the criteria rather than dropped from them: `remaining` is counted with it, so an audit row
+        ;; without it cannot say whether the current client was spared
+        criteria         (assoc body :exclude-current exclude-current?)
+        filters          (params->filters criteria)
+        ;; the ids are resolved here rather than in the primitive: the EE module owns the criteria, the OSS module
+        ;; owns the revocation, and what passes between them is a plain list of client ids
+        ids              (ocm.db/revocable-client-ids filters current-client-id exclude-current?)
+        revocation       (oauth-server/revoke-clients! ids api/*current-user-id*)
+        remaining        (ocm.db/revocable-client-count filters current-client-id exclude-current?)]
     (log/infof "User %s revoked %d OAuth client(s) and %d token(s) matching %s"
                api/*current-user-id* (:revoked revocation) (:tokens-revoked revocation) (pr-str criteria))
     (record-revocation! criteria revocation remaining)

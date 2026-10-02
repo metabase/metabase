@@ -29,7 +29,9 @@ const setup = ({ clients, isRevokedTab = false }: SetupOpts) => {
       isRevokedTab={isRevokedTab}
       page={0}
       rowSelection={{}}
+      sorting={[{ id: "created_at", desc: true }]}
       emptyLabel="No clients"
+      onSortingChange={jest.fn()}
       onRowSelectionChange={jest.fn()}
     />,
   );
@@ -90,7 +92,7 @@ describe("OAuthClientsTable", () => {
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
-  it("doesn't let the client the caller's own token came from be selected", async () => {
+  it("badges the client the caller's own token came from, and doesn't let it be selected", async () => {
     const current = createMockOAuthClient({
       client_id: "current",
       current: true,
@@ -98,7 +100,13 @@ describe("OAuthClientsTable", () => {
     const other = createMockOAuthClient({ client_id: "other" });
     setup({ clients: [current, other] });
 
+    expect(
+      within(await getRow(current)).getByText("This client"),
+    ).toBeInTheDocument();
     expect(within(await getRow(current)).getByRole("checkbox")).toBeDisabled();
+    expect(
+      within(await getRow(other)).queryByText("This client"),
+    ).not.toBeInTheDocument();
     expect(within(await getRow(other)).getByRole("checkbox")).toBeEnabled();
   });
 

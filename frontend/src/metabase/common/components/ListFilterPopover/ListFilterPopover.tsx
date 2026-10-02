@@ -4,6 +4,7 @@ import { t } from "ttag";
 import {
   Button,
   type ButtonProps,
+  type ComboboxProps,
   Flex,
   Group,
   Icon,
@@ -14,6 +15,16 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+
+/**
+ * `comboboxProps` for a Select rendered inside the popover. Picking an option in a portalled dropdown counts as a
+ * click outside the popover and closes it before Apply can be reached.
+ */
+export const FILTER_POPOVER_COMBOBOX: Partial<ComboboxProps> = {
+  withinPortal: false,
+  floatingStrategy: "fixed",
+  position: "bottom-start",
+};
 
 type ListFilterPopoverProps = {
   hasActiveFilters: boolean;

@@ -1,4 +1,10 @@
-import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
+import type {
+  OnChangeFn,
+  Row,
+  RowSelectionState,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -25,7 +31,9 @@ type OAuthClientsTableProps = {
   isRevokedTab: boolean;
   page: number;
   rowSelection: RowSelectionState;
+  sorting: SortingState;
   emptyLabel: string;
+  onSortingChange: (sorting: SortingState) => void;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
 };
 
@@ -50,9 +58,19 @@ export const OAuthClientsTable = ({
   isRevokedTab,
   page,
   rowSelection,
+  sorting,
   emptyLabel,
+  onSortingChange,
   onRowSelectionChange,
 }: OAuthClientsTableProps) => {
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      onSortingChange(next);
+    },
+    [sorting, onSortingChange],
+  );
+
   const columns = useMemo(() => getColumns(isRevokedTab), [isRevokedTab]);
 
   const rows = useMemo(() => clients?.map(toRow), [clients]);
@@ -61,14 +79,17 @@ export const OAuthClientsTable = ({
     data: rows ?? NO_CLIENTS,
     columns,
     getNodeId,
+    sorting,
+    manualSorting: true,
     enableRowSelection: canSelectClient,
     rowSelection,
     onRowSelectionChange,
+    onSortingChange: handleSortingChange,
   });
 
   useScrollToTop({
     ref: instance.containerRef,
-    keys: [page],
+    keys: [page, sorting],
     skip: isFetching,
   });
 

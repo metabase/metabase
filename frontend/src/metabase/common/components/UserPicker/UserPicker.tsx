@@ -3,26 +3,43 @@ import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Select } from "metabase/ui";
+import { Select, type SelectProps } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type { UserOption } from "./types";
 
-type Props = {
+type BaseProps = {
   value: UserOption | null;
-  onChange: (next: UserOption) => void;
   label?: string;
   placeholder?: string;
   flex?: number | string;
+  /** Passed to the dropdown. Inside another popover, set `withinPortal: false` or picking an option closes it. */
+  comboboxProps?: SelectProps["comboboxProps"];
 };
 
-export const UserPicker = ({
-  value,
-  onChange,
-  label,
-  placeholder,
-  flex,
-}: Props) => {
+/**
+ * `clearable` decides whether un-picking is possible, so it also decides whether `onChange` has to handle it: a
+ * picker without a cross never reports null, and its caller should not carry a branch for one.
+ */
+type Props = BaseProps &
+  (
+    | { clearable: true; onChange: (next: UserOption | null) => void }
+    | { clearable?: false; onChange: (next: UserOption) => void }
+  );
+
+export const UserPicker = (props: Props) => {
+  const { value, label, placeholder, flex, clearable, comboboxProps } = props;
+  // The union is narrowed once, here, so the body below has one callback that takes null. Mantine's own `onChange`
+  // is `string | null` whether or not it draws the clear button, so something has to absorb the null for a
+  // non-clearable picker; doing it here keeps that out of the body and out of every caller.
+  const notify: (next: UserOption | null) => void = props.clearable
+    ? props.onChange
+    : (next) => {
+        if (next !== null) {
+          props.onChange(next);
+        }
+      };
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
   const trimmedSearch = debouncedSearch.trim();
@@ -56,9 +73,13 @@ export const UserPicker = ({
       : fetchedOptions;
 
   const handleChange = (next: string | null) => {
+    if (next === null) {
+      notify(null);
+      return;
+    }
     const option = options.find((o) => o.value === next);
     if (option) {
-      onChange({ id: Number(option.value), label: option.label });
+      notify({ id: Number(option.value), label: option.label });
     }
   };
 
@@ -68,8 +89,10 @@ export const UserPicker = ({
       label={label}
       placeholder={placeholder ?? t`Select a user`}
       data={options}
-      value={selectedOption?.value}
+      value={selectedOption?.value ?? null}
       onChange={handleChange}
+      clearable={clearable}
+      comboboxProps={comboboxProps}
       searchable
       searchValue={search}
       onSearchChange={setSearch}

@@ -15,13 +15,15 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn clients :- [:sequential :map]
-  "The registered clients matching `filters` — active ones unless `:status` says otherwise — newest registration
-  first, at most `limit` from `offset`. The live-token and distinct-user counts are computed in SQL against `now-ms`
-  (epoch milliseconds). No hash is selected, so none can leave the database."
-  [filters :- ::ocm.schema/client-filters
-   now-ms  :- :int
-   limit   :- [:maybe ms/PositiveInt]
-   offset  :- [:maybe ms/IntGreaterThanOrEqualToZero]]
+  "The registered clients matching `filters` — active ones unless `:status` says otherwise — ordered per
+  `sort-column`/`sort-direction`, at most `limit` from `offset`. The live-token and distinct-user counts are computed
+  in SQL against `now-ms` (epoch milliseconds). No hash is selected, so none can leave the database."
+  [filters        :- ::ocm.schema/client-filters
+   sort-column    :- ::ocm.schema/client-sort-column
+   sort-direction :- [:enum :asc :desc]
+   now-ms         :- :int
+   limit          :- [:maybe ms/PositiveInt]
+   offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/query
    (cond-> (merge oauth-server/client-from-and-joins
                   {:select   [[:c.client_id :client_id]
@@ -41,7 +43,7 @@
                               [(oauth-server/live-token-count-expr now-ms) :live_tokens]
                               [(oauth-server/live-token-user-count-expr now-ms) :user_count]]
                    :where    (ocm.query/client-where filters)
-                   :order-by ocm.query/client-order-by})
+                   :order-by (ocm.query/client-order-by sort-column sort-direction)})
      limit  (assoc :limit limit)
      offset (assoc :offset offset))))
 
@@ -61,8 +63,27 @@
   [filters :- ::ocm.schema/client-filters]
   (count-where (ocm.query/client-where filters)))
 
-(mu/defn active-client-count :- ms/IntGreaterThanOrEqualToZero
-  "How many *active* clients match `filters`, whatever its `:status` says. Called after a revoke to report how many
-  still match — 0 unless a registration raced it."
-  [filters :- ::ocm.schema/client-filters]
-  (count-where (ocm.query/client-where (assoc filters :status :active))))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Revoking clients                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(mu/defn revocable-client-count :- ms/IntGreaterThanOrEqualToZero
+  "How many active clients [[revocable-client-ids]] would name for these arguments. Called again after a revoke to
+  report how many still match — 0 unless a registration raced it."
+  [filters           :- ::ocm.schema/client-filters
+   current-client-id :- [:maybe :string]
+   exclude-current?  :- :boolean]
+  (count-where (ocm.query/revoke-where filters current-client-id exclude-current?)))
+
+(mu/defn revocable-client-ids :- [:sequential :string]
+  "The `client_id` of every active client matching `filters`, holding back the current client when
+  `exclude-current?`. These are what the revoke hands to [[metabase.oauth-server.core/revoke-clients!]], so a revoke
+  by criteria ends exactly the set a list with the same filters would have shown. Returns every match, however many:
+  a caller must not pass more of them on than its database driver allows bind parameters."
+  [filters           :- ::ocm.schema/client-filters
+   current-client-id :- [:maybe :string]
+   exclude-current?  :- :boolean]
+  (mapv :client_id
+        (t2/query (merge oauth-server/client-from-and-joins
+                         {:select [[:c.client_id :client_id]]
+                          :where  (ocm.query/revoke-where filters current-client-id exclude-current?)}))))

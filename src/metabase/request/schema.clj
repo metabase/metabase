@@ -23,7 +23,9 @@
    ;; and `:api-key-creator-id` is the real human who created the key (distinct from `:metabase-user-id`, the key's
    ;; own synthetic service-account user) — both read off the same auth query rather than looked up again later.
    [:api-key-id         {:optional true} pos-int?]
-   [:api-key-creator-id {:optional true} [:maybe pos-int?]]])
+   [:api-key-creator-id {:optional true} [:maybe pos-int?]]
+   ;; the registered OAuth client that issued the bearer token, when a bearer is what authenticated the request
+   [:oauth-client-id   {:optional true} [:maybe :string]]])
 
 (mr/def ::multipart-file
   "One `:multipart-params` entry for an uploaded file, as `ring.middleware.multipart-params` builds it."
@@ -101,6 +103,7 @@
    ;; only API-key auth resolves these two — see `::current-user-info`.
    [:api-key-id              {:optional true} [:maybe :int]]
    [:api-key-creator-id      {:optional true} [:maybe :int]]
+   [:metabase/authed-oauth-client-id  {:optional true} [:maybe :string]]
    [:token-exchange?         {:optional true} :boolean]
    [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]
    [:metabase.server.middleware.offset-paging/offset {:optional true} [:maybe :int]]

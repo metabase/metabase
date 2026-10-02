@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { MonitorDateCell } from "metabase/monitor/components/MonitorDateCell";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Ellipsified, Stack, Text } from "metabase/ui";
+import { Badge, Ellipsified, Flex, Stack, Text } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 
 import { getOAuthClientName, getRevokerName } from "../utils";
@@ -16,11 +16,20 @@ const getClientColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   id: "client_name",
   header: t`Client`,
   minWidth: 220,
-  enableSorting: false,
+  enableSorting: true,
+  // a name sorts A-Z on the first click; only the dates and counts below read better largest-first
+  sortDescFirst: false,
   accessorFn: (client) => getOAuthClientName(client),
   cell: ({ row }) => (
     <Stack gap={0} miw={0}>
-      <Ellipsified>{getOAuthClientName(row.original)}</Ellipsified>
+      <Flex gap="sm" align="center" miw={0}>
+        <Ellipsified>{getOAuthClientName(row.original)}</Ellipsified>
+        {row.original.current && (
+          <Badge variant="light" color="brand" size="xs" flex="0 0 auto">
+            {t`This client`}
+          </Badge>
+        )}
+      </Flex>
       <Text size="sm" c="text-secondary" lh="1rem" truncate>
         {row.original.client_id}
       </Text>
@@ -46,7 +55,8 @@ const getUsersColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   id: "user_count",
   header: t`Users`,
   width: 100,
-  enableSorting: false,
+  enableSorting: true,
+  sortDescFirst: true,
   accessorFn: (client) => client.user_count,
   cell: ({ row }) => row.original.user_count,
 });
@@ -55,7 +65,8 @@ const getLiveTokensColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   id: "live_tokens",
   header: t`Live tokens`,
   width: 120,
-  enableSorting: false,
+  enableSorting: true,
+  sortDescFirst: true,
   accessorFn: (client) => client.live_tokens,
   cell: ({ row }) => row.original.live_tokens,
 });
@@ -64,8 +75,8 @@ const getRegisteredColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   id: "created_at",
   header: t`Registered`,
   width: 170,
-  // the endpoint sorts by registration already, and this slice offers no sort control
-  enableSorting: false,
+  enableSorting: true,
+  sortDescFirst: true,
   accessorFn: (client) => client.created_at,
   cell: ({ row }) => <MonitorDateCell value={row.original.created_at} />,
 });
@@ -74,7 +85,8 @@ const getRevokedColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   id: "revoked_at",
   header: t`Revoked`,
   width: 170,
-  enableSorting: false,
+  enableSorting: true,
+  sortDescFirst: true,
   accessorFn: (client) => client.revoked_at ?? "",
   cell: ({ row }) =>
     row.original.revoked_at ? (
