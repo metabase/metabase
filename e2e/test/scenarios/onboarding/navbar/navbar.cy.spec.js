@@ -133,9 +133,13 @@ describe("scenarios > navigation > navbar", () => {
     });
 
     it("should be open when logging in with a landing page configured", () => {
-      H.updateSetting("landing-page", "/question/76");
+      H.updateSetting("landing-page", `/question/${ORDERS_QUESTION_ID}`);
       cy.visit("/");
-      cy.url().should("contain", "question");
+      cy.location("pathname").should(
+        "match",
+        new RegExp(`^/question/${ORDERS_QUESTION_ID}\\b`),
+      );
+      H.queryBuilderHeader().findByText("Orders").should("be.visible");
       H.navigationSidebar().should("be.visible");
     });
 
