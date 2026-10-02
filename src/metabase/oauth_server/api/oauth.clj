@@ -167,6 +167,9 @@
 (def ^:private invalid-target-description
   "The resource parameter must be an absolute URI without a fragment.")
 
+(def ^:private refresh-binding-mismatch-description
+  "This refresh token was not issued for the requested resource. Authorize again for this resource.")
+
 (def ^:private narrowed-away-scope-description
   "The requested scopes are not accepted by the requested resource.")
 
@@ -249,13 +252,17 @@
 (defn- refresh-keeps-binding!
   "The token request `body`, made safe for the provider. A refresh grant always keeps the refresh token's resource
   binding, which decides where the new access token works: `resource` is dropped so the provider copies the stored
-  binding, after an RFC 8707 `invalid_target` error is thrown when the requested resource is not within it. Any
-  other grant is returned unchanged."
+  binding, after an `invalid_grant` error is thrown when the requested resource is not within it. Any other grant is
+  returned unchanged."
   [provider {:keys [grant_type refresh_token resource] :as body}]
   (if (= "refresh_token" grant_type)
     (let [stored (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))]
+      ;; `invalid_grant` (RFC 6749 section 5.2: the refresh token "does not match"), not RFC 8707 `invalid_target`:
+      ;; the refresh token can never serve this resource, so the client has to authorize again rather than retry.
       (when (and resource stored (not (oauth-server/resources-within? resource (:resource stored))))
-        (throw (ex-info "resource is outside the refresh token's binding" {:error "invalid_target"})))
+        (throw (ex-info "resource is outside the refresh token's binding"
+                        {:error             "invalid_grant"
+                         :error-description refresh-binding-mismatch-description})))
       (dissoc body :resource))
     body))
 
