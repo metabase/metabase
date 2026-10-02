@@ -82,12 +82,11 @@
           stripped (strip-lib-keys q2)
           legacy   (links/->legacy-mbql stripped)]
       (is (not (contains? stripped :lib/type)))
-      (testing "converts rather than falling back to the raw MBQL 5"
-        (is (= :query (:type legacy)))
-        (is (not (contains? legacy :stages))))
-      (testing "the order-by is restored as a positional ref to the query's own aggregation"
-        (is (= [[:desc [:aggregation 0]]]
-               (get-in legacy [:query :order-by])))))))
+      (is (not (contains? legacy :stages)))
+      (is (=? {:type  :query
+               :query {:aggregation [[:count]]
+                       :order-by    [[:desc [:aggregation 0]]]}}
+              legacy)))))
 
 (deftest ^:parallel ->legacy-mbql-stripped-query-ambiguous-aggregation-ref-test
   (testing "leaves an unrecoverable aggregation ref alone rather than guessing which aggregation it meant"
@@ -100,7 +99,7 @@
           stripped (strip-lib-keys q2)]
       (is (= stripped (links/->legacy-mbql stripped))))))
 
-;;; ---------------------------------- Orphaned aggregation refs ----------------------------------
+;;; repair-orphaned-aggregation-refs
 
 (def ^:private repair #'links/repair-orphaned-aggregation-refs)
 
@@ -108,75 +107,72 @@
 (def ^:private orphan-uuid "99999999-9999-9999-9999-999999999999")
 
 (defn- stage-with-order-by
-  "A one-stage MBQL 5 query whose order-by references an aggregation by `ref-uuid`."
+  "An MBQL 5 stage whose order-by references an aggregation by `ref-uuid`."
   [aggregations ref-uuid]
+  {:lib/type     :mbql.stage/mbql
+   :source-table 1
+   :aggregation  aggregations
+   :order-by     [[:desc {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+                   [:aggregation {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} ref-uuid]]]})
+
+(defn- query-with-stages [& stages]
   {:lib/type :mbql/query
    :database 1
-   :stages   [{:lib/type     :mbql.stage/mbql
-               :source-table 1
-               :aggregation  aggregations
-               :order-by     [[:desc {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
-                               [:aggregation {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} ref-uuid]]]}]})
-
-(defn- order-by-ref-uuid [query]
-  (get-in query [:stages 0 :order-by 0 2 2]))
+   :stages   (vec stages)})
 
 (deftest ^:parallel repair-orphaned-aggregation-refs-single-aggregation-test
-  (testing "rebinds an orphaned ref to the stage's only aggregation"
-    (let [query (stage-with-order-by [[:count {:lib/uuid agg-uuid}]] orphan-uuid)]
-      (is (= agg-uuid
-             (order-by-ref-uuid (repair query)))))))
+  (testing "rebinds an orphaned ref to the stage's only aggregation, changing nothing else"
+    (let [query (query-with-stages (stage-with-order-by [[:count {:lib/uuid agg-uuid}]] orphan-uuid))]
+      (is (= (assoc-in query [:stages 0 :order-by 0 2 2] agg-uuid)
+             (repair query))))))
 
-(deftest ^:parallel repair-orphaned-aggregation-refs-no-op-test
-  (testing "a query whose refs all resolve is returned unchanged"
-    (let [query (stage-with-order-by [[:count {:lib/uuid agg-uuid}]] agg-uuid)]
-      (is (= query (repair query)))))
-  (testing "a query with no stages (e.g. legacy MBQL) passes through untouched"
-    (let [legacy {:database 1 :type :query :query {:source-table 1 :aggregation [[:count]]}}]
-      (is (= legacy (repair legacy))))))
+(deftest ^:parallel repair-orphaned-aggregation-refs-unchanged-test
+  (doseq [[description query]
+          {"every ref resolves"
+           (query-with-stages (stage-with-order-by [[:count {:lib/uuid agg-uuid}]] agg-uuid))
 
-(deftest ^:parallel repair-orphaned-aggregation-refs-ambiguous-test
-  (testing "leaves the ref alone when several aggregations make the intended target unrecoverable"
-    (let [query (stage-with-order-by [[:count {:lib/uuid agg-uuid}]
-                                      [:count {:lib/uuid "22222222-2222-2222-2222-222222222222"}]]
-                                     orphan-uuid)]
+           "several aggregations make the intended target unrecoverable"
+           (query-with-stages (stage-with-order-by [[:count {:lib/uuid agg-uuid}]
+                                                    [:count {:lib/uuid "22222222-2222-2222-2222-222222222222"}]]
+                                                   orphan-uuid))
+
+           "the aggregation has no uuid to bind to"
+           (query-with-stages (stage-with-order-by [[:count {}]] orphan-uuid))
+
+           "a legacy query has no stages"
+           {:database 1 :type :query :query {:source-table 1 :aggregation [[:count]]}}}]
+    (testing description
       (is (= query (repair query))))))
 
-(deftest ^:parallel repair-orphaned-aggregation-refs-unnormalized-test
-  (testing "an unnormalized aggregation has no uuid to bind to, so the ref is left alone"
-    (let [query (stage-with-order-by [[:count {}]] orphan-uuid)]
-      (is (= query (repair query))))))
+(deftest ^:parallel repair-orphaned-aggregation-refs-stage-scoping-test
+  (let [stage-0 {:lib/type     :mbql.stage/mbql
+                 :source-table 1
+                 :aggregation  [[:count {:lib/uuid agg-uuid}]]}]
+    (testing "a later stage's orphaned ref is not bound to an earlier stage's aggregation"
+      ;; MBQL 5 aggregation refs are same-stage only, so a cross-stage rebind would invent a reference the schema
+      ;; forbids.
+      (let [query (query-with-stages stage-0 (dissoc (stage-with-order-by nil orphan-uuid) :source-table :aggregation))]
+        (is (= query (repair query)))))
+    (testing "a later stage's orphaned ref is bound to that stage's own aggregation"
+      (let [stage-1-uuid "44444444-4444-4444-4444-444444444444"
+            query        (query-with-stages stage-0
+                                            (-> (stage-with-order-by [[:count {:lib/uuid stage-1-uuid}]] orphan-uuid)
+                                                (dissoc :source-table)))]
+        (is (= (assoc-in query [:stages 1 :order-by 0 2 2] stage-1-uuid)
+               (repair query)))))))
 
-(deftest ^:parallel repair-orphaned-aggregation-refs-scoping-test
-  (testing "a later stage's orphaned ref is not bound to an earlier stage's aggregation"
-    ;; MBQL 5 aggregation refs are same-stage only, so a cross-stage rebind would invent a
-    ;; reference the schema forbids.
-    (let [query {:lib/type :mbql/query
-                 :database 1
-                 :stages   [{:lib/type     :mbql.stage/mbql
-                             :source-table 1
-                             :aggregation  [[:count {:lib/uuid agg-uuid}]]}
-                            {:lib/type :mbql.stage/mbql
-                             :order-by [[:desc {:lib/uuid "cccccccc-cccc-cccc-cccc-cccccccccccc"}
-                                         [:aggregation {:lib/uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"} orphan-uuid]]]}]}]
-      (is (= query (repair query)))))
-  (testing "a join's own aggregation is used for refs inside that join, not the outer stage's"
+(deftest ^:parallel repair-orphaned-aggregation-refs-join-scoping-test
+  (testing "a join's refs bind to the join's own aggregation, and the outer stage is left alone"
     (let [join-agg-uuid "33333333-3333-3333-3333-333333333333"
-          query         {:lib/type :mbql/query
-                         :database 1
-                         :stages   [{:lib/type     :mbql.stage/mbql
-                                     :source-table 1
-                                     :aggregation  [[:count {:lib/uuid agg-uuid}]]
-                                     :joins        [{:lib/type :mbql/join
-                                                     :alias    "j"
-                                                     :stages   [{:lib/type     :mbql.stage/mbql
-                                                                 :source-table 2
-                                                                 :aggregation  [[:count {:lib/uuid join-agg-uuid}]]
-                                                                 :order-by     [[:desc {:lib/uuid "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"}
-                                                                                 [:aggregation {:lib/uuid "ffffffff-ffff-ffff-ffff-ffffffffffff"} orphan-uuid]]]}]}]}]}
-          repaired      (repair query)]
-      (is (= join-agg-uuid
-             (get-in repaired [:stages 0 :joins 0 :stages 0 :order-by 0 2 2]))))))
+          query         (query-with-stages
+                         (assoc (stage-with-order-by [[:count {:lib/uuid agg-uuid}]] agg-uuid)
+                                :joins [{:lib/type :mbql/join
+                                         :alias    "j"
+                                         :stages   [(-> (stage-with-order-by [[:count {:lib/uuid join-agg-uuid}]]
+                                                                             orphan-uuid)
+                                                        (assoc :source-table 2))]}]))]
+      (is (= (assoc-in query [:stages 0 :joins 0 :stages 0 :order-by 0 2 2] join-agg-uuid)
+             (repair query))))))
 
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
   (testing "chart link whose query lost :lib/type resolves to a renderable legacy /question# URL"
