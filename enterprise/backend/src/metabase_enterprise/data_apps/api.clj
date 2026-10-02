@@ -8,8 +8,10 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.access :as data-app.access]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.group-access :as data-app.group-access]
    [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.api-scope.data-app :as api-scope]
@@ -94,7 +96,6 @@
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
    [:resource_collection_id [:maybe ms/PositiveInt]]
-   [:permission_group_id    [:maybe ms/PositiveInt]]
    [:table_ids       [:sequential ms/PositiveInt]]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
@@ -143,6 +144,15 @@
 (def ^:private QueryTableDependenciesResponse
   [:map {:closed true}
    [:table_ids [:sequential ms/PositiveInt]]])
+
+(def ^:private AddGroupsRequest
+  [:map {:closed true
+         :decode/api (fn [body]
+                       (when (map? body)
+                         (api/check-400 (every? #{:group_ids} (keys body))
+                                        (tru "Only group_ids can be specified.")))
+                       body)}
+   [:group_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -200,15 +210,10 @@
     (select-keys app [:name :display_name])))
 
 (defn- read-check-data-app
-  "Check whether the current user can access a data app. Viewing requires read access to the app's
-   resource collection. An app with no linked resource collection has not been published yet: it is
-   not viewable by anyone through this endpoint (an admin must publish it first), signalled with a
-   409 so the client can show a dedicated \"not published\" screen rather than leaking metadata or
-   the bundle to every signed-in user."
+  "Require an assignment, then distinguish an unpublished app from an inaccessible app."
   [app]
   (api/read-check app)
-  (if-let [collection-id (:resource_collection_id app)]
-    (api/read-check :model/Collection collection-id)
+  (when-not (:resource_collection_id app)
     (throw (ex-info (tru "This data app has not been published yet.")
                     {:status-code 409})))
   app)
@@ -217,7 +222,7 @@
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
    `:error-code \"data-app-outdated\"`, so the client can show what to do. Applied where the
    contract is served: the bundle for everyone, and the metadata for non-superusers, who have no
-   other use for it. Superusers still read it, to badge the app and manage its users."
+   other use for it. Superusers still read it, to badge the app and manage its groups."
   [app]
   (when (data-app.config/outdated? app)
     (throw (ex-info (tru (str "This app was built for version {0} of data apps. Migrate it to the current "
@@ -232,11 +237,10 @@
    available, and otherwise listed only to superusers, who see it badged."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (let [apps (->> (data-apps.db/non-blob-data-apps available)
-                  (remove #(and (or available (not api/*is-superuser?*))
-                                (data-app.config/outdated? %)))
-                  (mapv api/read-check))]
-    (mapv data-app-response apps)))
+  (->> (data-app.access/readable-apps {:user-id api/*current-user-id* :superuser? api/*is-superuser?*} available)
+       (remove #(and (or available (not api/*is-superuser?*))
+                     (data-app.config/outdated? %)))
+       (mapv data-app-response)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
@@ -277,6 +281,32 @@
                    (tru "One or more tables do not exist."))
     (data-apps.db/update-data-app! (:id app) {:table_ids table-ids})
     (data-app-response (data-apps.db/non-blob-data-app (:id app)))))
+
+(def ^:private AssignedGroup
+  [:map
+   [:id ms/PositiveInt]
+   [:name :string]
+   [:member_count ms/IntGreaterThanOrEqualToZero]])
+
+(api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
+  "List the groups assigned to a data app."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))))
+
+(api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
+  "Assign a batch of internal groups atomically."
+  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
+   _query-params
+   {group-ids :group_ids} :- AddGroupsRequest]
+  (api/check-superuser)
+  (data-app.group-access/add-groups! (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug)) group-ids))
+
+(api.macros/defendpoint :delete ["/:slug/groups/:group-id" :slug slug-regex] :- :nil
+  "Remove a group's assignment and collection access."
+  [{:keys [slug group-id]} :- [:map {:closed true} [:slug ms/NonBlankString] [:group-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (data-app.group-access/remove-group! (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug)) group-id))
 
 (defn- query-table-ids
   "The tables a query reads, including ones it reaches only through an implicit join."

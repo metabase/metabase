@@ -347,6 +347,15 @@
   [group-ids :- [:set ms/PositiveInt]]
   (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in group-ids]))
 
+(mu/defn groups-by-ids
+  "The ID, name, and magic type of the requested groups, ordered by name."
+  [group-ids :- [:set ms/PositiveInt]]
+  (if (seq group-ids)
+    (t2/select [:model/PermissionsGroup :id :name :magic_group_type]
+               :id [:in group-ids]
+               {:order-by [:%lower.name]})
+    []))
+
 (mu/defn group-members
   "The active Users in the PermissionsGroups with `group-ids`. When `include-group-manager?` is true each row also
   carries the membership's `:is_group_manager` flag."

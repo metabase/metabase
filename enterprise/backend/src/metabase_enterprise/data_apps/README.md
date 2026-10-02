@@ -127,36 +127,31 @@ middleware's lookup doesn't pull in route code.
 
 ## Permissions
 
-Each app owns two server-managed resources (`resources.clj`), created on draft or first import and
-reasserted on every sync: a **collection** holding the copies the app is served from (saved
-questions, action models, table-sourced metrics) and a **permissions group** its users belong to.
+Each app owns a collection containing its saved questions, models (containing actions), and table-sourced metrics.
 
-The group is set database-level `view-data :blocked` on every database, so it grants **no data
-access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
-admins is revoked from the collection before the app group gets read access. Deleting an app deletes
-both resources and everything in the collection.
-
-**Viewing an app** requires read access to its resource collection. You have to be a member in
-the app's group or be an admin. An app without a linked resource collection is considered _unpublished_.
-The app's metadata and bundle endpoint returns HTTP 409 for all signed-in users. The frontend
-shows the error "This data app isn’t published yet".
-
-**A viewer sees an app's data only through access they already hold.** The app group grants no
-view-data of its own, so a viewer without access to an app's tables (e.g. a sandboxed user) sees no
-data from it — their own groups' permissions and sandboxes apply unchanged. Because the group grants
-nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
-
-**Managing is superuser-only** — enabling, disabling, deleting, drafts, query resolution, and repo
-status.
+- Admins assign groups through the `/api/apps/:slug/groups` endpoint.
+- Assignments are defined in the `data_app_group_assignment` table.
+- Users who belong to the assigned group can see the app in their sidebar, and are allowed to access them.
+  - We show a 403 and an error page if a user without an assigned group tries to open an app directly.
+- Admins can access every app.
+- Having access to an app collection does not grant data app access.
+- When assigning a group, we grant the group **read-only access to the app collection**.
+- Each data app sync repairs these grants and removes collection
+  access from unassigned groups.
+- Assignment changes never change data permissions, only collection permissions.
+- Deleting an app deletes its collection and group assignments.
+- If an app doesn't have an associated collection, it is considered to be _unpublished_.
+  - The metadata and bundle endpoint returns HTTP 409 for signed in users.
+  - The app shows an error page that _the data app isn't published yet_.
 
 ## Namespace map
 
-| Namespace             | Responsibility                                                                                      |
-| --------------------- | --------------------------------------------------------------------------------------------------- |
-| `sync.clj`            | Discovery, materialization, pruning, drafts. The entry point remote-sync calls.                     |
-| `config.clj`          | `data_app.yaml` parsing and validation; the `data_apps/` layout constants.                          |
-| `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
-| `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
-| `models/data_app.clj` | The `:model/DataApp` Toucan model, permissions, blob coercion.                                      |
-| `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
-| `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
+| Namespace             | Responsibility                                                                  |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `sync.clj`            | Discovery, materialization, pruning, drafts. The entry point remote-sync calls. |
+| `config.clj`          | `data_app.yaml` parsing and validation; the `data_apps/` layout constants.      |
+| `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                       |
+| `resources.clj`       | Lifecycle of the app-owned collection and derived collection permissions.       |
+| `models/data_app.clj` | The `:model/DataApp` Toucan model, permissions, blob coercion.                  |
+| `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                             |
+| `init.clj`            | Loads the above so endpoints, models, and hooks register.                       |

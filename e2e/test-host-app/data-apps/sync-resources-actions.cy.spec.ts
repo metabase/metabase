@@ -1,9 +1,9 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   addUserToGroup,
+  assignTestGroupToDataApp,
   createDataAppApiKey,
   dataAppHostAppRoot,
-  dataAppPermissionGroupId,
   declareDataAppActions,
   moveDataAppModelToCollection,
   removeDataAppActionDeclaration,
@@ -265,15 +265,14 @@ describe(
     });
 
     describe("permissions", () => {
-      const joinAppGroup = () =>
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          addUserToGroup(groupId, USERS.normal.email);
-          return cy.wrap(groupId, { log: false });
-        });
+      const grantNormalUserAppAccess = () =>
+        assignTestGroupToDataApp(APP_SLUG).then((groupId) =>
+          addUserToGroup(groupId, USERS.normal.email),
+        );
 
       // The copy is the whole point of the model copy: an app's viewers hold
       // read on the app's collection, so only the copy is reachable to them.
-      it("lets the app's group execute the copy but not the action it was copied from", () => {
+      it("lets an assigned group execute the copy but not the source action", () => {
         syncOneAction().then(({ modelId, action, copiedAction }) => {
           // An action is readable through its model, and the fixture model sits
           // in the root collection the normal user's groups can read.
@@ -282,7 +281,7 @@ describe(
             name: "Source models",
             access: "none",
           });
-          joinAppGroup();
+          grantNormalUserAppAccess();
 
           cy.signInAsNormalUser();
           cy.request({
@@ -314,7 +313,7 @@ describe(
 
       it("reports a copy that was deleted in Metabase without being re-synced", () => {
         syncOneAction().then(({ copiedAction }) => {
-          joinAppGroup();
+          grantNormalUserAppAccess();
 
           // The source still names this copy, but a production bundle built
           // before the deletion keeps addressing it.
@@ -336,13 +335,13 @@ describe(
         syncOneAction().then(({ modelId, copiedModel }) => {
           // The fixture model is created in the root collection, which the
           // normal user's groups can read, so close it before asking whether
-          // the app's group opened anything.
+          // the assigned group opened anything.
           moveDataAppModelToCollection({
             modelId,
             name: "Source models",
             access: "none",
           });
-          joinAppGroup();
+          grantNormalUserAppAccess();
 
           cy.signInAsNormalUser();
           cy.request(`/api/card/${copiedModel.id}`)

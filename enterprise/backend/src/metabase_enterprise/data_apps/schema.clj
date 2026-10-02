@@ -29,6 +29,5 @@
    [:description     {:optional true} [:maybe :string]]
    [:version         {:optional true} ms/PositiveInt]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:permission_group_id    {:optional true} [:maybe ms/PositiveInt]]
    [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:draft                  {:optional true} [:maybe :boolean]]])

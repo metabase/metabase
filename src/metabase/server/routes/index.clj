@@ -8,6 +8,7 @@
    [hiccup.util]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
+   [metabase.data-apps.core :as data-apps]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
@@ -155,4 +156,8 @@
   (cond
     (not (premium-features/enable-data-apps?)) (respond nil)
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
-    :else                                      (data-app-shell request respond raise)))
+    :else (try
+            (data-apps/check-data-app-access! request)
+            (data-app-shell request respond raise)
+            (catch Throwable e
+              (raise e)))))

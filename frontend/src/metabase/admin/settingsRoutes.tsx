@@ -138,6 +138,13 @@ const dataAppsManage = () =>
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
   ).then(({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }));
 
+const dataAppGroupsManage = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
+  ).then(({ DataAppGroupsManagePage }) => ({
+    Component: DataAppGroupsManagePage,
+  }));
+
 const uploadSettings = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/UploadSettingsPage"
@@ -246,6 +253,7 @@ export const getSettingsRoutes = (
         element={<IsAdmin />}
       >
         <Route index lazy={dataAppsManage} />
+        <Route path=":slug/groups" lazy={dataAppGroupsManage} />
       </Route>
       <Route path="uploads" lazy={uploadSettings} />
       <Route

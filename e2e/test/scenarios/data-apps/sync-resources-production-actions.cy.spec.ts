@@ -1,9 +1,9 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   addUserToGroup,
+  assignTestGroupToDataApp,
   createDataAppApiKey,
   dataAppIframe,
-  dataAppPermissionGroupId,
   mockDataApp,
   syncDataAppResources,
 } from "e2e/support/helpers";
@@ -128,9 +128,9 @@ describe(
       });
     });
 
-    it("lets a member of the app's group execute it", () => {
+    it("lets a member of an assigned group execute it", () => {
       syncApp().then(({ copiedActionId }) => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+        assignTestGroupToDataApp(APP_SLUG).then((groupId) => {
           addUserToGroup(groupId, USERS.normal.email);
 
           cy.signInAsNormalUser();

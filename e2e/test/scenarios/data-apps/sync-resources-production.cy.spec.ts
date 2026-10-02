@@ -2,9 +2,9 @@ import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToGroup,
+  assignTestGroupToDataApp,
   createDataAppApiKey,
   dataAppIframe,
-  dataAppPermissionGroupId,
   mockDataApp,
   syncDataAppResources,
 } from "e2e/support/helpers";
@@ -162,9 +162,9 @@ describe("scenarios > data apps > sync-resources in production", () => {
     });
   });
 
-  it("serves the app to a member of its permission group", () => {
+  it("serves the app to a member of an assigned group", () => {
     syncApp().then(() => {
-      dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+      assignTestGroupToDataApp(APP_SLUG).then((groupId) => {
         addUserToGroup(groupId, USERS.normal.email);
 
         cy.signInAsNormalUser();
