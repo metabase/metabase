@@ -8,11 +8,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
-    inputs:
-      base:
-        description: Compare against this branch to test only what changed. Empty, or on master or release, runs everything.
-        type: string
-        default: ""
 
 permissions:
   id-token: write
@@ -30,9 +25,7 @@ jobs:
   # ref is the stack base. Every PR above it is force-skipped and gets tested
   # once it reaches the bottom of the stack.
   #
-  # A run started by hand runs everything, unless it passes `base` to test only
-  # what changed against that branch. Master and release branches always run
-  # everything, so they ignore `base`.
+  # A run started by hand has no pull request to compare against, so it runs everything.
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -46,25 +39,12 @@ jobs:
         env:
           VERDICT: >-
             ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
-            || github.event_name == 'workflow_dispatch' && inputs.base == '' && 'force-run'
+            || github.event_name == 'workflow_dispatch' && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
             || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
             || 'defer' }}
         run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
-      # Only a narrowed run uses `base`, and every job that does needs this one, so a bad value fails the run
-      # before git sees it.
-      - name: Check the base branch name
-        if: steps.decide.outputs.verdict == 'defer' && inputs.base != ''
-        run: |
-          git check-ref-format --branch "$BASE" > /dev/null
-          if [ "$BASE" = "$BRANCH" ]; then
-            echo "::error::base must differ from the branch being run, or nothing counts as changed."
-            exit 1
-          fi
-        env:
-          BASE: ${{ inputs.base }}
-          BRANCH: ${{ github.ref_name }}
 
   files-changed:
     needs: should-run
@@ -117,7 +97,6 @@ jobs:
           token: ${{ github.token }}
           # comma separated list of files
           list-files: csv
-          base: ${{ inputs.base }}
           filters: .github/file-paths.yaml
 
   create-test-plan:
@@ -252,7 +231,6 @@ jobs:
         id: static_viz
         with:
           token: ${{ github.token }}
-          base: ${{ inputs.base }}
           filters: .github/static-viz-sources.yaml
 
   backend-tests:
@@ -317,8 +295,6 @@ jobs:
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.backend_all != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-      # Without it, a narrowed run started by hand compares the branch with itself and skips the drivers it touched.
-      base-ref: ${{ needs.should-run.outputs.verdict == 'defer' && inputs.base || '' }}
 
   frontend-tests:
     needs: [should-run, files-changed, create-test-plan]
