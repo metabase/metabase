@@ -13,6 +13,7 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase-enterprise.content-diagnostics.schema :as cd.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common :refer [+auth]]
@@ -224,11 +225,11 @@
   #{:empty :sparse :crowded})
 
 (def ^:private imbalanced-entity-types
-  "Entity types the `/imbalanced` filter accepts. Its own enum rather than the shared
+  "Entity types the `/imbalanced` filter accepts. The full vocabulary rather than the shared
   `covered-entity-types`: `collection` sits outside the shared stale/slow set, `card` emits only
   `empty`, and `transform` emits nothing - the filter vocabulary is shared across
   `empty`/`sparse`/`crowded`, so it stays a superset of what they emit."
-  #{:card :collection :dashboard :document :transform})
+  cd.schema/entity-types)
 
 (def ^:private duplicated-finding-types
   "The finding types the `/duplicated` endpoint spans."
@@ -240,10 +241,10 @@
   (assoc api.common/base-sort-column->field :duplicate-count :duplicate_count))
 
 (def ^:private duplicated-entity-types
-  "Entity types the duplicated finding types can emit - the shared `api.common/covered-entity-types` plus
-  `:collection` (its own endpoint enum, not the shared set, so the stale/slow endpoints stay
-  collection-free)."
-  (conj api.common/covered-entity-types :collection))
+  "Entity types the duplicated finding types can emit - the full vocabulary, since the checker walks every
+  entity type in `common/entity-type->model` (its own endpoint enum, not the shared stale/slow set, so
+  those endpoints stay collection-free)."
+  cd.schema/entity-types)
 
 (defn- entity-types-param
   "Param schema for `entity-types` - the flat vocabulary `api.common/filter-types` builds from the
