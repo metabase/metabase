@@ -30,31 +30,6 @@ describe("scenarios > dashboard > filters > text/category", () => {
     });
   });
 
-  it("should drill to a question with multi-value 'contains' filter applied (metabase#42999)", () => {
-    H.setFilter("Text or Category", "Contains");
-    cy.findAllByRole("radio", { name: "Multiple values" }).should("be.checked");
-    cy.findByTestId("visualization-root").findByText("Select…").click();
-    H.popover().contains("Source").click();
-    H.saveDashboard();
-    waitDashboardCardQuery();
-
-    H.filterWidget().eq(0).click();
-    applyFilterByType("Contains", "oo,aa");
-    waitDashboardCardQuery();
-
-    H.getDashboardCard().findByText("test question").click();
-
-    cy.location("href").should("contain", "/question#");
-    cy.findByTestId("filter-pill").should(
-      "contain.text",
-      "User → Source contains 2 selections",
-    );
-    cy.findByTestId("app-bar").should(
-      "contain.text",
-      "Started from test question",
-    );
-  });
-
   it("should work when set through the filter widget", () => {
     DASHBOARD_TEXT_FILTERS.forEach(({ operator, single }) => {
       cy.log(`Make sure we can connect ${operator} filter`);
@@ -97,6 +72,29 @@ describe("scenarios > dashboard > filters > text/category", () => {
         H.clearFilterWidget(index);
         waitDashboardCardQuery();
       },
+    );
+
+    cy.log(
+      "drill to a question with multi-value 'contains' filter applied (metabase#42999)",
+    );
+    const containsIndex = DASHBOARD_TEXT_FILTERS.findIndex(
+      ({ operator, single }) => operator === "Contains" && !single,
+    );
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.filterWidget().eq(containsIndex).click();
+    applyFilterByType("Contains", "oo,aa");
+    waitDashboardCardQuery();
+
+    H.getDashboardCard().findByText("test question").click();
+
+    cy.location("href").should("contain", "/question#");
+    cy.findByTestId("filter-pill").should(
+      "contain.text",
+      "User → Source contains 2 selections",
+    );
+    cy.findByTestId("app-bar").should(
+      "contain.text",
+      "Started from test question",
     );
   });
 
@@ -232,46 +230,41 @@ describe("scenarios > dashboard > filters > text/category", () => {
     assertOrganicOnly();
   });
 
-  it("should use the list value picker for single-value category filters (metabase#49323)", () => {
-    H.setFilter("Text or Category", "Is");
-
+  it("should use the list value picker for single- and multi-value category filters (metabase#49323)", () => {
+    H.setFilter("Text or Category", "Is", "Single title");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
-
     H.sidebar().findByText("A single value").click();
-    H.saveDashboard();
 
-    waitDashboardCardQuery();
-
-    H.filterWidget().contains("Text").click();
-    H.popover().within(() => {
-      cy.findByText("Aerodynamic Concrete Bench").should("be.visible");
-      cy.findByRole("combobox").should("not.exist");
-      cy.findByText("Aerodynamic Concrete Bench").click();
-      cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
-      cy.button("Add filter").click();
-    });
-    H.filterWidget().findByText("Aerodynamic Bronze Hat").should("be.visible");
-  });
-
-  it("should use the list value picker for multi-value category filters (metabase#49323)", () => {
-    H.setFilter("Text or Category", "Is");
-
+    H.setFilter("Text or Category", "Is", "Multiple titles");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
-
-    H.sidebar().findByText("Multiple values").click();
     H.saveDashboard();
-
     waitDashboardCardQuery();
 
-    H.filterWidget().contains("Text").click();
-    H.popover().within(() => {
-      cy.findByText("Aerodynamic Concrete Bench").should("be.visible");
-      cy.findByRole("combobox").should("not.exist");
-      cy.findByText("Aerodynamic Concrete Bench").click();
-      cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
-      cy.button("Add filter").click();
+    [
+      {
+        name: "Single title",
+        listTestId: "single-select-list-field",
+        widgetText: "Aerodynamic Bronze Hat",
+      },
+      {
+        name: "Multiple titles",
+        listTestId: "list-field",
+        widgetText: "2 selections",
+      },
+    ].forEach(({ name, listTestId, widgetText }, index) => {
+      cy.log(name);
+      H.filterWidget({ name }).click();
+      H.popover().within(() => {
+        cy.findByTestId(listTestId).should("be.visible");
+        cy.findByText("Aerodynamic Concrete Bench").should("be.visible");
+        cy.findByRole("combobox").should("not.exist");
+        cy.findByText("Aerodynamic Concrete Bench").click();
+        cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
+        cy.button("Add filter").click();
+      });
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      H.filterWidget().eq(index).findByText(widgetText).should("be.visible");
     });
-    H.filterWidget().findByText("2 selections").should("be.visible");
   });
 });
 
