@@ -8,23 +8,25 @@ import {
   type SyncTaskState,
   initialState,
   remoteSyncReducer,
+  taskStarted,
 } from "../sync-task-slice";
 
 import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware";
 
 interface TestState {
-  remoteSyncPlugin: SyncTaskState;
+  plugins: { remoteSyncPlugin: SyncTaskState };
 }
 
 const createTestStore = () => {
   return configureStore({
     reducer: combineReducers({
-      remoteSyncPlugin: remoteSyncReducer,
+      // nested as the app registers it (PLUGIN_REDUCERS -> state.plugins), which the selectors read
+      plugins: combineReducers({ remoteSyncPlugin: remoteSyncReducer }),
       // EnterpriseApi is an enhanced version of Api, so they share the same reducer
       [Api.reducerPath]: Api.reducer,
     }),
     preloadedState: {
-      remoteSyncPlugin: initialState,
+      plugins: { remoteSyncPlugin: initialState },
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -72,12 +74,12 @@ describe("remote-sync-listener-middleware", () => {
       // Wait for the request to complete and middleware to process
       await waitForCondition(() => {
         const state = store.getState() as TestState;
-        return state.remoteSyncPlugin?.showModal === true;
+        return state.plugins.remoteSyncPlugin?.showModal === true;
       });
 
       const state = store.getState() as TestState;
-      expect(state.remoteSyncPlugin?.showModal).toBe(true);
-      expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
+      expect(state.plugins.remoteSyncPlugin?.showModal).toBe(true);
+      expect(state.plugins.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
         "import",
       );
     });
@@ -106,8 +108,8 @@ describe("remote-sync-listener-middleware", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const state = store.getState() as TestState;
-      expect(state.remoteSyncPlugin?.showModal).toBe(false);
-      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin?.showModal).toBe(false);
+      expect(state.plugins.remoteSyncPlugin?.currentTask).toBeNull();
     });
 
     it("should NOT show modal when settings save fails", async () => {
@@ -135,8 +137,8 @@ describe("remote-sync-listener-middleware", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const state = store.getState() as TestState;
-      expect(state.remoteSyncPlugin?.showModal).toBe(false);
-      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin?.showModal).toBe(false);
+      expect(state.plugins.remoteSyncPlugin?.currentTask).toBeNull();
     });
 
     it("should NOT show modal when disabling remote sync", async () => {
@@ -163,8 +165,8 @@ describe("remote-sync-listener-middleware", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const state = store.getState() as TestState;
-      expect(state.remoteSyncPlugin?.showModal).toBe(false);
-      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin?.showModal).toBe(false);
+      expect(state.plugins.remoteSyncPlugin?.currentTask).toBeNull();
     });
   });
 
@@ -187,12 +189,12 @@ describe("remote-sync-listener-middleware", () => {
       // The import listener triggers on matchPending, so modal should show immediately
       await waitForCondition(() => {
         const state = store.getState() as TestState;
-        return state.remoteSyncPlugin?.showModal === true;
+        return state.plugins.remoteSyncPlugin?.showModal === true;
       });
 
       const state = store.getState() as TestState;
-      expect(state.remoteSyncPlugin?.showModal).toBe(true);
-      expect(state.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
+      expect(state.plugins.remoteSyncPlugin?.showModal).toBe(true);
+      expect(state.plugins.remoteSyncPlugin?.currentTask?.sync_task_type).toBe(
         "import",
       );
     });
@@ -221,8 +223,88 @@ describe("remote-sync-listener-middleware", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const state = store.getState() as TestState;
-      expect(state.remoteSyncPlugin?.showModal).toBe(false);
-      expect(state.remoteSyncPlugin?.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin?.showModal).toBe(false);
+      expect(state.plugins.remoteSyncPlugin?.currentTask).toBeNull();
+    });
+  });
+
+  describe("getRemoteSyncCurrentTask listener", () => {
+    const CURRENT_TASK_URL = "path:/api/ee/remote-sync/current-task";
+
+    const finishedTask = (sync_task_type: "import" | "export") => ({
+      id: 7,
+      sync_task_type,
+      status: "successful",
+      progress: 1,
+      started_at: "2026-01-01T00:00:00Z",
+      ended_at: "2026-01-01T00:00:05Z",
+      last_progress_report_at: "2026-01-01T00:00:05Z",
+      error_message: null,
+      initiated_by: 1,
+    });
+
+    const runningTask = (sync_task_type: "import" | "export") => ({
+      ...finishedTask(sync_task_type),
+      id: 8,
+      status: "running",
+      progress: 0.5,
+      ended_at: null,
+    });
+
+    const fetchCurrentTask = (store: ReturnType<typeof createTestStore>) =>
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(undefined, {
+          forceRefetch: true,
+        }),
+      );
+
+    it("ignores a finished task when no task is being watched", async () => {
+      fetchMock.get(CURRENT_TASK_URL, finishedTask("export"));
+      const store = createTestStore();
+
+      await fetchCurrentTask(store);
+
+      const state = store.getState() as TestState;
+      expect(state.plugins.remoteSyncPlugin.currentTask).toBeNull();
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(false);
+    });
+
+    it("handles the end of a task once and stops refetching it", async () => {
+      fetchMock.get(CURRENT_TASK_URL, finishedTask("export"));
+      const store = createTestStore();
+      store.dispatch(taskStarted({ taskType: "export" }));
+
+      await fetchCurrentTask(store);
+      await new Promise((resolve) => setTimeout(resolve, 700));
+
+      const state = store.getState() as TestState;
+      expect(
+        state.plugins.remoteSyncPlugin.currentTask?.ended_at,
+      ).not.toBeNull();
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(false);
+      // The terminal handling invalidates this query once; the refetched, already-ended
+      // task must not be treated as another event, or the query would refetch forever.
+      expect(
+        fetchMock.callHistory.calls(CURRENT_TASK_URL).length,
+      ).toBeLessThanOrEqual(2);
+    });
+
+    it("keeps the modal of a task started right after the previous one finished", async () => {
+      // The refetch triggered by the export's end still reports the export; later polls see the import.
+      fetchMock.getOnce(CURRENT_TASK_URL, finishedTask("export"));
+      fetchMock.get(CURRENT_TASK_URL, runningTask("import"));
+      const store = createTestStore();
+      store.dispatch(taskStarted({ taskType: "export" }));
+
+      await fetchCurrentTask(store);
+      store.dispatch(taskStarted({ taskType: "import" }));
+      await new Promise((resolve) => setTimeout(resolve, 700));
+
+      const state = store.getState() as TestState;
+      expect(state.plugins.remoteSyncPlugin.currentTask?.sync_task_type).toBe(
+        "import",
+      );
+      expect(state.plugins.remoteSyncPlugin.showModal).toBe(true);
     });
   });
 });
