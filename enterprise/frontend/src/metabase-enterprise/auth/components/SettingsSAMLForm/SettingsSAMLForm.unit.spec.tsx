@@ -21,6 +21,7 @@ const GROUPS = [
 ];
 
 const SAML_GROUP_PLACEHOLDER = "Enter SAML group...";
+const URL_EXAMPLE = "https://your-org-name.example.com";
 const ISSUER_EXAMPLE = "http://www.example.com/141xkex604w0Q5PN724v";
 
 const fields: { label: RegExp; value: string }[] = [
@@ -220,6 +221,50 @@ describe("SettingsSAMLForm", () => {
       expect(
         screen.getByText("Using MB_SAML_APPLICATION_NAME"),
       ).toBeInTheDocument();
+    });
+
+    it("moves the identity provider URL example into the placeholder", async () => {
+      await setup({}, [
+        {
+          key: "saml-identity-provider-uri",
+          description: `This is the URL where your users go to log in to your identity provider. Depending on which IdP you're using, this usually looks like \`${URL_EXAMPLE}\` or \`https://example.com/app/my_saml_app/abc123/sso/saml\``,
+        },
+      ]);
+
+      expect(
+        screen.getByLabelText(/SAML identity provider URL/),
+      ).toHaveAttribute("placeholder", URL_EXAMPLE);
+      expect(
+        screen.getByText(
+          "This is the URL where your users go to log in to your identity provider.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/usually looks like/)).not.toBeInTheDocument();
+    });
+
+    it("shows the identity provider URL an env var sets, read-only", async () => {
+      await setup(
+        { "saml-identity-provider-uri": "https://sso.example.org/saml" },
+        [
+          {
+            key: "saml-identity-provider-uri",
+            is_env_setting: true,
+            env_name: "MB_SAML_IDENTITY_PROVIDER_URI",
+          },
+        ],
+      );
+
+      const input = screen.getByLabelText(/SAML identity provider URL/);
+      expect(input).toHaveValue("https://sso.example.org/saml");
+      expect(input).toHaveAttribute("readonly");
+      expect(
+        screen.getByText("Using MB_SAML_IDENTITY_PROVIDER_URI"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "This is the URL where your users go to log in to your identity provider.",
+        ),
+      ).not.toBeInTheDocument();
     });
 
     it("moves the issuer example into the placeholder", async () => {

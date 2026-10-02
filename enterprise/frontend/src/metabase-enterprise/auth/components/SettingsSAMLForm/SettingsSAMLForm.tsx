@@ -201,9 +201,11 @@ export function SettingsSAMLForm() {
                   <FormTextInput
                     name="saml-identity-provider-uri"
                     label={t`SAML identity provider URL`}
-                    placeholder="https://your-org-name.yourIDP.com"
+                    description={t`This is the URL where your users go to log in to your identity provider.`}
+                    descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
+                    placeholder="https://your-org-name.example.com"
                     required
-                    {...getExtraFormFieldProps(
+                    {...getEnvNoticeProps(
                       settingDetails["saml-identity-provider-uri"],
                     )}
                   />
