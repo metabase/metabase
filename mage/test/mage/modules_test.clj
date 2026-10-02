@@ -483,7 +483,8 @@
                    (io/make-parents file)
                    (spit file (pr-str ns-form))
                    (str file)))
-        clj    (source "src/core/init.clj" '(ns metabase.core.init (:require [metabase.widget.core] [metabase.core.util])))
+        clj    (source "src/core/init.clj" '(ns metabase.core.init (:require
+                                                                    [metabase.widget.core] [metabase.core.util])))
         tst    (source "test/core/init_test.clj" '(ns metabase.core.init-test (:require [metabase.gadget.core])))
         cljs   (source "src/core/ui.cljs" '(ns metabase.core.ui (:require [metabase.gadget.core])))]
     (try
