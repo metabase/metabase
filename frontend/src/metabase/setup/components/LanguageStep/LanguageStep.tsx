@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
+import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Locale } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
@@ -60,7 +61,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
       </Stack>
       <Box
         component="ol"
-        className={S.localeGroup}
+        className={CS.overflowYScroll}
         role="radiogroup"
         mb="xxl"
         p="sm"
