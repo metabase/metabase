@@ -84,13 +84,16 @@ export async function exportResources(appDirectory: string, file?: string) {
     actions: actions.map(({ sourceActionId }) => sourceActionId),
   });
 
-  if (exported.queries.length !== queries.length) {
-    throw new Error("The export response has an unexpected body.");
-  }
-
   const exportedActions = new Map(
     exported.actions.map((action) => [action.id, action]),
   );
+
+  if (
+    exported.queries.length !== queries.length ||
+    actions.some(({ sourceActionId }) => !exportedActions.has(sourceActionId))
+  ) {
+    throw new Error("The export response has an unexpected body.");
+  }
 
   return JSON.stringify(
     {
