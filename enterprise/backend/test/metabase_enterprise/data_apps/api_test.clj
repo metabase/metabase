@@ -541,7 +541,7 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [draft (t2/insert-returning-instance! :model/DataApp {:name "demo" :display_name "demo"
-                                                                   :bundle_path "dist/index.js" :draft true})]
+                                                                 :bundle_path "dist/index.js" :draft true})]
         (is (=? {:id                     (:id draft)
                  :draft                  false
                  :resource_collection_id (:resource_collection_id draft)}
