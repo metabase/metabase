@@ -8,6 +8,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
+    inputs:
+      base:
+        description: Branch to detect changes against. Empty means the default branch; pull request runs always use the PR base.
+        type: string
+        default: ""
 
 permissions:
   id-token: write
@@ -87,6 +92,11 @@ jobs:
       backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
     steps:
       - uses: actions/checkout@v7
+      - name: Check the base branch name
+        if: inputs.base != ''
+        run: git check-ref-format --branch "$BASE" > /dev/null
+        env:
+          BASE: ${{ inputs.base }}
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
@@ -94,6 +104,7 @@ jobs:
           token: ${{ github.token }}
           # comma separated list of files
           list-files: csv
+          base: ${{ inputs.base }}
           filters: .github/file-paths.yaml
 
   create-test-plan:
@@ -228,6 +239,7 @@ jobs:
         id: static_viz
         with:
           token: ${{ github.token }}
+          base: ${{ inputs.base }}
           filters: .github/static-viz-sources.yaml
 
   backend-tests:
@@ -292,6 +304,10 @@ jobs:
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.backend_all != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      # Without it, a run started by hand compares the branch with itself and skips the drivers it touched.
+      base-ref: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        (inputs.base || github.event.repository.default_branch) || '' }}
 
   frontend-tests:
     needs: [should-run, files-changed, create-test-plan]
