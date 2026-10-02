@@ -896,24 +896,26 @@ const MODEL_NAME = "Test Action Model";
           cy.findByTestId("action-editor-modal").should("not.exist");
 
           getActionParametersInputModal().within(() => {
-            cy.findByLabelText("Timestamp").type("2020-01-01");
+            cy.findByLabelText("Timestamp").type("2020-02-02");
             cy.findByLabelText("ID").type("1");
 
             cy.button("New action name").click();
           });
 
-          cy.wait("@executeAction").then((interception) => {
-            expect(
-              Object.values(interception.request.body.parameters)
-                .sort()
-                .join(","),
-            ).to.equal("1,2020-01-01");
-          });
+          cy.wait("@executeAction");
 
           cy.findByTestId("toast-undo").within(() => {
             cy.findByText("New action name ran successfully").should(
               "be.visible",
             );
+          });
+
+          H.queryWritableDB(
+            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+            dialect,
+          ).then((result) => {
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].timestamp).to.include("2020-02-02");
           });
         });
       });
