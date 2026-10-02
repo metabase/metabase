@@ -56,7 +56,8 @@
       (is (false? (dataset {:token-scopes #{"agent:search"}})))
       (is (true? (dataset {:token-scopes #{"agent:query:run"}})))
       (is (true? (dataset {:token-scopes #{"agent:query:*"}})))
-      (is (true? (dataset {:token-scopes #{::scope/unrestricted}}))))
+      (is (false? (dataset {:token-scopes #{::scope/unrestricted}}))
+          "the unrestricted sentinel satisfies nothing on the surface: a claim holds only literal MCP scopes"))
     (testing "a v2 credential minted before the scope claim existed reaches only the free routes"
       (is (true? (bootstrap {})))
       (is (false? (dataset {}))))

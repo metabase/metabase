@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.mcp.test-util :as mcp.tu]
    ;; every tool namespace, so the pointer sweep below sees every registered description
    [metabase.mcp.v2.api]
    [metabase.mcp.v2.message :as message]
@@ -15,7 +16,7 @@
 
 (defn- call
   [args]
-  (:result (registry/call-tool nil (str (random-uuid)) "learn" args)))
+  (:result (registry/call-tool mcp.tu/all-scopes (str (random-uuid)) "learn" args)))
 
 (defn- text-of
   [result]

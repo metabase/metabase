@@ -4,6 +4,7 @@
    gating, Malli validation, and teaching-error conversion are exercised for free."
   (:require
    [clojure.test :refer :all]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -19,7 +20,7 @@
 (comment tools.bookmark/keep-me)
 
 (defn- call-tool!
-  ([user args] (call-tool! user nil args))
+  ([user args] (call-tool! user mcp.tu/all-scopes args))
   ([user scopes args]
    (mt/with-current-user (mt/user->id user)
      (registry/call-tool scopes nil "bookmark_content" args))))

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -24,9 +25,8 @@
 
 (defn- call-params
   "Invoke get_parameter_values through the registry — the same seam the JSON-RPC route uses, so
-   scope gating and argument validation are exercised. `token-scopes` of nil means an internal
-   caller, which satisfies every scope check."
-  ([args] (call-params nil args))
+   scope gating and argument validation are exercised. The one-argument arity holds every MCP scope."
+  ([args] (call-params mcp.tu/all-scopes args))
   ([token-scopes args]
    (registry/call-tool token-scopes "test-session" "get_parameter_values" args)))
 
@@ -44,13 +44,13 @@
   (-> result :content first :text v2.tu/strip-data-boundary))
 
 (defn- params-text
-  ([args] (params-text nil args))
+  ([args] (params-text mcp.tu/all-scopes args))
   ([token-scopes args] (success-text (call-params token-scopes args))))
 
 (defn- params-result
   "The decoded JSON payload of a successful call — the first line of the text block, since a
    steering line may follow it."
-  ([args] (params-result nil args))
+  ([args] (params-result mcp.tu/all-scopes args))
   ([token-scopes args]
    (-> (params-text token-scopes args) str/split-lines first json/decode+kw)))
 
@@ -58,7 +58,7 @@
   "The error text of a rejected call, registry-level (scope, argument validation) and tool-level
    (teaching error) alike. Throws when the call succeeded, so a passing call can never satisfy an
    error assertion."
-  ([args] (params-error nil args))
+  ([args] (params-error mcp.tu/all-scopes args))
   ([token-scopes args]
    (let [{:keys [result error]} (call-params token-scopes args)]
      (cond

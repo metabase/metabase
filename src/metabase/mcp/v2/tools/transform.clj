@@ -117,8 +117,7 @@
   ;; `execute_sql`, with a warehouse write on top, without its scope or its kill switch. Every source that can
   ;; resolve to native passes these, `query_handle` included: holding a handle is not proof the gates were spent
   ;; (`/api/embed-mcp/drills` stores a native query under `agent:query:run` alone, and a handle resolves by user,
-  ;; so any credential of that user can spend one minted by another). Unscoped callers bind the unrestricted
-  ;; sentinel, which matches every scope.
+  ;; so any credential of that user can spend one minted by another).
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (common/throw-insufficient-scope!
      (message/msg [(str "Saving a native (SQL) transform requires the %s scope "

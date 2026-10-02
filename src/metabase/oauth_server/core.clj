@@ -1,5 +1,6 @@
 (ns metabase.oauth-server.core
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api-scope.core :as api-scope]
@@ -117,9 +118,8 @@
   ;; scope still needs the user's consent. The rest of the ceiling -- the agent-API extras -- is added only while
   ;; registration is enabled, so an admin who turned it off leaves existing clients without those.
   ;;
-  ;; The MCP kill switch is the one thing that stops the widening entirely. Some MCP surface scopes also gate the agent
-  ;; API (`agent:resource:read` is the declared scope of `POST /api/agent/v1/read-resource`), which has its own lever,
-  ;; so widening with MCP off would hand a client a scope its registration never included for a surface still serving.
+  ;; The MCP kill switch is the one thing that stops the widening entirely: with MCP off, no surface serves the MCP
+  ;; scopes, so there is no reason to hand a client a scope its registration never included.
   (reify oidc.proto/ClientStore
     (get-client [_ client-id]
       (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
@@ -167,6 +167,52 @@
                  (subs 0 (dec (count path)))))))
       (catch java.net.URISyntaxException _ nil))))
 
+(defn- canonical-resources
+  "The set of [[canonical-resource-uri]] forms of `resources`, a string or a sequence of strings."
+  [resources]
+  ;; A lone indicator may arrive as a bare string (the endpoint schema allows one). `keep` over a String iterates
+  ;; characters, none of which canonicalize, so normalize first.
+  (into #{} (keep canonical-resource-uri) (cond-> resources (string? resources) vector)))
+
+(defn- mcp-paths-named
+  "The MCP endpoint paths that `resources` (RFC 8707 indicators) name, compared as [[canonical-resource-uri]]. Every
+  alias in [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one."
+  [resources]
+  (let [named (canonical-resources resources)]
+    (filter #(contains? named (canonical-resource-uri (str (system/site-url) %)))
+            (mcp/mcp-endpoint-paths))))
+
+(defn- mcp-endpoint-resource?
+  "Whether the canonical resource URI `resource` names an MCP endpoint path under any host and subpath: its path ends
+  with one of [[metabase.mcp.core/mcp-endpoint-paths]]. Every endpoint path starts with `/`, so the match is at a
+  segment boundary."
+  [resource]
+  (let [path (try (.getPath (java.net.URI. ^String resource))
+                  (catch java.net.URISyntaxException _ nil))]
+    (boolean (and path (some #(str/ends-with? path %) (mcp/mcp-endpoint-paths))))))
+
+(defn mcp-resource?
+  "Whether `resources`, the RFC 8707 binding stored on a token, names the MCP endpoint.
+
+  This is the token's audience: a token bound to the MCP endpoint authenticates only requests to it (see
+  [[mcp-endpoint-request?]]), and the MCP endpoint accepts no other OAuth token. The binding is decided by the path of
+  each canonical resource, not by the current Site URL, so a token stays bound when an admin changes the Site URL's
+  host or subpath. A resource that does not parse as an absolute URI binds nothing."
+  [resources]
+  (boolean (some mcp-endpoint-resource? (canonical-resources resources))))
+
+(defn mcp-endpoint-request?
+  "Whether the request path `uri` is served by the MCP endpoint, under any of its paths."
+  [uri]
+  (boolean (some #(or (= uri %) (str/starts-with? (str uri) (str % "/")))
+                 (mcp/mcp-endpoint-paths))))
+
+(defn resources-within?
+  "Whether every RFC 8707 indicator in `requested` names a resource in `granted`, compared as
+  [[canonical-resource-uri]]. False when `granted` is empty and `requested` is not."
+  [requested granted]
+  (set/subset? (canonical-resources requested) (canonical-resources granted)))
+
 (defn narrow-scope-to-resource
   "Narrow an OAuth `scope` string to what the requested `resources` accept.
 
@@ -187,23 +233,14 @@
   `mb:full` does not survive. The MCP resource metadata never advertised it, and a client naming the MCP resource is
   asking for a token to use against that surface — which accepts none of the REST API that scope unlocks.
 
-  This shapes the consent screen and the stored grant; it is not audience enforcement. `resolve-access-token` does
-  not read `:resource` from the token row, so a token narrowed against one MCP path is still accepted at another,
-  and a client that omits the indicator is not narrowed at all. Both gaps are inherited rather than introduced
-  here; closing them is BOT-2124."
+  This shapes the consent screen and the stored grant. The stored `resource` also binds where the token works; see
+  [[mcp-resource?]]."
   [resources scope]
   (let [scope    (some-> scope str str/trim not-empty)
-        ;; A lone indicator may arrive as a bare string (the endpoint schema allows one). `keep` over a String
-        ;; iterates characters, none of which canonicalize, which would silently skip narrowing entirely --
-        ;; so normalize before the scan rather than relying on the caller having vectorized.
-        named    (into #{} (keep canonical-resource-uri)
-                       (cond-> resources (string? resources) vector))
         ;; Every MCP path the request actually named. A client may send several RFC 8707 indicators, and the
         ;; token has to work against each -- so the accepted set is the UNION of what they accept, not the set
-        ;; of whichever one is checked first. Taking a single winner would drop the v1-only scopes when a v1
-        ;; alias is named alongside v2, silently shrinking a grant the client asked for and the user approved.
-        matched  (filter #(contains? named (canonical-resource-uri (str (system/site-url) %)))
-                         (mcp/mcp-endpoint-paths))]
+        ;; of whichever one is checked first.
+        matched  (mcp-paths-named resources)]
     (if (or (not scope) (empty? matched))
       scope
       (let [accepted (into #{} (mapcat mcp-resource-scopes) matched)]
@@ -258,7 +295,8 @@
 
 (defn resolve-access-token
   "Validate an OAuth bearer access token string against the token store. Returns
-   `{:user-id <int> :scopes <set-of-strings>}` on success, or nil on failure (unknown,
+   `{:user-id <int> :scopes <set-of-strings> :resource <vector-of-strings or nil>}` on success, where `:resource` is
+   the RFC 8707 binding the token was issued for (see [[mcp-resource?]]), or nil on failure (unknown,
    expired, or revoked token, a token with no associated user, or a token whose user has since
    been deactivated).
 
@@ -284,5 +322,6 @@
                      (oauth-server.db/oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               (when (oauth-server.db/active-user-exists? user-id)
-                {:user-id user-id
-                 :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+                {:user-id  user-id
+                 :scopes   (or (some->> (:scope token-data) (into #{})) #{})
+                 :resource (not-empty (:resource token-data))}))))))))

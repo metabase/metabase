@@ -3,6 +3,7 @@
   access token authenticates a request to the general (`/api/*`) API, and the single place the granted
   OAuth scopes are mapped onto `:token-scopes` for the scope-enforcement middleware."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    ;; Loaded for its load-time side effects: it registers the agent API endpoints, from which the
    ;; OAuth provider derives its scopes-supported (see [[metabase.mcp.core/all-scopes]]). In a full
@@ -12,6 +13,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
    [metabase.mcp.http-handler :as mcp.http-handler]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -218,6 +220,226 @@
                         "error_description=\"Insufficient scope for this operation.\"")
                    (get-in response [:headers "WWW-Authenticate"])))
             (is (= "unsupported_scope" (get-in response [:body :error])))))))))
+
+(def ^:private unscoped-endpoint-requests
+  "Requests to general REST endpoints whose `defendpoint` declares no `:scope`, as
+   `[description method url body-key status-with-full-access]`."
+  [["GET user/current"            :get  "user/current"          nil              200]
+   ["GET database"                :get  "database"              nil              200]
+   ["GET collection/root/items"   :get  "collection/root/items" nil              200]
+   ["GET card"                    :get  "card"                  nil              200]
+   ["POST dataset (native query)" :post "dataset"               :native-select-1 202]
+   ["POST collection (a write)"   :post "collection"            :new-collection  200]])
+
+(defn- request-body [body-key]
+  (case body-key
+    nil              nil
+    :native-select-1 {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+    :new-collection  {:name (str "oauth-scope-test-" (random-uuid))}))
+
+(defn- bearer-response
+  "The full response `method url` answers when called with `token` as an OAuth bearer token. Pass
+  `:expected-status 401` for a request expected to be unauthenticated: the test client throws on a 401 it was not
+  told to expect."
+  [token method url body & {:keys [expected-status]}]
+  (let [options {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+        args    (cond-> [method]
+                  expected-status (conj expected-status)
+                  true            (conj url options)
+                  body            (conj body))]
+    (apply client/client-full-response args)))
+
+(defn- bearer-status
+  "The HTTP status `method url` answers when called with `token` as an OAuth bearer token."
+  [token method url body & {:as opts}]
+  (:status (bearer-response token method url body opts)))
+
+(deftest mcp-scoped-token-is-refused-by-unscoped-endpoints-test
+  (testing "An OAuth token that holds only the MCP v2 scopes is refused by every endpoint that declares no `:scope`.
+            Those endpoints are wrapped in `ensure-scopes-checked`, which admits only unrestricted (`mb:full`) or
+            scope-unaware auth. So an MCP-scoped token does not reach the general REST API, and MCP scopes are
+            not a no-op."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      ;; Commit the client row rather than hold a rollback-only transaction open across HTTP round-trips; see
+      ;; `bearer-bridge-refuses-token-without-scopes-test`.
+      (mt/test-helpers-set-global-values!
+        (oauth-server.tu/with-oauth-client [client-id]
+          (mt/with-model-cleanup [:model/OAuthAccessToken :model/Collection]
+            (let [user-id    (mt/user->id :rasta)
+                  mcp-token  (str (random-uuid))
+                  full-token (str (random-uuid))]
+              (save-access-token! mcp-token user-id client-id mcp.paths/v2-surface-scopes (in-one-hour))
+              (save-access-token! full-token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
+              (doseq [[description method url body-key full-access-status] unscoped-endpoint-requests]
+                (testing description
+                  (testing "is refused for a token holding only the MCP v2 scopes"
+                    (is (= 403 (bearer-status mcp-token method url (request-body body-key)))))
+                  (testing "succeeds for an `mb:full` token for the same user, so the refusal comes from the scopes"
+                    (is (= full-access-status
+                           (bearer-status full-token method url (request-body body-key)))))))
+              (testing "Regression guard: the agent API's read-resource endpoint declares `agent:resource:read`, which
+                        used to be an MCP v2 scope too, so an MCP-scoped token reached it. No MCP scope is an
+                        endpoint scope any more, so it is refused like the rest."
+                (is (= 403 (bearer-status mcp-token :post "agent/v1/read-resource"
+                                          {:uris ["metabase://databases"]})))))))))))
+
+;;; ------------------------------------ audience binding (RFC 8707 `resource`) ------------------------------------
+
+(defn- do-with-committed-oauth-client!
+  "Call `f` with the id of a committed OAuth client, cleaning up the client and every access token afterwards.
+  Committed rather than rolled back for the reason given in `bearer-bridge-refuses-token-without-scopes-test`."
+  [f]
+  (mt/test-helpers-set-global-values!
+    (oauth-server.tu/with-oauth-client [client-id]
+      (mt/with-model-cleanup [:model/OAuthAccessToken]
+        (f client-id)))))
+
+(defn- mcp-initialize-response
+  "The response of an MCP `initialize` at `path` with `token` as the bearer."
+  [token path & {:as opts}]
+  (bearer-response token :post path {:jsonrpc "2.0" :method "initialize" :params {:capabilities {}} :id 1}
+                   opts))
+
+(deftest mcp-token-authenticates-at-every-mcp-endpoint-path-test
+  (testing "A token whose stored resource names the MCP endpoint authenticates `initialize` at the canonical path and
+            at the `/api/mcp` alias. The stored resource is compared in canonical form, because clients spell the
+            same resource differently."
+    (doseq [[site-url resource] [["http://localhost:3000"  "http://localhost:3000/api/metabase-mcp"]
+                                 ["http://localhost:3000"  "http://localhost:3000/api/mcp"]
+                                 ["http://localhost:3000"  "http://localhost:3000/api/metabase-mcp/"]
+                                 ["http://localhost:3000"  "http://LOCALHOST:3000/api/metabase-mcp"]
+                                 ["https://mb.example.com" "https://mb.example.com:443/api/metabase-mcp"]]]
+      (testing (str "site-url " site-url ", stored resource " resource)
+        (mt/with-temporary-setting-values [site-url site-url]
+          (do-with-committed-oauth-client!
+           (fn [client-id]
+             (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
+                                                               mcp.paths/v2-baseline-scopes
+                                                               :resource [resource])]
+               (doseq [path ["metabase-mcp" "mcp"]]
+                 (testing path
+                   (is (= 200 (:status (mcp-initialize-response token path))))))))))))))
+
+(deftest mcp-token-does-not-authenticate-off-the-mcp-endpoint-test
+  (testing "A token bound to the MCP endpoint by its stored resource authenticates nothing else. Off the MCP
+            endpoint the request is anonymous, so it gets the answer an unauthenticated request gets. The binding
+            does this, not the scopes: the token is refused even when it holds a scope the endpoint declares, or
+            `mb:full`."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (do-with-committed-oauth-client!
+       (fn [client-id]
+         (let [mint (fn [scopes]
+                      (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id scopes
+                                                            :resource (oauth-server.tu/mcp-resource)))]
+           (doseq [[label scopes] [["MCP scopes" mcp.paths/v2-surface-scopes]
+                                   ["mb:full"    [oauth-server/full-access-scope]]]]
+             (testing label
+               (let [token (mint scopes)]
+                 (testing "GET user/current"
+                   (is (= 401 (bearer-status token :get "user/current" nil :expected-status 401))))
+                 (testing "POST dataset"
+                   (is (= 401 (bearer-status token :post "dataset"
+                                             {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+                                             :expected-status 401))))
+                 (testing "GET /oauth/authorize, a defendpoint outside /api, sends the anonymous user to log in"
+                   (is (= 302 (:status (binding [client/*url-prefix* ""]
+                                         (client/client-full-response :get "oauth/authorize"
+                                                                      {:request-options
+                                                                       {:headers {"authorization" (str "Bearer " token)}}})))))))))
+           (testing "an agent API endpoint, with the scope it declares"
+             (is (= 401 (bearer-status (mint ["agent:search"]) :post "agent/v1/search"
+                                       {:term_queries ["orders"]} :expected-status 401))))))))))
+
+(deftest rest-token-is-refused-by-the-mcp-endpoint-test
+  (testing "A token with no stored resource is a REST token. The MCP endpoint refuses it with 401 and an
+            `invalid_token` challenge carrying the RFC 9728 discovery parameters, so the client re-authorizes for
+            the MCP resource. A CLI `mb:full` token keeps working on the REST API."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (do-with-committed-oauth-client!
+       (fn [client-id]
+         (doseq [[label scopes] [["MCP scopes" mcp.paths/v2-surface-scopes]
+                                 ["mb:full"    [oauth-server/full-access-scope]]]]
+           (testing label
+             (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id scopes)]
+               (doseq [path ["metabase-mcp" "mcp"]]
+                 (testing path
+                   (let [response  (mcp-initialize-response token path :expected-status 401)
+                         challenge (get-in response [:headers "WWW-Authenticate"] "")]
+                     (is (= 401 (:status response)))
+                     (is (str/includes? challenge "error=\"invalid_token\""))
+                     (is (str/includes? challenge "resource_metadata=")))))))
+           (testing "the CLI `mb:full` token reaches the REST API"
+             (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
+                                                               [oauth-server/full-access-scope])]
+               (is (= 200 (bearer-status token :get "user/current" nil)))))))))))
+
+(deftest bearer-bridge-mcp-token-keeps-its-raw-scopes-test
+  (testing "An MCP-bound token is never stamped unrestricted, even when it holds `mb:full`: the MCP endpoint reads
+            only its literal MCP scopes"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (do-with-committed-oauth-client!
+       (fn [client-id]
+         (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
+                                                           [oauth-server/full-access-scope "agent:query:run"]
+                                                           :resource (oauth-server.tu/mcp-resource))
+               req   (merge-current-user-info (assoc (bearer-request token) :uri "/api/metabase-mcp"))]
+           (is (= (mt/user->id :rasta) (:metabase-user-id req)))
+           (is (= #{oauth-server/full-access-scope "agent:query:run"} (:token-scopes req)))))))))
+
+(defn- user-id-at
+  "The user the bearer bridge resolves `token` to for a request to `uri`, or nil."
+  [token uri]
+  (:metabase-user-id (merge-current-user-info (assoc (bearer-request token) :uri uri))))
+
+(deftest mcp-token-survives-a-site-url-change-test
+  (testing "A token issued for the MCP endpoint still authenticates there after an admin changes the Site URL, and
+            still authenticates nothing else. The binding is decided by the path of the stored resource, not by the
+            Site URL it was issued under."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (do-with-committed-oauth-client!
+       (fn [client-id]
+         (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
+                                                           mcp.paths/v2-baseline-scopes
+                                                           :resource (oauth-server.tu/mcp-resource))]
+           (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+             (is (= (mt/user->id :rasta) (user-id-at token "/api/metabase-mcp")))
+             (testing "and is still refused off the MCP endpoint"
+               (is (nil? (user-id-at token "/api/user/current")))))))))))
+
+(deftest mcp-token-under-a-subpath-site-url-test
+  (testing "A token issued under a Site URL with a subpath is MCP-bound, and stays bound when the host or the subpath
+            changes"
+    (mt/with-temporary-setting-values [site-url "https://host.example.com/metabase"]
+      (do-with-committed-oauth-client!
+       (fn [client-id]
+         (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
+                                                           mcp.paths/v2-baseline-scopes
+                                                           :resource (oauth-server.tu/mcp-resource))]
+           (is (= ["https://host.example.com/metabase/api/metabase-mcp"] (oauth-server.tu/mcp-resource)))
+           (is (= (mt/user->id :rasta) (user-id-at token "/api/metabase-mcp")))
+           (is (nil? (user-id-at token "/api/user/current")))
+           (doseq [new-site-url ["https://other.example.com/metabase" "https://host.example.com/analytics"]]
+             (testing new-site-url
+               (mt/with-temporary-setting-values [site-url new-site-url]
+                 (is (= (mt/user->id :rasta) (user-id-at token "/api/metabase-mcp")))
+                 (is (nil? (user-id-at token "/api/user/current"))))))))))))
+
+(deftest look-alike-resource-paths-are-not-mcp-bound-test
+  (testing "A resource whose path only resembles an MCP endpoint path is not MCP-bound: the path must end with an
+            MCP endpoint path at a segment boundary"
+    (doseq [resource ["http://localhost:3000/notapi/mcp"
+                      "http://localhost:3000/api/mcp-evil"
+                      "http://localhost:3000/api/metabase-mcp/extra"
+                      "http://localhost:3000/api"
+                      "not a uri"]]
+      (testing resource
+        (is (false? (oauth-server/mcp-resource? [resource])))))
+    (testing "while the MCP endpoint paths themselves, under any host or subpath, are"
+      (doseq [resource ["http://localhost:3000/api/mcp"
+                        "https://a.example.com/x/y/api/metabase-mcp"
+                        "HTTPS://A.EXAMPLE.COM:443/api/metabase-mcp/"]]
+        (testing resource
+          (is (true? (oauth-server/mcp-resource? [resource]))))))))
 
 (deftest bearer-bridge-expired-token-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

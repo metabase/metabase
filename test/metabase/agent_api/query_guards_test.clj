@@ -250,9 +250,15 @@
     (are [scopes] (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
                                                  (ui-request scopes) legacy-native)))
       #{"agent:sql:run"}
-      #{"agent:sql:execute"}                        ; v1's concrete scope keeps working
-      #{"agent:sql:*"}                              ; metabot permissions grant wildcards
-      #{:metabase.api.macros.scope/unrestricted}))  ; browser-session MCP clients
+      #{"agent:sql:*"}))                            ; metabot permissions grant wildcards
+  (testing "v1's concrete agent:sql:execute does not grant raw SQL: an OAuth MCP session holds only literal v2
+            scopes, so no credential minted today can carry it"
+    (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                (ui-request #{"agent:sql:execute"}) legacy-native)))))
+  (testing "the unrestricted sentinel does not grant raw SQL: only OAuth MCP sessions mint credentials, and their
+            claims hold literal MCP scopes"
+    (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                (ui-request #{:metabase.api.macros.scope/unrestricted}) legacy-native)))))
   (testing "non-native queries are never gated, whatever the grant"
     (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query! (ui-request #{}) mbql-query)))))
   (testing "requests not authenticated by a UI credential pass through untouched"

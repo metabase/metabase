@@ -162,12 +162,16 @@
               (dissoc :api-key)))))))
 
 (mr/def ::oauth-bearer
-  "Fns that authenticate a request by its OAuth bearer token, and the scope that grants full access."
+  "Fns that authenticate a request by its OAuth bearer token, the scope that grants full access, and the fns that
+  decide the token's audience: whether its stored resource binds it to the MCP endpoint, and whether a request path
+  is that endpoint."
   [:map
    {:closed true}
-   [:extract-token     ifn?]
-   [:resolve-token     ifn?]
-   [:full-access-scope ms/NonBlankString]])
+   [:extract-token         ifn?]
+   [:resolve-token         ifn?]
+   [:full-access-scope     ms/NonBlankString]
+   [:mcp-resource?         ifn?]
+   [:mcp-endpoint-request? ifn?]])
 
 (mr/def ::mcp-ui-credentials
   "Fns that authenticate a request by the credential an MCP App UI carries."
@@ -204,18 +208,28 @@
    shape returned by the session/api-key resolvers and additionally attaches `:token-scopes`, so the
    merged request carries both the user identity and the access the token was granted, and marks it
    `:authenticated-via-oauth?`. A token with no scopes does not authenticate. This is the only place an
-   OAuth access token authenticates a request to the general (`/api/*`) API."
-  [{:keys [extract-token resolve-token full-access-scope]} :- [:maybe ::oauth-bearer]
-   request                                                :- ::request.schema/request]
+   OAuth access token authenticates a request.
+
+   The token's stored resource is its audience. A token bound to the MCP endpoint authenticates only requests to
+   that endpoint, and carries its granted scopes verbatim, never the unrestricted sentinel. Any other token
+   authenticates every request except those to the MCP endpoint. A token that does not authenticate leaves the
+   request anonymous."
+  [{:keys [extract-token resolve-token full-access-scope mcp-resource? mcp-endpoint-request?]}
+   :- [:maybe ::oauth-bearer]
+   request :- ::request.schema/request]
   (when (and extract-token (init-status/complete?))
     (when-let [token (extract-token request)]
-      (when-let [{:keys [user-id scopes]} (resolve-token token)]
-        ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
-        (when (seq scopes)
-          (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
-                  (m/update-existing :is-group-manager? boolean)
-                  (assoc :token-scopes             (oauth-token->token-scopes full-access-scope scopes)
-                         :authenticated-via-oauth? true)))))))
+      (when-let [{:keys [user-id scopes resource]} (resolve-token token)]
+        (let [mcp-token? (mcp-resource? resource)]
+          ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
+          (when (and (seq scopes)
+                     (= mcp-token? (mcp-endpoint-request? (:uri request))))
+            (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
+                    (m/update-existing :is-group-manager? boolean)
+                    (assoc :token-scopes             (if mcp-token?
+                                                       scopes
+                                                       (oauth-token->token-scopes full-access-scope scopes))
+                           :authenticated-via-oauth? true))))))))
 
 (defn- current-user-info-for-mcp-ui-credential
   "Resolve the short-lived credential from an MCP App tool result.
