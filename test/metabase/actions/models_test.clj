@@ -9,10 +9,12 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
+   [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest hydrate-query-action-test
@@ -279,7 +281,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
       (testing "Non-implicit actions and their dashboard buttons survive their model becoming a saved question"
-        (doseq [type [:http :query]]
+        (doseq [type [:query]]
           (mt/with-actions [{:keys [action-id model-id]} {:type type}]
             (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                            :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
@@ -435,3 +437,13 @@
               (is (= {"name" true}  (hide-state (action/select-action action-id))))
               (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
               (is (= {"name" true}  (hide-state (action/select-action action-id)))))))))))
+
+(deftest load-skips-http-actions-test
+  (testing "HTTP actions from older exports are skipped on load"
+    (let [entity-id (u/generate-nano-id)]
+      (serdes/load-one! {:type        "http"
+                         :name        "Old HTTP action"
+                         :entity_id   entity-id
+                         :serdes/meta [{:model "Action" :id entity-id}]}
+                        nil)
+      (is (not (t2/exists? :model/Action :entity_id entity-id))))))

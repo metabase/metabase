@@ -929,10 +929,10 @@
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                          {:parameters {"id" 1 "user_id" 99999}})))))))))
 
-(deftest http-action-public-link-test
-  (testing "the public link of an HTTP action, which runs against no database, can still be removed"
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (mt/with-actions-enabled
-        (mt/with-actions [{:keys [action-id]} (assoc (shared-action-opts) :type :http)]
-          (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
-          (is (nil? (t2/select-one-fn :public_uuid :model/Action :id action-id))))))))
+(deftest http-action-type-rejected-test
+  (testing "HTTP actions no longer exist, so the API rejects their type"
+    (mt/with-actions-enabled
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
+        (is (contains? (:specific-errors (mt/user-http-request :crowberto :post 400 "action"
+                                                               {:name "HTTP" :type "http" :model_id model-id}))
+                       :type))))))

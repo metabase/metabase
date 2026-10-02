@@ -70,11 +70,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
 
-(mu/defn action-type
-  "The type of the Action with `action-id`, or nil."
-  [action-id :- ::lib.schema.id/action]
-  (t2/select-one-fn :type [:model/Action :type] :id action-id))
-
 (mu/defn action-model-id
   "The model Card id of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
@@ -137,11 +132,6 @@
   [action :- ::actions.schema/query-action.update]
   (t2/insert! :model/QueryAction action))
 
-(mu/defn insert-http-action!
-  "Insert the HTTPAction `action`, returning the number inserted."
-  [action :- ::actions.schema/httpaction.update]
-  (t2/insert! :model/HTTPAction action))
-
 (mu/defn insert-implicit-action!
   "Insert the ImplicitAction `action`, returning the number inserted."
   [action :- ::actions.schema/implicit-action.update]
@@ -153,12 +143,6 @@
    changes   :- ::actions.schema/query-action.update]
   (t2/update! :model/QueryAction action-id changes))
 
-(mu/defn update-http-action!
-  "Apply `changes` to the HTTPAction with `action-id`, returning the number updated."
-  [action-id :- ::lib.schema.id/action
-   changes   :- ::actions.schema/httpaction.update]
-  (t2/update! :model/HTTPAction action-id changes))
-
 (mu/defn update-implicit-action!
   "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
@@ -169,11 +153,6 @@
   "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/QueryAction :action_id action-id))
-
-(mu/defn delete-http-action!
-  "Delete the HTTPAction of the Action with `action-id`, returning the number deleted."
-  [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/HTTPAction :action_id action-id))
 
 (mu/defn delete-implicit-action!
   "Delete the ImplicitAction of the Action with `action-id`, returning the number deleted."
@@ -189,11 +168,6 @@
   "The QueryAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/QueryAction :action_id action-id))
-
-(mu/defn http-actions
-  "The HTTPActions of the Actions with `action-ids`."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/HTTPAction :action_id [:in action-ids]))
 
 (mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."
@@ -229,16 +203,6 @@
   "The unarchived Actions whose `:model_id` is in `model-ids`."
   [model-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Action :model_id [:in model-ids] :archived false))
-
-(mu/defn unarchived-non-http-actions-for-model
-  "The unarchived, non-HTTP Actions of the model Card with `model-id`."
-  [model-id :- ms/PositiveInt]
-  (t2/select :model/Action :model_id model-id :archived false :type [:not= "http"]))
-
-(mu/defn unarchived-non-http-actions-for-models
-  "The unarchived, non-HTTP Actions whose `:model_id` is in `model-ids`."
-  [model-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/Action :model_id [:in model-ids] :archived false :type [:not= "http"]))
 
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."

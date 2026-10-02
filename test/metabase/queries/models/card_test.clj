@@ -179,16 +179,14 @@
 (deftest disable-implicit-actions-if-needed-test-3
   (mt/with-actions-enabled
     (testing "unhappy paths\n"
-      (testing "only disable implicit actions, not http and query"
+      (testing "only disable implicit actions, not query"
         (mt/with-actions [{model-id :id}           {:type :model, :dataset_query (mt/mbql-query users)}
                           {implicit-id :action-id} {:type :implicit}
-                          {http-id :action-id}     {:type :http}
                           {query-id :action-id}    {:type :query}]
           ;; make sure we have thing exists to start with
-          (is (= 3 (t2/count :model/Action :id [:in [implicit-id http-id query-id]])))
+          (is (= 2 (t2/count :model/Action :id [:in [implicit-id query-id]])))
           (t2/update! :model/Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (not (t2/exists? :model/Action :id implicit-id)))
-          (is (t2/exists? :model/Action :id http-id))
           (is (t2/exists? :model/Action :id query-id)))))))
 
 (deftest disable-implicit-actions-if-needed-test-4
