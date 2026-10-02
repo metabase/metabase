@@ -55,7 +55,7 @@
                                 :legacy-mbql.schema    14
                                 :legacy-mbql.util      2
                                 :query-processor.store 8
-                                :toucan2.core          3
+                                :toucan2.core          4
                                 :util.malli.schema     2}
  :discouraged-var-counts       {:clojure.core/eval                                     6
                                 :clojure.core/print                                    1
