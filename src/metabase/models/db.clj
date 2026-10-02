@@ -60,6 +60,7 @@
    :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.update
    :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.update
    :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.update
+   :model/DataApp                  :metabase-enterprise.data-apps.schema/data-app.update
    :model/Database                 :metabase.warehouses.schema/database.update
    :model/Dimension                :metabase.warehouse-schema.schema/dimension.update
    :model/Document                 :metabase.documents.schema/document.update

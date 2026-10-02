@@ -44,6 +44,20 @@ describe("readManifest", () => {
     expect(() => readManifest(APP_ROOT)).toThrow(/Could not parse/);
   });
 
+  describe("slug", () => {
+    it("reads the slug", () => {
+      setup({ [YAML_PATH]: "slug: sales-ops\n" });
+
+      expect(readManifest(APP_ROOT)?.manifest.slug).toBe("sales-ops");
+    });
+
+    it("throws on a non-string slug", () => {
+      setup({ [YAML_PATH]: "slug: [a]\n" });
+
+      expect(() => readManifest(APP_ROOT)).toThrow(/"slug" must be a string/);
+    });
+  });
+
   describe("allowed_hosts", () => {
     it("reads allowed_hosts as a list of strings", () => {
       setup({

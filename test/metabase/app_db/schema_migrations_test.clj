@@ -3509,9 +3509,9 @@
                                         :h2       ""))]))))))))
 
 (deftest action-collection-id-backfill-test
-  (testing "v65.2026-10-01T00:00:06: each action takes its model's collection, model_id becomes nullable, and
+  (testing "v65.2026-10-02T00:00:06: each action takes its model's collection, model_id becomes nullable, and
             already-archived actions count as archived directly, and archived models' actions get archived"
-    (impl/test-migrations ["v65.2026-10-01T00:00:00" "v65.2026-10-01T00:00:07"] [migrate!]
+    (impl/test-migrations ["v65.2026-10-02T00:00:00" "v65.2026-10-02T00:00:07"] [migrate!]
       (let [user-id   (t2/insert-returning-pk! :core_user {:first_name "Action"
                                                            :last_name  "Owner"
                                                            :email      "action-owner@metabase.com"
@@ -3563,8 +3563,8 @@
           (is (pos-int? (insert-action! nil))))))))
 
 (deftest drop-http-actions-test
-  (testing "v65.2026-10-02T00:00:01: HTTP actions and the dashboard buttons that ran them are deleted, other actions stay"
-    (impl/test-migrations ["v65.2026-10-02T00:00:00" "v65.2026-10-02T00:00:01"] [migrate!]
+  (testing "v65.2026-10-03T00:00:01: HTTP actions and the dashboard buttons that ran them are deleted, other actions stay"
+    (impl/test-migrations ["v65.2026-10-03T00:00:00" "v65.2026-10-03T00:00:01"] [migrate!]
       (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
                                                                 :last_name   "Owner"
                                                                 :email       "http-action-owner@metabase.com"

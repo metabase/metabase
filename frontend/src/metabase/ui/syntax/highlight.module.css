@@ -68,3 +68,16 @@
 .typeName {
   color: var(--mb-color-core-purple-saturated);
 }
+
+.heading {
+  color: var(--mb-color-core-brand);
+  font-weight: bold;
+}
+
+.strong {
+  font-weight: bold;
+}
+
+.emphasis {
+  font-style: italic;
+}

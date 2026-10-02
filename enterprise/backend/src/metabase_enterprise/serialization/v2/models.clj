@@ -35,6 +35,7 @@
   (concat data-model
           content
           ["CustomVizPlugin"
+           "DataApp"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
@@ -84,7 +85,6 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
-   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"

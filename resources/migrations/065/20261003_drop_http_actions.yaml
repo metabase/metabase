@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-10-02T00:00:00
+      id: v65.2026-10-03T00:00:00
       author: ranquild
       comment: Delete HTTP actions
       changes:
@@ -11,7 +11,7 @@ databaseChangeLog:
       rollback: # nothing to do; the deleted actions cannot be restored
 
   - changeSet:
-      id: v65.2026-10-02T00:00:01
+      id: v65.2026-10-03T00:00:01
       author: ranquild
       comment: Drop http_action
       changes:

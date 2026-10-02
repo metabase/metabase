@@ -1720,6 +1720,7 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/DashboardTab
+                    :model/DataApp
                     :model/Database
                     :model/Dimension
                     :model/Document
@@ -3734,10 +3735,11 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init metabase-enterprise.data-apps.sync}
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{api
            api-scope
            collections
+           events
            lib
            lib.be
            lib.schema
@@ -3755,7 +3757,8 @@
                     :model/Permissions
                     :model/PermissionsGroup
                     :model/Table
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/DataApp}}
 
   enterprise/data-studio
   {:team "UX West"
@@ -4191,7 +4194,6 @@
            task.history
            util
            warehouse-schema-overlay
-           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
@@ -4199,6 +4201,7 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DataApp
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
