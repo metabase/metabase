@@ -612,16 +612,6 @@
     (when model
       (lookup-by-id model id))))
 
-(defmulti load-insert-stub!
-  "Given the path of an entity that is neither in the export nor in the appdb, inserts a stub for it and returns it, or
-  returns nil when the model has no stubs."
-  {:arglists '([path])}
-  (fn [path]
-    (-> path last :model)))
-
-(defmethod load-insert-stub! :default [_path]
-  nil)
-
 ;;; ## Dependencies
 ;;; The files of an export are returned in arbitrary order by [[ingest-list]]. But in order to load any entity,
 ;;; everything it has a foreign key to must be loaded first. This is the purpose of one of the most complicated parts of
@@ -934,7 +924,8 @@
   "Given a portable database name, resolve it back to a numeric ID.
   [[*export-database-fk*]] is the inverse."
   [db-name]
-  (*import-fk-keyed* db-name :model/Database :name))
+  (when db-name
+    (resolve/import-database-fk (import-resolver) db-name)))
 
 ;;; ## Tables
 
@@ -1351,16 +1342,6 @@
   [allow-int-ids? x]
   (and allow-int-ids? (pos-int? x)))
 
-(defn- ref->db-dep
-  "Given a portable table or field reference (a vector like `[db-name schema table-name ...]`), return a set with
-  its Database dependency, or nil. Table and Field references are intentionally *not* dependencies — missing ones
-  are synthesized as inactive rows on import — but their Database is, since it can't be synthesized. We can't rely
-  on the query's top-level `:database` for this because some references (e.g. dashboard parameter mappings) are
-  bare field refs with no surrounding query."
-  [ref]
-  (when-let [db-name (first ref)]
-    #{[{:model "Database" :id db-name}]}))
-
 (def ^:private mbql-ref-tag->model
   "The serdes model that a `:metric`/`:segment`/`:measure` MBQL reference clause depends on."
   {:metric "Card",    "metric"  "Card"
@@ -1370,11 +1351,10 @@
 (defn- mbql-deps-vector [allow-int-ids? entity]
   (match/match-one entity
     ;; --- serialized (portable) refs, walked at load time ---
-    ;; A serialized `:field` clause's only dependency is the Database of its referenced field; the Field/Table
-    ;; themselves are synthesized on import, and a field clause never nests metric/segment/card refs, so we don't
-    ;; descend.
-    [#{:field "field"} (_opts :guard map?) (ref :guard vector?)]
-    (ref->db-dep ref)
+    ;; A serialized `:field` clause has no dependencies: its Database, Table and Field are synthesized on import, and
+    ;; a field clause never nests metric/segment/card refs, so we don't descend.
+    [#{:field "field"} (_opts :guard map?) (_ref :guard vector?)]
+    nil
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
      (opts :guard map?)
@@ -1383,8 +1363,8 @@
           (mbql-deps-map allow-int-ids? opts))
 
     ;; legacy (MBQL 4) serialized refs
-    [#{:field "field" :field-id "field-id"} (ref :guard vector?) _opts]
-    (ref->db-dep ref)
+    [#{:field "field" :field-id "field-id"} (_ref :guard vector?) _opts]
+    nil
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
     #{[{:model (mbql-ref-tag->model tag) :id field}]}
@@ -1418,17 +1398,15 @@
   (into #{}
         (mapcat (fn [[k v]]
                   (cond
-                    ;; --- serialized (portable) refs. Table/Field references contribute only their Database as a
-                    ;; dependency (see `ref->db-dep`); the referenced Table/Field are synthesized on import. ---
-                    (and (= k :database)
-                         (string? v)
-                         (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
-                    (and (= k :source-table) (vector? v))      (ref->db-dep v)
+                    ;; --- serialized (portable) refs. Database/Table/Field references are not dependencies; they are
+                    ;; synthesized on import. ---
+                    (and (= k :database) (string? v))          nil
+                    (and (= k :source-table) (vector? v))      nil
                     (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
-                    (and (= k :source-field) (vector? v))      (ref->db-dep v)
+                    (and (= k :source-field) (vector? v))      nil
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
-                    (and (= k :table-id)     (vector? v))      (ref->db-dep v)
+                    (and (= k :table-id)     (vector? v))      nil
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
                     ;; --- raw (numeric) refs, walked at export time: the referenced Table/Field are real appdb ids to
                     ;; existence-check. `allow-int-ids?` gates these (see `raw-ref-id?`). ---
@@ -1804,11 +1782,10 @@
   [allow-int-ids? settings]
   (when-let [{:keys [model id]} (get-in settings [:link :entity])]
     (if (= model "table")
-      ;; Serialized: a linked Table is not a dependency (synthesized on import), but its Database is. Raw (export
-      ;; time): the numeric table id is a real Table to existence-check.
-      (cond
-        (vector? id)          #{[{:model "Database" :id (first id)}]}
-        (raw-ref-id? allow-int-ids? id) #{[{:model "Table" :id id}]})
+      ;; Serialized: a linked Table is not a dependency (synthesized on import). Raw (export time): the numeric table
+      ;; id is a real Table to existence-check.
+      (when (raw-ref-id? allow-int-ids? id)
+        #{[{:model "Table" :id id}]})
       #{[{:model (name (link-card-model->toucan-model model))
           :id    id}]})))
 

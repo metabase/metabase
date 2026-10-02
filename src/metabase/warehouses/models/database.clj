@@ -741,10 +741,6 @@
   [[{:keys [id]}]]
   (warehouses.db/database-by-name id))
 
-(defmethod serdes/load-insert-stub! "Database"
-  [[{:keys [id]}]]
-  (warehouses.db/insert-stub-database! id))
-
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; directory for the database with same-named file inside.
   [{:label "databases"} {:label name :key name} {:label name :key name}])

@@ -1463,10 +1463,6 @@
   (when (seq metadata)
     (-> (reduce into #{} (for [m metadata]
                            (serdes/mbql-deps allow-int-ids? (:field_ref m))))
-        (into (for [m            metadata
-                    portable-ref ((juxt :table_id :id :fk_target_field_id) m)
-                    :when        (vector? portable-ref)]
-                [{:model "Database" :id (first portable-ref)}]))
         (disj nil))))
 
 (defmethod serdes/storage-path "Card" [card ctx]
@@ -1555,7 +1551,7 @@
     (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
     (metrics/dimension-mappings-deps allow-int-ids? dimension_mappings)
     (serdes/parameters-deps allow-int-ids? parameters)
-    (when database_id [[{:model "Database" :id database_id}]])
+    (when (and allow-int-ids? database_id) [[{:model "Database" :id database_id}]])
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})

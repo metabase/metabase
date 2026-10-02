@@ -87,6 +87,12 @@
         ;; Need to break a circular dependency here.
         (:id ((clojure.core/resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
 
+(defn- synthesize-database!
+  "Creates a new stub Database for a deserialized reference whose name doesn't match any existing row. Returns the new
+  database id."
+  [db-name]
+  (models.db/insert-stub-database! db-name))
+
 (defn- synthesize-table!
   "Creates a new inactive Table for a deserialized reference whose `[db-name schema table-name]`
   triple doesn't match any existing row. Returns the new table id."
@@ -105,21 +111,22 @@
         (recur field-id (rest remaining)))
       parent-id)))
 
+(defn import-database-fk
+  "Given a portable database name, return the numeric database id. If the database doesn't exist, synthesize a stub
+  Database so we can still resolve the reference."
+  [db-name]
+  (when db-name
+    (or (models.db/database-id-by-name db-name)
+        (synthesize-database! db-name))))
+
 (defn import-table-fk
-  "Given [db-name schema table-name], return numeric table_id. If the database exists but the table
-  doesn't, synthesize an inactive Table from the path so we can still resolve the reference. The thrown ex-data's
-  `:error` is pinned to `:metabase.models.serialization.resolve.db/database-not-found` — this code's old namespace,
-  before this file replaced it — since other modules and tests compare against that literal keyword value."
-  [[db-name schema table-name :as table-id]]
+  "Given [db-name schema table-name], return numeric table_id. If the database or the table is missing, synthesize a
+  stub Database or an inactive Table from the path so we can still resolve the reference."
+  [resolver [db-name schema table-name :as table-id]]
   (when table-id
-    (if-let [db-id (models.db/database-id-by-name db-name)]
+    (let [db-id (resolve/import-database-fk resolver db-name)]
       (or (models.db/table-id-by-name table-name schema db-id)
-          (synthesize-table! db-id schema table-name))
-      (throw (ex-info (format "table id present, but database not found: %s" table-id)
-                      {:table-id       table-id
-                       :db-name        db-name
-                       :database-names (sort (models.db/database-names))
-                       :error          :metabase.models.serialization.resolve.db/database-not-found})))))
+          (synthesize-table! db-id schema table-name)))))
 
 (defn import-field-fk
   "Given [db-name schema table-name field-name ...], return numeric field_id. If part of the parent
@@ -150,7 +157,8 @@
     (resolve/import-fk       [_ eid model]            (import-fk eid model))
     (resolve/import-fk-keyed [_ portable model field] (import-fk-keyed portable model field))
     (resolve/import-user     [this email]             (import-user this email))
-    (resolve/import-table-fk [_ path]                 (import-table-fk path))
+    (resolve/import-database-fk [_ db-name]           (import-database-fk db-name))
+    (resolve/import-table-fk [this path]              (import-table-fk this path))
     (resolve/import-field-fk [this path]              (import-field-fk this path))))
 
 (def lenient-import-resolver
@@ -162,6 +170,7 @@
                                                              nil)))
     (resolve/import-fk-keyed [_ portable model field] (resolve/import-fk-keyed default-import-resolver portable model field))
     (resolve/import-user     [_ email]                (resolve/import-user default-import-resolver email))
+    (resolve/import-database-fk [_ db-name]           (resolve/import-database-fk default-import-resolver db-name))
     (resolve/import-table-fk [_ path]                 (resolve/import-table-fk default-import-resolver path))
     (resolve/import-field-fk [_ path]                 (resolve/import-field-fk default-import-resolver path))))
 
@@ -186,11 +195,13 @@
   (let [import-fk*       (memoize import-fk)
         import-fk-keyed* (memoize import-fk-keyed)
         import-user*     (memoize import-user)
+        import-database-fk* (memoize import-database-fk)
         import-table-fk* (memoize import-table-fk)
         import-field-fk* (memoize import-field-fk)]
     (reify resolve/SerdesImportResolver
       (resolve/import-fk       [_ eid model]            (import-fk* eid model))
       (resolve/import-fk-keyed [_ portable model field] (import-fk-keyed* portable model field))
       (resolve/import-user     [this email]             (import-user* this email))
-      (resolve/import-table-fk [_ path]                 (import-table-fk* path))
+      (resolve/import-database-fk [_ db-name]           (import-database-fk* db-name))
+      (resolve/import-table-fk [this path]              (import-table-fk* this path))
       (resolve/import-field-fk [this path]              (import-field-fk* this path)))))
