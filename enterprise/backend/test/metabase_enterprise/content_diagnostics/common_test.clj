@@ -12,6 +12,7 @@
    [metabase-enterprise.content-diagnostics.checkers.duplicated :as checkers.duplicated]
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as imbalanced.common]
    [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase-enterprise.content-diagnostics.schema :as cd.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -65,8 +66,8 @@
     (doseq [[etype model] common/entity-type->model]
       (is (= etype (common/model->entity-type model)))
       (is (= model (common/entity-type->model etype)))))
-  (testing "it covers exactly the five content-diagnostics entity types"
-    (is (= #{:card :collection :dashboard :document :transform} (set (keys common/entity-type->model))))))
+  (testing "it covers exactly the shared entity-type vocabulary"
+    (is (= cd.schema/entity-types (set (keys common/entity-type->model))))))
 
 (deftest entity-type-hierarchy-and-registry-test
   (testing "card/dashboard/document derive ::collection-item; transform and collection are explicit outliers"
