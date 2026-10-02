@@ -356,14 +356,13 @@
          (vals (:metrics schema)))))
 
 (def ^:private top-level-keys
-  [:questions :models :actions :tables :metrics])
+  [:questions :actions :tables :metrics])
 
 (defn- section->node
   "Converts one top-level schema section into an object expression."
   [section-key section]
   (case section-key
     :questions (keyed-entities->obj section :question)
-    :models    (generic->node section)
     :actions   (generic->node section)
     :tables    (keyed-entities->obj section :table)
     :metrics   (keyed-entities->obj section :metric)))

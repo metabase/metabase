@@ -1,6 +1,6 @@
 (ns metabase.typed-schemas.core
-  "Typed schemas: TypeScript modules that describe questions, models (with
-  executable actions), tables and metrics to coding agents. Runtime objects
+  "Typed schemas: TypeScript modules that describe questions, actions, tables
+  and metrics to coding agents. Runtime objects
   feed the Lib.createTestQuery DSL; `//` comments carry context for humans and
   agents.
 

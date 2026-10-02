@@ -42,20 +42,18 @@
   (is (= {:schemaVersion 2
           :generatedAt   "2026-01-01T00:00:00Z"
           :metabase      {:instanceUrl "https://metabase.example.com"}
-          :models        {"orders" {:name "Orders", :actions {"create" {:kind "action", :id 9}}}}
           :actions       {"shipOrder" {:kind "action", :key "shipOrder", :id 11}}
           :tables        {"orders" {:type "table", :key "orders", :id 3}}
           :metrics       {"revenue" {:type "metric", :key "revenue", :id 2}}}
          (build/create-schema
-          {:models [{:key "orders", :name "Orders", :actions {"create" {:kind "action", :id 9}}}]
-           :actions   [{:kind "action", :key "shipOrder", :id 11}]
+          {:actions   [{:kind "action", :key "shipOrder", :id 11}]
            :tables    [{:type "table", :key "orders", :id 3}]
            :metrics   [{:type "metric", :key "revenue", :id 2}]}
           test-info))))
 
 (deftest create-schema-disambiguates-duplicate-keys-test
   (let [schema (build/create-schema
-                {:models    []
+                {:actions   []
                  :tables    [{:type "table", :key "orders", :id 3}
                              {:type "table", :key "orders", :id 4}]
                  :metrics   []}
@@ -64,7 +62,7 @@
     (is (= ["orders3" "orders4"] (map :key (vals (:tables schema)))))))
 
 (deftest create-schema-defaults-info-test
-  (let [schema (build/create-schema {:models [], :tables [], :metrics []})]
+  (let [schema (build/create-schema {:actions [], :tables [], :metrics []})]
     (is (string? (:generatedAt schema)))
     (is (contains? (:metabase schema) :instanceUrl))))
 
@@ -72,13 +70,12 @@
   "A [[source/SchemaSource]] over literal values. `tables` are filtered by the
   requested table ids so tests can see which tables fetching asked for."
   [{:keys [database-ids collection-ids library-scope library-tables
-           questions models model-errors actions metrics tables]}]
+           questions actions metrics tables]}]
   (reify source/SchemaSource
     (database-ids [_ _] database-ids)
     (collection-ids [_ _] collection-ids)
     (library-scope [_ _] library-scope)
     (questions [_ _ _] (vec questions))
-    (models [_ _ _] {:models (vec models) :errors (vec model-errors)})
     (actions [_ _] (vec actions))
     (metrics [_ _ _] (vec metrics))
     (tables [_ _ table-ids] (cond->> (vec tables)
@@ -96,59 +93,16 @@
                  :tables         [{:id 10, :type "table", :key "publishedTable"}
                                   {:id 42, :type "table", :key "mappedTable"}
                                   {:id 99, :type "table", :key "notInScope"}]})]
-    (is (= {:models    []
-            :actions   []
+    (is (= {:actions   []
             :tables    [{:id 10, :type "table", :key "publishedTable"}
                         {:id 42, :type "table", :key "mappedTable"}]
-            :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]
-            :errors    []}
+            :metrics   [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
            (build/fetch-items {:include-data-library? true} source)))))
 
 (deftest options-reject-question-collection-refs-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
                         #"Invalid semantic schema options\."
                         (build/fetch-items {:question-collection-refs [{:id 1}]}))))
-
-(deftest fetch-items-threads-model-errors-test
-  (testing "model errors from the source land in Items :errors alongside the built models"
-    (let [source (literal-source
-                  {:models       [{:key "orders", :name "Orders"
-                                   :actions {"create" {:kind "action", :id 9}}}]
-                   :model-errors [{:type "modelError", :modelId 7, :modelName "Broken"
-                                   :message "Failed to build action schemas for model \"Broken\" (card 7): boom"}]})]
-      (is (= {:models    [{:key "orders", :name "Orders"
-                           :actions {"create" {:kind "action", :id 9}}}]
-              :actions   []
-              :tables    []
-              :metrics   []
-              :errors    [{:type "modelError", :modelId 7, :modelName "Broken"
-                           :message "Failed to build action schemas for model \"Broken\" (card 7): boom"}]}
-             (build/fetch-items {:include-actions? true} source))))))
-
-(deftest fetch-items-includes-models-only-when-requested-test
-  (let [model-calls (atom [])
-        source      (reify source/SchemaSource
-                      (database-ids [_ _] #{26})
-                      (collection-ids [_ _] nil)
-                      (library-scope [_ _] nil)
-                      (questions [_ _ _] [])
-                      (models [_ database-ids options]
-                        (swap! model-calls conj [database-ids options])
-                        {:models [] :errors []})
-                      (actions [_ _] [])
-                      (metrics [_ _ _] [])
-                      (tables [_ _ _] [])
-                      (library-tables [_ _] []))]
-    (testing "database scope does not include models by default"
-      (is (= {:models [], :actions [], :tables [], :metrics [], :errors []}
-             (build/fetch-items {:database {:id 26}} source)))
-      (is (empty? @model-calls)))
-    (testing "include-models and include-actions each read models scoped to the database"
-      (build/fetch-items {:database {:id 26}, :include-models? true} source)
-      (build/fetch-items {:database {:id 26}, :include-actions? true} source)
-      (is (= [[#{26} {:include-models? true, :include-actions? false}]
-              [#{26} {:include-models? false, :include-actions? true}]]
-             @model-calls)))))
 
 (deftest fetch-items-includes-actions-only-when-requested-test
   (let [action-calls (atom [])
@@ -159,7 +113,6 @@
                        (library-scope [_ {:keys [include-data-library?]}]
                          (when include-data-library? {:data-collection-ids #{10}}))
                        (questions [_ _ _] [])
-                       (models [_ _ _] {:models [] :errors []})
                        (actions [_ database-ids]
                          (swap! action-calls conj database-ids)
                          [action])
@@ -173,19 +126,7 @@
       (is (=? {:actions [action]} (build/fetch-items {:database {:id 26}, :include-actions? true} source))))
     (testing "a library scope reads every readable action"
       (is (=? {:actions [action]} (build/fetch-items {:include-data-library? true, :include-actions? true} source))))
-    (testing "models alone read no actions"
-      (is (=? {:actions []} (build/fetch-items {:database {:id 26}, :include-models? true} source))))
     (is (= [#{26} nil] @action-calls))))
-
-(deftest create-schema-includes-errors-when-present-test
-  (testing "errors are omitted from a healthy schema and included when present"
-    (let [base-items {:models [], :actions [], :tables [], :metrics []}]
-      (is (not (contains? (build/create-schema base-items test-info) :errors)))
-      (is (= [{:type "modelError", :modelId 7, :modelName "Broken", :message "boom"}]
-             (:errors (build/create-schema
-                       (assoc base-items :errors [{:type "modelError", :modelId 7
-                                                   :modelName "Broken", :message "boom"}])
-                       test-info)))))))
 
 ;; One end-to-end test over the real test-data dataset: cards for every entity
 ;; kind on real synced tables, run through the whole pipeline to TypeScript.
@@ -232,18 +173,18 @@
                            :metrics     {"orderRevenue" {:mappedTableIds [(mt/id :orders)]
                                                          :columns        [{:displayName "Sum of Total"
                                                                            :jsType      "number"}]}}
-                           :models      {"orderModel" {:id (:id model), :name "Order model", :actions {"updateOrder" {:kind "action"}}}}
                            :actions     {"discountOrder" {:kind "action", :id (:id standalone), :type "query"}}}
                           schema)))
                 (testing "saved questions are absent from the schema"
                   (is (not (contains? schema :questions))))
-                (testing "only the temp metric and model are in scope for the dataset database"
-                  (is (= {:metrics ["orderRevenue"], :models ["orderModel"]}
-                         (update-vals (select-keys schema [:metrics :models])
+                (testing "an action that belongs to a model stays out"
+                  (is (not (str/includes? body "updateOrder"))))
+                (testing "only the temp metric and action are in scope for the dataset database"
+                  (is (= {:metrics ["orderRevenue"], :actions ["discountOrder"]}
+                         (update-vals (select-keys schema [:metrics :actions])
                                       (comp vec keys)))))
                 (testing "the rendered module carries the real entities"
                   (is (str/includes? body "orders: {"))
                   (is (str/includes? body "name: \"Order revenue\""))
-                  (is (str/includes? body "updateOrder: {"))
                   (is (str/includes? body "discountOrder: {"))
                   (is (str/ends-with? body "export default schema;\n")))))))))))

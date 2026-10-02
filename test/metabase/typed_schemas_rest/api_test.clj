@@ -38,11 +38,10 @@
                         :crowberto
                         :get
                         200
-                        "typed-schemas/v1/typescript?include-actions=true&include-models=true&library-collections=1,2")
+                        "typed-schemas/v1/typescript?include-actions=true&library-collections=1,2")
                        :body
                        read-string)]
       (is (true? (:include-actions? response)))
-      (is (true? (:include-models? response)))
       (is (= [{:id 1} {:id 2}] (:library-collection-refs response))))))
 
 (deftest database-filter-test
@@ -87,18 +86,16 @@
                      (:body (apply mt/user-http-request-full-response
                                    :crowberto :get 200 "typed-schemas/v1/typescript" query-params)))]
         (testing "a database scope leaves actions out unless asked for"
-          (is (not (str/includes? (schema :database (mt/id)) "orderModel")))
           (is (not (str/includes? (schema :database (mt/id)) "discountOrder"))))
-        (testing "include-actions adds the scoped database's model actions and actions without a model"
-          (is (str/includes? (schema :database (mt/id) :include-actions true) "orderModel"))
-          (is (str/includes? (schema :database (mt/id) :include-actions true) "discountOrder")))
-        (testing "include-models adds the models without their actions"
-          (is (str/includes? (schema :database (mt/id) :include-models true) "orderModel"))
-          (is (not (str/includes? (schema :database (mt/id) :include-models true) "updateOrder")))
-          (is (not (str/includes? (schema :database (mt/id) :include-models true) "discountOrder"))))
+        (testing "include-actions adds the scoped database's actions without a model, and never a model"
+          (let [body (schema :database (mt/id) :include-actions true)]
+            (is (str/includes? body "discountOrder"))
+            (is (not (str/includes? body "orderModel")))
+            (is (not (str/includes? body "updateOrder")))))
         (testing "include-actions keeps actions of other databases out"
-          (is (not (str/includes? (schema :database (:id other-db) :include-actions true) "orderModel")))
-          (is (not (str/includes? (schema :database (:id other-db) :include-actions true) "discountOrder"))))))))
+          (is (not (str/includes? (schema :database (:id other-db) :include-actions true) "discountOrder"))))
+        (testing "include-models is ignored"
+          (is (not (str/includes? (schema :database (mt/id) :include-models true) "orderModel"))))))))
 
 (deftest collection-and-database-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response

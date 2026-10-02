@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
@@ -55,13 +54,6 @@
   "The id, database id, name, and display name of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn model-actions
-  "The id, model id, name, and type of the unarchived Actions of the model Cards with `model-ids`."
-  [model-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/Action :id :model_id :name :type]
-             :model_id [:in model-ids]
-             :archived false))
 
 (mu/defn model-less-query-actions
   "The unarchived query Actions without a model in collections the current user can see, among `database-ids` (nil

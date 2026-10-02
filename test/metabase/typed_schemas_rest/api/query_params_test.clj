@@ -8,23 +8,20 @@
           :library-collection-refs  [{:id 10} {:id 20}]
           :include-data-library?    false
           :include-metric-library?  false
-          :include-models?          true
-          :include-actions?         false}
+          :include-actions?         true}
          (query-params/query-params->options
           {:database             " Boba "
            :library-collections  " 10, 20 "
-           :include-models       true}))))
+           :include-actions      true}))))
 
 (deftest ^:parallel query-params->options-coerces-values-and-applies-defaults-test
   (is (= {:database                 {:id 1}
           :library-collection-refs  [{:id 3}]
           :include-data-library?    true
           :include-metric-library?  true
-          :include-models?          false
-          :include-actions?         true}
+          :include-actions?         false}
          (query-params/query-params->options
           {:database               "1"
            :library-collections    "3"
            :include-data-library   "1"
-           :include-metric-library "true"
-           :include-actions        "true"}))))
+           :include-metric-library "true"}))))

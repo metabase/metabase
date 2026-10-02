@@ -17,8 +17,7 @@
 
   All methods return the shaped schema entities produced by the
   `metabase.typed-schemas.schema.*` builders, except [[library-tables]], which
-  returns raw table rows (only `:id` is consumed), and [[models]], which returns
-  `{:models [...] :errors [...]}` so broken models surface as data.
+  returns raw table rows (only `:id` is consumed).
 
   When the pipeline needs to read something new, add a protocol method and its
   [[app-db-source]] implementation here — do not call `t2`/`metabot` directly
@@ -28,7 +27,6 @@
   (:require
    [metabase.typed-schemas.schema.action :as schema.action]
    [metabase.typed-schemas.schema.metric :as schema.metric]
-   [metabase.typed-schemas.schema.model :as schema.model]
    [metabase.typed-schemas.schema.question :as schema.question]
    [metabase.typed-schemas.schema.table :as schema.table]
    [metabase.typed-schemas.scope :as scope]))
@@ -50,9 +48,6 @@
     collection refs and include flags, or nil when none are requested.")
   (questions [source database-ids collection-ids]
     "Question schema entities.")
-  (models [source database-ids options]
-    "Model schemas as `{:models [...] :errors [...]}`, plus errors for models that could not be built.
-    `options` holds `:include-models?` (every model) and `:include-actions?` (their actions).")
   (actions [source database-ids]
     "Schema entities for query actions that belong to no model.")
   (metrics [source database-ids collection-ids]
@@ -73,8 +68,6 @@
       (scope/library-scope scope-options))
     (questions [_ database-ids collection-ids]
       (vec (schema.question/question-schemas database-ids collection-ids)))
-    (models [_ database-ids options]
-      (schema.model/model-schemas database-ids nil options))
     (actions [_ database-ids]
       (schema.action/action-schemas database-ids))
     (metrics [_ database-ids collection-ids]
