@@ -84,6 +84,8 @@
               (#'self/parse-provider-model "moonshot/kimi-k3")))
       (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
               (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
+      (is (=? {:provider "xai" :model "grok-4.7" :ai-proxy? false}
+              (#'self/parse-provider-model "xai/grok-4.7")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "resolves the provider type, not the admin's name for the connection"
