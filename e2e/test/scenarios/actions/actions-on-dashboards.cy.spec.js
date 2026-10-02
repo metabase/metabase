@@ -444,7 +444,101 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("loads and updates various data types, including date and time fields, via implicit actions", () => {
+        it("inserts and updates various data types, including date and time fields, via implicit actions, showing enum but not JSON or binary columns", () => {
+          cy.get("@modelId").then((id) => {
+            H.createImplicitAction({
+              kind: "create",
+              model_id: id,
+            });
+          });
+
+          createDashboardWithActionButton({
+            actionName: "Create",
+          });
+
+          cy.findByRole("button", { name: "Create" }).click();
+
+          H.modal().within(() => {
+            cy.findByPlaceholderText("UUID").should("be.visible");
+            cy.findByPlaceholderText("JSON").should("not.exist");
+            cy.findByPlaceholderText("JSONB").should("not.exist");
+            cy.findByPlaceholderText("Binary").should("not.exist");
+            cy.findByPlaceholderText("Enum").should("exist");
+
+            cy.findByPlaceholderText("UUID").type(
+              "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15",
+            );
+
+            cy.findByPlaceholderText("Integer").type("-20");
+            cy.findByPlaceholderText("IntegerUnsigned").type("20");
+            cy.findByPlaceholderText("Tinyint").type("101");
+            if (dialect === "mysql") {
+              cy.findByLabelText("Tinyint1").click({ force: true });
+            } else {
+              cy.findByPlaceholderText("Tinyint1").type("1");
+            }
+            cy.findByPlaceholderText("Smallint").type("32767");
+            cy.findByPlaceholderText("Mediumint").type("8388607");
+            cy.findByPlaceholderText("Bigint").type("922337204775");
+            cy.findByPlaceholderText("Float").type("3.4");
+            cy.findByPlaceholderText("Double").type("1.79769313486");
+            cy.findByPlaceholderText("Decimal").type("123901.21");
+
+            cy.findByLabelText("Boolean").click({ force: true });
+
+            cy.findByPlaceholderText("String").type("Zany Zebras");
+            cy.findByPlaceholderText("Text").type("Zany Zebras");
+
+            cy.findByPlaceholderText("Date").type("2020-02-01");
+            cy.findByPlaceholderText("Datetime").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("DatetimeTZ").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("Time").type("12:57:57");
+            cy.findByPlaceholderText("Timestamp").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("TimestampTZ").type("2020-03-01T12:00:00");
+
+            cy.button("Save").click();
+          });
+
+          cy.wait("@executeAction");
+
+          H.queryWritableDB(
+            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
+            dialect,
+          ).then((result) => {
+            expect(result.rows.length).to.equal(1);
+            const row = result.rows[0];
+
+            expect(row.uuid).to.equal("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15");
+
+            expect(row.integer).to.equal(-20);
+            expect(row.integerUnsigned).to.equal(20);
+            expect(row.tinyint).to.equal(101);
+            expect(row.tinyint1).to.equal(1);
+            expect(row.smallint).to.equal(32767);
+            expect(row.mediumint).to.equal(8388607);
+            expect(row.bigint).to.equal(
+              dialect === "mysql" ? 922337204775 : String(922337204775), // the pg driver makes this a string
+            );
+            expect(row.float).to.equal(3.4);
+            expect(row.double).to.equal(1.79769313486);
+            expect(row.decimal).to.equal("123901.21"); // js needs this to be a string
+
+            expect(row.boolean).to.equal(dialect === "mysql" ? 1 : true);
+
+            expect(row.string).to.equal("Zany Zebras");
+            expect(row.text).to.equal("Zany Zebras");
+
+            expect(row.date).to.include("2020-02-01"); // js converts this to a full date
+
+            // timezones are problematic here
+            expect(row.datetime).to.include("2020-03-01");
+            expect(row.datetimeTZ).to.include("2020-03-01");
+            expect(row.time).to.include("57:57");
+            expect(row.timestamp).to.include("2020-03-01");
+            expect(row.timestampTZ).to.include("2020-03-01");
+          });
+
+          cy.log("update row 1 via an implicit update action");
           cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "update",
@@ -582,101 +676,6 @@ const MODEL_NAME = "Test Action Model";
             expect(row.timestamp).to.include(newTimeAdjusted);
             expect(row.datetimeTZ).to.include(newTimeAdjusted);
             expect(row.timestampTZ).to.include(newTimeAdjusted);
-          });
-        });
-
-        it("can insert various data types via implicit actions, showing enum but not JSON or binary columns", () => {
-          cy.get("@modelId").then((id) => {
-            H.createImplicitAction({
-              kind: "create",
-              model_id: id,
-            });
-          });
-
-          createDashboardWithActionButton({
-            actionName: "Create",
-          });
-
-          cy.findByRole("button", { name: "Create" }).click();
-
-          H.modal().within(() => {
-            cy.findByPlaceholderText("UUID").should("be.visible");
-            cy.findByPlaceholderText("JSON").should("not.exist");
-            cy.findByPlaceholderText("JSONB").should("not.exist");
-            cy.findByPlaceholderText("Binary").should("not.exist");
-            cy.findByPlaceholderText("Enum").should("exist");
-
-            cy.findByPlaceholderText("UUID").type(
-              "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15",
-            );
-
-            cy.findByPlaceholderText("Integer").type("-20");
-            cy.findByPlaceholderText("IntegerUnsigned").type("20");
-            cy.findByPlaceholderText("Tinyint").type("101");
-            if (dialect === "mysql") {
-              cy.findByLabelText("Tinyint1").click({ force: true });
-            } else {
-              cy.findByPlaceholderText("Tinyint1").type("1");
-            }
-            cy.findByPlaceholderText("Smallint").type("32767");
-            cy.findByPlaceholderText("Mediumint").type("8388607");
-            cy.findByPlaceholderText("Bigint").type("922337204775");
-            cy.findByPlaceholderText("Float").type("3.4");
-            cy.findByPlaceholderText("Double").type("1.79769313486");
-            cy.findByPlaceholderText("Decimal").type("123901.21");
-
-            cy.findByLabelText("Boolean").click({ force: true });
-
-            cy.findByPlaceholderText("String").type("Zany Zebras");
-            cy.findByPlaceholderText("Text").type("Zany Zebras");
-
-            cy.findByPlaceholderText("Date").type("2020-02-01");
-            cy.findByPlaceholderText("Datetime").type("2020-03-01T12:00:00");
-            cy.findByPlaceholderText("DatetimeTZ").type("2020-03-01T12:00:00");
-            cy.findByPlaceholderText("Time").type("12:57:57");
-            cy.findByPlaceholderText("Timestamp").type("2020-03-01T12:00:00");
-            cy.findByPlaceholderText("TimestampTZ").type("2020-03-01T12:00:00");
-
-            cy.button("Save").click();
-          });
-
-          cy.wait("@executeAction");
-
-          H.queryWritableDB(
-            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE string = 'Zany Zebras'`,
-            dialect,
-          ).then((result) => {
-            expect(result.rows.length).to.equal(1);
-            const row = result.rows[0];
-
-            expect(row.uuid).to.equal("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15");
-
-            expect(row.integer).to.equal(-20);
-            expect(row.integerUnsigned).to.equal(20);
-            expect(row.tinyint).to.equal(101);
-            expect(row.tinyint1).to.equal(1);
-            expect(row.smallint).to.equal(32767);
-            expect(row.mediumint).to.equal(8388607);
-            expect(row.bigint).to.equal(
-              dialect === "mysql" ? 922337204775 : String(922337204775), // the pg driver makes this a string
-            );
-            expect(row.float).to.equal(3.4);
-            expect(row.double).to.equal(1.79769313486);
-            expect(row.decimal).to.equal("123901.21"); // js needs this to be a string
-
-            expect(row.boolean).to.equal(dialect === "mysql" ? 1 : true);
-
-            expect(row.string).to.equal("Zany Zebras");
-            expect(row.text).to.equal("Zany Zebras");
-
-            expect(row.date).to.include("2020-02-01"); // js converts this to a full date
-
-            // timezones are problematic here
-            expect(row.datetime).to.include("2020-03-01");
-            expect(row.datetimeTZ).to.include("2020-03-01");
-            expect(row.time).to.include("57:57");
-            expect(row.timestamp).to.include("2020-03-01");
-            expect(row.timestampTZ).to.include("2020-03-01");
           });
         });
       });
