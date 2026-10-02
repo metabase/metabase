@@ -1,7 +1,10 @@
 import path from "node:path";
 
-import { discoverActions, discoverQueries } from "./discover";
-import { getRelativeDefinitionLocation } from "./messages";
+import {
+  discoverActions,
+  discoverQueries,
+  getRelativeDefinitionLocation,
+} from "./discover";
 import {
   MODEL_DIRS,
   RESOURCES_DIR,

@@ -173,7 +173,7 @@ export function assertNoDataAppScopeDenials() {
     expect(
       scopeDenials,
       `data-app scope rejections:\n${scopeDenials.join("\n")}`,
-    ).to.deep.eq([]);
+    ).to.be.empty;
   });
 }
 
@@ -322,29 +322,6 @@ export const resourceCard = ({
   "serdes/meta": serdesMeta("Card", entityId, name),
 });
 
-export const resourceImplicitAction = ({
-  entityId,
-  name,
-  kind,
-  model,
-}: {
-  entityId: string;
-  name: string;
-  kind: "row/create" | "row/update" | "row/delete";
-  model: string;
-}): ResourceEntity => ({
-  name,
-  type: "implicit",
-  entity_id: entityId,
-  model_id: model,
-  implicit: [{ kind }],
-  query: [],
-  http: [],
-  parameters: [],
-  parameter_mappings: [],
-  "serdes/meta": serdesMeta("Action", entityId, name),
-});
-
 const fileName = (entity: ResourceEntity) =>
   `${slugOf(String(entity.name))}_${String(entity.entity_id)}.yaml`;
 
@@ -380,27 +357,6 @@ export function writeDataAppResources(
           yaml.dump(action),
         ]),
       ),
-    },
-  });
-}
-
-export function declareDataAppActions(
-  appRoot: string,
-  actions: Array<{
-    exportName: string;
-    sourceActionId: number;
-    copiedActionEntityId: string;
-  }>,
-) {
-  return cy.task("writeDataAppFiles", {
-    files: {
-      [`${appRoot}/actions/orders.action.ts`]: [
-        'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
-        ...actions.map(
-          ({ exportName, sourceActionId, copiedActionEntityId }) =>
-            `export const ${exportName} = defineAction({ copiedActionEntityId: "${copiedActionEntityId}", action: { id: ${sourceActionId}, parameters: [] } });`,
-        ),
-      ].join("\n"),
     },
   });
 }
@@ -472,8 +428,8 @@ export const copySyncedDataAppsFixture = () =>
 
 /**
  * Pulls `example_synced_data_apps` through a real remote-sync import, so a spec
- * gets real app rows. `good` is served, with its resource collection and an
- * Orders saved question; `broken-bundle` fails to sync.
+ * gets real app rows, each with its resource collection and permission group.
+ * `good` is served; `broken-bundle` fails to sync.
  */
 export function pullExampleDataApps() {
   setupGitSync();
@@ -481,53 +437,6 @@ export function pullExampleDataApps() {
   copySyncedDataAppsFixture();
   commitToRepo("Add data apps");
   configureGitAndPullChanges("read-write");
-}
-
-export function publishDataApp(
-  appRoot: string,
-  slug: string,
-  {
-    initializeRepo = true,
-    expectSynced = true,
-  }: { initializeRepo?: boolean; expectSynced?: boolean } = {},
-) {
-  const appDir = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
-
-  if (initializeRepo) {
-    setupGitSync();
-    copySyncedCollectionFixture();
-  }
-  cy.task("removeDataAppPaths", { paths: [`${appDir}/resources`] });
-  cy.task("copyDirectory", {
-    source: `${appRoot}/resources`,
-    destination: `${appDir}/resources`,
-  });
-  cy.readFile(`${appRoot}/data_app.yaml`).then((manifest: string) =>
-    cy.task("writeDataAppFiles", {
-      files: {
-        [`${appDir}/data_app.yaml`]: manifest,
-        [`${appDir}/dist/index.js`]: "// served by the spec",
-      },
-    }),
-  );
-  commitToRepo(`Publish ${slug}`);
-  configureGitAndPullChanges("read-write");
-
-  // Read from the admin list: an app whose resources were refused has no
-  // collection, and `/api/apps/:slug` answers 409 for it.
-  return cy.request<DataApp[]>("/api/apps").then(({ body: apps }) => {
-    const app = apps.find(({ name }) => name === slug);
-
-    if (!app) {
-      throw new Error(`Data app ${slug} was not synced.`);
-    }
-
-    if (expectSynced) {
-      expect(app.sync_error, `${slug} synced`).to.eq(null);
-    }
-
-    return cy.wrap(app, { log: false });
-  });
 }
 
 /**
@@ -539,18 +448,6 @@ export function buildDataAppHostApp() {
   return cy.exec(`cd "${dataAppHostAppRoot()}" && npm run build`, {
     failOnNonZeroExit: false,
     timeout: 180_000,
-  });
-}
-
-export function dataAppPermissionGroupId(slug: string) {
-  return cy.request<DataApp>(`/api/apps/${slug}`).then(({ body }) => {
-    const groupId = body.permission_group_id;
-
-    if (typeof groupId !== "number") {
-      throw new Error(`Data app ${slug} has no permission group.`);
-    }
-
-    return cy.wrap(groupId, { log: false });
   });
 }
 

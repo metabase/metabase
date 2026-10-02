@@ -50,26 +50,23 @@ const ordersQuestion = (entityId: string, stage = {}) =>
  * guard.
  */
 describe("Embedding SDK: data-app resources (queries)", () => {
-  const resetHostApp = () => {
-    resetDataAppHostAppSources();
-    cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    // The query and actions specs share a checked-in host app, so start clean.
-    resetHostApp();
+    // The specs share a checked-in host app, so start from a clean tree.
+    resetDataAppHostAppSources();
     cy.writeFile(
       MANIFEST_FILE(),
       `${AUTHORED_MANIFEST}collection: ${COLLECTION}\n`,
     );
   });
 
+  // Leave the checked-in host app as it was.
   after(() => {
-    resetHostApp();
+    resetDataAppHostAppSources();
+    cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
   });
 
   describe("the CLI", () => {

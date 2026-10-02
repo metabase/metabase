@@ -115,7 +115,7 @@ If schema generation fails while building a selected model or model action, do n
 
 ## Write every query and action into `resources/`
 
-Everything an end-to-end prototype runs is permission-bound: it runs against a copy in the app's own collection; read access to that collection lets viewers run the app's cards, but they see the data only if they already have access to the underlying tables — the app grants the collection, not the tables. Declare each one as a named export in a root-level directory beside `package.json` — `queries/` for `defineQuery(...)`, `actions/` for `defineAction(...)`. The CLI scans only those two directories, so a definition under `src/queries/`, `src/actions/`, or any other source directory is never seen. Discovery covers `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts`.
+Every query and action a data app runs goes through a copy in the app's own collection: read access to that collection lets viewers run the app's cards, but they see data only from tables they can already read, since the app grants the collection, not the tables. Declare each one as a named export in a root-level directory beside `package.json` — `queries/` for `defineQuery(...)`, `actions/` for `defineAction(...)`. The CLI scans only those two directories, so a definition under `src/queries/`, `src/actions/`, or any other source directory is never seen. Discovery covers `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts`.
 
 ```ts
 import { defineAction, defineQuery } from "@metabase/embedding-sdk-react/data-app";
@@ -147,7 +147,7 @@ Write the YAML in the Metabase representation format. **Before writing or editin
 
 1. **Collection.** Once per app, write `resources/collection.yaml` as a collection named `Data App: <app name>`, and put its entity ID in `data_app.yaml` as `collection: <id>`. It must be a plain root collection: no `parent_id`, `personal_owner_id`, `namespace`, `type`, `authority_level`, or `archive_operation_id`, and not `is_remote_synced`, `is_sample`, or `archived`.
 
-2. **Print what the resources are written from.** `npm run print-resources` (optionally with one file, `npm run print-resources -- queries/revenue.query.ts`) sends the app's definitions to Metabase, using `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, and prints, as JSON, everything already exported as serialization writes it, with every reference by name or entity ID and no numeric IDs:
+2. **Print what the resources are written from.** `npm run print-resources` (optionally with one file, `npm run print-resources -- queries/revenue.query.ts`) sends the app's definitions to Metabase, using `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, and prints, as JSON, everything as serialization writes it, every reference by name or entity ID rather than numeric ID:
    - `queries`: each definition's `export`, `file`, and `savedQuestionEntityId`, the `dataset_query` Metabase builds from it (the same query the dev preview runs), and the entity IDs of the `metrics` it aggregates;
    - `actions`: each definition's `export`, `file`, and `copiedActionEntityId`, and the source action as `entity`;
    - `models`: the models those actions belong to, each as `entity`;
