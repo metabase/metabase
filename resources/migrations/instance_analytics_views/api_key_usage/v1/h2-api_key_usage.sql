@@ -1,0 +1,46 @@
+DROP VIEW IF EXISTS v_api_key_usage;
+
+CREATE OR REPLACE VIEW v_api_key_usage AS
+SELECT
+    t.id                                                   AS log_id,
+    t.occurred_at,
+    t.route_template,
+    t.http_method,
+    t.status,
+    t.duration_ms,
+    t.api_key_id                                           AS api_key_id,
+    ak.name                                                AS api_key_name,
+    t.created_by_id                                        AS user_id,
+    -- CAST to VARCHAR: H2 declares core_user.email VARCHAR_IGNORECASE (for case-insensitive lookups),
+    -- and COALESCE inherits that type, which Metabase's H2 type mapper doesn't recognize — it falls back
+    -- to an unknown type, and metabase-lib silently excludes unknown-typed columns from sortable columns.
+    CAST(COALESCE(creator.first_name || ' ' || creator.last_name, creator.email) AS VARCHAR) AS user_display_name,
+    (SELECT pg.name
+     FROM permissions_group_membership pgm
+     JOIN permissions_group pg ON pg.id = pgm.group_id
+     WHERE pgm.user_id = t.created_by_id
+       AND pg.id != 1
+     ORDER BY pg.name
+     LIMIT 1)                                              AS group_name,
+    t.client_name                                          AS client_name,
+    -- NOTE: keep these CASE branches in sync with `supported-client-keys` /
+    -- `detect-client` in src/metabase/api_keys/usage.clj (the enum-<->-CASE sync footgun).
+    CASE t.client_name
+        WHEN 'metabase-cli'    THEN 'Metabase CLI'
+        WHEN 'curl'            THEN 'curl'
+        WHEN 'postman'         THEN 'Postman'
+        WHEN 'python-requests' THEN 'Python'
+        WHEN 'r'               THEN 'R'
+        WHEN 'node'            THEN 'Node.js'
+        WHEN 'other'           THEN 'Other'
+        ELSE t.client_name
+    END                                                    AS client_display_name,
+    t.embedding_client                                     AS embedding_client,
+    t.embedding_hostname                                   AS embedding_hostname,
+    t.ip_address                                           AS ip_address,
+    t.user_agent                                           AS user_agent
+FROM api_key_usage_log t
+LEFT JOIN api_key ak
+    ON ak.id = t.api_key_id
+LEFT JOIN core_user creator
+    ON creator.id = t.created_by_id;
