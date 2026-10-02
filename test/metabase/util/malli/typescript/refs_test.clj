@@ -35,6 +35,29 @@
     (is (= 3 (count declarations)))
     (is (= 3 (count (distinct declarations))))))
 
+(deftest ^:parallel contextual-input-alias-closure-test
+  (let [nullable-graph
+        {::root [:map {:closed true}
+                 [:left [:ref ::node]]
+                 [:right [:ref ::node]]]
+         ::node [:map {:closed true}
+                 [:child {:optional true} [:maybe [:ref ::node]]]]}
+        {declarations :declarations definitions :definitions}
+        (refs/type-aliases
+         #{::root}
+         {:resolve-schema nullable-graph
+          :compile-options {:registry nullable-graph :argument-context? true}
+          :dependency-refs :input-registry-refs
+          :contextual-input? true
+          :type-name test-type-name
+          :ref-name test-type-name})]
+    (is (= #{::root ::node} (set (keys definitions))))
+    (is (= 2 (count declarations)))
+    (is (some #(str/includes? % "export type Input_T_root = {\n\tleft: Input_T_node;\n\tright: Input_T_node;\n};")
+              declarations))
+    (is (some #(str/includes? % "export type Input_T_node = {\n\tchild?: Input_T_node | undefined | null;\n};")
+              declarations))))
+
 (deftest ^:parallel multi-extract-aliases-test
   (let [multi-schemas
         {::tagged [:multi {:dispatch :type}
@@ -73,6 +96,78 @@
       (is (some #(= "export type T_two = {\n\tx: string;\n} & {\n\t__kind?: \"T_two\";\n};" %) declarations))
       (is (= #{"export type T_three = string;" "export type T_four = string;"}
              (set (filter #(re-find #"T_(three|four)" %) declarations))))))
+  (testing "safe object-only compounds retain phantom distinctions"
+    (let [colliding-schemas
+          {::union-one [:or [:map {:closed true} [:x :string]]
+                        [:map {:closed true} [:y :int]]]
+           ::union-two [:or [:map {:closed true} [:x :string]]
+                        [:map {:closed true} [:y :int]]]
+           ::intersection-one [:and [:map {:closed true} [:x :string]]
+                               [:map {:closed true} [:y :int]]]
+           ::intersection-two [:and [:map {:closed true} [:x :string]]
+                               [:map {:closed true} [:y :int]]]}
+          declarations (set (:declarations
+                             (refs/type-aliases
+                              (set (keys colliding-schemas))
+                              {:resolve-schema colliding-schemas
+                               :compile-options {:registry colliding-schemas}
+                               :type-name test-type-name
+                               :ref-name test-type-name})))]
+      (is (contains? declarations "export type T_union-one = ({\n\tx: string;\n} | {\n\ty: number;\n}) & {\n\t__kind?: \"T_union-one\";\n};"))
+      (is (contains? declarations "export type T_intersection-one = {\n\tx: string;\n} & {\n\ty: number;\n} & {\n\t__kind?: \"T_intersection-one\";\n};"))))
+  (testing "object intersections retain tags across opaque constraint refs"
+    (let [schemas {::constraint :any
+                   ::query-one [:and [:map {:closed true} [:x :string]] [:ref ::constraint]]
+                   ::query-two [:and [:map {:closed true} [:x :string]] [:ref ::constraint]]}
+          declarations (:declarations
+                        (refs/type-aliases
+                         (set (keys schemas))
+                         {:resolve-schema schemas
+                          :compile-options {:registry schemas}
+                          :type-name test-type-name
+                          :ref-name test-type-name}))]
+      (is (some #(str/includes? % "__kind?: \"T_query-one\"") declarations))
+      (is (some #(str/includes? % "__kind?: \"T_query-two\"") declarations))))
+  (testing "structurally identical tuples retain phantom distinctions"
+    (let [schemas {::tuple-one [:tuple [:maybe :string] :int]
+                   ::tuple-two [:tuple [:maybe :string] :int]}
+          declarations (:declarations
+                        (refs/type-aliases
+                         (set (keys schemas))
+                         {:resolve-schema schemas
+                          :compile-options {:registry schemas}
+                          :type-name test-type-name
+                          :ref-name test-type-name}))]
+      (is (some #(str/includes? % "export type T_tuple-one = [string | null, number] & {\n\t__kind?: \"T_tuple-one\";") declarations))
+      (is (some #(str/includes? % "export type T_tuple-two = [string | null, number] & {\n\t__kind?: \"T_tuple-two\";") declarations))))
+  (testing "nullable and mixed aliases retain their non-object alternatives"
+    (let [colliding-schemas
+          {::nullable-one [:maybe [:map {:closed true} [:x :string]]]
+           ::nullable-two [:maybe [:map {:closed true} [:x :string]]]
+           ::mixed-one [:or [:map {:closed true} [:x :string]] :string]
+           ::mixed-two [:or [:map {:closed true} [:x :string]] :string]}
+          declarations (set (:declarations
+                             (refs/type-aliases
+                              (set (keys colliding-schemas))
+                              {:resolve-schema colliding-schemas
+                               :compile-options {:registry colliding-schemas}
+                               :type-name test-type-name
+                               :ref-name test-type-name})))]
+      (is (contains? declarations "export type T_nullable-one = {\n\tx: string;\n} | null;"))
+      (is (contains? declarations "export type T_nullable-two = {\n\tx: string;\n} | null;"))
+      (is (contains? declarations "export type T_mixed-one = {\n\tx: string;\n} | string;"))
+      (is (contains? declarations "export type T_mixed-two = {\n\tx: string;\n} | string;"))))
+  (testing "real __kind fields are not intersected with phantom tags"
+    (let [schemas {::one [:map {:closed true} ["__kind" [:= "runtime"]] [:x :string]]
+                   ::two [:map {:closed true} ["__kind" [:= "runtime"]] [:x :string]]}
+          declarations (:declarations
+                        (refs/type-aliases
+                         (set (keys schemas))
+                         {:resolve-schema schemas
+                          :compile-options {:registry schemas}
+                          :type-name test-type-name
+                          :ref-name test-type-name}))]
+      (is (every? #(not (re-find #"__kind\?:" %)) declarations))))
   (testing "distinct object aliases stay untouched"
     (let [distinct-schemas
           {::one [:map {:closed true} [:x :string]]
@@ -85,6 +180,19 @@
                           :type-name test-type-name
                           :ref-name test-type-name}))]
       (is (not-any? #(str/includes? % "__kind") declarations)))))
+
+(deftest ^:parallel readonly-ref-rewrite-test
+  (let [schemas {::one [:any {:ts/object-of [:map {:closed true} ["display-name" :string]]
+                              :ts/key-transform :camelCase}]}
+        declarations (:declarations
+                      (refs/type-aliases
+                       #{::one}
+                       {:resolve-schema schemas
+                        :compile-options {:registry schemas :readonly? true}
+                        :type-name test-type-name
+                        :ref-name test-type-name}))]
+    (is (= ["export type T_one = Readonly<Camel<{\n\t\"display-name\": string;\n}>>;"]
+           declarations))))
 
 (deftest ^:parallel unresolved-schema-ref-test
   (let [{:keys [declarations diagnostics]}
@@ -127,6 +235,24 @@
     (is (= 1 (count declarations)))
     (is (re-find #"export type T_expression-parts" (first declarations)))
     (is (re-find #"T_expression-parts\[\]" (first declarations)))))
+
+(deftest ^:parallel inline-registry-dependency-closure-test
+  (let [compiled
+        (schema/schema->result
+         [:schema
+          {:registry {::root [:map {:closed true} [:child [:ref ::child]]]
+                      ::child [:map {:closed true} [:value :string]]}}
+          ::root])]
+    (is (= #{::root ::child} (set (keys (:local-definitions compiled)))))
+    (let [{:keys [declarations diagnostics]}
+          (refs/type-aliases
+           (:registry-refs compiled)
+           {:resolve-schema (:local-definitions compiled)
+            :compile-options {:registry (:local-definitions compiled)}
+            :type-name test-type-name
+            :ref-name test-type-name})]
+      (is (= 2 (count declarations)))
+      (is (empty? diagnostics)))))
 
 (deftest ^:parallel recursive-alias-safety-test
   (testing "guarded recursive refs are retained"

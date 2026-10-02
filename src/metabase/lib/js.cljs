@@ -78,6 +78,7 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -618,10 +619,15 @@
   [a-column-or-clause]
   (lib.core/binning a-column-or-clause))
 
-(mu/defn ^:export with-binning :- [:schema {:ts/same-as 0
-                                            :ts/generic-bound [:or ::lib.schema.metadata/column
-                                                               ::lib.schema.ref/ref]}
-                                   ::lib.schema.metadata/column]
+(mu/defn ^:export with-binning
+  :- [:schema {:ts/overloads
+               [[:=> [:cat ::lib.schema.metadata/column :any]
+                 ::lib.schema.metadata/column]
+                [:=> [:cat ::lib.schema.ref/ref :any]
+                 ::lib.schema.ref/ref]
+                [:=> [:cat [:or ::lib.schema.metadata/column ::lib.schema.ref/ref] :any]
+                 [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]]}
+      [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   "Given `a-column-or-clause` and a `binning-option`, return a new column/clause with its binning settings updated.
 
   If `binning-option` is `nil`, removes any binning options currently present on `a-column-or-clause`.
@@ -716,10 +722,15 @@
   [a-clause-or-column]
   (lib.core/temporal-bucket a-clause-or-column))
 
-(mu/defn ^:export with-temporal-bucket :- [:schema {:ts/same-as 0
-                                                    :ts/generic-bound [:or ::lib.schema.metadata/column
-                                                                       ::lib.schema.ref/ref]}
-                                           ::lib.schema.metadata/column]
+(mu/defn ^:export with-temporal-bucket
+  :- [:schema {:ts/overloads
+               [[:=> [:cat ::lib.schema.metadata/column :any]
+                 ::lib.schema.metadata/column]
+                [:=> [:cat ::lib.schema.ref/ref :any]
+                 ::lib.schema.ref/ref]
+                [:=> [:cat [:or ::lib.schema.metadata/column ::lib.schema.ref/ref] :any]
+                 [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]]}
+      [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   "Add the specified `bucketing-option` to `a-clause-or-column`, returning an updated form of the clause or column.
 
   `bucketing-option` may be a bucket object (from [[available-temporal-buckets]]) or a unit name string
@@ -1807,13 +1818,19 @@
   [a-join]
   (lib.core/join-strategy a-join))
 
-(mu/defn ^:export with-join-strategy :- [:schema {:ts/same-as 0} ::lib.schema.join/join]
+(mu/defn ^:export with-join-strategy
+  :- [:schema
+      {:ts/overloads
+       [[:=> [:cat ::lib.schema.join/join :any] ::lib.schema.join/join]
+        [:=> [:cat ::lib.join.util/partial-join :any] ::lib.join.util/partial-join]]}
+      ::lib.join.util/partial-join]
   "Returns `a-join` with its *strategy* updated to the given `strategy`.
 
   `strategy` should be one of the opaque values returned by [[available-join-strategies]].
 
   > **Code health:** Healthy"
-  [a-join strategy]
+  [a-join :- ::lib.join.util/partial-join
+   strategy]
   (lib.core/with-join-strategy a-join strategy))
 
 (mu/defn ^:export available-join-strategies :- [:sequential ::lib.schema.join/strategy.option]
@@ -1909,11 +1926,12 @@
   [a-query stage-number expression-name an-expression-clause]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
-(mu/defn ^:export with-expression-name :- [:schema {:ts/same-as 0} ::lib.schema.mbql-clause/clause]
+(mu/defn ^:export with-expression-name :- ::lib.schema.mbql-clause/clause
   "Return a new expression clause like `an-expression-clause` but with name `new-name`.
 
   > **Code health:** Healthy"
-  [an-expression-clause new-name]
+  [an-expression-clause :- [:sequential {:min 2} :any]
+   new-name :- :string]
   ;; For normal expressions on a query stage, this sets the `:lib/expression-name` option.
   ;; For custom aggregation expressions this sets the `:display-name` option instead.
   (lib.core/with-expression-name an-expression-clause new-name))
@@ -2023,13 +2041,19 @@
       (u/qualified-name joined-fields)
       (to-array joined-fields))))
 
-(mu/defn ^:export with-join-fields :- [:schema {:ts/same-as 0} ::lib.schema.join/join]
+(mu/defn ^:export with-join-fields
+  :- [:schema
+      {:ts/overloads
+       [[:=> [:cat ::lib.schema.join/join :any] ::lib.schema.join/join]
+        [:=> [:cat ::lib.join.util/partial-join :any] ::lib.join.util/partial-join]]}
+      ::lib.join.util/partial-join]
   "Set the `:fields` for `a-join`, returning a new join clause.
 
   This can either be a list of fields, or a string or keyword `:all` or `:none`.
 
   > **Code health:** Healthy. This consumes field refs, but they're treated as opaque."
-  [a-join new-fields]
+  [a-join :- ::lib.join.util/partial-join
+   new-fields]
   (lib.core/with-join-fields a-join (cond-> new-fields
                                       (string? new-fields) keyword)))
 
@@ -2056,13 +2080,19 @@
   [a-join]
   (to-array (lib.core/join-conditions a-join)))
 
-(mu/defn ^:export with-join-conditions :- [:schema {:ts/same-as 0} ::lib.schema.join/join]
+(mu/defn ^:export with-join-conditions
+  :- [:schema
+      {:ts/overloads
+       [[:=> [:cat ::lib.schema.join/join :any] ::lib.schema.join/join]
+        [:=> [:cat ::lib.join.util/partial-join :any] ::lib.join.util/partial-join]]}
+      ::lib.join.util/partial-join]
   "Set the conditions for `a-join`, returning a new join clause.
 
   `conditions` should be a list of filter clauses; see [[filter-clause]].
 
   > **Code health:** Healthy"
-  [a-join conditions]
+  [a-join :- ::lib.join.util/partial-join
+   conditions]
   (lib.core/with-join-conditions a-join (js->clj conditions :keywordize-keys true)))
 
 (mu/defn ^:export joins :- [:sequential ::lib.schema.join/join]

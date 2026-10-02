@@ -55,7 +55,7 @@
 
 (mr/def ::number-filter-value
   "Numeric filter value returned to the FE. BigInts are represented as JS bigint values."
-  [:or :double [:fn {:typescript "bigint"} u.number/bigint?]])
+  [:or number? [:fn {:typescript "bigint"} u.number/bigint?]])
 
 (mr/def ::coordinate-filter-operator
   "Coordinate filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` for

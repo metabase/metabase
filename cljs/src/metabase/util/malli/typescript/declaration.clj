@@ -1,6 +1,7 @@
 (ns metabase.util.malli.typescript.declaration
   (:require
    [cljs.compiler :as comp]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
@@ -19,6 +20,10 @@
 
 (def ^:dynamic *local-definitions*
   "Atom collecting inline Malli registry definitions during type generation."
+  nil)
+
+(def ^:dynamic *input-registry-refs*
+  "Atom collecting registry aliases that require argument-context definitions."
   nil)
 
 (def ^:dynamic *shared-types*
@@ -123,6 +128,18 @@
        (str "Shared." base-name)
        base-name))))
 
+(defn- input-registry-type-name
+  [kw]
+  (let [base-name (base-type-name kw)]
+    (if (contains? *shared-types* kw)
+      (str "Shared.Input_" base-name)
+      (str "Input_" base-name))))
+
+(defn- render-options
+  []
+  {:ref-name registry-type-name
+   :input-ref-name input-registry-type-name})
+
 (defn branch-type-name
   "Return the TypeScript suffix for a `:multi` branch alias, e.g.
   `[:field ...]` dispatch value `:field` under `::ref` becomes `Field`."
@@ -167,10 +184,12 @@
                                            {:argument-context? *argument-context*
                                             :key-transform *key-transform*
                                             :readonly? *readonly?*})
-        rendered    (type/render (:type compiled) {:ref-name registry-type-name})
+        rendered    (type/render (:type compiled) (render-options))
         source-type (when (vector? malli-schema) (first malli-schema))]
     (doseq [schema-keyword (:registry-refs compiled)]
       (record-registry-ref! schema-keyword))
+    (when *input-registry-refs*
+      (swap! *input-registry-refs* into (:input-registry-refs compiled)))
     (when *local-definitions*
       (swap! *local-definitions* merge (:local-definitions compiled)))
     (when *diagnostics*
@@ -436,7 +455,7 @@
                (type/render (if (and rest? (not tuple-rest?))
                               (type/array type)
                               type)
-                            {:ref-name registry-type-name})))
+                            (render-options))))
         parameters)))
 
 (defn- format-rendered-jsdoc
@@ -452,7 +471,7 @@
                                  (type/render (if (and rest? (not tuple-rest?))
                                                 (type/array type)
                                                 type)
-                                              {:ref-name registry-type-name})
+                                              (render-options))
                                  "} "
                                  (when rest? "...")
                                  (if optional? (str "[" name "]") name)))
@@ -485,8 +504,18 @@
           parameters)
     parameters))
 
+(defn- sequence-predicate-return-type
+  [parameters return-type predicate]
+  (when (and predicate (= "boolean" return-type) (nat-int? (:param predicate)))
+    (when-let [parameter (nth parameters (:param predicate) nil)]
+      (when (and (not (:rest? parameter))
+                 (schema/predicate-target-compatible?
+                  (:type parameter)
+                  (:type (schema/schema->result (:schema predicate)))))
+        (str (:name parameter) " is " (schema->ts (:schema predicate)))))))
+
 (defn- sequence-overloads
-  [fnname arglist arg-schema out-schema doc generic-info]
+  [fnname arglist arg-schema out-schema doc generic-info predicate]
   ;; Compile once through the normal path so registry refs and diagnostics are retained.
   (binding [*argument-context* true]
     (schema->ts arg-schema))
@@ -498,20 +527,34 @@
                               (format "<T extends %s>" generic-bound-str))]
     (->> (rendered-parameter-shapes arglist arg-schema)
          (map (fn [parameters]
-                (let [parameters (generic-parameters parameters arg-idx)]
+                (let [parameters (generic-parameters parameters arg-idx)
+                      declaration-return (or (sequence-predicate-return-type parameters return-type predicate)
+                                             return-type)]
                   (str (format-rendered-jsdoc doc parameters return-type generic-bound-str)
                        (format "export function %s%s(%s): %s;"
                                (cljs-munge fnname)
                                (or generic-declaration "")
                                (render-parameter-shape parameters)
-                               return-type)))))
+                               declaration-return)))))
          distinct
          (str/join "\n"))))
+
+(defn- seqex-key-transform?
+  [arg-schema]
+  (let [malli-schema (mc/schema arg-schema)
+        schema-type  (mc/type malli-schema)]
+    (when (#{:cat :catn :alt :altn :? :* :+ :repeat} schema-type)
+      (or (contains? (mc/properties malli-schema) :ts/key-transform)
+          (some seqex-key-transform?
+                (cond->> (mc/children malli-schema)
+                  (#{:catn :altn} schema-type) (map catn-child-schema)))))))
 
 (defn- overload-sequence-schema?
   [arglist arg-schema]
   (let [alternatives (schema/seqex->alternatives arg-schema)]
-    (or (not= 1 (count alternatives))
+    ;; Rendering children independently loses properties inherited from sequence nodes.
+    (or (seqex-key-transform? arg-schema)
+        (not= 1 (count alternatives))
         (some #(= :array (:kind %)) alternatives)
         (and (some rest-marker? arglist)
              (some :rest alternatives)))))
@@ -622,21 +665,23 @@
          :base-type     base-schema
          :generic-bound (:ts/generic-bound props)}))))
 
-(defn- auto-generic-info
-  "Detect functions that preserve a registry type without an explicit
-  `:ts/same-as`: when exactly one argument schema is the identical registry
-  keyword as the return schema, render `<T extends X>` so callers keep their
-  subtype through the call."
-  [arg-schema out-schema]
-  (let [out-form (mc/form (mc/schema out-schema))]
-    (when (qualified-keyword? out-form)
-      (let [matches (into []
-                          (keep-indexed (fn [index child]
-                                          (when (= out-form (mc/form (mc/schema child)))
-                                            index)))
-                          (arg-schema-children arg-schema))]
-        (when (= 1 (count matches))
-          {:arg-idx (first matches), :base-type out-form, :auto? true})))))
+(defn- declaration-overloads
+  "Return validated declaration-only overload signatures attached to a return schema."
+  [out-schema]
+  (schema/normalize-overloads out-schema))
+
+(defn- overload-arity-compatible?
+  [arglist overload]
+  (try
+    (let [[args-schema] (mc/children (mc/schema overload))
+          alternatives (schema/seqex->alternatives args-schema)
+          fixed-arguments (take-while #(not= '& %) arglist)]
+      (and (= :=> (mc/type (mc/schema overload)))
+           (every? #(and (nil? (:rest %))
+                         (= (count fixed-arguments) (count (:items %))))
+                   alternatives)))
+    (catch Exception _
+      false)))
 
 (defn- predicate-return-info
   "Normalize a `:ts/predicate-of` return property to `{:param idx :schema s}`.
@@ -657,6 +702,32 @@
        (not (rest-marker? (nth (vec arglist) param-idx)))
        (not (and (pos-int? param-idx)
                  (rest-marker? (nth (vec arglist) (dec param-idx)))))))
+
+(defn- predicate-target-compatible?
+  [parameter-schema target-schema]
+  (schema/predicate-target-compatible?
+   (:type (schema/schema->result parameter-schema {:argument-context? true}))
+   (:type (schema/schema->result target-schema))))
+
+(defn- valid-declaration-predicate?
+  [predicate arglist arg-schema out-schema]
+  (and predicate
+       (= "boolean" (schema->ts out-schema))
+       (predicate-parameter-declared? arglist (:param predicate))
+       (let [parameter-schema (nth (vec (arg-schema-children arg-schema)) (:param predicate) nil)]
+         (and parameter-schema
+              (predicate-target-compatible? parameter-schema (:schema predicate))))))
+
+(defn- valid-same-as?
+  [generic-info arglist arg-schema]
+  (let [{:keys [arg-idx base-type generic-bound]} generic-info
+        parameter-schema (when (and (nat-int? arg-idx)
+                                    (predicate-parameter-declared? arglist arg-idx))
+                           (nth (vec (arg-schema-children arg-schema)) arg-idx nil))
+        bound-schema (or generic-bound base-type)]
+    (and parameter-schema
+         (predicate-target-compatible? parameter-schema bound-schema)
+         (predicate-target-compatible? base-type bound-schema))))
 
 (defn- -fn->ts
   "Inputs:
@@ -687,15 +758,31 @@
                                                     (map? (second schema)) rest)]
                                      [(first children) (second children)])
                                    (mc/children schema))
-         generic-info (or (extract-generic-info out-schema)
-                          (auto-generic-info arg-schema out-schema))
-         predicate (when (nil? generic-info)
-                     (predicate-return-info out-schema))]
+         generic-info (extract-generic-info out-schema)
+         overloads (declaration-overloads out-schema)
+         predicate (when (and (nil? generic-info) (nil? overloads))
+                     (predicate-return-info out-schema))
+         _ (when (and generic-info
+                      (not (valid-same-as? generic-info arglist arg-schema)))
+             (throw (ex-info "Invalid :ts/same-as metadata"
+                             {:type :invalid-typescript-same-as
+                              :same-as generic-info
+                              :arglist arglist})))]
      (cond
-       (overload-sequence-schema? arglist arg-schema)
-       (sequence-overloads fnname arglist arg-schema out-schema doc generic-info)
+       overloads
+       (do
+         (when-not (and (not-any? rest-marker? arglist)
+                        (every? #(overload-arity-compatible? arglist %) overloads))
+           (throw (ex-info "Invalid :ts/overloads metadata"
+                           {:type :invalid-typescript-overloads
+                            :overloads overloads
+                            :arglist arglist})))
+         (str/join "\n" (map #(-fn->ts fnname arglist % doc) overloads)))
 
-       (and predicate (predicate-parameter-declared? arglist (:param predicate)))
+       (overload-sequence-schema? arglist arg-schema)
+       (sequence-overloads fnname arglist arg-schema out-schema doc generic-info predicate)
+
+       (valid-declaration-predicate? predicate arglist arg-schema out-schema)
        ;; Type predicate: `export function is_date(x: unknown): x is Column;`
        (let [param-idx   (:param predicate)
              param-name  (extract-arg-name (nth (vec arglist) param-idx) param-idx)
@@ -777,15 +864,131 @@
        form))
    schema))
 
+(defn- expression-namespace
+  [owner]
+  (when owner
+    (if (instance? clojure.lang.Namespace owner)
+      owner
+      (let [resource-path (-> (str owner)
+                              (str/replace "-" "_")
+                              (str/replace "." "/"))]
+        ;; Analyzer-created JVM namespaces aren't loaded libraries. Fall back
+        ;; only for absent owners, never for a broken JVM owner's dependency.
+        (when (or (contains? (loaded-libs) owner)
+                  (some #(io/resource (str resource-path %)) ["__init.class" ".clj" ".cljc"]))
+          (require-or-return owner))))))
+
+(defn- qualify-expression-aliases
+  [form aliases]
+  (cond
+    (and (seq? form) (= 'quote (first form)))
+    form
+
+    (qualified-symbol? form)
+    (let [qualifier (symbol (namespace form))
+          target (get aliases qualifier qualifier)]
+      (if (and (not (contains? aliases qualifier))
+               (class? (ns-resolve *ns* qualifier)))
+        form
+        (do
+          (require-or-return target)
+          (symbol (str target) (name form)))))
+
+    :else
+    (walk/walk #(qualify-expression-aliases % aliases) identity form)))
+
+(defn- evaluate-typescript
+  [{:keys [ns requires] fqname :name :as defmeta} expression]
+  (let [owner (or ns (some-> fqname namespace symbol) *current-ns*)
+        context (merge {:namespace owner, :definition fqname}
+                       (select-keys (meta expression) [:file :line :column])
+                       (select-keys defmeta [:file :line :column]))]
+    (try
+      (if (string? expression)
+        expression
+        (let [owner-ns (expression-namespace owner)
+              temporary-name (when-not owner-ns (gensym "typescript-expression-"))
+              evaluation-ns (or owner-ns (create-ns temporary-name))]
+          (try
+            (binding [*ns* evaluation-ns]
+              (when temporary-name
+                (refer 'clojure.core))
+              (let [aliases (merge (update-vals (ns-aliases evaluation-ns) ns-name) requires)
+                    form (qualify-expression-aliases expression aliases)]
+                ;; This build hook evaluates trusted project :typescript properties,
+                ;; never runtime input or arbitrary Malli validator bodies.
+                (schema/validate-typescript
+                 #_{:clj-kondo/ignore [:discouraged-var]}
+                 (eval form)
+                 context)))
+            (finally
+              (when temporary-name
+                (remove-ns temporary-name))))))
+      (catch Exception e
+        (throw (ex-info (str "Invalid :typescript metadata for " fqname)
+                        (assoc context :type :invalid-typescript-metadata)
+                        e))))))
+
+(declare resolve-typescript-expressions)
+
+(defn- resolve-typescript-properties
+  [defmeta properties]
+  (let [properties (cond-> properties
+                     (contains? properties :typescript)
+                     (update :typescript #(evaluate-typescript defmeta %)))]
+    (schema/map-schema-properties (partial resolve-typescript-expressions defmeta) properties)))
+
+(defn- resolve-typescript-expressions
+  [defmeta form]
+  (cond
+    (and (vector? form) (seq form))
+    (let [schema-type (first form)
+          literal? (contains? #{:= :enum :fn} schema-type)
+          properties? (and (map? (second form))
+                           (or (not literal?) (< 2 (count form))))
+          form (cond-> form
+                 properties? (update 1 #(resolve-typescript-properties defmeta %)))
+          child-offset (if properties? 2 1)
+          header (subvec form 0 child-offset)
+          children (subvec form child-offset)]
+      (cond
+        ;; Literal data and predicate bodies are not generation-time code.
+        literal? form
+
+        (contains? #{:map :multi :orn :catn :altn} schema-type)
+        (into header
+              (map (fn [entry]
+                     (if (and (vector? entry) (not (map? (peek entry))))
+                       (update entry (dec (count entry)) #(resolve-typescript-expressions defmeta %))
+                       entry)))
+              children)
+
+        :else
+        (into header (map #(resolve-typescript-expressions defmeta %)) children)))
+
+    (map? form)
+    (update-vals form #(resolve-typescript-expressions defmeta %))
+
+    :else
+    form))
+
+(defn- prepare-schema
+  [{:keys [schema ns] fqname :name :as defmeta}]
+  (->> schema
+       (resolve-typescript-expressions defmeta)
+       ;; Discard predicate bodies before attempting to resolve their CLJS-only
+       ;; symbols. Referenced JVM vars can introduce new bodies, so sanitize again below.
+       schema/sanitize-predicate-fn-constraints
+       (resolve-var-refs (or ns fqname))
+       require-registry-namespaces!
+       schema/sanitize-predicate-fn-constraints))
+
 (defn fn->ts
   "Convert either function metadata or ClojureScript's compiler state ('def') into TypeScript type."
-  [{:keys [arglists schema doc ns] fqname :name :as fnmeta}]
+  [{:keys [arglists doc] fqname :name :as fnmeta}]
   (try
     (let [fnname (name fqname)
-          schema (->> schema
-                      (resolve-var-refs (or ns fqname))
-                      require-registry-namespaces!
-                      schema/sanitize-predicate-fn-constraints)
+          schema (prepare-schema fnmeta)
           arglists (if (= (first arglists) 'quote)
                      (second arglists)
                      arglists)]
@@ -827,13 +1030,10 @@
 
 (defn const->ts
   "Convert a constant definition with schema metadata into TypeScript type declaration."
-  [{:keys [schema doc ns] fqname :name :as defmeta}]
+  [{:keys [doc] fqname :name :as defmeta}]
   (try
     (let [constname (cljs-munge (name fqname))
-          schema (->> schema
-                      (resolve-var-refs (or ns fqname))
-                      require-registry-namespaces!
-                      schema/sanitize-predicate-fn-constraints)]
+          schema (prepare-schema defmeta)]
       (str (format-const-jsdoc doc schema)
            (format "export const %s: %s;" constname (schema->ts schema))
            "\n"))
@@ -875,10 +1075,12 @@
   [render defmeta {:keys [current-ns shared-types readonly?]
                    :or {shared-types #{}}}]
   (let [registry-refs     (atom #{})
+        input-registry-refs (atom #{})
         local-definitions (atom {})
         diagnostics       (atom [])
         weak-types        (atom {})]
     (binding [*registry-refs*     registry-refs
+              *input-registry-refs* input-registry-refs
               *local-definitions* local-definitions
               *diagnostics*       diagnostics
               *shared-types*      shared-types
@@ -888,6 +1090,7 @@
               *readonly?*         readonly?]
       {:declaration       (render defmeta)
        :registry-refs     @registry-refs
+       :input-registry-refs @input-registry-refs
        :local-definitions @local-definitions
        :diagnostics       (vec (distinct @diagnostics))
        :weak-types        @weak-types})))

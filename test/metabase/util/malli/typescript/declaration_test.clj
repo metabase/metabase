@@ -6,7 +6,8 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.typescript.declaration :as ts]))
+   [metabase.util.malli.typescript.declaration :as ts]
+   [metabase.util.malli.typescript.refs :as refs]))
 
 (mr/def ::memo-context-ref :string)
 
@@ -16,6 +17,24 @@
   [:map
    [:display-name :string]
    [:nested-value {:optional true} [:map [:long-display-name :string]]]])
+
+(mr/def ::nullable-alias [:maybe :string])
+
+(mr/def ::nullable-node
+  [:maybe
+   [:map {:closed true}
+    [:next {:optional true} [:ref ::nullable-node]]]])
+
+(mr/def ::nested-nullable-alias
+  [:map {:closed true}
+   [:value [:maybe :string]]])
+
+(mr/def ::nullable-vector-alias
+  [:tuple [:maybe :string]])
+
+(mr/def ::recursive-nested-nullable-alias
+  [:map {:closed true}
+   [:child [:maybe [:ref ::recursive-nested-nullable-alias]]]])
 
 (deftest basic-transforms-test
   (testing "basic schema transforms"
@@ -130,8 +149,7 @@
 
 (deftest registry-keyword-schema-loading-test
   (testing "function schemas load their registry namespace before inspection"
-    ;; Identical registry-typed argument and return auto-render as a generic.
-    (is (re-find #"export function registry_value<T extends Metabase_Util_Malli_Typescript_RegistryFixture_Value>\(value: T\): T;"
+    (is (re-find #"export function registry_value\(value: Metabase_Util_Malli_Typescript_RegistryFixture_Value\): Metabase_Util_Malli_Typescript_RegistryFixture_Value;"
                  (ts/fn->ts {:name 'example/registry-value
                              :ns 'example
                              :arglists '([value])
@@ -143,6 +161,174 @@
                  (ts/const->ts {:name 'example/registry-value
                                 :ns 'example
                                 :schema :metabase.util.malli.typescript.registry-fixture/value})))))
+
+(deftest inline-typescript-expression-test
+  (testing "function and constant metadata evaluate in their JVM namespace"
+    (let [owner 'metabase.util.malli.typescript.declaration-test
+          expression '(str/join " | " (map pr-str ["bird" "heron"]))]
+      (is (str/includes? (ts/fn->ts {:name (symbol (str owner) "bird")
+                                     :ns owner
+                                     :arglists '([value])
+                                     :schema [:=> [:cat :string] [:any {:typescript expression}]]})
+                         "export function bird(value: string): \"bird\" | \"heron\";"))
+      (is (str/includes? (ts/const->ts {:name (symbol (str owner) "bird")
+                                        :ns owner
+                                        :schema [:any {:typescript expression}]})
+                         "export const bird: \"bird\" | \"heron\";"))))
+  (testing "an analyzer-created namespace is not a loaded JVM namespace"
+    (create-ns 'example.cljs-only)
+    (try
+      (is (str/includes? (:declaration
+                          (ts/def->result {:name 'example.cljs-only/bird
+                                           :ns 'example.cljs-only
+                                           :requires {'s 'clojure.string}
+                                           :schema [:any {:typescript '(s/join " | " (map identity ["string" "number"]))}]}))
+                         "export const bird: string | number;"))
+      (finally
+        (remove-ns 'example.cljs-only))))
+  (testing "ordinary Clojure interop is not mistaken for a namespace alias"
+    (is (str/includes? (ts/const->ts {:name 'example.cljs-only/bird
+                                      :schema [:any {:typescript '(String/valueOf "string")}]})
+                       "export const bird: string;")))
+  (testing "only :typescript expressions are evaluated"
+    (is (str/includes? (ts/const->ts {:name 'metabase.util.malli.typescript.declaration-test/birds
+                                      :schema [:sequential
+                                               [:string {:description '(throw (Exception. "not metadata code"))}]]})
+                       "export const birds: string[];"))))
+
+(deftest inline-typescript-expression-error-test
+  (doseq [expression [42 nil false '(inc 1) '(throw (ex-info "broken expression" {}))
+                      '(cljs-only/type-name)]]
+    (testing (pr-str expression)
+      (let [error (try
+                    (ts/def->result {:name 'example.cljs-only/bird
+                                     :ns 'example.cljs-only
+                                     :file "example/cljs_only.cljs"
+                                     :line 17
+                                     :column 3
+                                     :requires {'cljs-only 'example.unavailable-cljs-helper}
+                                     :schema [:any {:typescript expression}]})
+                    (catch Exception e e))]
+        (is (instance? clojure.lang.ExceptionInfo error))
+        (when (instance? clojure.lang.ExceptionInfo error)
+          (is (= {:type :invalid-typescript-metadata
+                  :namespace 'example.cljs-only
+                  :definition 'example.cljs-only/bird
+                  :file "example/cljs_only.cljs"
+                  :line 17
+                  :column 3}
+                 (select-keys (ex-data error) [:type :namespace :definition :file :line :column]))))))))
+
+(deftest inline-typescript-entry-expression-test
+  (doseq [tag [:fn :enum :=]
+          schema-form (let [value [:any {:typescript '(str "string")}]]
+                        [[:map [tag value]]
+                         [:multi {:dispatch :type} [tag [:map [:value value]]]]
+                         [:orn [tag value]]
+                         [:catn [tag value]]
+                         [:altn [tag value]]])]
+    (testing (pr-str schema-form)
+      (is (str/includes? (ts/const->ts {:name 'example.cljs-only/bird
+                                        :schema schema-form})
+                         "string")))))
+
+(deftest inline-typescript-overload-expression-test
+  (is (str/includes? (ts/fn->ts {:name 'example.cljs-only/bird
+                                 :arglists '([])
+                                 :schema [:=> [:cat]
+                                          [:schema
+                                           {:ts/overloads [[:=> [:cat] [:any {:typescript '(str "string")}]]]}
+                                           :any]]})
+                     "export function bird(): string;")))
+
+(deftest bare-map-entry-declaration-test
+  (let [result (ts/const->result {:name 'example.cljs-only/bird
+                                  :schema [:map ::memo-context-ref]})]
+    (is (= #{::memo-context-ref} (:registry-refs result)))
+    (is (str/includes? (:declaration result) "Metabase_Util_Malli_Typescript_DeclarationTest_MemoContextRef"))))
+
+(deftest bare-map-entry-properties-declaration-test
+  (let [result (ts/const->result
+                {:name 'metabase.util.malli.typescript.declaration-test/bird
+                 :schema [:map
+                          [::memo-context-ref
+                           {:optional true
+                            :description [:any {:typescript '(throw (ex-info "entry data evaluated" {}))}]}]]})]
+    (is (= #{::memo-context-ref} (:registry-refs result)))
+    (is (str/includes? (:declaration result)
+                       "Metabase_Util_Malli_Typescript_DeclarationTest_MemoContextRef"))))
+
+(def ^:private quoted-predicate-schema
+  [:sequential [:fn '(fn [value] (unavailable-helper? value))]])
+
+(deftest cljs-only-explicit-predicate-declaration-test
+  (doseq [[schema-form expected]
+          (let [typed-predicate [:fn {:typescript '(str "string")}
+                                 '(fn [value] (unavailable.cljs-helper? value))]]
+            [[typed-predicate "export const bird: string;"]
+             [[:sequential typed-predicate] "export const bird: string[];"]
+             [[:and :string typed-predicate] "export const bird: (string & string);"]
+             [[:any {:ts/array-of typed-predicate}] "export const bird: string[];"]
+             [[:any {:ts/object-of [:map {:closed true} [:name typed-predicate]]}] "name: string;"]
+             [[:any {:ts/promise-of typed-predicate}] "export const bird: Promise<string>;"]])]
+    (testing (pr-str schema-form)
+      (is (str/includes? (ts/const->ts {:name 'example.cljs-only/bird :schema schema-form}) expected))))
+  (testing "inline registry definitions are sanitized before resolving symbols"
+    (let [result (ts/const->result {:name 'example.cljs-only/bird
+                                    :schema [:schema
+                                             {:registry {:example/bird [:fn {:typescript '(str "string")}
+                                                                        '(fn [value] (unavailable.cljs-helper? value))]}}
+                                             [:ref :example/bird]]})]
+      (is (= [:any {:typescript "string"}]
+             (mc/form (get (:local-definitions result) :example/bird))))))
+  (testing "bare predicate bodies don't require CLJS-only helpers"
+    (is (str/includes? (ts/const->ts {:name 'example.cljs-only/bird
+                                      :schema [:sequential [:fn '(fn [value] (unavailable.cljs-helper? value))]]})
+                       "export const bird: unknown[];")))
+  (testing "schemas introduced by JVM var dereferencing still get sanitized"
+    (is (str/includes? (ts/const->ts {:name 'metabase.util.malli.typescript.declaration-test/bird
+                                      :schema (:name (meta #'quoted-predicate-schema))})
+                       "export const bird: unknown[];"))))
+
+(deftest broken-typescript-jvm-owner-test
+  ;; Model a missing transitive dependency without adding a broken namespace
+  ;; to the project's classpath. The owner itself is a real JVM namespace.
+  (with-redefs-fn {#'ts/require-or-return
+                   (fn [_] (throw (java.io.FileNotFoundException. "missing JVM dependency")))}
+    (fn []
+      (let [error (try
+                    (ts/const->ts {:name 'metabase.util.malli.typescript.declaration-test/bird
+                                   :schema [:any {:typescript '(str "string")}]})
+                    (catch Exception e e))]
+        (is (instance? clojure.lang.ExceptionInfo error))
+        (when (instance? clojure.lang.ExceptionInfo error)
+          (is (= :invalid-typescript-metadata (:type (ex-data error))))
+          (is (some #(= "missing JVM dependency" (ex-message %))
+                    (take-while some? (iterate ex-cause error)))))))))
+
+(deftest typescript-expression-evaluation-boundary-test
+  (let [temporary-namespaces #(into #{}
+                                    (comp (map ns-name)
+                                          (filter (fn [name]
+                                                    (str/starts-with? (str name) "typescript-expression-"))))
+                                    (all-ns))
+        before (temporary-namespaces)]
+    (is (str/includes? (ts/const->ts {:name 'example.cljs-only/bird
+                                      :schema [:any {:typescript '(name 'unavailable.helper/string)}]})
+                       "export const bird: string;"))
+    (is (= before (temporary-namespaces)))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (ts/const->ts {:name 'example.cljs-only/bird
+                                :schema [:any {:typescript '(throw (ex-info "broken" {}))}]})))
+    (is (= before (temporary-namespaces))))
+  (let [expression '(throw (ex-info "literal or validator executed" {}))
+        literal {:typescript expression}]
+    (doseq [schema-form [[:= literal]
+                         [:enum literal]
+                         [:fn {:typescript "string"} (list 'fn '[value] expression)]
+                         [:sequential [:string {:description [:any literal]}]]]]
+      (is (= schema-form
+             (#'ts/resolve-typescript-expressions {:name 'example.cljs-only/bird} schema-form))))))
 
 (deftest structured-ref-test
   (testing "structured refs record registry refs without relying on generated TypeScript names"
@@ -263,6 +449,64 @@
     (is (= "Metabase_LegacyMbql_Schema_AggregationUpper"
            (#'ts/base-type-name :metabase.legacy-mbql.schema/Aggregation)))))
 
+(deftest ^:parallel argument-seqex-key-transform-test
+  (doseq [[args expected]
+          [[[:cat {:ts/key-transform :camelCase} [:map {:closed true} [:display-name :string]]]
+            "export function bird(bird: {\n\tdisplayName: string;\n}): null;"]
+           [[:cat {:ts/key-transform :camelCase}
+             [:cat {:ts/key-transform :none} [:map {:closed true} [:display-name :string]]]]
+            "export function bird(bird: {\n\t\"display-name\": string;\n}): null;"]]]
+    (is (str/includes? (ts/fn->ts {:name 'bird :arglists '([bird]) :schema [:=> args :nil]}) expected))))
+
+(deftest ^:parallel argument-seqex-predicate-test
+  (testing "transformed sequences retain valid predicates and their actual parameter names"
+    (doseq [[arglist args target expected]
+            [['[x] [:cat {:ts/key-transform :camelCase} :any] :string
+              "export function bird_QMARK_(x: unknown): x is string;"]
+             ['[category x] [:cat {:ts/key-transform :none} :any :any]
+              {:param 1 :schema :string}
+              "export function bird_QMARK_(category: unknown, x: unknown): x is string;"]
+             ['[x] [:catn {:ts/key-transform :camelCase} [:value :string]] [:= "bird"]
+              "export function bird_QMARK_(x: string): x is \"bird\";"]
+             ['[x] [:cat {:ts/key-transform :camelCase} [:cat {:ts/key-transform :none} :any]] :string
+              "export function bird_QMARK_(x: unknown): x is string;"]
+             ['[x & more] [:cat {:ts/key-transform :camelCase} :any [:* :string]] :string
+              "export function bird_QMARK_(x: unknown, ...more: string[]): x is string;"]]]
+      (is (str/includes? (ts/fn->ts {:name 'bird?
+                                     :arglists [arglist]
+                                     :schema [:=> args [:boolean {:ts/predicate-of target}]]})
+                         expected))))
+  (testing "structural predicates preserve the transformed parameter shape"
+    (let [args [:cat {:ts/key-transform :camelCase} [:map {:closed true} [:display-name :string]]]
+          target [:map {:closed true} [:displayName :string]]]
+      (is (str/includes? (ts/fn->ts {:name 'bird? :arglists '([x])
+                                     :schema [:=> args [:boolean {:ts/predicate-of target}]]})
+                         "): x is {\n\tdisplayName: string;\n};"))))
+  (testing "invalid targets, absent parameters and rest targets stay ordinary returns"
+    (doseq [[arglist args out]
+            [['[x] [:cat {:ts/key-transform :camelCase} :string] [:boolean {:ts/predicate-of :int}]]
+             ['[x] [:cat {:ts/key-transform :camelCase} :any] [:boolean {:ts/predicate-of {:param 1 :schema :string}}]]
+             ['[x & more] [:cat {:ts/key-transform :camelCase} :any [:* :string]]
+              [:boolean {:ts/predicate-of {:param 1 :schema :string}}]]
+             ['[x] [:cat {:ts/key-transform :camelCase} :any] [:string {:ts/predicate-of :string}]]]]
+      (is (not (str/includes? (ts/fn->ts {:name 'bird? :arglists [arglist] :schema [:=> args out]})
+                              " is "))))))
+
+(deftest ^:parallel argument-seqex-predicate-alternatives-test
+  (testing "an optional argument narrows only the overload where it is present"
+    (let [declaration (ts/fn->ts {:name 'bird? :arglists '([x])
+                                  :schema [:=> [:cat {:ts/key-transform :camelCase} [:? :any]]
+                                           [:boolean {:ts/predicate-of :string}]]})]
+      (is (str/includes? declaration "export function bird_QMARK_(): boolean;"))
+      (is (str/includes? declaration "export function bird_QMARK_(x: unknown): x is string;"))))
+  (testing "a later argument narrows only alternatives which declare that parameter"
+    (let [declaration (ts/fn->ts {:name 'bird? :arglists '([x y])
+                                  :schema [:=> [:cat {:ts/key-transform :camelCase}
+                                                [:alt [:cat :any] [:cat :any :int]]]
+                                           [:boolean {:ts/predicate-of {:param 1 :schema :int}}]]})]
+      (is (str/includes? declaration "export function bird_QMARK_(x: unknown): boolean;"))
+      (is (str/includes? declaration "export function bird_QMARK_(x: unknown, y: number): y is number;")))))
+
 (deftest format-ts-args-test
   (testing "formats function arguments correctly"
     (is (= "a: number, b: number | undefined | null"
@@ -375,6 +619,47 @@
     (is (re-find #"export function bounded\(\.\.\.args: unknown\[\]\): string;"
                  declaration))))
 
+(deftest ^:parallel argument-alias-nullability-test
+  (testing "maybe aliases use contextual definitions only for input positions"
+    (is (= "export function accepts_nullable(value: Input_Metabase_Util_Malli_Typescript_DeclarationTest_NullableAlias): boolean;"
+           (last (str/split-lines
+                  (#'ts/fn->ts {:name 'accepts-nullable
+                                :arglists '([value])
+                                :schema [:=> [:cat ::nullable-alias] :boolean]}))))))
+  (testing "output aliases retain their context-free nullability"
+    (is (= "Metabase_Util_Malli_Typescript_DeclarationTest_NullableAlias"
+           (ts/schema->ts ::nullable-alias))))
+  (testing "recursive nullable aliases retain a recursive input graph"
+    (let [declaration (#'ts/fn->ts {:name 'accepts-node
+                                    :arglists '([value])
+                                    :schema [:=> [:cat ::nullable-node] :boolean]})]
+      (is (str/includes? declaration
+                         "value: Input_Metabase_Util_Malli_Typescript_DeclarationTest_NullableNode"))))
+  (testing "nested maybe values use bounded contextual aliases for input positions"
+    (doseq [[argument-schema input-alias] [[::nested-nullable-alias
+                                            "Input_Metabase_Util_Malli_Typescript_DeclarationTest_NestedNullableAlias"]
+                                           [[:ref ::nullable-vector-alias]
+                                            "Input_Metabase_Util_Malli_Typescript_DeclarationTest_NullableVectorAlias"]
+                                           [[:schema {:registry {::local-nullable
+                                                                 [:tuple [:maybe :string]]}}
+                                             ::local-nullable]
+                                            "Input_Metabase_Util_Malli_Typescript_DeclarationTest_LocalNullable"]
+                                           [::recursive-nested-nullable-alias
+                                            "Input_Metabase_Util_Malli_Typescript_DeclarationTest_RecursiveNestedNullableAlias"]]]
+      (let [declaration (#'ts/fn->ts {:name 'accepts-nested
+                                      :arglists '([value])
+                                      :schema [:=> [:cat argument-schema] :boolean]})]
+        (is (str/includes? declaration (str "value: " input-alias)))))
+    (let [declarations (:declarations
+                        (refs/type-aliases
+                         #{::nested-nullable-alias
+                           ::nullable-vector-alias
+                           ::recursive-nested-nullable-alias}
+                         {:resolve-schema mr/resolve-schema
+                          :type-name ts/base-type-name
+                          :ref-name ts/base-type-name}))]
+      (is (not-any? #(str/includes? % "undefined") declarations)))))
+
 (deftest ^:parallel generic-alternative-declaration-test
   (let [declaration (#'ts/-fn->ts "generic-correlated"
                                   '[value option]
@@ -384,7 +669,7 @@
                                     [:cat :int :string]]
                                    [:schema {:ts/same-as 0
                                              :ts/generic-bound [:or :string :int]}
-                                    :string]])]
+                                    [:or :string :int]]])]
     (is (re-find #"generic_correlated<T extends \(string \| number\)>\(value: T, option: number\): T;"
                  declaration))
     (is (re-find #"generic_correlated<T extends \(string \| number\)>\(value: T, option: string\): T;"
@@ -436,7 +721,7 @@
                           [:cat :any]
                           [:schema {:ts/same-as 0
                                     :ts/generic-bound [:or :string :int]}
-                           :string]]))))
+                           [:or :string :int]]]))))
   (testing "standalone function schema handles named catn arguments"
     (is (= "(a: string, b: number) => boolean"
            (ts/schema->ts [:=> [:catn [:a :string] [:b :int]] :boolean]))))
@@ -575,11 +860,84 @@
                   (#'ts/fn->ts {:name     'field-type
                                 :arglists '([category column])
                                 :schema   [:=> [:cat :any :any]
-                                           [:boolean {:ts/predicate-of {:param 1, :schema :string}}]]})))))))
+                                           [:boolean {:ts/predicate-of {:param 1, :schema :string}}]]}))))))
+  (testing "literal targets remain truthful primitive subsets"
+    (is (= "export function is_bird(value: string): value is \"bird\";"
+           (last (str/split-lines
+                  (#'ts/fn->ts {:name 'is-bird
+                                :arglists '([value])
+                                :schema [:=> [:cat :string]
+                                         [:boolean {:ts/predicate-of [:= "bird"]}]]}))))))
+  (testing "predicate metadata requires a boolean return"
+    (is (= "export function not_boolean(value: unknown): string;"
+           (last (str/split-lines
+                  (#'ts/fn->ts {:name 'not-boolean
+                                :arglists '([value])
+                                :schema [:=> [:cat :any]
+                                         [:schema {:ts/predicate-of :string} :string]]})))))))
+
+(deftest kind-specific-overload-test
+  (let [declaration (ts/fn->ts
+                     {:name 'update
+                      :arglists '([value option])
+                      :schema [:=>
+                               [:cat [:or :string :int] :any]
+                               [:schema {:ts/overloads
+                                         [[:=> [:cat :string :any] :string]
+                                          [:=> [:cat :int :any] :int]
+                                          [:=> [:cat [:or :string :int] :any]
+                                           [:or :string :int]]]}
+                                [:or :string :int]]]})]
+    (is (str/includes? declaration "export function update(value: string, option: unknown): string;"))
+    (is (str/includes? declaration "export function update(value: number, option: unknown): number;"))
+    (is (str/includes? declaration "export function update(value: string | number, option: unknown): (string | number);")))
+  (doseq [overloads [[] [[:=> [:cat :string] :string]]]]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid :ts/overloads metadata"
+                          (ts/fn->ts
+                           {:name 'update
+                            :arglists '([value option])
+                            :schema [:=> [:cat :string :any]
+                                     [:schema {:ts/overloads overloads}
+                                      :string]]}))))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Invalid :ts/overloads metadata"
+                        (ts/fn->ts
+                         {:name 'variadic
+                          :arglists '([value & more])
+                          :schema [:=> [:cat :string [:* :int]]
+                                   [:schema {:ts/overloads [[:=> [:cat :string] :string]]}
+                                    :string]]}))))
+
+(deftest same-as-validation-test
+  (testing "true explicit identity remains supported"
+    (is (str/includes?
+         (#'ts/-fn->ts "identity" '[value]
+                       [:=> [:cat :string]
+                        [:schema {:ts/same-as 0} :string]])
+         "export function identity<T extends string>(value: T): T;")))
+  (doseq [same-as [9 -1 0.5]
+          :when (not= same-as 0)]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid :ts/same-as metadata"
+                          (#'ts/-fn->ts "invalid" '[value]
+                                        [:=> [:cat :string]
+                                         [:schema {:ts/same-as same-as} :string]]))))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Invalid :ts/same-as metadata"
+                        (#'ts/-fn->ts "invalid-rest" '[value & more]
+                                      [:=> [:cat :string [:* :int]]
+                                       [:schema {:ts/same-as 1} :int]])))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Invalid :ts/same-as metadata"
+                        (#'ts/-fn->ts "invalid-bound" '[value]
+                                      [:=> [:cat :string]
+                                       [:schema {:ts/same-as 0 :ts/generic-bound :int}
+                                        :string]]))))
 
 (deftest auto-generic-declaration-test
-  (testing "identical registry-typed argument and return become a generic"
-    (is (= "export function identity_like<T extends Metabase_Util_Malli_Typescript_DeclarationTest_AutoGenericRef>(value: T): T;"
+  (testing "same-schema inputs and outputs do not imply identity"
+    (is (= "export function identity_like(value: Metabase_Util_Malli_Typescript_DeclarationTest_AutoGenericRef): Metabase_Util_Malli_Typescript_DeclarationTest_AutoGenericRef;"
            (last (str/split-lines
                   (#'ts/fn->ts {:name     'identity-like
                                 :arglists '([value])

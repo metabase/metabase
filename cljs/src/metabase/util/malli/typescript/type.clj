@@ -94,9 +94,12 @@
   (assoc function-node :predicate {:parameter parameter-index, :type type-node}))
 
 (defn ref-type
-  "Return a registry reference type node."
-  [schema-keyword]
-  {:kind :ref, :schema-keyword schema-keyword})
+  "Return a registry reference type node. Contextual input aliases preserve
+  argument-only undefined acceptance without changing the value alias."
+  ([schema-keyword]
+   (ref-type schema-keyword false))
+  ([schema-keyword input?]
+   {:kind :ref, :schema-keyword schema-keyword, :input? input?}))
 
 (defn key-transform-type
   "Return a node applying the named key-transform helper (e.g. `Camel`) to `inner`."
@@ -122,7 +125,9 @@
 
 (defn- compound-raw?
   [typescript]
-  (boolean (re-find #"\s(?:\||&|=>)\s" typescript)))
+  ;; Raw metadata may omit whitespace (`A|B`) or use callable syntax. Parenthesize
+  ;; any such expression when embedding it in an array, tuple rest, or union.
+  (boolean (re-find #"\||&|=>" typescript)))
 
 (defn- finite-typescript-number?
   [value]
@@ -159,7 +164,7 @@
     (render-child item 0 options)))
 
 (defn- render*
-  [node {:keys [ref-name] :as options}]
+  [node {:keys [ref-name input-ref-name] :as options}]
   (let [kind (:kind node)]
     {:precedence (if (and (= kind :raw) (compound-raw? (:typescript node)))
                    0
@@ -252,11 +257,16 @@
                 (render-child (:return node) (precedence :function) options))))
 
        :key-transform
-       (str (:name node) "<" (render-child (:inner node) 0 options) ">")
+       (let [rendered (str (:name node) "<" (render-child (:inner node) 0 options) ">")]
+         (if (:readonly? node)
+           (str "Readonly<" rendered ">")
+           rendered))
 
        :ref
        (if ref-name
-         (ref-name (:schema-keyword node))
+         (if (:input? node)
+           ((or input-ref-name #(str (ref-name %) "Input")) (:schema-keyword node))
+           (ref-name (:schema-keyword node)))
          (throw (ex-info "Cannot render a TypeScript ref without :ref-name" {:node node})))
 
        (throw (ex-info "Unsupported TypeScript type node" {:node node})))}))

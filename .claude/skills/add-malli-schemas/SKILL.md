@@ -158,12 +158,13 @@ ms/NonBlankString               ;; Non-empty string
 ms/BooleanValue                 ;; String "true"/"false" or boolean
 ms/MaybeBooleanValue            ;; BooleanValue or nil
 ms/TemporalString               ;; ISO-8601 date/time string (for REQUEST params only!)
+ms/TemporalInstant              ;; Java Time value before response serialization
 ms/OpaqueJSONObject             ;; JSON object whose keys are not ours to declare; string-keyed
 ms/PositiveNum                  ;; Positive number
 ms/IntGreaterThanOrEqualToZero  ;; 0 or positive
 ```
 
-**IMPORTANT:** For response schemas, use `:any` for temporal fields, not `ms/TemporalString`!
+For response schemas, use the producer's actual temporal type, such as `:time/local-date` or `:time/offset-date-time`, not `ms/TemporalString`. Use `ms/TemporalInstant` when the contract accepts multiple Java Time types.
 Response schemas validate BEFORE JSON serialization, so they see Java Time objects.
 
 ### Built-in Malli Types
@@ -315,12 +316,12 @@ Avoid using sequence schemas unless completely necessary.
 ;; WRONG - Java Time objects aren't strings yet
 [:date_joined ms/TemporalString]
 
-;; RIGHT - schemas validate BEFORE JSON serialization
-[:date_joined :any]  ;; Java Time object, serialized to string by middleware
-[:last_login [:maybe :any]]  ;; Java Time object or nil
+;; RIGHT - for producers returning LocalDate and OffsetDateTime, respectively
+[:date_joined :time/local-date]
+[:last_login [:maybe :time/offset-date-time]]
 ```
 
-**Why:** Response schemas validate the internal Clojure data structures BEFORE they are serialized to JSON. Java Time objects like `OffsetDateTime` get converted to ISO-8601 strings by the JSON middleware, so the schema needs to accept the raw Java objects.
+**Why:** Response schemas validate the internal Clojure data structures BEFORE they are serialized to JSON. Java Time objects like `OffsetDateTime` get converted to ISO-8601 strings by the JSON middleware, so the schema needs to accept the raw Java objects. Match the concrete type to the producer; use `ms/TemporalInstant` for a genuinely heterogeneous temporal contract, rather than accepting every value with `:any`.
 
 ### Don't: Use `[:sequential X]` when the data is actually a set
 
@@ -385,7 +386,7 @@ Tests often show the expected response structure.
 
 - Validate BEFORE JSON serialization
 - Data is still in Clojure format (Java Time objects, sets, keywords)
-- Use `:any` for Java Time objects
+- Use the producer's concrete `:time/...` schema for Java Time objects, or `ms/TemporalInstant` for a heterogeneous temporal contract
 - Use `[:set X]` for sets
 - Use `[:enum :keyword]` for keyword enums
 

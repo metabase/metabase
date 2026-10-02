@@ -27,10 +27,13 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
-export function withExpressionName<
-  Clause extends AggregationClause | ExpressionClause,
->(clause: Clause, newName: string): Clause {
-  return ML.with_expression_name(clause, newName);
+export function withExpressionName(
+  clause: AggregationClause | ExpressionClause,
+  newName: string,
+): AggregationClause | ExpressionClause {
+  // Generated opaque clause aliases currently render as unknown, but this wrapper only accepts MBQL clauses.
+  const clauseTuple = clause as [unknown, unknown, ...unknown[]];
+  return ML.with_expression_name(clauseTuple, newName);
 }
 
 export function expressions(

@@ -61,6 +61,22 @@
 
       "Readonly<Record<string, number>>"
       (assoc (type/generic "Record" [(type/primitive "string") (type/primitive "number")]) :readonly? true)))
+  (testing "raw compound types are parenthesized in precedence-sensitive positions"
+    (are [expected node] (= expected (type/render node))
+      "(string|number)[]"
+      (type/array (type/raw "string|number"))
+
+      "(A&B)[]"
+      (type/array (type/raw "A&B"))
+
+      "((value: string)=>number)[]"
+      (type/array (type/raw "(value: string)=>number"))
+
+      "Promise<(string|number)[]>"
+      (type/generic "Promise" [(type/array (type/raw "string|number"))])
+
+      "[...(string|number)[]]"
+      (type/tuple [] (type/raw "string|number"))))
   (testing "key-transform helper node"
     (is (= "Camel<{\n\t\"display-name\": string;\n}>"
            (type/render (type/key-transform-type

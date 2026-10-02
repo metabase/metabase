@@ -1,34 +1,38 @@
-# Generating TypeScript declarations from Malli schemas
+# Generate TypeScript declarations from Malli schemas
 
-The Malli-to-TypeScript declaration compiler generates `.d.ts` files for ClojureScript namespaces listed in the Shadow `app` build's `:entries` in `shadow-cljs.edn`. Within each entry namespace, it declares values exported to JavaScript and derives their types from Malli schemas.
+The compiler reads Malli schemas for JavaScript exports and writes `.d.ts` files beside the compiled ClojureScript. It only processes namespaces listed in the Shadow `app` build's `:entries` in `shadow-cljs.edn`.
 
-Existing Malli tooling can validate, transform, generate, and translate data schemas. It does not inspect Shadow entry modules, enumerate JavaScript exports, or generate TypeScript relationships such as type predicates and correlated generics. This compiler keeps Malli as the source schema while adding the export and boundary information needed for `.d.ts` files.
+Malli provides schema validation, transformation, generation, and translation. This compiler adds Shadow entry and export discovery, declaration output, and TypeScript relationships such as type predicates and correlated generics. Malli remains the source schema.
 
 ## TypeScript metadata
 
-This compiler introduces custom Malli notation for **TypeScript metadata**. The notation uses compiler-owned properties in a Malli schema's property map. It is not part of TypeScript or standard Malli. Keys such as `:typescript` and `:ts/array-of` are annotations that the declaration compiler reads in addition to the Malli schema.
+Properties such as `:typescript` and `:ts/array-of` are extensions for this compiler, not standard Malli or TypeScript syntax. They live in the Malli schema's property map and describe information needed for the declaration.
 
 For example:
 
 ```clojure
-[:any {:ts/array-of :string}]
+[:and
+ [:fn array?]
+ [:any {:ts/array-of :string}]]
 ```
 
-Malli still sees `:any`, so the annotation does not replace the runtime validator with a sequential schema. The declaration compiler additionally knows that JavaScript receives a native array:
+The predicate describes a native JavaScript array, not a ClojureScript sequence. The metadata adds the element type to the declaration:
 
 ```ts
 string[]
 ```
 
-This extra information is necessary when:
+Use metadata when:
 
 - the Malli schema is intentionally permissive at runtime;
 - ClojureScript converts a value before returning it to JavaScript; or
 - TypeScript needs a relationship, such as argument narrowing or preserving an input subtype, that Malli does not express.
 
-Keeping this information as schema metadata avoids two problems: changing runtime validation only to improve TypeScript output, and maintaining a separate handwritten declaration that can drift from the Malli schema. Use ordinary Malli whenever it already describes the JavaScript value. Add TypeScript metadata only for the missing boundary or relationship.
+Metadata keeps the runtime schema and declaration together. Don't change runtime validation just to get a more convenient TypeScript type, or maintain a separate declaration that can drift from the schema. Use ordinary Malli where it fits. Add metadata for the conversion or type relationship Malli can't describe.
 
-## Generating declarations for JavaScript exports
+For native containers, keep a real predicate alongside the metadata. The `:any` node carries the annotation; it isn't a validator for the container's contents. Reuse the producer's canonical element and property schemas.
+
+## Which exports get declarations
 
 A value gets a declaration when both conditions are true:
 
@@ -49,16 +53,16 @@ The compiler generates:
 export function normalize_name(name: string): string;
 ```
 
-The examples in this guide omit generated JSDoc comments so the declaration itself is easier to see.
+The examples omit generated JSDoc comments to focus on the declarations.
 
 The Shadow `app` build hook writes declarations beside the compiled JavaScript during the `:flush` stage:
 
 - development: `target/cljs_dev`
 - release: `target/cljs_release`
 
-Each generated value module corresponds to a module that JavaScript can import. A public ClojureScript var without export metadata does not get a value declaration. A schema in an internal dependency namespace does not create a declaration module by itself.
+Declaration modules correspond to importable JavaScript modules. A public ClojureScript var without export metadata doesn't get a value declaration. A schema in an internal dependency namespace doesn't create a declaration module.
 
-If an exported value has no usable schema, the compiler keeps the runtime export visible and uses a conservative fallback:
+An exported value without a usable schema still gets a declaration, with `unknown` types:
 
 ```clojure
 (defn ^:export transform [value]
@@ -69,9 +73,9 @@ If an exported value has no usable schema, the compiler keeps the runtime export
 export function transform(value: unknown): unknown;
 ```
 
-Rest arguments fall back to `unknown[]`, and constants fall back to `unknown`. The compiler does not invent a type it cannot prove.
+Rest arguments fall back to `unknown[]`, and constants fall back to `unknown`. The compiler doesn't invent types it can't prove.
 
-## Using ordinary Malli for ordinary values
+## Start with ordinary Malli
 
 Start with the Malli schema that validates the actual value. Common schemas compile directly:
 
@@ -93,9 +97,9 @@ Start with the Malli schema that validates the actual value. Common schemas comp
 | `[:map-of [:enum :a :b] :int]`                   | `Partial<Record<"a" \| "b", number>>` |
 | `'ifn?` or `'fn?`                                | `(...args: unknown[]) => unknown`     |
 
-Malli already contains enough information for these forms, so they need no TypeScript metadata.
+These forms need no TypeScript metadata.
 
-### Keeping open and closed maps distinct
+### Open and closed maps
 
 An open Malli map accepts additional keys:
 
@@ -128,7 +132,7 @@ A closed map removes the index signature:
 }
 ```
 
-If multiple Malli keys become the same TypeScript property, the compiler emits one property with a union of the contributing types and records a `:map-key-collision` diagnostic.
+When several Malli keys render as the same TypeScript property, the compiler unions their types in one field and records a `:map-key-collision` diagnostic.
 
 For example:
 
@@ -146,7 +150,7 @@ For example:
 }
 ```
 
-### Compiling sequence expressions as flat tuples
+### Sequence expressions become flat tuples
 
 Malli sequence expressions preserve order, optional positions, alternatives, and repetition:
 
@@ -172,9 +176,9 @@ Named sequence entries become labeled tuple elements or parameter names:
 [op: string, value: number]
 ```
 
-Malli already models this positional structure. The compiler's job is to preserve it without creating nested tuples or invalid rest elements.
+The compiler preserves this order and emits flat tuples with valid rest elements.
 
-### Compiling multi-arity functions as overload intersections
+### Multi-arity functions become overload intersections
 
 A Malli `:function` schema means one function supports all listed signatures:
 
@@ -188,9 +192,9 @@ A Malli `:function` schema means one function supports all listed signatures:
 ((arg0: string) => number) & ((arg0: string, arg1: number) => number);
 ```
 
-An intersection represents an overloaded callable. A union would mean the value is only one of the functions and would make many valid calls impossible.
+The intersection describes a function with both signatures. A union would describe one function or the other and prevent many valid calls.
 
-### Reusing registry schemas as named aliases
+### Registry schemas become named aliases
 
 A qualified registry key becomes a TypeScript alias:
 
@@ -202,7 +206,7 @@ A qualified registry key becomes a TypeScript alias:
 Metabase_Lib_Schema_Metadata_Column;
 ```
 
-Global aliases reachable from exported signatures are written to `metabase.lib.shared.d.ts`. Entry modules refer to them through a type-only import:
+The compiler writes global aliases reachable from exported signatures to `metabase.lib.shared.d.ts`. Entry modules use a type-only import:
 
 ```ts
 import type * as Shared from "./metabase.lib.shared";
@@ -214,7 +218,13 @@ export function display_info(
 
 Inline `:schema` registries remain in the entry declaration that owns them. Recursive references through an object, array, tuple, or function remain recursive. An unsafe direct alias cycle widens only the unsafe edge to `unknown` and records a diagnostic.
 
-## Describing JavaScript boundary conversions
+### Nullable function inputs also accept `undefined`
+
+A `[:maybe T]` value alias is `T | null`. As a function argument, it also accepts `undefined`.
+
+When a named alias contains nested `:maybe` schemas, the compiler emits a contextual `Input_...` alias for the argument and its referenced schemas. The input alias adds `undefined` at nullable positions; the value alias stays unchanged. The compiler emits each input alias once and keeps recursive references, rather than inlining a shared schema repeatedly.
+
+## JavaScript conversions
 
 Ordinary Malli describes Clojure values. Use TypeScript metadata when the exported function returns a different JavaScript representation.
 
@@ -232,53 +242,61 @@ The supported properties are:
 - `:ts/same-as`
 - `:ts/generic-bound`
 
-Do not add TypeScript metadata only to make a declaration look nicer. The metadata must describe the real JavaScript value.
+Metadata must match the value the function exposes to JavaScript.
 
-### Describing a native JavaScript array with `:ts/array-of`
+### Native JavaScript arrays
 
-A function returning `to-array` returns a JavaScript array, not a ClojureScript sequence:
+`to-array` returns a JavaScript array, not a ClojureScript sequence:
 
 ```clojure
-[:any {:ts/array-of [:maybe :string]}]
+[:and
+ [:fn array?]
+ [:any {:ts/array-of [:maybe :string]}]]
 ```
 
 ```ts
 (string | null)[]
 ```
 
-Malli alone cannot express this distinction without changing runtime validation. `[:sequential T]` validates a Clojure sequence, while `:ts/array-of` describes the native array returned at the JavaScript boundary.
+`array?` checks the native container. `[:sequential T]` validates a Clojure sequence, not a JavaScript array. The `:ts/array-of` metadata describes the elements but doesn't validate them. Use the producer's canonical schema for their runtime contract.
 
-### Describing a native JavaScript object with `:ts/object-of`
+### Native JavaScript objects
 
-A function returning `#js {}` is not returning a ClojureScript map:
+`#js {}` creates a native JavaScript object, not a ClojureScript map:
 
 ```clojure
-[:any {:ts/object-of
-       [:map {:closed true}
-        [:operator :string]
-        [:args [:any {:ts/array-of :any}]]]}]
+[:and
+ [:fn #(= (type %) js/Object)]
+ [:any {:ts/object-of
+        [:map {:closed true}
+         [:operator [:= "="]]
+         [:values [:and [:fn array?]
+                   [:any {:ts/array-of :string}]]]]}]]
 ```
 
 ```ts
 {
-  operator: string;
-  args: unknown[];
+  operator: "=";
+  values: string[];
 }
 ```
 
-A Malli `:map` describes a Clojure map and its runtime validation. `:ts/object-of` preserves permissive validation while describing the object JavaScript actually receives.
+This string-equality filter has a native `values` array. The predicate checks for a plain JavaScript object. The map inside `:ts/object-of` describes the properties for TypeScript; a `:map` validator on the outer value would reject the native object.
 
-### Describing converted object keys with `:ts/key-transform`
+### Camel-case keys
 
 Use `:ts/key-transform :camelCase` only when the implementation converts keys to camel case:
 
 ```clojure
-[:any {:ts/object-of
-       [:map {:closed true}
-        [:display-name :string]
-        [:filter-positions {:optional true} [:sequential :int]]
-        [:many-pks? {:optional true} :boolean]]
-       :ts/key-transform :camelCase}]
+[:and
+ [:fn #(= (type %) js/Object)]
+ [:any {:ts/object-of
+        [:map {:closed true}
+         [:display-name :string]
+         [:filter-positions {:optional true}
+          [:and [:fn array?] [:any {:ts/array-of :int}]]]
+         [:many-pks? {:optional true} :boolean]]
+        :ts/key-transform :camelCase}]]
 ```
 
 ```ts
@@ -289,16 +307,38 @@ Use `:ts/key-transform :camelCase` only when the implementation converts keys to
 }
 ```
 
-Plain Malli sees the original keys and does not know that the JavaScript serializer renames them. The compiler applies the transform recursively. A nested `:ts/object-of` can reset an inherited transform with `:ts/key-transform :none`.
+Malli validates the original keys. The compiler applies the key transform recursively to describe the serializer's output. A nested schema node can reset the transform with `:ts/key-transform :none` or override it with `:camelCase`. Maps, refs, sequence expressions, and function argument sequences all follow this rule.
+
+For example, retain the original keys of a nested persistent value while converting its enclosing object:
+
+```clojure
+[:and
+ [:fn #(= (type %) js/Object)]
+ [:any {:ts/object-of
+        [:map {:closed true}
+         [:nested-value [:map {:closed true :ts/key-transform :none}
+                         [:display-name :string]]]]
+        :ts/key-transform :camelCase}]]
+```
+
+```ts
+{
+  nestedValue: {
+    "display-name": string;
+  };
+}
+```
 
 For simple string keys, the compiler can use its generated `Camel<...>` mapped type instead of expanding every transformed key:
 
 ```clojure
-[:any {:ts/object-of
-       [:map {:closed true}
-        ["display-name" :string]
-        ["enabled?" {:optional true} :boolean]]
-       :ts/key-transform :camelCase}]
+[:and
+ [:fn #(= (type %) js/Object)]
+ [:any {:ts/object-of
+        [:map {:closed true}
+         ["display-name" :string]
+         ["enabled?" {:optional true} :boolean]]
+        :ts/key-transform :camelCase}]]
 ```
 
 ```ts
@@ -310,12 +350,13 @@ Camel<{
 
 When an entry module imports shared aliases, the same expression appears as `Shared.Camel<...>`.
 
-### Naming an exact TypeScript type with `:typescript`
+### Explicit types with `:typescript`
 
-Use `:typescript` when the boundary has an exact TypeScript type that Malli cannot derive:
+Use `:typescript` when Malli can't derive the JavaScript value's exact type:
 
 ```clojure
-(def ^:export ^{:schema [:any {:typescript "RegExp"}]}
+(def ^:export ^{:schema [:fn {:typescript "RegExp"}
+                         #(instance? js/RegExp %)]}
   data-image-uri-pattern
   #"^data:image/")
 ```
@@ -324,23 +365,50 @@ Use `:typescript` when the boundary has an exact TypeScript type that Malli cann
 export const data_image_uri_pattern: RegExp;
 ```
 
-A Clojure regular-expression predicate does not identify the JavaScript representation during JVM-side generation. `:typescript` supplies the boundary type without tightening runtime validation.
+The predicate describes the actual ClojureScript regular-expression instance. The JVM generator can't infer its JavaScript class from the predicate body, so `:typescript` supplies that static type.
 
 The same property can annotate a predicate schema:
 
 ```clojure
-[:fn {:typescript "bigint"} bigint?]
+[:fn {:typescript "bigint"} u.number/bigint?]
 ```
 
 ```ts
 bigint;
 ```
 
-The compiler does not evaluate that predicate merely to render the explicit type.
+The compiler renders the explicit type without evaluating the predicate.
 
-### Pointing to a registry alias with `:ts/ref`
+Inline export metadata can compute the TypeScript string with a Clojure expression:
 
-Use `:ts/ref` when runtime validation must stay permissive but the JavaScript contract has a known registry type:
+```clojure
+(ns example.birds
+  (:require [metabase.util.number :as u.number]))
+
+(def ^{:export true
+       :schema [:fn {:typescript (str "big" "int")} u.number/bigint?]}
+  bird-count (u.number/bigint 42))
+```
+
+```ts
+export const bird_count: bigint;
+```
+
+The expression runs on the JVM during declaration generation, including for `.cljs` exports and `mu/defn` schemas. Namespace aliases must resolve to JVM-loadable helpers. For a helper defined only in ClojureScript, move it to `.cljc` or use a string instead.
+
+Registered `.clj`/`.cljc` schemas evaluate their expressions when the namespace loads. The generator leaves those resulting strings unchanged.
+
+The generator evaluates only `:typescript` property values, not predicate bodies or arbitrary schema forms. Each result must be a string. For evaluation failures or non-string results, the error reports the owning namespace, definition, and source location when available. These expressions run as trusted project code, without a sandbox.
+
+### Permissive references with `:ts/ref`
+
+When the runtime value satisfies the registry schema, reference it directly:
+
+```clojure
+::lib.schema.metadata/column
+```
+
+Reserve `:ts/ref` for an existing permissive runtime contract whose JavaScript type is established separately:
 
 ```clojure
 [:any {:ts/ref ::lib.schema.metadata/column}]
@@ -352,21 +420,23 @@ In an entry declaration, the compiler emits:
 Shared.Metabase_Lib_Schema_Metadata_Column;
 ```
 
-Plain `:any` correctly describes the runtime validation but compiles to `unknown`. `:ts/ref` adds the known TypeScript boundary without replacing the runtime schema. Direct `schema->ts` calls return the unqualified alias because they do not have entry-module import context.
+`:any` accepts any runtime value and compiles to `unknown`. `:ts/ref` supplies the known TypeScript type without replacing the runtime schema. Direct `schema->ts` calls return the unqualified alias because they have no entry-module import context.
 
-### Describing a JavaScript promise with `:ts/promise-of`
+### JavaScript promises
 
 ```clojure
-[:any {:ts/promise-of :string}]
+[:and
+ [:fn #(instance? js/Promise %)]
+ [:any {:ts/promise-of :string}]]
 ```
 
 ```ts
 Promise<string>;
 ```
 
-Malli validates realized values and does not wait for a JavaScript promise. `:ts/promise-of` describes the asynchronous container at the export boundary.
+The predicate checks the promise instance. It doesn't wait for or validate the resolved value. `:ts/promise-of` describes the known result schema.
 
-### Normalizing JavaScript instance checks
+### JavaScript instance checks
 
 The declaration resolver converts JavaScript class checks into the internal `:ts/instance-of` compatibility property:
 
@@ -386,15 +456,15 @@ unknown[]
 Record<string, unknown>;
 ```
 
-The JVM generator cannot resolve `js/Array` or `js/Object` as JVM classes. Prefer `:ts/array-of` or `:ts/object-of` when the element or property schema is known. Authors generally should not write `:ts/instance-of` directly.
+The JVM generator can't resolve `js/Array` or `js/Object` as JVM classes. Use `:ts/array-of` or `:ts/object-of` when you know the element or property schema. Leave `:ts/instance-of` to the resolver.
 
-## Describing TypeScript relationships that Malli does not model
+## TypeScript relationships
 
-Some TypeScript types express relationships between values rather than the shape of one value. These need explicit compiler metadata or compiler inference.
+Some TypeScript types relate arguments and return values. The compiler needs metadata or inference to describe those relationships.
 
-### Narrowing an argument with `:ts/predicate-of`
+### Type predicates
 
-A predicate can declare what a `true` result guarantees:
+A predicate can declare both what a `true` result guarantees and what a `false` result excludes:
 
 ```clojure
 (mu/defn ^:export is-date? :- [:boolean {:ts/predicate-of :string}]
@@ -406,13 +476,18 @@ A predicate can declare what a `true` result guarantees:
 export function is_date_QMARK_(value: unknown): value is string;
 ```
 
-Plain Malli knows only that the function returns a boolean. It does not encode the relationship between `true` and the argument's type. A TypeScript type predicate gives consumers control-flow narrowing:
+Malli knows the function returns a boolean. A TypeScript type predicate also tells the caller how to narrow the argument:
 
 ```ts
 if (is_date_QMARK_(value)) {
   value.toUpperCase(); // value is string here
+} else {
+  // value is excluded from string only when the predicate's false result
+  // really proves that exclusion.
 }
 ```
+
+Use `:ts/predicate-of` only when both branches are sound. A `true` result must mean the value matches the target; a `false` result must exclude it. If a category check can return `false` for a valid type-info object, declare its return as `boolean`, not a TypeScript guard.
 
 To narrow a later argument, use a map:
 
@@ -429,11 +504,9 @@ export function field_type(
 ): column is string;
 ```
 
-The predicate target must be a sound guarantee. A function that can return `true` for values outside the target schema must not declare `:ts/predicate-of`.
+### Discriminated unions
 
-### Emitting a discriminated union with `:ts/dispatch-key`
-
-A keyword-dispatched Malli `:multi` is detected automatically:
+The compiler detects keyword dispatch in a Malli `:multi`:
 
 ```clojure
 [:multi {:dispatch :type}
@@ -455,7 +528,7 @@ A keyword-dispatched Malli `:multi` is detected automatically:
 }
 ```
 
-When `:dispatch` is an arbitrary function, Malli can execute it but the declaration compiler cannot determine which property it reads. Declare the direct key with `:ts/dispatch-key`:
+Malli can execute a function-valued `:dispatch`, but the compiler can't determine which property it reads. If the function reads one key, name it with `:ts/dispatch-key`:
 
 ```clojure
 [:multi {:dispatch #(keyword (:type %))
@@ -489,9 +562,9 @@ export type Example_Expression = Extract<Example, { type: "expression" }>;
 
 Leave computed dispatches, presence checks, and derived tags unannotated. A declared dispatch key must correspond to the actual runtime dispatch.
 
-### Preserving an input subtype with `:ts/same-as`
+### Unchanged inputs with `:ts/same-as`
 
-Malli can validate that an argument and return value satisfy the same broad schema, but it does not state that the function preserves the argument's specific subtype. The compiler detects an unambiguous identical registry-typed argument and return automatically:
+An argument and return value can satisfy the same schema without preserving the argument's subtype. The compiler doesn't infer that relationship. Declare it only when the function returns the input unchanged:
 
 ```clojure
 (ns metabase.example
@@ -501,48 +574,41 @@ Malli can validate that an argument and return value satisfy the same broad sche
 
 (mr/def ::value :string)
 
-(mu/defn ^:export identity-like :- ::value
+(mu/defn ^:export identity
+  :- [:schema {:ts/same-as 0} ::value]
   [value :- ::value]
   value)
 ```
 
 ```ts
-export function identity_like<T extends Shared.Metabase_Example_Value>(
-  value: T,
-): T;
+export function identity<T extends Shared.Metabase_Example_Value>(value: T): T;
 ```
 
-Use `:ts/same-as` when the correlation is not mechanically obvious:
+`:ts/same-as 0` ties the return to argument index `0`, including its literal type and extra properties. Preserving only the input's broad runtime kind isn't enough.
+
+### Kind-preserving transformations
+
+For a transformation that preserves a finite set of kinds, use declaration overloads instead. In this example, the second argument accepts a nullable string:
 
 ```clojure
-(mu/defn ^:export with-binning
-  :- [:schema {:ts/same-as 0
-               :ts/generic-bound
-               [:or ::lib.schema.metadata/column
-                    ::lib.schema.ref/ref]}
-      ::lib.schema.metadata/column]
-  [column-or-clause
-   binning-option]
-  ...)
+[:schema
+ {:ts/overloads
+  [[:=> [:cat ::metadata-column [:maybe :string]] ::metadata-column]
+   [:=> [:cat ::reference [:maybe :string]] ::reference]
+   [:=> [:cat [:or ::metadata-column ::reference] [:maybe :string]]
+    [:or ::metadata-column ::reference]]]}
+ [:or ::metadata-column ::reference]]
 ```
 
-```ts
-export function with_binning<
-  T extends
-    | Shared.Metabase_Lib_Schema_Metadata_Column
-    | Shared.Metabase_Lib_Schema_Ref_Ref,
->(column_or_clause: T, binning_option: unknown): T;
-```
+Each input kind has a corresponding output kind. The overloads don't promise to preserve arbitrary subtypes or extra properties.
 
-`:ts/same-as 0` ties the return to argument index `0`. `:ts/generic-bound` supplies the full accepted input domain when the nominal return schema is narrower.
+Keep the runtime schema as an input/output union. Put `:ts/overloads` on its return `:schema`, with an ordinary `:=>` signature for each supported kind and a union-input fallback. The compiler emits TypeScript overloads without changing Malli validation. Every listed input kind must have the listed output kind. If it doesn't, use the union result instead.
 
-Use this only when the implementation preserves the input kind. It is not a substitute for a transformation schema.
+## Compiler options
 
-## Controlling compiler output
+### Readonly containers
 
-### Emitting readonly containers
-
-Set `MB_CLJS_TS_READONLY=1` to make value-position containers immutable:
+Set `MB_CLJS_TS_READONLY=1` to emit readonly types for containers in value positions:
 
 ```clojure
 [:vector :string]
@@ -568,9 +634,11 @@ Readonly<Record<string, number>>;
 ReadonlySet<string>;
 ```
 
-Inline container types in function parameters remain mutable, so readonly generation does not narrow those accepted inputs. Registry-backed parameters can still refer to readonly aliases. Malli validates collection contents but does not encode TypeScript mutation rules. Readonly output is opt-in because consumers must copy a value before mutating it.
+Inline container types in function parameters stay mutable, so this option doesn't narrow those inputs. Parameters that use registry aliases can still refer to readonly types.
 
-### Inspecting weak fallback types
+Malli validates collection contents, not TypeScript mutation rules. Readonly output is opt-in because callers must copy a readonly value before mutating it.
+
+### Find fallback types
 
 Set `MB_DEBUG_CLJS` to report generated `any` and `unknown` fallback types:
 
@@ -584,7 +652,7 @@ Use verbose mode to list the affected exports:
 MB_DEBUG_CLJS=verbose bun run build-pure:cljs
 ```
 
-## Calling the compiler facade directly
+## Call the compiler directly
 
 `metabase.util.malli.typescript` is the stable Clojure facade:
 
@@ -610,7 +678,7 @@ For example:
 
 Use the facade in tests and debugging tools. Normal builds call `produce-dts` through `shadow-cljs.edn`.
 
-## Building and verifying declarations
+## Build and verify declarations
 
 For compiler changes, validate development and release output:
 
@@ -654,8 +722,8 @@ The compiler widens values when the available schema cannot prove a JavaScript t
 - `seqable?` and `coll?` remain `unknown` because ClojureScript collections have no single JavaScript representation.
 - Arbitrary serializers, normalization functions, and JavaScript interop cannot be inferred from Malli alone.
 
-The generator resolves `.cljc` registries on the JVM, while ClojureScript validates runtime values. Reader-conditional schemas can therefore expose different predicates in each environment. Do not infer a JavaScript type from a JVM-only predicate such as `bytes?` or `uri?`; use `unknown` unless the exported boundary performs a documented conversion.
+The generator resolves `.cljc` registries on the JVM. ClojureScript uses the runtime schemas, so reader conditionals can select different predicates in each environment. Don't infer a JavaScript type from a JVM-only predicate such as `bytes?` or `uri?`. Use `unknown` unless the export performs a documented conversion.
 
-Structurally identical aliases may receive an optional compiler-owned `"__kind"?` phantom property so TypeScript can distinguish them. Authors do not write or read this property at runtime.
+The compiler may add an optional `"__kind"?` phantom property to distinguish structurally identical aliases. Application code doesn't write or read this property at runtime.
 
-A precision limit should produce `unknown` or a diagnostic, not a missing export or an invented runtime shape.
+When the compiler can't prove a type, it should emit `unknown` or a diagnostic. It shouldn't omit the export or invent a runtime shape.

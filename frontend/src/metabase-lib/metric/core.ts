@@ -41,10 +41,12 @@ import type {
   SegmentMetadata,
   SourceInstance,
   SpecificDateFilterParts,
+  SpecificDateFilterPartsOutput,
   StringFilterParts,
   TemporalBucket,
   TemporalBucketDisplayInfo,
   TimeFilterParts,
+  TimeFilterPartsOutput,
 } from "./types";
 
 export function metadataProvider(jsMetadata: Metadata): MetadataProvider {
@@ -208,20 +210,6 @@ export function filter(
   return LibMetric.filter(definition, filterClause) as MetricDefinition;
 }
 
-function isRelativeDateFilterUnit(
-  value: string,
-): value is RelativeDateFilterParts["unit"] {
-  return (
-    value === "minute" ||
-    value === "hour" ||
-    value === "day" ||
-    value === "week" ||
-    value === "month" ||
-    value === "quarter" ||
-    value === "year"
-  );
-}
-
 export function availableSegments(
   definition: MetricDefinition,
 ): SegmentMetadata[] {
@@ -260,7 +248,7 @@ export function stringFilterClause(parts: StringFilterParts): FilterClause {
 export function stringFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): StringFilterParts | null {
+): ReturnType<typeof LibMetric.stringFilterParts> {
   return LibMetric.stringFilterParts(definition, filterClause);
 }
 
@@ -271,7 +259,7 @@ export function numberFilterClause(parts: NumberFilterParts): FilterClause {
 export function numberFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): NumberFilterParts | null {
+): ReturnType<typeof LibMetric.numberFilterParts> {
   return LibMetric.numberFilterParts(definition, filterClause);
 }
 
@@ -284,7 +272,7 @@ export function coordinateFilterClause(
 export function coordinateFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): CoordinateFilterParts | null {
+): ReturnType<typeof LibMetric.coordinateFilterParts> {
   return LibMetric.coordinateFilterParts(definition, filterClause);
 }
 
@@ -295,7 +283,7 @@ export function booleanFilterClause(parts: BooleanFilterParts): FilterClause {
 export function booleanFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): BooleanFilterParts | null {
+): ReturnType<typeof LibMetric.booleanFilterParts> {
   return LibMetric.booleanFilterParts(definition, filterClause);
 }
 
@@ -308,26 +296,19 @@ export function specificDateFilterClause(
 export function specificDateFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): SpecificDateFilterParts | null {
+): SpecificDateFilterPartsOutput | null {
   const parts = LibMetric.specificDateFilterParts(definition, filterClause);
-  if (!parts || !Array.isArray(parts.values)) {
+  if (parts == null) {
     return null;
   }
-  return {
-    ...parts,
-    values: parts.values.map((value) => {
-      if (dayjs.isDayjs(value)) {
-        return value.toDate();
-      }
-      if (value instanceof Date) {
-        return value;
-      }
-      if (typeof value === "string" || typeof value === "number") {
-        return new Date(value);
-      }
-      return new Date(String(value));
-    }),
-  };
+  const values: Date[] = [];
+  for (const value of parts.values) {
+    if (value == null) {
+      return null;
+    }
+    values.push(value);
+  }
+  return { ...parts, values };
 }
 
 export function relativeDateFilterClause(
@@ -339,19 +320,8 @@ export function relativeDateFilterClause(
 export function relativeDateFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): RelativeDateFilterParts | null {
-  const parts = LibMetric.relativeDateFilterParts(definition, filterClause);
-  if (!parts) {
-    return null;
-  }
-  const { unit, offsetUnit } = parts;
-  if (
-    !isRelativeDateFilterUnit(unit) ||
-    (offsetUnit != null && !isRelativeDateFilterUnit(offsetUnit))
-  ) {
-    return null;
-  }
-  return { ...parts, unit, offsetUnit };
+): ReturnType<typeof LibMetric.relativeDateFilterParts> {
+  return LibMetric.relativeDateFilterParts(definition, filterClause);
 }
 
 export function excludeDateFilterClause(
@@ -363,7 +333,7 @@ export function excludeDateFilterClause(
 export function excludeDateFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): ExcludeDateFilterParts | null {
+): ReturnType<typeof LibMetric.excludeDateFilterParts> {
   return LibMetric.excludeDateFilterParts(definition, filterClause);
 }
 
@@ -377,16 +347,14 @@ export function timeFilterClause(parts: TimeFilterParts): FilterClause {
 export function timeFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): TimeFilterParts | null {
+): TimeFilterPartsOutput | null {
   const filterParts = LibMetric.timeFilterParts(definition, filterClause);
-  if (!filterParts || !Array.isArray(filterParts.values)) {
+  if (filterParts == null) {
     return null;
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value) =>
-      dayjs.isDayjs(value) ? value.toDate() : value,
-    ),
+    values: filterParts.values.map((value) => value.toDate()),
   };
 }
 
@@ -397,7 +365,7 @@ export function defaultFilterClause(parts: DefaultFilterParts): FilterClause {
 export function defaultFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
-): DefaultFilterParts | null {
+): ReturnType<typeof LibMetric.defaultFilterParts> {
   return LibMetric.defaultFilterParts(definition, filterClause);
 }
 

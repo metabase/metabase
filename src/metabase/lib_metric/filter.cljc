@@ -4,9 +4,14 @@
    [metabase.lib-metric.definition :as definition]
    [metabase.lib-metric.dimension :as dimension]
    [metabase.lib-metric.operators :as operators]
+   [metabase.lib-metric.schema :as schema]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
@@ -240,7 +245,7 @@
   [{:keys [operator dimension]}]
   (lib/ensure-uuid [operator {} (dimension-ref dimension)]))
 
-(defn default-filter-parts
+(mu/defn default-filter-parts :- [:maybe ::schema/default-filter-parts]
   "Extract default filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension} or nil if not a default filter."
   [definition filter-clause]
@@ -264,7 +269,7 @@
      (:is-null :not-null) [operator {} (dimension-ref dimension)]
      := [:= {} (dimension-ref dimension) (first values)])))
 
-(defn boolean-filter-parts
+(mu/defn boolean-filter-parts :- [:maybe ::schema/boolean-filter-parts]
   "Extract boolean filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [boolean]} or nil."
   [definition filter-clause]
@@ -299,12 +304,14 @@
      ;; Standard comparison operators: =, !=, >, >=, <, <=
      (into [operator {} (dimension-ref dimension)] values))))
 
-(defn number-filter-parts
+(mu/defn number-filter-parts :- [:maybe ::schema/number-filter-parts]
   "Extract number filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [number]} or nil."
   [definition filter-clause]
   (when (and (vector? filter-clause)
-             (>= (count filter-clause) 3))
+             (>= (count filter-clause) 3)
+             (or (not= :between (first filter-clause)) (>= (count filter-clause) 5))
+             (perf/every? (mr/validator ::schema/number-filter-value) (perf/dropv 3 filter-clause)))
     (let [operator (first filter-clause)]
       (when (#{:= :!= :> :>= :< :<= :between :is-null :not-null} operator)
         (when-let [dim-id (leading-dimension-ref filter-clause)]
@@ -342,12 +349,14 @@
      ;; Equality operators can have multiple values
      (:= :!=) (into [operator {} (dimension-ref dimension)] values))))
 
-(defn string-filter-parts
+(mu/defn string-filter-parts :- [:maybe ::schema/string-filter-parts]
   "Extract string filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [string], :options map} or nil."
   [definition filter-clause]
   (when (and (vector? filter-clause)
-             (>= (count filter-clause) 3))
+             (>= (count filter-clause) 3)
+             (or (#{:is-empty :not-empty := :!=} (first filter-clause)) (>= (count filter-clause) 4))
+             (perf/every? string? (perf/dropv 3 filter-clause)))
     (let [operator (first filter-clause)]
       (when (#{:= :!= :contains :does-not-contain :starts-with :ends-with :is-empty :not-empty} operator)
         (when-let [dim-id (leading-dimension-ref filter-clause)]
@@ -389,12 +398,18 @@
      ;; Standard operators
      (into [operator {} (dimension-ref dimension)] values))))
 
-(defn coordinate-filter-parts
+(mu/defn coordinate-filter-parts :- [:maybe ::schema/coordinate-filter-parts]
   "Extract coordinate filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :longitude-dimension dimension, :values [number]} or nil."
   [definition filter-clause]
   (when (and (vector? filter-clause)
-             (>= (count filter-clause) 3))
+             (>= (count filter-clause) 3)
+             (case (first filter-clause)
+               :inside  (>= (count filter-clause) 8)
+               :between (>= (count filter-clause) 5)
+               true)
+             (perf/every? (mr/validator ::schema/number-filter-value)
+                          (perf/dropv (if (= :inside (first filter-clause)) 4 3) filter-clause)))
     (let [operator (first filter-clause)]
       (when (#{:= :!= :> :>= :< :<= :between :inside} operator)
         (when-let [dim-id (leading-dimension-ref filter-clause)]
@@ -425,10 +440,23 @@
 
 ;;; -------------------------------------------------- Specific Date Filters --------------------------------------------------
 
+(defn- valid-filter-date? [value]
+  (cond
+    (string? value)
+    (and (mr/validate [:or ::lib.schema.literal/date ::lib.schema.literal/datetime] value)
+         (try
+           (u.time/valid? (u.time/coerce-to-timestamp value))
+           (catch #?(:clj Exception :cljs js/Error) _
+             false)))
+    #?@(:cljs [(instance? js/Date value) (not (js/isNaN (.getTime value)))])
+    :else (u.time/valid? value)))
+
 (defn specific-date-filter-clause
-  "Create a specific date filter clause from parts.
+  "Create a specific date filter clause from parts, rejecting invalid date values.
    Parts: {:operator :keyword, :dimension dimension, :values [date-string], :has-time boolean}"
   [{:keys [operator dimension values has-time]}]
+  (when-not (perf/every? valid-filter-date? values)
+    (throw (ex-info "Invalid date value in metric filter" {:values values})))
   (let [values (perf/mapv #(u.time/format-date-for-filter % has-time) values)]
     (lib/ensure-uuid
      (case operator
@@ -466,12 +494,13 @@
 
     :else false))
 
-(defn specific-date-filter-parts
+(mu/defn specific-date-filter-parts :- [:maybe ::schema/specific-date-filter-parts]
   "Extract specific date filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [date], :has-time boolean} or nil."
   [definition filter-clause]
   (when (and (vector? filter-clause)
-             (>= (count filter-clause) 3))
+             (>= (count filter-clause) (if (= :between (first filter-clause)) 5 4))
+             (perf/every? (mr/validator ::lib.schema.literal/literal) (perf/dropv 3 filter-clause)))
     (let [operator (first filter-clause)]
       (when (#{:= :> :< :between} operator)
         (when-let [dim-id (leading-dimension-ref filter-clause)]
@@ -504,7 +533,7 @@
        [:time-interval base-options (dimension-ref dimension) value unit]
        [:time-interval {} (dimension-ref dimension) value unit]))))
 
-(defn relative-date-filter-parts
+(mu/defn relative-date-filter-parts :- [:maybe ::schema/relative-date-filter-parts]
   "Extract relative date filter parts from an MBQL clause.
    Returns {:dimension dim, :unit unit, :value int, :offset-unit unit, :offset-value int, :options map} or nil."
   [definition filter-clause]
@@ -514,18 +543,24 @@
     (when-let [dim-id (leading-dimension-ref filter-clause)]
       (when-let [dimension (find-dimension-by-id definition dim-id)]
         (let [opts         (second filter-clause)
-              value        (nth filter-clause 3)
+              value        (let [value (nth filter-clause 3)]
+                             (if (= :current value) 0 value))
               unit         (nth filter-clause 4)
               offset-unit  (:offset-unit opts)
               offset-value (:offset-value opts)
               ;; Remove internal keys from options
               clean-opts   (dissoc opts :lib/uuid :offset-unit :offset-value)]
-          {:dimension    dimension
-           :unit         unit
-           :value        value
-           :offset-unit  offset-unit
-           :offset-value offset-value
-           :options      clean-opts})))))
+          (when (and (int? value)
+                     (mr/validate ::lib.schema.temporal-bucketing/unit.date-time.interval unit)
+                     (mr/validate [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval] offset-unit)
+                     (mr/validate [:maybe :int] offset-value)
+                     (mr/validate ::schema/time-interval-options clean-opts))
+            {:dimension    dimension
+             :unit         unit
+             :value        value
+             :offset-unit  offset-unit
+             :offset-value offset-value
+             :options      clean-opts}))))))
 
 ;;; -------------------------------------------------- Exclude Date Filters --------------------------------------------------
 
@@ -544,12 +579,13 @@
                                :hour-of-day :get-hour)]
            (into [:!= {} [extraction-fn {} (dimension-ref dimension)]] values)))))
 
-(defn exclude-date-filter-parts
+(mu/defn exclude-date-filter-parts :- [:maybe ::schema/exclude-date-filter-parts]
   "Extract exclude date filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :unit unit, :values [int]} or nil."
   [definition filter-clause]
   (when (and (vector? filter-clause)
-             (>= (count filter-clause) 3))
+             (>= (count filter-clause) 3)
+             (perf/every? int? (perf/dropv 3 filter-clause)))
     (let [operator (first filter-clause)]
       (cond
         ;; Null checks
@@ -597,7 +633,7 @@
        ;; Standard operators: >, <
        [operator {} (dimension-ref dimension) (first values)]))))
 
-(defn time-filter-parts
+(mu/defn time-filter-parts :- [:maybe ::schema/time-filter-parts]
   "Extract time filter parts from an MBQL clause.
    Returns {:operator :keyword, :dimension dimension, :values [time]} or nil."
   [definition filter-clause]
@@ -619,5 +655,6 @@
                           {:operator  operator
                            :dimension dimension
                            :values    [(nth filter-clause 3)]})))))]
-      (when parts
+      (when (and parts
+                 (perf/every? #(or (string? %) (mr/validate ::schema/time-filter-value %)) (:values parts)))
         (update parts :values (fn [values] (perf/mapv u.time/coerce-to-time values)))))))

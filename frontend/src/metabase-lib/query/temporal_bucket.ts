@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+import type { Metabase_Lib_Schema_TemporalBucketing_UnitDateTimeInterval } from "cljs/metabase.lib.shared";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { displayInfo } from "./metadata";
@@ -54,10 +55,13 @@ export function defaultTemporalBucket(
 }
 
 type IntervalAmount = number | "current" | "next" | "last";
+type IntervalDisplayUnit =
+  | TemporalUnit
+  | Metabase_Lib_Schema_TemporalBucketing_UnitDateTimeInterval;
 
 export function describeTemporalInterval(
   n: IntervalAmount,
-  unit?: TemporalUnit,
+  unit?: IntervalDisplayUnit,
   opts?: { "include-current"?: boolean },
 ): string {
   return ML.describe_temporal_interval(n, unit, opts);
@@ -65,7 +69,7 @@ export function describeTemporalInterval(
 
 export function describeRelativeDatetime(
   n: IntervalAmount,
-  unit?: TemporalUnit,
+  unit?: IntervalDisplayUnit,
 ): string {
   return ML.describe_relative_datetime(n, unit);
 }

@@ -64,7 +64,7 @@ Missing or unrepresentable schemas intentionally become `unknown`. Improve them 
 
 Ordinary forms generate useful TypeScript directly:
 
-- `[:maybe T]` becomes `T | null`; function arguments also allow `undefined`.
+- `[:maybe T]` becomes `T | null`; function arguments also allow `undefined`. Named aliases with nested `:maybe` values receive a compiler-owned `Input_...` alias only in argument positions, so output aliases remain `null`-only and recursive inputs stay bounded.
 - `[:vector T]` and `[:sequential T]` become `T[]`.
 - `[:sequential {:min 1} T]` becomes `[T, ...T[]]`.
 - `[:map ...]` becomes an object. Open maps retain an `[key: string]: unknown` index signature; closed maps don't.
@@ -86,7 +86,7 @@ Put compiler metadata in the Malli schema's property map. The outer Malli schema
 | `:ts/ref S`                    | Point to a registered type while keeping runtime validation permissive                              |
 | `:ts/promise-of S`             | Describe a JavaScript `Promise` resolving to schema `S`                                             |
 | `:ts/key-transform :camelCase` | Render object keys after a real camel-case conversion                                               |
-| `:ts/key-transform :none`      | Reset an inherited key transform for a nested object                                                |
+| `:ts/key-transform :none`      | Reset an inherited key transform for a nested schema                                                |
 | `:ts/instance-of "Array"`      | Internal compatibility for `[:is-a js/Array]` or `js/Object`; prefer precise array/object metadata  |
 | `:ts/predicate-of S`           | Declare a type predicate (`x is S`) for a boolean-returning boundary function                       |
 | `:ts/dispatch-key :type`       | Name the map key a function-dispatched `:multi` reads, enabling discriminated unions                |
@@ -97,66 +97,67 @@ Don't add new TypeScript-only properties without changing the compiler design an
 
 ### Native JavaScript arrays
 
-`to-array` returns a JavaScript array, not a ClojureScript sequential value. Keep the runtime contract permissive and describe the boundary:
+`to-array` returns a JavaScript array, not a ClojureScript sequential value. Describe the native container and its known element schema:
 
 ```clojure
-(mu/defn ^:export columns :- [:any {:ts/array-of ::schema/column}]
+(mu/defn ^:export columns
+  :- [:and [:fn array?] [:any {:ts/array-of ::schema/column}]]
   [query :- ::schema/query]
   (to-array (visible-columns query)))
 ```
 
-Use `[:sequential ...]` only when the function really returns a ClojureScript sequential value.
+Use `[:sequential ...]` only when the function really returns a ClojureScript sequential value. The predicate checks the native container; `:ts/array-of` describes its elements for TypeScript, not runtime validation. Reuse the canonical element contract from `visible-columns` rather than defaulting to unknown elements.
 
 ### Native JavaScript objects and key conversion
 
 `#js {}` isn't a ClojureScript map. Use `:ts/object-of` for its TypeScript shape:
 
 ```clojure
-(mu/defn ^:export expression-parts
-  :- [:any {:ts/object-of
-            [:map
-             [:operator :string]
-             [:args [:any {:ts/array-of :any}]]]
-            :ts/key-transform :camelCase}]
-  [expression :- ::schema/expression]
-  (expression->js expression))
+(mu/defn ^:export string-equality-filter
+  :- [:and
+      [:fn #(= (type %) js/Object)]
+      [:any {:ts/object-of
+             [:map {:closed true}
+              [:operator [:= "="]]
+              [:values [:and [:fn array?]
+                        [:any {:ts/array-of :string}]]]]}]]
+  [values :- [:sequential :string]]
+  #js {:operator "=" :values (to-array values)})
 ```
 
-Add `:ts/key-transform :camelCase` only when the implementation converts keys. It applies recursively; a nested `:ts/object-of` can reset it with `:ts/key-transform :none`.
+The native object has a fixed operator and string-valued array, so neither field needs `:any` as its value type. The remaining `:any` nodes carry native-shape metadata; the predicates describe the real containers. Property validation belongs in the producer's canonical contract.
+
+Add `:ts/key-transform :camelCase` only when the implementation converts keys. It applies recursively. Any nested schema node, including maps, refs, and sequence expressions, can reset it with `:ts/key-transform :none` or override it with `:camelCase`. Function argument sequences follow the same rule.
 
 The resolver automatically translates `[:is-a js/Array]` and `[:is-a js/Object]` through the internal `:ts/instance-of` compatibility property. These render as `unknown[]` and `Record<string, unknown>` respectively; other class names remain `unknown`. Prefer `:ts/array-of` or `:ts/object-of` whenever the boundary has a precise shape, and don't author `:ts/instance-of` directly without a compiler-specific reason.
 
 ### Input-preserving return types
 
-Use `:ts/same-as` when the implementation preserves the kind of one argument:
+Use `:ts/same-as` only when the implementation returns one argument unchanged, including its literal type and extra properties:
 
 ```clojure
-(mu/defn ^:export with-bucket
+(mu/defn ^:export identity-column
   :- [:schema {:ts/same-as 0}
       ::schema/column]
-  [column :- ::schema/column
-   bucket :- :keyword]
-  (assoc column :temporal-unit bucket))
+  [column :- ::schema/column]
+  column)
 ```
 
-If the function accepts a broader domain than the nominal return schema, describe that domain explicitly:
+`:ts/generic-bound` may constrain that unchanged value further, but the bound must remain compatible with the selected parameter and output schemas.
 
-```clojure
-[:schema {:ts/same-as 0
-          :ts/generic-bound
-          [:or ::schema/column ::schema/ref]}
- ::schema/column]
-```
-
-Use this only when the implementation truly preserves the input kind. It isn't a substitute for the schema of a transformation.
+Preserving only a broad runtime kind isn't enough for `:ts/same-as`. For a transformation that maps a finite set of input kinds to corresponding output kinds, use `:ts/overloads` on the return `:schema`, including a union-input fallback. Overloads preserve kind correlation without promising that arbitrary subtypes or extra properties survive.
 
 ### Promises, explicit references, and opaque predicates
 
 Describe a JavaScript promise result with:
 
 ```clojure
-[:any {:ts/promise-of :string}]
+[:and
+ [:fn #(instance? js/Promise %)]
+ [:any {:ts/promise-of :string}]]
 ```
+
+The predicate checks the promise instance, not its resolved value. The metadata describes the known result schema.
 
 A boolean-returning function that narrows its argument declares what `true` guarantees with `:ts/predicate-of`:
 
@@ -166,7 +167,7 @@ A boolean-returning function that narrows its argument declares what `true` guar
   ...)
 ```
 
-The declaration renders as `(column: unknown) => column is Shared.TypeInfo`, so JavaScript branches narrow for free. `{:param 1, :schema S}` narrows a later argument. Keep the target a sound over-approximation, and never annotate a function that returns `true` unconditionally.
+The declaration renders as `(column: unknown) => column is Shared.TypeInfo`, so JavaScript branches narrow for free. `{:param 1, :schema S}` narrows a later argument. A predicate annotation promises both branches: true values satisfy the target and false values do not. Keep the target a sound over-approximation, and use plain `:boolean` when a false result can still be a target value.
 
 When a `:multi` dispatches via a function that reads one map key, name it with `:ts/dispatch-key`:
 
@@ -178,7 +179,13 @@ When a `:multi` dispatches via a function that reads one map key, name it with `
 
 The compiler then synthesizes literal discriminants into branches and emits per-branch `Extract<>` aliases. Keyword `:dispatch` values are detected automatically; leave computed dispatches unannotated.
 
-Use `:ts/ref` when runtime validation must stay permissive but the declaration has a registered type:
+When the runtime value already satisfies a registered schema, use that schema directly:
+
+```clojure
+::schema/column
+```
+
+Reserve `:ts/ref` for an existing permissive runtime contract whose JavaScript type is established separately:
 
 ```clojure
 [:any {:ts/ref ::schema/column}]
@@ -201,7 +208,7 @@ Schemas on `mu/defn` validate real values in development and tests. Don't replac
 - A ClojureScript map isn't automatically property-accessible from JavaScript.
 - A normalization or serialization function can change the exposed shape.
 
-The generator runs on the JVM. Avoid CLJS-only predicates in schemas used for generation. A schema stored only in a `.cljs` var can also be unavailable to JVM-side registry resolution; inline it or move it to `.cljc` when appropriate. Reader-conditional JVM and CLJS schemas can differ, so don't infer a JavaScript representation from JVM-only predicates such as `bytes?` or `uri?`; keep it `unknown` unless the exported boundary performs a documented conversion.
+The generator runs on the JVM. Wrap CLJS-only checks in `:fn` and supply the necessary declaration metadata, as in the native-container examples above. The generator doesn't execute those predicate bodies. A schema stored only in a `.cljs` var can still be unavailable to JVM-side registry resolution; inline it or move it to `.cljc` when appropriate. Reader-conditional JVM and CLJS schemas can differ, so don't infer a JavaScript representation from JVM-only predicates such as `bytes?` or `uri?`; keep it `unknown` unless the exported boundary performs a documented conversion.
 
 ### Verify generated declarations
 

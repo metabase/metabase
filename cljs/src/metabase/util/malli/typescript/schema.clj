@@ -15,12 +15,14 @@
   [type-node]
   {:type type-node
    :registry-refs #{}
+   :input-registry-refs #{}
    :local-definitions {}
    :diagnostics []})
 
 (defn- merge-result-metadata
   [results]
   {:registry-refs (into #{} (mapcat :registry-refs) results)
+   :input-registry-refs (into #{} (mapcat :input-registry-refs) results)
    :local-definitions (apply merge (map :local-definitions results))
    :diagnostics (into [] (mapcat :diagnostics) results)})
 
@@ -43,9 +45,12 @@
           :diagnostics [{:type diagnostic-type, :schema schema}])))
 
 (defn- ref-result
-  [schema-keyword]
-  (assoc (result (type/ref-type schema-keyword))
-         :registry-refs #{schema-keyword}))
+  ([schema-keyword]
+   (ref-result schema-keyword false))
+  ([schema-keyword input?]
+   (cond-> (assoc (result (type/ref-type schema-keyword input?))
+                  :registry-refs #{schema-keyword})
+     input? (assoc :input-registry-refs #{schema-keyword}))))
 
 (defn- fn-schema-props
   [form]
@@ -63,10 +68,31 @@
   [form]
   (and (vector? form)
        (= :fn (first form))
-       (not (or (explicit-predicate-type form)
+       (not (or (contains? (fn-schema-props form) :typescript)
                 (:ts/predicate-of (fn-schema-props form))))))
 
 (declare sanitize-predicate-fn-constraints)
+
+(defn map-schema-properties
+  "Transform schemas contained in compiler properties, leaving other property values unchanged."
+  [f properties]
+  (let [properties (cond-> properties
+                     (map? (:registry properties))
+                     (update :registry #(update-vals % f))
+
+                     (sequential? (:ts/overloads properties))
+                     (update :ts/overloads #(mapv f %))
+
+                     (contains? properties :ts/predicate-of)
+                     (update :ts/predicate-of #(if (map? %)
+                                                 (cond-> % (contains? % :schema) (update :schema f))
+                                                 (f %))))]
+    (reduce (fn [properties key]
+              (cond-> properties
+                (contains? properties key)
+                (update key f)))
+            properties
+            [:ts/array-of :ts/object-of :ts/ref :ts/promise-of :ts/generic-bound])))
 
 (defn- schema-form-parts
   [form]
@@ -108,32 +134,38 @@
 (defn sanitize-predicate-fn-constraints
   "Return a Malli form that does not require evaluating unrepresentable predicate functions."
   [schema]
-  (cond
-    (explicit-predicate-type schema)
-    [:any {:typescript (explicit-predicate-type schema)}]
+  (let [schema (cond-> schema
+                 (and (vector? schema)
+                      (map? (second schema))
+                      (or (not (contains? #{:= :enum :fn} (first schema)))
+                          (< 2 (count schema))))
+                 (update 1 #(map-schema-properties sanitize-predicate-fn-constraints %)))]
+    (cond
+      (contains? (fn-schema-props schema) :typescript)
+      [:any {:typescript (explicit-predicate-type schema)}]
 
-    (unrepresentable-predicate-fn-schema-form? schema)
-    :any
+      (unrepresentable-predicate-fn-schema-form? schema)
+      :any
 
-    (vector? schema)
-    (let [{:keys [schema-type children] :as parts} (schema-form-parts schema)]
-      (case schema-type
-        (:and :merge)
-        (sanitize-intersection-like-schema schema)
+      (vector? schema)
+      (let [{:keys [schema-type children] :as parts} (schema-form-parts schema)]
+        (case schema-type
+          (:and :merge)
+          (sanitize-intersection-like-schema schema)
 
-        :map
-        (with-schema-form-parts (assoc parts :children (map sanitize-entry children)))
+          :map
+          (with-schema-form-parts (assoc parts :children (map sanitize-entry children)))
 
-        (:orn :multi :catn :altn)
-        (with-schema-form-parts (assoc parts :children (map sanitize-entry children)))
+          (:orn :multi :catn :altn)
+          (with-schema-form-parts (assoc parts :children (map sanitize-entry children)))
 
-        (:or :vector :sequential :set :map-of :tuple :cat :repeat :* :+ :? :maybe :schema :=> :function :alt)
-        (with-schema-form-parts (assoc parts :children (map sanitize-predicate-fn-constraints children)))
+          (:or :vector :sequential :set :map-of :tuple :cat :repeat :* :+ :? :maybe :schema :=> :function :alt)
+          (with-schema-form-parts (assoc parts :children (map sanitize-predicate-fn-constraints children)))
 
-        schema))
+          schema))
 
-    :else
-    schema))
+      :else
+      schema)))
 
 (defn- camel-case-key
   [s]
@@ -365,6 +397,28 @@
              :diagnostics [{:type :unsupported-map-key
                             :schema (mc/form (mc/schema key-schema))}]))))
 
+(defn- finite-key-values
+  "Return finite property-key values for direct literal/enum union forms, or nil.
+  Other schemas remain open dictionaries rather than guessing their key domain."
+  [form]
+  (when (vector? form)
+    (let [{:keys [schema-type children]} (schema-form-parts form)]
+      (case schema-type
+        :enum children
+        :=    [(first children)]
+        :or   (let [alternatives (mapv finite-key-values children)]
+                (when (every? some? alternatives)
+                  (vec (mapcat identity alternatives))))
+        nil))))
+
+(defn- finite-map-key-result
+  [key-schema]
+  (when-let [values (finite-key-values (mc/form (mc/schema key-schema)))]
+    (let [key-values (mapv typescript-property-key-value values)]
+      (when (every? :supported? key-values)
+        (assoc (result (type/union (mapv (comp type/literal :value) key-values)))
+               :finite? true)))))
+
 (defn- map-of-key-result
   [key-schema options]
   (let [schema-type (mc/type (mc/schema key-schema))]
@@ -376,10 +430,11 @@
       (result (type/primitive "number"))
 
       (= :enum schema-type)
-      (enum-map-key-result key-schema)
+      (assoc (enum-map-key-result key-schema) :finite? true)
 
       :else
-      (result (type/primitive "string")))))
+      (or (finite-map-key-result key-schema)
+          (result (type/primitive "string"))))))
 
 (defn- map-of-result
   [malli-schema options]
@@ -387,7 +442,7 @@
         key-result (map-of-key-result key-schema options)
         value-result (schema->result* value-schema options)
         record-type (type/generic "Record" [(:type key-result) (:type value-result)])
-        map-type (if (= :enum (mc/type (mc/schema key-schema)))
+        map-type (if (:finite? key-result)
                    (type/generic "Partial" [record-type])
                    record-type)]
     (with-type (mark-container-readonly map-type (container-readonly? options))
@@ -454,6 +509,13 @@
     (vec (for [left-fragment left
                right-fragment right]
            (concat-fragments left-fragment right-fragment)))))
+
+(defn- effective-key-transform
+  [properties options]
+  (if (contains? properties :ts/key-transform)
+    (when-not (= :none (:ts/key-transform properties))
+      (:ts/key-transform properties))
+    (:key-transform options)))
 
 (declare seqex-result*)
 
@@ -534,7 +596,8 @@
   (let [malli-schema (mc/schema schema)
         schema-type  (mc/type malli-schema)
         properties   (mc/properties malli-schema)
-        children     (mc/children malli-schema)]
+        children     (mc/children malli-schema)
+        options      (assoc options :key-transform (effective-key-transform properties options))]
     (case schema-type
       :cat  (cat-seqex-result children options false)
       :catn (cat-seqex-result children options true)
@@ -615,69 +678,188 @@
               {:parameters [], :used-names #{}}
               parameters)))
 
-(defn- parameters-from-alternatives
-  [alternatives]
-  (let [alternative-count (count alternatives)
-        item-count        (apply max 0 (map (comp count :items) alternatives))
-        parameters
-        (mapv (fn [index]
-                (let [items (keep #(nth (:items %) index nil) alternatives)
-                      names (keep :name items)]
-                  {:name (first names)
-                   :type (type/union (mapv :type items))
-                   :optional? (< (count items) alternative-count)}))
-              (range item-count))
-        rest-types (keep :rest alternatives)]
-    (with-parameter-names
-      (cond-> parameters
-        (seq rest-types)
-        (conj {:type (if (= (count rest-types) alternative-count)
-                       (type/union (vec rest-types))
-                       (type/unknown))
-               :rest? true})))))
+(defn- parameters-from-alternative
+  "Render one complete seqex alternative as a callable parameter list.
+  Combining positions across alternatives creates a Cartesian product, so each
+  fragment remains a separate function signature (an intersection/overload)."
+  [{:keys [items rest widened-type]}]
+  (with-parameter-names
+    (if widened-type
+      [{:name "args", :type widened-type, :rest? true}]
+      (cond-> (mapv #(select-keys % [:name :type :optional?]) items)
+        rest (conj {:type rest, :rest? true})))))
 
 (defn- predicate-target-info
   "Normalize a `:ts/predicate-of` property into `{:param index :schema s}`.
   A bare schema narrows parameter 0."
   [value]
   (cond
-    (map? value)    (when (:schema value)
-                      {:param (or (:param value) 0), :schema (:schema value)})
+    (map? value) (when (contains? value :schema)
+                   {:param (or (:param value) 0), :schema (:schema value)})
     (some? value) {:param 0, :schema value}
     :else          nil))
+
+(defn- primitive-type-name
+  [type-node]
+  (when (and (= :primitive (:kind type-node))
+             (contains? #{"string" "number" "boolean" "bigint" "symbol"}
+                        (:name type-node)))
+    (:name type-node)))
+
+(defn- literal-primitive-name
+  [value]
+  (cond
+    (string? value)  "string"
+    (number? value)  "number"
+    (boolean? value) "boolean"
+    :else            nil))
+
+(defn predicate-target-compatible?
+  "Check bounded, obvious TypeScript predicate assignability relationships.
+  This deliberately handles primitives and finite literal unions only; strict
+  declaration compilation remains the authority for structural relationships."
+  [parameter-type target-type]
+  (cond
+    (= :unknown (:kind parameter-type)) true
+    (= parameter-type target-type) true
+    (= :union (:kind target-type))
+    (every? #(predicate-target-compatible? parameter-type %) (:members target-type))
+    (= :union (:kind parameter-type))
+    (some #(predicate-target-compatible? % target-type) (:members parameter-type))
+    (and (primitive-type-name parameter-type) (= :literal (:kind target-type)))
+    (= (primitive-type-name parameter-type) (literal-primitive-name (:value target-type)))
+    (primitive-type-name parameter-type) false
+    :else true))
+
+(defn normalize-overloads
+  "Return validated declaration overload schemas from return metadata, or nil."
+  [return-schema]
+  (when-let [overloads (:ts/overloads (mc/properties (mc/schema return-schema)))]
+    (when-not (and (vector? overloads)
+                   (seq overloads)
+                   (every? (fn [overload]
+                             (try
+                               (= :=> (mc/type (mc/schema overload)))
+                               (catch Exception _ false)))
+                           overloads))
+      (throw (ex-info "Invalid :ts/overloads metadata"
+                      {:type :invalid-typescript-overloads
+                       :overloads overloads})))
+    overloads))
+
+(defn- valid-type-predicate?
+  [predicate parameter-lists target-type]
+  (and predicate
+       (every? (fn [parameters]
+                 (let [parameter (get parameters (:param predicate))]
+                   (and parameter
+                        (not (:rest? parameter))
+                        (predicate-target-compatible? (:type parameter) target-type))))
+               parameter-lists)))
+
+(defn- invalid-type-predicate-diagnostic
+  [predicate-value]
+  {:type :invalid-type-predicate
+   :predicate predicate-value})
 
 (defn- function-result
   [malli-schema options]
   (let [[args-schema return-schema] (mc/children malli-schema)
-        args-result   (seqex-result* args-schema (assoc options :argument-context? true))
-        parameters    (parameters-from-alternatives (:alternatives args-result))
-        return-result (schema->result* return-schema (assoc options :argument-context? false))
-        predicate     (when-let [{:keys [param schema]}
-                                 (predicate-target-info
-                                  (:ts/predicate-of (mc/properties (mc/schema return-schema))))]
-                        ;; A type predicate cannot reference a rest parameter.
-                        (when-not (some-> (get parameters param) :rest?)
-                          {:param  param
-                           :result (schema->result* schema (assoc options :argument-context? false))}))]
-    (assoc (merge-result-metadata (cond-> [args-result return-result]
-                                    predicate (conj (:result predicate))))
-           :type (if (and predicate (< (:param predicate) (count parameters)))
-                   (type/function-predicate
-                    (type/function-type parameters (:type return-result))
-                    (:param predicate)
-                    (:type (:result predicate)))
-                   (type/function-type parameters (:type return-result))))))
+        overloads       (normalize-overloads return-schema)]
+    (if overloads
+      (let [results (mapv #(function-result (mc/schema %) options) overloads)]
+        (assoc (merge-result-metadata results)
+               :type (type/intersection (mapv :type results))))
+      (let [args-result     (seqex-result* args-schema (assoc options :argument-context? true))
+            parameter-lists (mapv parameters-from-alternative (:alternatives args-result))
+            return-result   (schema->result* return-schema (assoc options :argument-context? false))
+            predicate-value (:ts/predicate-of (mc/properties (mc/schema return-schema)))
+            predicate-info  (predicate-target-info predicate-value)
+            target-result   (when predicate-info
+                              (schema->result* (:schema predicate-info)
+                                               (assoc options :argument-context? false)))
+            predicate?      (and (= "boolean" (:name (:type return-result)))
+                                 (valid-type-predicate? predicate-info parameter-lists (:type target-result)))
+            function-types  (mapv (fn [parameters]
+                                    (let [function-node (type/function-type parameters (:type return-result))]
+                                      (if predicate?
+                                        (type/function-predicate function-node
+                                                                 (:param predicate-info)
+                                                                 (:type target-result))
+                                        function-node)))
+                                  parameter-lists)
+            result          (assoc (merge-result-metadata (cond-> [args-result return-result]
+                                                            target-result (conj target-result)))
+                                   :type (type/intersection function-types))]
+        (if (and (some? predicate-value) (not predicate?))
+          (update result :diagnostics conj (invalid-type-predicate-diagnostic predicate-value))
+          result)))))
+
+(defn- resolve-registry-schema
+  [schema-keyword options]
+  (or (get (:registry options) schema-keyword)
+      (mr/resolve-schema schema-keyword)))
+
+(defn- schema-contains-maybe?
+  "True when `schema` accepts an explicit undefined value in an argument
+  position. Registry references are followed with a cycle guard; enum and
+  literal values are not schemas and must not be resolved as references."
+  [schema options seen]
+  (let [form (if (mc/schema? schema) (mc/form schema) schema)]
+    (cond
+      (and (vector? form) (= :maybe (first form)))
+      true
+
+      (qualified-keyword? form)
+      (when-not (contains? seen form)
+        (schema-contains-maybe? (resolve-registry-schema form options)
+                                options
+                                (conj seen form)))
+
+      (vector? form)
+      (let [{:keys [schema-type props children]} (schema-form-parts form)
+            metadata-schemas (when (= :any schema-type)
+                               (keep props [:ts/array-of :ts/object-of :ts/ref :ts/promise-of]))]
+        (cond
+          (contains? #{:enum :=} schema-type) false
+          (= :schema schema-type)
+          (schema-contains-maybe? (last children)
+                                  (update options :registry merge (:registry props))
+                                  seen)
+          :else
+          (boolean (some #(schema-contains-maybe? % options seen)
+                         (concat children metadata-schemas)))))
+
+      :else
+      false)))
 
 (defn- registry-ref-result
   [schema-keyword options]
-  (if-let [[_ local-schema] (find (:registry options) schema-keyword)]
-    (if (:key-transform options)
-      (schema->result* local-schema options)
-      (assoc (ref-result schema-keyword)
-             :local-definitions {schema-keyword local-schema}))
-    (if (:key-transform options)
-      (schema->result* (mr/resolve-schema schema-keyword) options)
-      (ref-result schema-keyword))))
+  (let [local-schema      (get (:registry options) schema-keyword)
+        resolved-schema   (or local-schema
+                              (resolve-registry-schema schema-keyword options))
+        contextual-input? (and (:argument-context? options)
+                               (schema-contains-maybe? resolved-schema options #{schema-keyword}))]
+    (cond
+      ;; Key-transformed aliases are intentionally expanded so the transform can
+      ;; apply to every property. Other aliases retain graph edges below.
+      (:key-transform options)
+      (schema->result* resolved-schema options)
+
+      local-schema
+      (assoc (ref-result schema-keyword contextual-input?)
+             :local-definitions {schema-keyword local-schema})
+
+      :else
+      (ref-result schema-keyword contextual-input?))))
+
+(defn validate-typescript
+  "Return an explicit TypeScript string, or throw with the supplied diagnostic context."
+  [typescript context]
+  (when-not (string? typescript)
+    (throw (ex-info ":typescript must resolve to a string"
+                    (assoc context :type :invalid-typescript-metadata))))
+  typescript)
 
 (defn- explicit-type
   [typescript]
@@ -685,20 +867,13 @@
     (type/unknown)
     (type/raw typescript)))
 
-(defn- effective-key-transform
-  [properties options]
-  (if (contains? properties :ts/key-transform)
-    (when-not (= :none (:ts/key-transform properties))
-      (:ts/key-transform properties))
-    (:key-transform options)))
-
 (defn- any-result
   [malli-schema options]
   (let [{:keys [typescript ts/array-of ts/object-of ts/ref ts/promise-of ts/instance-of] :as properties}
         (mc/properties malli-schema)
         nested-options (assoc options :key-transform (effective-key-transform properties options))]
     (cond
-      typescript
+      (contains? properties :typescript)
       (result (explicit-type typescript))
 
       array-of
@@ -765,10 +940,11 @@
 (defn- synthesize-multi-discriminant
   "Return a form declaring the `dispatch-key` literal for a branch that omits
   it. Plain map branches get the entry prepended; registry-ref branches are
-  intersected with a single-key map. Runtime values always carry the key (the
-  dispatcher reads it), so declaring it is sound."
+  intersected with a single-key map. A nil dispatch can result from an absent
+  key, so it cannot prove that a `key: null` property exists."
   [branch-form dispatch-key dispatch-value]
-  (when (not= ::mc/default dispatch-value)
+  (when (and (some? dispatch-value)
+             (not= ::mc/default dispatch-value))
     (cond
       (or (qualified-keyword? branch-form)
           (and (vector? branch-form) (= :ref (first branch-form)) (qualified-keyword? (second branch-form))))
@@ -820,17 +996,22 @@
                                {:result   (schema->result* (or synthesized branch-schema) options)
                                 :literal? (some? synthesized)}))
                            children)
-        values-literal? (every? (comp :supported? typescript-literal-value first) children)]
+        values-literal? (every? (fn [child]
+                                  (let [value (first child)]
+                                    (or (= ::mc/default value)
+                                        (:supported? (typescript-literal-value value)))))
+                                children)]
     (cond-> (with-type (union-type (mapv (comp :type :result) branches)) (mapv :result branches))
       (and dispatch-key values-literal? (seq children))
       (assoc :multi-branches
              {:key-string (transformed-map-key dispatch-key (:key-transform options))
               :branches (mapv (fn [child branch]
                                 (let [value (first child)
-                                      rendered (when-let [{:keys [supported?] literal-value :value}
-                                                          (typescript-literal-value value)]
-                                                 (when supported?
-                                                   (type/render (type/literal literal-value))))]
+                                      rendered (when (not= ::mc/default value)
+                                                 (when-let [{:keys [supported?] literal-value :value}
+                                                            (typescript-literal-value value)]
+                                                   (when supported?
+                                                     (type/render (type/literal literal-value)))))]
                                   {:value value
                                    :value-string rendered
                                    :literal? (and (:literal? branch) (some? rendered))}))
@@ -842,7 +1023,10 @@
   (let [schema-type (mc/type malli-schema)
         properties  (mc/properties malli-schema)
         children    (mc/children malli-schema)
-        form        (mc/form malli-schema)]
+        form        (mc/form malli-schema)
+        options     (assoc options :key-transform (effective-key-transform properties options))]
+    (when (contains? properties :typescript)
+      (validate-typescript (:typescript properties) {:schema form}))
     (cond
       (contains? number-schema-types schema-type)
       (result (type/primitive "number"))
@@ -968,8 +1152,12 @@
       (= schema-type :schema)
       (let [local-registry (:registry properties)
             child-form     (last form)]
-        (schema->result* child-form
-                         (update options :registry merge local-registry)))
+        ;; The alias closure resolves transitive local refs after this outer
+        ;; compilation returns, so retain the complete local registry rather
+        ;; than only the immediate reference.
+        (update (schema->result* child-form
+                                 (update options :registry merge local-registry))
+                :local-definitions #(merge local-registry %)))
 
       (= schema-type :=>)
       (function-result malli-schema options)
@@ -983,7 +1171,7 @@
       (= schema-type :fn)
       (let [predicate (predicate-target-info (:ts/predicate-of properties))]
         (cond
-          (:typescript properties)
+          (contains? properties :typescript)
           (result (explicit-type (:typescript properties)))
 
           predicate
@@ -1004,7 +1192,7 @@
       (= schema-type :malli.core/schema)
       (registry-ref-result form options)
 
-      (:typescript properties)
+      (contains? properties :typescript)
       (result (explicit-type (:typescript properties)))
 
       (qualified-keyword? schema-type)
@@ -1016,10 +1204,13 @@
 (defn- parse-schema
   [schema registry]
   (if (seq registry)
+    ;; A composite registry leaves nested `:ref` parsing bound to the cached
+    ;; default ref schema. Materialize the current global definitions together
+    ;; with the nearest local scope so local schemas can reference global ones.
     (mc/schema schema
-               {:registry (mregistry/composite-registry
-                           (mregistry/fast-registry registry)
-                           mc/default-registry)})
+               {:registry (mregistry/fast-registry
+                           (merge (mregistry/schemas mc/default-registry)
+                                  registry))})
     (mc/schema schema)))
 
 (defn- invalid-enum-map-key-form?
@@ -1056,10 +1247,13 @@
          (parse-schema schema (:registry options))
          (update options :seen (fnil conj #{}) identity-key))
         (catch Exception exception
-          (assoc (unknown-result identity-key :invalid-schema)
-                 :diagnostics [{:type :invalid-schema
-                                :schema identity-key
-                                :message (ex-message exception)}]))))))
+          (if (contains? #{:invalid-typescript-overloads :invalid-typescript-same-as :invalid-typescript-metadata}
+                         (:type (ex-data exception)))
+            (throw exception)
+            (assoc (unknown-result identity-key :invalid-schema)
+                   :diagnostics [{:type :invalid-schema
+                                  :schema identity-key
+                                  :message (ex-message exception)}])))))))
 
 (defn schema->result
   "Compile a Malli schema into a TypeScript IR result.

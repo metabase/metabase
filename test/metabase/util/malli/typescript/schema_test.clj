@@ -1,8 +1,29 @@
 (ns metabase.util.malli.typescript.schema-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [metabase.lib-metric.schema :as metric.schema]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.typescript.schema :as schema]
    [metabase.util.malli.typescript.type :as type]))
+
+(deftest ^:parallel invalid-typescript-metadata-test
+  (doseq [value [42 nil false '(str "string")]
+          schema-form [[:any {:typescript value}]
+                       [:string {:typescript value}]
+                       [:fn {:typescript value} 'any?]]]
+    (testing (pr-str schema-form)
+      (let [error (try
+                    (schema/schema->ts schema-form)
+                    (catch Exception e e))]
+        (is (instance? clojure.lang.ExceptionInfo error))
+        (when (instance? clojure.lang.ExceptionInfo error)
+          (is (= :invalid-typescript-metadata (:type (ex-data error))))
+          (is (= (if (= :fn (first schema-form))
+                   [:any {:typescript value}]
+                   schema-form)
+                 (:schema (ex-data error)))))))))
 
 (deftest ^:parallel collection-precedence-test
   (are [expected schema-form] (= expected (schema/schema->ts schema-form))
@@ -41,12 +62,85 @@
 (deftest ^:parallel type-predicate-test
   (is (= "(arg0: unknown) => arg0 is string"
          (schema/schema->ts [:=> [:cat :any] [:boolean {:ts/predicate-of :string}]])))
-  (is (= "(arg0: unknown, arg1: number) => arg1 is string"
+  (is (= "(arg0: unknown, arg1: number) => boolean"
          (schema/schema->ts
           [:=> [:cat :any :int]
            [:boolean {:ts/predicate-of {:param 1, :schema :string}}]])))
+  (testing "invalid predicate metadata degrades to a boolean while preserving the callable shape"
+    (are [expected args predicate]
+         (= expected (schema/schema->ts [:=> args [:boolean {:ts/predicate-of predicate}]]))
+      "(arg0: string) => boolean" [:cat :string] {:param 1, :schema :string}
+      "(arg0: string, ...arg1: number[]) => boolean" [:cat :string [:* :int]] {:param 1, :schema :int}
+      "((arg0: string) => boolean) & ((arg0: string, arg1: number) => boolean)" [:cat :string [:? :int]] {:param 1, :schema :int}
+      "(arg0: string) => boolean" [:cat :string] {:param "one", :schema :string}
+      "(arg0: string) => boolean" [:cat :string] {:param 0})
+    (doseq [[args predicate] [[[:cat :string] {:param 1, :schema :string}]
+                              [[:cat :string [:* :int]] {:param 1, :schema :int}]
+                              [[:cat :string [:? :int]] {:param 1, :schema :int}]
+                              [[:cat :string] {:param "one", :schema :string}]
+                              [[:cat :string] {:param 0}]]]
+      (is (some #(= :invalid-type-predicate (:type %))
+                (:diagnostics
+                 (schema/schema->result
+                  [:=> args [:boolean {:ts/predicate-of predicate}]]))))))
+  (testing "literal and finite-union targets remain valid subsets of primitive parameters"
+    (is (= "(arg0: string) => arg0 is \"bird\""
+           (schema/schema->ts [:=> [:cat :string]
+                               [:boolean {:ts/predicate-of [:= "bird"]}]])))
+    (is (= "(arg0: string) => arg0 is \"bird\" | \"fish\""
+           (schema/schema->ts [:=> [:cat :string]
+                               [:boolean {:ts/predicate-of [:enum "bird" "fish"]}]]))))
   (is (= "(value: unknown) => value is string"
          (schema/schema->ts [:fn {:ts/predicate-of :string} string?]))))
+
+(deftest ^:parallel nested-overloads-test
+  (is (= "((arg0: string) => string) & ((arg0: number) => number)"
+         (schema/schema->ts
+          [:=> [:cat [:or :string :int]]
+           [:schema {:ts/overloads [[:=> [:cat :string] :string]
+                                    [:=> [:cat :int] :int]]}
+            [:or :string :int]]])))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Invalid :ts/overloads metadata"
+                        (schema/schema->ts
+                         [:=> [:cat :string]
+                          [:schema {:ts/overloads []} :string]]))))
+
+(deftest ^:parallel contextual-alias-discovery-test
+  (testing "schema-bearing boundary metadata participates in input nullability"
+    (let [registry {::wrapped [:any {:ts/object-of
+                                     [:map {:closed true}
+                                      [:value [:maybe :string]]]}]}
+          {:keys [input-registry-refs]}
+          (schema/schema->result
+           [:=> [:cat [:ref ::wrapped]] :boolean]
+           {:registry registry})]
+      (is (= #{::wrapped} input-registry-refs))))
+  (testing "nearest inline registry scope wins when definitions share a key"
+    (let [{:keys [local-definitions]}
+          (schema/schema->result
+           [:schema {:registry {::value :string}}
+            [:schema {:registry {::value :int}}
+             [:ref ::value]]])]
+      (is (= :int (mc/form (::value local-definitions))))))
+  (testing "nullable discovery uses the nearest schema registry"
+    (let [{:keys [input-registry-refs]}
+          (schema/schema->result
+           [:=>
+            [:cat
+             [:schema {:registry {::value :string}}
+              [:schema {:registry {::value [:maybe :string]}}
+               [:ref ::value]]]]
+            :boolean])]
+      (is (= #{::value} input-registry-refs)))))
+
+(deftest ^:parallel registry-resolution-failure-test
+  (with-redefs [mr/resolve-schema (fn [_]
+                                    (throw (ex-info "broken registry schema" {})))]
+    (let [{:keys [type diagnostics]} (schema/schema->result [:ref ::unresolved])]
+      (is (= :unknown (:kind type)))
+      (is (some #(= :invalid-schema (:type %)) diagnostics)))))
+
 (deftest ^:parallel labeled-tuple-test
   (is (= "[op: string, value: number]"
          (schema/schema->ts [:catn [:op :keyword] [:value :int]])))
@@ -88,7 +182,84 @@
            [:multi {:dispatch (fn [_] :field)}
             [:field [:map {:closed true} [:x :string]]]])]
       (is (= "{\n\tx: string;\n}" (type/render type)))
-      (is (nil? multi-branches)))))
+      (is (nil? multi-branches))))
+  (testing "nil dispatch branches preserve maps that omit the dispatch key"
+    (let [{:keys [type multi-branches]}
+          (schema/schema->result
+           [:multi {:dispatch :type}
+            [nil [:map {:closed true} [:x :string]]]
+            [:bird [:map {:closed true} [:x :string]]]
+            [::mc/default [:map {:closed true} [:fallback :boolean]]]])]
+      (is (= "{\n\tx: string;\n} | {\n\ttype: \"bird\";\n\tx: string;\n} | {\n\tfallback: boolean;\n}"
+             (type/render type)))
+      (is (= [{:value nil, :value-string "null", :literal? false}
+              {:value :bird, :value-string "\"bird\"", :literal? true}
+              {:value ::mc/default, :value-string nil, :literal? false}]
+             (:branches multi-branches))))))
+(mr/def ::preserved-keys
+  [:map {:closed true} [:display-name :string]])
+
+(deftest ^:parallel metric-filter-parts-js-shape-test
+  (let [relative (schema/schema->ts (mr/registered-schema ::metric.schema/relative-date-filter-parts.js))
+        exclude (schema/schema->ts (mr/registered-schema ::metric.schema/exclude-date-filter-parts.js))
+        date (schema/schema->ts (mr/registered-schema ::metric.schema/specific-date-filter-parts.js))
+        time (schema/schema->ts (mr/registered-schema ::metric.schema/time-filter-parts.js))]
+    (is (not (str/ends-with? relative "\n\t[key: string]: unknown;\n}")))
+    (is (str/includes? relative "offsetUnit?:"))
+    (is (str/includes? relative "offsetValue: number | null;"))
+    (is (str/includes? relative "options: {\n\tincludeCurrent?: boolean;\n\t[key: string]: unknown;\n} | null;"))
+    (is (str/includes? relative "dimension: metabase.lib-metric.schema/metadata-dimension"))
+    (is (not (str/includes? relative "displayName")))
+    (is (str/includes? exclude "unit?:"))
+    (is (str/includes? date "values: (Date | null)[]"))
+    (is (str/includes? time "values: import('dayjs').Dayjs[]"))))
+
+(deftest ^:parallel metric-temporal-input-shape-test
+  (let [date (schema/schema->ts (mr/registered-schema ::metric.schema/specific-date-filter-parts.js-input))
+        time (schema/schema->ts (mr/registered-schema ::metric.schema/time-filter-parts.js-input))]
+    (is (str/includes? date "values: (Date | string | import('dayjs').Dayjs)[]"))
+    (is (str/includes? time "values: (Date | string | import('dayjs').Dayjs)[]"))))
+
+(deftest ^:parallel ordinary-key-transform-test
+  (is (= "{\n\tdisplayName: string;\n}"
+         (schema/schema->ts [:map {:closed true :ts/key-transform :camelCase}
+                             [:display-name :string]])))
+  (doseq [[nested expected]
+          [[[:map {:closed true :ts/key-transform :none} [:display-name :string]]
+            "{\n\touterKey: {\n\t\"display-name\": string;\n};\n}"]
+           [[:schema {:ts/key-transform :none} [:map {:closed true} [:display-name :string]]]
+            "{\n\touterKey: {\n\t\"display-name\": string;\n};\n}"]
+           [[:ref {:ts/key-transform :none} ::preserved-keys]
+            "{\n\touterKey: metabase.util.malli.typescript.schema-test/preserved-keys;\n}"]]]
+    (is (= expected
+           (schema/schema->ts [:any {:ts/object-of [:map {:closed true} [:outer-key nested]]
+                                     :ts/key-transform :camelCase}])))))
+
+(deftest ^:parallel seqex-key-transform-test
+  (doseq [schema-type [:cat :catn :alt :altn :? :* :+ :repeat]
+          [parent-transform properties expected-key]
+          [[:camelCase {} "displayName: string"]
+           [:camelCase {:ts/key-transform :none} "\"display-name\": string"]
+           [:none {:ts/key-transform :camelCase} "displayName: string"]]
+          child-properties [{:closed true} {:closed true :ts/key-transform :camelCase}]]
+    (let [child [:map child-properties [:display-name :string]]
+          entry (if (#{:catn :altn} schema-type) [:bird child] child)
+          nested [schema-type properties entry]
+          emitted (schema/schema->ts
+                   [:any {:ts/key-transform parent-transform
+                          :ts/object-of [:map {:closed true} [:outer [:cat nested]]]}])
+          expected (if (:ts/key-transform child-properties) "displayName: string" expected-key)]
+      (testing (pr-str [schema-type parent-transform properties child-properties])
+        (is (str/includes? emitted expected))
+        (is (not (str/includes? emitted (if (= expected "displayName: string")
+                                          "\"display-name\": string"
+                                          "displayName: string")))))))
+  (is (= "(arg0: {\n\t\"display-name\": string;\n}) => null"
+         (schema/schema->ts
+          [:any {:ts/key-transform :camelCase
+                 :ts/object-of [:=> [:cat {:ts/key-transform :none}
+                                     [:map {:closed true} [:display-name :string]]] :nil]}]))))
+
 (deftest ^:parallel camel-helper-test
   (testing "simple string keys delegate to the Camel helper"
     (is (= "Camel<{\n\t\"display-name\": string;\n\t\"enabled?\"?: boolean;\n}>"
@@ -105,6 +276,20 @@
                    [:map {:closed true}
                     ["URL-value" :int]]
                    :ts/key-transform :camelCase}])))))
+(deftest ^:parallel finite-map-key-test
+  (are [expected key-schema] (= expected (schema/schema->ts [:map-of key-schema :int]))
+    "Partial<Record<\"only\", number>>"
+    [:= :only]
+
+    "Partial<Record<\"one\" | \"two\", number>>"
+    [:or [:= :one] [:= :two]]
+
+    "Partial<Record<\"one\" | \"two\", number>>"
+    [:or [:= :one] [:enum :two]])
+  (testing "open key schemas retain the conservative string fallback"
+    (is (= "Record<string, number>"
+           (schema/schema->ts [:map-of [:or :string [:= :one]] :int])))))
+
 (deftest ^:parallel readonly-test
   (are [expected schema-form] (= expected (schema/schema->ts schema-form {:readonly? true}))
     "readonly string[]"
@@ -125,6 +310,12 @@
     (is (= "(arg0: string[]) => number"
            (schema/schema->ts
             [:=> [:cat [:vector :string]] :int]
+            {:readonly? true}))))
+  (testing "camel transforms retain readonly output"
+    (is (= "Readonly<Camel<{\n\t\"display-name\": string;\n}>>"
+           (schema/schema->ts
+            [:any {:ts/object-of [:map {:closed true} ["display-name" :string]]
+                   :ts/key-transform :camelCase}]
             {:readonly? true})))))
 (deftest ^:parallel unsupported-predicate-test
   (doseq [schema-form ['bytes? 'uri?]]
@@ -213,7 +404,19 @@
     (is (= "unknown[]" (type/render type)))
     (is (some #(= :sequence-alternative-limit-exceeded (:type %)) diagnostics))))
 (deftest ^:parallel function-seqex-test
-  (is (= "(arg0: string, arg1?: number, ...arg2: boolean[]) => string"
+  (is (= "((arg0: string, arg1: number) => boolean) & ((arg0: number, arg1: string) => boolean)"
+         (schema/schema->ts
+          [:=> [:cat [:alt [:cat :string :int] [:cat :int :string]]] :boolean])))
+  (is (= "((arg0: string, arg1: boolean) => string) & ((arg0: number, arg1: boolean) => string)"
+         (schema/schema->ts
+          [:=> [:cat [:alt :string :int] :boolean] :string])))
+  (is (= "((arg0: string) => string) & ((arg0: number) => string) & ((arg0: number, arg1: boolean) => string)"
+         (schema/schema->ts
+          [:=> [:cat [:alt [:cat :string] [:cat :int [:? :boolean]]]] :string])))
+  (is (= "(...args: unknown[]) => string"
+         (schema/schema->ts
+          [:=> (into [:cat] (repeat 9 [:? :string])) :string])))
+  (is (= "((arg0: string, ...arg1: boolean[]) => string) & ((arg0: string, arg1: number, ...arg2: boolean[]) => string)"
          (schema/schema->ts [:=> [:cat :string [:? :int] [:* :boolean]] :string])))
   (is (= "(max_rows: number, predicate_QMARK_: boolean) => string"
          (schema/schema->ts [:=> [:catn [:max-rows :int] [:predicate? :boolean]] :string])))

@@ -1,5 +1,6 @@
 (ns metabase.util.malli.typescript.refs
   (:require
+   [clojure.string :as str]
    [metabase.util.malli.typescript.declaration :as declaration]
    [metabase.util.malli.typescript.schema :as schema]
    [metabase.util.malli.typescript.type :as type]))
@@ -19,8 +20,10 @@
   - `:resolve-schema` resolves a schema keyword to its Malli definition.
 
   Optional `:expand?` can stop traversal at references owned by another module."
-  [initial-refs {:keys [resolve-schema compile-options expand?]
-                 :or {compile-options {}, expand? (constantly true)}}]
+  [initial-refs {:keys [resolve-schema compile-options expand? dependency-refs]
+                 :or {compile-options {}
+                      expand? (constantly true)
+                      dependency-refs :registry-refs}}]
   (loop [pending           (vec (sort-by str initial-refs))
          processed         #{}
          definitions       (sorted-map-by #(compare (str %1) (str %2)))
@@ -42,7 +45,7 @@
             (let [compiled (schema/schema->result
                             definition
                             (update compile-options :registry merge local-definitions))
-                  discovered (:registry-refs compiled)
+                  discovered (get compiled dependency-refs)
                   new-local  (merge local-definitions (:local-definitions compiled))
                   new-pending (->> discovered
                                    (remove processed)
@@ -184,7 +187,7 @@
     :key-transform
     (let [[inner diagnostics]
           (make-recursion-safe* schema-keyword graph true (:inner node))]
-      [(type/key-transform-type (:name node) inner) diagnostics])
+      [(preserve-node-flags node (type/key-transform-type (:name node) inner)) diagnostics])
 
     :function
     (let [[parameters parameter-diagnostics]
@@ -215,9 +218,36 @@
   [type-name]
   (type/object [{:name "__kind", :optional? true, :type (type/literal type-name)}]))
 
+(defn- declares-phantom-key?
+  ([node safe-types]
+   (declares-phantom-key? node safe-types #{}))
+  ([node safe-types seen]
+   (case (:kind node)
+     :object (some #(= "__kind" (:name %)) (:properties node))
+     (:union :intersection) (some #(declares-phantom-key? % safe-types seen) (:members node))
+     :ref (let [schema-keyword (:schema-keyword node)]
+            (when-not (contains? seen schema-keyword)
+              (declares-phantom-key? (get-in safe-types [schema-keyword :type])
+                                     safe-types
+                                     (conj seen schema-keyword))))
+     false)))
+
 (defn- collidable-kind?
-  [node]
-  (contains? #{:object :union :intersection} (:kind node)))
+  ([node safe-types]
+   (collidable-kind? node safe-types #{}))
+  ([node safe-types seen]
+   ;; Arrays, tuples, functions, and object-only compounds remain object-like
+   ;; even when their elements or properties are nullable or primitive.
+   (case (:kind node)
+     (:object :array :tuple :function) true
+     :union (every? #(collidable-kind? % safe-types seen) (:members node))
+     :intersection (some #(collidable-kind? % safe-types seen) (:members node))
+     :ref (let [schema-keyword (:schema-keyword node)]
+            (and (not (contains? seen schema-keyword))
+                 (collidable-kind? (get-in safe-types [schema-keyword :type])
+                                   safe-types
+                                   (conj seen schema-keyword))))
+     false)))
 
 (def ^:private typescript-identifier-pattern
   #"[A-Za-z_$][\w$]*")
@@ -226,8 +256,15 @@
   "Generate deterministic TypeScript aliases for a registry dependency closure.
 
   Options extend `dependency-closure` and require `:type-name` and `:ref-name`."
-  [initial-refs {:keys [type-name ref-name] :as options}]
-  (let [{:keys [definitions graph refs-used diagnostics] :as closure}
+  [initial-refs {:keys [type-name ref-name contextual-input? input-ref-name] :as options}]
+  (let [input-ref-name (or input-ref-name
+                           #(let [reference (ref-name %)]
+                              (if (str/starts-with? reference "Shared.")
+                                (str "Shared.Input_" (subs reference (count "Shared.")))
+                                (str "Input_" reference))))
+        render-options {:ref-name ref-name
+                        :input-ref-name input-ref-name}
+        {:keys [definitions graph refs-used diagnostics] :as closure}
         (dependency-closure initial-refs options)
         safe-types
         (into {}
@@ -242,21 +279,27 @@
         ;; only object/union-shaped collisions get a phantom discriminant so
         ;; mutually interchangeable primitives stay interchangeable.
         body-groups (group-by (fn [schema-keyword]
-                                (type/render (get-in safe-types [schema-keyword :type]) {:ref-name ref-name}))
+                                (type/render (get-in safe-types [schema-keyword :type]) render-options))
                               (keys safe-types))
         render-entry
         (fn [schema-keyword]
           (let [{:keys [type multi-branches]} (get safe-types schema-keyword)
-                base-name (type-name schema-keyword)
-                body (type/render type {:ref-name ref-name})
-                phantom (when (and (collidable-kind? type)
+                alias-name (if contextual-input?
+                             (input-ref-name schema-keyword)
+                             (type-name schema-keyword))
+                ;; Contextual aliases need different declaration names, but their
+                ;; phantom tag identifies the same schema in either context.
+                phantom-name (type-name schema-keyword)
+                body (type/render type render-options)
+                phantom (when (and (collidable-kind? type safe-types)
+                                   (not (declares-phantom-key? type safe-types))
                                    (> (count (get body-groups body)) 1))
-                          (phantom-discriminant base-name))
+                          (phantom-discriminant phantom-name))
                 rendered-type (if phantom
                                 (type/intersection [type phantom])
                                 type)
-                declaration (str "export type " base-name " = "
-                                 (type/render rendered-type {:ref-name ref-name}) ";")
+                declaration (str "export type " alias-name " = "
+                                 (type/render rendered-type render-options) ";")
                 ;; Extract<> only distributes over a plain union; skip it when the
                 ;; alias was phantom-wrapped into an intersection.
                 extract-declarations
@@ -269,8 +312,11 @@
                             (when (and literal?
                                        value-string
                                        (re-matches typescript-identifier-pattern tag-name))
-                              (str "export type " base-name "_" tag-name
-                                   " = Extract<" (ref-name schema-keyword)
+                              (str "export type " alias-name "_" tag-name
+                                   " = Extract<"
+                                   (if contextual-input?
+                                     (input-ref-name schema-keyword)
+                                     (ref-name schema-keyword))
                                    ", { \"" (:key-string multi-branches) "\": " value-string " }>;"))))
                         (:branches multi-branches)))]
             {:declarations (into [declaration] extract-declarations)

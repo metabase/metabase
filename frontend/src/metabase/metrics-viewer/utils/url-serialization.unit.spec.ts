@@ -1,11 +1,23 @@
+import { utf8_to_b64url } from "metabase/utils/encoding";
+import * as LibMetric from "metabase-lib/metric";
+
 import type {
   MetricsViewerDimensionBreakoutState,
   MetricsViewerPageState,
 } from "../types";
 
-import type { DimensionFilterValue } from "./dimension-filters";
+import {
+  REVENUE_METRIC,
+  createMetricMetadata,
+  setupDefinition,
+} from "./__tests__/test-helpers";
+import {
+  type DimensionFilterValue,
+  extractDefinitionFilters,
+} from "./dimension-filters";
 import {
   type SerializedMetricsViewerPageState,
+  applySerializedDefinitionInfo,
   decodeState,
   deserializeFormulaEntities,
   encodeState,
@@ -48,6 +60,87 @@ function createPageState(
 }
 
 describe("url-serialization", () => {
+  it.each(["metric", "expression"])(
+    "applies decoded %s filters without retaining unreadable dates",
+    (type) => {
+      const filters = [
+        {
+          d: "dim-created-at",
+          v: {
+            type: "specific-date",
+            operator: "=",
+            values: ["not-a-date"],
+            hasTime: false,
+          },
+        },
+        {
+          d: "dim-created-at",
+          v: {
+            type: "specific-date",
+            operator: "=",
+            values: ["2024-01-01T00:00:00"],
+            hasTime: false,
+          },
+        },
+        {
+          d: "dim-category",
+          v: { type: "string", operator: "=", values: ["Widget"], options: {} },
+        },
+      ];
+      const decoded = decodeState(
+        utf8_to_b64url(
+          JSON.stringify({
+            f: [
+              type === "metric"
+                ? { t: "metric", i: REVENUE_METRIC.id, F: filters }
+                : {
+                    t: "expression",
+                    i: "expression:test",
+                    n: "Revenue",
+                    T: [{ t: "metric", s: "metric:1", F: filters }],
+                  },
+            ],
+          }),
+        ),
+      );
+      const [entity] = deserializeFormulaEntities(decoded);
+      const serializedInfo =
+        entity.type === "metric"
+          ? entity.serializedDefinitionInfo
+          : entity.tokens[0].type === "metric"
+            ? entity.tokens[0].serializedDefinitionInfo
+            : undefined;
+      if (!serializedInfo) {
+        throw new Error("Expected decoded definition info");
+      }
+      const definition = setupDefinition(
+        createMetricMetadata([REVENUE_METRIC]),
+        REVENUE_METRIC.id,
+      );
+      const result = applySerializedDefinitionInfo(definition, serializedInfo);
+      expect(LibMetric.filters(result)).toHaveLength(2);
+      expect(extractDefinitionFilters(result)).toEqual([
+        expect.objectContaining({
+          dimensionId: "dim-created-at",
+          value: {
+            type: "specific-date",
+            operator: "=",
+            values: [new Date("2024-01-01T00:00:00")],
+            hasTime: false,
+          },
+        }),
+        expect.objectContaining({
+          dimensionId: "dim-category",
+          value: {
+            type: "string",
+            operator: "=",
+            values: ["Widget"],
+            options: null,
+          },
+        }),
+      ]);
+    },
+  );
   describe("encodeState / decodeState round-trip", () => {
     it("round-trips a state with formula entities and dimensionBreakouts", () => {
       const state: SerializedMetricsViewerPageState = {

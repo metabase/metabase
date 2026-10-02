@@ -49,6 +49,16 @@
           (build/entry-definitions fake-state))))
   (is (nil? (build/module-reexports ['example.entry 'example.dependency]))))
 
+(deftest analyzer-alias-typescript-expression-test
+  (let [state (-> fake-state
+                  (assoc-in [:compiler-env ::ana/namespaces 'example.entry :requires]
+                            {'birds 'clojure.string})
+                  (assoc-in [:compiler-env ::ana/namespaces 'example.entry :defs 'exported :schema]
+                            [:any {:typescript '(birds/join " | " ["string" "number"])}]))
+        defs (get (build/entry-definitions state) 'example.entry)
+        result (#'build/ts-content 'example.entry defs #{} #{} false)]
+    (is (str/includes? (:content result) "export const exported: string | number;"))))
+
 (deftest inline-registries-stay-local-test
   (let [defs {'value {:name 'example.entry/value
                       :schema [:schema

@@ -443,7 +443,9 @@
     (reduce (fn [acc k]
               (let [cljs-key (js-key->cljs-key k)
                     v (gobject/get js-options k)]
-                (assoc acc cljs-key v)))
+                (if (undefined? v)
+                  acc
+                  (assoc acc cljs-key v))))
             {}
             (js-keys js-options))))
 
@@ -519,10 +521,10 @@
 (mu/defn ^:export stringFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a string filter clause from parts.
    Parts: {operator, dimension, values, options}"
-  [parts :- ::lib-metric.schema/string-filter-parts]
+  [parts :- ::lib-metric.schema/string-filter-parts.js-input]
   (lib-metric.filter/string-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export stringFilterParts :- [:maybe ::lib-metric.schema/string-filter-parts]
+(mu/defn ^:export stringFilterParts :- [:maybe ::lib-metric.schema/string-filter-parts.js]
   "Extract string filter parts from a clause.
    Returns {operator, dimension, values, options} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -532,10 +534,10 @@
 (mu/defn ^:export numberFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a number filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts :- ::lib-metric.schema/number-filter-parts]
+  [parts :- ::lib-metric.schema/number-filter-parts.js]
   (lib-metric.filter/number-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export numberFilterParts :- [:maybe ::lib-metric.schema/number-filter-parts]
+(mu/defn ^:export numberFilterParts :- [:maybe ::lib-metric.schema/number-filter-parts.js]
   "Extract number filter parts from a clause.
    Returns {operator, dimension, values} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -545,10 +547,10 @@
 (mu/defn ^:export coordinateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a coordinate filter clause from parts.
    Parts: {operator, dimension, longitudeDimension, values}"
-  [parts :- ::lib-metric.schema/coordinate-filter-parts]
+  [parts :- ::lib-metric.schema/coordinate-filter-parts.js]
   (lib-metric.filter/coordinate-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export coordinateFilterParts :- [:maybe ::lib-metric.schema/coordinate-filter-parts]
+(mu/defn ^:export coordinateFilterParts :- [:maybe ::lib-metric.schema/coordinate-filter-parts.js]
   "Extract coordinate filter parts from a clause.
    Returns {operator, dimension, longitudeDimension, values} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -558,10 +560,10 @@
 (mu/defn ^:export booleanFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a boolean filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts :- ::lib-metric.schema/boolean-filter-parts]
+  [parts :- ::lib-metric.schema/boolean-filter-parts.js]
   (lib-metric.filter/boolean-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export booleanFilterParts :- [:maybe ::lib-metric.schema/boolean-filter-parts]
+(mu/defn ^:export booleanFilterParts :- [:maybe ::lib-metric.schema/boolean-filter-parts.js]
   "Extract boolean filter parts from a clause.
    Returns {operator, dimension, values} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -571,10 +573,10 @@
 (mu/defn ^:export specificDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a specific date filter clause from parts.
    Parts: {operator, dimension, values, hasTime}"
-  [parts :- ::lib-metric.schema/specific-date-filter-parts]
+  [parts :- ::lib-metric.schema/specific-date-filter-parts.js-input]
   (lib-metric.filter/specific-date-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export specificDateFilterParts :- [:maybe ::lib-metric.schema/specific-date-filter-parts]
+(mu/defn ^:export specificDateFilterParts :- [:maybe ::lib-metric.schema/specific-date-filter-parts.js]
   "Extract specific date filter parts from a clause.
    Returns {operator, dimension, values, hasTime} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -586,10 +588,10 @@
 (mu/defn ^:export relativeDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a relative date filter clause from parts.
    Parts: {dimension, unit, value, offsetUnit, offsetValue, options}"
-  [parts :- ::lib-metric.schema/relative-date-filter-parts]
+  [parts :- ::lib-metric.schema/relative-date-filter-parts.js-input]
   (lib-metric.filter/relative-date-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export relativeDateFilterParts :- [:maybe ::lib-metric.schema/relative-date-filter-parts]
+(mu/defn ^:export relativeDateFilterParts :- [:maybe ::lib-metric.schema/relative-date-filter-parts.js]
   "Extract relative date filter parts from a clause.
    Returns {dimension, unit, value, offsetUnit, offsetValue, options} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -599,10 +601,10 @@
 (mu/defn ^:export excludeDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create an exclude date filter clause from parts.
    Parts: {operator, dimension, unit, values}"
-  [parts :- ::lib-metric.schema/exclude-date-filter-parts]
+  [parts :- ::lib-metric.schema/exclude-date-filter-parts.js-input]
   (lib-metric.filter/exclude-date-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export excludeDateFilterParts :- [:maybe ::lib-metric.schema/exclude-date-filter-parts]
+(mu/defn ^:export excludeDateFilterParts :- [:maybe ::lib-metric.schema/exclude-date-filter-parts.js]
   "Extract exclude date filter parts from a clause.
    Returns {operator, dimension, unit, values} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -612,10 +614,10 @@
 (mu/defn ^:export timeFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a time filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts :- ::lib-metric.schema/time-filter-parts]
+  [parts :- ::lib-metric.schema/time-filter-parts.js-input]
   (lib-metric.filter/time-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export timeFilterParts :- [:maybe ::lib-metric.schema/time-filter-parts]
+(mu/defn ^:export timeFilterParts :- [:maybe ::lib-metric.schema/time-filter-parts.js]
   "Extract time filter parts from a clause.
    Returns {operator, dimension, values} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -625,10 +627,10 @@
 (mu/defn ^:export defaultFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a default filter clause from parts.
    Parts: {operator, dimension}"
-  [parts :- ::lib-metric.schema/default-filter-parts]
+  [parts :- ::lib-metric.schema/default-filter-parts.js]
   (lib-metric.filter/default-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export defaultFilterParts :- [:maybe ::lib-metric.schema/default-filter-parts]
+(mu/defn ^:export defaultFilterParts :- [:maybe ::lib-metric.schema/default-filter-parts.js]
   "Extract default filter parts from a clause.
    Returns {operator, dimension} or null."
   [definition :- ::lib-metric.schema/metric-definition
@@ -713,11 +715,9 @@
   [definition dimension]
   (to-array (lib-metric.projection/available-temporal-buckets definition dimension)))
 
-(mu/defn ^:export withTemporalBucket :- [:schema {:ts/same-as 0
-                                                  :ts/generic-bound ::lib-metric.schema/dimension-or-reference}
-                                         ::lib-metric.schema/dimension-reference]
+(mu/defn ^:export withTemporalBucket :- ::lib-metric.schema/dimension-reference
   "Apply a temporal bucket to a projection."
-  [projection bucket]
+  [projection :- ::lib-metric.schema/dimension-or-reference bucket]
   (lib-metric.projection/with-temporal-bucket projection bucket))
 
 (mu/defn ^:export binning :- [:maybe ::lib-metric.schema/binning]
@@ -733,11 +733,9 @@
       (or [])
       to-array))
 
-(mu/defn ^:export withBinning :- [:schema {:ts/same-as 0
-                                           :ts/generic-bound ::lib-metric.schema/dimension-or-reference}
-                                  ::lib-metric.schema/dimension-reference]
+(mu/defn ^:export withBinning :- ::lib-metric.schema/dimension-reference
   "Apply a binning strategy to a projection."
-  [projection binning-strategy]
+  [projection :- ::lib-metric.schema/dimension-or-reference binning-strategy]
   (lib-metric.projection/with-binning projection binning-strategy))
 
 (mu/defn ^:export isBoolean :- :boolean

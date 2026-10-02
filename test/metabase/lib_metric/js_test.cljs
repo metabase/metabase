@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-metric.js :as lib-metric.js]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.util.time.impl :as time.impl]))
 
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
 
@@ -42,6 +43,139 @@
           [])))
     (setting [_this _setting-name]
       nil)))
+
+;;; -------------------------------------------------- Native filter parts --------------------------------------------------
+
+(def ^:private filter-date-dimension
+  {:lib/type :metadata/dimension
+   :id "00000000-0000-0000-0000-000000000001"
+   :display-name "Created At"
+   :effective-type :type/DateTime
+   :source-type :metric
+   :source-id 42})
+
+(def ^:private filter-time-dimension
+  (assoc filter-date-dimension
+         :id "00000000-0000-0000-0000-000000000002"
+         :effective-type :type/Time))
+
+(def ^:private filter-number-dimension
+  (assoc filter-date-dimension :id "00000000-0000-0000-0000-000000000003" :effective-type :type/Float))
+
+(def ^:private filter-string-dimension
+  (assoc filter-date-dimension :id "00000000-0000-0000-0000-000000000004" :effective-type :type/Text))
+
+(def ^:private filter-coordinate-dimension
+  (assoc filter-number-dimension :id "00000000-0000-0000-0000-000000000005" :semantic-type :type/Latitude))
+
+(def ^:private filter-provider
+  (reify lib.metadata.protocols/MetadataProvider
+    (database [_] nil)
+    (metadatas [_ spec]
+      (if (= :metadata/dimension (:lib/type spec))
+        [filter-date-dimension filter-time-dimension filter-number-dimension
+         filter-string-dimension filter-coordinate-dimension]
+        (lib.metadata.protocols/metadatas mock-provider spec)))
+    (setting [_ setting-name]
+      (lib.metadata.protocols/setting mock-provider setting-name))))
+
+(def ^:private filter-definition
+  {:lib/type :metric/definition
+   :expression [:metric {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+   :filters []
+   :projections []
+   :metadata-provider filter-provider})
+
+(deftest ^:parallel relative-filter-native-absence-test
+  (let [parts (lib-metric.js/relativeDateFilterParts
+               filter-definition [:time-interval {} [:dimension {} (:id filter-date-dimension)] :current :second])]
+    (is (= #{"dimension" "options" "unit" "value" "offsetValue"} (set (js-keys parts))))
+    (is (= 0 (.-value parts)))
+    (is (= "second" (.-unit parts)))
+    (is (nil? (.-offsetValue parts)))
+    (is (nil? (.-options parts)))
+    (is (identical? filter-date-dimension (.-dimension parts)))
+    (is (= "Created At" (:display-name (.-dimension parts))))))
+
+(deftest ^:parallel relative-filter-native-offset-options-test
+  (let [parts (lib-metric.js/relativeDateFilterParts
+               filter-definition
+               [:time-interval {:offset-unit :millisecond :offset-value -1 :include-current false}
+                [:dimension {} (:id filter-date-dimension)] -2 :day])]
+    (is (= "millisecond" (.-offsetUnit parts)))
+    (is (= -1 (.-offsetValue parts)))
+    (is (= #{"includeCurrent"} (set (js-keys (.-options parts)))))
+    (is (false? (unchecked-get (.-options parts) "includeCurrent")))))
+
+(deftest ^:parallel exclude-filter-native-absence-test
+  (let [parts (lib-metric.js/excludeDateFilterParts
+               filter-definition [:is-null {} [:dimension {} (:id filter-date-dimension)]])]
+    (is (= #{"operator" "dimension" "values"} (set (js-keys parts))))
+    (is (= "is-null" (.-operator parts)))
+    (is (array? (.-values parts)))
+    (is (zero? (alength (.-values parts))))))
+
+(deftest ^:parallel specific-filter-native-date-values-test
+  (doseq [[value valid?] [["2024-01-15" true] ["not-a-date" false]]]
+    (let [parts (lib-metric.js/specificDateFilterParts
+                 filter-definition [:= {} [:dimension {} (:id filter-date-dimension)] value])
+          actual (aget (.-values parts) 0)]
+      (is (array? (.-values parts)))
+      (is (identical? filter-date-dimension (.-dimension parts)))
+      (is (false? (.-hasTime parts)))
+      (if valid?
+        (is (instance? js/Date actual))
+        (is (nil? actual))))))
+
+(deftest ^:parallel time-filter-native-dayjs-values-test
+  (let [parts (lib-metric.js/timeFilterParts
+               filter-definition [:> {} [:dimension {} (:id filter-time-dimension)] "09:30:00"])
+        value (aget (.-values parts) 0)]
+    (is (array? (.-values parts)))
+    (is (time.impl/time? value))
+    (is (not (instance? js/Date value)))
+    (is (= "09:30:00" (.format value "HH:mm:ss")))))
+
+(deftest ^:parallel filter-native-missing-dimension-test
+  (is (nil? (lib-metric.js/relativeDateFilterParts
+             filter-definition [:time-interval {} [:dimension {} "00000000-0000-0000-0000-000000000099"] -2 :day]))))
+
+(deftest ^:parallel filter-native-unsupported-values-test
+  (doseq [[reader clause]
+          [[lib-metric.js/relativeDateFilterParts
+            [:time-interval {} [:dimension {} (:id filter-date-dimension)] :last :day]]
+           [lib-metric.js/relativeDateFilterParts
+            [:time-interval {} [:dimension {} (:id filter-date-dimension)] [:+ {} 1 2] :day]]
+           [lib-metric.js/numberFilterParts
+            [:> {} [:dimension {} (:id filter-number-dimension)] [:dimension {} (:id filter-number-dimension)]]]
+           [lib-metric.js/stringFilterParts
+            [:= {} [:dimension {} (:id filter-string-dimension)] 5]]
+           [lib-metric.js/coordinateFilterParts
+            [:between {} [:dimension {} (:id filter-coordinate-dimension)] 1 [:+ {} 1 2]]]
+           [lib-metric.js/specificDateFilterParts
+            [:= {} [:dimension {} (:id filter-date-dimension)] [:relative-datetime {} -1 :day]]]
+           [lib-metric.js/excludeDateFilterParts
+            [:!= {} [:get-day-of-week {} [:dimension {} (:id filter-date-dimension)]] "Mon"]]]]
+    (is (nil? (reader filter-definition clause)))))
+
+(deftest ^:parallel filter-native-undefined-options-test
+  (doseq [include-current [js/undefined false true nil]]
+    (let [clause (lib-metric.js/relativeDateFilterClause
+                  #js {:dimension filter-date-dimension :value -2 :unit "day"
+                       :options #js {:includeCurrent include-current}})
+          options (second clause)]
+      (if (undefined? include-current)
+        (do
+          (is (not (contains? options :include-current)))
+          (is (nil? (.-options (lib-metric.js/relativeDateFilterParts filter-definition clause)))))
+        (is (= include-current (:include-current options)))))))
+
+(deftest ^:parallel specific-filter-native-invalid-writes-test
+  (doseq [value [(js/Date. js/NaN) "not-a-date" "2024-02-30"]]
+    (is (thrown-with-msg? js/Error #"Invalid date"
+                          (lib-metric.js/specificDateFilterClause
+                           #js {:operator "=" :dimension filter-date-dimension
+                                :values #js [value] :hasTime false})))))
 
 ;;; -------------------------------------------------- toJsMetricDefinition --------------------------------------------------
 

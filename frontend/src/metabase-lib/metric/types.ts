@@ -11,23 +11,8 @@ import type {
   Metabase_Lib_Schema_Metadata_Segment,
   Metabase_Lib_Schema_TemporalBucketing_Option,
 } from "cljs/metabase.lib.shared";
+import type * as LibMetric from "cljs/metabase.lib_metric.js";
 import type { DimensionId, TemporalUnit } from "metabase-types/api";
-
-import type {
-  BooleanFilterOperator,
-  CoordinateFilterOperator,
-  DefaultFilterOperator,
-  ExcludeDateFilterOperator,
-  ExcludeDateFilterUnit,
-  NumberFilterOperator,
-  NumberFilterValue,
-  RelativeDateFilterOptions,
-  RelativeDateFilterUnit,
-  SpecificDateFilterOperator,
-  StringFilterOperator,
-  StringFilterOptions,
-  TimeFilterOperator,
-} from "../common";
 
 declare const _MetadataProviderSymbol: unique symbol;
 
@@ -133,76 +118,67 @@ export type DisplayInfo =
   | BinningStrategyDisplayInfo
   | SegmentDisplayInfo;
 
-export type FilterParts =
-  | StringFilterParts
-  | NumberFilterParts
-  | CoordinateFilterParts
-  | BooleanFilterParts
-  | SpecificDateFilterParts
-  | RelativeDateFilterParts
-  | ExcludeDateFilterParts
-  | TimeFilterParts
-  | DefaultFilterParts;
+export type FilterParts = NonNullable<
+  | ReturnType<typeof LibMetric.stringFilterParts>
+  | ReturnType<typeof LibMetric.numberFilterParts>
+  | ReturnType<typeof LibMetric.coordinateFilterParts>
+  | ReturnType<typeof LibMetric.booleanFilterParts>
+  | SpecificDateFilterPartsOutput
+  | ReturnType<typeof LibMetric.relativeDateFilterParts>
+  | ReturnType<typeof LibMetric.excludeDateFilterParts>
+  | TimeFilterPartsOutput
+  | ReturnType<typeof LibMetric.defaultFilterParts>
+>;
 
-export type StringFilterParts = {
-  operator: StringFilterOperator;
-  dimension: DimensionMetadata;
-  values: string[];
-  options?: StringFilterOptions | null;
-};
-
-export type NumberFilterParts = {
-  operator: NumberFilterOperator;
-  dimension: DimensionMetadata;
-  values: NumberFilterValue[];
-};
-
-export type CoordinateFilterParts = {
-  operator: CoordinateFilterOperator;
-  dimension: DimensionMetadata;
-  longitudeDimension: DimensionMetadata | null;
-  values: NumberFilterValue[];
-};
-
-export type BooleanFilterParts = {
-  operator: BooleanFilterOperator;
-  dimension: DimensionMetadata;
-  values: boolean[];
-};
-
-export type SpecificDateFilterParts = {
-  operator: SpecificDateFilterOperator;
-  dimension: DimensionMetadata;
-  values: Date[];
-  hasTime: boolean;
-};
-
-export type RelativeDateFilterParts = {
-  dimension: DimensionMetadata;
-  unit: RelativeDateFilterUnit;
-  value: number;
-  offsetUnit: RelativeDateFilterUnit | null;
-  offsetValue: number | null;
-  options?: RelativeDateFilterOptions | null;
-};
-
-export type ExcludeDateFilterParts = {
-  operator: ExcludeDateFilterOperator;
-  dimension: DimensionMetadata;
-  unit: ExcludeDateFilterUnit | null;
-  values: number[];
-};
-
-export type TimeFilterParts = {
-  operator: TimeFilterOperator;
-  dimension: DimensionMetadata;
+type DateValuesFilterParts<Parts> = Omit<NonNullable<Parts>, "values"> & {
   values: Date[];
 };
 
-export type DefaultFilterParts = {
-  operator: DefaultFilterOperator;
-  dimension: DimensionMetadata;
-};
+export type SpecificDateFilterPartsOutput = DateValuesFilterParts<
+  ReturnType<typeof LibMetric.specificDateFilterParts>
+>;
+
+export type TimeFilterPartsOutput = DateValuesFilterParts<
+  ReturnType<typeof LibMetric.timeFilterParts>
+>;
+
+type DimensionFilterParts<Parts> = Parts & { dimension: DimensionMetadata };
+
+export type StringFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.stringFilterClause>[0]
+>;
+
+export type NumberFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.numberFilterClause>[0]
+>;
+
+export type CoordinateFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.coordinateFilterClause>[0]
+> & { longitudeDimension: DimensionMetadata | null };
+
+export type BooleanFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.booleanFilterClause>[0]
+>;
+
+export type SpecificDateFilterParts = DimensionFilterParts<
+  Omit<Parameters<typeof LibMetric.specificDateFilterClause>[0], "values">
+> & { values: Date[] };
+
+export type RelativeDateFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.relativeDateFilterClause>[0]
+>;
+
+export type ExcludeDateFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.excludeDateFilterClause>[0]
+>;
+
+export type TimeFilterParts = DimensionFilterParts<
+  Omit<Parameters<typeof LibMetric.timeFilterClause>[0], "values">
+> & { values: Date[] };
+
+export type DefaultFilterParts = DimensionFilterParts<
+  Parameters<typeof LibMetric.defaultFilterClause>[0]
+>;
 
 export type DimensionValuesInfo = {
   id: DimensionId;

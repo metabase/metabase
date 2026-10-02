@@ -4,6 +4,7 @@ import {
   REVENUE_METRIC,
   createMetricMetadata,
   setupDefinition,
+  setupDefinitionWithDateFilter,
 } from "../../utils/__tests__/test-helpers";
 
 import { getFilterDisplayParts } from "./utils";
@@ -11,6 +12,34 @@ import { getFilterDisplayParts } from "./utils";
 const metadata = createMetricMetadata([REVENUE_METRIC]);
 
 describe("getFilterDisplayParts", () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it.each(["second", "millisecond", "day"] as const)(
+    "displays relative %s filters",
+    (unit) => {
+      const definition = setupDefinition(metadata, REVENUE_METRIC.id);
+      const [dimension] = LibMetric.filterableDimensions(definition);
+      const filter = LibMetric.relativeDateFilterClause({
+        dimension,
+        unit,
+        value: -2,
+      });
+      expect(getFilterDisplayParts(definition, filter)).toEqual({
+        label: "Created At:",
+        value: `Previous 2 ${unit}s`,
+      });
+    },
+  );
+
+  it("does not crash on an unreadable persisted date", () => {
+    const { definition, filter } =
+      setupDefinitionWithDateFilter("Invalid Date");
+    expect(getFilterDisplayParts(definition, filter)).toEqual({
+      label: "Unknown filter",
+      value: null,
+    });
+  });
+
   it("uses the short dimension name for filter pills (UXW-4849)", () => {
     const definition = setupDefinition(metadata, REVENUE_METRIC.id);
     const dimension = LibMetric.filterableDimensions(definition).find(

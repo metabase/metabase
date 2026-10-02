@@ -37,7 +37,9 @@
   (let [namespaces (get-in state [:compiler-env ::ana/namespaces])]
     (into (sorted-map-by #(compare (str %1) (str %2)))
           (map (fn [entry-ns]
-                 [entry-ns (exported-defs (get-in namespaces [entry-ns :defs]))]))
+                 (let [{:keys [defs requires]} (get namespaces entry-ns)]
+                   [entry-ns (update-vals (exported-defs defs)
+                                          #(assoc % :ns entry-ns :requires requires))])))
           (entry-namespaces state))))
 
 (defn module-reexports
@@ -95,15 +97,33 @@
       (resolve-global-schema schema-keyword)))
 
 (defn- generate-type-alias-result
-  [initial-refs local-definitions expand? ref-name]
-  (refs/type-aliases
-   initial-refs
-   {:resolve-schema #(resolve-registry-schema local-definitions %)
-    :compile-options {:registry local-definitions
-                      :readonly? (readonly-enabled?)}
-    :expand? expand?
-    :type-name declaration/base-type-name
-    :ref-name ref-name}))
+  ([initial-refs local-definitions expand? ref-name]
+   (generate-type-alias-result initial-refs #{} local-definitions expand? ref-name))
+  ([initial-refs input-refs local-definitions expand? ref-name]
+   (let [options {:resolve-schema #(resolve-registry-schema local-definitions %)
+                  :compile-options {:registry local-definitions
+                                    :readonly? (readonly-enabled?)}
+                  :expand? expand?
+                  :type-name declaration/base-type-name
+                  :ref-name ref-name}
+         value-aliases (refs/type-aliases initial-refs options)
+         ;; A value alias can expose a callback whose parameter needs an input
+         ;; alias. Follow that contextual edge before deciding where aliases live.
+         input-refs (into (set input-refs)
+                          (mapcat :input-registry-refs)
+                          (vals (:definitions value-aliases)))
+         input-aliases (when (seq input-refs)
+                         (refs/type-aliases
+                          input-refs
+                          (assoc options
+                                 :contextual-input? true
+                                 :dependency-refs :input-registry-refs
+                                 :compile-options (assoc (:compile-options options)
+                                                         :argument-context? true))))]
+     {:declarations (into (:declarations value-aliases) (:declarations input-aliases))
+      :definitions (merge (:definitions value-aliases) (:definitions input-aliases))
+      :refs-used (into (:refs-used value-aliases) (:refs-used input-aliases))
+      :diagnostics (into (:diagnostics value-aliases) (:diagnostics input-aliases))})))
 
 (defn- merge-weak-types
   [results]
@@ -153,6 +173,25 @@
     (set/difference (set (:refs-used alias-result))
                     (set (keys local-defs)))))
 
+(defn- collect-input-refs-from-defs
+  "Collect global aliases that need argument-context definitions, including
+  callback inputs reached through value aliases."
+  [ns defs]
+  (let [results           (declaration-results ns defs #{})
+        local-defs        (:definitions (merged-local-definitions results))
+        direct-refs       (into #{} (mapcat :registry-refs) results)
+        direct-input-refs (into #{} (mapcat :input-registry-refs) results)
+        value-aliases     (generate-type-alias-result
+                           direct-refs
+                           direct-input-refs
+                           local-defs
+                           (constantly true)
+                           #(declaration/registry-type-name % #{}))
+        input-refs        (into direct-input-refs
+                                (mapcat :input-registry-refs)
+                                (vals (:definitions value-aliases)))]
+    (set/difference input-refs (set (keys local-defs)))))
+
 (def ^:private camel-helper-content
   (str "type CamelCase<S extends string> =\n"
        "  S extends `${infer Rest}?` ? `is${Capitalize<CamelCase<Rest>>}` :\n"
@@ -169,56 +208,64 @@
 
 (defn- ts-content
   "Generate TypeScript content and diagnostics for one runtime entry namespace."
-  [ns defs shared-types ns-refs shared-exists?]
-  (let [results        (declaration-results ns defs shared-types)
-        declarations   (str/join "\n\n" (map :declaration results))
-        direct-refs    (into (set ns-refs) (mapcat :registry-refs) results)
-        {local-defs :definitions local-diagnostics :diagnostics} (merged-local-definitions results)
-        alias-result   (generate-type-alias-result
-                        direct-refs
-                        local-defs
-                        #(not (contains? shared-types %))
-                        #(declaration/registry-type-name % shared-types))
-        type-aliases   (str/join "\n\n" (:declarations alias-result))
-        shared-refs-used (filter shared-types (:refs-used alias-result))
-        camel-used?    (uses-camel-helper? (str type-aliases "\n" declarations))
-        import-stmt    (when (and shared-exists? (or (seq shared-refs-used) camel-used?))
-                         "import type * as Shared from './metabase.lib.shared';\n\n")
-        inline-helper  (when (and camel-used? (not shared-exists?))
-                         (str camel-helper-content "\n"))
-        content        (if (or import-stmt inline-helper (seq type-aliases) (seq declarations))
-                         (str (or inline-helper "")
-                              (or import-stmt "")
-                              (if (seq type-aliases)
-                                (str "// Type aliases for registry schemas\n" type-aliases "\n\n" declarations)
-                                declarations))
-                         "export {};")
-        ;; The Camel helper lives in the shared module; entry modules reach it as
-        ;; Shared.Camel so the identifier resolves under the namespace import.
-        content        (if (and shared-exists? camel-used?)
-                         (str/replace content "Camel<" "Shared.Camel<")
-                         content)]
-    {:content content
-     :diagnostics (vec (concat (mapcat :diagnostics results)
-                               local-diagnostics
-                               (:diagnostics alias-result)))
-     :weak-types (merge-weak-types results)}))
+  ([ns defs shared-types ns-refs shared-exists?]
+   (ts-content ns defs shared-types ns-refs #{} shared-exists?))
+  ([ns defs shared-types ns-refs ns-input-refs shared-exists?]
+   (let [results        (declaration-results ns defs shared-types)
+         declarations   (str/join "\n\n" (map :declaration results))
+         direct-refs    (into (set ns-refs) (mapcat :registry-refs) results)
+         direct-input-refs (into (set ns-input-refs) (mapcat :input-registry-refs) results)
+         local-input-refs (set/difference direct-input-refs shared-types)
+         {local-defs :definitions local-diagnostics :diagnostics} (merged-local-definitions results)
+         alias-result   (generate-type-alias-result
+                         direct-refs
+                         local-input-refs
+                         local-defs
+                         #(not (contains? shared-types %))
+                         #(declaration/registry-type-name % shared-types))
+         type-aliases   (str/join "\n\n" (:declarations alias-result))
+         shared-refs-used (filter shared-types (:refs-used alias-result))
+         camel-used?    (uses-camel-helper? (str type-aliases "\n" declarations))
+         import-stmt    (when (and shared-exists? (or (seq shared-refs-used) camel-used?))
+                          "import type * as Shared from './metabase.lib.shared';\n\n")
+         inline-helper  (when (and camel-used? (not shared-exists?))
+                          (str camel-helper-content "\n"))
+         content        (if (or import-stmt inline-helper (seq type-aliases) (seq declarations))
+                          (str (or inline-helper "")
+                               (or import-stmt "")
+                               (if (seq type-aliases)
+                                 (str "// Type aliases for registry schemas\n" type-aliases "\n\n" declarations)
+                                 declarations))
+                          "export {};")
+         ;; The Camel helper lives in the shared module; entry modules reach it as
+         ;; Shared.Camel so the identifier resolves under the namespace import.
+         content        (if (and shared-exists? camel-used?)
+                          (str/replace content "Camel<" "Shared.Camel<")
+                          content)]
+     {:content content
+      :diagnostics (vec (concat (mapcat :diagnostics results)
+                                local-diagnostics
+                                (:diagnostics alias-result)))
+      :weak-types (merge-weak-types results)})))
 
 (defn- generate-shared-types-result
   "Generate content and diagnostics for the shared registry alias module."
-  [shared-refs camel-used?]
-  (let [alias-result (generate-type-alias-result
-                      shared-refs
-                      {}
-                      (constantly true)
-                      #(declaration/registry-type-name % #{}))
-        declarations (str/join "\n\n" (:declarations alias-result))]
-    {:content (str "// Shared type aliases for registry schemas reachable from generated declarations\n"
-                   "// Auto-generated - do not edit\n\n"
-                   (when (or camel-used? (uses-camel-helper? declarations))
-                     (str camel-helper-content "\n"))
-                   declarations)
-     :diagnostics (:diagnostics alias-result)}))
+  ([shared-refs camel-used?]
+   (generate-shared-types-result shared-refs #{} camel-used?))
+  ([shared-refs shared-input-refs camel-used?]
+   (let [alias-result (generate-type-alias-result
+                       shared-refs
+                       shared-input-refs
+                       {}
+                       (constantly true)
+                       #(declaration/registry-type-name % #{}))
+         declarations (str/join "\n\n" (:declarations alias-result))]
+     {:content (str "// Shared type aliases for registry schemas reachable from generated declarations\n"
+                    "// Auto-generated - do not edit\n\n"
+                    (when (or camel-used? (uses-camel-helper? declarations))
+                      (str camel-helper-content "\n"))
+                    declarations)
+      :diagnostics (:diagnostics alias-result)})))
 
 (defn- ns->file-path
   "Convert a namespace symbol to a source file path.
@@ -321,16 +368,21 @@
     (let [ns-refs (into {}
                         (for [[ns defs] nses-defs]
                           [ns (collect-refs-from-defs ns defs)]))
+          ns-input-refs (into {}
+                              (for [[ns defs] nses-defs]
+                                [ns (collect-input-refs-from-defs ns defs)]))
           ;; Registry aliases used by entry declarations form the shared type surface;
           ;; inline registries remain local to their entry module.
           shared-refs (into #{} (mapcat val) ns-refs)
+          shared-input-refs (into #{} (mapcat val) ns-input-refs)
           shared-exists? (boolean (seq shared-refs))
           module-results
           (mapv (fn [[ns defs]]
                   (let [t            (u/start-timer)
                         fname        (comp/munge (str ns))
                         this-ns-refs (get ns-refs ns #{})
-                        result       (ts-content ns defs shared-refs this-ns-refs shared-exists?)
+                        result       (ts-content ns defs shared-refs this-ns-refs
+                                                 (get ns-input-refs ns #{}) shared-exists?)
                         camel-used?  (uses-camel-helper? (:content result))]
                     (swap! weak-types #(merge-with into % (:weak-types result)))
                     (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})
@@ -341,7 +393,7 @@
                 nses-defs)
           any-camel-used? (boolean (some :camel-used? module-results))
           shared-result (when shared-exists?
-                          (generate-shared-types-result shared-refs any-camel-used?))]
+                          (generate-shared-types-result shared-refs shared-input-refs any-camel-used?))]
       (log/info "Shared types analysis" {:total-refs (count shared-refs)
                                          :shared-refs (count shared-refs)})
       (when (seq (:diagnostics shared-result))
