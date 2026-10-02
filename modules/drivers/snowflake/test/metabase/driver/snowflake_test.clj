@@ -248,28 +248,25 @@
   (testing "WIF OIDC with a token file path slurps the file into :token (Snowflake JDBC ignores token_file_path outside auto mode)"
     (mt/with-temp-file [tok-path "wif-token"]
       (spit tok-path "eyJhbGciOi.file-jwt.signature\n")
-      ;; the token file must be somewhere `readable-paths` allows, whatever this instance's default is
-      (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
-        (let [spec (sql-jdbc.conn/connection-details->spec
-                    :snowflake
-                    (assoc wif-base-details
-                           :wif-provider        "OIDC"
-                           :wif-token-file-path tok-path))]
-          (is (= "eyJhbGciOi.file-jwt.signature" (:token spec)) "trailing newline stripped")
-          (is (not (contains? spec :token_file_path))))))))
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc wif-base-details
+                         :wif-provider        "OIDC"
+                         :wif-token-file-path tok-path))]
+        (is (= "eyJhbGciOi.file-jwt.signature" (:token spec)) "trailing newline stripped")
+        (is (not (contains? spec :token_file_path)))))))
 
 (deftest ^:synchronized connection-details->spec-wif-oidc-file-path-wins-test
   (testing "file path wins over inline token"
     (mt/with-temp-file [tok-path "wif-token"]
       (spit tok-path "from-file")
-      (mt/with-temp-env-var-value! [mb-readable-paths (.getParent (java.io.File. ^String tok-path))]
-        (let [spec (sql-jdbc.conn/connection-details->spec
-                    :snowflake
-                    (assoc wif-base-details
-                           :wif-provider        "OIDC"
-                           :wif-token           "from-inline"
-                           :wif-token-file-path tok-path))]
-          (is (= "from-file" (:token spec))))))))
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc wif-base-details
+                         :wif-provider        "OIDC"
+                         :wif-token           "from-inline"
+                         :wif-token-file-path tok-path))]
+        (is (= "from-file" (:token spec)))))))
 
 (deftest ^:synchronized connection-details->spec-wif-oidc-file-path-readable-paths-test
   (testing "the token file is read only from a directory `readable-paths` allows"
