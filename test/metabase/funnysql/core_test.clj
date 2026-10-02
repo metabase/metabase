@@ -210,6 +210,7 @@
     [:field]                             "\"field\" ASC"
     [[:field]]                           "\"field\" ASC"
     [[:field :asc]]                      "\"field\" ASC"
+    [[:field] [:other_field :desc]]      "\"field\" ASC, \"other_field\" DESC"
     [[:field :desc]]                     "\"field\" DESC"
     [[:field] [:other_field :desc]]      "\"field\" ASC, \"other_field\" DESC"
     [[:field :asc] [:other_field :desc]] "\"field\" ASC, \"other_field\" DESC"))
@@ -304,7 +305,7 @@
                " SELECT \"id\" FROM \"parents\"")]
          (funnysql/format {:with-recursive [[[:parents {:columns [:id :name]}]
                                              ^:allow-subquery {:select [:id :name]
-                                                                 :from   [:metabase_field]}]]
+                                                               :from   [:metabase_field]}]]
                            :select         [:id]
                            :from           [:parents]}
                           :postgres))))

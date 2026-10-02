@@ -348,9 +348,9 @@
     (letfn [(subclause! [subclause]
               (let [[expr direction] (if (vector? subclause)
                                        subclause
-                                       [subclause :asc])]
+                                       [subclause])]
                 (compile! expr context)
-                ;; a subclause with no direction, e.g. [:my-col], sorts ASC
+                ;; the direction is optional, e.g. `[:field]` or `:field`, and defaults to `ASC`
                 (append-sql! context (case (or direction :asc)
                                        :asc  " ASC"
                                        :desc " DESC"
