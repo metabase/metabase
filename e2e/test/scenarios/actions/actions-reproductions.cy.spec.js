@@ -141,8 +141,6 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
     );
 
     cy.get("@modelId").then((modelId) => {
-      H.createImplicitActions({ modelId });
-
       H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
         ({ body: { id: actionId } }) => {
           cy.wrap(actionId).as("actionId");
@@ -157,7 +155,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
                   {
                     id: H.getNextUnsavedDashboardCardId(),
                     card_id: modelId,
-                    // Map dashboard parameter to PRODUCTS.ID
+                    // Map dashboard parameter to scoreboard_actions.id
                     parameter_mappings: [
                       {
                         parameter_id: ID_DASHBOARD_PARAMETER.id,
@@ -190,10 +188,6 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   }
 
   beforeEach(() => {
-    cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
-    cy.intercept("POST", "/api/action/*/execute").as("executeAction");
-    cy.intercept("POST", "/api/action/*/execute/values").as("prefetchValues");
-
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: TEST_TABLE });
 
@@ -254,7 +248,7 @@ describe("issue 51020", () => {
     H.saveDashboard();
   }
 
-  describe("when primary key is called 'id'", () => {
+  describe("when primary key is called 'id'", { tags: "@external" }, () => {
     function createTemporaryTable() {
       H.queryWritableDB(
         "CREATE TABLE IF NOT EXISTS foo (id INT PRIMARY KEY, name VARCHAR)",
