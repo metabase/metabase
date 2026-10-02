@@ -597,7 +597,8 @@
                       (-> path second :id))
         table-name  (-> path last :id)
         db-id       (warehouse-schema.db/database-id-by-name db-name)]
-    (warehouse-schema.db/table-by-name db-id schema-name table-name)))
+    (when db-id
+      (warehouse-schema.db/table-by-name db-id schema-name table-name))))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema

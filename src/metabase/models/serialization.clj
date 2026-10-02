@@ -631,7 +631,8 @@
   dependency is represented by its abstract path (its `:serdes/meta` value).
 
   NOTE: This is called during **LOAD**. Its export-time counterpart is [[serialization-dependencies]], which runs on a
-  raw entity and additionally reports tables/fields (which import synthesizes on the fly, so they aren't load deps).
+  raw entity and additionally reports databases/tables/fields (which import synthesizes on the fly, so they aren't load
+  deps).
 
   Keyed on the model name for this entity.
   Default implementation returns `nil`, so only models that have dependencies need to implement this."

@@ -800,8 +800,7 @@
           (let [derived-measure (first (filter #(= "Double Sales" (:name %)) (by-model @serialized "Measure")))]
             (is (=? {:definition {:stages [{:aggregation [[:* {} [:measure {} (:entity_id @msr1s)] 2]]}]}}
                     derived-measure))
-            (is (= #{[{:id "my-db", :model "Database"}]
-                     [{:id (:entity_id @msr1s), :model "Measure"}]}
+            (is (= #{[{:id (:entity_id @msr1s), :model "Measure"}]}
                    (serdes/mbql-deps false (:definition derived-measure))))))
         (testing "deserializing adjusts the measure IDs properly"
           (ts/with-db dest-db
