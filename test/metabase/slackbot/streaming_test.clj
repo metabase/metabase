@@ -722,9 +722,11 @@
           (dm-turn-with-parts! [{:type :usage :finish-reason "content-filter"}])]
       (is (some #{"placeholder-1"} deleted)
           "the _Thinking..._ placeholder is deleted rather than left standing")
-      (is (str/includes? appended no-response-copy))
+      (is (not (str/includes? appended no-response-copy))
+          "the copy is a block, never streamed text `thread->history` would replay to the model")
       (is (= ["_Response from Metabot was stopped by a content filter. Try rephrasing your question._"]
-             (context-texts blocks))))))
+             (context-texts blocks))
+          "the notice already says why the reply is empty, so the \"couldn't answer\" copy is not stacked on it"))))
 
 (deftest ^:synchronized slackbot-dm-max-iterations-reply-has-notice-block-test
   (testing "a turn the agent loop stopped at its step limit says so"
@@ -737,9 +739,10 @@
   (testing "a reply with no text and no reason still drops the placeholder and says something (AC7)"
     (let [{:keys [appended blocks deleted]} (dm-turn-with-parts! [])]
       (is (some #{"placeholder-1"} deleted))
-      (is (str/includes? appended no-response-copy))
-      (is (empty? (context-texts blocks))
-          "nothing stopped this turn early, so there is no notice to add"))))
+      (is (not (str/includes? appended no-response-copy))
+          "the copy is a block, never streamed text `thread->history` would replay to the model")
+      (is (= [(str "_" no-response-copy "_")] (context-texts blocks))
+          "nothing stopped this turn early, so the \"couldn't answer\" copy is the only aside"))))
 
 (deftest ^:synchronized slackbot-dm-textless-reply-with-viz-has-no-fallback-test
   (testing "a reply that is only a visualization is not an empty reply -- no fallback copy (AC7)"
@@ -757,13 +760,15 @@
 
 (deftest ^:synchronized slackbot-dm-textless-reply-with-tool-progress-has-no-fallback-test
   (testing "a reply that showed tool progress is not an empty reply -- no fallback copy"
-    (let [{:keys [appended task-updates deleted]} (dm-turn-with-parts! search-tool-parts)]
+    (let [{:keys [appended blocks task-updates deleted]} (dm-turn-with-parts! search-tool-parts)]
       (is (= [["task_update" "in_progress"] ["task_update" "complete"]]
              (mapv (juxt :type :status) task-updates))
           "the user watched the tool run")
       (is (some #{"placeholder-1"} deleted))
       (is (not (str/includes? appended no-response-copy))
-          "claiming no response would contradict the progress the user just watched")))
+          "claiming no response would contradict the progress the user just watched")
+      (is (empty? (context-texts blocks))
+          "nor as a block")))
   (testing "a step-limited turn that only ran tools keeps its notice, still without the fallback"
     (let [{:keys [appended blocks]}
           (dm-turn-with-parts! (conj search-tool-parts {:type :finish :finish-reason :max-iterations}))]

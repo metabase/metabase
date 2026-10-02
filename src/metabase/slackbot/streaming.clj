@@ -208,6 +208,14 @@
   "Shown when a turn left nothing to show: no streamed text, no tool progress and no visualization."
   "I wasn't able to generate a response. Please try again.")
 
+(def ^:private no-response-block
+  "[[no-response-copy]] as a muted aside, for a streamed DM reply that showed nothing.
+
+   A block for the same reason as [[metabase.slackbot.channel/finish-reason-block]]: [[thread->history]]
+   replays a bot message's text to the model as its own words, and this is Metabase speaking."
+  {:type     "context"
+   :elements [{:type "mrkdwn" :text (str "_" no-response-copy "_")}]})
+
 (def ^:private provider-config-error-codes
   "Error codes that mean the LLM provider connection is misconfigured.
 
@@ -724,29 +732,30 @@
           ;; Hold stop-stream until all viz futures finish so text + viz + controls
           ;; finalize as a single message.
           (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
-                notice-block            (slackbot.channel/finish-reason-block finish-reason)]
-            ;; A reply is empty only when the user saw nothing: no text, no tool progress and no
-            ;; visualization. Only then does it get the "couldn't answer" copy.
-            (when-not (or @text-streamed? @tools-streamed? (seq blocks))
-              (slackbot.client/append-markdown-text client channel stream_ts no-response-copy))
-            (let [final-blocks (-> []
-                                   (cond-> notice-block (conj notice-block))
-                                   (into blocks)
-                                   (into (feedback-blocks conversation-id message-external-id)))
-                  stop-result  (slackbot.client/stop-stream client channel stream_ts final-blocks)]
-              (log/debugf "[slackbot] stop-stream finalize attempt channel=%s thread_ts=%s stream_ts=%s block_count=%d block_types=%s"
-                          channel thread-ts stream_ts (count final-blocks) (pr-str (mapv :type final-blocks)))
-              (when-not (:ok stop-result)
-                (log/warnf "[slackbot] stop-stream fallback to post-message: %s" (:error stop-result))
-                (let [fallback-result (slackbot.client/post-thread-reply client
-                                                                         message-ctx
-                                                                         "I generated a response, but Slack could not render it. Please try again.")]
-                  (when-not (:ok fallback-result)
-                    (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s"
-                                (:error fallback-result))
-                    (analytics/inc! :metabase-slackbot/responses-undeliverable))))
-              (doseq [e errors]
-                (post-viz-error! client channel thread-ts e))))
+                ;; A reply is empty only when the user saw nothing: no text, no tool progress and no
+                ;; visualization. Only then does it get the "couldn't answer" copy -- and not even then
+                ;; when a finish-reason notice already says why it is empty.
+                empty-reply?            (not (or @text-streamed? @tools-streamed? (seq blocks)))
+                notice-block            (or (slackbot.channel/finish-reason-block finish-reason)
+                                            (when empty-reply? no-response-block))
+                final-blocks            (-> []
+                                            (cond-> notice-block (conj notice-block))
+                                            (into blocks)
+                                            (into (feedback-blocks conversation-id message-external-id)))
+                stop-result             (slackbot.client/stop-stream client channel stream_ts final-blocks)]
+            (log/debugf "[slackbot] stop-stream finalize attempt channel=%s thread_ts=%s stream_ts=%s block_count=%d block_types=%s"
+                        channel thread-ts stream_ts (count final-blocks) (pr-str (mapv :type final-blocks)))
+            (when-not (:ok stop-result)
+              (log/warnf "[slackbot] stop-stream fallback to post-message: %s" (:error stop-result))
+              (let [fallback-result (slackbot.client/post-thread-reply client
+                                                                       message-ctx
+                                                                       "I generated a response, but Slack could not render it. Please try again.")]
+                (when-not (:ok fallback-result)
+                  (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s"
+                              (:error fallback-result))
+                  (analytics/inc! :metabase-slackbot/responses-undeliverable))))
+            (doseq [e errors]
+              (post-viz-error! client channel thread-ts e)))
           (slackbot.client/post-thread-reply client message-ctx no-response-copy)))
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
