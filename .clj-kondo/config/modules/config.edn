@@ -1064,6 +1064,7 @@
                     :model/Field
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/OAuthClient
                     :model/Pulse
                     :model/Segment
                     :model/Table
@@ -1462,7 +1463,8 @@
            task
            tracing
            util}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/User}
+   :model-exports #{:model/OAuthClient}}
 
   measures
   {:team "Graphy"
@@ -4158,6 +4160,17 @@
            remote-sync
            util}
    :model-imports #{:model/NativeQuerySnippet}}
+
+  enterprise/oauth-client-management
+  {:team "UX West"
+   :api  #{metabase-enterprise.oauth-client-management.api}
+   :uses #{api
+           events
+           mcp.oauth-server
+           request
+           users
+           util}
+   :model-imports #{:model/OAuthClient}}
 
   enterprise/permissions
   {:team "UX West"

@@ -6,6 +6,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [oidc-provider.util :as oidc-util]
@@ -503,31 +504,6 @@
           :state         "test-state"
           (mapcat identity extra-params))))
 
-(defn- hidden-field-extractor
-  "Returns a function that extracts a hidden form field's hex value from HTML."
-  [field-name]
-  (let [pattern (re-pattern (str "name=\"" field-name "\"[^>]*value=\"([a-f0-9]+)\""))]
-    (fn [body] (second (re-find pattern body)))))
-
-(def ^:private extract-csrf-token-from-consent (hidden-field-extractor "csrf_token"))
-
-(def ^:private extract-params-sig-from-consent (hidden-field-extractor "params_sig"))
-
-(defn- extract-csrf-cookie
-  "Extract the CSRF cookie value from the response.
-   Checks both the :cookies map and the Set-Cookie header (which may be a string or vector of strings)."
-  [response]
-  (or
-   ;; Try :cookies map first (set by ring.util.response/set-cookie, before wrap-cookies processing)
-   (get-in response [:cookies "metabase.OAUTH_CSRF" :value])
-   ;; Fall back to parsing Set-Cookie header
-   (let [set-cookie (get-in response [:headers "Set-Cookie"])
-         cookies    (cond
-                      (string? set-cookie)     [set-cookie]
-                      (sequential? set-cookie) (vec set-cookie)
-                      :else                    [])]
-     (some #(when (string? %) (second (re-find #"metabase\.OAUTH_CSRF=([a-f0-9]+)" %))) cookies))))
-
 (defn- form-post-decision!
   "POST form-encoded params to /oauth/authorize/decision as an authenticated user."
   [user params expected-status & {:keys [csrf-cookie]}]
@@ -546,9 +522,9 @@
               client-id    (:client_id client)
               consent-resp (get-consent-page! :crowberto client-id)
               consent-body (:body consent-resp)
-              csrf-token   (extract-csrf-token-from-consent consent-body)
-              csrf-cookie  (extract-csrf-cookie consent-resp)
-              params-sig   (extract-params-sig-from-consent consent-body)
+              csrf-token   (oauth-server.tu/hidden-field consent-body "csrf_token")
+              csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
+              params-sig   (oauth-server.tu/hidden-field consent-body "params_sig")
               response     (form-post-decision!
                             :crowberto
                             {:approved      "true"
@@ -579,9 +555,9 @@
               client-id    (:client_id client)
               consent-resp (get-consent-page! :crowberto client-id)
               consent-body (:body consent-resp)
-              csrf-token   (extract-csrf-token-from-consent consent-body)
-              csrf-cookie  (extract-csrf-cookie consent-resp)
-              params-sig   (extract-params-sig-from-consent consent-body)
+              csrf-token   (oauth-server.tu/hidden-field consent-body "csrf_token")
+              csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
+              params-sig   (oauth-server.tu/hidden-field consent-body "params_sig")
               response     (form-post-decision!
                             :crowberto
                             {:approved      "false"
@@ -643,9 +619,9 @@
         (testing "the CSRF cookie path includes the subpath so the browser sends the cookie with the form POST"
           (is (= "/metabase/oauth/authorize" (extract-csrf-cookie-path consent-resp))))
         (testing "the consent -> decision flow still round-trips"
-          (let [csrf-token  (extract-csrf-token-from-consent consent-body)
-                csrf-cookie (extract-csrf-cookie consent-resp)
-                params-sig  (extract-params-sig-from-consent consent-body)
+          (let [csrf-token  (oauth-server.tu/hidden-field consent-body "csrf_token")
+                csrf-cookie (oauth-server.tu/csrf-cookie consent-resp)
+                params-sig  (oauth-server.tu/hidden-field consent-body "params_sig")
                 response    (form-post-decision!
                              :crowberto
                              {:approved      "true"
@@ -688,8 +664,8 @@
     (form-post-decision!
      user
      {:approved      (str approved?)
-      :csrf_token    (extract-csrf-token-from-consent consent-body)
-      :params_sig    (extract-params-sig-from-consent consent-body)
+      :csrf_token    (oauth-server.tu/hidden-field consent-body "csrf_token")
+      :params_sig    (oauth-server.tu/hidden-field consent-body "params_sig")
       :client_id     client-id
       :redirect_uri  "https://example.com/callback"
       :response_type "code"
@@ -697,7 +673,7 @@
       :granted_scope "agent:content:read"
       :state         "test-state"}
      302
-     :csrf-cookie (extract-csrf-cookie consent-resp))))
+     :csrf-cookie (oauth-server.tu/csrf-cookie consent-resp))))
 
 (deftest authorize-decision-records-approved-event-test
   (testing "Approving a registration records a separate `approved` event stamped with the deciding user"
@@ -745,7 +721,7 @@
         (let [client       (create-test-client!)
               client-id    (:client_id client)
               consent-resp (get-consent-page! :crowberto client-id)
-              csrf-cookie  (extract-csrf-cookie consent-resp)
+              csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
               response     (form-post-decision!
                             :crowberto
                             {:approved      "true"
@@ -767,9 +743,9 @@
               client-id    (:client_id client)
               consent-resp (get-consent-page! :crowberto client-id)
               consent-body (:body consent-resp)
-              csrf-token   (extract-csrf-token-from-consent consent-body)
-              csrf-cookie  (extract-csrf-cookie consent-resp)
-              params-sig   (extract-params-sig-from-consent consent-body)
+              csrf-token   (oauth-server.tu/hidden-field consent-body "csrf_token")
+              csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
+              params-sig   (oauth-server.tu/hidden-field consent-body "params_sig")
               response     (form-post-decision!
                             :crowberto
                             {:approved      "true"
@@ -792,8 +768,8 @@
               client-id    (:client_id client)
               consent-resp (get-consent-page! :crowberto client-id)
               consent-body (:body consent-resp)
-              csrf-token   (extract-csrf-token-from-consent consent-body)
-              csrf-cookie  (extract-csrf-cookie consent-resp)
+              csrf-token   (oauth-server.tu/hidden-field consent-body "csrf_token")
+              csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
               response     (form-post-decision!
                             :crowberto
                             {:approved      "true"
@@ -816,8 +792,8 @@
               client-id    (:client_id client)
               consent-resp (get-consent-page! :crowberto client-id)
               consent-body (:body consent-resp)
-              csrf-token   (extract-csrf-token-from-consent consent-body)
-              csrf-cookie  (extract-csrf-cookie consent-resp)
+              csrf-token   (oauth-server.tu/hidden-field consent-body "csrf_token")
+              csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
               response     (form-post-decision!
                             :crowberto
                             {:approved      "true"
@@ -845,24 +821,15 @@
 
 ;;; ----------------------------------------- Token Endpoint -------------------------------------------------------
 
-(defn- extract-query-param
-  "Extract a query parameter value from a URL string."
-  [url param-name]
-  (when-let [query (second (str/split url #"\?" 2))]
-    (->> (str/split query #"&")
-         (some (fn [pair]
-                 (let [[k v] (str/split pair #"=" 2)]
-                   (when (= k param-name) v)))))))
-
 (defn- authorize-and-get-code!
   "Complete the authorize flow and return the authorization code.
    Creates a client, authorizes, and extracts the code from the redirect."
   [client-id]
   (let [consent-resp (get-consent-page! :crowberto client-id)
         body         (:body consent-resp)
-        csrf-token   (extract-csrf-token-from-consent body)
-        csrf-cookie  (extract-csrf-cookie consent-resp)
-        params-sig   (extract-params-sig-from-consent body)
+        csrf-token   (oauth-server.tu/hidden-field body "csrf_token")
+        csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
+        params-sig   (oauth-server.tu/hidden-field body "params_sig")
         response     (form-post-decision!
                       :crowberto
                       {:approved      "true"
@@ -877,7 +844,7 @@
                       302
                       :csrf-cookie csrf-cookie)
         location     (get-in response [:headers "Location"])]
-    (extract-query-param location "code")))
+    (oauth-server.tu/query-param location "code")))
 
 (defn- token-request!
   "POST to /oauth/token with form-encoded params."
@@ -890,12 +857,6 @@
                    params)))
 
 (set! *warn-on-reflection* true)
-
-(defn- basic-auth-header
-  "Build an HTTP Basic auth header value."
-  [client-id client-secret]
-  (str "Basic " (.encodeToString (Base64/getEncoder)
-                                 (.getBytes (str client-id ":" client-secret) "UTF-8"))))
 
 (deftest token-auth-code-full-flow-test
   (testing "Authorization code grant -- full flow returns tokens"
@@ -915,7 +876,7 @@
                    {:grant_type    "authorization_code"
                     :code          code
                     :redirect_uri  "https://example.com/callback"}
-                   :authorization (basic-auth-header client-id client-secret)))
+                   :authorization (oauth-server.tu/basic-auth client-id client-secret)))
               "Should return full token response"))))))
 
 (deftest token-auth-code-invalid-code-test
@@ -930,7 +891,7 @@
                               :code          "bogus-code"
                               :redirect_uri  "https://example.com/callback"}
                              :expected-status 400
-                             :authorization (basic-auth-header client-id client-secret))]
+                             :authorization (oauth-server.tu/basic-auth client-id client-secret))]
           (is (=? {:error "invalid_grant"} response)))))))
 
 (deftest token-auth-code-wrong-client-test
@@ -949,7 +910,7 @@
                               :code          code
                               :redirect_uri  "https://example.com/callback"}
                              :expected-status 400
-                             :authorization (basic-auth-header (:client_id client-b) (:client_secret client-b)))]
+                             :authorization (oauth-server.tu/basic-auth (:client_id client-b) (:client_secret client-b)))]
           (is (=? {:error "invalid_grant"} response)))))))
 
 (deftest token-auth-code-redirect-uri-mismatch-test
@@ -965,7 +926,7 @@
                     :code          code
                     :redirect_uri  "https://example.com/other-callback"}
                    :expected-status 400
-                   :authorization (basic-auth-header client_id client_secret)))))))))
+                   :authorization (oauth-server.tu/basic-auth client_id client_secret)))))))))
 
 (deftest token-refresh-grant-test
   (testing "Refresh token grant -- returns new access token"
@@ -979,11 +940,11 @@
                               {:grant_type    "authorization_code"
                                :code          code
                                :redirect_uri  "https://example.com/callback"}
-                              :authorization (basic-auth-header client-id client-secret))
+                              :authorization (oauth-server.tu/basic-auth client-id client-secret))
               refresh-response (token-request!
                                 {:grant_type    "refresh_token"
                                  :refresh_token (:refresh_token token-response)}
-                                :authorization (basic-auth-header client-id client-secret))]
+                                :authorization (oauth-server.tu/basic-auth client-id client-secret))]
           (is (=? {:access_token string?
                    :token_type   "Bearer"
                    :expires_in   pos-int?}
@@ -1002,7 +963,7 @@
                               {:grant_type    "authorization_code"
                                :code          code
                                :redirect_uri  "https://example.com/callback"}
-                              :authorization (basic-auth-header client-id client-secret))]
+                              :authorization (oauth-server.tu/basic-auth client-id client-secret))]
           (is (some? (:refresh_token token-response)))
           (let [db-token (t2/select-one :model/OAuthRefreshToken :client_id client-id)]
             (is (some? db-token) "Refresh token should be stored in the database")
@@ -1040,7 +1001,7 @@
                             :code          "some-code"
                             :redirect_uri  "https://example.com/callback"}
                            :expected-status 400
-                           :authorization (basic-auth-header client-id "wrong-secret"))]
+                           :authorization (oauth-server.tu/basic-auth client-id "wrong-secret"))]
           (is (=? {:error string?} response)))))))
 
 (deftest token-missing-grant-type-test
@@ -1051,7 +1012,7 @@
               response    (token-request!
                            {}
                            :expected-status 400
-                           :authorization (basic-auth-header (:client_id test-client) (:client_secret test-client)))]
+                           :authorization (oauth-server.tu/basic-auth (:client_id test-client) (:client_secret test-client)))]
           (is (=? {:error "invalid_request"} response)))))))
 
 (deftest token-refresh-missing-refresh-token-test
@@ -1063,7 +1024,7 @@
                   (token-request!
                    {:grant_type "refresh_token"}
                    :expected-status 400
-                   :authorization (basic-auth-header client_id client_secret)))))))))
+                   :authorization (oauth-server.tu/basic-auth client_id client_secret)))))))))
 
 (deftest token-basic-auth-test
   (testing "Client auth via Basic header works"
@@ -1077,7 +1038,7 @@
                              {:grant_type   "authorization_code"
                               :code         code
                               :redirect_uri "https://example.com/callback"}
-                             :authorization (basic-auth-header client-id client-secret))]
+                             :authorization (oauth-server.tu/basic-auth client-id client-secret))]
           (is (=? {:access_token string?
                    :token_type   "Bearer"}
                   response)))))))
@@ -1097,9 +1058,9 @@
   [client-id extra-params]
   (let [consent-resp (get-consent-page! :crowberto client-id extra-params)
         body         (:body consent-resp)
-        csrf-token   (extract-csrf-token-from-consent body)
-        csrf-cookie  (extract-csrf-cookie consent-resp)
-        params-sig   (extract-params-sig-from-consent body)
+        csrf-token   (oauth-server.tu/hidden-field body "csrf_token")
+        csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
+        params-sig   (oauth-server.tu/hidden-field body "params_sig")
         response     (form-post-decision!
                       :crowberto
                       (merge {:approved      "true"
@@ -1115,7 +1076,7 @@
                       302
                       :csrf-cookie csrf-cookie)
         location     (get-in response [:headers "Location"])]
-    (extract-query-param location "code")))
+    (oauth-server.tu/query-param location "code")))
 
 (deftest token-auth-code-pkce-s256-test
   (testing "Authorization code grant with S256 PKCE succeeds"
@@ -1139,7 +1100,7 @@
                     :code          code
                     :redirect_uri  "https://example.com/callback"
                     :code_verifier code-verifier}
-                   :authorization (basic-auth-header client-id client-secret)))))))))
+                   :authorization (oauth-server.tu/basic-auth client-id client-secret)))))))))
 
 (deftest token-auth-code-pkce-missing-verifier-test
   (testing "Authorization code grant with PKCE but missing code_verifier returns error"
@@ -1159,7 +1120,7 @@
                                :code          code
                                :redirect_uri  "https://example.com/callback"}
                               :expected-status 400
-                              :authorization (basic-auth-header client-id client-secret))]
+                              :authorization (oauth-server.tu/basic-auth client-id client-secret))]
           (is (=? {:error "invalid_grant"} response)))))))
 
 ;;; ----------------------------------------- Expired / Revoked Token Tests ------------------------------------
@@ -1181,7 +1142,7 @@
                     :code          code
                     :redirect_uri  "https://example.com/callback"}
                    :expected-status 400
-                   :authorization (basic-auth-header client-id client-secret)))))))))
+                   :authorization (oauth-server.tu/basic-auth client-id client-secret)))))))))
 
 ;;; ------------------------------------------ Revocation Endpoint -----------------------------------------------
 
@@ -1215,8 +1176,8 @@
               decision         (form-post-decision!
                                 :crowberto
                                 {:approved      "true"
-                                 :csrf_token    (extract-csrf-token-from-consent body)
-                                 :params_sig    (extract-params-sig-from-consent body)
+                                 :csrf_token    (oauth-server.tu/hidden-field body "csrf_token")
+                                 :params_sig    (oauth-server.tu/hidden-field body "params_sig")
                                  :client_id     client_id
                                  :redirect_uri  "https://example.com/callback"
                                  :response_type "code"
@@ -1225,12 +1186,12 @@
                                  :resource      granted-resource
                                  :state         "test-state"}
                                 302
-                                :csrf-cookie (extract-csrf-cookie consent-resp))
+                                :csrf-cookie (oauth-server.tu/csrf-cookie consent-resp))
               tokens           (token-request! {:grant_type   "authorization_code"
-                                                :code         (extract-query-param
+                                                :code         (oauth-server.tu/query-param
                                                                (get-in decision [:headers "Location"]) "code")
                                                 :redirect_uri "https://example.com/callback"}
-                                               :authorization (basic-auth-header client_id client_secret))]
+                                               :authorization (oauth-server.tu/basic-auth client_id client_secret))]
           (is (some? (:refresh_token tokens)) "the original grant carries the resource it was issued for")
           (is (= {:error             "invalid_target"
                   :error_description invalid-token-request-description}
@@ -1238,7 +1199,7 @@
                                   :refresh_token (:refresh_token tokens)
                                   :resource      "https://other.example.com/api/mcp"}
                                  :expected-status 400
-                                 :authorization (basic-auth-header client_id client_secret)))))))))
+                                 :authorization (oauth-server.tu/basic-auth client_id client_secret)))))))))
 
 (deftest token-refresh-revoked-token-test
   (testing (str "GHY-4491: a revoked refresh token is an invalid grant (RFC 6749 section 5.2). Claude Code drops its "
@@ -1254,17 +1215,17 @@
                               {:grant_type    "authorization_code"
                                :code          code
                                :redirect_uri  "https://example.com/callback"}
-                              :authorization (basic-auth-header client-id client-secret))
+                              :authorization (oauth-server.tu/basic-auth client-id client-secret))
               refresh-token  (:refresh_token token-response)]
           ;; Revoke via the revocation endpoint (tokens are hashed in the DB)
           (revoke-request!
            {:token refresh-token}
-           :authorization (basic-auth-header client-id client-secret))
+           :authorization (oauth-server.tu/basic-auth client-id client-secret))
           (let [response (token-request!
                           {:grant_type    "refresh_token"
                            :refresh_token refresh-token}
                           :expected-status 400
-                          :authorization (basic-auth-header client-id client-secret))]
+                          :authorization (oauth-server.tu/basic-auth client-id client-secret))]
             (is (=? {:error "invalid_grant"} response))))))))
 
 (deftest token-refresh-unknown-token-test
@@ -1278,7 +1239,7 @@
                   {:grant_type    "refresh_token"
                    :refresh_token "not-a-refresh-token"}
                   :expected-status 400
-                  :authorization (basic-auth-header client_id client_secret)))))))))
+                  :authorization (oauth-server.tu/basic-auth client_id client_secret)))))))))
 
 (deftest token-refresh-other-clients-token-test
   (testing "GHY-4491: a refresh token issued to another client is an invalid grant"
@@ -1290,13 +1251,13 @@
                         {:grant_type   "authorization_code"
                          :code         (authorize-and-get-code! (:client_id client-a))
                          :redirect_uri "https://example.com/callback"}
-                        :authorization (basic-auth-header (:client_id client-a) (:client_secret client-a)))]
+                        :authorization (oauth-server.tu/basic-auth (:client_id client-a) (:client_secret client-a)))]
           (is (=? {:error "invalid_grant"}
                   (token-request!
                    {:grant_type    "refresh_token"
                     :refresh_token (:refresh_token tokens)}
                    :expected-status 400
-                   :authorization (basic-auth-header (:client_id client-b) (:client_secret client-b))))))))))
+                   :authorization (oauth-server.tu/basic-auth (:client_id client-b) (:client_secret client-b))))))))))
 
 (deftest revocation-valid-token-test
   (testing "Revocation returns 200 for a valid access token"
@@ -1310,12 +1271,12 @@
                              {:grant_type    "authorization_code"
                               :code          code
                               :redirect_uri  "https://example.com/callback"}
-                             :authorization (basic-auth-header client-id client-secret))
+                             :authorization (oauth-server.tu/basic-auth client-id client-secret))
               access-token  (:access_token token-resp)]
           (is (some? access-token))
           (revoke-request!
            {:token access-token}
-           :authorization (basic-auth-header client-id client-secret)))))))
+           :authorization (oauth-server.tu/basic-auth client-id client-secret)))))))
 
 (deftest revocation-unknown-token-test
   (testing "Revocation returns 200 for an unknown token (RFC 7009 S2.2)"
@@ -1326,7 +1287,7 @@
               client-secret (:client_secret test-client)]
           (revoke-request!
            {:token "nonexistent-token"}
-           :authorization (basic-auth-header client-id client-secret)))))))
+           :authorization (oauth-server.tu/basic-auth client-id client-secret)))))))
 
 (deftest discovery-includes-revocation-endpoint-test
   (testing "Discovery document includes revocation_endpoint"
@@ -1378,9 +1339,9 @@
                              :scope         "agent:content:read"
                              :state         state)
               consent-body  (:body consent-resp)
-              csrf-token    (extract-csrf-token-from-consent consent-body)
-              csrf-cookie   (extract-csrf-cookie consent-resp)
-              params-sig    (extract-params-sig-from-consent consent-body)]
+              csrf-token    (oauth-server.tu/hidden-field consent-body "csrf_token")
+              csrf-cookie   (oauth-server.tu/csrf-cookie consent-resp)
+              params-sig    (oauth-server.tu/hidden-field consent-body "params_sig")]
           (is (some? params-sig) "Should extract params_sig from consent page")
           (let [response (form-post-decision!
                           :crowberto
@@ -1423,11 +1384,6 @@
 
 ;;; ----------------------------------- RFC 8707 resource narrowing -----------------------------------
 
-(defn- extract-hidden-field
-  "Extract an arbitrary hidden form field's value from the consent page HTML."
-  [field-name body]
-  (second (re-find (re-pattern (str "name=\"" field-name "\"[^>]*value=\"([^\"]*)\"")) body)))
-
 (deftest authorize-narrows-scope-to-mcp-resource-test
   (testing "an RFC 8707 `resource` indicator naming the MCP surface narrows the grant to the
             scopes that surface accepts, so the consent screen asks for what the token can actually
@@ -1449,7 +1405,7 @@
                             :resource      mcp-uri
                             :state         "test-state")
               body         (:body consent-resp)
-              shown-scope  (extract-hidden-field "scope" body)]
+              shown-scope  (oauth-server.tu/hidden-field body "scope")]
           (testing "the v2 scope survives and the agent-API-only scopes are gone"
             (is (= "agent:content:read" shown-scope))
             (is (not (str/includes? body "agent:question:create")))
@@ -1459,8 +1415,8 @@
             (let [response (form-post-decision!
                             :crowberto
                             {:approved      "true"
-                             :csrf_token    (extract-csrf-token-from-consent body)
-                             :params_sig    (extract-params-sig-from-consent body)
+                             :csrf_token    (oauth-server.tu/hidden-field body "csrf_token")
+                             :params_sig    (oauth-server.tu/hidden-field body "params_sig")
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
@@ -1468,15 +1424,15 @@
                              :resource      mcp-uri
                              :state         "test-state"}
                             302
-                            :csrf-cookie (extract-csrf-cookie consent-resp))]
+                            :csrf-cookie (oauth-server.tu/csrf-cookie consent-resp))]
               (is (str/includes? (get-in response [:headers "Location"]) "code="))))
           (testing "a client cannot re-widen the scope on the way back: the signature covers the
                     narrowed params, so posting the original wide scope is rejected as tampering"
             (let [response (form-post-decision!
                             :crowberto
                             {:approved      "true"
-                             :csrf_token    (extract-csrf-token-from-consent body)
-                             :params_sig    (extract-params-sig-from-consent body)
+                             :csrf_token    (oauth-server.tu/hidden-field body "csrf_token")
+                             :params_sig    (oauth-server.tu/hidden-field body "params_sig")
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
@@ -1484,7 +1440,7 @@
                              :resource      mcp-uri
                              :state         "test-state"}
                             403
-                            :csrf-cookie (extract-csrf-cookie consent-resp))]
+                            :csrf-cookie (oauth-server.tu/csrf-cookie consent-resp))]
               (is (= "params_tampered" (get-in response [:body :error]))))))))))
 
 (deftest authorize-legacy-mcp-client-can-request-v2-scopes-test
@@ -1693,7 +1649,7 @@
                                    :state         "test-state"
                                    (when resource [:resource resource]))
                   body      (:body response)]
-              (is (= expected (extract-hidden-field "scope" body))
+              (is (= expected (oauth-server.tu/hidden-field body "scope"))
                   "the signed scope carries exactly the surviving scopes")
               (doseq [scope absent]
                 (is (not (str/includes? body scope))
@@ -1713,25 +1669,25 @@
                                                :scope         "* agent:content:read"
                                                :state         "test-state")
               body         (:body consent-resp)
-              granted      (extract-hidden-field "scope" body)]
+              granted      (oauth-server.tu/hidden-field body "scope")]
           (is (= "agent:content:read" granted))
           (let [decision (form-post-decision!
                           :crowberto
                           {:approved      "true"
-                           :csrf_token    (extract-csrf-token-from-consent body)
-                           :params_sig    (extract-params-sig-from-consent body)
+                           :csrf_token    (oauth-server.tu/hidden-field body "csrf_token")
+                           :params_sig    (oauth-server.tu/hidden-field body "params_sig")
                            :client_id     client_id
                            :redirect_uri  "https://example.com/callback"
                            :response_type "code"
                            :scope         granted
                            :state         "test-state"}
                           302
-                          :csrf-cookie (extract-csrf-cookie consent-resp))
-                code     (extract-query-param (get-in decision [:headers "Location"]) "code")
+                          :csrf-cookie (oauth-server.tu/csrf-cookie consent-resp))
+                code     (oauth-server.tu/query-param (get-in decision [:headers "Location"]) "code")
                 token    (token-request! {:grant_type   "authorization_code"
                                           :code         code
                                           :redirect_uri "https://example.com/callback"}
-                                         :authorization (basic-auth-header client_id client_secret))]
+                                         :authorization (oauth-server.tu/basic-auth client_id client_secret))]
             (is (= "agent:content:read" (:scope token))
                 "the minted token carries only the registered scope")))))))
 
@@ -1754,8 +1710,8 @@
         (let [{:keys [client_id client_secret]} (create-test-client!
                                                  {:scopes ["*" "agent:content:read" "agent:table:read"]})
               consent-resp (get-consent-page! :rasta client_id)
-              csrf-token   (extract-csrf-token-from-consent (:body consent-resp))
-              csrf-cookie  (extract-csrf-cookie consent-resp)
+              csrf-token   (oauth-server.tu/hidden-field (:body consent-resp) "csrf_token")
+              csrf-cookie  (oauth-server.tu/csrf-cookie consent-resp)
               approve!     (fn [scope expected-status]
                              (let [params (cond-> {:client_id     client_id
                                                    :redirect_uri  "https://example.com/callback"
@@ -1774,15 +1730,15 @@
                             :error_description "The authorization request is invalid."}]
           (testing "a correctly signed approval of a registered scope still issues a code"
             (let [response (approve! "agent:content:read" 302)]
-              (is (some? (extract-query-param (get-in response [:headers "Location"]) "code")))))
+              (is (some? (oauth-server.tu/query-param (get-in response [:headers "Location"]) "code")))))
           (testing "a re-signed wildcard is dropped, so the code is issued for the registered scope alone and the
                     token it buys carries no wildcard"
             (let [response (approve! "* agent:content:read" 302)
-                  code     (extract-query-param (get-in response [:headers "Location"]) "code")
+                  code     (oauth-server.tu/query-param (get-in response [:headers "Location"]) "code")
                   token    (token-request! {:grant_type   "authorization_code"
                                             :code         code
                                             :redirect_uri "https://example.com/callback"}
-                                           :authorization (basic-auth-header client_id client_secret))]
+                                           :authorization (oauth-server.tu/basic-auth client_id client_secret))]
               (is (= "agent:content:read" (:scope token)))))
           (testing "a re-signed request whose scopes are all unregistered is refused, since dropping leaves nothing"
             (is (= refused (:body (approve! "*" 400))))
@@ -1917,8 +1873,8 @@
               (let [response (form-post-decision!
                               :crowberto
                               {:approved      "true"
-                               :csrf_token    (extract-csrf-token-from-consent consent-body)
-                               :params_sig    (extract-params-sig-from-consent consent-body)
+                               :csrf_token    (oauth-server.tu/hidden-field consent-body "csrf_token")
+                               :params_sig    (oauth-server.tu/hidden-field consent-body "params_sig")
                                :client_id     client-id
                                :redirect_uri  "https://example.com/callback"
                                :response_type "code"
@@ -1926,7 +1882,7 @@
                                :state         "test-state"
                                :resource      resource}
                               400
-                              :csrf-cookie (extract-csrf-cookie consent-resp))]
+                              :csrf-cookie (oauth-server.tu/csrf-cookie consent-resp))]
                 (is (= {:error             "invalid_request"
                         :error_description "The authorization request is invalid."}
                        (:body response)))
@@ -1947,7 +1903,7 @@
                                       :redirect_uri "https://example.com/callback"
                                       :resource     resource}
                                      :expected-status 400
-                                     :authorization (basic-auth-header client_id client_secret)))))))))))
+                                     :authorization (oauth-server.tu/basic-auth client_id client_secret)))))))))))
 ;;; ------------------------------- Registration scope vs. the authorization ceiling -------------------------------
 
 (def ^:private v2-scope-set
@@ -1985,7 +1941,7 @@
 (defn- offered-scopes
   "The offered scopes signed into the consent page in `consent-resp`, in order."
   [consent-resp]
-  (some-> (extract-hidden-field "scope" (:body consent-resp)) (str/split #" ")))
+  (some-> (oauth-server.tu/hidden-field (:body consent-resp) "scope") (str/split #" ")))
 
 (defn- post-mcp-decision!
   "Approve the MCP consent page in `consent-resp`, echoing its signed fields back with `granted` (a seq of scope
@@ -1995,26 +1951,26 @@
     (form-post-decision!
      :crowberto
      (cond-> {:approved      "true"
-              :csrf_token    (extract-csrf-token-from-consent body)
-              :params_sig    (extract-params-sig-from-consent body)
+              :csrf_token    (oauth-server.tu/hidden-field body "csrf_token")
+              :params_sig    (oauth-server.tu/hidden-field body "params_sig")
               :client_id     client-id
               :redirect_uri  "https://example.com/callback"
               :response_type "code"
-              :scope         (extract-hidden-field "scope" body)
+              :scope         (oauth-server.tu/hidden-field body "scope")
               :resource      (mcp-resource-uri)
               :state         "test-state"}
        (seq granted) (assoc :granted_scope (vec granted)))
      expected-status
-     :csrf-cookie (extract-csrf-cookie consent-resp))))
+     :csrf-cookie (oauth-server.tu/csrf-cookie consent-resp))))
 
 (defn- exchange-code!
   "Exchange the authorization code in `decision`'s redirect for tokens. Returns the token response body."
   [{:keys [client_id client_secret]} decision]
   (token-request! {:grant_type   "authorization_code"
-                   :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
+                   :code         (oauth-server.tu/query-param (get-in decision [:headers "Location"]) "code")
                    :redirect_uri "https://example.com/callback"
                    :resource     (mcp-resource-uri)}
-                  :authorization (basic-auth-header client_id client_secret)))
+                  :authorization (oauth-server.tu/basic-auth client_id client_secret)))
 
 (defn- register-then-authorize-mcp!
   "Register a confidential DCR client with `registration` merged into the body, then run the whole
@@ -2199,15 +2155,15 @@
                 response     (form-post-decision!
                               :crowberto
                               {:approved      "true"
-                               :csrf_token    (extract-csrf-token-from-consent consent-body)
-                               :params_sig    (extract-params-sig-from-consent consent-body)
+                               :csrf_token    (oauth-server.tu/hidden-field consent-body "csrf_token")
+                               :params_sig    (oauth-server.tu/hidden-field consent-body "params_sig")
                                :client_id     client-id
                                :redirect_uri  "https://example.com/callback"
                                :response_type "code"
                                :scope         "agent:content:write"
                                :state         "test-state"}
                               400
-                              :csrf-cookie (extract-csrf-cookie consent-resp))]
+                              :csrf-cookie (oauth-server.tu/csrf-cookie consent-resp))]
             (is (= "invalid_request" (get-in response [:body :error])))
             (is (nil? (get-in response [:headers "Location"])) "no code is issued")))
         (testing "MCP scopes outside the baseline"
@@ -2405,22 +2361,22 @@
         decision (form-post-decision!
                   :crowberto
                   (cond-> {:approved      "true"
-                           :csrf_token    (extract-csrf-token-from-consent body)
-                           :params_sig    (extract-params-sig-from-consent body)
+                           :csrf_token    (oauth-server.tu/hidden-field body "csrf_token")
+                           :params_sig    (oauth-server.tu/hidden-field body "params_sig")
                            :client_id     (:client_id client)
                            :redirect_uri  redirect-uri
                            :response_type "code"
-                           :scope         (extract-hidden-field "scope" body)
+                           :scope         (oauth-server.tu/hidden-field body "scope")
                            :resource      (mcp-resource-uri)
                            :state         "test-state"}
                     (seq granted) (assoc :granted_scope (vec granted)))
                   302
-                  :csrf-cookie (extract-csrf-cookie consent))]
+                  :csrf-cookie (oauth-server.tu/csrf-cookie consent))]
     (token-request! {:grant_type   "authorization_code"
-                     :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
+                     :code         (oauth-server.tu/query-param (get-in decision [:headers "Location"]) "code")
                      :redirect_uri redirect-uri
                      :resource     (mcp-resource-uri)}
-                    :authorization (basic-auth-header (:client_id client) (:client_secret client)))))
+                    :authorization (oauth-server.tu/basic-auth (:client_id client) (:client_secret client)))))
 
 (defn- access-token-scopes
   "The scope set the bearer `token-response`'s access token resolves to, or nil when it no longer resolves."
@@ -2436,7 +2392,7 @@
   "Refresh `token-response` for `client`. Returns the response body."
   [client token-response]
   (token-request! {:grant_type "refresh_token" :refresh_token (:refresh_token token-response)}
-                  :authorization (basic-auth-header (:client_id client) (:client_secret client))))
+                  :authorization (oauth-server.tu/basic-auth (:client_id client) (:client_secret client))))
 
 (def ^:private claude-redirect "https://claude.ai/api/mcp/auth_callback")
 
@@ -2513,7 +2469,8 @@
           (testing "the client reaches consent for all five v2 scopes against the MCP resource"
             (let [response (authorize (str/join " " (sort v2-scope-set)) :resource mcp-uri)]
               (is (= 200 (:status response)) (pr-str (:body response)))
-              (is (= v2-scope-set (some-> (extract-hidden-field "scope" (:body response)) (str/split #" ") set)))))
+              (is (= v2-scope-set (some-> (oauth-server.tu/hidden-field (:body response) "scope")
+                                          (str/split #" ") set)))))
           ;; No resource indicator, so nothing is narrowed and the ceiling alone decides.
           (testing "the client cannot request an agent-API scope outside its registration"
             (let [response (authorize not-mcp)]
