@@ -297,17 +297,19 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
           // Verify colors
           cy.findByTestId("chart-legend").within(() => {
-            cy.get("button [color]").then(($elements) => {
-              const actualColors = Array.from($elements).map((el) =>
-                el.getAttribute("color"),
-              );
-              expect(actualColors).to.deep.equal([
-                "#69C8C8",
-                "#C7EAEA",
-                "#98D9D9",
-                "#F3F3F4",
-              ]);
-            });
+            cy.findAllByTestId("legend-item")
+              .find("button")
+              .then(($elements) => {
+                const actualColors = Array.from($elements).map((element) =>
+                  element.style.getPropertyValue("--legend-dot-color"),
+                );
+                expect(actualColors).to.deep.equal([
+                  "#69C8C8",
+                  "#C7EAEA",
+                  "#98D9D9",
+                  "#F3F3F4",
+                ]);
+              });
           });
         });
       });

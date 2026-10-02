@@ -91,9 +91,14 @@ export const getRowChartGoal = (
   style: GoalStyle,
   measureTextWidth: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
+  isStatic?: boolean,
 ) => {
   if (!goal) {
     return null;
+  }
+
+  if (!isStatic) {
+    return { ...goal, position: "right" as const };
   }
 
   const labelWidth = measureTextWidth(goal.label, style.label);

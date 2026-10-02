@@ -1,0 +1,36 @@
+.horizontalRoot {
+  overflow: hidden;
+}
+
+.overflowLabel {
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.popoverScroll {
+  overflow-x: hidden;
+}
+
+.itemLabel {
+  transition: opacity 0.25s linear;
+}
+
+.hoverableLabel:hover {
+  color: var(--mb-color-core-brand);
+}
+
+.itemTitle {
+  overflow: hidden;
+}
+
+.clickableTitle {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}

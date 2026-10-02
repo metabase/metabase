@@ -159,7 +159,6 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
-  autoAdjustSettings?: boolean;
   showTitle?: boolean;
   showWarnings?: boolean;
   hideLegend?: boolean;
@@ -628,7 +627,6 @@ class Visualization extends PureComponent<
   render() {
     const {
       actionButtons,
-      autoAdjustSettings,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -958,7 +956,6 @@ class Visualization extends PureComponent<
                       selectedTimelineEventIds={selectedTimelineEventIds}
                       series={series}
                       settings={settings}
-                      autoAdjustSettings={!!autoAdjustSettings}
                       showAllLegendItems={showAllLegendItems}
                       hideLegend={hideLegend}
                       showTitle={!!showTitle}

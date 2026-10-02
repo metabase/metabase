@@ -113,7 +113,11 @@
   An optional `:fit-within?` (default false) tells legended charts to treat `:width`x`:height` as
   the exact output box -- fitting the legend *inside* it rather than stacking it on top (which
   returns an SVG taller than requested and makes it shrink to fit). Used by the PDF renderer so a
-  chart fills its grid cell's full width."
+  chart fills its grid cell's full width.
+
+  An optional `:grid-size` `{:width <cols> :height <rows>}` is the dashcard's dashboard grid size
+  (`size_x`/`size_y`). Used by the PDF renderer so size-dependent settings (e.g. auto axis titles)
+  match the dashboard, independent of the print cell's pixel box."
   nil)
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -196,7 +200,9 @@
                             *chart-size*
                             (assoc :width (:width *chart-size*)
                                    :height (:height *chart-size*)
-                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))))})      (update :type (fnil keyword "unknown"))))
+                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))
+                                   :gridSize (:grid-size *chart-size*)))})
+      (update :type (fnil keyword "unknown"))))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"

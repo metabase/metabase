@@ -644,7 +644,6 @@ export function DashCardVisualization({
           errorMessageOverride={visualizerErrMsg}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
-          autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
     </div>

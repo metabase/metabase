@@ -4,7 +4,7 @@ export const DEFAULT_CARD = {
   id: -1,
   row: 0,
   col: 0,
-  size_x: 11,
+  size_x: 12,
   size_y: 8,
   visualization_settings: {},
   parameter_mappings: [],

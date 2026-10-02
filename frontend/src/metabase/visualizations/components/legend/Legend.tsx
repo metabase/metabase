@@ -1,17 +1,19 @@
+import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Popover } from "metabase/ui";
+import { Box, Flex, Popover, Text, rem } from "metabase/ui";
 import type { HoveredObject } from "metabase/viz-core";
 
-import {
-  LegendLink,
-  LegendLinkContainer,
-  LegendPopoverContainer,
-  LegendRoot,
-} from "./Legend.styled";
+import S from "./Legend.module.css";
 import type { LegendItemData } from "./LegendItem";
 import { LegendItem } from "./LegendItem";
+import {
+  LEGEND_PADDING,
+  LEGEND_SIZES,
+  type LegendSize,
+  getOverflowLabel,
+} from "./layout";
 
 const POPOVER_BORDER = 1;
 const POPOVER_PADDING = 8;
@@ -24,8 +26,7 @@ interface LegendProps {
   visibleIndex?: number;
   visibleLength?: number;
   isVertical?: boolean;
-  isInsidePopover?: boolean;
-  isQueryBuilder?: boolean;
+  size?: LegendSize;
   onHoverChange?: (data?: HoveredObject | null) => void;
   onSelectSeries?: (
     event: React.MouseEvent,
@@ -43,24 +44,29 @@ export const Legend = ({
   visibleIndex = 0,
   visibleLength = originalItems.length,
   isVertical,
-  isInsidePopover,
+  size = "sm",
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,
   isReversed,
-  isQueryBuilder,
 }: LegendProps) => {
   const items = isReversed ? _.clone(originalItems).reverse() : originalItems;
 
   const overflowIndex = visibleIndex + visibleLength;
   const visibleItems = items.slice(visibleIndex, overflowIndex);
   const overflowLength = items.length - overflowIndex;
+  const { itemGap, rowGap, maxVerticalWidth, typography } = LEGEND_SIZES[size];
 
   return (
-    <LegendRoot
-      className={className}
+    <Flex
+      className={cx({ [S.horizontalRoot]: !isVertical }, className)}
       aria-label={t`Legend`}
-      isVertical={!!isVertical}
+      direction={isVertical ? "column" : "row"}
+      align={isVertical ? "stretch" : "center"}
+      gap={isVertical ? rowGap : itemGap}
+      miw={0}
+      maw="100%"
+      p={LEGEND_PADDING}
     >
       {visibleItems.map((item, index) => {
         const localIndex = index + visibleIndex;
@@ -74,9 +80,7 @@ export const Legend = ({
             item={item}
             index={itemIndex}
             isMuted={hovered != null && itemIndex !== hovered.index}
-            dotSize={isQueryBuilder ? "12px" : "8px"}
-            isVertical={isVertical}
-            isInsidePopover={isInsidePopover}
+            size={size}
             isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
@@ -85,30 +89,40 @@ export const Legend = ({
         );
       })}
       {overflowLength > 0 && (
-        <Popover width="target" offset={POPOVER_OFFSET} position="top-start">
+        <Popover
+          width={rem(maxVerticalWidth)}
+          offset={POPOVER_OFFSET}
+          position="top-start"
+        >
           <Popover.Target>
-            <LegendLinkContainer isVertical={!!isVertical}>
-              <LegendLink>{t`And ${overflowLength} more`}</LegendLink>
-            </LegendLinkContainer>
+            <Text
+              component="div"
+              className={S.overflowLabel}
+              c="text-secondary"
+              fz={typography}
+              lh={typography}
+            >
+              {getOverflowLabel(overflowLength)}
+            </Text>
           </Popover.Target>
           <Popover.Dropdown>
-            <LegendPopoverContainer>
+            <Box className={S.popoverScroll} p="sm">
               <Legend
                 items={originalItems}
                 hovered={hovered}
                 visibleIndex={overflowIndex}
                 visibleLength={overflowLength}
                 isVertical={isVertical}
-                isInsidePopover
+                size={size}
                 onHoverChange={onHoverChange}
                 onSelectSeries={onSelectSeries}
                 onToggleSeriesVisibility={onToggleSeriesVisibility}
                 isReversed={isReversed}
               />
-            </LegendPopoverContainer>
+            </Box>
           </Popover.Dropdown>
         </Popover>
       )}
-    </LegendRoot>
+    </Flex>
   );
 };

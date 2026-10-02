@@ -215,4 +215,31 @@ describe("scenarios > visualizations > rows", () => {
       "This chart type doesn't support more than 100 series of data.",
     );
   });
+
+  it("should show the goal in a tooltip when hovering the goal marker", () => {
+    H.visitQuestionAdhoc({
+      display: "row",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+      },
+      visualization_settings: {
+        "graph.show_goal": true,
+        "graph.goal_value": 40,
+        "graph.goal_label": "Target",
+      },
+    });
+
+    cy.findByTestId("goal-line-marker").trigger("mouseover");
+
+    H.tooltip().within(() => {
+      cy.findByText("Target:").should("be.visible");
+      cy.findByText("40").should("be.visible");
+    });
+  });
 });

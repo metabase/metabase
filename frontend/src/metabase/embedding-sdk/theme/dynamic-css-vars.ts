@@ -4,6 +4,7 @@ import Color from "color";
 
 import type { MantineTheme, MantineThemeOverride } from "metabase/ui";
 import { isDark, isLight } from "metabase/ui/colors";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 import type { ColorOperation } from "../types/private/css-variables";
 
@@ -41,9 +42,17 @@ export function applyColorOperation(
  * Determine if the current color scheme is dark based on the palette.
  */
 export function getIsDarkThemeFromPalette(theme: MantineThemeOverride) {
-  const backgroundColor = theme.fn?.themeColor?.("background_page-primary");
-  const foregroundColor = theme.fn?.themeColor?.("text-primary");
+  return getIsDarkThemeFromColors(
+    theme.fn?.themeColor?.("background_page-primary"),
+    theme.fn?.themeColor?.("text-primary"),
+  );
+}
 
+export function getIsDarkThemeFromColors(
+  backgroundColor?: string,
+  foregroundColor?: string,
+  colorScheme: ResolvedColorScheme = "light",
+) {
   // Dark background color indicates a dark theme.
   if (isColorDefined(backgroundColor)) {
     return isDark(backgroundColor);
@@ -54,7 +63,7 @@ export function getIsDarkThemeFromPalette(theme: MantineThemeOverride) {
     return isLight(foregroundColor);
   }
 
-  return false;
+  return colorScheme === "dark";
 }
 
 /**

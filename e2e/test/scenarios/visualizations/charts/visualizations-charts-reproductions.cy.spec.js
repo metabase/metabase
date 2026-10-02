@@ -25,7 +25,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
   function assertOnTheYAxis() {
     H.echartsContainer().get("text").contains("Count");
 
-    H.echartsContainer().get("text").contains("6,000");
+    H.echartsContainer().get("text").contains("7.0k").should("be.visible");
   }
 
   beforeEach(() => {

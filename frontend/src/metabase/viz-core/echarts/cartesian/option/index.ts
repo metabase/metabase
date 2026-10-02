@@ -34,6 +34,7 @@ import type { TimelineEventsModel } from "../timeline-events/types";
 
 import { buildAxes, buildDimensionAxis, buildMetricAxis } from "./axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
+import { applyResponsiveYAxisTicks } from "./responsive-axis";
 import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
@@ -304,7 +305,7 @@ export const getCartesianChartOption = (
     ...splitPanelOverrides,
     grid,
     xAxis,
-    yAxis,
+    yAxis: applyResponsiveYAxisTicks(yAxis, chartModel, chartLayout, settings),
     dataset: buildEChartsDataset(chartModel),
     series: seriesOption,
   };
@@ -489,7 +490,7 @@ export function buildSplitPanelYAxisLabel(
   const panelHeight = chartLayout.panelHeight ?? 0;
   const totalPanelsHeight =
     panelCount * panelHeight + (panelCount - 1) * chartLayout.panelGap;
-  const { fontSize } = renderingContext.theme.cartesian.label;
+  const { fontSize, fontWeight } = renderingContext.theme.cartesian.axisTitle;
 
   return [
     {
@@ -500,7 +501,7 @@ export function buildSplitPanelYAxisLabel(
         text: label,
         fill: renderingContext.getColor("text-primary"),
         fontSize,
-        fontWeight: CHART_STYLE.axisName.weight,
+        fontWeight,
         fontFamily: renderingContext.fontFamily,
         textAlign: "center",
         textVerticalAlign: "middle",
@@ -516,7 +517,6 @@ export function buildPerPanelYAxes(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): YAXisOption[] {
-  const yTicksWidth = chartLayout.ticksDimensions.yTicksWidthLeft;
   const panelAxisModels = chartModel.splitPanelYAxisModels ?? [];
 
   return panelAxisModels.map((axisModel, index) => {
@@ -524,7 +524,7 @@ export function buildPerPanelYAxes(
       ...buildMetricAxis(
         axisModel,
         chartModel.yAxisScaleTransforms,
-        yTicksWidth - CHART_STYLE.axisTicksMarginY,
+        chartLayout.ticksDimensions.yTicksWidthLeft,
         settings,
         "left",
         true,

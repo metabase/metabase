@@ -2,6 +2,7 @@ import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   getEmbeddingComponentOverrides,
 } from "metabase/embedding-sdk/theme";
+import { getDarkTheme, getLightTheme } from "metabase/ui/colors";
 
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
@@ -37,6 +38,9 @@ describe("Transform Embedding Theme Override", () => {
       lineHeight: 1.5,
       fontFamily: "Roboto",
       colors: {
+        "chart-axis": expect.arrayContaining([
+          getLightTheme().colors["chart-axis"],
+        ]),
         brand: expect.arrayContaining(["hotpink"]),
         "core-brand": expect.arrayContaining(["hotpink"]),
         "text-primary": expect.arrayContaining(["yellow"]),
@@ -69,6 +73,7 @@ describe("Transform Embedding Theme Override", () => {
       },
       other: {
         fontSize: "2rem",
+        hasCustomChartFontSize: true,
         ...DEFAULT_EMBEDDED_COMPONENT_THEME,
       },
       components: getEmbeddingComponentOverrides(),
@@ -84,6 +89,9 @@ describe("Transform Embedding Theme Override", () => {
     expect(theme).toEqual({
       fontFamily: "Roboto",
       colors: {
+        "chart-axis": expect.arrayContaining([
+          getDarkTheme().colors["chart-axis"],
+        ]),
         "background-primary": expect.arrayContaining(["green"]),
         "background_page-primary": expect.arrayContaining(["green"]),
         "background_surface-primary": expect.arrayContaining(["green"]),
@@ -93,8 +101,36 @@ describe("Transform Embedding Theme Override", () => {
         "background_page-secondary": expect.arrayContaining(["green"]),
         "background_page-tertiary": expect.arrayContaining(["green"]),
       },
-      other: { fontSize: "14px", ...DEFAULT_EMBEDDED_COMPONENT_THEME },
+      other: {
+        fontSize: "14px",
+        hasCustomChartFontSize: false,
+        ...DEFAULT_EMBEDDED_COMPONENT_THEME,
+      },
       components: getEmbeddingComponentOverrides(),
+    });
+  });
+
+  it.each(["13px", DEFAULT_EMBEDDED_COMPONENT_THEME.cartesian.label.fontSize])(
+    "preserves an explicit chart label font size of %s",
+    (fontSize) => {
+      const theme = getEmbeddingThemeOverride(
+        { components: { cartesian: { label: { fontSize } } } },
+        undefined,
+      );
+
+      expect(theme.other).toMatchObject({
+        hasCustomChartFontSize: true,
+        cartesian: { label: { fontSize } },
+      });
+    },
+  );
+
+  it("preserves an explicit base font size matching the default", () => {
+    const theme = getEmbeddingThemeOverride({ fontSize: "14px" }, undefined);
+
+    expect(theme.other).toMatchObject({
+      fontSize: "14px",
+      hasCustomChartFontSize: true,
     });
   });
 });

@@ -68,9 +68,9 @@ describe("scenarios > visualizations > scalar", () => {
     cy.findByText("April 30, 2024");
     H.openVizSettingsSidebar();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show the time").should("be.hidden");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Time style").should("be.hidden");
+    H.leftSidebar().within(() => {
+      cy.findByText("Show the time").should("not.exist");
+      cy.findByText("Time style").should("not.exist");
+    });
   });
 });
