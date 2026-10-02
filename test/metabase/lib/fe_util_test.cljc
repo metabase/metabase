@@ -979,6 +979,8 @@
       "Excludes Q4" (lib/!= (lib/get-quarter created-at) 4)
       "Excludes Q4" (lib/!= (lib/with-temporal-bucket created-at :quarter-of-year) date-arg-1)
       "Excludes Q4" (lib/not-in (lib/get-quarter created-at) 4)
+      "53" (lib/= (lib/with-temporal-bucket created-at :week-of-year) 53)
+      "Excludes 53" (lib/!= (lib/with-temporal-bucket created-at :week-of-year) "2017-12-31")
       "Nov 2, 2023 – Jan 3, 2024" (lib/between created-at date-arg-1 date-arg-2)
       "After Nov 2, 2023" (lib/> created-at date-arg-1)
       "Before Nov 2, 2023" (lib/< created-at date-arg-1)

@@ -57,6 +57,7 @@
    [metabase.upload.db :as upload.db]
    [metabase.util.date-2 :as u.date]
    [metabase.util.match :as match]
+   [metabase.util.time :as u.time]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
@@ -203,9 +204,10 @@
   (lib/negate-boolean-expression (lib-be/time-config) expression))
 
 (defn date-extract
-  "[[metabase.util.date-2/extract]] with this instance's time config."
+  "[[metabase.util.time/extract]] with this instance's time config.
+  Week-of-year numbers match how queries group `:week-of-year`."
   [t unit]
-  (u.date/extract (lib-be/time-config) t unit))
+  (u.time/extract (lib-be/time-config) t unit))
 
 (defn date-truncate
   "[[metabase.util.date-2/truncate]] with this instance's time config."
