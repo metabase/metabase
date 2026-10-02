@@ -117,24 +117,19 @@ describe(
         H.assertTableRowsCount(1);
       });
 
-      it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a column", () => {
-        setupDashboardClickBehavior({
-          targetName: COLUMN_NAME,
-        });
+      it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a column or a parameter", () => {
+        setupDashboardClickBehavior();
 
-        cy.log("assert click behavior");
+        cy.log("column source passes the clicked value");
         H.getDashboardCard().findAllByText("true").first().click();
         H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
         H.filterWidget().findByText("True").should("be.visible");
-      });
+        H.getDashboardCard().findByText("1 row").should("be.visible");
 
-      it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a parameter", () => {
-        setupDashboardClickBehavior({
-          targetName: PARAMETER_NAME,
-        });
-
-        cy.log("assert click behavior passes the unmapped parameter's default");
-        H.getDashboardCard().findAllByText("true").first().click();
+        cy.log("parameter source passes the unmapped parameter's default");
+        cy.go("back");
+        H.dashboardHeader().findByText(DASHBOARD_2_NAME).should("be.visible");
+        H.getDashboardCard().findAllByText("1").first().click();
         H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
         H.filterWidget().findByText("False").should("be.visible");
         H.getDashboardCard().findByText("199 rows").should("be.visible");
@@ -374,7 +369,7 @@ function createAndMapParameter({
   H.dashboardParametersDoneButton().click();
 }
 
-function setupDashboardClickBehavior({ targetName }: { targetName: string }) {
+function setupDashboardClickBehavior() {
   cy.log("setup target dashboard");
   createQuestionAndDashboard({
     dashboardName: DASHBOARD_NAME,
@@ -405,18 +400,36 @@ function setupDashboardClickBehavior({ targetName }: { targetName: string }) {
     H.editDashboard();
     H.showDashboardCardActions();
     cy.findByLabelText("Click behavior").click();
-    H.sidebar().within(() => {
-      cy.findByText(COLUMN_NAME).click();
-      cy.findByText("Go to a custom destination").click();
-      cy.findByText("Dashboard").click();
+    addDashboardDestination({
+      columnName: COLUMN_NAME,
+      sourceName: COLUMN_NAME,
     });
-    H.entityPickerModal().within(() => {
-      cy.findByText(DASHBOARD_NAME).click();
+    H.sidebar().icon("chevronleft").click();
+    addDashboardDestination({
+      columnName: "ID",
+      sourceName: PARAMETER_NAME,
     });
-    H.sidebar().findByText(PARAMETER_NAME).click();
-    H.selectDropdown().findByText(targetName).click();
     H.saveDashboard();
   });
+}
+
+function addDashboardDestination({
+  columnName,
+  sourceName,
+}: {
+  columnName: string;
+  sourceName: string;
+}) {
+  H.sidebar().within(() => {
+    cy.findByText(columnName).click();
+    cy.findByText("Go to a custom destination").click();
+    cy.findByText("Dashboard").click();
+  });
+  H.entityPickerModal().within(() => {
+    cy.findByText(DASHBOARD_NAME).click();
+  });
+  H.sidebar().findByText(PARAMETER_NAME).click();
+  H.selectDropdown().findByText(sourceName).click();
 }
 
 function testParameterWidget({
