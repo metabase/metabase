@@ -81,6 +81,10 @@
                               :connection-impersonation        true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
+(defmethod sql.qp/use-ctes-for-stages? :starburst
+  [_driver]
+  true)
+
 (defn- format-field
   [name value]
   (if (nil? value)
