@@ -5,9 +5,7 @@
    [babashka.process :as p]
    [clojure.string :as str]
    [mage.color :as c]
-   [mage.util :as u])
-  (:import
-   (java.net URLEncoder)))
+   [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,7 +49,7 @@
   (first (filter #(= repo (get-in % [:headRepository :nameWithOwner])) prs)))
 
 (defn- open-pr
-  "The open PR from `branch` in `repo`, with its labels and the base its stack targets, or nil."
+  "The open PR from `branch` in `repo`, with the base its stack targets, or nil."
   [branch]
   (let [[owner name] (str/split repo #"/")]
     (->> (gh-json "api" "graphql"
@@ -59,7 +57,7 @@
                             " repository(owner: $owner, name: $name) {"
                             " pullRequests(headRefName: $branch, states: OPEN, first: 10) {"
                             " nodes { number headRefOid baseRefName headRepository { nameWithOwner }"
-                            " stack { baseRefName } labels(first: 100) { nodes { name } } } } } }")
+                            " stack { baseRefName } } } } }")
                   "-f" (str "owner=" owner) "-f" (str "name=" name) "-f" (str "branch=" branch))
          :data :repository :pullRequests :nodes
          own-pr)))
@@ -69,19 +67,9 @@
   [pr]
   (or (get-in pr [:stack :baseRefName]) (:baseRefName pr)))
 
-(defn run-labels
-  "The `ci:run-*` labels on `pr` that a run started by hand should act on, comma-separated."
-  [pr]
-  (->> (get-in pr [:labels :nodes])
-       (map :name)
-       ;; `ci:run-all` would turn the run into the full suite, which is what this task avoids.
-       (filter #(and (str/starts-with? % "ci:run-") (not= "ci:run-all" %)))
-       sort
-       (str/join ",")))
-
 (defn- runs [branch sha event]
   (gh-json "run" "list" "-R" repo "--workflow" workflow "--branch" branch "--commit" sha
-           "--event" event "--json" "databaseId,status,conclusion" "--limit" "20"))
+           "--event" event "--json" "databaseId,status" "--limit" "20"))
 
 (defn parse-verdict
   "The verdict the decide job printed in `log`, or nil."
@@ -100,10 +88,6 @@
       (or (parse-verdict (gh {} "api" (format "repos/%s/actions/jobs/%s/logs" repo (:databaseId job))))
           (fail! 3 (str "No verdict in the decide job's log: " (run-url run-id)))))))
 
-(def ^:private waits-s
-  "Pauses between checks for a verdict, about a minute in all: enough for a fresh push or a new run."
-  [10 20 30])
-
 (defn poll
   "Call `f` until it returns non-nil, sleeping for each of `pauses` seconds in turn.
   Returns nil if it never does; `what` names the thing being waited for in progress messages."
@@ -116,16 +100,15 @@
           (recur more)))))
 
 (defn- decided-pr-run
-  "The latest PR run for `sha` with its `:verdict`, or nil if it does not get one in time."
+  "The latest PR run for `sha` with its `:verdict`, waiting about a minute for a fresh push to get one."
   [branch sha]
-  (poll "the PR run" waits-s
+  (poll "the PR run" [10 20 30]
         #(when-let [run (first (runs branch sha "pull_request"))]
            (some->> (verdict (:databaseId run)) (assoc run :verdict)))))
 
 (defn next-step
   "What to do given the PR run (with its `:verdict`) and the runs started by hand for the same commit.
-  Only a run that is still going or that finished its tests is reused.
-  Returns one of:
+  Only a run that has not finished is reused. Returns one of:
 
     {:step :not-skipped,     :run pr-run}
     {:step :already-started, :run started-run}
@@ -133,29 +116,24 @@
   [pr-run started-runs]
   (if (not= "force-skip" (:verdict pr-run))
     {:step :not-skipped, :run pr-run}
-    (if-let [run (first (filter #(or (not= "completed" (:status %))
-                                     (#{"failure" "success"} (:conclusion %)))
-                                started-runs))]
+    (if-let [run (first (remove #(= "completed" (:status %)) started-runs))]
       {:step :already-started, :run run}
       {:step :start})))
 
 (defn dispatch-args
-  "Arguments to `gh` that start the workflow on `branch`, comparing against `base` and acting on `labels`."
-  [branch base labels]
-  ;; Always passing `base` makes a branch from before these inputs fail to start instead of comparing against
-  ;; itself.
-  (cond-> ["workflow" "run" workflow "-R" repo "--ref" branch "-f" (str "base=" base)]
-    (seq labels) (into ["-f" (str "labels=" labels)])))
+  "Arguments to `gh` that start the workflow on `branch`, comparing against `base`."
+  [branch base]
+  ;; Always passing `base` makes a branch from before the input fail to start instead of comparing against
+  ;; the wrong branch.
+  ["workflow" "run" workflow "-R" repo "--ref" branch "-f" (str "base=" base)])
 
 (defn- start-run!
-  "Start the workflow and return the new run's URL, or the branch's run list when `gh` prints none."
-  [branch base labels]
-  (let [hint (str "The branch's " workflow " may predate the `base` and `labels` inputs;"
-                  " rebase it to get them.")
-        out  (apply gh {:hint hint} (dispatch-args branch base labels))]
+  "Start the workflow and return the new run's URL, or the workflow's run list when `gh` prints none."
+  [branch base]
+  (let [out (apply gh {:hint (str "The branch's " workflow " may predate the `base` input; rebase it.")}
+                   (dispatch-args branch base))]
     (or (re-find #"https://github\.com/\S+/actions/runs/\d+" out)
-        (format "https://github.com/%s/actions/workflows/%s?query=%s" repo workflow
-                (URLEncoder/encode (str "branch:" branch) "UTF-8")))))
+        (format "https://github.com/%s/actions/workflows/%s" repo workflow))))
 
 (defn ci-run-skipped!
   "Print a \"Run tests\" run URL for the current branch.
@@ -179,20 +157,10 @@
           (println (run-url (:databaseId run))))
 
       :already-started
-      (do (info "A run was already started for this commit.")
+      (do (info "A run for this commit is already going.")
           (println (run-url (:databaseId run))))
 
       :start
-      (let [base        (stack-base pr)
-            labels      (run-labels pr)
-            _           (info (format "PR #%s was force-skipped; starting a run on %s against %s%s."
-                                      (:number pr) branch base
-                                      (if (seq labels) (str " with " labels) "")))
-            url         (start-run! branch base labels)
-            run-id      (second (re-find #"/actions/runs/(\d+)$" url))
-            new-verdict (when run-id (poll "the new run" waits-s #(verdict run-id)))]
-        ;; `should-run` never skips a run started by hand, but a later skip rule could break that.
-        (cond
-          (= "force-skip" new-verdict) (fail! 3 (str "The new run was force-skipped too: " url))
-          (nil? new-verdict)           (info "Could not confirm that the new run was not skipped; check it."))
-        (println url)))))
+      (let [base (stack-base pr)]
+        (info (format "PR #%s was force-skipped; starting a run on %s against %s." (:number pr) branch base))
+        (println (start-run! branch base))))))

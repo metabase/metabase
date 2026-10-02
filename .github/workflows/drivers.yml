@@ -14,10 +14,6 @@ on:
         description: Branch to compare against on a run started by hand. Pull request runs use the PR base.
         type: string
         default: ""
-      pr-labels:
-        description: Comma-separated PR labels on a run started by hand. Pull request runs read the PR's labels.
-        type: string
-        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -106,7 +102,7 @@ jobs:
           MAGE_ARGS=(
             --git-ref="${BASE_REF}"
             --force-run="${FORCE_RUN}"
-            --pr-labels="${PR_LABELS}"
+            --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
             --only-driver="${PROFILE_DRIVER}"
           )
@@ -122,7 +118,6 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ steps.merge-base.outputs.result || github.event.pull_request.base.ref || inputs.base-ref || github.ref_name }}
-          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') || inputs.pr-labels }}
           FORCE_RUN: ${{ inputs.force-run }}
           # Set only by test.profile-backend.yml. Absent on a normal CI run, which leaves the decision rules
           # alone; mage rejects a name that is not a driver.
