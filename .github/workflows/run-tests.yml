@@ -8,6 +8,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
+    inputs:
+      base:
+        description: Branch to detect changes against. Empty means the default branch; pull request runs always use the PR base.
+        type: string
+        default: ""
 
 permissions:
   id-token: write
@@ -94,6 +99,7 @@ jobs:
           token: ${{ github.token }}
           # comma separated list of files
           list-files: csv
+          base: ${{ inputs.base }}
           filters: .github/file-paths.yaml
 
   create-test-plan:
@@ -228,6 +234,7 @@ jobs:
         id: static_viz
         with:
           token: ${{ github.token }}
+          base: ${{ inputs.base }}
           filters: .github/static-viz-sources.yaml
 
   backend-tests:

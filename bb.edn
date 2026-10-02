@@ -425,6 +425,18 @@
    :requires [[mage.ci-report :as ci-report]]
    :task (task! (ci-report/generate-report! parsed))}
 
+  ci-run-skipped
+  {:doc "Start a one-off CI run for the current branch when its PR run was force-skipped"
+   :examples [["./bin/mage ci-run-skipped" "Print a run URL, starting a run only if the PR run was skipped"]]
+   :usage-fn (fn [_]
+               (str "CI skips every PR above the bottom of a GitHub stack, and any PR labelled ci:skip.\n"
+                    "For such a PR this starts the Run tests workflow on the branch, compared against the\n"
+                    "branch the stack targets, and prints the run URL. Otherwise it prints the PR run URL.\n\n"
+                    "The run does not show in the PR's checks; follow the URL.\n\n"
+                    "Requires GitHub CLI (gh) to be installed and authenticated."))
+   :requires [[mage.ci-run-skipped :as ci-run-skipped]]
+   :task (task! (ci-run-skipped/ci-run-skipped!))}
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
