@@ -59,6 +59,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
       filterDashboard({ isLabeled: true });
       H.filterWidget().findByText("Twenty").should("be.visible");
+      H.getDashboardCard().findByText("4").should("be.visible");
     });
   });
 
@@ -84,8 +85,9 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.log("pick a value with searching");
       H.filterWidget().click();
       H.popover().within(() => {
+        cy.findByTestId("5-filter-value").should("be.visible");
         cy.findByPlaceholderText("Search the list").type("225");
-        cy.findByLabelText("5").should("not.exist");
+        cy.findByTestId("5-filter-value").should("not.exist");
         cy.findByText("225").click();
         cy.button("Update filter").click();
       });
