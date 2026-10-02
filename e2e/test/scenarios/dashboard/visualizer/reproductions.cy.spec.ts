@@ -16,7 +16,7 @@ describe("issue 61521", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
-  it("should preserve column settings when use visualizer (metabase#61521)", () => {
+  it("should preserve percent formatting of an added series (metabase#61521)", () => {
     const questionADetails = {
       name: "Question A for 61521",
       display: "line" as const,
@@ -152,18 +152,19 @@ describe("issue 61521", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-
-      cy.findByText("Question B for 61521")
-        .closest("[data-testid='swap-dataset-button']")
-        .should("not.have.attr", "aria-pressed", "true")
-        .click({ force: true });
-
-      cy.wait("@cardQuery");
+      H.selectDataset("Question B for 61521");
 
       cy.findByLabelText("Legend")
         .findByText("Question B for 61521")
         .should("exist");
 
+      H.cartesianChartCircleWithColor("#88BF4D").eq(5).realHover();
+    });
+    H.assertEChartsTooltip({
+      rows: [{ name: "Question B for 61521", value: /%$/ }],
+    });
+
+    H.modal().within(() => {
       // ensure there is no additional unformatted axis
       cy.findByText("0.06").should("not.exist");
       cy.findByText("0.05").should("not.exist");

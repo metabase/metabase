@@ -215,6 +215,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     dashCard()
       .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Edit visualization")
+      .should("exist");
+    dashCard()
+      .realHover({ scrollBehavior: "bottom" })
       .findByLabelText("Visualize another way")
       .should("not.exist");
     dashCard()

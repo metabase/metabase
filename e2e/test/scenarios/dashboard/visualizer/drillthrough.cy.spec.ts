@@ -213,7 +213,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // 4. Funnel (regular)
-    H.getDashboardCard(4).get("polygon").first().click();
+    H.getDashboardCard(4).find("polygon").first().click();
     H.tooltip().should("not.exist");
     H.clickActionsPopover().button("=").click();
     cy.wait("@dataset");
@@ -226,14 +226,14 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // 5. Funnel (scalar)
-    H.getDashboardCard(5).get("polygon").first().click();
+    H.getDashboardCard(5).find("polygon").first().click();
     H.tooltip().should("not.exist");
     H.clickActionsPopover().button("=").click();
     cy.wait("@dataset");
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
-    H.queryBuilderFiltersPanel().findByText("Views is equal to 600");
-    H.tableInteractiveHeader().findByText("Views").should("exist");
+    H.queryBuilderFiltersPanel().findByText("views is equal to 600");
+    H.tableInteractiveHeader().findByText("views").should("exist");
     H.assertQueryBuilderRowCount(1);
   });
 });
