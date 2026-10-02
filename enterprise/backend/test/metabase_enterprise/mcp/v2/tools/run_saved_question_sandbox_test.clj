@@ -11,6 +11,7 @@
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -68,7 +69,7 @@
     (set (map #(nth % idx) rows))))
 
 (defn- run-saved-question [card-id parameters]
-  (registry/call-tool nil (str (random-uuid)) "run_saved_question"
+  (registry/call-tool mcp.tu/all-scopes (str (random-uuid)) "run_saved_question"
                       (cond-> {:id card-id :row_limit 2000}
                         parameters (assoc :parameters parameters))))
 

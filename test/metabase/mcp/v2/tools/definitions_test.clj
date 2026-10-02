@@ -13,6 +13,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -37,7 +38,7 @@
 
 (defn- call-tool!
   "Drive `tool` through the real dispatch seam as `user` (test-user keyword or user id) with
-   bearer-style `scopes` (nil = internal caller, which bypasses the scope gate).
+   bearer-style `scopes`.
 
    `call-tool` answers `{:result …}` once a handler ran, or `{:error …}` when the registry rejects
    the call before dispatch. Both are presented here in the `{:isError true}` MCP shape a handler
@@ -116,7 +117,7 @@
   "The `definition` section `get_content` returns for one item, exactly as it comes off the wire.
    Driven through the real dispatch seam so the assertions see the shape an agent sees."
   [type id]
-  (-> (call-tool! :crowberto nil "get_content" {:items [{:type type :id id}] :include ["definition"]})
+  (-> (call-tool! :crowberto mcp.tu/all-scopes "get_content" {:items [{:type type :id id}] :include ["definition"]})
       tool-result
       :results
       first
@@ -141,16 +142,16 @@
 (deftest ^:parallel malli-validation-test
   (testing "GHY-4137: schema-level failures are teaching errors from the registry, not handler crashes"
     (testing "missing method"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "segment_write" {}))
+      (is (str/starts-with? (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write" {}))
                             "Invalid arguments")))
     (testing "a method outside the enum (there is no delete — archive instead)"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "segment_write" {:method "delete"}))
+      (is (str/starts-with? (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write" {:method "delete"}))
                             "Invalid arguments")))
     (testing "an unknown key on the closed schema"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "measure_write" {:method "create" :bogus 1}))
+      (is (str/starts-with? (tool-error (call-tool! :crowberto mcp.tu/all-scopes "measure_write" {:method "create" :bogus 1}))
                             "Invalid arguments")))
     (testing "a string table_id — tables have no entity_ids, only numeric ids"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "segment_write"
+      (is (str/starts-with? (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                                     {:method "create" :table_id "abc"
                                                      :name "x" :definition mbql4-fragment}))
                             "Invalid arguments")))))
@@ -163,22 +164,22 @@
         (let [args (dissoc {:method "create" :table_id (mt/id :venues) :name "x" :definition mbql4-fragment}
                            missing)]
           (is (= (format "\"%s\" is required when method is \"create\"." (name missing))
-                 (tool-error (call-tool! :crowberto nil tool args)))))))))
+                 (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool args)))))))))
 
 (deftest ^:parallel update-required-args-test
   (doseq [tool ["segment_write" "measure_write"]]
     (testing tool
       (testing "GHY-4137: update without id is a teaching error"
         (is (= "\"id\" is required when method is \"update\"."
-               (tool-error (call-tool! :crowberto nil tool {:method "update" :revision_message "x"})))))
+               (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool {:method "update" :revision_message "x"})))))
       (testing "GHY-4137: update without revision_message is the tool's own teaching error, never the bare REST 400"
         (is (= (format (str "\"revision_message\" is required when method is \"update\" — pass a short sentence "
                             "describing the change; it is recorded in the %s's revision history.")
                        (if (= "segment_write" tool) "segment" "measure"))
-               (tool-error (call-tool! :crowberto nil tool {:method "update" :id 13371337 :description "d"})))))
+               (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool {:method "update" :id 13371337 :description "d"})))))
       (testing "GHY-4137: a whitespace-only revision_message is rejected the same way"
         (is (re-find #"\"revision_message\" is required"
-                     (tool-error (call-tool! :crowberto nil tool
+                     (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool
                                              {:method "update" :id 13371337 :revision_message " "}))))))))
 
 (deftest ^:parallel method-exclusive-args-test
@@ -188,13 +189,13 @@
                 took effect"
         (doseq [[k v] {:id 1, :archived true, :revision_message "x"}]
           (is (= (format "\"%s\" applies to method \"update\" only — remove it from this create call." (name k))
-                 (tool-error (call-tool! :crowberto nil tool
+                 (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool
                                          {:method "create" :table_id (mt/id :venues) :name "x"
                                           :definition mbql4-fragment
                                           k v}))))))
       (testing "GHY-4137: table_id on update is rejected — the server derives it from the definition"
         (is (= "\"table_id\" cannot be changed on update — the server derives it from \"definition\"'s source table."
-               (tool-error (call-tool! :crowberto nil tool
+               (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool
                                        {:method "update" :id 13371337 :revision_message "x"
                                         :table_id (mt/id :venues)}))))))))
 
@@ -208,13 +209,13 @@
         (testing "create"
           (is (= (format "\"name\" cannot be blank — pass a short descriptive name for the %s."
                          (if (= "segment_write" tool) "segment" "measure"))
-                 (tool-error (call-tool! :crowberto nil tool
+                 (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool
                                          {:method     "create" :table_id (mt/id :venues)
                                           :name       "   "
                                           :definition definition})))))
         (testing "update — refused before the id lookup, so it reads as an argument error"
           (is (re-find #"\"name\" cannot be blank"
-                       (tool-error (call-tool! :crowberto nil tool
+                       (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool
                                                {:method           "update" :id 13371337
                                                 :name             "   "
                                                 :revision_message "x"})))))))))
@@ -223,7 +224,7 @@
   (testing "GHY-4137: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
     (is (= (str "Invalid id \"abc\" — pass the positive numeric id, or the 21-character entity_id from a search "
                 "or list result.")
-           (tool-error (call-tool! :crowberto nil "segment_write"
+           (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                    {:method "update" :id "abc" :revision_message "x"}))))))
 
 ;;; ---------------------------------------------- segment_write ---------------------------------------------------
@@ -322,11 +323,11 @@
 (deftest segment-cycle-teaching-error-test
   (mt/with-model-cleanup [:model/Segment :model/Revision]
     (testing "GHY-4137: a self-referencing definition surfaces the cycle as a teaching error, not an internal error"
-      (let [{:keys [id]} (tool-result (call-tool! :crowberto nil "segment_write"
+      (let [{:keys [id]} (tool-result (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                                   {:method "create" :table_id (mt/id :venues)
                                                    :name "definitions-test cycle segment"
                                                    :definition mbql4-fragment}))
-            msg          (tool-error (call-tool! :crowberto nil "segment_write"
+            msg          (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                                  {:method "update" :id id :revision_message "cycle"
                                                   :definition {:filter ["segment" id]}}))]
         (is (re-find #"cycle detected" msg))
@@ -377,14 +378,14 @@
                 "full-query shape — never a silent conversion, and never version talk the agent can't act on")
     (let [shape-sentence #"\"lib/type\": \"mbql/query\""]
       (testing "a bare aggregation fragment"
-        (let [msg (tool-error (call-tool! :crowberto nil "measure_write"
+        (let [msg (tool-error (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                           {:method "create" :table_id (mt/id :venues) :name "m"
                                            :definition {:aggregation [["count"]]}}))]
           (is (re-find shape-sentence msg))
           (is (not (re-find #"MBQL \d" msg)))))
       (testing "a legacy full query — rejected even though it names a source table"
         (is (re-find shape-sentence
-                     (tool-error (call-tool! :crowberto nil "measure_write"
+                     (tool-error (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                              {:method "create" :table_id (mt/id :venues) :name "m"
                                               :definition {:database (mt/id)
                                                            :type     "query"
@@ -396,7 +397,7 @@
                                                         :creator_id (mt/user->id :crowberto)
                                                         :definition {}}]
           (is (re-find shape-sentence
-                       (tool-error (call-tool! :crowberto nil "measure_write"
+                       (tool-error (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                                {:method "update" :id measure-id :revision_message "x"
                                                 :definition {:aggregation [["count"]]}})))))))))
 
@@ -406,7 +407,7 @@
 (deftest segment-definition-round-trip-test
   (testing "GHY-4153: get_content's `definition` feeds straight back into segment_write, as its description promises"
     (mt/with-model-cleanup [:model/Segment :model/Revision]
-      (let [created  (tool-result (call-tool! :crowberto nil "segment_write"
+      (let [created  (tool-result (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                               {:method "create" :table_id (mt/id :venues)
                                                :name "definitions-test round-trip segment"
                                                :definition (venues-filter-definition)}))
@@ -414,7 +415,7 @@
         (testing "the read is the bare clause form — an array of filter clauses, not a query map"
           (is (vector? read-back))
           (is (= "=" (ffirst read-back))))
-        (let [updated (tool-result (call-tool! :crowberto nil "segment_write"
+        (let [updated (tool-result (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                                {:method "update" :id (:id created)
                                                 :definition (wire read-back)
                                                 :revision_message "round-trip the read definition"}))]
@@ -429,7 +430,7 @@
 (deftest measure-definition-round-trip-test
   (testing "GHY-4154: get_content's `definition` feeds straight back into measure_write"
     (mt/with-model-cleanup [:model/Measure :model/Revision]
-      (let [created   (tool-result (call-tool! :crowberto nil "measure_write"
+      (let [created   (tool-result (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                                {:method "create" :table_id (mt/id :venues)
                                                 :name "definitions-test round-trip measure"
                                                 :definition (venues-count-definition)}))
@@ -438,7 +439,7 @@
           (is (vector? read-back))
           (is (= 1 (count read-back)))
           (is (= "count" (ffirst read-back))))
-        (let [updated (tool-result (call-tool! :crowberto nil "measure_write"
+        (let [updated (tool-result (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                                {:method "update" :id (:id created)
                                                 :definition (wire read-back)
                                                 :revision_message "round-trip the read definition"}))]
@@ -448,7 +449,7 @@
                  (without-uuids (read-definition! "measure" (:id created))))
               "the stored definition reads back identically after the round-trip"))
         (testing "the bare clause is accepted too, not only the one-element array get_content emits"
-          (let [updated (tool-result (call-tool! :crowberto nil "measure_write"
+          (let [updated (tool-result (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                                  {:method "update" :id (:id created)
                                                   :definition (wire (first read-back))
                                                   :revision_message "bare clause"}))]
@@ -459,11 +460,11 @@
   (testing "GHY-4153/GHY-4154: create accepts the clause form, reassembling it onto table_id"
     (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
       (let [field-ref ["field" {} (venues-fk "PRICE")]
-            segment   (tool-result (call-tool! :crowberto nil "segment_write"
+            segment   (tool-result (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                                {:method "create" :table_id (mt/id :venues)
                                                 :name "definitions-test clause-form segment"
                                                 :definition (wire [["=" {} field-ref 3]])}))
-            measure   (tool-result (call-tool! :crowberto nil "measure_write"
+            measure   (tool-result (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                                {:method "create" :table_id (mt/id :venues)
                                                 :name "definitions-test clause-form measure"
                                                 :definition (wire [["count" {}]])}))]
@@ -477,7 +478,7 @@
   (testing "GHY-4153: a full query in the external dialect — what execute_query takes — is accepted as a definition"
     (mt/with-model-cleanup [:model/Segment :model/Revision]
       (let [created (tool-result
-                     (call-tool! :crowberto nil "segment_write"
+                     (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                  {:method "create" :table_id (mt/id :venues)
                                   :name "definitions-test portable segment"
                                   :definition (wire {:lib/type "mbql/query"
@@ -493,14 +494,14 @@
   (testing "GHY-4153/GHY-4154: a full-query definition whose source table differs from table_id is a teaching error,
             not silent"
     (testing "segment"
-      (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
+      (let [msg (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                         {:method "create" :table_id (mt/id :checkins)
                                          :name "definitions-test mismatch segment"
                                          :definition (venues-filter-definition)}))]
         (is (re-find #"must be the same table" msg))
         (is (not= "Internal error" msg))))
     (testing "measure"
-      (let [msg (tool-error (call-tool! :crowberto nil "measure_write"
+      (let [msg (tool-error (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                         {:method "create" :table_id (mt/id :checkins)
                                          :name "definitions-test mismatch measure"
                                          :definition (venues-count-definition)}))]
@@ -513,7 +514,7 @@
   (testing "GHY-4137: an invalid `definition` comes back as a teaching error stating the rules a definition
             must satisfy — never \"Internal error\" or a generic placeholder"
     (testing "a segment definition with an aggregation"
-      (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
+      (let [msg (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                         {:method "create" :table_id (mt/id :venues)
                                          :name "definitions-test agg segment"
                                          :definition {:database (mt/id)
@@ -528,14 +529,14 @@
     (testing "a measure definition with two aggregations"
       (let [definition (update-in (count-definition (mt/id :venues)) [:stages 0 :aggregation]
                                   conj ["count" {}])
-            msg        (tool-error (call-tool! :crowberto nil "measure_write"
+            msg        (tool-error (call-tool! :crowberto mcp.tu/all-scopes "measure_write"
                                                {:method "create" :table_id (mt/id :venues)
                                                 :name "definitions-test two aggs"
                                                 :definition definition}))]
         (is (str/includes? msg "A measure definition's stages must be measure stages"))
         (is (not= "Internal error" msg))))
     (testing "a definition that fails MBQL normalization outright — the models would silently store {} for it"
-      (is (str/includes? (tool-error (call-tool! :crowberto nil "segment_write"
+      (is (str/includes? (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                                  {:method "create" :table_id (mt/id :venues)
                                                   :name "definitions-test garbage"
                                                   :definition {:database 0 :type "query" :query {:source-table 0}}}))
@@ -546,21 +547,21 @@
     (doseq [[tool definition] {"segment_write" {:database 0 :type "query" :query {:source-table 0}}
                                "measure_write" {:not "a query"}}]
       (testing tool
-        (let [msg (tool-error (call-tool! :crowberto nil tool
+        (let [msg (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool
                                           {:method "create" :table_id (mt/id :venues)
                                            :name "definitions-test bad shape" :definition definition}))]
           (is (str/includes? msg "bare clause form"))
           (is (str/includes? msg "full single-stage"))
           (is (not= "Internal error" msg)))))
     (testing "an unresolvable clause array is a teaching error naming both shapes, not an internal error"
-      (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
+      (let [msg (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                         {:method "create" :table_id (mt/id :venues)
                                          :name "definitions-test bad clauses"
                                          :definition [["nonsense-operator" {} 1]]}))]
         (is (str/includes? msg "bare clause form"))
         (is (not= "Internal error" msg))))
     (testing "a scalar definition never reaches the handler — the schema rejects both accepted shapes' negation"
-      (is (str/starts-with? (tool-error (call-tool! :crowberto nil "segment_write"
+      (is (str/starts-with? (tool-error (call-tool! :crowberto mcp.tu/all-scopes "segment_write"
                                                     {:method "create" :table_id (mt/id :venues)
                                                      :name "x" :definition "not a definition"}))
                             "Invalid arguments")))))
@@ -643,14 +644,14 @@
       (doseq [[tool model definition] [["segment_write" :model/Segment mbql4-fragment]
                                        ["measure_write" :model/Measure (count-definition (mt/id :venues))]]]
         (testing tool
-          (let [created (tool-result (call-tool! :crowberto nil tool
+          (let [created (tool-result (call-tool! :crowberto mcp.tu/all-scopes tool
                                                  {:method      "create" :table_id (mt/id :venues)
                                                   :name        (str "definitions-test clear " tool)
                                                   :description "set at creation"
                                                   :definition  definition}))]
             (is (= "set at creation" (:description created)))
             (testing "clear nulls the column"
-              (let [updated (tool-result (call-tool! :crowberto nil tool
+              (let [updated (tool-result (call-tool! :crowberto mcp.tu/all-scopes tool
                                                      {:method           "update" :id (:id created)
                                                       :clear            ["description"]
                                                       :revision_message "drop the description"}))]
@@ -661,7 +662,7 @@
             (testing "a property this tool doesn't declare clearable is refused at the schema
                       boundary — `clear`'s enum admits only the clearable names, so `expand-clear`'s
                       own \"can't be cleared\" message is unreachable for these two tools"
-              (let [msg (tool-error (call-tool! :crowberto nil tool
+              (let [msg (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool
                                                 {:method           "update" :id (:id created)
                                                  :clear            ["name"]
                                                  :revision_message "x"}))]
@@ -692,29 +693,29 @@
           (mt/when-ee-evailable
            (mt/with-premium-features #{:advanced-permissions}
              (testing "GHY-4137: not admin-only — a data analyst with unrestricted view-data creates both"
-               (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id nil "segment_write" segment-args))))
-               (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id nil "measure_write" measure-args)))))))
+               (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id mcp.tu/all-scopes "segment_write" segment-args))))
+               (is (=? {:id pos-int?} (tool-result (call-tool! analyst-id mcp.tu/all-scopes "measure_write" measure-args)))))))
           (mt/with-premium-features #{}
             (testing "without advanced-permissions the same data analyst is refused"
               (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! analyst-id nil "segment_write"
+                     (tool-error (call-tool! analyst-id mcp.tu/all-scopes "segment_write"
                                              (assoc segment-args :name "definitions-test gated segment")))))
               (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! analyst-id nil "measure_write"
+                     (tool-error (call-tool! analyst-id mcp.tu/all-scopes "measure_write"
                                              (assoc measure-args :name "definitions-test gated measure")))))))
           (mt/with-premium-features #{:advanced-permissions}
             (testing "GHY-4137: the same table grants without the data-analyst role are a permission denial, not a
                       not-found"
               (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! plain-id nil "segment_write"
+                     (tool-error (call-tool! plain-id mcp.tu/all-scopes "segment_write"
                                              (assoc segment-args :name "definitions-test denied segment")))))
               (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! plain-id nil "measure_write"
+                     (tool-error (call-tool! plain-id mcp.tu/all-scopes "measure_write"
                                              (assoc measure-args :name "definitions-test denied measure"))))))
             (testing "GHY-4137: a data analyst without unrestricted view-data is denied — data analysts always read
                       table metadata, so the table resolves and the domain permission check refuses the write"
               (is (= "\"You don't have permissions to do that.\""
-                     (tool-error (call-tool! blind-analyst-id nil "segment_write"
+                     (tool-error (call-tool! blind-analyst-id mcp.tu/all-scopes "segment_write"
                                              (assoc segment-args :name "definitions-test blind segment"))))))))))))
 
 ;; not ^:parallel: with-no-data-perms-for-all-users! rewrites global data perms, and rows are
@@ -742,17 +743,17 @@
                            analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :venues))))
                (is (false? (perms/user-has-permission-for-table?
                             analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :checkins)))))
-             (let [segment (tool-result (call-tool! analyst-id nil "segment_write"
+             (let [segment (tool-result (call-tool! analyst-id mcp.tu/all-scopes "segment_write"
                                                     {:method     "create" :table_id (mt/id :venues)
                                                      :name       "definitions-test move segment"
                                                      :definition mbql4-fragment}))
-                   measure (tool-result (call-tool! analyst-id nil "measure_write"
+                   measure (tool-result (call-tool! analyst-id mcp.tu/all-scopes "measure_write"
                                                     {:method     "create" :table_id (mt/id :venues)
                                                      :name       "definitions-test move measure"
                                                      :definition (count-definition (mt/id :venues))}))]
                (testing "segment"
                  (is (= "\"You don't have permissions to do that.\""
-                        (tool-error (call-tool! analyst-id nil "segment_write"
+                        (tool-error (call-tool! analyst-id mcp.tu/all-scopes "segment_write"
                                                 {:method           "update" :id (:id segment)
                                                  :definition       (filter-definition :checkins :venue_id)
                                                  :revision_message "move to checkins"}))))
@@ -761,7 +762,7 @@
                           (t2/select-one-fn :table_id :model/Segment :id (:id segment))))))
                (testing "measure"
                  (is (= "\"You don't have permissions to do that.\""
-                        (tool-error (call-tool! analyst-id nil "measure_write"
+                        (tool-error (call-tool! analyst-id mcp.tu/all-scopes "measure_write"
                                                 {:method           "update" :id (:id measure)
                                                  :definition       (count-definition (mt/id :checkins))
                                                  :revision_message "move to checkins"}))))
@@ -782,19 +783,19 @@
     (let [norm (fn [msg] (str/replace msg #"\d+" "N"))]
       (testing "GHY-4137: an unreadable id and a nonexistent id must be indistinguishable — no existence oracle"
         (testing "segment update"
-          (is (= (norm (tool-error (call-tool! :rasta nil "segment_write"
+          (is (= (norm (tool-error (call-tool! :rasta mcp.tu/all-scopes "segment_write"
                                                {:method "update" :id segment-id :revision_message "x"})))
-                 (norm (tool-error (call-tool! :rasta nil "segment_write"
+                 (norm (tool-error (call-tool! :rasta mcp.tu/all-scopes "segment_write"
                                                {:method "update" :id 13371337 :revision_message "x"}))))))
         (testing "measure update"
-          (is (= (norm (tool-error (call-tool! :rasta nil "measure_write"
+          (is (= (norm (tool-error (call-tool! :rasta mcp.tu/all-scopes "measure_write"
                                                {:method "update" :id measure-id :revision_message "x"})))
-                 (norm (tool-error (call-tool! :rasta nil "measure_write"
+                 (norm (tool-error (call-tool! :rasta mcp.tu/all-scopes "measure_write"
                                                {:method "update" :id 13371337 :revision_message "x"}))))))
         (testing "create against an unreadable vs nonexistent table"
           (let [args {:method "create" :name "definitions-test oracle" :definition mbql4-fragment}]
-            (is (= (norm (tool-error (call-tool! :rasta nil "segment_write" (assoc args :table_id table-id))))
-                   (norm (tool-error (call-tool! :rasta nil "segment_write" (assoc args :table_id 13371337))))))))))))
+            (is (= (norm (tool-error (call-tool! :rasta mcp.tu/all-scopes "segment_write" (assoc args :table_id table-id))))
+                   (norm (tool-error (call-tool! :rasta mcp.tu/all-scopes "segment_write" (assoc args :table_id 13371337))))))))))))
 
 ;;; ------------------------------------------------ Redaction -----------------------------------------------------
 
@@ -808,7 +809,7 @@
                                 (fn [_] (throw (java.sql.SQLException. "relation \"secret_accounts\" does not exist")))]
       (doseq [[tool definition] {"segment_write" mbql4-fragment
                                  "measure_write" (count-definition (mt/id :venues))}]
-        (let [msg (tool-error (call-tool! :crowberto nil tool
+        (let [msg (tool-error (call-tool! :crowberto mcp.tu/all-scopes tool
                                           {:method "create" :table_id (mt/id :venues)
                                            :name "definitions-test redaction" :definition definition}))]
           (is (= "Internal error" msg))

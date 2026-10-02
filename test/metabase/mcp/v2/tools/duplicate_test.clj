@@ -8,6 +8,7 @@
    [metabase.documents.test-util :as documents.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -32,7 +33,7 @@
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
 (defn- call-tool!
-  ([user args] (call-tool! user nil args))
+  ([user args] (call-tool! user mcp.tu/all-scopes args))
   ([user scopes args]
    (mt/with-current-user (mt/user->id user)
      (registry/call-tool scopes nil "duplicate_content" args))))
@@ -89,7 +90,7 @@
           (mt/with-current-user (mt/user->id :crowberto)
             ;; Inside, because binding the current user rebinds the locale to the user's own.
             (mt/with-user-locale "de"
-              (let [result (tool-result (registry/call-tool nil nil "duplicate_content"
+              (let [result (tool-result (registry/call-tool mcp.tu/all-scopes nil "duplicate_content"
                                                             {:type "question" :id card-id}))]
                 (is (= "Kopie von Umsatz" (:name result)))
                 (is (= "Kopie von Umsatz" (t2/select-one-fn :name :model/Card :id (:id result))))))))))))

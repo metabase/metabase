@@ -381,6 +381,11 @@
                 challenge for it"
         (is (= {:status :scope-denied :required-scope "agent:content:read"}
                (v2.resources/read-resource v2.resources/fields-catalog-uri #{"agent:query:run"} {}))))
+      (testing "nil token-scopes hold no scope, so a data resource read with none is denied, and a shell read with
+                none mints no credential"
+        (is (= {:status :scope-denied :required-scope "agent:content:read"}
+               (v2.resources/read-resource v2.resources/fields-catalog-uri nil {})))
+        (is (false? (:minted? (read-with v2.resources/visualize-query-uri nil)))))
       (testing "the fields catalog reads with agent:content:read, and a data resource mints no credential"
         (let [{:keys [status minted?]} (read-with v2.resources/fields-catalog-uri #{"agent:content:read"})]
           (is (= :ok status))
