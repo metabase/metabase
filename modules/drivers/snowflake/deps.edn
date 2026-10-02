@@ -15,6 +15,9 @@
                                                    ;; (read-only SQL driver). Excluding the Netty transport removes
                                                    ;; the entire reactor-netty + transitive Netty 4.1.x chain.
                                                    com.azure/azure-core-http-netty
+                                                   ;; declared directly by snowflake-jdbc-thin since 4.3.x, but only
+                                                   ;; its Azure stage client uses it, with the transport excluded above.
+                                                   io.projectreactor.netty/reactor-netty-core
                                                    ;; pinned in and resolved from /deps.edn
                                                    com.fasterxml.jackson.core/jackson-core
                                                    com.fasterxml.jackson.core/jackson-databind
