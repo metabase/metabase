@@ -222,5 +222,5 @@
 (comment
   (require '[metabase.api.macros])
 
-  (open-api-spec (metabase.api.macros/ns-handler 'metabase.geojson.api) "/api/geojson")
+  (open-api-spec (metabase.api.macros/ns-handler 'metabase.geojson.rest.api) "/api/geojson")
   (root-open-api-object (requiring-resolve 'metabase.api-routes.core/routes)))

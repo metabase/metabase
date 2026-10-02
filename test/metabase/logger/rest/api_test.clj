@@ -1,4 +1,4 @@
-(ns metabase.logger.api-test
+(ns metabase.logger.rest.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]

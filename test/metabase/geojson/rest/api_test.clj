@@ -1,9 +1,9 @@
-(ns metabase.geojson.api-test
+(ns metabase.geojson.rest.api-test
   (:require
    [clj-http.fake :as fake]
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
-   [metabase.geojson.api :as api.geojson]
+   [metabase.geojson.core :as geojson.core]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -157,7 +157,7 @@
 (deftest url-proxy-endpoint-non-responding-server-test
   (testing "a loopback URL is refused by the connection-time SSRF resolver, returning a good error
            immediately instead of hanging on a server that accepts a connection but never responds"
-    (with-redefs [api.geojson/connection-timeout-ms 200]
+    (with-redefs [geojson.core/connection-timeout-ms 200]
       ;; a webserver which accepts a connection and never responds -- the case that used to hang for 45s.
       ;; We never even connect now: `localhost` resolves to loopback, which the resolver refuses.
       (with-open [server (non-responding-server)]
@@ -192,21 +192,21 @@
 
 (deftest region-geojson-test
   (testing "built-in regions resolve from the classpath without a network fetch"
-    (let [us (api.geojson/region-geojson "us_states")]
+    (let [us (geojson.core/region-geojson "us_states")]
       (is (= "STATE" (:region_key us)))
       (is (pos? (count (get-in us [:data "features"]))))))
   (testing "unknown / nil regions resolve to nil"
-    (is (nil? (api.geojson/region-geojson "not-a-real-region")))
-    (is (nil? (api.geojson/region-geojson nil))))
+    (is (nil? (geojson.core/region-geojson "not-a-real-region")))
+    (is (nil? (geojson.core/region-geojson nil))))
   (with-geojson-mocks
     (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
-      (memoize/memo-clear! @#'api.geojson/fetch-geojson-data)
+      (memoize/memo-clear! @#'geojson.core/fetch-geojson-data)
       (testing "user-defined custom maps are fetched and parsed"
-        (is (= "Point" (get-in (api.geojson/region-geojson "middle-earth") [:data "type"]))))
-      (memoize/memo-clear! @#'api.geojson/fetch-geojson-data)
+        (is (= "Point" (get-in (geojson.core/region-geojson "middle-earth") [:data "type"]))))
+      (memoize/memo-clear! @#'geojson.core/fetch-geojson-data)
       (testing "returns nil when custom GeoJSON is disabled"
         (mt/with-temp-env-var-value! [mb-custom-geojson-enabled false]
-          (is (nil? (api.geojson/region-geojson "middle-earth"))))))))
+          (is (nil? (geojson.core/region-geojson "middle-earth"))))))))
 
 (deftest disable-custom-geojson-test
   (testing "Should be able to disable GeoJSON proxying endpoints by env var"

@@ -1,4 +1,4 @@
-(ns metabase.logger.api
+(ns metabase.logger.rest.api
   "/api/logger endpoints"
   (:require
    [clojure.string :as str]
