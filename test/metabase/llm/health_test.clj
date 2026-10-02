@@ -31,11 +31,17 @@
 (deftest record-exception-classifies-by-status-test
   (testing "a 4xx the provider will keep rejecting is fatal"
     (llm.health/record-exception! "classified-rejected" (ex-info "invalid x-api-key" {:status 401}))
-    (is (= {:message "invalid x-api-key" :fatal? true :status 401} (recorded "classified-rejected"))))
-  (testing "a rate limit or an outage is transient — retrying it can work"
+    (is (= {:message "invalid x-api-key" :fatal? true :status 401} (recorded "classified-rejected")))
+    (llm.health/record-exception! "classified-missing-model" (ex-info "model not found" {:status 404}))
+    (is (true? (:fatal? (llm.health/failure "classified-missing-model")))))
+  (testing "a 4xx that rejects the one request says nothing about the connection and is not recorded"
+    (llm.health/record-exception! "classified-too-long"
+                                  (ex-info "Anthropic API error (HTTP 400) — prompt is too long" {:status 400}))
+    (is (true? (llm.health/healthy? "classified-too-long"))
+        "a conversation outgrowing the context window must not take the connection away from everybody else")
     (llm.health/record-exception! "classified-oversized" (ex-info "request too large" {:status 413}))
-    (is (false? (:fatal? (llm.health/failure "classified-oversized")))
-        "413 is about the one request that was too large, not the connection")
+    (is (true? (llm.health/healthy? "classified-oversized"))))
+  (testing "a rate limit or an outage is transient — retrying it can work"
     (llm.health/record-exception! "classified-throttled" (ex-info "rate limited" {:status 429}))
     (is (false? (:fatal? (llm.health/failure "classified-throttled"))))
     (llm.health/record-exception! "classified-down" (ex-info "bad gateway" {:status 502}))
