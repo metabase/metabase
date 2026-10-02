@@ -364,7 +364,7 @@
     ;; serves whatever the operator pulled, so a new connection takes its model from the catalog
     ;; that connecting fetches (see [[metabase.metabot.self.ollama/list-models]])
     :default-model nil
-    ;; the coarse rule, which the connection form reads; `:validate` below is the exact one
+    ;; the coarse rule; `:validate` below is the exact one
     :required-any  [[:base-url] [:api-key]]
     :validate
     (fn [{:keys [hosting api-key base-url]}]
