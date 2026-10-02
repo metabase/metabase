@@ -1,5 +1,24 @@
 const { H } = cy;
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+import type { GroupListQuery } from "metabase-types/api";
+
+import { groupMappingCardHelpers } from "./shared/group-mapping-card";
+
+const { ADMIN_GROUP, NOSQL_GROUP, READONLY_GROUP } = USER_GROUPS;
+
+const {
+  groupMappingSection,
+  mappingRow,
+  newMappingButton,
+  groupsPicker,
+  addMapping,
+  deleteMapping,
+} = groupMappingCardHelpers({
+  sectionTestId: "jwt-group-schema",
+  nameLabel: "JWT group name",
+  newMappingLabel: "New mapping",
+});
 
 describe("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
@@ -118,6 +137,12 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
         "Remove mapping and delete groups",
       );
       cy.wait(["@deleteGroup", "@deleteGroup"]);
+      cy.wait("@updateSettings")
+        .its("request.body.jwt-group-mappings")
+        .should("deep.equal", {
+          "cn=People1": [ADMIN_GROUP, NOSQL_GROUP],
+          "cn=People3": [READONLY_GROUP],
+        });
       mappingRow("cn=People1").should("contain", "Administrators, nosql");
       mappingRow("cn=People3")
         .should("contain", "readonly")
@@ -160,16 +185,18 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
         .should("be.checked");
 
       cy.log("Deleted groups are gone and cleared groups have no members");
-      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
-        const names = groups.map((group) => group.name);
-        expect(names).to.include.members(["nosql", "readonly"]);
-        expect(names).not.to.include("data");
-        expect(names).not.to.include("collection");
-        const memberCount = (name) =>
-          groups.find((group) => group.name === name).member_count;
-        expect(memberCount("nosql")).to.equal(0);
-        expect(memberCount("readonly")).to.equal(0);
-      });
+      cy.request<GroupListQuery[]>("GET", "/api/permissions/group").then(
+        ({ body: groups }) => {
+          const names = groups.map((group) => group.name);
+          expect(names).to.include.members(["nosql", "readonly"]);
+          expect(names).not.to.include("data");
+          expect(names).not.to.include("collection");
+          const memberCount = (name: string) =>
+            groups.find((group) => group.name === name)?.member_count;
+          expect(memberCount("nosql")).to.equal(0);
+          expect(memberCount("readonly")).to.equal(0);
+        },
+      );
 
       cy.log(
         "Switching to automatic asks for confirmation and deletes the mappings",
@@ -211,40 +238,11 @@ const getJwtCard = () => {
     .parent();
 };
 
-const groupMappingSection = () => cy.findByTestId("jwt-group-schema");
-
-const mappingRow = (name) =>
-  cy.contains('[data-testid="jwt-group-mapping-row"]', name);
-
-const newMappingButton = () => cy.button("New mapping");
-
-const groupsPicker = () => cy.findByLabelText("Metabase groups");
-
 // the segmented control keeps its radio inputs hidden, so the visible label takes the click
-const selectGroupMappingMode = (mode) => {
-  groupMappingSection().findByText(mode).click();
-};
-
-// adding a mapping saves it right away, so wait for that write before moving on
-const addMapping = (name, groups) => {
-  newMappingButton().click();
-  cy.findByLabelText("JWT group name").type(name);
-  groupsPicker().click();
-  groups.forEach((group) => {
-    cy.findByRole("option", { name: group }).click();
-  });
-  cy.button("Add mapping").click();
-  cy.wait("@updateSettings");
-  mappingRow(name).should("contain", groups.join(", "));
-};
-
-const deleteMapping = (name, consequenceLabel, confirmLabel) => {
-  mappingRow(name).findByLabelText("Delete mapping").click();
-  H.modal().within(() => {
-    cy.findByText("Remove this group mapping?").should("be.visible");
-    cy.findByText(consequenceLabel).click();
-    cy.button(confirmLabel).click();
-  });
-  cy.wait("@updateSettings");
-  mappingRow(name).should("not.exist");
+const selectGroupMappingMode = (mode: string) => {
+  // a click during a write is ignored, so wait for the control to be free first
+  groupMappingSection()
+    .contains("label", mode)
+    .should("not.have.attr", "data-read-only");
+  groupMappingSection().contains("label", mode).click();
 };

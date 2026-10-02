@@ -13,7 +13,7 @@
     margin-bottom: 0;
   }
 
-  &:has(input:disabled) {
+  &:has(input:disabled, input[aria-disabled="true"]) {
     .label,
     .description {
       color: var(--mb-color-text-disabled);
@@ -61,7 +61,8 @@
     background-color: var(--mb-color-switch-checked);
   }
 
-  input:disabled + & {
+  input:disabled + &,
+  input[aria-disabled="true"] + & {
     background-color: var(--mb-color-switch-disabled);
     border-color: transparent;
     cursor: not-allowed;
@@ -72,7 +73,8 @@
   background-color: var(--mb-color-core-white_constant);
   box-shadow: var(--mantine-shadow-sm_outline);
 
-  input:disabled + * > & {
+  input:disabled + * > &,
+  input[aria-disabled="true"] + * > & {
     background-color: var(--mb-color-switch_thumb-disabled);
     box-shadow: none;
   }
