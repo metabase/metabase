@@ -746,6 +746,8 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
   [_ {:keys [host port db dbname], :as opts}]
+  (sql-jdbc.common/check-file-path-parameters!
+   opts #{"sslcert" "sslkey" "sslrootcert" "ssltruststorepath" "inifile"} driver-api/ensure-readable-path!)
   (when (and db dbname)
     (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options

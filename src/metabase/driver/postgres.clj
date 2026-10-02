@@ -1031,6 +1031,8 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
   [_ {ssl? :ssl, :keys [auth-provider], :as details-map}]
+  (sql-jdbc.common/check-file-path-parameters!
+   details-map #{"sslrootcert" "sslcert" "sslkey" "service"} driver-api/ensure-readable-path!)
   (let [use-iam? (= (some-> auth-provider keyword) :aws-iam)
         props (-> details-map
                   (update :port (fn [port]

@@ -11,6 +11,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(sql-jdbc.conn/connection-details->spec :vertica (merge {:host "h" :port 5433 :db "db"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:keystorepath "/etc/secret.pem"}))))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (map? (spec {:keystorepath "/allowed-dir/ok.pem"})))
+          (is (map? (spec {}))))))))
+
 (deftest db-timezone-test
   (mt/test-driver :vertica
     (is (= "UTC"

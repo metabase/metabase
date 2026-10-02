@@ -155,6 +155,8 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
+  (sql-jdbc.common/check-file-path-parameters!
+   details #{"sslrootcert" "sslcert" "ssl_key" "trust_store" "ssl_key_store"} driver-api/ensure-readable-path!)
   (let [;; ensure defaults merge on top of nils
         details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details

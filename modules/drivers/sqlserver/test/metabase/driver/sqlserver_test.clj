@@ -41,6 +41,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(sql-jdbc.conn/connection-details->spec :sqlserver (merge {:host "h" :port 1433 :db "db"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:trustStore "/etc/secret.pem"}))))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (map? (spec {:trustStore "/allowed-dir/ok.pem"})))
+          (is (map? (spec {}))))))))
+
 (deftest default-schema-test
   (mt/test-driver :sqlserver
     (is (= "dbo"

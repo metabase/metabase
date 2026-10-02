@@ -10,6 +10,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
@@ -270,8 +271,11 @@
     (str/replace-first additional-options #"^(?!;)" ";")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
-  [_driver {:keys [catalog host http-path use-m2m token client-id oauth-secret log-level additional-options] :as _details}]
+  [_driver {:keys [catalog host http-path use-m2m token client-id oauth-secret log-level additional-options] :as details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
+  (sql-jdbc.common/check-file-path-parameters!
+   details #{"SSLTrustStore" "SSLKeyStore" "Auth_JWT_Key_File" "GoogleCredentialsFile"}
+   driver-api/ensure-readable-path! :semicolon)
   (let [base-spec
         {:classname      "com.databricks.client.jdbc.Driver"
          :subprotocol    "databricks"

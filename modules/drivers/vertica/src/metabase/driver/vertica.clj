@@ -83,6 +83,8 @@
   [_ {:keys [host port db dbname]
       :or   {host "localhost", port 5433, db ""}
       :as   details}]
+  (sql-jdbc.common/check-file-path-parameters!
+   details #{"keystorepath" "truststorepath" "oauthtruststorepath"} driver-api/ensure-readable-path!)
   (-> (merge {:classname   "com.vertica.jdbc.Driver"
               :subprotocol "vertica"
               :subname     (str "//" host ":" port "/" (or dbname db))}

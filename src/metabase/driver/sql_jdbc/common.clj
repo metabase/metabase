@@ -169,3 +169,21 @@
           cat
           [(keep #(parameter-host declared? true %) (connection-string-parameters connection-string))
            (keep #(parameter-host declared? false %) (filter (comp string? val) extra-parameters))])))
+
+(defn check-file-path-parameters!
+  "Run `check-fn` over the value of every connection parameter named in `path-param-names` (a set, matched
+  case-insensitively) that `details` supplies -- as a detail key or in `:additional-options` -- so a driver can
+  reject, for example, a certificate path outside the configured readable paths. `check-fn` is called for its side
+  effect (it typically throws on a disallowed path). `separator-style` is this driver's `:additional-options` style
+  (see [[handle-additional-options]]), defaulting to `:url`. Returns `details`.
+
+  Reads what the user supplied, not a built connection spec, so paths Metabase sets itself (an uploaded secret written
+  to a temp file) are not checked here -- those are guarded where Metabase reads them."
+  [details path-param-names check-fn & [separator-style]]
+  (let [names    (into #{} (map u/lower-case-en) path-param-names)
+        from-opts (additional-options->map (:additional-options details) (or separator-style :url) "=" true)
+        from-keys (map (fn [[k v]] [(u/lower-case-en (name k)) v]) details)]
+    (doseq [[k v] (concat from-opts from-keys)
+            :when (and (contains? names k) (string? v) (not (str/blank? v)))]
+      (check-fn v)))
+  details)

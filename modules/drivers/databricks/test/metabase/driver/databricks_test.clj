@@ -47,6 +47,17 @@
     (mt/db)))
 
 ;; Because the datasets that are tested are preloaded, it is fine just to modify the database details to sync other schemas.
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(sql-jdbc.conn/connection-details->spec :databricks (merge {:catalog "c" :host "h" :http-path "/x" :token "t"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:SSLTrustStore "/etc/secret.pem"}))))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (map? (spec {:SSLTrustStore "/allowed-dir/ok.pem"})))
+          (is (map? (spec {}))))))))
+
 (deftest ^:parallel sync-test
   (with-and-without-multi-level
     (mt/test-driver :databricks

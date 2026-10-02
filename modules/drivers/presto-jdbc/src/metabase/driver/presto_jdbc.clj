@@ -537,6 +537,8 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :presto-jdbc
   [_ details-map]
+  (sql-jdbc.common/check-file-path-parameters!
+   details-map #{"SSLKeyStorePath" "SSLTrustStorePath"} driver-api/ensure-readable-path!)
   (let [props (-> details-map
                   (update :port (fn [port]
                                   (if (string? port)

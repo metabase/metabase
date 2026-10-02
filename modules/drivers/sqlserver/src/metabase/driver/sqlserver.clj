@@ -231,6 +231,8 @@
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"
              auth-mode "sql"}
       :as   details}]
+  (sql-jdbc.common/check-file-path-parameters!
+   details #{"trustStore" "clientCertificate" "clientKey" "serverCertificate" "keyStoreLocation"} driver-api/ensure-readable-path! :semicolon)
   (let [base       {:applicationName    driver-api/mb-version-and-process-identifier
                     :subprotocol        "sqlserver"
                     ;; it looks like the only thing that actually needs to be passed as the `subname` is the host;

@@ -73,6 +73,21 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ssl-file-paths-must-be-readable-test
+  (testing "a user-supplied certificate path, as a detail key or in additional-options, must be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [base {:host "h" :port 5432 :dbname "db" :user "u" :ssl true}
+            spec #(sql-jdbc.conn/connection-details->spec :postgres (merge base %))]
+        (doseq [extra [{:sslrootcert "/etc/ca.pem"}
+                       {:sslcert "/etc/c.pem"}
+                       {:sslkey "/etc/k.pem"}
+                       {:additional-options "sslrootcert=/etc/ca.pem"}]]
+          (testing (pr-str extra)
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec extra)))))
+        (testing "a path inside an allowed directory, or no file path, is fine"
+          (doseq [extra [{:sslrootcert "/allowed-dir/ca.pem"} {} {:additional-options "sslmode=require"}]]
+            (is (map? (spec extra)) (pr-str extra))))))))
+
 (deftest default-schema-test
   (mt/test-driver :postgres
     (testing "default"
