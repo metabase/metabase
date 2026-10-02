@@ -9,9 +9,13 @@ import {
 
 type SetupOpts = Partial<DeleteGroupMappingModalProps>;
 
+const DEVS_DN = "cn=devs,ou=groups,dc=example,dc=org";
+
 const DEFAULT_PROPS = {
-  groupIds: [1],
+  mappingName: DEVS_DN,
+  clearedGroups: ["Engineering"],
   keptOnClear: [],
+  deletedGroups: ["Engineering"],
   keptOnDelete: [],
   onConfirm: jest.fn(),
   onHide: jest.fn(),
@@ -31,6 +35,7 @@ describe("DeleteGroupMappingModal", () => {
   it("shows options for when mapping is linked to just one group", () => {
     setup();
 
+    expect(screen.getByText(DEVS_DN)).toBeInTheDocument();
     expect(
       screen.getByText(
         "Membership of this group will no longer be synced when users log in.",
@@ -50,7 +55,10 @@ describe("DeleteGroupMappingModal", () => {
   });
 
   it("shows options for when mapping is linked to more than one group", () => {
-    setup({ groupIds: [1, 2] });
+    setup({
+      clearedGroups: ["Engineering", "Marketing"],
+      deletedGroups: ["Engineering", "Marketing"],
+    });
 
     expect(
       screen.getByText(
@@ -66,8 +74,51 @@ describe("DeleteGroupMappingModal", () => {
     expect(screen.getByText("Also delete the groups")).toBeInTheDocument();
   });
 
+  it("names the groups each option acts on", () => {
+    setup({
+      clearedGroups: ["Data Analysts", "Engineering"],
+      keptOnClear: ["Administrators"],
+      deletedGroups: ["Engineering"],
+      keptOnDelete: ["Administrators", "Data Analysts"],
+    });
+
+    expect(
+      screen.getByLabelText("Also remove all members from these groups"),
+    ).toBeEnabled();
+    expect(screen.getByText("Data Analysts, Engineering")).toBeInTheDocument();
+    expect(screen.getByLabelText("Also delete the group")).toBeEnabled();
+    expect(screen.getByText("Engineering")).toBeInTheDocument();
+  });
+
+  it("counts only the groups an option acts on", async () => {
+    setup({
+      clearedGroups: ["Engineering"],
+      keptOnClear: ["Administrators"],
+      deletedGroups: ["Engineering"],
+      keptOnDelete: ["Administrators"],
+    });
+
+    // two groups are mapped, and each option acts on one of them
+    expect(
+      screen.getByText(
+        "Membership of these groups will no longer be synced when users log in.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Also remove all members from this group"),
+    ).toBeEnabled();
+    await userEvent.click(screen.getByLabelText("Also delete the group"));
+    expect(
+      screen.getByRole("button", { name: "Remove mapping and delete group" }),
+    ).toBeInTheDocument();
+  });
+
   it("still offers clearing a built-in group that cannot be deleted", () => {
-    setup({ groupIds: [1], keptOnDelete: ["Data Analysts"] });
+    setup({
+      clearedGroups: ["Data Analysts"],
+      deletedGroups: [],
+      keptOnDelete: ["Data Analysts"],
+    });
 
     expect(
       screen.getByLabelText("Also remove all members from this group"),
@@ -80,8 +131,9 @@ describe("DeleteGroupMappingModal", () => {
 
   it("lists every built-in group a delete would leave alone", () => {
     setup({
-      groupIds: [1, 2, 3],
+      clearedGroups: ["Data Analysts", "Engineering"],
       keptOnClear: ["Administrators"],
+      deletedGroups: ["Engineering"],
       keptOnDelete: ["Administrators", "Data Analysts"],
     });
 
@@ -97,8 +149,9 @@ describe("DeleteGroupMappingModal", () => {
 
   it("offers no group options when only the Administrators group is mapped", () => {
     setup({
-      groupIds: [1],
+      clearedGroups: [],
       keptOnClear: ["Administrators"],
+      deletedGroups: [],
       keptOnDelete: ["Administrators"],
     });
 
@@ -112,7 +165,7 @@ describe("DeleteGroupMappingModal", () => {
   });
 
   it("offers no group options when no group is mapped", () => {
-    setup({ groupIds: [] });
+    setup({ clearedGroups: [], deletedGroups: [] });
 
     expect(
       screen.getByText("This mapping isn't linked to any group."),

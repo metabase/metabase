@@ -102,6 +102,9 @@ describe("createGroupLookup", () => {
 
   it("leaves every built-in group out of a delete cascade", () => {
     expect(groupLookup.actionableIds([2, 3, 4, 9], "delete")).toEqual([3]);
+    expect(groupLookup.actionableGroupNames([2, 3, 4, 9], "delete")).toEqual([
+      "foo",
+    ]);
     expect(groupLookup.keptGroupNames([2, 3, 4], "delete")).toEqual([
       "Administrators",
       "Data Analysts",
@@ -112,6 +115,9 @@ describe("createGroupLookup", () => {
     expect(groupLookup.actionableIds([1, 2, 3, 4, 5, 9], "clear")).toEqual([
       3, 4,
     ]);
+    expect(
+      groupLookup.actionableGroupNames([1, 2, 3, 4, 5, 9], "clear"),
+    ).toEqual(["foo", "Data Analysts"]);
     expect(groupLookup.keptGroupNames([1, 2, 3, 4, 5], "clear")).toEqual([
       "All Users",
       "Administrators",

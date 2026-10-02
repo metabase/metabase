@@ -91,6 +91,13 @@ export function createGroupLookup(
         const group = groupsById.get(groupId);
         return group != null && !isKeptBy(value, group);
       }),
+    actionableGroupNames: (groupIds: GroupId[], value: CascadeValue) =>
+      groupIds.flatMap((groupId) => {
+        const group = groupsById.get(groupId);
+        return group != null && !isKeptBy(value, group)
+          ? [getGroupNameLocalized(group)]
+          : [];
+      }),
     keptGroupNames: (groupIds: GroupId[], value: CascadeValue) =>
       groupIds.flatMap((groupId) => {
         const group = groupsById.get(groupId);

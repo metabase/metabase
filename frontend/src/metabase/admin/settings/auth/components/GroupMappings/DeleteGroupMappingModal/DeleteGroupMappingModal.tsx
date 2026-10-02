@@ -4,14 +4,19 @@ import { t } from "ttag";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
-import type { GroupId } from "metabase-types/api";
 
+import S from "../GroupMappings.module.css";
 import type { DeleteMappingModalValueType } from "../types";
 
 export type DeleteGroupMappingModalProps = {
-  groupIds: GroupId[];
+  // the mapping being removed, shown above the lead text
+  mappingName: string;
+  // names of the mapped groups that clearing empties
+  clearedGroups: string[];
   // names of the mapped groups that clearing leaves alone
   keptOnClear: string[];
+  // names of the mapped groups that deleting removes
+  deletedGroups: string[];
   // names of the mapped groups that deleting leaves alone
   keptOnDelete: string[];
   // an extra consequence the caller wants spelled out, shown under the lead text
@@ -31,8 +36,10 @@ function getKeptNote(names: string[]): string | null {
 }
 
 export const DeleteGroupMappingModal = ({
-  groupIds,
+  mappingName,
+  clearedGroups,
   keptOnClear,
+  deletedGroups,
   keptOnDelete,
   note,
   onConfirm,
@@ -40,12 +47,13 @@ export const DeleteGroupMappingModal = ({
 }: DeleteGroupMappingModalProps) => {
   const [value, setValue] = useState<DeleteMappingModalValueType>("nothing");
   const applicationName = useSelector(getApplicationName);
-  const isPlural = groupIds.length > 1;
-  const clearableCount = groupIds.length - keptOnClear.length;
-  const deletableCount = groupIds.length - keptOnDelete.length;
-  const canCascade = clearableCount > 0 || deletableCount > 0;
+  const groupCount = clearedGroups.length + keptOnClear.length;
+  const isPlural = groupCount > 1;
+  const canCascade = clearedGroups.length > 0 || deletedGroups.length > 0;
   const keptOnClearNote = getKeptNote(keptOnClear);
   const keptOnDeleteNote = getKeptNote(keptOnDelete);
+  const hasDeleteDescription =
+    deletedGroups.length > 0 || keptOnDeleteNote != null;
 
   const handleChange = (newValue: DeleteMappingModalValueType) => {
     setValue(newValue);
@@ -58,13 +66,14 @@ export const DeleteGroupMappingModal = ({
   const submitButtonLabels: Record<DeleteMappingModalValueType, string> = {
     nothing: t`Remove mapping`,
     clear: t`Remove mapping and members`,
-    delete: isPlural
-      ? t`Remove mapping and delete groups`
-      : t`Remove mapping and delete group`,
+    delete:
+      deletedGroups.length > 1
+        ? t`Remove mapping and delete groups`
+        : t`Remove mapping and delete group`,
   };
 
   let lead: string;
-  if (groupIds.length === 0) {
+  if (groupCount === 0) {
     lead = t`This mapping isn't linked to any group.`;
   } else if (isPlural) {
     lead = t`Membership of these groups will no longer be synced when users log in.`;
@@ -75,7 +84,12 @@ export const DeleteGroupMappingModal = ({
   return (
     <Modal opened onClose={onHide} title={t`Remove this group mapping?`}>
       <Stack gap="xl" mt="sm">
-        <Text>{lead}</Text>
+        <Box>
+          <Text fw="bold" className={S.wrappableText}>
+            {mappingName}
+          </Text>
+          <Text>{lead}</Text>
+        </Box>
         {note && <Text>{note}</Text>}
         {!canCascade && keptOnDeleteNote && <Text>{keptOnDeleteNote}</Text>}
 
@@ -100,14 +114,19 @@ export const DeleteGroupMappingModal = ({
                 />
                 <Radio
                   value="clear"
-                  disabled={clearableCount === 0}
+                  disabled={clearedGroups.length === 0}
                   label={
-                    isPlural
+                    clearedGroups.length > 1
                       ? t`Also remove all members from these groups`
                       : t`Also remove all members from this group`
                   }
                   description={
                     <>
+                      {clearedGroups.length > 0 && (
+                        <Box component="span" display="block">
+                          {clearedGroups.join(", ")}
+                        </Box>
+                      )}
                       {t`Members keep their ${applicationName} accounts.`}{" "}
                       {keptOnClearNote}
                     </>
@@ -115,13 +134,24 @@ export const DeleteGroupMappingModal = ({
                 />
                 <Radio
                   value="delete"
-                  disabled={deletableCount === 0}
+                  disabled={deletedGroups.length === 0}
                   label={
-                    isPlural
+                    deletedGroups.length > 1
                       ? t`Also delete the groups`
                       : t`Also delete the group`
                   }
-                  description={keptOnDeleteNote}
+                  description={
+                    hasDeleteDescription && (
+                      <>
+                        {deletedGroups.length > 0 && (
+                          <Box component="span" display="block">
+                            {deletedGroups.join(", ")}
+                          </Box>
+                        )}
+                        {keptOnDeleteNote}
+                      </>
+                    )
+                  }
                 />
               </Stack>
             </Radio.Group>

@@ -96,10 +96,18 @@ export function GroupMappingList({
       </Stack>
       {deletion.target != null && (
         <DeleteGroupMappingModal
-          groupIds={deletion.targetGroupIds}
+          mappingName={deletion.target}
+          clearedGroups={groupLookup.actionableGroupNames(
+            deletion.targetGroupIds,
+            "clear",
+          )}
           keptOnClear={groupLookup.keptGroupNames(
             deletion.targetGroupIds,
             "clear",
+          )}
+          deletedGroups={groupLookup.actionableGroupNames(
+            deletion.targetGroupIds,
+            "delete",
           )}
           keptOnDelete={groupLookup.keptGroupNames(
             deletion.targetGroupIds,

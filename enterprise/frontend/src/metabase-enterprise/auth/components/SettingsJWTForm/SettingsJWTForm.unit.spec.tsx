@@ -1436,13 +1436,15 @@ describe("SettingsJWTForm", () => {
       expect(
         await screen.findByText(/The Data Analysts group is not affected/),
       ).toBeInTheDocument();
+      // the dialog names the mapping, and each option counts and names only the groups it acts on
+      const dialog = within(screen.getByRole("dialog"));
+      expect(dialog.getByText("old")).toBeInTheDocument();
+      expect(dialog.getByText("bar")).toBeInTheDocument();
       await userEvent.click(
-        screen.getByRole("radio", { name: /Also delete the groups/ }),
+        screen.getByRole("radio", { name: "Also delete the group" }),
       );
       await userEvent.click(
-        screen.getByRole("button", {
-          name: "Remove mapping and delete groups",
-        }),
+        screen.getByRole("button", { name: "Remove mapping and delete group" }),
       );
 
       expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();

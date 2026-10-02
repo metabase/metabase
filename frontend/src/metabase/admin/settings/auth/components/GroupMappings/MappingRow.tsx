@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { t } from "ttag";
 
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
@@ -26,6 +27,9 @@ export function MappingRow({
   onEdit,
   onDelete,
 }: MappingRowProps) {
+  // the buttons are named alike on every row, so each one is described by its row's mapping
+  const nameId = useId();
+
   return (
     <Flex
       className={S.mappingRow}
@@ -34,7 +38,13 @@ export function MappingRow({
       data-testid="group-mapping-row"
     >
       <Flex flex={1} miw={0} align="center" gap="lg" wrap="wrap">
-        <Text fw="bold" flex="0 0 auto" maw="100%" className={S.wrappableText}>
+        <Text
+          id={nameId}
+          fw="bold"
+          flex="0 0 auto"
+          maw="100%"
+          className={S.wrappableText}
+        >
           {name}
         </Text>
         {/* every id reads as missing until the groups arrive, so the row names none until then */}
@@ -49,6 +59,7 @@ export function MappingRow({
         <Flex className={S.rowActions} gap="sm">
           <ActionIcon
             aria-label={t`Edit mapping`}
+            aria-describedby={nameId}
             disabled={disabled}
             onClick={onEdit}
           >
@@ -56,6 +67,7 @@ export function MappingRow({
           </ActionIcon>
           <ActionIcon
             aria-label={t`Delete mapping`}
+            aria-describedby={nameId}
             disabled={disabled}
             onClick={onDelete}
           >

@@ -343,6 +343,23 @@ describe("SettingsGroupMappingSection", () => {
     });
   });
 
+  it("tells a screen reader which mapping a row's buttons act on", async () => {
+    await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [DEVS_DN]: [3] },
+      },
+    });
+    const row = getMappingRow(DEVS_DN);
+
+    expect(
+      within(row).getByRole("button", { name: "Edit mapping" }),
+    ).toHaveAccessibleDescription(DEVS_DN);
+    expect(
+      within(row).getByRole("button", { name: "Delete mapping" }),
+    ).toHaveAccessibleDescription(DEVS_DN);
+  });
+
   it("opens another row's editor in place of an open draft", async () => {
     const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
     await setup({
