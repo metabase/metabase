@@ -18,8 +18,8 @@
 
 (defn parse-kondo-output
   "The map a kondo run printed as `out` lines in `output-format` (`:edn` or `:json`).
-  Throws when the run failed (an `exit` other than 0, 2 or 3) or its output isn't a map, rather than returning
-  an empty result."
+  Throws when the run failed (an `exit` other than 0, 2 or 3) or its output isn't a map with a `:findings` list,
+  rather than returning an empty result."
   [output-format {:keys [exit out err]}]
   (let [;; 2 and 3 mean kondo ran and reported warnings or errors
         parsed (when (#{0 2 3} exit)
@@ -28,8 +28,9 @@
                      :edn  (edn/read-string (str/join "\n" out))
                      :json (json/read-str (str/join "\n" out) {:key-fn keyword}))
                    (catch Exception _ nil)))]
-    (when-not (map? parsed)
-      (throw (ex-info (format "clj-kondo run failed (exit %d):\n%s" exit (str/join "\n" (take-last 20 err)))
+    (when-not (sequential? (:findings parsed))
+      (throw (ex-info (format "clj-kondo run failed or printed no findings list (exit %d):\n%s"
+                              exit (str/join "\n" (take-last 20 err)))
                       {:exit exit})))
     parsed))
 

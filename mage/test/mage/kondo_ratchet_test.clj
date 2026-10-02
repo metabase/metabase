@@ -540,9 +540,9 @@
     (is (= {:findings [{:type "x"}]}
            (kondo-ratchet/parse-kondo-output :json {:exit 3, :out ["{\"findings\": [{\"type\": \"x\"}]}"], :err []}))))
   (testing "a failed run throws with its stderr rather than reading as no findings"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?s)clj-kondo run failed \(exit 1\):.*boom"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?s)clj-kondo run failed or printed no findings list \(exit 1\):.*boom"
                           (kondo-ratchet/parse-kondo-output :edn {:exit 1, :out ["{}"], :err ["boom"]}))))
-  (testing "output that doesn't parse to a map throws"
-    (doseq [out [["not json"] [""] ["[]"]]]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"clj-kondo run failed \(exit 0\)"
+  (testing "output that isn't a map with a findings list throws"
+    (doseq [out [["not json"] [""] ["[]"] ["{}"] ["{\"summary\": {}}"]]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"printed no findings list \(exit 0\)"
                             (kondo-ratchet/parse-kondo-output :json {:exit 0, :out out, :err []}))))))
