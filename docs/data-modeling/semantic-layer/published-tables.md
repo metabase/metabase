@@ -9,11 +9,9 @@ _Data Studio > Semantic layer_
 
 {% include plans-blockquote.html feature="Publishing tables to the Library" %}
 
-Published tables are the tables you add to your [semantic layer](library.md#semantic-layer). In the semantic layer, published tables live in the **Data** section (**Library > Data**) and its subcollections. See [Library organization](library.md#library-organization).
+Published tables are the tables you add to your [semantic layer](library.md#semantic-layer). They live in the **Data** collection.
 
 Published tables also show up in the **Library** section of the main app's navigation sidebar. When people pick data for a new question, Metabase shows published tables first. You can also tell [Metabot](../../ai/metabot.md) to only use [curated content](../../ai/settings.md#verified-content) like published tables, and you can [sync published tables to Git](library.md#versioning-the-library), along with their metadata, segments, and measures.
-
-Tables published to the Library remain available via the data browser as well.
 
 We use the word "publish" because the tables in your Library should be finished, polished tables. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](../transforms/transforms-overview.md).
 
@@ -83,12 +81,12 @@ If other tables depend on the table you want to unpublish, Metabase will unpubli
 
 Unpublishing a table just removes the table from the Library. That table will still be available via the data browser and data pickers.
 
-> **Archiving a subcollection unpublishes its tables.** If you archive a Data subcollection, Metabase will automatically unpublish all tables inside it, including tables in any nested subcollections.
+**Archiving a subcollection unpublishes its tables.** If you archive a Data subcollection, Metabase will automatically unpublish all tables inside it, including tables in any nested subcollections.
 
 ## Published table permissions
 
 - **Who can publish**: Only [admins and data analysts](../../people-and-groups/managing.md) can publish and unpublish tables.
-- **Collection permissions control what people see, not what data they can query**: Collection permissions on **Library > Data** and its subcollections only control where people see published tables (in the navigation sidebar, the data picker, and search). To restrict access to the data in a table, use [data permissions](../../permissions/data.md).
+- **Collection permissions control what people see, _not_ what data they can query**: Collection permissions on **Library > Data** and its subcollections only control where people see published tables (in the navigation sidebar, the data picker, and search). To restrict access to the data in a table, use [data permissions](../../permissions/data.md).
 - **Publishing a table can grant query access**: Like with models, publishing a table gives query access to that table to groups with view access to the database, even if those groups have **Create queries** set to **No** for that table.
 
 See [Permissions to use Library content](library.md#permissions-to-use-library-content).
