@@ -2168,8 +2168,9 @@
                        (construct/execute-representations-query
                         (metric-query-data {"source-card" question-eid} metric-eid))))]
             (is (=? {:agent-error? true, :error :incompatible-metric} (ex-data e)))
-            (is (str/includes? (ex-message e) "base table as source-table:")
-                "and it is told to use the base table, which is the edit that works")))))))
+            (is (str/includes? (ex-message e)
+                               (str "needs source-table: " (json/encode (products-source-table-fk))))
+                "and it is told to use the base table, named as the portable FK to paste")))))))
 
 (deftest multi-stage-card-based-metric-is-pinned-to-base-table-test
   (testing (str "The mirror image of the multi-stage table-based case, and the one `report_card.source_card_id`\n"
@@ -2210,8 +2211,9 @@
                        (construct/execute-representations-query
                         (metric-query-data {"source-card" question-eid} metric-eid))))]
             (is (=? {:agent-error? true, :error :incompatible-metric} (ex-data e)))
-            (is (str/includes? (ex-message e) "base table as source-table:")
-                "and it is told to use the base table, which is the edit that works")))))))
+            (is (str/includes? (ex-message e)
+                               (str "needs source-table: " (json/encode (products-source-table-fk))))
+                "and it is told to use the base table, named as the portable FK to paste")))))))
 
 (deftest multi-stage-card-based-metric-really-does-500-on-its-source-card-test
   (testing (str "The other half of the gate's contract: the pairing it now rejects is one the QP genuinely refuses.\n"
@@ -2299,6 +2301,7 @@
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
       (mt/with-current-user (mt/user->id :rasta)
         (let [msg (#'construct/incompatible-metric-explanation
+                   (lib-be/application-database-metadata-provider (mt/id))
                    {metric-id {:kind :card, :card-id question-id}})]
           (is (str/includes? msg "Metric on secret question")
               "the metric itself is readable to this user, so naming it is fine")
@@ -2324,11 +2327,66 @@
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
       (mt/with-current-user (mt/user->id :rasta)
         (let [msg (#'construct/incompatible-metric-explanation
+                   (lib-be/application-database-metadata-provider (mt/id))
                    {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? false}})]
           (is (not (str/includes? msg "Secret metric"))
               "the name of a metric this user cannot read must not come back")
           (is (str/includes? msg (str metric-id))
               "it falls back to the numeric id, which the caller already had"))))))
+
+(deftest incompatible-metric-message-does-not-disclose-unqueryable-base-table-test
+  (testing (str "A required table is named only when this user can query it -- the check `metric-details` and search\n"
+                "make before offering the same table. Otherwise the message says a base table is needed, not which.")
+    (mt/with-temp [:model/Card {metric-id :id}
+                   {:name          "Products metric"
+                    :type          :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]}}}]
+      (let [mp       (lib-be/application-database-metadata-provider (mt/id))
+            required {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? true}}]
+        (testing "queryable: the portable FK to paste"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (str/includes? (#'construct/incompatible-metric-explanation mp required)
+                               (str "\"Products metric\" (needs source-table: "
+                                    (json/encode (products-source-table-fk)) ")")))))
+        (testing "not queryable: no table name"
+          ;; Its own `with-current-user`, inside the perms change: each binds fresh data-permission caches that keep the
+          ;; first answer they get, so sharing one with the queryable case above would replay its cached grant.
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [msg (#'construct/incompatible-metric-explanation mp required)]
+                (is (str/includes? msg "\"Products metric\" (needs its base table as source-table:)"))
+                (is (not (str/includes? msg "PRODUCTS")))))))))))
+
+(deftest metric-with-unreadable-definition-is-rejected-on-any-source-test
+  (testing (str "A metric whose stored definition is blank -- what MBQL 4->5 conversion failures ship -- splices into\n"
+                "no source, so the QP fails on all of them. The gate rejects it with a retryable agent error that\n"
+                "says it has no usable source, matching the `source_unavailable` the other surfaces report. Naming\n"
+                "its recorded `table_id` would send the LLM to an edit that fails the same way.")
+    (mt/with-temp [:model/Card {metric-id :id}
+                   {:name          "Blank metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+      ;; Straight to the table: the model's `:in` transform would not store a blank query.
+      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp    (lib-be/application-database-metadata-provider (mt/id))
+              query (assoc-in (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                              [:stages 0 :aggregation]
+                              [[:metric {:lib/uuid (str (random-uuid))} metric-id]])]
+          (testing "precondition: the definition really is unreadable, though a table is still recorded"
+            (is (nil? (metabot.tools.util/metric-required-source (lib.metadata/card mp metric-id))))
+            (is (= (mt/id :products) (:table-id (lib.metadata/card mp metric-id)))))
+          (testing "it is reported even on the table it records"
+            (is (= {metric-id nil} (#'construct/incompatible-metrics mp query))))
+          (testing "and the explanation names no source"
+            (is (= (str "These metrics cannot be used on this stage's source: \"Blank metric\" (has no usable source). "
+                        "A metric only works on the source it was defined on, so the stage must use that source. "
+                        "Either change the stage's source-table:/source-card: to the one shown for each metric, "
+                        "or drop the metric and express the aggregation directly.")
+                   (#'construct/incompatible-metric-explanation mp {metric-id nil})))))))))
 
 (deftest card-based-metric-pinned-to-its-own-card-test
   (testing (str "A card-based metric is pinned to the exact card it was defined on -- a different card over the same\n"
@@ -2393,6 +2451,39 @@
               (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
               (is (= [[0 67] [1 3443]]
                      (take 2 (mt/rows (qp/process-query query))))))))))))
+
+(deftest card-computed-dimension-by-machine-name-executes-on-source-card-stage-test
+  (testing (str "A card-based metric's dimensions table falls back to the machine name for a column the card\n"
+                "computes, which has no portable FK, and the prompt tells the LLM to use that name on the metric's\n"
+                "`source-card:` stage. Pinned end to end: the reference the dimensions offer resolves on stage 0 and\n"
+                "the query runs, rather than only the formatting being tested.")
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name          "Orders with double total" :type :question
+                    :dataset_query (mt/mbql-query orders {:expressions {"double_total" [:* $total 2]}})}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name          "Card-based metric" :type :metric
+                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
+                                                       :aggregation  [[:count]]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [dims (:queryable-dimensions (:structured-output (entity-details/get-metric-details
+                                                               {:metric-id          metric-id
+                                                                :with-field-values? false})))
+              dim  (m/find-first #(= "double_total" (:name %)) dims)]
+          (testing "precondition: the dimension is offered by machine name, with no portable FK"
+            (is (=? {:field_id "double_total"} dim))
+            (is (nil? (:portable_fk dim))))
+          (let [query (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                          "source-card" question-eid
+                                          "filters"     [[">" {} ["field" {} (:field_id dim)] 100]]
+                                          "aggregation" [["metric" {} metric-eid]]}]}))
+                          (get-in [:structured-output :query]))]
+            (is (= (mt/rows (qp/process-query (mt/mbql-query orders {:aggregation [[:count]]
+                                                                     :filter      [:> $total 50]})))
+                   (mt/rows (qp/process-query query)))
+                "it filters on the card's computed column: count of orders with total > 50")))))))
 
 (deftest source-card-stage-rejects-unreachable-dimensions-like-source-table-test
   (testing (str "An unreachable target table is a hard `:no-fk-path` error on a `source-card:` stage too. This\n"

@@ -165,19 +165,13 @@
                                           (when-let [r (metabot.tools.u/metric-required-source row)]
                                             [metric-id r])))
                                   card-id->source)
-        ;; Card-pinned metrics first -- they take precedence over, and suppress, the base-table fields below.
         metric-id->source-card-id
         (into {}
               (keep (fn [[metric-id r]]
                       (when (= :card (:kind r)) [metric-id (:card-id r)])))
               metric-id->required)
-        source-card-id->info
+        source-card-id->row
         (metabot.tools.u/readable-source-cards (distinct (vals metric-id->source-card-id)))
-        metric-id->source-card (into {}
-                                     (keep (fn [[metric-id source-card-id]]
-                                             (when-let [info (get source-card-id->info source-card-id)]
-                                               [metric-id info])))
-                                     metric-id->source-card-id)
         metric-id->table-id (into {}
                                   (keep (fn [[metric-id r]]
                                           ;; A card-pinned metric's table is never a usable source, so it is
@@ -186,50 +180,24 @@
                                             [metric-id (:table-id r)])))
                                   metric-id->required)
         table-ids (->> metric-id->table-id vals distinct)
-        ;; `can-query?`, matching `metric-details`: a false negative here becomes `source_unavailable` in the `:else`
-        ;; arm below, telling the agent to skip a metric the other surface offers a source for.
-        table-id->info (when (seq table-ids)
-                         (into {}
-                               (comp (filter mi/can-query?)
-                                     (map (juxt :id (juxt :schema :name))))
-                               (metabot.db/table-schema-rows table-ids)))
-        metric-id->table-info
-        (into {}
-              (keep (fn [[metric-id table-id]]
-                      (when-let [[schema table-name] (get table-id->info table-id)]
-                        [metric-id {:table-id   table-id
-                                    :schema     schema
-                                    :table-name table-name}])))
-              metric-id->table-id)]
+        ;; `can-query?`, matching `metric-details`: a false negative here becomes `source_unavailable` below, telling
+        ;; the agent to skip a metric the other surface offers a source for.
+        table-id->row (when (seq table-ids)
+                        (into {}
+                              (comp (filter mi/can-query?)
+                                    (map (juxt :id #(select-keys % [:id :schema :name]))))
+                              (metabot.db/table-schema-rows table-ids)))]
     (cond->> results
       (seq metric-ids)
       (mapv (fn [{:keys [id type database_name] :as result}]
-              (let [source-card (get metric-id->source-card id)
-                    {:keys [table-id schema table-name]} (get metric-id->table-info id)]
-                (cond
-                  (not= "metric" type)
-                  result
-
-                  source-card
-                  (assoc result
-                         :source_card_id (:id source-card)
-                         :source_card_name (:name source-card)
-                         :source_card_portable_entity_id (:entity_id source-card))
-
-                  table-id
-                  (cond-> (assoc result
-                                 :base_table_id table-id
-                                 :base_table_name table-name
-                                 :base_table_schema schema)
-                    database_name
-                    (assoc :base_table_portable_fk [database_name schema table-name]))
-
-                  ;; No source could be offered -- unreadable, gone, or a definition we could not read. Say so
-                  ;; positively: absence alone reads to the LLM as "look it up elsewhere", which is the
-                  ;; guess-a-source behaviour this enrichment exists to prevent. Symmetric across both kinds, and
-                  ;; must agree with `metric-details`, which describes the same metric on the other surface.
-                  :else
-                  (assoc result :source_unavailable true))))))))
+              (if (= "metric" type)
+                ;; Shared with `metric-details`, which describes the same metric on the other surface. A metric with
+                ;; neither source -- unreadable, gone, or a definition we could not read -- gets `:source_unavailable`.
+                (merge result (metabot.tools.u/metric-source-fields
+                               {:source-card   (get source-card-id->row (get metric-id->source-card-id id))
+                                :source-table  (get table-id->row (get metric-id->table-id id))
+                                :database-name database_name}))
+                result))))))
 
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.

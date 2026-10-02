@@ -662,6 +662,27 @@
                         [:source_card_id :source_card_name :source_card_portable_entity_id
                          :base_table_id :base_table_name :base_table_portable_fk])))))))
 
+(deftest get-metric-details-marks-unreadable-definition-unavailable-test
+  (testing (str "A metric whose stored definition is blank -- what MBQL 4->5 conversion failures ship -- has no\n"
+                "aggregation the QP can splice on any source. Offering its `report_card.table_id` would only move\n"
+                "the failure to execution, so it is marked unusable instead.")
+    (mt/with-temp [:model/Card {metric-id :id}
+                   {:name          "Blank metric"
+                    :type          :metric
+                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+      ;; Straight to the table: the model's `:in` transform would not store a blank query.
+      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (is (= (mt/id :orders) (t2/select-one-fn :table_id :model/Card :id metric-id))
+          "the base table is still recorded, so it is there to be wrongly offered")
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output (:structured-output (entity-details/get-metric-details
+                                          {:metric-id          metric-id
+                                           :with-field-values? false}))]
+          (is (=? {:id metric-id, :source_unavailable true} output))
+          (is (not-any? #(contains? output %)
+                        [:source_card_id :source_card_name :source_card_portable_entity_id
+                         :base_table_id :base_table_name :base_table_portable_fk])))))))
+
 (deftest cards-details-metric-branch-reports-each-source-kind-test
   (testing (str "`cards-details` is the `answer-sources` / suggested-prompts path: it batches the source-card\n"
                 "read-checks itself and hands the result to `metric-details` through the trusted binding. It fans\n"
