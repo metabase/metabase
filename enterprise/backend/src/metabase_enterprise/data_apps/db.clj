@@ -139,6 +139,87 @@
                                [:= :g.is_data_app_group false]]})
     #{}))
 
+(defn unarchived-resource-collection-ids
+  "The IDs of every data app's resource collection that isn't archived."
+  []
+  (mapv :id (t2/query {:select [:c.id]
+                       :from   [[:collection :c]]
+                       :join   [[:data_app :d] [:= :d.resource_collection_id :c.id]]
+                       :where  [:= :c.archived false]})))
+
+(defn resource-collection?
+  "Whether the collection with `collection-id` is a data app's resource collection."
+  [collection-id]
+  (t2/exists? :model/DataApp :resource_collection_id collection-id))
+
+(defn resource-collection-id
+  "The ID of the resource collection of the DataApp with `data-app-id`, or nil."
+  [data-app-id]
+  (t2/select-one-fn :resource_collection_id :model/DataApp :id data-app-id))
+
+(defn data-app-by-entity-id
+  "The `:id`, `:entity_id`, and `:resource_collection_id` of the DataApp with `entity-id`, or nil."
+  [entity-id]
+  (t2/select-one [:model/DataApp :id :entity_id :resource_collection_id] :entity_id entity-id))
+
+(defn data-apps-with-resource-collections
+  "The `:id` and `:resource_collection_id` of every DataApp that has a resource collection."
+  []
+  (t2/select [:model/DataApp :id :resource_collection_id] :resource_collection_id [:not= nil]))
+
+(defn collections-by-entity-ids
+  "The `:id` and `:entity_id` of the collections with `entity-ids`."
+  [entity-ids]
+  (if (seq entity-ids)
+    (t2/query {:select [:id :entity_id] :from [:collection] :where [:in :entity_id entity-ids]})
+    []))
+
+(defn cards-by-entity-ids
+  "The `:entity_id` and `:collection_id` of the cards with `entity-ids`."
+  [entity-ids]
+  (if (seq entity-ids)
+    (t2/query {:select [:entity_id :collection_id] :from [:report_card] :where [:in :entity_id entity-ids]})
+    []))
+
+(defn actions-by-entity-ids
+  "The `:entity_id` of the actions with `entity-ids`, with the `:collection_id` of the model each belongs to."
+  [entity-ids]
+  (if (seq entity-ids)
+    (t2/query {:select [:a.entity_id :c.collection_id]
+               :from   [[:action :a]]
+               :join   [[:report_card :c] [:= :c.id :a.model_id]]
+               :where  [:in :a.entity_id entity-ids]})
+    []))
+
+(defn table-ids-named
+  "The IDs of the active tables in the database with `database-id` that `refs` (maps of `:schema` and `:table`)
+  name: by name, and by schema when the reference has one, ignoring case."
+  [database-id refs]
+  (if (seq refs)
+    (let [lower  #(some-> % u/lower-case-en)
+          tables (t2/select [:model/Table :id :schema :name] :db_id database-id :active true
+                            {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})]
+      (into (sorted-set)
+            (for [{:keys [schema table]} refs
+                  {:keys [id] :as named} tables
+                  :when (and (= (lower table) (lower (:name named)))
+                             (or (nil? schema) (= (lower schema) (lower (:schema named)))))]
+              id)))
+    #{}))
+
+(defn collection-dataset-queries
+  "The queries of the cards in the collection with `collection-id` and of the query actions on its models."
+  [collection-id]
+  (let [card-queries (t2/select-fn-vec :dataset_query :model/Card :collection_id collection-id)
+        model-ids    (t2/select-pks-vec :model/Card :collection_id collection-id :type "model")]
+    (into card-queries
+          (when (seq model-ids)
+            (t2/select-fn-vec :dataset_query :model/QueryAction
+                              {:select [:qa.*]
+                               :from   [[:query_action :qa]]
+                               :join   [[:action :a] [:= :a.id :qa.action_id]]
+                               :where  [:in :a.model_id model-ids]})))))
+
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
   [collection-id]

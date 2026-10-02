@@ -29,8 +29,12 @@ plain file next to it at its `path`:
 ```
 data_apps/
   sales/
-    data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts
+    data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts, collection
     dist/index.js          # the bundle
+    resources/
+      collection.yaml      # the app's resource collection
+      cards/*.yaml         # a saved question per query, and copies of the models and metrics those use
+      actions/*.yaml       # copies of the actions the app runs, on the model copies
 ```
 
 The YAML keeps the keys a hand-written manifest uses: `slug` is the `name` column, `name` the
@@ -39,12 +43,43 @@ entity carries it in `:serdes/resources` on export, the storage writers put it n
 and ingestion reads the paths `serdes/resource-paths` returns back in. A resource path must stay
 inside the entity's directory.
 
-Only the manifest is serialized. `enabled` is admin-owned and never leaves the instance; the
-collection, permission group, and `table_ids` are server-managed; `bundle_hash` is recomputed from
-the bundle on import. Drafts are not exported.
+`enabled` is admin-owned and never leaves the instance; the permission group and `table_ids` are
+server-managed; `bundle_hash` is recomputed from the bundle on import. Drafts are not exported.
 
-An import matches an app by `entity_id`, falling back to its slug so it takes over a draft, and
-reasserts the app's resources. It is a no-op without the `:data-apps` feature.
+### Resources
+
+What the app runs in production lives in its **resource collection**, named by `collection` in
+the manifest as a serdes foreign key. The collection and everything in it are ordinary serialized
+entities: the files under `resources/` are entity files like those under `collections/`
+(`shared-top-level-paths` in `metabase-enterprise.serialization.v2.ingest`), loaded in dependency
+order with everything else, tracked by remote sync, and written back by exports. The app depends
+on its collection (`serdes/deserialization-dependencies`), so it loads after it and links it as it
+lands; a targeted export of an app brings the collection and its contents along
+(`serdes/descendants`). An app whose manifest names no collection has none, and isn't published
+until it does. An app created through `/api/apps` gets a collection of its own, which the next export
+writes to the repository.
+
+Three things make those files an app's rather than any collection's:
+
+- **Placement.** Serialization computes a card's path from its collection and an action's from a
+  top-level `actions/`; `storage-base-context` learns which collections data apps own, and the
+  Collection, Card, and Action storage paths put them under `data_apps/<slug>/resources/` instead.
+- **Scope.** Remote sync treats a resource collection as synced content (`should-sync-collection?`,
+  `all-syncable-collection-ids`, and the export roots in `remote-sync.spec`), keyed by
+  `data_app.resource_collection_id` rather than the `is_remote_synced` flag, which a collection file
+  would reset on an incremental pull.
+- **Validation.** Serialization trusts what it reads: it updates whatever row carries an entity ID
+  and resolves references to any local entity, and creates a placeholder for a table a query names
+  that the instance lacks. `resource_validation.clj` runs on the whole snapshot before any import
+  (`check-data-app-files!` in `remote-sync.source.ingestable`): a resource file may define only the
+  collection its manifest names (a plain root one), cards in it, and actions on its model copies,
+  none public, embedded, or archived; may reference nothing else of Metabase's but existing
+  databases, tables, fields, snippets, segments, and measures; and may not name an entity ID that
+  belongs to a collection, card, or action elsewhere. A problem fails the pull naming the file, as
+  any other bad entity file does.
+
+After every import, `resource_tables.clj` records on each app the tables its resources read,
+including those a query action's SQL names, for the permission warnings an admin sees.
 
 Remote sync treats data apps like any other entity, globally rather than per collection. Because
 the bundle is a separate file, a pull that changes only a bundle, or an export that touches an app,
@@ -108,7 +143,8 @@ Exporting an app's resources also needs a superuser.
 
 | Namespace             | Responsibility                                                                                      |
 | --------------------- | --------------------------------------------------------------------------------------------------- |
-| `apps.clj`            | Creating apps and drafts; the connected repository's URL.                                           |
+| `apps.clj`            | Creating apps, with the group and collection they own; the connected repository's URL.             |
+| `core.clj`            | What other modules ask: owned collections, resource file problems, table dependencies.             |
 | `config.clj`          | The serialized layout and data app contract version constants.                                     |
 | `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
@@ -116,6 +152,8 @@ Exporting an app's resources also needs a superuser.
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
 | `resource_export.clj` | The export an app's resource files are written from: built queries, actions, metrics.             |
 | `query_definition.clj`| The closed schema of a `defineQuery` definition the export accepts.                                 |
+| `resource_validation.clj` | What an app's resource files may hold, checked on the whole snapshot before an import.          |
+| `resource_tables.clj` | The tables an app's resources read, recorded on the app after an import.                           |
 | `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
