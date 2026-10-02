@@ -72,9 +72,15 @@ describe("scenarios > monitor > api key usage", { viewportWidth: 1600 }, () => {
       cy.findByText(SEEDED_KEY_NAME).should("be.visible");
     });
 
-    cy.log("The API key filter also scopes the Key activity table");
+    cy.log(
+      "The API key filter scopes the Key activity table, but an unused key still shows its own row",
+    );
     selectApiKeyFilter(UNUSED_KEY_NAME);
-    H.main().findByText("No API key activity").should("be.visible");
+    H.main().within(() => {
+      cy.findByText("No API key activity").should("not.exist");
+      cy.findByText(UNUSED_KEY_NAME).should("be.visible");
+      cy.findByText(SEEDED_KEY_NAME).should("not.exist");
+    });
     selectApiKeyFilter("All API keys");
     H.main().findByText(SEEDED_KEY_NAME).should("be.visible");
 
@@ -95,9 +101,12 @@ describe("scenarios > monitor > api key usage", { viewportWidth: 1600 }, () => {
     selectApiKeyFilter(SEEDED_KEY_NAME);
     eventsTable().findByText(SEEDED_KEY_NAME).should("be.visible");
 
-    cy.log("Filtering by an unused API key shows the empty state");
+    cy.log(
+      "Filtering by an unused API key shows the events table's own empty state, not the whole page",
+    );
     selectApiKeyFilter(UNUSED_KEY_NAME);
-    H.main().findByText("No API key activity").should("be.visible");
+    H.main().findByText("No API key activity").should("not.exist");
+    eventsTable().findByText("No calls found").should("be.visible");
 
     cy.log("Clearing the API key filter restores the call");
     selectApiKeyFilter("All API keys");

@@ -14,7 +14,7 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { SortDirection } from "metabase-types/api";
+import type { ApiKey, SortDirection } from "metabase-types/api";
 
 export type ApiKeyUsageFilters = {
   dateFilter: DateFilterValue;
@@ -22,6 +22,27 @@ export type ApiKeyUsageFilters = {
   userId?: number;
   groupId?: number;
 };
+
+/**
+ * Whether `apiKey` matches the page's API key/user/group filters, by the key's own metadata
+ * (id/creator/group) rather than its usage. Shared by anything that needs to know which keys are
+ * in scope independent of whether they have any activity — e.g. the Key activity table, and the
+ * check for whether the page has anything to show at all.
+ */
+export function apiKeyMatchesScope(
+  apiKey: ApiKey,
+  {
+    apiKeyId,
+    userId,
+    groupId,
+  }: Pick<ApiKeyUsageFilters, "apiKeyId" | "userId" | "groupId">,
+): boolean {
+  return (
+    (apiKeyId == null || apiKey.id === apiKeyId) &&
+    (userId == null || apiKey.creator_id === userId) &&
+    (groupId == null || apiKey.group.id === groupId)
+  );
+}
 
 type ApiKeyUsageDataSources = {
   provider: MetadataProvider;

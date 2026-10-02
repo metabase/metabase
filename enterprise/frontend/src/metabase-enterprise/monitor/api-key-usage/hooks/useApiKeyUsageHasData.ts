@@ -1,8 +1,12 @@
 import { useMemo, useRef } from "react";
 
+import { useListApiKeysQuery } from "metabase/admin/settings/api/api-key";
 import { useAdhocBreakoutQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type { ApiKeyUsageFilters } from "metabase-enterprise/monitor/api-key-usage/query-utils";
-import { buildTotalCountQuery } from "metabase-enterprise/monitor/api-key-usage/query-utils";
+import {
+  apiKeyMatchesScope,
+  buildTotalCountQuery,
+} from "metabase-enterprise/monitor/api-key-usage/query-utils";
 import type {
   CardMetadata,
   MetadataProvider,
@@ -20,7 +24,7 @@ type Result = {
   isInitialLoading: boolean;
   /** A subsequent load triggered by a filter change — let the charts show their own skeletons. */
   isRefetching: boolean;
-  /** Whether the current (resolved) filters match any calls. */
+  /** Whether the current (resolved) filters match any API keys — regardless of their usage. */
   hasData: boolean;
   /** Total number of calls matching the current filters — drives the events pagination. */
   count: number;
@@ -29,7 +33,10 @@ type Result = {
 };
 
 /**
- * Runs a single count query over the filtered view to drive the page's load/empty/data states.
+ * Drives the page's load/empty/data states. "Has data" means at least one API key matches the
+ * current API key/user/group filters — independent of whether those keys have any usage, so the
+ * Key activity table can still show a key with no activity instead of the page going empty.
+ * Still runs the filtered total-count query, since the Events tab's pagination needs it.
  * Distinguishes the initial load (loader) from a filter-change refetch (skeletons) so the page
  * never flashes the empty state before the first result has resolved.
  */
@@ -59,13 +66,22 @@ export function useApiKeyUsageHasData({
   );
 
   const { data, isFetching, error } = useAdhocBreakoutQuery(query);
+  const {
+    data: apiKeys,
+    isFetching: isFetchingKeys,
+    error: keysError,
+  } = useListApiKeysQuery();
 
   // Latch once the first count resolves (successfully or not); from then on a fetch is a
   // refetch, not initial load.
   const hasLoadedOnce = useRef(false);
-  const hasError = error != null;
+  const combinedError = error ?? keysError;
+  const hasError = combinedError != null;
   const resolved =
-    query !== null && !isFetching && (data !== undefined || hasError);
+    query !== null &&
+    !isFetching &&
+    !isFetchingKeys &&
+    ((data !== undefined && apiKeys !== undefined) || hasError);
   if (resolved) {
     hasLoadedOnce.current = true;
   }
@@ -73,12 +89,16 @@ export function useApiKeyUsageHasData({
   // The query is a single count aggregation with no breakout, so the result is exactly one row
   // with one column — the scalar total. `rows[0][0]` is that count.
   const count = Number(data?.data?.rows?.[0]?.[0] ?? 0);
+  const hasData =
+    apiKeys?.some((apiKey) =>
+      apiKeyMatchesScope(apiKey, { apiKeyId, userId, groupId }),
+    ) ?? false;
 
   return {
     isInitialLoading: !hasLoadedOnce.current,
-    isRefetching: hasLoadedOnce.current && isFetching,
-    hasData: count > 0,
+    isRefetching: hasLoadedOnce.current && (isFetching || isFetchingKeys),
+    hasData,
     count,
-    error,
+    error: combinedError,
   };
 }
