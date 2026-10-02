@@ -2360,6 +2360,23 @@
                 (is (str/includes? msg "\"Products metric\" (needs its base table as source-table:)"))
                 (is (not (str/includes? msg "PRODUCTS")))))))))))
 
+(defn- table-query
+  "A Lib query on the test-data table `table-key`."
+  [table-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
+
+(defn- card-count-query
+  "A count over the card with `card-id` -- the shape of a single-stage card-based metric."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/card mp card-id))
+        (lib/aggregate (lib/count)))))
+
+(defn- field-col
+  [table-key field-key]
+  (lib.metadata/field (mt/metadata-provider) (mt/id table-key field-key)))
+
 (deftest metric-with-unreadable-definition-is-rejected-on-any-source-test
   (testing (str "A metric whose stored definition is blank -- what MBQL 4->5 conversion failures ship -- splices into\n"
                 "no source, so the QP fails on all of them. The gate rejects it with a retryable agent error that\n"
@@ -2368,7 +2385,7 @@
     (mt/with-temp [:model/Card {metric-id :id}
                    {:name          "Blank metric"
                     :type          :metric
-                    :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+                    :dataset_query (lib/aggregate (table-query :products) (lib/count))}]
       ;; Straight to the table: the model's `:in` transform would not store a blank query.
       (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
       (mt/with-current-user (mt/user->id :crowberto)
@@ -2421,11 +2438,10 @@
                 "found` -- the same whole-turn 500, one layer down.")
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name "Orders question" :type :question
-                    :dataset_query (mt/mbql-query orders)}
+                    :dataset_query (table-query :orders)}
                    :model/Card {metric-eid :entity_id}
                    {:name "Card-based metric" :type :metric
-                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
-                                                       :aggregation  [[:count]]})}]
+                    :dataset_query (card-count-query question-id)}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [db-name  (t2/select-one-fn :name :model/Database :id (mt/id))
               breakout (fn [source fk]
@@ -2459,11 +2475,10 @@
                 "the query runs, rather than only the formatting being tested.")
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name          "Orders with double total" :type :question
-                    :dataset_query (mt/mbql-query orders {:expressions {"double_total" [:* $total 2]}})}
+                    :dataset_query (lib/expression (table-query :orders) "double_total" (lib/* (field-col :orders :total) 2))}
                    :model/Card {metric-id :id, metric-eid :entity_id}
                    {:name          "Card-based metric" :type :metric
-                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" question-id)
-                                                       :aggregation  [[:count]]})}]
+                    :dataset_query (card-count-query question-id)}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [dims (:queryable-dimensions (:structured-output (entity-details/get-metric-details
                                                                {:metric-id          metric-id
@@ -2480,8 +2495,9 @@
                                           "filters"     [[">" {} ["field" {} (:field_id dim)] 100]]
                                           "aggregation" [["metric" {} metric-eid]]}]}))
                           (get-in [:structured-output :query]))]
-            (is (= (mt/rows (qp/process-query (mt/mbql-query orders {:aggregation [[:count]]
-                                                                     :filter      [:> $total 50]})))
+            (is (= (mt/rows (qp/process-query (-> (table-query :orders)
+                                                  (lib/filter (lib/> (field-col :orders :total) 50))
+                                                  (lib/aggregate (lib/count)))))
                    (mt/rows (qp/process-query query)))
                 "it filters on the card's computed column: count of orders with total > 50")))))))
 
@@ -2494,7 +2510,7 @@
                 "execution. Softening traded a crisp retryable 400 for that.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Reviews question" :type :question
-                    :dataset_query (mt/mbql-query reviews)}]
+                    :dataset_query (table-query :reviews)}]
       (mt/with-current-user (mt/user->id :crowberto)
         ;; PEOPLE is not reachable from REVIEWS by any foreign key.
         (let [db-name  (t2/select-one-fn :name :model/Database :id (mt/id))
@@ -2523,8 +2539,9 @@
                 "this right for the same reason it rejects the case below.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Orders count by user" :type :question
-                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]
-                                                          :breakout    [$user_id]})}]
+                    :dataset_query (-> (table-query :orders)
+                                       (lib/aggregate (lib/count))
+                                       (lib/breakout (field-col :orders :user_id)))}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
               query   (-> (construct/execute-representations-query
@@ -2549,8 +2566,9 @@
                 "it and the query died at execution. Now it is a retryable agent error instead.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Orders count by user" :type :question
-                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]
-                                                          :breakout    [$user_id]})}]
+                    :dataset_query (-> (table-query :orders)
+                                       (lib/aggregate (lib/count))
+                                       (lib/breakout (field-col :orders :user_id)))}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
               e (is (thrown? clojure.lang.ExceptionInfo
@@ -2568,7 +2586,7 @@
 (deftest model-with-restricted-fields-names-the-model-test
   (mt/with-temp [:model/Card {model-eid :entity_id}
                  {:name "Orders id and total" :type :model
-                  :dataset_query (mt/mbql-query orders {:fields [$id $total]})}]
+                  :dataset_query (lib/with-fields (table-query :orders) [(field-col :orders :id) (field-col :orders :total)])}]
     (mt/with-current-user (mt/user->id :crowberto)
       (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
             e       (is (thrown? clojure.lang.ExceptionInfo
@@ -2590,7 +2608,7 @@
                 "take: what matters is only what the card returns.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Orders id and total" :type :question
-                    :dataset_query (mt/mbql-query orders {:fields [$id $total]})}]
+                    :dataset_query (lib/with-fields (table-query :orders) [(field-col :orders :id) (field-col :orders :total)])}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
               run!    (fn [fk]
@@ -2668,11 +2686,13 @@
                 "prevents. The join condition below is deliberately NOT the foreign key, so the two paths disagree.")
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name "Orders joined to Products on quantity" :type :question
-                    :dataset_query (mt/mbql-query orders
-                                     {:joins [{:source-table $$products
-                                               :alias        "P"
-                                               :condition    [:= $orders.quantity &P.products.id]
-                                               :fields       :all}]})}]
+                    :dataset_query (lib/join (table-query :orders)
+                                             (-> (lib/join-clause (lib.metadata/table (mt/metadata-provider)
+                                                                                      (mt/id :products))
+                                                                  [(lib/= (field-col :orders :quantity)
+                                                                          (field-col :products :id))])
+                                                 (lib/with-join-alias "P")
+                                                 (lib/with-join-fields :all)))}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [db-name     (t2/select-one-fn :name :model/Database :id (mt/id))
               category-fk [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]

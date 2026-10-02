@@ -2013,7 +2013,12 @@
 
 (deftest ^:parallel fill-from-candidates-unexportable-fk-test
   (let [fill     #'repair/fill-from-candidates
+        unused   #(throw (ex-info "unexpected resolver call" {}))
         resolver (reify resolve/SerdesExportResolver
+                   (export-fk [_ _ _] (unused))
+                   (export-fk-keyed [_ _ _ _] (unused))
+                   (export-user [_ _] (unused))
+                   (export-table-fk [_ _] (unused))
                    (export-field-fk [_ _] (throw (ex-info "boom" {}))))
         clause   ["field" {} ["DB" "PUBLIC" "PRODUCTS" "CATEGORY"]]
         run      (fn [strict?]

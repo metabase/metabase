@@ -71,7 +71,10 @@
                 "and the narrowed row silently takes the pk-resolve path instead of the one it looks like it takes.")
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
                    :model/Card {card-id :id}
-                   {:name "A card" :collection_id coll-id :dataset_query (mt/mbql-query orders)}]
+                   {:name          "A card"
+                    :collection_id coll-id
+                    :dataset_query (let [mp (mt/metadata-provider)]
+                                     (lib/query mp (lib.metadata/table mp (mt/id :orders))))}]
       (let [row (first (metabot.db/card-source-rows #{card-id}))]
         (is (some? row))
         (testing "the columns the permission path reads are present"
