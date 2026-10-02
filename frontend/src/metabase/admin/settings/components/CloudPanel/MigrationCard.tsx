@@ -1,16 +1,9 @@
-import { Box, type BoxProps } from "metabase/ui";
+import { Paper, type PaperProps } from "metabase/ui";
 
-type MigrationCardProps = BoxProps & {
+type MigrationCardProps = PaperProps & {
   children: React.ReactNode;
 };
 
 export const MigrationCard = (props: MigrationCardProps) => (
-  <Box
-    bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
-    py="xxl"
-    px="3rem"
-    bg="background_page-primary"
-    {...props}
-  />
+  <Paper withBorder shadow="none" radius="sm" py="xxl" px="3rem" {...props} />
 );
