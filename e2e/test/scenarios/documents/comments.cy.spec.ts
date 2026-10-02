@@ -1422,19 +1422,28 @@ describe("document comments", () => {
       cy.reload();
       cy.wait(["@reloadedDocument", "@reloadedComments"]);
 
-      H.getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
-      H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");
-      H.getBulletList("ul", Comments.getSidebar()).should("be.visible");
-      H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
-      H.getOrderedList("ol shortcut", Comments.getSidebar()).should(
-        "be.visible",
-      );
-      H.getBulletList("ul shortcut", Comments.getSidebar()).should(
-        "be.visible",
-      );
-      H.getCodeBlock("code shortcut", Comments.getSidebar()).should(
-        "be.visible",
-      );
+      // The thread is taller than the sidebar, so scroll each block into view
+      H.getBlockquote("blockquote", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getOrderedList("ol", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getBulletList("ul", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getCodeBlock("code", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getOrderedList("ol shortcut", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getBulletList("ul shortcut", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getCodeBlock("code shortcut", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
     });
   });
 

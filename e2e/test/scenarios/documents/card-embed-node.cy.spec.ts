@@ -335,15 +335,6 @@ describe("documents card embed node custom logic", () => {
           ]);
         });
 
-      cy.log("'Add supporting text' is disabled with 3 cards");
-      H.openDocumentCardMenu("Orders");
-      H.popover()
-        .findByText("Add supporting text")
-        .closest("button")
-        .should("have.attr", "data-disabled");
-      cy.realPress("Escape");
-      cy.get(H.POPOVER_ELEMENT).should("not.exist");
-
       cy.log("a fourth card is rejected");
       addNewStandaloneCard("Orders Model");
       H.getDocumentCard("Orders Model")
@@ -375,6 +366,15 @@ describe("documents card embed node custom logic", () => {
       H.documentContent()
         .findAllByTestId("document-card-embed")
         .should("have.length", 4);
+
+      cy.log("'Add supporting text' is disabled with 3 cards");
+      H.openDocumentCardMenu("Orders");
+      H.popover()
+        .findByText("Add supporting text")
+        .closest("button")
+        .should("have.attr", "data-disabled");
+      cy.realPress("Escape");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
       cy.log("Backspace deletes a selected card from the flexContainer");
       H.getDocumentCard("Orders").realClick({ position: "top" });
@@ -768,7 +768,12 @@ function assertFlexContainerCardsOrder(expectedCardTitles: string[]) {
 }
 
 function addNewStandaloneCard(cardName: string) {
-  cy.get(".node-paragraph.is-empty").click();
+  // Move the cursor to the document's trailing empty paragraph
+  H.documentContent().findByText("Advanced drag and drop scenarios").click();
+  cy.realPress([
+    H.metaKey,
+    Cypress.platform === "darwin" ? "ArrowDown" : "End",
+  ]);
   H.addToDocument("/", false);
   H.commandSuggestionItem("Chart").click();
   H.commandSuggestionItem(/Browse all/).click();
