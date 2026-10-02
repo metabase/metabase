@@ -16,11 +16,8 @@ const GROUPS = [
   createMockGroup(),
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
   createMockGroup({ id: 3, name: "Engineering", magic_group_type: null }),
-  createMockGroup({ id: 4, name: "Marketing", magic_group_type: null }),
-  createMockGroup({ id: 5, name: "Sales", magic_group_type: null }),
 ];
 
-const SAML_GROUP_PLACEHOLDER = "Enter SAML group...";
 const URL_EXAMPLE = "https://your-org-name.example.com";
 const ISSUER_EXAMPLE = "http://www.example.com/141xkex604w0Q5PN724v";
 
@@ -40,7 +37,6 @@ const IDP_SETTINGS = {
   "saml-identity-provider-issuer": fields[2].value,
 };
 
-// the backend reports SAML as configured once the URL and the certificate are saved
 const isSamlConfigured = (settings: Record<string, unknown>) =>
   Boolean(
     settings["saml-identity-provider-uri"] &&
@@ -56,11 +52,9 @@ const setup = async (
     "saml-configured": isSamlConfigured(settingValues),
   });
   setupSettingsEndpoints(settingDefinitions);
-  // the switches and the mappings read their values back after saving, so the properties mock has to remember writes
   const settingsStore = setupStatefulSettingsEndpoints(settings);
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
-  // the page save lands in the same store, and the configured flag follows it
   fetchMock.put("path:/api/saml/settings", ({ options }) => {
     Object.assign(settingsStore, JSON.parse(String(options.body)));
     settingsStore["saml-configured"] = isSamlConfigured(settingsStore);
@@ -148,7 +142,6 @@ describe("SettingsSAMLForm", () => {
 
   it("keeps the saved URL when the settings refetch after a save fails", async () => {
     await setupConfigured();
-    // a failed refetch leaves the pre-save settings in the cache
     fetchMock.removeRoute("get-session-properties");
     fetchMock.get("path:/api/session/properties", 500, {
       name: "get-session-properties",
@@ -257,14 +250,9 @@ describe("SettingsSAMLForm", () => {
       const input = screen.getByLabelText(/SAML identity provider URL/);
       expect(input).toHaveValue("https://sso.example.org/saml");
       expect(input).toHaveAttribute("readonly");
-      expect(
-        screen.getByText("Using MB_SAML_IDENTITY_PROVIDER_URI"),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "This is the URL where your users go to log in to your identity provider.",
-        ),
-      ).not.toBeInTheDocument();
+      expect(input).toHaveAccessibleDescription(
+        "Using MB_SAML_IDENTITY_PROVIDER_URI",
+      );
     });
 
     it("moves the issuer example into the placeholder", async () => {
@@ -488,12 +476,11 @@ describe("SettingsSAMLForm", () => {
     it("adds a mapping and writes it without touching the page form", async () => {
       await setupConfigured({ "saml-group-sync": true });
 
-      // the panel holds New until the groups have loaded
       const newButton = screen.getByRole("button", { name: "New" });
       await waitFor(() => expect(newButton).toBeEnabled());
       await userEvent.click(newButton);
       await userEvent.type(
-        screen.getByPlaceholderText(SAML_GROUP_PLACEHOLDER),
+        screen.getByPlaceholderText("Enter SAML group..."),
         "engineering",
       );
       await userEvent.click(

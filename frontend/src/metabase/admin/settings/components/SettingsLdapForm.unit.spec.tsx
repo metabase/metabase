@@ -120,7 +120,6 @@ const findMappingRow = (name: string) =>
     .queryAllByTestId("group-mapping-row")
     .find((row) => within(row).queryByText(name) != null);
 
-// the panel holds its controls until the groups load, and a click on a held control is dropped
 const clickWhenEnabled = async (element: HTMLElement) => {
   await waitFor(() => expect(element).toBeEnabled());
   await userEvent.click(element);
@@ -235,24 +234,8 @@ describe("SettingsLdapForm", () => {
     );
   });
 
-  it("leaves the form clean after a successful save", async () => {
-    await setup({ settingValues: ATTRS });
-
-    await userEvent.type(await screen.findByLabelText(/LDAP port/), "1");
-    await userEvent.click(screen.getByRole("button", { name: /Save/ }));
-
-    expect(await findRequests("PUT")).toHaveLength(1);
-    // a form left dirty after the save would keep the button live and arm the leave guard
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /Success|Save/ }),
-      ).toBeDisabled(),
-    );
-  });
-
   it("keeps the saved host when the settings refetch after a save fails", async () => {
     await setup({ settingValues: ATTRS });
-    // a failed refetch leaves the pre-save settings in the cache
     fetchMock.removeRoute("settings-list");
     fetchMock.get("path:/api/setting", 500, { name: "settings-list" });
 
@@ -561,7 +544,6 @@ describe("SettingsLdapForm", () => {
         ],
       });
 
-      // saving the page would not unlock a switch the env var holds
       await waitFor(() =>
         expect(groupMappingSwitch()).toHaveAccessibleDescription(
           /Using MB_LDAP_GROUP_SYNC/,

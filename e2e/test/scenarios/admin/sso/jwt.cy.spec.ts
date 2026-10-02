@@ -137,7 +137,6 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
         "Remove mapping and delete groups",
       );
       cy.wait(["@deleteGroup", "@deleteGroup"]);
-      // once the groups are gone, the surviving mappings are written again without them
       cy.wait("@updateSettings")
         .its("request.body.jwt-group-mappings")
         .should("deep.equal", {

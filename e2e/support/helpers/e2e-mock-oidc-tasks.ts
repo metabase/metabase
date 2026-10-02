@@ -6,16 +6,7 @@ type MockOidcServerOptions = {
   port: number;
 };
 
-/**
- * Start a mock server that impersonates an OIDC identity provider.
- *
- * GET /.well-known/openid-configuration serves a discovery document that
- * points every endpoint back at this server, and POST /token answers any
- * client_credentials grant with a token. Together they satisfy the backend's
- * connection check, which runs on every provider write.
- *
- * Call `stopMockOidcServer` to tear it down.
- */
+/** Start a mock OIDC identity provider that answers the backend's connection check. */
 export function startMockOidcServer({
   port,
 }: MockOidcServerOptions): Promise<null> {
@@ -64,9 +55,6 @@ export function startMockOidcServer({
   });
 }
 
-/**
- * Stop the mock identity provider started by `startMockOidcServer`.
- */
 export function stopMockOidcServer(): Promise<null> {
   return new Promise((resolve) => {
     if (server) {

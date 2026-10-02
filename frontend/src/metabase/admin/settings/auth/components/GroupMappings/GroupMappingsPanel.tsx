@@ -15,13 +15,11 @@ type GroupMappingsPanelProps = {
   // reports deletions to a page whose other controls write the same setting
   onDeletingChange?: (isDeleting: boolean) => void;
   groupLookup: GroupLookup;
-  // set by the page while it writes or refetches the mappings, since a row edit would race that
+  // set by the page while it writes or refetches the mappings
   disabled?: boolean;
   // locks the mappings for a reason the page explains elsewhere
   readOnly?: boolean;
-  // the env var that owns the mappings, which locks them and is named above the rows
   lockedEnvName?: string;
-  // the backend rejects bad names on write, so a failed save marks the name field
   namesValidatedOnSave?: boolean;
   nameLabel: string;
   namePlaceholder: string;
@@ -52,7 +50,6 @@ export function GroupMappingsPanel({
     groupLookup,
     namesValidatedOnSave,
   });
-  // a mapping's ids only read right once the groups have arrived, so the panel waits for them too
   const isDisabled =
     disabled ||
     editor.isSubmitting ||
@@ -67,7 +64,6 @@ export function GroupMappingsPanel({
         {!isReadOnly && editor.draft == null && (
           <Button
             variant="subtle"
-            // the heading wraps before the button does, so the button keeps its whole label
             flex="0 0 auto"
             leftSection={<Icon name="add" aria-hidden />}
             disabled={isDisabled}

@@ -25,8 +25,7 @@
   (when (and (:client-id provider-config)
              (:client-secret provider-config)
              (:issuer-uri provider-config))
-    ;; the stored setting decodes with keyword keys, while the lookups below use strings
-    ;; a blank claim counts as unset, so the default claim still applies
+    ;; the stored setting decodes with keyword keys, and a blank claim falls back to the default
     (let [attribute-map (update-vals (update-keys (:attribute-map provider-config) name) u/not-blank)]
       ;; the email picks the account, and email_verified only covers the standard claim, so it is never remapped
       (cond-> {:client-id     (:client-id provider-config)

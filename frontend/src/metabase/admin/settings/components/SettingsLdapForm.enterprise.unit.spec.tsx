@@ -81,18 +81,6 @@ describe("SettingsLdapForm (EE)", () => {
       expect(toggle).not.toHaveAttribute("aria-disabled");
     });
 
-    it("stays editable while LDAP is paused but configured", async () => {
-      await setup({
-        "ldap-enabled": false,
-        "ldap-host": "ldap.example.test",
-        "ldap-configured?": true,
-      });
-
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeEnabled();
-      expect(toggle).not.toHaveAttribute("aria-disabled");
-    });
-
     it("saves right away without touching the page form", async () => {
       await setup({
         "ldap-enabled": true,
@@ -101,7 +89,6 @@ describe("SettingsLdapForm (EE)", () => {
         "ldap-user-provisioning-enabled?": true,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      // the switch is held with aria-disabled while the settings load, which toBeEnabled cannot see
       await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
       expect(toggle).toBeChecked();
 

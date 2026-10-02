@@ -46,12 +46,14 @@ import { UserProvisioningSection } from "metabase-enterprise/auth/components/Use
 
 import { OidcGroupMappingSection } from "./OidcGroupMappingSection";
 import {
-  DEFAULT_FIRST_NAME_ATTRIBUTE,
   DEFAULT_GROUP_ATTRIBUTE,
-  DEFAULT_LAST_NAME_ATTRIBUTE,
-  DEFAULT_SCOPES,
-} from "./constants";
-import { type OidcGroupSync, toGroupSync } from "./group-sync";
+  type OidcGroupSync,
+  toGroupSync,
+} from "./group-sync";
+
+const DEFAULT_SCOPES = ["openid", "email", "profile"];
+const DEFAULT_FIRST_NAME_ATTRIBUTE = "given_name";
+const DEFAULT_LAST_NAME_ATTRIBUTE = "family_name";
 
 // the API keeps an existing provider's secret when none is sent, but a new provider needs one
 function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
@@ -148,7 +150,6 @@ function formValuesToProvider(
         .filter(Boolean)
     : DEFAULT_SCOPES;
 
-  // login always takes the email from the standard claim, so only the name claims are sent
   const attributeMap: Record<string, string> = {};
   if (values["attribute-firstname"]) {
     attributeMap["first_name"] = values["attribute-firstname"];
@@ -165,7 +166,6 @@ function formValuesToProvider(
     scopes,
     enabled: true,
     "attribute-map": attributeMap,
-    // the switch and the mappings save on their own, so the form resends their saved state with the attribute
     "group-sync": toGroupSync(groupSync, {
       "group-attribute": values["group-attribute"] ?? DEFAULT_GROUP_ATTRIBUTE,
     }),
@@ -192,17 +192,14 @@ export function SettingsOIDCForm() {
   const [checkConnection, { isLoading: isChecking }] =
     useCheckOidcConnectionMutation();
   const [sendToast] = useToast();
-  // the card writes the same provider as the form, so the save waits while the card saves
   const [isGroupMappingSaving, setIsGroupMappingSaving] = useState(false);
 
   const existingProvider =
     providers && providers.length > 0 ? providers[0] : null;
-  // the key names the provider, so it is fixed once one exists
   const isExisting = existingProvider != null;
-  // the group mapping card unlocks on the flag the overview card reads too
   const isConfigured = settingValues?.["oidc-configured"] ?? false;
   const providersSetting = settingDetails?.["oidc-providers"];
-  // the env var holds every provider, so it locks the whole page rather than one field
+  // the env var holds every provider, so it locks the whole page
   const lockedEnvName = providersSetting?.is_env_setting
     ? providersSetting.env_name
     : undefined;
@@ -217,7 +214,6 @@ export function SettingsOIDCForm() {
     () => getOidcFormSchema({ isExisting }),
     [isExisting],
   );
-  // the card opens by itself once a claim was customized
   const hasCustomAttributes = [
     initialValues["attribute-firstname"],
     initialValues["attribute-lastname"],
@@ -449,7 +445,6 @@ export function SettingsOIDCForm() {
                 </Button>
                 {!isLocked && (
                   <FormSubmitButton
-                    // a card write or a delete-groups cascade still running would be overwritten by this save
                     disabled={!dirty || isGroupMappingSaving}
                     label={isEnabled ? t`Save changes` : t`Save and enable`}
                     variant="filled"

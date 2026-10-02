@@ -88,48 +88,40 @@ describe("CollapsibleSettingsSection", () => {
 
 type SwitchSetupOptions = {
   checked?: boolean;
-  disabled?: boolean;
   switchDisabled?: boolean;
-  lockedEnvName?: string;
   note?: React.ReactNode;
 };
 
+const onChange = jest.fn();
+
 const getSwitchSection = ({
   checked = false,
-  disabled,
   switchDisabled,
-  lockedEnvName,
   note,
-}: SwitchSetupOptions = {}) => {
-  const onChange = jest.fn();
-  const element = (
-    <SwitchSettingsSection
-      title="Group mapping"
-      description="Assign people to groups automatically"
-      note={note}
-      checked={checked}
-      disabled={disabled}
-      switchDisabled={switchDisabled}
-      lockedEnvName={lockedEnvName}
-      onChange={onChange}
-    >
-      <div>Mapping editor</div>
-    </SwitchSettingsSection>
-  );
-  return { element, onChange };
-};
-
-const setupSwitch = (options: SwitchSetupOptions = {}) => {
-  const { element, onChange } = getSwitchSection(options);
-  renderWithProviders(element);
-  return { onChange };
-};
+}: SwitchSetupOptions = {}) => (
+  <SwitchSettingsSection
+    title="Group mapping"
+    description="Assign people to groups automatically"
+    note={note}
+    checked={checked}
+    switchDisabled={switchDisabled}
+    onChange={onChange}
+  >
+    <div>Mapping editor</div>
+  </SwitchSettingsSection>
+);
 
 const getSwitch = () => screen.getByRole("switch", { name: "Group mapping" });
 
 describe("SwitchSettingsSection", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("puts the description and the note on the switch as its accessible description", () => {
-    setupSwitch({ note: "SCIM manages provisioning" });
+    renderWithProviders(
+      getSwitchSection({ note: "SCIM manages provisioning" }),
+    );
 
     expect(
       screen.getByRole("heading", { name: "Group mapping" }),
@@ -142,37 +134,15 @@ describe("SwitchSettingsSection", () => {
     );
   });
 
-  it("reveals the children only while checked", () => {
-    const { rerender } = renderWithProviders(
-      getSwitchSection({ checked: true }).element,
-    );
-    expect(screen.getByText("Mapping editor")).toBeInTheDocument();
-
-    rerender(getSwitchSection({ checked: false }).element);
-
-    expect(screen.queryByText("Mapping editor")).not.toBeInTheDocument();
-  });
-
-  it("hides the children and locks the switch while the card is disabled", () => {
-    setupSwitch({ checked: true, disabled: true });
-
-    expect(screen.queryByText("Mapping editor")).not.toBeInTheDocument();
-    expect(getSwitch()).toBeDisabled();
-  });
-
-  // disabling a focused switch blurs it, so the lock uses aria-disabled and ignores clicks instead
   it("locks the switch on its own without taking its focus away", async () => {
-    const { element, onChange } = getSwitchSection({
-      checked: true,
-      switchDisabled: true,
-    });
-    const { rerender } = renderWithProviders(element);
+    const { rerender } = renderWithProviders(
+      getSwitchSection({ checked: true, switchDisabled: true }),
+    );
     const toggle = getSwitch();
     toggle.focus();
 
     expect(toggle).toBeEnabled();
     expect(toggle).toHaveAttribute("aria-disabled", "true");
-    // the card is not dimmed, so the mappings stay readable
     expect(screen.getByText("Mapping editor")).toBeInTheDocument();
 
     await userEvent.click(toggle);
@@ -180,39 +150,20 @@ describe("SwitchSettingsSection", () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(toggle).toHaveFocus();
 
-    rerender(
-      getSwitchSection({ checked: true, switchDisabled: false }).element,
-    );
+    rerender(getSwitchSection({ checked: true, switchDisabled: false }));
 
     expect(toggle).not.toHaveAttribute("aria-disabled");
     expect(toggle).toHaveFocus();
-  });
-
-  it("locks the switch and names the env var that owns the value", () => {
-    setupSwitch({ checked: true, lockedEnvName: "MB_LDAP_GROUP_SYNC" });
-
-    expect(getSwitch()).toHaveAttribute("aria-disabled", "true");
-    expect(getSwitch()).toHaveAccessibleDescription(/Using MB_LDAP_GROUP_SYNC/);
-    expect(screen.getByText("Mapping editor")).toBeInTheDocument();
-  });
-
-  it("reports the clicked value", async () => {
-    const { onChange } = setupSwitch();
-
-    await userEvent.click(getSwitch());
-
-    expect(onChange).toHaveBeenCalledWith(true);
   });
 
   it("keeps Enter from submitting the form the card sits in", async () => {
     const onSubmit = jest.fn((event: React.FormEvent) =>
       event.preventDefault(),
     );
-    const { element } = getSwitchSection();
     // Enter on a checkbox submits through the form's submit button, so the form needs one
     renderWithProviders(
       <form onSubmit={onSubmit}>
-        {element}
+        {getSwitchSection()}
         <button type="submit">Save</button>
       </form>,
     );

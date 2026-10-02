@@ -9,15 +9,10 @@ import S from "../GroupMappings.module.css";
 import type { DeleteMappingModalValueType } from "../types";
 
 export type DeleteGroupMappingModalProps = {
-  // the mapping being removed, shown above the lead text
   mappingName: string;
-  // names of the mapped groups that clearing empties
   clearedGroups: string[];
-  // names of the mapped groups that clearing leaves alone
   keptOnClear: string[];
-  // names of the mapped groups that deleting removes
   deletedGroups: string[];
-  // names of the mapped groups that deleting leaves alone
   keptOnDelete: string[];
   // an extra consequence the caller wants spelled out, shown under the lead text
   note?: string;

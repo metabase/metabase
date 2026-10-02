@@ -88,14 +88,14 @@ export function SettingsSection({
 type SwitchSettingsSectionProps = {
   title: string;
   description: React.ReactNode;
-  // says why the switch is locked, rendered as given
+  // says why the switch is locked
   note?: React.ReactNode;
   checked: boolean;
   // greys the whole card, locks the switch and keeps the children hidden
   disabled?: boolean;
   // locks the switch alone but keeps it focusable, since a disabled switch would drop focus mid-write
   switchDisabled?: boolean;
-  // the env var that owns the value, which locks the switch and is named under the description
+  // the env var that owns the value, named under the description
   lockedEnvName?: string;
   onChange: (checked: boolean) => void;
   children?: React.ReactNode;
@@ -162,7 +162,11 @@ export function SwitchSettingsSection({
                 mt="sm"
               >{t`Using ${lockedEnvName}`}</Text>
             )}
-            {note}
+            {note && (
+              <Text c="text-secondary" mt="sm">
+                {note}
+              </Text>
+            )}
           </Box>
         </Box>
         <Switch

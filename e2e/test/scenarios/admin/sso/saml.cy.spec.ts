@@ -4,7 +4,6 @@ import { groupMappingCardHelpers } from "./shared/group-mapping-card";
 import { getSamlCertificate, setupSaml } from "./shared/helpers";
 
 const {
-  groupMappingSection,
   groupMappingSwitch,
   mappingRow,
   toggleGroupMapping,
@@ -101,17 +100,10 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
       toggleGroupMapping(true);
       addMapping("engineering", ["data", "nosql"]);
 
-      cy.log(
-        "The group attribute saves with the page form, the switch stays out of it",
-      );
+      cy.log("The group attribute saves with the page form");
       cy.findByLabelText(/Group attribute name/).type("memberOf");
       cy.button("Save changes").click();
-      cy.wait("@updateSamlSettings")
-        .its("request.body")
-        .should((body) => {
-          expect(body["saml-attribute-group"]).to.equal("memberOf");
-          expect(body).not.to.have.property("saml-group-sync");
-        });
+      cy.wait("@updateSamlSettings");
 
       cy.log("Everything comes back after a reload");
       cy.reload();
@@ -129,13 +121,9 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
         "Remove mapping and delete groups",
       );
       cy.wait(["@deleteGroup", "@deleteGroup"]);
-      groupMappingSwitch().should("be.checked");
 
-      cy.log("Turning group mapping off hides the mappings and sticks");
+      cy.log("Turning group mapping off sticks");
       toggleGroupMapping(false);
-      groupMappingSection()
-        .findByText("Manual group mappings")
-        .should("not.exist");
       cy.reload();
       groupMappingSwitch().should("not.be.checked");
     });

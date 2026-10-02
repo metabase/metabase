@@ -100,7 +100,6 @@ const LDAP_ATTRIBUTE_KEYS = [
   "ldap-attribute-lastname",
 ] as const;
 
-// the group mapping card's own fields, hidden while group mapping is off
 const GROUP_MAPPING_FIELD_KEYS = [
   "ldap-group-base",
   "ldap-group-membership-filter",
@@ -148,7 +147,7 @@ export const SettingsLdapForm = () => {
         "ldap-port": Number(values["ldap-port"] ?? defaultPort),
         "ldap-enabled": true,
       }).unwrap();
-      // the form ignores refetches, which can still hold old values, so the saved values become its baseline
+      // the form ignores refetches, so the saved values become its baseline
       helpers.resetForm({ values });
     },
     [updateLdapSettings, defaultPort, isGroupMappingOn],
@@ -299,10 +298,8 @@ export const SettingsLdapForm = () => {
                 syncSettingKey="ldap-group-sync"
                 mappingsSettingKey="ldap-group-mappings"
                 description={t`Automatically assign people to ${applicationName} groups based on their LDAP group membership`}
-                // LDAP users are never tenants, so tenant groups stay out of the picker
                 tenancy="internal"
                 nameLabel={t`LDAP group name`}
-                // mapping names are group DNs, which the backend validates on write
                 namePlaceholder="cn=people,ou=groups,dc=example,dc=org"
                 namesValidatedOnSave
                 data-testid="ldap-group-mapping-section"

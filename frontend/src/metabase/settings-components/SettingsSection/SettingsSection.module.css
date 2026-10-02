@@ -105,7 +105,6 @@
   cursor: default;
 }
 
-/* the title is the switch's label, so it borrows the switch's pointer while the switch is live */
 .TitleLabel {
   cursor: pointer;
 }

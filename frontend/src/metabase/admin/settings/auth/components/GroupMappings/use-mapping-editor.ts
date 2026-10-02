@@ -21,9 +21,7 @@ export type MappingEditorState = {
   saveError: string | null;
   canSave: boolean;
   isSubmitting: boolean;
-  // true when saving adds a mapping rather than replacing the one being edited
   isDraftNew: boolean;
-  // true once an open draft holds something the admin would lose by leaving
   hasUnsavedChanges: boolean;
   startNew: () => void;
   startEdit: (name: string, groupIds: GroupId[]) => void;
@@ -46,13 +44,12 @@ export function useMappingEditor({
   namesValidatedOnSave?: boolean;
 }): MappingEditorState {
   const [draft, setDraft] = useState<MappingDraft | null>(null);
-  // the draft as it was opened, so an untouched one does not count as unsaved
   const [openedDraft, setOpenedDraft] = useState<MappingDraft | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const trimmedName = draft?.name.trim() ?? "";
-  // a draft whose mapping was deleted meanwhile, say by another admin, carries on as a new one
+  // a draft whose mapping was deleted meanwhile carries on as a new one
   const isDraftNew =
     draft != null &&
     (draft.originalName == null ||

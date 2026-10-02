@@ -4,7 +4,6 @@ import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSettingSwitch } from "metabase/settings";
 import { SwitchSettingsSection } from "metabase/settings-components";
-import { Box } from "metabase/ui";
 
 export type UserProvisioningSettingKey =
   | "jwt-user-provisioning-enabled?"
@@ -16,7 +15,6 @@ type UserProvisioningSectionProps = {
   settingKey: UserProvisioningSettingKey;
   // the sign-in method as the description names it
   providerName: string;
-  // set when this sign-in method also brings a deactivated account back
   reactivatesAccounts?: boolean;
   // says why the switch cannot be toggled and keeps it disabled while shown
   lockedNote?: React.ReactNode;
@@ -39,15 +37,8 @@ export function UserProvisioningSection({
     <SwitchSettingsSection
       title={t`User provisioning`}
       description={description}
-      // a caller's note explains the lock, so the env line steps aside
       lockedEnvName={hasLockedNote ? undefined : provisioningSwitch.envName}
-      note={
-        hasLockedNote && (
-          <Box c="text-secondary" mt="sm">
-            {lockedNote}
-          </Box>
-        )
-      }
+      note={lockedNote}
       checked={provisioningSwitch.checked}
       switchDisabled={hasLockedNote || provisioningSwitch.isBusy}
       onChange={provisioningSwitch.onChange}

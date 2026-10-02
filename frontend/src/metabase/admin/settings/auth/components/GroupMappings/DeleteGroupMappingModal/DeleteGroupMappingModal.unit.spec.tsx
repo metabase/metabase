@@ -74,7 +74,7 @@ describe("DeleteGroupMappingModal", () => {
     expect(screen.getByText("Also delete the groups")).toBeInTheDocument();
   });
 
-  it("names the groups each option acts on", () => {
+  it("names the groups each option acts on and the built-in groups it leaves alone", () => {
     setup({
       clearedGroups: ["Data Analysts", "Engineering"],
       keptOnClear: ["Administrators"],
@@ -88,6 +88,14 @@ describe("DeleteGroupMappingModal", () => {
     expect(screen.getByText("Data Analysts, Engineering")).toBeInTheDocument();
     expect(screen.getByLabelText("Also delete the group")).toBeEnabled();
     expect(screen.getByText("Engineering")).toBeInTheDocument();
+    expect(
+      screen.getByText(/The Administrators group is not affected\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "These groups are not affected: Administrators, Data Analysts.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("counts only the groups an option acts on", async () => {
@@ -126,24 +134,6 @@ describe("DeleteGroupMappingModal", () => {
     expect(screen.getByLabelText("Also delete the group")).toBeDisabled();
     expect(
       screen.getByText("The Data Analysts group is not affected."),
-    ).toBeInTheDocument();
-  });
-
-  it("lists every built-in group a delete would leave alone", () => {
-    setup({
-      clearedGroups: ["Data Analysts", "Engineering"],
-      keptOnClear: ["Administrators"],
-      deletedGroups: ["Engineering"],
-      keptOnDelete: ["Administrators", "Data Analysts"],
-    });
-
-    expect(
-      screen.getByText(/The Administrators group is not affected\./),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "These groups are not affected: Administrators, Data Analysts.",
-      ),
     ).toBeInTheDocument();
   });
 

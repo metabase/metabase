@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useAdminSetting, useSettingSwitch } from "metabase/settings";
 import { SwitchSettingsSection } from "metabase/settings-components";
-import { type BoxProps, Text } from "metabase/ui";
+import type { BoxProps } from "metabase/ui";
 
 import { GroupMappingsPanel } from "./GroupMappingsPanel";
 import { useGroupLookup } from "./use-group-lookup";
@@ -17,13 +17,10 @@ type SettingsGroupMappingSectionProps = {
   syncSettingKey: GroupSyncSettingKey;
   mappingsSettingKey: GroupMappingsSettingKey;
   description: string;
-  // "internal" keeps tenant groups out of the picker, for providers whose users are never tenants
   tenancy?: "internal";
-  // the backend rejects bad names on write, so a failed save marks the name field
   namesValidatedOnSave?: boolean;
   nameLabel: string;
   namePlaceholder: string;
-  // the page form's fields that only apply while group mapping is on
   children: React.ReactNode;
   disabled?: boolean;
   onToggle?: (enabled: boolean) => void;
@@ -52,11 +49,7 @@ export function SettingsGroupMappingSection({
       description={description}
       lockedEnvName={groupSyncSwitch.envName}
       note={
-        isLockedUntilSave && (
-          <Text c="text-secondary" mt="sm">
-            {t`Save the settings above to set up group mapping.`}
-          </Text>
-        )
+        isLockedUntilSave && t`Save the settings above to set up group mapping.`
       }
       checked={groupSyncSwitch.checked}
       disabled={disabled}

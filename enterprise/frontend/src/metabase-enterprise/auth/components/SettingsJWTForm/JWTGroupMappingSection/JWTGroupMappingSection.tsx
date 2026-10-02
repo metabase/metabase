@@ -35,7 +35,6 @@ export function JWTGroupMappingSection({
 
   const editor = useMappingEditor({
     mappings: groupMapping.mappings,
-    // saving a mapping always turns sync on, since a mapping is only meaningful while it is
     saveMappings: (mappings, options) =>
       groupMapping.saveSettings(
         { "jwt-group-sync": true, "jwt-group-mappings": mappings },
@@ -60,7 +59,6 @@ export function JWTGroupMappingSection({
     groupMapping.isSaving ||
     groupMapping.isAdminSettingsFetching ||
     deletion.isDeleting;
-  // a mapping's ids only read right once the groups have arrived, so the list waits for them too
   const isListHeld = isBusy || !groupLookup.isLoaded;
 
   const isLocked = lockedEnvNames.length > 0;
@@ -100,7 +98,6 @@ export function JWTGroupMappingSection({
         {isNewMappingShown && (
           <Button
             variant="subtle"
-            // the heading wraps before the button does, so the button keeps its whole label
             flex="0 0 auto"
             leftSection={<Icon name="add" aria-hidden />}
             disabled={isListHeld}

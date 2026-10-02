@@ -3,21 +3,13 @@ const { H } = cy;
 type GroupMappingCardOptions = {
   sectionTestId: string;
   nameLabel: string;
-  // the label of the button that starts a mapping, which the JWT card calls "New mapping"
   newMappingLabel?: string;
-  // alias of the intercepted request a switch click sends
   switchRequestAlias?: string;
-  // path of the new on/off value inside that request's body, for instance "group-sync.enabled"
   switchValuePath?: string;
-  // alias of the intercepted request that saves the mappings
   mappingsRequestAlias?: string;
 };
 
-/**
- * Helpers for the group mapping card the SSO pages share.
- * The spec intercepts the card's requests itself.
- * By default the switch sends `PUT /api/setting/*`, aliased `updateSetting`, with the new value at `body.value`, and the mappings are saved with `PUT /api/setting`, aliased `updateSettings`.
- */
+/** Helpers for the group mapping card the SSO pages share, waiting on requests the spec intercepts. */
 export const groupMappingCardHelpers = ({
   sectionTestId,
   nameLabel,
@@ -39,16 +31,11 @@ export const groupMappingCardHelpers = ({
 
   const groupsPicker = () => cy.findByLabelText("Metabase groups");
 
-  // Mantine hides the switch input, so the click goes to the title label wired to it
-  const clickGroupMappingSwitch = () => {
+  const toggleGroupMapping = (enabled: boolean) => {
+    groupMappingSwitch().should(enabled ? "not.be.checked" : "be.checked");
     // a click during a write is ignored, so wait for the switch to be free first
     groupMappingSwitch().should("not.have.attr", "aria-disabled");
     groupMappingSection().contains("label", "Group mapping").click();
-  };
-
-  const toggleGroupMapping = (enabled: boolean) => {
-    groupMappingSwitch().should(enabled ? "not.be.checked" : "be.checked");
-    clickGroupMappingSwitch();
     cy.wait(`@${switchRequestAlias}`)
       .its(`request.body.${switchValuePath}`)
       .should("equal", enabled);

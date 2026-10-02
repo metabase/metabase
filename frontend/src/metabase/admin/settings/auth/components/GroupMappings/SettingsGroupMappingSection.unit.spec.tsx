@@ -36,8 +36,8 @@ const GROUPS = [
 ];
 
 const DEVS_DN = "cn=devs,ou=groups,dc=example,dc=org";
+const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
 
-// the admin list only carries values that were set, so the test values stand in for those
 const toDefinitions = (
   values: Partial<EnterpriseSettings>,
 ): SettingDefinition[] =>
@@ -57,14 +57,14 @@ const findMappingRow = (name: string) =>
 
 const getMappingRow = (name: string) => checkNotNull(findMappingRow(name));
 
-const clickNew = async () => {
-  const newButton = screen.getByRole("button", { name: "New" });
-  // the panel holds New until the groups have loaded
-  await waitFor(() => expect(newButton).toBeEnabled());
-  await userEvent.click(newButton);
+const clickWhenEnabled = async (element: HTMLElement) => {
+  await waitFor(() => expect(element).toBeEnabled());
+  await userEvent.click(element);
 };
 
-/** Holds every settings read from now on, so a refetch stays in flight until the returned function is called */
+const getRowButton = (mappingName: string, buttonName: string) =>
+  within(getMappingRow(mappingName)).getByRole("button", { name: buttonName });
+
 const holdSettingsReads = (settingsStore: Record<string, unknown>) => {
   const gate = defer<void>();
   fetchMock.removeRoute("get-session-properties");
@@ -80,7 +80,7 @@ const holdSettingsReads = (settingsStore: Record<string, unknown>) => {
 };
 
 const fillNewDraft = async (name: string) => {
-  await clickNew();
+  await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
   await userEvent.type(screen.getByLabelText("LDAP group name"), name);
   await userEvent.click(screen.getByPlaceholderText("Pick Metabase group..."));
   await userEvent.click(
@@ -99,15 +99,12 @@ const setup = async ({
   disabled = false,
 }: {
   settingValues?: Partial<EnterpriseSettings>;
-  // entries here win over the ones derived from settingValues
   settingDefinitions?: SettingDefinition[];
   updateDelay?: number;
   readDelay?: number;
   groupsDelay?: number;
   groupsStatus?: number;
-  // renders the card on an ldap route next to a people route, so leaving can be tried
   withRouter?: boolean;
-  // stands for a provider that is not configured yet
   disabled?: boolean;
 } = {}) => {
   const settings = createMockSettings(settingValues);
@@ -118,7 +115,6 @@ const setup = async ({
     ...settingDefinitions,
     ...toDefinitions(settingValues).filter(({ key }) => !listedKeys.has(key)),
   ]);
-  // the switch and the mappings read their values back after saving, so the properties mock has to remember writes
   const settingsStore = setupStatefulSettingsEndpoints(settings, {
     updateDelay,
     readDelay,
@@ -161,7 +157,6 @@ const setup = async ({
     }),
   });
 
-  // the switch is held while the settings load, so a click before that would be ignored
   if (settingValues["ldap-group-sync"] === true) {
     await screen.findByText("Manual group mappings");
   } else {
@@ -174,7 +169,6 @@ const setup = async ({
 
 describe("SettingsGroupMappingSection", () => {
   it("shows the new value and holds the switch while the write is in flight", async () => {
-    // the settings mock answers the write late, so the in-flight state can be seen
     const { onToggle } = await setup({ updateDelay: 200 });
 
     await userEvent.click(groupMappingSwitch());
@@ -191,7 +185,6 @@ describe("SettingsGroupMappingSection", () => {
   });
 
   it("holds the switch until the settings refetch after the write lands", async () => {
-    // the properties mock answers reads late, so the refetch the write triggers can be seen
     await setup({ readDelay: 200 });
 
     await userEvent.click(groupMappingSwitch());
@@ -237,7 +230,6 @@ describe("SettingsGroupMappingSection", () => {
       expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
     );
     expect(screen.queryByText("Manual group mappings")).not.toBeInTheDocument();
-    // the page drops unsaved field edits on a toggle, which must not happen for a write that failed
     expect(onToggle).not.toHaveBeenCalled();
   });
 
@@ -249,10 +241,7 @@ describe("SettingsGroupMappingSection", () => {
       },
     });
 
-    const deleteButton = screen.getByRole("button", { name: "Delete mapping" });
-    // the panel holds its controls until the groups have loaded
-    await waitFor(() => expect(deleteButton).toBeEnabled());
-    await userEvent.click(deleteButton);
+    await clickWhenEnabled(getRowButton(DEVS_DN, "Delete mapping"));
     const modal = await screen.findByRole("dialog");
     await userEvent.click(
       within(modal).getByRole("button", { name: "Remove mapping" }),
@@ -267,7 +256,6 @@ describe("SettingsGroupMappingSection", () => {
   });
 
   it("holds the mappings while the settings refetch after a write", async () => {
-    const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
     const { settingsStore } = await setup({
       settingValues: {
         "ldap-group-sync": true,
@@ -275,10 +263,7 @@ describe("SettingsGroupMappingSection", () => {
       },
     });
     const newButton = () => screen.getByRole("button", { name: "New" });
-    const deleteButton = () =>
-      within(getMappingRow(DEVS_DN)).getByRole("button", {
-        name: "Delete mapping",
-      });
+    const deleteButton = () => getRowButton(DEVS_DN, "Delete mapping");
     await waitFor(() => expect(deleteButton()).toBeEnabled());
     const releaseReads = holdSettingsReads(settingsStore);
 
@@ -289,7 +274,6 @@ describe("SettingsGroupMappingSection", () => {
     );
 
     try {
-      // the write is done once the toast shows, while the refetch it triggered is still in flight
       expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
       expect(newButton()).toBeDisabled();
     } finally {
@@ -300,28 +284,15 @@ describe("SettingsGroupMappingSection", () => {
   });
 
   it("carries on as a new mapping when the one being edited disappears", async () => {
-    const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
     const { store, settingsStore } = await setup({
       settingValues: {
         "ldap-group-sync": true,
         "ldap-group-mappings": { [DEVS_DN]: [3], [OPS_DN]: [3] },
       },
     });
-    await waitFor(() =>
-      expect(
-        within(getMappingRow(DEVS_DN)).getByRole("button", {
-          name: "Edit mapping",
-        }),
-      ).toBeEnabled(),
-    );
-    await userEvent.click(
-      within(getMappingRow(DEVS_DN)).getByRole("button", {
-        name: "Edit mapping",
-      }),
-    );
+    await clickWhenEnabled(getRowButton(DEVS_DN, "Edit mapping"));
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
 
-    // another admin deletes the mapping, and a refetch brings that in
     settingsStore["ldap-group-mappings"] = { [OPS_DN]: [3] };
     store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
 
@@ -350,38 +321,27 @@ describe("SettingsGroupMappingSection", () => {
         "ldap-group-mappings": { [DEVS_DN]: [3] },
       },
     });
-    const row = getMappingRow(DEVS_DN);
 
-    expect(
-      within(row).getByRole("button", { name: "Edit mapping" }),
-    ).toHaveAccessibleDescription(DEVS_DN);
-    expect(
-      within(row).getByRole("button", { name: "Delete mapping" }),
-    ).toHaveAccessibleDescription(DEVS_DN);
+    expect(getRowButton(DEVS_DN, "Edit mapping")).toHaveAccessibleDescription(
+      DEVS_DN,
+    );
+    expect(getRowButton(DEVS_DN, "Delete mapping")).toHaveAccessibleDescription(
+      DEVS_DN,
+    );
   });
 
   it("opens another row's editor in place of an open draft", async () => {
-    const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
     await setup({
       settingValues: {
         "ldap-group-sync": true,
         "ldap-group-mappings": { [DEVS_DN]: [3], [OPS_DN]: [4] },
       },
     });
-    const devsEditButton = within(getMappingRow(DEVS_DN)).getByRole("button", {
-      name: "Edit mapping",
-    });
-    await waitFor(() => expect(devsEditButton).toBeEnabled());
-    await userEvent.click(devsEditButton);
+    await clickWhenEnabled(getRowButton(DEVS_DN, "Edit mapping"));
     await userEvent.type(screen.getByLabelText("LDAP group name"), "-team");
 
-    await userEvent.click(
-      within(getMappingRow(OPS_DN)).getByRole("button", {
-        name: "Edit mapping",
-      }),
-    );
+    await userEvent.click(getRowButton(OPS_DN, "Edit mapping"));
 
-    // the first draft is discarded, and its row is back as it was stored
     expect(screen.getByLabelText("LDAP group name")).toHaveValue(OPS_DN);
     expect(findMappingRow(DEVS_DN)).toBeDefined();
     expect(
@@ -440,7 +400,7 @@ describe("SettingsGroupMappingSection", () => {
       withRouter: true,
     });
     const routerWithRoutes = checkNotNull(router);
-    await clickNew();
+    await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
     await userEvent.type(screen.getByLabelText("LDAP group name"), DEVS_DN);
 
     act(() => routerWithRoutes.navigate("/people"));
@@ -456,7 +416,7 @@ describe("SettingsGroupMappingSection", () => {
       settingValues: { "ldap-group-sync": true },
       withRouter: true,
     });
-    await clickNew();
+    await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
 
     act(() => checkNotNull(router).navigate("/people"));
 
@@ -472,11 +432,7 @@ describe("SettingsGroupMappingSection", () => {
       },
       withRouter: true,
     });
-    const editButton = within(getMappingRow(DEVS_DN)).getByRole("button", {
-      name: "Edit mapping",
-    });
-    await waitFor(() => expect(editButton).toBeEnabled());
-    await userEvent.click(editButton);
+    await clickWhenEnabled(getRowButton(DEVS_DN, "Edit mapping"));
 
     act(() => checkNotNull(router).navigate("/people"));
 
@@ -493,10 +449,7 @@ describe("SettingsGroupMappingSection", () => {
       groupsDelay: 200,
     });
     const newButton = () => screen.getByRole("button", { name: "New" });
-    const editButton = () =>
-      within(getMappingRow(DEVS_DN)).getByRole("button", {
-        name: "Edit mapping",
-      });
+    const editButton = () => getRowButton(DEVS_DN, "Edit mapping");
     expect(newButton()).toBeDisabled();
     expect(editButton()).toBeDisabled();
     const row = getMappingRow(DEVS_DN);
@@ -547,7 +500,6 @@ describe("SettingsGroupMappingSection", () => {
       },
     });
     fetchMock.delete("express:/api/permissions/group/:id", 204);
-    // the mapping removal lands, while the clean-up write after the group delete fails
     let writeCount = 0;
     fetchMock.removeRoute("update-settings");
     fetchMock.put(
@@ -562,12 +514,8 @@ describe("SettingsGroupMappingSection", () => {
       },
       { name: "update-settings" },
     );
-    const deleteButton = within(getMappingRow(OLD_DN)).getByRole("button", {
-      name: "Delete mapping",
-    });
-    await waitFor(() => expect(deleteButton).toBeEnabled());
 
-    await userEvent.click(deleteButton);
+    await clickWhenEnabled(getRowButton(OLD_DN, "Delete mapping"));
     await userEvent.click(
       await screen.findByRole("radio", { name: "Also delete the group" }),
     );
@@ -601,7 +549,6 @@ describe("SettingsGroupMappingSection", () => {
       ],
     });
 
-    // the env line comes from the settings list, a second request the card does not wait for
     expect(
       await screen.findByText("Using MB_LDAP_GROUP_MAPPINGS"),
     ).toBeInTheDocument();

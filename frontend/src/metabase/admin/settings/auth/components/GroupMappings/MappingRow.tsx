@@ -27,7 +27,6 @@ export function MappingRow({
   onEdit,
   onDelete,
 }: MappingRowProps) {
-  // the buttons are named alike on every row, so each one is described by its row's mapping
   const nameId = useId();
 
   return (
@@ -47,7 +46,6 @@ export function MappingRow({
         >
           {name}
         </Text>
-        {/* every id reads as missing until the groups arrive, so the row names none until then */}
         {groupLookup.isLoaded && (
           <>
             <FixedSizeIcon aria-hidden name="arrow_right" c="text-secondary" />

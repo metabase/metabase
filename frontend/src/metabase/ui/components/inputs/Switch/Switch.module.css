@@ -61,7 +61,6 @@
     background-color: var(--mb-color-switch-checked);
   }
 
-  /* aria-disabled locks a switch that has to stay focusable, so it shares the disabled look */
   input:disabled + &,
   input[aria-disabled="true"] + & {
     background-color: var(--mb-color-switch-disabled);

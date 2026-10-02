@@ -48,7 +48,6 @@ export function MappingEditorRow({
 }: MappingEditorRowProps) {
   const applicationName = useSelector(getApplicationName);
   const errorId = useId();
-  // a failed save shows where a name error does, but only a name error marks the field invalid
   const errorMessage = nameError ?? saveError;
 
   // a read-only picker still drops its last group on Backspace, so edits wait for the save as well
@@ -104,7 +103,7 @@ export function MappingEditorRow({
             placeholder={namePlaceholder}
             value={draft.name}
             error={nameError != null}
-            // read-only rather than disabled, so the field keeps the focus during the write
+            // keeps the focus in the field during the write
             readOnly={isSubmitting}
             onChange={(event) =>
               handleChange({ ...draft, name: event.target.value })

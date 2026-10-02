@@ -7,7 +7,6 @@ import type {
 import { settingsApi } from "./api";
 import { useAdminSetting } from "./use-admin-setting";
 
-// the settings a switch can own: those whose value is a boolean
 type BooleanSettingKey = {
   [Key in EnterpriseSettingKey]: EnterpriseSettings[Key] extends
     | boolean
@@ -20,7 +19,6 @@ type BooleanSettingKey = {
 export type SettingSwitchState = {
   checked: boolean;
   envName: string | undefined;
-  // true while the settings load or refetch and while the write runs
   isBusy: boolean;
   onChange: (enabled: boolean) => Promise<void>;
 };
@@ -43,7 +41,6 @@ export function useSettingSwitch(
     : undefined;
 
   const onChange = async (enabled: boolean) => {
-    // show the click at once and let the write's refetch confirm it
     const patch = dispatch(
       settingsApi.util.updateQueryData(
         "getSessionProperties",

@@ -379,21 +379,6 @@
                (is (contains? group-ids group-a-id))
                (is (not (contains? group-ids group-b-id)))))))))))
 
-(deftest build-oidc-config-attribute-map-test
-  (testing "custom name claims survive the setting's JSON round trip into the OIDC config, and the email claim is never remapped"
-    (mt/with-additional-premium-features #{:sso-oidc}
-      (mt/with-temporary-setting-values
-        [oidc-providers [(assoc test-provider :attribute-map {"email"      "mail"
-                                                              "first_name" "gn"
-                                                              "last_name"  "sn"})]]
-        (let [stored (sso-settings/get-oidc-provider "test-idp")
-              config (#'oidc.provider/build-oidc-config stored {:redirect-uri "http://localhost/callback"})]
-          (testing "the stored map comes back with keyword keys"
-            (is (= "mail" (get-in stored [:attribute-map :email]))))
-          (is (= {:attribute-firstname "gn"
-                  :attribute-lastname  "sn"}
-                 (select-keys config [:attribute-email :attribute-firstname :attribute-lastname]))))))))
-
 (deftest authenticate-ignores-custom-email-claim-test
   (testing "login takes the email from the standard claim that email_verified covers, whatever the provider maps"
     (mt/with-additional-premium-features #{:sso-oidc}
@@ -428,11 +413,11 @@
             (testing "the name claims still follow the mapping"
               (is (= "Sam" (get-in result [:user-data :first_name]))))))))))
 
-(deftest build-oidc-config-blank-attribute-test
-  (testing "a blank claim name counts as unset, so login falls back to the default claim"
+(deftest build-oidc-config-attribute-map-test
+  (testing "a blank claim name counts as unset, and the email claim is never remapped"
     (mt/with-additional-premium-features #{:sso-oidc}
       (mt/with-temporary-setting-values
-        [oidc-providers [(assoc test-provider :attribute-map {"email"      ""
+        [oidc-providers [(assoc test-provider :attribute-map {"email"      "mail"
                                                               "first_name" "  "
                                                               "last_name"  "sn"})]]
         (let [stored (sso-settings/get-oidc-provider "test-idp")

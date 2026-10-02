@@ -75,6 +75,8 @@ export function createGroupLookup(
       isDefaultTenantGroup(group)
     );
   };
+  const existingGroups = (groupIds: GroupId[]) =>
+    groupIds.flatMap((groupId) => groupsById.get(groupId) ?? []);
   return {
     // every id reads as missing until the groups arrive, so callers hold their controls until then
     isLoaded: groups != null,
@@ -87,23 +89,16 @@ export function createGroupLookup(
     existingIds: (groupIds: GroupId[]) =>
       groupIds.filter((groupId) => groupsById.has(groupId)),
     actionableIds: (groupIds: GroupId[], value: CascadeValue) =>
-      groupIds.filter((groupId) => {
-        const group = groupsById.get(groupId);
-        return group != null && !isKeptBy(value, group);
-      }),
+      existingGroups(groupIds)
+        .filter((group) => !isKeptBy(value, group))
+        .map((group) => group.id),
     actionableGroupNames: (groupIds: GroupId[], value: CascadeValue) =>
-      groupIds.flatMap((groupId) => {
-        const group = groupsById.get(groupId);
-        return group != null && !isKeptBy(value, group)
-          ? [getGroupNameLocalized(group)]
-          : [];
-      }),
+      existingGroups(groupIds)
+        .filter((group) => !isKeptBy(value, group))
+        .map((group) => getGroupNameLocalized(group)),
     keptGroupNames: (groupIds: GroupId[], value: CascadeValue) =>
-      groupIds.flatMap((groupId) => {
-        const group = groupsById.get(groupId);
-        return group != null && isKeptBy(value, group)
-          ? [getGroupNameLocalized(group)]
-          : [];
-      }),
+      existingGroups(groupIds)
+        .filter((group) => isKeptBy(value, group))
+        .map((group) => getGroupNameLocalized(group)),
   };
 }

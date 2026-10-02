@@ -92,7 +92,6 @@ export function useMappingDeletion({
     const hasDeletedGroups = Object.values(nextMappings).some((ids) =>
       ids.some((groupId) => deleted.has(groupId)),
     );
-    // the mapping and its groups are already gone, so a failed clean-up is reported with the deletion
     const scrubResult = hasDeletedGroups
       ? await saveMappings(withoutGroups(nextMappings, deletedIds), {
           showErrorToast: false,

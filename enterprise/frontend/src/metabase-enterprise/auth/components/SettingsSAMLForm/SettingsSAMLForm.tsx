@@ -74,6 +74,7 @@ export function SettingsSAMLForm() {
   const { data: settingValues, isLoading: isLoadingValues } =
     useGetSettingsQuery();
   const [updateSamlSettings] = useUpdateSamlMutation();
+  const applicationName = useSelector(getApplicationName);
 
   const isEnabled = Boolean(settingValues?.["saml-enabled"]);
   const isConfigured = settingValues?.["saml-configured"] ?? false;
@@ -84,13 +85,12 @@ export function SettingsSAMLForm() {
       helpers: FormikHelpers<SAMLFormSettings>,
     ) => {
       await updateSamlSettings({ ...values, "saml-enabled": true }).unwrap();
-      // the form ignores refetches, which can still hold old values, so the saved values become its baseline
+      // the form ignores refetches, so the saved values become its baseline
       helpers.resetForm({ values });
     },
     [updateSamlSettings],
   );
 
-  const applicationName = useSelector(getApplicationName);
   const siteUrl = useSetting("site-url");
   const scimEnabled = useSetting("scim-enabled");
 
@@ -161,7 +161,7 @@ export function SettingsSAMLForm() {
                     label={t`User's email attribute`}
                     hasCopyButton
                     {...getEnvNoticeProps(
-                      settingDetails["saml-attribute-email"],
+                      settingDetails?.["saml-attribute-email"],
                     )}
                   />
                   <FormTextInput
@@ -169,7 +169,7 @@ export function SettingsSAMLForm() {
                     label={t`User's first name attribute`}
                     hasCopyButton
                     {...getEnvNoticeProps(
-                      settingDetails["saml-attribute-firstname"],
+                      settingDetails?.["saml-attribute-firstname"],
                     )}
                   />
                   <FormTextInput
@@ -177,7 +177,7 @@ export function SettingsSAMLForm() {
                     label={t`User's last name attribute`}
                     hasCopyButton
                     {...getEnvNoticeProps(
-                      settingDetails["saml-attribute-lastname"],
+                      settingDetails?.["saml-attribute-lastname"],
                     )}
                   />
                   {settingValues["use-tenants"] && (
@@ -186,7 +186,7 @@ export function SettingsSAMLForm() {
                       label={t`Tenant assignment attribute`}
                       hasCopyButton
                       {...getEnvNoticeProps(
-                        settingDetails["saml-attribute-tenant"],
+                        settingDetails?.["saml-attribute-tenant"],
                       )}
                     />
                   )}
@@ -207,17 +207,17 @@ export function SettingsSAMLForm() {
                     placeholder="https://your-org-name.example.com"
                     required
                     {...getEnvNoticeProps(
-                      settingDetails["saml-identity-provider-uri"],
+                      settingDetails?.["saml-identity-provider-uri"],
                     )}
                   />
                   <FormTextarea
                     name="saml-identity-provider-certificate"
                     label={t`SAML identity provider certificate`}
                     placeholder="-----BEGIN CERTIFICATE-----...-----END CERTIFICATE-----"
-                    required
                     {...getExtraFormFieldProps(
-                      settingDetails["saml-identity-provider-certificate"],
+                      settingDetails?.["saml-identity-provider-certificate"],
                     )}
+                    required
                   />
                   <FormTextInput
                     name="saml-application-name"
@@ -227,7 +227,7 @@ export function SettingsSAMLForm() {
                     )}
                     nullable
                     {...getExtraFormFieldProps(
-                      settingDetails["saml-application-name"],
+                      settingDetails?.["saml-application-name"],
                     )}
                   />
                   <FormTextInput
@@ -238,7 +238,7 @@ export function SettingsSAMLForm() {
                     placeholder="http://www.example.com/141xkex604w0Q5PN724v"
                     required
                     {...getEnvNoticeProps(
-                      settingDetails["saml-identity-provider-issuer"],
+                      settingDetails?.["saml-identity-provider-issuer"],
                     )}
                   />
                 </Stack>
@@ -256,7 +256,7 @@ export function SettingsSAMLForm() {
                     placeholder="/path/to/keystore.jks"
                     nullable
                     {...getExtraFormFieldProps(
-                      settingDetails["saml-keystore-path"],
+                      settingDetails?.["saml-keystore-path"],
                     )}
                   />
                   <FormTextInput
@@ -266,7 +266,7 @@ export function SettingsSAMLForm() {
                     placeholder={t`Shh...`}
                     nullable
                     {...getEnvNoticeProps(
-                      settingDetails["saml-keystore-password"],
+                      settingDetails?.["saml-keystore-password"],
                     )}
                   />
                   <FormTextInput
@@ -275,7 +275,7 @@ export function SettingsSAMLForm() {
                     placeholder="saml"
                     nullable
                     {...getExtraFormFieldProps(
-                      settingDetails["saml-keystore-alias"],
+                      settingDetails?.["saml-keystore-alias"],
                     )}
                   />
                 </Stack>

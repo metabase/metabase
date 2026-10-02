@@ -52,24 +52,6 @@ const getAttributeFieldProps = (setting: SettingDefinition | undefined) =>
     ? getExtraFormFieldProps(setting)
     : { placeholder: getDefaultPlaceholder(setting) };
 
-// the other cards unlock on a saved key, so a URI cannot be saved without one
-function getJwtFormSchema({
-  isSigningKeyEnvSet,
-}: {
-  isSigningKeyEnvSet: boolean;
-}) {
-  return Yup.object({
-    "jwt-shared-secret": Yup.string()
-      .nullable()
-      // the key is asked for once there is a URI, so an untouched new page shows no error
-      .when("jwt-identity-provider-uri", {
-        is: (uri: string | null) => Boolean(uri) && !isSigningKeyEnvSet,
-        then: (schema) =>
-          schema.required(t`Set up a signing key before saving`),
-      }),
-  });
-}
-
 export type JWTFormValues = Pick<
   EnterpriseSettings,
   | "jwt-identity-provider-uri"
@@ -104,7 +86,7 @@ export const SettingsJWTForm = () => {
   const applicationName = useSelector(getApplicationName);
   const [sendToast] = useToast();
 
-  // the flag the overview card reads: the URI and the shared secret are both saved, paused or not
+  // the URI and the shared secret are both saved, paused or not
   const isServerConfigured = settingValues?.["jwt-configured"] ?? false;
   // a saved URI or mapping means the setup is not new, even if the shared secret went missing since
   const uriSetting = settingDetails?.["jwt-identity-provider-uri"];
@@ -122,12 +104,10 @@ export const SettingsJWTForm = () => {
     setting?.is_env_setting && setting.env_name ? [setting.env_name] : [],
   );
   const isGroupMappingEnvConfigured = groupMappingEnvNames.length > 0;
-  // per the design, the first save turns automatic group mapping on; the section owns it from then on
   const turnsOnGroupMapping = isNewSetup && !isGroupMappingEnvConfigured;
 
   const saveSettings = async (values: JWTFormValues) => {
     const { "jwt-shared-secret": jwtSecret, ...rest } = values;
-    // an env var owns these keys, so a save must not write a copy behind it
     const envLockedKeys = JWT_TEXT_KEYS.filter(
       (key) => settingDetails?.[key]?.is_env_setting,
     );
@@ -177,9 +157,17 @@ export const SettingsJWTForm = () => {
     );
   }
 
-  const validationSchema = getJwtFormSchema({
-    isSigningKeyEnvSet:
-      settingDetails["jwt-shared-secret"]?.is_env_setting ?? false,
+  const isSigningKeyEnvSet =
+    settingDetails["jwt-shared-secret"]?.is_env_setting ?? false;
+  // the other cards unlock on a saved key, so a URI cannot be saved without one
+  const validationSchema = Yup.object({
+    "jwt-shared-secret": Yup.string()
+      .nullable()
+      .when("jwt-identity-provider-uri", {
+        is: (uri: string | null) => Boolean(uri) && !isSigningKeyEnvSet,
+        then: (schema) =>
+          schema.required(t`Set up a signing key before saving`),
+      }),
   });
   const usingTenants = settingDetails["use-tenants"]?.value;
   const hasUserAttributes = [

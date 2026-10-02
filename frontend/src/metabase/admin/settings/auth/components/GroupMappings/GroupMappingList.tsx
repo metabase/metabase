@@ -22,7 +22,6 @@ type GroupMappingListProps = {
   nameLabel: string;
   namePlaceholder: string;
   emptyMessage: string;
-  // a warning the delete confirmation shows, for instance that this is the last mapping
   deleteNote?: string;
 };
 
