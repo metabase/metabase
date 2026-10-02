@@ -135,7 +135,7 @@ export const CreateOrder = defineAction({
 });
 ```
 
-Each definition is backed by serialized Metabase YAML that you write into the app's `resources/` directory. Nothing changes in Metabase until the repository is pulled; the pull loads `resources/` into the app's collection and puts it back on every later pull, so never create or edit anything in that collection by hand.
+Each definition is backed by serialized Metabase YAML that you write into the app's `resources/` directory. Nothing changes in Metabase until the repository is pulled; the pull loads `resources/` into the app's collection as serialized content, like everything else the repository holds, so write the files instead of creating anything in that collection by hand.
 
 ```
 data_app.yaml                    collection: <entity ID of resources/collection.yaml>

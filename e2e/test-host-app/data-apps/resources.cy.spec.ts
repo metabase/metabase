@@ -9,11 +9,18 @@ const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
 
 const COLLECTION = "hostAppCollection0001";
 
-const AUTHORED_MANIFEST = `name: Vite 6 Data App
-version: 1
+/** The host app's checked-in manifest, as serialization reads it. */
+const AUTHORED_MANIFEST = `version: 1
+name: Vite 6 Data App
+slug: vite-6-data-app-host-app
 path: ./dist/index.js
 allowed_hosts:
   - https://allowed.data-app.test
+entity_id: qxpaPkU_WRE2ZQu0cmpqD
+serdes/meta:
+- model: DataApp
+  id: qxpaPkU_WRE2ZQu0cmpqD
+  label: vite-6-data-app-host-app
 `;
 
 const ORDERS_TABLE: PortableTable = ["Sample Database", "PUBLIC", "ORDERS"];
