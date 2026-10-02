@@ -49,10 +49,11 @@ docs/embedding/eajs/snippets # auto-generated
 # @metabase/devexp
 .github @metabase/devexp
 
-# Deferred: .clj-kondo/ratchets.edn and .clj-kondo/config.edn still churn too fast for
+# Deferred: the kondo ratchet files and .clj-kondo/config.edn still churn too fast for
 # per-PR review to be worth the friction, and ratchets may split per module, in which
 # case ownership belongs to each module's own team rather than one shared entry here.
 # .clj-kondo/ratchets.edn @metabase/devexp
+# .clj-kondo/ratchets-test.edn @metabase/devexp
 # .clj-kondo/config.edn @metabase/devexp
 
 # @metabase/cloud-ops
