@@ -56,6 +56,7 @@ The current names show the range:
 | `tardis` | `lib` | A plain box from the outside; internally complex, and it can take you places |
 | `stargate` | `api-routes` | The gateway every request comes through |
 | `first-contact` | `mcp` | The protocol outside agents use to talk to Metabase |
+| `deep-thought` | `metabot` | The computer built to answer the big question |
 
 The `<anchor>-knot` placeholder from the test failure is a valid fallback when nothing better comes up.
 

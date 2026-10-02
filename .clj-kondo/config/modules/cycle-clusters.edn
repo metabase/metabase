@@ -3,7 +3,8 @@
 ;; The test metabase.core.module-cycles-test fails until every cluster holds exactly one anchor.
 ;; When a cluster splits, whoever split it names the new half.
 ;; Names follow a space theme with some link to what the cluster does; the name-module-cycle skill helps pick one.
-{first-contact   mcp
+{deep-thought    metabot
+ first-contact   mcp
  foundation      app-db
  galactic-center query-processor
  stargate        api-routes
