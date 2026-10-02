@@ -732,9 +732,8 @@
   with `metabase.metabot.tools.shared.content-store/read-checked`.
 
   Implemented methods:
-    * `import-table-fk`, `import-field-fk`.
-    * `import-fk-keyed` for `:model/Database` by `:name` (needed because
-      `resolve/import-mbql` dispatches on `:database` keys).
+    * `import-database-fk`, `import-table-fk`, `import-field-fk`.
+    * `import-fk-keyed` for `:model/Database` by `:name`.
     * `import-fk` for `Card`, `Measure`, and `Segment` by `entity_id`.
 
   Other methods throw `:not-implemented-yet`."
@@ -769,6 +768,9 @@
          :else
          (not-implemented! :import-fk-keyed)))
      (import-user     [_ _email]                  (not-implemented! :import-user))
+     (import-database-fk [_ db-name]
+       (when db-name
+         (import-database-by-name metadata-provider db-name)))
      (import-table-fk [_ path]
        (when path
          (:id (find-table metadata-provider path))))

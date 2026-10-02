@@ -34,15 +34,6 @@
   [database-name :- :string]
   (t2/select-one :model/Database :name database-name))
 
-(mu/defn insert-stub-database!
-  "Insert a stub Postgres Database named `database-name` with empty connection details and return it."
-  [database-name :- :string]
-  (t2/insert-returning-instance! :model/Database {:name                database-name
-                                                  :engine              :postgres
-                                                  :details             {}
-                                                  :is_stub             true
-                                                  :initial_sync_status "complete"}))
-
 (mu/defn set-database-details!
   "Set the connection details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
