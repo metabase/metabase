@@ -57,7 +57,10 @@
                       :attributes {:cat 50}}
       ;; Fetch the card and manually compute & save the metadata
       (let [card (t2/select-one :model/Card
-                                {:select [:c.id :c.dataset_query :c.entity_id :c.card_schema]
+                                {:select [:c.id :c.dataset_query :c.entity_id :c.card_schema
+                                          ;; required alongside :card_schema for the Card schema upgrade
+                                          :c.type :c.database_id :c.result_metadata
+                                          :c.dimensions :c.dimension_mappings]
                                  :from   [[:sandboxes :s]]
                                  :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
                                           [:report_card :c] [:= :c.id :s.card_id]]

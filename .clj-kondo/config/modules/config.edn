@@ -2046,7 +2046,8 @@
 
   queries
   {:team "Graphy"
-   :api  #{metabase.queries.core
+   :api  #{metabase.queries.card-schema
+           metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
@@ -2730,7 +2731,7 @@
   {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
-   :uses #{appearance settings util}}
+   :uses #{appearance premium-features settings util}}
 
   task
   {:team "UX West"
@@ -2985,6 +2986,7 @@
            metrics
            models
            permissions
+           queries
            system
            util
            warehouse-schema-overlay}
@@ -3328,6 +3330,7 @@
            lib.schema
            models
            premium-features
+           system
            util}}
 
   xrays
