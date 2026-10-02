@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       base:
-        description: Branch to compare against, to test only what changed. Ignored on master and release branches.
+        description: Compare against this branch to test only what changed. Empty, or on master or release, runs everything.
         type: string
         default: ""
 
