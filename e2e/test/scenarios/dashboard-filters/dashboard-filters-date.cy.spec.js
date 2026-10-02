@@ -12,13 +12,11 @@ describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
   });
 
   it("should work when set through the filter widget", () => {
+    visitOrdersDashboardInEditMode();
+
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
@@ -57,6 +55,8 @@ describe("scenarios > dashboard > filters > date", () => {
   // Rather than going through every single filter type,
   // make sure the default filter works for just one of the available options
   it("should work when set as the default filter", () => {
+    visitOrdersDashboardInEditMode();
+
     H.setFilter("Date picker", "Month and Year");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
@@ -86,6 +86,8 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should support being required", () => {
+    visitOrdersDashboardInEditMode();
+
     H.setFilter("Date picker", "Month and Year", "Month and Year");
 
     // Can't save without a default value
@@ -129,8 +131,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
+    visitOrdersDashboardInEditMode();
 
     H.setFilter("Date picker", "All Options");
 
@@ -186,6 +187,11 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 });
 
+function visitOrdersDashboardInEditMode() {
+  H.visitDashboard(ORDERS_DASHBOARD_ID);
+  H.editDashboard();
+}
+
 function dateFilterSelector({ filterType, filterValue } = {}) {
   switch (filterType) {
     case "Month and Year":
@@ -205,10 +211,6 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
     case "Date Range":
       DateFilter.setDateRange(filterValue);
       cy.findByText("Add filter").click();
-      break;
-
-    case "Relative Date":
-      DateFilter.setRelativeDate(filterValue);
       break;
 
     case "All Options":
