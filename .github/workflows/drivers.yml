@@ -59,11 +59,6 @@ jobs:
         uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - name: Check the base branch name
-        if: inputs.base-ref != ''
-        run: git check-ref-format --branch "$BASE" > /dev/null
-        env:
-          BASE: ${{ inputs.base-ref }}
       # A pull request run checks out the merge commit, so diffing against the base's tip gives only the PR's
       # changes. A run started by hand checks out the branch tip, so it diffs against where the branch split off.
       - name: Find where the branch split off
@@ -86,7 +81,7 @@ jobs:
           (github.event.pull_request.base.ref || inputs.base-ref) != '' &&
           (github.event.pull_request.base.ref || inputs.base-ref) != github.ref_name
         run: |
-          # Fetch the base branch to ensure its history is available for diffing
+          # Fetch what the diff compares against
           if [ -n "$MERGE_BASE" ]; then
             git fetch --depth=1 origin "$MERGE_BASE"
           else
@@ -118,7 +113,9 @@ jobs:
           # Second call: output only key=value lines for GITHUB_OUTPUT
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
-          BASE_REF: ${{ steps.merge-base.outputs.result || github.event.pull_request.base.ref || inputs.base-ref || github.ref_name }}
+          BASE_REF: >-
+            ${{ steps.merge-base.outputs.result || github.event.pull_request.base.ref || inputs.base-ref
+            || github.ref_name }}
           FORCE_RUN: ${{ inputs.force-run }}
           # Set only by test.profile-backend.yml. Absent on a normal CI run, which leaves the decision rules
           # alone; mage rejects a name that is not a driver.

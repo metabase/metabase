@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       base:
-        description: Branch to detect changes against. Empty means the default branch; pull request runs always use the PR base.
+        description: Branch to compare against. Empty means the default branch. Pull request runs use the PR base.
         type: string
         default: ""
 
@@ -36,6 +36,12 @@ jobs:
     outputs:
       verdict: ${{ steps.decide.outputs.verdict }}
     steps:
+      # Every job that uses `base` needs this one, so a bad value fails the run before git sees it.
+      - name: Check the base branch name
+        if: inputs.base != ''
+        run: git check-ref-format --branch "$BASE" > /dev/null
+        env:
+          BASE: ${{ inputs.base }}
       - name: Decide
         id: decide
         # Precedence matters for the conditions below.
@@ -92,11 +98,6 @@ jobs:
       backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
     steps:
       - uses: actions/checkout@v7
-      - name: Check the base branch name
-        if: inputs.base != ''
-        run: git check-ref-format --branch "$BASE" > /dev/null
-        env:
-          BASE: ${{ inputs.base }}
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
