@@ -11,6 +11,7 @@
    [dev.module-graph :as module-graph]
    [hooks.common.modules :as modules]
    [lambdaisland.deep-diff2 :as ddiff]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [rewrite-clj.node :as n]
@@ -980,7 +981,7 @@
       :scc-namespace-sizes (mapv (fn [{:keys [modules]}]
                                    (transduce (map #(get ns-counts % 0)) + 0 modules))
                                  cycles)
-      :scc-densities       (mapv #(/ (Math/round (* 100.0 (double (:density %)))) 100.0) cycles)
+      :scc-densities       (mapv #(u/round-to-decimals 2 (:density %)) cycles)
       :scc-cycle-ranks     (mapv :cycle-rank cycles)})))
 
 (defn module-cycles

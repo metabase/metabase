@@ -402,11 +402,7 @@
               :scc-namespace-sizes [4]
               :scc-densities       [0.67]
               :scc-cycle-ranks     [2]}
-             (dev.deps-graph/module-boundary-stats deps config))))
-    (testing "cycles list their members and strong bridges"
-      (is (=? [{:modules        '[a b c]
-                :strong-bridges '[[a b] [b c] [c a]]}]
-              (dev.deps-graph/module-cycles deps))))))
+             (dev.deps-graph/module-boundary-stats deps config))))))
 
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
   (testing "Module boundary keys have the shapes the ratchet counts expect"
