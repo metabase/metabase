@@ -1,0 +1,1 @@
+export { OAuthClientsTabs } from "./OAuthClientsTabs";

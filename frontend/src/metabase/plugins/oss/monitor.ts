@@ -9,6 +9,8 @@ type MonitorPlugin = {
   getDependencyDiagnosticsRoutes: () => ReactNode;
   isSessionManagementEnabled: boolean;
   getSessionManagementRoutes: () => ReactNode;
+  isOAuthClientManagementEnabled: boolean;
+  getOAuthClientManagementRoutes: () => ReactNode;
   isApiKeyUsageEnabled: boolean;
   getApiKeyUsageRoutes: () => ReactNode;
 };
@@ -20,6 +22,8 @@ const getDefaultPluginMonitor = (): MonitorPlugin => ({
   getDependencyDiagnosticsRoutes: () => null,
   isSessionManagementEnabled: false,
   getSessionManagementRoutes: () => null,
+  isOAuthClientManagementEnabled: false,
+  getOAuthClientManagementRoutes: () => null,
   isApiKeyUsageEnabled: false,
   getApiKeyUsageRoutes: () => null,
 });

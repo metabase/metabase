@@ -98,6 +98,10 @@ export function monitorSessionDetail(sessionId: string) {
   return `${monitorSessions()}/${sessionId}`;
 }
 
+export function monitorOAuthClients() {
+  return `${ROOT_URL}/oauth-clients`;
+}
+
 export function monitorAiAuditing() {
   return `${ROOT_URL}/ai-auditing`;
 }
