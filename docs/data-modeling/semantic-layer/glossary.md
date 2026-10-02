@@ -5,7 +5,23 @@ summary: Define terms to help your team and Metabot understand your data.
 
 # Glossary
 
-The glossary is a place where anyone can define terms relevant to your data.
+_Data Studio > Glossary_
+
+The glossary is a place to define terms relevant to your data. Example:
+
+```txt
+Credit note: An amount applied after the invoice total to reduce what is due. Excluded from ARR; recognized as a one-time revenue impact in accounting, and avoided where possible.
+```
+Everyone in your Metabase can read the glossary, but only admins and people in the [Data Analysts](../../people-and-groups/managing.md#data-analysts) group can add, edit, or delete terms.
+
+To see the glossary in Data Reference:
+
+1. If the left navigation sidebar is hidden, open it by clicking on the **three lines** icon in top left.
+2. In the left navigation sidebar, click **Databases**.
+3. Click "Learn about our data" above the list of databases. This will open [Data Reference](../../exploration-and-organization/data-model-reference.md).
+4. In Data Reference, click **Glossary** in the left sidebar.
+
+   ![Glossary in data reference](images/glossary-in-data-reference.png)
 
 ## Use the glossary to give Metabot context
 
@@ -15,31 +31,24 @@ The glossary is particularly useful for [Metabot](../../ai/metabot.md). When Met
 
 ## Manage the glossary
 
-You can manage the glossary in [Data Studio](../data-studio.md). You need to be an admin or in the Data Analyst group to access Data Studio.
+You can manage the glossary in [Data Studio](../data-studio.md). You need to be an admin or in the Data Analysts group to access Data Studio.
 
 1. Click on the **grid** icon in the top right and select **Data Studio**.
 2. In the left sidebar, click on **Glossary**.
-3.  To add a new term, click **+ New term**. Add the term name and its definitions, then click the checkmark to save the term to the glossary.
+3. To add a new term, click **+ New term**. Add the term name and its definitions, then click the checkmark to save the term to the glossary.
 
-    To remove a glossary term, hover over it and click on the **X** icon.
+   To remove a glossary term, hover over it, click the **trash** icon, and confirm.
 
-    To edit a glossary term or definition, click on the term or definition.
-
+   To edit a glossary term or definition, click on the term or definition.
 
 Metabot will start using glossary terms automatically.
 
+## Glossary terms sync with the Library
+
+If you [sync the Library to Git](./library.md#versioning-the-library) with [Remote sync](../../installation-and-operation/remote-sync.md), Metabase syncs your glossary terms along with the rest of the Library.
+
 ## Glossary outside Data Studio
 
-In addition to Data Studio, everyone in your Metabase can browse and add terms to the glossary if they have access to [Data Reference](../../exploration-and-organization/data-model-reference.md).
-
-To see the glossary in Data Reference:
-1. If the left navigation sidebar is hidden, open it by clicking on the **three lines** icon in top left.
-2. In the left navigation sidebar, click **Databases**.
-3. Click "Learn about our data" above the list of databases. This will open [Data Reference](../../exploration-and-organization/data-model-reference.md).
-4. In Data Reference, click **Glossary** in the left sidebar.
-
-    ![Glossary in data reference](images/glossary-in-data-reference.png)
-
-
+In addition to Data Studio, everyone in your Metabase can browse the glossary if they have access to [Data Reference](../../exploration-and-organization/data-model-reference.md). Admins and Data Analysts can also edit the glossary from Data Reference.
 
 

@@ -12,8 +12,10 @@ const styledTags = [
   { tag: tags.comment, class: S.comment },
   { tag: tags.compareOperator, class: S.compareOperator },
   { tag: tags.constant(tags.variableName), class: S.constant },
+  { tag: tags.emphasis, class: S.emphasis },
   { tag: tags.escape, class: S.escape },
   { tag: tags.function(tags.variableName), class: S.variableName },
+  { tag: tags.heading, class: S.heading },
   { tag: tags.keyword, class: S.keyword },
   { tag: tags.lineComment, class: S.lineComment },
   { tag: tags.logicOperator, class: S.logicOperator },
@@ -23,6 +25,7 @@ const styledTags = [
   { tag: tags.special(tags.string), class: S.string },
   { tag: tags.squareBracket, class: S.squareBracket },
   { tag: tags.string, class: S.string },
+  { tag: tags.strong, class: S.strong },
   { tag: tags.typeName, class: S.typeName },
   { tag: tags.variableName, class: S.variableName },
 ];

@@ -517,8 +517,7 @@
   ;; TODO -- way too many API namespaces.
   channel
   {:team "Gadget"
-   :api  #{metabase.channel.api
-           metabase.channel.core
+   :api  #{metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
            metabase.channel.init
@@ -534,7 +533,6 @@
            api
            app-db
            appearance
-           bug-reporting
            collections
            dashboards
            driver
@@ -545,7 +543,6 @@
            lib.be
            lib.schema
            lib.types
-           metabot.slackbot
            models
            notification
            parameters
@@ -569,6 +566,22 @@
                     :model/Database
                     :model/PulseChannel
                     :model/User}}
+
+  channel.rest
+  {:team "Gadget"
+   :api  #{metabase.channel.rest.api}
+   :uses #{analytics.interface
+           api
+           bug-reporting
+           channel
+           events
+           metabot.slackbot
+           models
+           permissions
+           settings
+           system
+           util
+           util.config}}
 
   cloud-migration
   {:team "UX West"
@@ -617,10 +630,10 @@
            queries
            remote-sync
            request
-           revisions
+           revisions.schema
            search
            tracing
-           transforms
+           transforms.feature-gating
            upload
            util
            util.config
@@ -892,7 +905,6 @@
            queries
            query-permissions
            query-processor
-           revisions
            search
            util
            warehouse-schema-overlay}
@@ -1524,13 +1536,13 @@
 
   metabot.agent-api
   {:team    "Metabot"
+   :module-exports #{metabot.agent-api.usage}
    :ns-prefix "metabase.agent-api"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init
               metabase.agent-api.query-guards
               metabase.agent-api.schema
-              metabase.agent-api.settings
-              metabase.agent-api.usage}
+              metabase.agent-api.settings}
    :uses    #{ai-tracing
               api
               channel
@@ -1542,7 +1554,6 @@
               lib.schema
               metabot
               metabot.llm
-              premium-features
               queries
               query-permissions
               query-processor
@@ -1560,6 +1571,14 @@
                     :model/Table
                     :model/User}
    :model-exports #{:model/AgentApiCallLog}}
+
+  metabot.agent-api.usage
+  {:team "Metabot"
+   :api  #{metabase.metabot.agent-api.usage}
+   :uses #{api
+           premium-features
+           request
+           util}}
 
   metabot.llm
   {:team "Metabot"
@@ -1704,6 +1723,7 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/DashboardTab
+                    :model/DataApp
                     :model/Database
                     :model/Dimension
                     :model/Document
@@ -1947,7 +1967,6 @@
 
   premium-features
   {:team "UX West"
-   :module-exports #{premium-features.api}
    :api  #{metabase.premium-features.core metabase.premium-features.defenterprise metabase.premium-features.init}
    :uses #{analytics.interface
            analytics.internal-stats
@@ -1962,9 +1981,9 @@
            util.config}
    :model-imports #{:model/User}}
 
-  premium-features.api
+  premium-features.rest
   {:team "UX West"
-   :api  #{metabase.premium-features.api}
+   :api  #{metabase.premium-features.rest.api}
    :uses #{api
            metabot.llm
            premium-features
@@ -2362,6 +2381,7 @@
 
   revisions
   {:team "UX West"
+   :module-exports #{revisions.schema}
    :api  #{metabase.revisions.api
            metabase.revisions.core
            metabase.revisions.init
@@ -2379,6 +2399,7 @@
            parameters
            queries
            query-permissions
+           revisions.schema
            segments
            transforms
            util
@@ -2397,6 +2418,11 @@
                     :model/Segment
                     :model/Transform
                     :model/TransformTest}}
+
+  revisions.schema
+  {:team "UX West"
+   :api  #{metabase.revisions.schema}
+   :uses #{lib.schema util}}
 
   run-tracking
   {:team "Gadget"
@@ -2458,7 +2484,7 @@
            startup
            task
            tracing
-           transforms
+           transforms.feature-gating
            util
            util.config
            warehouse-schema-overlay}
@@ -2541,7 +2567,7 @@
            embedding
            lib.be
            lib.schema
-           metabot.agent-api
+           metabot.agent-api.usage
            premium-features
            query-processor
            request
@@ -2674,9 +2700,9 @@
 
   sso
   {:team "UX West"
-   :module-exports #{sso.auth-identity}
+   :module-exports #{sso.auth-identity
+                     sso.auth-wrapper}
    :api     #{metabase.sso.api
-              metabase.sso.auth-wrapper
               metabase.sso.core
               metabase.sso.init
               metabase.sso.settings}
@@ -2691,8 +2717,7 @@
               startup
               system
               util
-              util.config
-              enterprise/sso}
+              util.config}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   sso.auth-identity
@@ -2715,6 +2740,14 @@
            util}
    :model-exports #{:model/AuthIdentity}
    :model-imports #{:model/Session :model/User}}
+
+  sso.auth-wrapper
+  {:team "UX West"
+   :api  #{metabase.sso.auth-wrapper}
+   :uses #{api
+           sso
+           util.config
+           enterprise/sso}}
 
   staleness
   {:team "UX West"
@@ -2902,10 +2935,10 @@
   transforms
   {:team "Graphy"
    :module-exports #{transforms.base
+                     transforms.feature-gating
                      transforms.indexes
                      transforms.inspector}
    :api  #{metabase.transforms.core
-           metabase.transforms.feature-gating
            metabase.transforms.init
            metabase.transforms.instrumentation
            metabase.transforms.interface
@@ -2936,6 +2969,7 @@
            task.history
            tracing
            transforms.base
+           transforms.feature-gating
            transforms.indexes
            util
            warehouse-schema-overlay}
@@ -2984,6 +3018,11 @@
            transforms.indexes
            util
            warehouse-schema-overlay}}
+
+  transforms.feature-gating
+  {:team "Graphy"
+   :api  #{metabase.transforms.feature-gating}
+   :uses #{api premium-features}}
 
   transforms.indexes
   {:team "Gadget"
@@ -3698,10 +3737,11 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init metabase-enterprise.data-apps.sync}
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{api
            api-scope
            collections
+           events
            lib
            lib.be
            lib.schema
@@ -3719,7 +3759,8 @@
                     :model/Permissions
                     :model/PermissionsGroup
                     :model/Table
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/DataApp}}
 
   enterprise/data-studio
   {:team "UX West"
@@ -3943,6 +3984,7 @@
    :uses #{analytics
            metabot
            metabot.agent-api
+           metabot.agent-api.usage
            premium-features
            task
            util}
@@ -4154,7 +4196,6 @@
            task.history
            util
            warehouse-schema-overlay
-           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
@@ -4162,6 +4203,7 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DataApp
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
