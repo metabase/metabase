@@ -104,9 +104,16 @@ interactive explorer with a dependency graph.
 After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.
 Fix the underlying issue when possible; suppressions are a last resort and need a nearby explanation.
 
+Inline-ignore budgets (`:ignore-counts`) are split by prod/test so one side's suppressions can never mask
+or look equivalent to the other's: `.clj-kondo/ratchets.edn` covers production code, and
+`.clj-kondo/ratchets-test.edn` covers anything under a `test` directory. `:config-counts`
+(`.clj-kondo/config.edn` suppressions) stays combined in `.clj-kondo/ratchets.edn` regardless -- see that
+file's own header for why. `.clj-kondo/config/modules/ratchets.edn` (module-boundary escape hatches) is a
+separate, unsplit concern.
+
 Explain budget increases in the PR. Do not record reductions in feature PRs: post-merge automation opens
 a `Tighten ratchets` PR for them. Use `./bin/mage kondo-ratchets-shrink --seed :linter` only when adding an
-inline-ignore budget. If either ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
+inline-ignore budget. If any ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
 
 ## Tool Preferences
 

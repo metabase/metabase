@@ -3,15 +3,11 @@
   Converts internal metabase:// links to proper Metabase URLs using agent memory state."
   (:require
    [buddy.core.codecs :as codecs]
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema]
    [metabase.metabot.db :as metabot.db]
    [metabase.system.core :as system]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -26,6 +22,7 @@
    "dashboard" "/dashboard"
    "document"  "/document"
    "question"  "/question"
+   "table"     "/table"
    "transform" "/data-studio/transforms"})
 
 ;;; Query/Chart URL Generation
@@ -130,31 +127,26 @@
       (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})
       nil)))
 
-(def ^:private resolve-table-link
-  "Resolve a metabase://table/{id} link to an ad-hoc question URL.
-  Looks up the table's database_id and generates a /question#<base64> URL
-  with a query using that table as the source table.
+(defn- resolve-measure-link
+  "Resolve a metabase://measure/{id} link to the measure's Data Studio page, or nil when the measure is
+  unknown."
+  [entity-id]
+  (let [measure-id (parse-long entity-id)
+        table-id   (some-> measure-id metabot.db/measure-table-id)]
+    (if table-id
+      (str "/data-studio/library/tables/" table-id "/measures/" measure-id)
+      (log/warn "Measure not found for link resolution" {:measure-id entity-id}))))
 
-  Results are cached for 10 minutes."
-  (memoize/ttl
-   (fn [table-id]
-     (let [parsed-id (cond
-                       (int? table-id)    table-id
-                       (string? table-id) (parse-long table-id)
-                       :else              nil)]
-       (if-not parsed-id
-         (do
-           (log/warn "Invalid table id for link resolution" {:table-id table-id})
-           nil)
-         (if-let [db-id (metabot.db/table-database-id parsed-id)]
-           (let [mp    (lib-be/application-database-metadata-provider db-id)
-                 table (lib.metadata/table mp parsed-id)
-                 query (lib/query mp table)]
-             (str "/question#" (query->url-hash query)))
-           (do
-             (log/warn "Table not found for link resolution" {:table-id parsed-id})
-             nil)))))
-   :ttl/threshold (u/minutes->ms 10)))
+(defn- resolve-segment-link
+  "Resolve a metabase://segment/{id} link to an ad-hoc question on the segment's table filtered by the
+  segment, or nil when the segment is unknown."
+  [entity-id]
+  (let [segment-id (parse-long entity-id)
+        table-id   (some-> segment-id metabot.db/segment-table-id)
+        db-id      (some-> table-id metabot.db/table-database-id)]
+    (if db-id
+      (str "/question#?db=" db-id "&table=" table-id "&segment=" segment-id)
+      (log/warn "Segment not found for link resolution" {:segment-id entity-id}))))
 
 ;;; Main Link Resolution
 
@@ -169,7 +161,9 @@
   - metabase://metric/{id} - Links to metrics
   - metabase://dashboard/{id} - Links to dashboards
   - metabase://document/{id} - Links to documents
-  - metabase://table/{id} - Links to tables (as questions)
+  - metabase://table/{id} - Links to tables
+  - metabase://measure/{id} - Links to measures
+  - metabase://segment/{id} - Links to segments (as questions)
   - metabase://transform/{id} - Links to transforms
 
   Returns the resolved URL or nil if resolution fails."
@@ -182,7 +176,8 @@
           "query"    (resolve-query-link entity-id queries-state)
           "chart"    (resolve-chart-link entity-id charts-state queries-state)
           "question" (resolve-entity-link "question" entity-id)
-          "table"    (resolve-table-link entity-id)
+          "measure"  (resolve-measure-link entity-id)
+          "segment"  (resolve-segment-link entity-id)
           ;; For other types, use simple path mapping
           (resolve-entity-link entity-type entity-id))))))
 

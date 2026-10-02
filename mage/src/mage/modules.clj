@@ -130,6 +130,7 @@
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
   '#{metabot.agent-api
+     metabot.agent-api.usage
      analytics
      analytics.interface
      api
@@ -183,6 +184,7 @@
      pulse
      remote-sync
      request
+     request.schema
      sample-data
      search
      warehouses.secrets
@@ -202,6 +204,7 @@
      tiles
      timeline
      tracing
+     transforms.feature-gating
      lib.types
      users
      util

@@ -56209,6 +56209,12 @@
                       "label" : {
                         "type" : "string"
                       },
+                      "model_fields" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
                       "type" : {
                         "type" : "string"
                       },
@@ -56344,7 +56350,7 @@
                         }
                       }
                     },
-                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "required_any", "requires", "fields" ]
+                    "required" : [ "type", "label", "managed", "singleton", "available", "default_model", "models", "model_fields", "required_any", "requires", "fields" ]
                   }
                 }
               }
@@ -61840,7 +61846,7 @@
       "get" : {
         "operationId" : "get-api-permissions-invite-group-ids",
         "summary" : "GET /api/permissions/invite-group-ids",
-        "description" : "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a\n  `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark\n  the ones whose members can already see the item; the Administrators group has implicit access to everything and is\n  never included. The ids are otherwise unfiltered; system-managed groups like Data Analysts appear when they hold a\n  grant, and clients intersect the ids with the groups they display. Superuser-only, like the invite action itself.",
+        "description" : "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a\n  `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark\n  the ones whose members can already see the item; the Administrators group has implicit access to everything and is\n  never included. The Data Analysts group is omitted unless `advanced-permissions` is enabled. The ids are otherwise\n  unfiltered. Superuser-only, like the invite action itself.",
         "parameters" : [ {
           "in" : "query",
           "name" : "type",
@@ -66194,6 +66200,46 @@
                 "additionalProperties" : false
               }
             }
+          }
+        },
+        "tags" : [ "/api/session" ]
+      }
+    },
+    "/api/session/illustration/{key}" : {
+      "get" : {
+        "operationId" : "get-api-session-illustration-key",
+        "summary" : "GET /api/session/illustration/{key}",
+        "description" : "Fetch the uploaded image of a custom illustration setting, e.g. `login-page-illustration-custom`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "v",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/session" ]
