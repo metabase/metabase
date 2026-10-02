@@ -19,8 +19,8 @@
   (set (keys graph)))
 
 (defn- headlines
-  "The first line of each problem, which is all most assertions need."
-  [graph anchors]
+  "The first line of each of the [[module-cycles/problems]]."
+  [graph modules anchors]
   (mapv (comp first str/split-lines) (module-cycles/problems graph modules anchors)))
 
 (deftest ^:parallel one-anchor-per-cluster-passes-test
@@ -79,24 +79,23 @@
 
 (deftest ^:parallel a-dissolved-cluster-fails-until-its-name-is-retired-test
   (is (= ["galactic-center is no longer a cycle: qp is not in any cluster. Nice work."]
-         (headlines (assoc graph 'sync #{'settings}) '{foundation app-db, galactic-center qp}))))
+         (headlines (assoc graph 'sync #{'settings}) modules '{foundation app-db, galactic-center qp}))))
 
 (deftest ^:parallel an-anchor-must-be-a-module-test
   (is (=? [#"A cluster without a name.*"
            #"galactic-center is anchored on query-processor, which is not a module\..*"]
-          (headlines graph '{foundation app-db, galactic-center query-processor})))
-  (testing "even when the anchor is a graph node inside a cycle, it names nothing unless the config declares it"
+          (headlines graph modules '{foundation app-db, galactic-center query-processor})))
+  (testing "an anchor inside a cycle still names nothing unless the config declares it"
     (is (=? [#"A cluster without a name: 2 modules, qp, sync\."
              #"galactic-center is anchored on qp, which is not a module\..*"]
-            (mapv (comp first str/split-lines)
-                  (module-cycles/problems graph (disj modules 'qp) '{foundation app-db, galactic-center qp})))))
+            (headlines graph (disj modules 'qp) '{foundation app-db, galactic-center qp}))))
   (testing "a proposal only anchors on a configured module"
     (is (=? [#".*`sync-knot sync`.*"]
             (filter #(str/includes? % "line like")
                     (-> (module-cycles/problems graph (disj modules 'qp) '{foundation app-db})
                         first
                         str/split-lines)))))
-  (testing "a cycle of undeclared modules asks for them to be declared rather than proposing an anchor"
+  (testing "a cycle of undeclared modules asks for them to be declared, not for an anchor"
     (is (=? [#".*None of its modules is declared.*fix-modules-config.*"]
             (filter #(str/includes? % "declared")
                     (-> (module-cycles/problems graph (disj modules 'qp 'sync) '{foundation app-db})

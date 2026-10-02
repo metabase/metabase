@@ -1,12 +1,12 @@
 (ns dev.module-cycles
   "Named cyclic clusters of the module require graph.
 
-  `.clj-kondo/config/modules/cycle-clusters.edn` maps each cluster's name to an anchor module, and the cluster
-  holding the anchor carries the name. Membership is computed, never recorded, so a cluster growing or
-  shrinking needs no edit.
-  Every cluster has exactly one anchor: two anchors in one cluster mean two named clusters merged, a cluster with
-  none is a new cycle or the unnamed half of a split, and an anchor in no cluster names a cycle that is gone.
-  People choose the names, so the file changes only when the set of clusters does."
+  The file at [[clusters-file]] names each cluster by an anchor module: the cluster holding it carries the name.
+  Membership is computed, never recorded, so a cluster can grow or shrink without an edit.
+  Every cluster must hold exactly one anchor.
+  Two anchors in one cluster mean two named clusters merged.
+  A cluster without one is a new cycle or the unnamed half of a split.
+  An anchor in no cluster names a cycle that is gone."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 (def clusters-file
-  "The cluster names, relative to the repo root."
+  "The file of cluster names, relative to the repo root."
   ".clj-kondo/config/modules/cycle-clusters.edn")
 
 ;;;; =============================================================================
@@ -25,8 +25,7 @@
 ;;;; =============================================================================
 
 (defn- read-form
-  "The one EDN form in the file at `path`.
-  An empty file or a second form is an error rather than an empty map, which would leave every cycle unnamed."
+  "The one EDN form in the file at `path`. Throws when the file is empty or holds a second form."
   [path]
   (with-open [reader (java.io.PushbackReader. (io/reader path))]
     (let [eof  (Object.)
@@ -40,8 +39,7 @@
       form)))
 
 (defn validate-anchors
-  "`anchors` when it maps simple-symbol cluster names to module symbols, no module anchoring two names.
-  Throws otherwise."
+  "Return `anchors` if it maps simple-symbol names to module symbols, no module anchoring two; throw otherwise."
   [anchors]
   (when-not (map? anchors)
     (throw (ex-info (str clusters-file " must hold a map of cluster name to anchor module, not " (pr-str anchors))
@@ -79,11 +77,10 @@
      (count (filter #(contains? (get graph %) module) cluster))))
 
 (defn propose
-  "A name and anchor for an unnamed `cluster` of `graph`, avoiding the names in `taken`.
-  The anchor is the configured member (one of `modules`) with the most edges inside the cluster, ties broken
-  alphabetically, and the name is derived from it: `sync` gives `sync-knot`, `enterprise/transforms.python` gives
-  `enterprise-transforms-python-knot`.
-  Nil when no member is configured, since nothing could anchor the name yet."
+  "A placeholder `{:name :anchor}` for an unnamed `cluster` of `graph`, avoiding the names in `taken`.
+  Nil when no member of the cluster is among `modules`.
+  The anchor is the member among `modules` with the most requires inside the cluster, ties broken alphabetically.
+  The name comes from the anchor, so `enterprise/transforms.python` gives `enterprise-transforms-python-knot`."
   [graph modules cluster taken]
   (when-let [members (seq (filter modules cluster))]
     (let [anchor (first (sort-by (juxt #(- (degree graph cluster %)) str) members))
@@ -93,7 +90,7 @@
        :anchor anchor})))
 
 (defn- module-list
-  "`modules`, sorted, on one line, truncated so one large cluster cannot bury the rest of the report."
+  "The sorted `modules` on one line, cut off after eight."
   [modules]
   (let [sorted (sort modules)
         shown  (take 8 sorted)]
@@ -114,7 +111,7 @@
                  (into seen nexts)))))))
 
 (defn- merge-message
-  "`named` holds the `[name anchor]` pairs inside `cluster`, sorted by name."
+  "The failure for the named clusters that merged into `cluster`, given as `[name anchor]` pairs sorted by name."
   [graph cluster named]
   (let [[[name-a anchor-a] & others] named
         chain #(str/join " -> " (shortest-path graph cluster %1 %2))]
@@ -134,8 +131,7 @@
        (str "  Only if there is truly no way around it: remove all but one of the names from "
             clusters-file " and explain why in the PR.")]))))
 (defn- requires-within
-  "The requires between members of `cluster`, as `from -> to` lines, which show why it is a cycle.
-  Nil for a cluster too large to list them usefully."
+  "The requires between members of `cluster` as `from -> to` lines, or nil for a cluster of more than ten modules."
   [graph cluster]
   (when (<= (count cluster) 10)
     (for [from (sort cluster)
@@ -167,7 +163,7 @@
 
 (defn- names-in
   "A function of a cluster returning the `[name anchor]` pairs inside it, sorted by name.
-  Only anchors among `modules` count, so a name on an undeclared module never names anything."
+  Only anchors among `modules` count."
   [modules anchors]
   (let [anchor->name (u/for-map [[cluster-name anchor] anchors
                                  :when (modules anchor)]
@@ -179,19 +175,19 @@
               [cluster-name module])))))
 
 (defn problems
-  "Messages for every way the cyclic clusters of `graph` and `anchors` disagree, empty when each cluster holds
-  exactly one anchor and each anchor is a module in a cluster.
-  `modules` is every configured module."
+  "Failure messages for every way the cyclic clusters of `graph` disagree with the cluster names in `anchors`.
+  Empty when each cluster holds exactly one anchor, and each anchor is among `modules` and in a cluster."
   [graph modules anchors]
-  (let [clusters  (map (juxt identity (names-in modules anchors)) (deps-graph/cyclic-components graph))
-        in-any    (into #{} (mapcat first) clusters)
-        unnamed   (keep (fn [[cluster named]] (when (empty? named) cluster)) clusters)
+  (let [components (deps-graph/cyclic-components graph)
+        clusters   (map (juxt identity (names-in modules anchors)) components)
+        in-any     (into #{} cat components)
+        unnamed    (keep (fn [[cluster named]] (when (empty? named) cluster)) clusters)
         ;; Each placeholder takes a name the next one must avoid.
-        proposals (first (reduce (fn [[acc taken] cluster]
-                                   (let [p (propose graph modules cluster taken)]
-                                     [(conj acc [cluster p]) (cond-> taken p (conj (:name p)))]))
-                                 [[] (set (keys anchors))]
-                                 unnamed))]
+        proposals  (first (reduce (fn [[acc taken] cluster]
+                                    (let [p (propose graph modules cluster taken)]
+                                      [(conj acc [cluster p]) (cond-> taken p (conj (:name p)))]))
+                                  [[] (set (keys anchors))]
+                                  unnamed))]
     (concat
      (for [[cluster named] clusters
            :when (< 1 (count named))]
@@ -222,15 +218,14 @@
      :anchors (read-anchors)}))
 
 (defn report
-  "What CI says about the current tree: the [[problems]] between the module require graph and
-  [[clusters-file]]."
+  "The [[problems]] between the current tree's module require graph and [[clusters-file]]."
   []
   (let [{:keys [graph modules anchors]} (repository)]
     (vec (problems graph modules anchors))))
 
 (defn print-clusters
-  "Print every cyclic cluster of the module require graph with its name, anchor, teams and full membership, for
-  choosing a name. Run it with `clojure -X:dev dev.module-cycles/print-clusters`."
+  "Print every cyclic cluster of the module require graph with its name, anchor, teams and members, unnamed first.
+  Run it with `clojure -X:dev dev.module-cycles/print-clusters`."
   [_]
   (let [{:keys [config graph modules anchors]} (repository)
         named-in (names-in modules anchors)]
