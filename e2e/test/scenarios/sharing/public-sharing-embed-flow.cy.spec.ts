@@ -23,7 +23,7 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-modular", true);
   });
 
   afterEach(() => {
@@ -60,9 +60,9 @@ describe(suiteTitle, () => {
   it("lets Guest embedding proceed after accepting only the Guest terms, without requiring the SSO terms (EMB-1884)", () => {
     // Reproduce a fresh Pro instance where neither auth type's terms have
     // been accepted yet, so the option cards start dimmed.
-    H.updateSetting("show-simple-embed-terms", true);
+    H.updateSetting("show-modular-embed-terms", true);
     H.updateSetting("show-static-embed-terms", true);
-    H.updateSetting("enable-embedding-static", false);
+    H.updateSetting("enable-embedding-modular", false);
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openSharingMenu("Embed");

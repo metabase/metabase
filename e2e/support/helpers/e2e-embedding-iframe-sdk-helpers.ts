@@ -216,7 +216,7 @@ export function prepareSdkIframeEmbedTest({
     activateToken(withToken);
   }
 
-  cy.request("PUT", "/api/setting/enable-embedding-simple", {
+  cy.request("PUT", "/api/setting/enable-embedding-modular", {
     value: true,
   });
 
@@ -256,10 +256,7 @@ export function prepareGuestEmbedSdkIframeEmbedTest({
 
   onPrepare?.();
 
-  cy.request("PUT", "/api/setting/enable-embedding-simple", {
-    value: true,
-  });
-  cy.request("PUT", "/api/setting/enable-embedding-static", {
+  cy.request("PUT", "/api/setting/enable-embedding-modular", {
     value: true,
   });
 

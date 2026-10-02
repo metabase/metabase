@@ -770,7 +770,15 @@
     },
     {
       "spec": "../test/scenarios/embedding/embedding-dashboard.cy.spec.js",
+<<<<<<< 8bfda478850
       "duration": 121205
+=======
+      "duration": 114881
+    },
+    {
+      "spec": "../test/scenarios/embedding/embedding-hub/embedding-hub.cy.spec.ts",
+      "duration": 85655
+>>>>>>> d53a909a92f^
     },
     {
       "spec": "../test/scenarios/embedding/embedding-linked-filters.cy.spec.js",

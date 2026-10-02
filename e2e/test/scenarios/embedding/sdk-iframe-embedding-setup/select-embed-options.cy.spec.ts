@@ -33,7 +33,7 @@ describe("OSS", { tags: "@OSS" }, () => {
       H.resetSnowplow();
       cy.signInAsAdmin();
       H.enableTracking();
-      H.updateSetting("enable-embedding-simple", true);
+      H.updateSetting("enable-embedding-modular", true);
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -69,7 +69,7 @@ describe("EE without license", () => {
       cy.signInAsAdmin();
       H.activateToken("starter");
       H.enableTracking();
-      H.updateSetting("enable-embedding-simple", true);
+      H.updateSetting("enable-embedding-modular", true);
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -95,7 +95,7 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-modular", true);
     H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
