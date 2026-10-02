@@ -146,7 +146,7 @@
    _query-params
    _body
    _request]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [table (api/read-check :model/Table id)]
     (when (:is_published table)
       (publishing-info id))))
@@ -169,7 +169,7 @@
   [_route-params
    _query-params
    body :- ::publish-table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [target-collection  (api/check-404 (data-studio.db/collection (:collection_id body)))
         _                  (api/check-400 (= (:type target-collection) collection/library-data-collection-type)
                                           (tru "Tables can only be published to Library/Data collections."))
@@ -193,7 +193,7 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [selectors       (body->table-selectors body)
         downstream-ids  (all-downstream-table-ids selectors)
         ;; Get table IDs before update for event publishing

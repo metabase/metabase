@@ -9,6 +9,7 @@ import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-p
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
 import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
+import { isHostReactVersionSupported } from "embedding-sdk-bundle/lib/host-react-version";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
@@ -36,6 +37,7 @@ import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
+import { UnsupportedReactVersionError } from "../../private/UnsupportedReactVersionError/UnsupportedReactVersionError";
 import { METABOT_SDK_EE_PLUGIN } from "../MetabotQuestion/MetabotQuestion";
 
 export type ComponentProviderInternalProps = ComponentProviderProps & {
@@ -204,6 +206,12 @@ export const ComponentProvider = memo(function ComponentProvider({
 
   if (!reduxStoreRef.current) {
     reduxStoreRef.current = props.reduxStore ?? getSdkStore();
+  }
+
+  // Bail out before any provider mounts: a too-old host React would throw
+  // deep inside them and take the host app down with it.
+  if (!isHostReactVersionSupported()) {
+    return <UnsupportedReactVersionError />;
   }
 
   return (

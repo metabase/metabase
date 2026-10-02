@@ -6,6 +6,7 @@
         [pretty.core :as pretty]))
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *to-track-metadata-types*
   "Set of metadata types to track.
   Currently only `:metadata/card` is tracked for updating report_card.last_used_at.

@@ -97,28 +97,44 @@ const adminAiPath = (path: string) => `${Urls.adminAiSettings()}/${path}`;
  * Hovering an AI settings tab starts its fetch, so the chunk is usually in hand
  * by the time the click lands.
  *
- * The pages that differ only by license come from one module, so a registration
- * covers both. The three system prompt tabs are one module too, which is why the
- * prefix they share is registered once.
+ * Called from the licensed branch of `initializePlugin`, so only the pages this
+ * instance mounts are registered. A registration is also what the background pass
+ * reads, and fetching a page nobody can reach would spend a download on nothing.
+ *
+ * The three system prompt tabs are one module, which is why the prefix they share
+ * is registered once.
  */
-registerPagePrefetch(
-  adminAiPath(PATHS.featureAccess),
-  metabotFeatureAccessPage,
-);
-registerPagePrefetch(
-  adminAiPath(PATHS.featureAccess),
-  metabotFeatureAccessUpsellPage,
-);
-registerPagePrefetch(adminAiPath(PATHS.usageLimits), metabotUsageLimitsPage);
-registerPagePrefetch(
-  adminAiPath(PATHS.customization),
-  metabotCustomizationPage,
-);
-registerPagePrefetch(
-  adminAiPath(PATHS.customization),
-  metabotCustomizationUpsellPage,
-);
-registerPagePrefetch(adminAiPath(PATHS.systemPrompts), metabotChatPromptPage);
+export function registerAiControlsPagePrefetch(): void {
+  registerPagePrefetch(
+    adminAiPath(PATHS.featureAccess),
+    metabotFeatureAccessPage,
+  );
+  registerPagePrefetch(adminAiPath(PATHS.usageLimits), metabotUsageLimitsPage);
+  registerPagePrefetch(
+    adminAiPath(PATHS.customization),
+    metabotCustomizationPage,
+  );
+  registerPagePrefetch(adminAiPath(PATHS.systemPrompts), metabotChatPromptPage);
+}
+
+/**
+ * The tabs an instance without the license mounts. There is no usage limits tab
+ * among them, so nothing registers that path here.
+ */
+export function registerAiControlsUpsellPagePrefetch(): void {
+  registerPagePrefetch(
+    adminAiPath(PATHS.featureAccess),
+    metabotFeatureAccessUpsellPage,
+  );
+  registerPagePrefetch(
+    adminAiPath(PATHS.customization),
+    metabotCustomizationUpsellPage,
+  );
+  registerPagePrefetch(
+    adminAiPath(PATHS.systemPrompts),
+    metabotSystemPromptsUpsellPage,
+  );
+}
 
 export function getAiControlsRoutes() {
   return (

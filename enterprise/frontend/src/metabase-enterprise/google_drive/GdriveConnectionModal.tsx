@@ -45,11 +45,13 @@ export function GdriveConnectionModal({
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
-  const { data: gSheetData, error } = useGetGsheetsFolderQuery(
-    shouldShow ? undefined : skipToken,
-  );
+  const {
+    data: gSheetData,
+    error,
+    isLoading,
+  } = useGetGsheetsFolderQuery(shouldShow ? undefined : skipToken);
 
-  if (!shouldShow) {
+  if (!shouldShow || isLoading) {
     return null;
   }
 
@@ -135,9 +137,6 @@ function GoogleSheetsConnectModal({
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
       <SegmentedControl<UploadType>
         fullWidth
-        autoContrast
-        color="core-brand"
-        c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={

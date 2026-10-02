@@ -26,9 +26,13 @@ import {
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  createOrdersTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { MetabotProvider } from "../context";
+import { getMetabotState } from "../state";
 import { sendAgentRequest } from "../state/actions";
 
 import {
@@ -45,6 +49,7 @@ jest.mock("metabase/api/ai-streaming", () => ({
 const mockedAiStreamingQuery = jest.mocked(aiStreamingQuery);
 
 const TEST_DB = createSampleDatabase();
+const ORDERS_TABLE = createOrdersTable();
 const INITIAL_SQL = "SELECT 1";
 const SUGGESTED_SQL = "SELECT * FROM ORDERS";
 
@@ -72,6 +77,7 @@ const ChatMessagesProbe = () => {
 
   return (
     <Messages
+      size="md"
       messages={messages}
       isDoingScience={false}
       debug={false}
@@ -92,16 +98,17 @@ describe("query builder code edits from omnibot", () => {
     fetchMock.post("path:/api/llm/extract-sources", {
       tables: [
         {
-          id: 2,
-          name: "ORDERS",
-          schema: "PUBLIC",
-          display_name: "Orders",
+          id: ORDERS_TABLE.id,
+          name: ORDERS_TABLE.name,
+          schema: ORDERS_TABLE.schema,
+          display_name: ORDERS_TABLE.display_name,
           description: null,
           columns: [],
         },
       ],
       card_ids: [],
     });
+    fetchMock.get(`path:/api/table/${ORDERS_TABLE.id}`, ORDERS_TABLE);
     fetchMock.get(`path:/api/database/${TEST_DB.id}`, TEST_DB);
   });
 
@@ -211,9 +218,9 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      typedStore
-        .getState()
-        .metabot.conversations[conversationId]?.messages.at(-1),
+      getMetabotState(typedStore.getState()).conversations[
+        conversationId
+      ]?.messages.at(-1),
     ).toMatchObject({
       role: "agent",
       externalId: "msg_test_code_edit",

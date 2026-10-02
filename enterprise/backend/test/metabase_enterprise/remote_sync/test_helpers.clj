@@ -267,7 +267,7 @@ width: fixed
       :or {branch "main"
            fail-mode nil
            initial-files nil
-           managed-dirs ingest/legal-top-level-paths}}]
+           managed-dirs ingest/replaced-top-level-paths}}]
   (let [default-files {"main" {"collections/M-Q4pcV0qkiyJ0kiSWECl_some_collection/M-Q4pcV0qkiyJ0kiSWECl_some_collection.yaml"
                                (generate-collection-yaml "M-Q4pcV0qkiyJ0kiSWECl" "Some Collection")
 
@@ -297,7 +297,7 @@ width: fixed
   model a base orphaned by a force-push/rebase). Committing (via `open-commit`) records the written set
   under a fresh version, advances `:current`, and returns the new version so an export can fast-forward onto it."
   [& {:keys [current trees branch managed-dirs]
-      :or   {current "v-remote" branch "main" managed-dirs ingest/legal-top-level-paths}}]
+      :or   {current "v-remote" branch "main" managed-dirs ingest/replaced-top-level-paths}}]
   (let [managed     (set managed-dirs)
         state       (atom {:current current :trees (or trees {}) :counter 0})
         diff-trees  (fn [old-tree new-tree]
