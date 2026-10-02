@@ -3,16 +3,15 @@ import { t } from "ttag";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import {
-  getDateFilterClause,
   getDatePickerUnits,
   getDatePickerValue,
 } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { LAST_QUERY_STAGE_INDEX } from "./constants";
+import { type ApplyMcpOperations, getDateFilterOperation } from "../derive";
 
-type UpdateQuestion = (question: Question, opts: { run: boolean }) => void;
+import { LAST_QUERY_STAGE_INDEX } from "./constants";
 
 export interface UseDateFilterResult {
   dateFilterClause: Lib.FilterClause | null;
@@ -23,9 +22,13 @@ export interface UseDateFilterResult {
   handleDateFilterClear: () => void;
 }
 
+/**
+ * Reads the question's date filter for the time-range control. A change goes
+ * to the server, which derives the refiltered query from the stored one.
+ */
 export function useDateFilter(
   question: Question | undefined,
-  updateQuestion: UpdateQuestion,
+  applyOperations: ApplyMcpOperations,
   rawTemporalColumn: Lib.ColumnMetadata | null,
 ): UseDateFilterResult {
   const empty: UseDateFilterResult = {
@@ -74,12 +77,7 @@ export function useDateFilter(
       return;
     }
 
-    const newFilterClause = getDateFilterClause(rawTemporalColumn, value);
-    const newQuery = dateFilterClause
-      ? Lib.replaceClause(query, stageIndex, dateFilterClause, newFilterClause)
-      : Lib.filter(query, stageIndex, newFilterClause);
-
-    updateQuestion(question.setQuery(newQuery), { run: true });
+    applyOperations([getDateFilterOperation(value)]);
   };
 
   const handleDateFilterClear = () => {
@@ -87,8 +85,7 @@ export function useDateFilter(
       return;
     }
 
-    const newQuery = Lib.removeClause(query, stageIndex, dateFilterClause);
-    updateQuestion(question.setQuery(newQuery), { run: true });
+    applyOperations([{ type: "date-filter/clear" }]);
   };
 
   return {

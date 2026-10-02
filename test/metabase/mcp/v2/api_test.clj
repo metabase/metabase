@@ -5,12 +5,12 @@
    [metabase.ai-tracing.core :as ait]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.mcp.db :as mcp.db]
-   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
+   [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
@@ -19,7 +19,6 @@
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -649,10 +648,8 @@
             `refresh_ui_credential` a scope-escalation primitive: a token granted only `agent:query:run` is
             refused the profile, but the credential minted from it was served it.
 
-            The credential now authenticates a purpose-built surface only. It still carries `::scope/mcp-ui`,
-            which satisfies no endpoint's declared scope, and `:token-scopes-checked` is set only where the
-            credential's signed scope claim covers the route — so anything off the surface, or on it without
-            the scope, fails closed instead of arriving as the user."
+            The credential now authenticates only the /api/embed-mcp handlers, which check it themselves.
+            Everywhere else it is no credential at all."
     (mcp.ui-resource/with-fallback-template
       (let [session-id (initialize-ui-client!)
             credential (-> (mcp-request! (jsonrpc-request "tools/call"
@@ -668,28 +665,14 @@
           (is (= 401 (:status (client/client-full-response :get 401 "collection"
                                                            {:request-options {:headers headers}})))))
         (testing "and the iframe still boots, on the endpoint built for it"
-          (is (= 200 (:status (client/client-full-response
-                               :get 200 "embed-mcp/bootstrap"
-                               {:request-options {:headers (assoc headers "mcp-session-id" session-id)}})))))
-        (testing "the request it authenticates is stamped `::scope/mcp-ui`, never unrestricted"
-          (let [info (#'mw.session/current-user-info-for-mcp-ui-credential
-                      (:mcp-ui-credentials mcp.http-handler/options)
-                      {:request-method :get
-                       :uri            "/api/embed-mcp/bootstrap"
-                       :headers        {"x-metabase-mcp-ui-auth" credential}})]
-            (is (= #{:metabase.api.macros.scope/mcp-ui} (:token-scopes info))
-                "a credential must not carry the unrestricted sentinel")
-            (is (true? (:token-scopes-checked info))
-                "the stamp must be non-nil AND checked, or `ensure-scopes-checked` refuses the iframe")))
-        (testing "a route the credential's scope claim does not cover is authenticated but not scope-checked"
-          (is (false? (:token-scopes-checked
-                       (#'mw.session/current-user-info-for-mcp-ui-credential
-                        (:mcp-ui-credentials mcp.http-handler/options)
-                        {:request-method :post
-                         :uri            "/api/dataset"
-                         :headers        {"x-metabase-mcp-ui-auth"
-                                          (mcp.session/issue-ui-credential
-                                           session-id (mt/user->id :crowberto) #{"agent:search"})}})))))))))
+          (is (= 200 (:status (ui.tu/ui-request! {:credential credential :session-id session-id}
+                                                 :get 200 "embed-mcp/bootstrap")))))
+        (testing "a dataset route is refused: the credential is not a query credential outside the iframe routes"
+          (is (= 401 (:status (client/client-full-response :post 401 "dataset"
+                                                           {:request-options {:headers headers}}
+                                                           {:database (mt/id)
+                                                            :type     :native
+                                                            :native   {:query "SELECT 1"}})))))))))
 
 (deftest unauthenticated-discovery-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
@@ -817,49 +800,48 @@
                        :text)]
     (embedded-credential html)))
 
+(defn- run-handle-with-credential!
+  "Store `query` under a handle owned by the user `credential` was minted for, and run it through the iframe's
+  handle route with that credential, expecting `expected-status`. Returns the full response."
+  [credential expected-status query]
+  (let [{:keys [uid sid]} (mcp.session/resolve-ui-credential credential)
+        handle            (mcp.session/store-handle! sid uid (-> query json/encode u/encode-base64))]
+    (client/client-full-response
+     :post expected-status (str "embed-mcp/queries/" handle "/run")
+     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                  "mcp-session-id"         sid}}}
+     {})))
+
 (deftest ui-credential-cannot-outrun-its-scopes-test
   (testing "GHY-4318: the iframe credential is delivered to the CLIENT (by `refresh_ui_credential`; here, by the
-            fallback template's shell HTML), so a client holding only `agent:query:run` can POST it straight to
-            /api/dataset. The credential carries the token's own scopes, and the UI surface charges the whole
-            /api/dataset tree a single `agent:query:run`, so the only thing standing between it and raw SQL is
-            `check-mcp-ui-native-query!` — which must actually be wired into the query endpoints, not just
-            unit-tested. Without the wiring, `agent:query:run` silently becomes `agent:sql:run`."
+            fallback template's shell HTML), so a client holding only `agent:query:run` can use it on the iframe's
+            routes. A handle holding native SQL must still cost `agent:sql:run`, or `agent:query:run` silently
+            becomes `agent:sql:run`."
     (mcp.ui-resource/with-fallback-template
-      ;; Both payloads are hand-rolled legacy MBQL rather than built with Lib, deliberately and
-      ;; symmetrically: what is under test is the shape a client actually PUTs on the wire reaching the
-      ;; guard, so constructing it through Lib would test Lib's output instead of the client's.
-      (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
-            mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
-        (testing "a client without agent:sql:run is refused, and told which scope it needs"
-          (do-with-bearer-token!
-           #{"agent:query:run"}
-           (fn [headers]
-             (let [credential (ui-credential-for headers)]
-               (is (string? credential)
-                   "the shell must render a credential — otherwise this test passes vacuously")
-               (let [response (client/client-full-response
-                               :post 403 "dataset"
-                               {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
-                               native-query)]
-                 (is (re-find #"agent:sql:run" (str (:body response)))))))))
-        (testing "the same client's non-native queries are untouched — the gate is on raw SQL, not on the credential"
-          (do-with-bearer-token!
-           #{"agent:query:run"}
-           (fn [headers]
-             (let [credential (ui-credential-for headers)]
-               (is (= 202 (:status (client/client-full-response
-                                    :post 202 "dataset"
-                                    {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
-                                    mbql-query))))))))
-        (testing "a client that WAS granted agent:sql:run runs the same native query"
-          (do-with-bearer-token!
-           #{"agent:query:run" "agent:sql:run"}
-           (fn [headers]
-             (let [credential (ui-credential-for headers)]
-               (is (= 202 (:status (client/client-full-response
-                                    :post 202 "dataset"
-                                    {:request-options {:headers {"x-metabase-mcp-ui-auth" credential}}}
-                                    native-query))))))))))))
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (let [native-query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+              mbql-query   {:database (mt/id) :type "query" :query {:source-table (mt/id :venues) :limit 1}}]
+          (testing "a client without agent:sql:run is refused, and told which scope it needs"
+            (do-with-bearer-token!
+             #{"agent:query:run"}
+             (fn [headers]
+               (let [credential (ui-credential-for headers)]
+                 (is (string? credential)
+                     "the shell must render a credential — otherwise this test passes vacuously")
+                 (is (re-find #"agent:sql:run"
+                              (str (:body (run-handle-with-credential! credential 403 native-query)))))))))
+          (testing "the same client's non-native queries are untouched — the gate is on raw SQL, not on the
+                    credential"
+            (do-with-bearer-token!
+             #{"agent:query:run"}
+             (fn [headers]
+               (is (= 202 (:status (run-handle-with-credential! (ui-credential-for headers) 202 mbql-query)))))))
+          (testing "a client that WAS granted agent:sql:run runs the same native query"
+            (do-with-bearer-token!
+             #{"agent:query:run" "agent:sql:run"}
+             (fn [headers]
+               (is (= 202 (:status (run-handle-with-credential! (ui-credential-for headers) 202
+                                                                native-query))))))))))))
 
 (deftest bearer-token-dispatches-with-its-own-scopes-test
   (testing "GHY-4287: the session middleware resolves an OAuth bearer token itself, so a bearer request reaches the
@@ -1453,10 +1435,10 @@
       (get-in [:headers "Mcp-Session-Id"])))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
-(deftest drill-handle-cannot-save-native-sql-without-the-sql-scope-test
-  (testing "GHY-4543: `/api/embed-mcp/drills` stores whatever query the iframe hands it, charged the UI credential's
-            single agent:query:run, and a handle resolves by user, so holding a drill handle is not proof the SQL
-            gates were spent. Saving one through question_write or transform_write is still charged agent:sql:run."
+(deftest handle-cannot-save-native-sql-without-the-sql-scope-test
+  (testing "GHY-4543: a handle resolves by user, so holding a native handle another credential of the same user
+            minted is not proof the SQL gates were spent. Saving one through question_write or transform_write is
+            still charged agent:sql:run. The iframe can no longer store a query of its own at all."
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (do-with-bearer-token!
        content-write-scopes
@@ -1471,12 +1453,14 @@
                                                                 {:name "refresh_ui_credential" :arguments {}}))
                                (get-in [:body :result :_meta :com.metabase/mcp-apps :credential]))
                drill!      (fn [query]
-                             (-> (client/client-full-response
-                                  :post 200 "embed-mcp/drills"
-                                  {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
-                                                               "mcp-session-id"         session-id}}}
-                                  {:encodedQuery (u/encode-base64 (json/encode query))})
-                                 (get-in [:body :handle])))
+                             (is (= 400 (:status (client/client-full-response
+                                                  :post 400 "embed-mcp/drills"
+                                                  {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
+                                                                               "mcp-session-id"         session-id}}}
+                                                  {:encodedQuery (u/encode-base64 (json/encode query))})))
+                                 "the drills route takes a handle and a drill, never a query")
+                             (mcp.session/store-handle! session-id (mt/user->id :crowberto)
+                                                        (u/encode-base64 (json/encode query))))
                call!       (fn [expected-status tool-name handle]
                              (in-session expected-status
                                          (jsonrpc-request
@@ -1488,7 +1472,7 @@
                                                         (= tool-name "transform_write")
                                                         (assoc :target {:name   "mcp_drill_probe"
                                                                         :schema "PUBLIC"}))})))]
-           (is (string? credential) "the iframe must get a credential, or the drill store is unreachable")
+           (is (string? credential) "the iframe must get a credential, or the drills route is unreachable")
            (testing "a handle carrying an MBQL 5 native stage is refused with the step-up challenge"
              (let [handle (drill! {:lib/type "mbql/query"
                                    :database (mt/id)

@@ -100,6 +100,16 @@
                                       rff))
           (qp/process-query (assoc query :info info) rff))))))
 
+(defn run-adhoc-query
+  "Run the normalized ad-hoc `query` as the current user the way `POST /api/dataset` does, returning a streaming
+  response of its results."
+  [query]
+  (run-streaming-query
+   (-> query
+       (dissoc :cache-strategy)
+       (update-in [:middleware :js-int-to-string?] (fnil identity true))
+       qp/userland-query-with-default-constraints)))
+
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
@@ -107,11 +117,7 @@
   [_route-params
    _query-params
    query :- ::lib-be.schema/maybe-legacy-or-internal-query]
-  (run-streaming-query
-   (-> query
-       (dissoc :cache-strategy)
-       (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+  (run-adhoc-query query))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -186,6 +192,15 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+(defn adhoc-query-metadata
+  "The metadata the frontend needs for the normalized ad-hoc `query`, as `POST /api/dataset/query_metadata` returns
+  it to the current user."
+  [query]
+  (queries/batch-fetch-query-metadata
+   [query]
+   (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
+     {:include-sensitive-fields? include-sensitive-fields})))
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/query_metadata"
@@ -197,10 +212,7 @@
   [_route-params
    _query-params
    query :- ::lib-be.schema/maybe-legacy-query]
-  (queries/batch-fetch-query-metadata
-   [query]
-   (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
-     {:include-sensitive-fields? include-sensitive-fields})))
+  (adhoc-query-metadata query))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -240,13 +252,10 @@
               (-> (select-keys compiled [:query :params :collection])
                   (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
 
-(api.macros/defendpoint :post "/pivot"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
-  "Generate a pivoted dataset for an ad-hoc query"
-  {:scope api-scope/data-app}
-  [_route-params
-   _query-params
-   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query]
+(defn run-adhoc-pivot-query
+  "Run the normalized ad-hoc `query` as a pivot query as the current user the way `POST /api/dataset/pivot` does,
+  returning a streaming response of its results."
+  [{:keys [database] :as query}]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
@@ -258,6 +267,15 @@
                                        :info        info)
                                 rff)
       query)))
+
+(api.macros/defendpoint :post "/pivot"
+  :- (server/streaming-response-schema ::qp.schema/query-result)
+  "Generate a pivoted dataset for an ad-hoc query"
+  {:scope api-scope/data-app}
+  [_route-params
+   _query-params
+   query :- ::lib-be.schema/maybe-legacy-query]
+  (run-adhoc-pivot-query query))
 
 (defn- parameter-field-values
   [field-ids query]

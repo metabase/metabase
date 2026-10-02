@@ -4,9 +4,9 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { TemporalUnit } from "metabase-types/api";
 
-import { LAST_QUERY_STAGE_INDEX } from "./constants";
+import type { ApplyMcpOperations } from "../derive";
 
-type UpdateQuestion = (question: Question, opts: { run: boolean }) => void;
+import { LAST_QUERY_STAGE_INDEX } from "./constants";
 
 export interface TemporalGranularityItem {
   bucket: Lib.Bucket;
@@ -25,11 +25,12 @@ export interface UseTemporalGranularityResult {
 
 /**
  * Handlers for showing and updating time granularity controls
- * via the query explorer bar.
+ * via the query explorer bar. A change goes to the server, which derives the
+ * rebucketed query from the stored one.
  */
 export function useTemporalGranularity(
   question: Question | undefined,
-  updateQuestion: UpdateQuestion,
+  applyOperations: ApplyMcpOperations,
 ): UseTemporalGranularityResult {
   if (!question) {
     return {
@@ -102,15 +103,16 @@ export function useTemporalGranularity(
       return;
     }
 
-    const newColumn = Lib.withTemporalBucket(temporalColumn, bucket);
-    const newQuery = Lib.replaceClause(
-      query,
-      stageIndex,
-      temporalClause,
-      newColumn,
-    );
+    const unit = bucket
+      ? Lib.displayInfo(query, stageIndex, bucket).shortName
+      : null;
 
-    updateQuestion(question.setQuery(newQuery), { run: true });
+    applyOperations([
+      {
+        type: "temporal-bucket/set",
+        unit: unit === "default" ? null : unit,
+      },
+    ]);
   };
 
   return {

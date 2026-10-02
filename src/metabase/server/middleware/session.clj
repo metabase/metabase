@@ -173,13 +173,12 @@
    [:mcp-resource?         ifn?]
    [:mcp-endpoint-request? ifn?]])
 
-(mr/def ::mcp-ui-credentials
-  "Fns that authenticate a request by the credential an MCP App UI carries."
-  [:map
-   {:closed true}
-   [:on-surface?        ifn?]
-   [:resolve-credential ifn?]
-   [:scope-satisfied?   ifn?]])
+(mu/defn user-info-for-id :- [:maybe ::request.schema/current-user-info]
+  "The current-user-info a request authenticated as the active User `user-id` carries, or nil when no active User
+  has that id."
+  [user-id :- ms/PositiveInt]
+  (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
+          (m/update-existing :is-group-manager? boolean)))
 
 (def ^:private full-access-token-scopes
   "The `:token-scopes` value that grants a bearer-authenticated request access to the general
@@ -219,78 +218,40 @@
    request :- ::request.schema/request]
   (when (and extract-token (init-status/complete?))
     (when-let [token (extract-token request)]
-      (when-let [{:keys [user-id scopes resource]} (resolve-token token)]
+      (when-let [{:keys [user-id token-id scopes resource]} (resolve-token token)]
         (let [mcp-token? (mcp-resource? resource)]
           ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
           (when (and (seq scopes)
                      (= mcp-token? (mcp-endpoint-request? (:uri request))))
-            (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
-                    (m/update-existing :is-group-manager? boolean)
-                    (assoc :token-scopes             (if mcp-token?
-                                                       scopes
-                                                       (oauth-token->token-scopes full-access-scope scopes))
-                           :authenticated-via-oauth? true))))))))
-
-(defn- current-user-info-for-mcp-ui-credential
-  "Resolve the short-lived credential from an MCP App tool result.
-
-   Two gates, both owned by [[metabase.mcp.ui-surface/request-surface]]. The first decides whether the
-   credential authenticates this route at all; a route off the surface is not authenticated, and the request
-   falls through as anonymous. The second decides whether the scopes the minting MCP session actually held —
-   carried on the credential as a signed claim — cover what the route costs.
-
-   `::scope/mcp-ui`, NOT `::scope/unrestricted`: the surface decides which routes the credential may pass
-   through, and it must not also decide what privilege it arrives with. Stamped unrestricted, a credential
-   that reached anything off the surface arrived with full session privilege. `::mcp-ui` satisfies no
-   endpoint's declared `:scope`.
-
-   `:token-scopes-checked` is what lets those routes serve the credential at all: they declare no `:scope` of
-   their own, and annotating them would push MCP vocabulary into `session` and `query-processor`. It is set
-   only when the second gate passes, so a route added to the surface without a scope decision, or reached by
-   a routing change, is refused by `ensure-scopes-checked` rather than served.
-
-   Both keys are needed, and the stamp is the easy one to mistake for decoration now that the gate computes
-   the decision on its own: `ensure-scopes-checked` passes anything whose `:token-scopes` is nil. Drop the
-   stamp and an unsatisfied route is served rather than refused. `dataset-routes-cost-the-query-scope-test`
-   is what catches that."
-  [{:keys [on-surface? resolve-credential scope-satisfied?]} request]
-  (when (and on-surface?
-             (init-status/complete?)
-             (on-surface? (:request-method request) (:uri request)))
-    (when-let [{:keys [uid sid] :as claims}
-               (resolve-credential (get-in request [:headers "x-metabase-mcp-ui-auth"]))]
-      (some-> (server.db/oauth-user-info uid (premium-features/enable-advanced-permissions?))
-              (m/update-existing :is-group-manager? boolean)
-              (assoc :token-scopes #{::scope/mcp-ui}
-                     :token-scopes-checked (scope-satisfied? (:request-method request) (:uri request) claims)
-                     :mcp-ui-session-id sid
-                     :mcp-ui-credential claims)))))
+            (some-> (user-info-for-id user-id)
+                    (assoc :token-scopes            (if mcp-token?
+                                                      scopes
+                                                      (oauth-token->token-scopes full-access-scope scopes))
+                           :authenticated-via-oauth? true)
+                    (cond-> mcp-token? (assoc :oauth-token-id token-id)))))))))
 
 (defn- auth-method
-  [session-info api-key-info oauth-info mcp-ui-info embedding-route]
+  [session-info api-key-info oauth-info embedding-route]
   (or ({"guest-embed" "guest"} embedding-route embedding-route)
       (cond session-info (or (:auth-provider session-info) "session")
             api-key-info "api-key"
-            oauth-info   "oauth"
-            mcp-ui-info  "mcp-ui")))
+            oauth-info   "oauth")))
 
 (defn- merge-current-user-info
-  [{:keys [oauth-bearer mcp-ui-credentials]}
+  [{:keys [oauth-bearer]}
    {:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
         api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
-        ;; Bearer and MCP UI credentials are consulted only when no normal session/API key authenticated.
+        ;; A bearer token is consulted only when no normal session/API key authenticated.
         oauth-info   (when-not (or session-info api-key-info)
                        (current-user-info-for-oauth-token oauth-bearer request))
-        mcp-ui-info  (when-not (or session-info api-key-info oauth-info)
-                       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
         embedding-route (analytics/get-route)
-        auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
+        auth-method (auth-method session-info api-key-info oauth-info embedding-route)]
     (merge
      request
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
      ;; merging it whole both authenticates the request and records the granted scopes.
-     (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider)
+     (dissoc (or session-info api-key-info oauth-info) :auth-provider)
      (when auth-method {:embedding/auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
@@ -298,10 +259,9 @@
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
-  token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
-  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
-  Bearer tokens and MCP UI credentials authenticate only when `options` supplies their `:oauth-bearer` and
-  `:mcp-ui-credentials` fns."
+  token, API key, or OAuth bearer access token was passed. A bearer token additionally sets `:token-scopes` (the
+  access it was granted); precedence is session > API key > bearer. Bearer tokens authenticate only when `options`
+  supplies the `:oauth-bearer` fns."
   ([handler]
    (wrap-current-user-info handler nil))
   ([handler options]

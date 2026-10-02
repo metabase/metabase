@@ -4,7 +4,6 @@
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
-   [metabase.agent-api.query-guards :as agent-api.query-guards]
    [metabase.ai-tracing.api]
    [metabase.analytics.api]
    [metabase.analytics.api.proxy]
@@ -190,22 +189,13 @@
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
-   ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
-   ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
-   ;; token's scopes as a signed claim (unrestricted only when minted from an unrestricted session: a cookie or
-   ;; API-key session, or an `mb:full` bearer token), and the guard
-   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL. The spec-generation
-   ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
-   ;; fails openapi.json generation for the whole /api tree.
-   "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
-                                    agent-api.query-guards/+refuse-unscoped-native-sql)
-                                   (api.macros/ns-handler 'metabase.query-processor.api)))
+   "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                (+auth metabase.channel.rest.api/email-routes)
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
-   "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
+   "/embed-mcp"            metabase.mcp.callback-api/routes
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/exploration"          (+auth metabase.explorations.api/routes)

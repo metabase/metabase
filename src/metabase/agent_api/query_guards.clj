@@ -11,12 +11,8 @@
    copy: native detection raw-scans the payload instead of normalize-then-inspect, so a payload
    too malformed to normalize now fails closed instead of falling through to shape validation.
 
-   [[check-mcp-ui-native-query!]] is the odd one out: it guards the ordinary QP endpoints, which the
-   MCP Apps iframe reaches with a credential that the endpoint scope middleware cannot narrow. It
-   shares the native detection but refuses raw SQL on scope rather than banning it outright. It is
-   mounted on the whole `/api/dataset` route tree via [[+refuse-unscoped-native-sql]], keyed on the
-   `:mcp-ui-credential` the session middleware attaches and the scopes claim the v2 session rework
-   put on it."
+   [[check-mcp-ui-native-query!]] is the odd one out: it guards the stored queries the MCP Apps iframe
+   runs. It shares the native detection but refuses raw SQL on scope rather than banning it outright."
   (:require
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
@@ -137,15 +133,10 @@
                                      (deep-scan node)))
               :else              (deep-scan node)))
           ;; `:query`/`:source-query`: normally a nested stage/query map. A JSON STRING is decoded first —
-          ;; `POST /api/dataset/:export-format` accepts `query` that way for `<form>`-submit back-compat and
-          ;; decodes it in Malli, which runs AFTER this guard, so the guard is handed the raw string. Without
-          ;; decoding, a string edge falls to `deep-scan`, which finds no marker inside text. Anything that is
-          ;; not a map and not JSON-decodable to one is deep-scanned as before.
-          ;;
-          ;; This reaches a JSON body. A genuinely `<form>`-encoded submit — the shape that back-compat is
-          ;; actually about — leaves `(:body request)` a stream, not a map, so nothing structural is visible
-          ;; and the scan passes. That route is off the credential's allowlist, so it is unreachable today;
-          ;; adding it would mean reading `[:params :query]` alongside the body.
+          ;; `POST /api/dataset/:export-format` accepts `query` that way for `<form>`-submit back-compat, so a
+          ;; caller can hand the guard a raw string. Without decoding, a string edge falls to `deep-scan`, which
+          ;; finds no marker inside text. Anything that is not a map and not JSON-decodable to one is
+          ;; deep-scanned as before.
           (scan-map-edge [node]
             (cond
               (nil? node)    false
@@ -195,63 +186,25 @@
                           {:status-code 400 :query-map query-map})))))))
 
 (defn check-mcp-ui-native-query!
-  "Throw a 403 if `request` is authenticated by an MCP Apps UI credential that may not run `query` as raw SQL.
+  "Throw a 403 if an MCP Apps UI credential with verified `claims` may not run `query` as raw SQL.
 
-  Mounted on the `/api/dataset` route tree by [[+refuse-unscoped-native-sql]].
-
-  The query endpoints declare no `:scope` of their own, so the endpoint scope middleware cannot tell a native
-  query apart from any other one: [[metabase.mcp.ui-surface/request-surface]] charges the whole `/api/dataset`
-  tree a single `agent:query:run`, and every credential minted for a client holding that scope satisfies it.
-  Raw SQL costs more, and that difference is spent here: it needs the `agent:sql:run` scope off the credential's
-  signed claim, and the `mcp-execute-sql-enabled` kill switch.
-
-  A credential whose claim is simply absent fails closed: a rolling deploy can hand this node one minted before
-  the claim existed.
-
-  Native is refused rather than banned because `execute_sql` handles legitimately hold raw SQL and are visualizable
-  by design. Non-native queries, and requests authenticated any other way, pass straight through."
-  [request query]
-  ;; Keyed on the credential, not on its scopes claim, so a credential carrying no claim is refused rather than
-  ;; waved through — a rolling deploy can hand this node one minted before the claim existed.
-  (when-let [claims (:mcp-ui-credential request)]
-    (when (native-query? query)
-      ;; Scope check first, kill switch second: a client that lacks the SQL-execution scope is refused
-      ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
-      ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
-      ;; state apart by which 403 message it got back.
-      (let [token-scopes (into #{} (filter string?) (:token-scopes claims))]
-        (when-not (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run)
-          (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run
-                               " scope, which this client was not granted.")
-                          {:status-code 403}))))
-      (when-not (agent-api.settings/mcp-execute-sql-enabled)
-        (throw (ex-info (str "Running raw SQL is disabled on this instance — an admin can re-enable it "
-                             "with the mcp-execute-sql-enabled setting.")
-                        {:status-code 403}))))))
-
-(defn +refuse-unscoped-native-sql
-  "Ring middleware applying [[check-mcp-ui-native-query!]] to a route tree, reading the query from the request
-  body.
-
-  It rides the route rather than the endpoints because the endpoints cannot reach it: `agent-api` already
-  `:uses` `query-processor`, so a call from inside `metabase.query-processor.api` would close a module cycle.
-  `api-routes` is `:uses :any` and is where the two modules legitimately meet.
-
-  Applying it to the whole `/api/dataset` tree rather than to the two executing routes is deliberate: the
-  guard is keyed on `:mcp-ui-credential`, which the session middleware attaches only for the routes on the
-  credential's own allowlist, so every other route short-circuits before the body is read. That also means a
-  `/api/dataset` route later added to the allowlist is covered the day it is added — a route added ELSEWHERE
-  is not, because this middleware wraps only that tree — which is why the scan decodes a
-  JSON-string `query` edge rather than assuming the already-decoded shape: `/api/dataset/:export-format`
-  takes one, this middleware runs ahead of Malli's `:decode/api`, and that route is off the allowlist only
-  for now."
-  [handler]
-  (fn [request respond raise]
-    (try
-      (check-mcp-ui-native-query! request (:body request))
-      (handler request respond raise)
-      (catch Throwable e
-        (raise e)))))
+  Raw SQL needs the `agent:sql:run` scope in the claims' `:token-scopes` and the `mcp-execute-sql-enabled`
+  kill switch. Claims without a scope set are refused. A non-native `query` passes."
+  [claims query]
+  (when (native-query? query)
+    ;; Scope check first, kill switch second: a client that lacks the SQL-execution scope is refused
+    ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
+    ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
+    ;; state apart by which 403 message it got back.
+    (let [token-scopes (into #{} (filter string?) (:token-scopes claims))]
+      (when-not (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run)
+        (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run
+                             " scope, which this client was not granted.")
+                        {:status-code 403}))))
+    (when-not (agent-api.settings/mcp-execute-sql-enabled)
+      (throw (ex-info (str "Running raw SQL is disabled on this instance — an admin can re-enable it "
+                           "with the mcp-execute-sql-enabled setting.")
+                      {:status-code 403})))))
 
 (defn check-token-query-permissions!
   "Re-validate the current user's permissions on a stored or client-supplied query.

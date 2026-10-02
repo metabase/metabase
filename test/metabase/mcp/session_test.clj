@@ -180,25 +180,25 @@
   (let [user-id    (mt/user->id :crowberto)
         session-id (mcp.session/create! user-id nil)
         scopes     #{metabot.scope/agent-content-read metabot.scope/agent-query-run}
-        credential (mcp.session/issue-ui-credential session-id user-id scopes)]
-    (testing "a fresh credential resolves to its user and MCP session"
-      (is (=? {:uid user-id :sid session-id}
+        credential (mcp.session/issue-ui-credential session-id user-id scopes 42)]
+    (testing "a fresh credential resolves to its user, MCP session, and access token"
+      (is (=? {:uid user-id :sid session-id :tid 42}
               (mcp.session/resolve-ui-credential credential))))
     (testing "invalid credentials are rejected"
       (is (nil? (mcp.session/resolve-ui-credential (str credential "x")))))
     (testing "expired credentials are rejected"
       (with-redefs [mcp.session/ui-credential-lifetime-seconds -1]
         (is (nil? (mcp.session/resolve-ui-credential
-                   (mcp.session/issue-ui-credential session-id user-id scopes))))))))
+                   (mcp.session/issue-ui-credential session-id user-id scopes 42))))))))
 
 (deftest ui-credential-carries-minting-session-scopes-test
-  (testing "GHY-4318: the credential authenticates as `::scope/mcp-ui`, which satisfies no endpoint's declared scope,
-            so the minting session's real scopes have to travel on the signed claims for downstream gates to see them"
+  (testing "GHY-4318: the iframe routes charge their scope against the minting session's real scopes, so those
+            have to travel on the signed claims"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
           scopes-of  (fn [token-scopes]
                        (:token-scopes (mcp.session/resolve-ui-credential
-                                       (mcp.session/issue-ui-credential session-id user-id token-scopes))))]
+                                       (mcp.session/issue-ui-credential session-id user-id token-scopes nil))))]
       (testing "named scopes round-trip"
         (is (= #{metabot.scope/agent-content-read metabot.scope/agent-query-run}
                (scopes-of #{metabot.scope/agent-content-read metabot.scope/agent-query-run}))))

@@ -395,8 +395,10 @@
           (let [messages        (if batch? body [body])
                 ;; Captured on-thread from the request so each tool-call row can denormalize IP/UA
                 ;; (gated PII) alongside client identity — the view no longer joins the session.
-                request-context {:user-agent (get-in request [:headers "user-agent"])
-                                 :ip-address (request/ip-address request)}
+                request-context {:user-agent     (get-in request [:headers "user-agent"])
+                                 :ip-address     (request/ip-address request)
+                                 ;; What a UI credential minted in this request is bound to.
+                                 :oauth-token-id (:oauth-token-id request)}
                 ;; Validate each batch element independently (JSON-RPC 2.0 §6). A request must be an object with
                 ;; `jsonrpc: "2.0"` and a string `method`; anything else is Invalid Request. Without this check,
                 ;; non-object elements dispatch to a nil method and disappear through `keep`, while objects missing

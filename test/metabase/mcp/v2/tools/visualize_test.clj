@@ -19,6 +19,7 @@
    [metabase.mcp.core :as mcp.core]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
+   [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -27,7 +28,6 @@
    [metabase.mcp.v2.tools.visualize]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -438,16 +438,14 @@
           (let [sid        (str (random-uuid))
                 minted     (mint-mbql-handle! sid user-id)
                 body       (payload (call! "visualize_query" sid {:query_handle minted}))
-                credential (mcp.session/issue-ui-credential sid user-id #{"agent:query:run"})]
+                credential (ui.tu/credential! sid user-id #{"agent:query:run"})]
             (testing "the payload names a query in a shape the iframe reads"
               (is (seq (filter (set (keys body)) ui-app-payload-keys))
                   (str "structuredContent has no key useMcpApp.tsx acts on: " (pr-str (keys body)))))
             (testing "and resolving that handle over the callback route yields the query"
               (let [{:keys [status body]}
-                    (client/client-full-response
-                     :get 200 (str "embed-mcp/queries/" (:query_handle body))
-                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
-                                                  "mcp-session-id" sid}}})]
+                    (ui.tu/ui-request! {:credential credential :session-id sid}
+                                       :get 200 (str "embed-mcp/queries/" (:query_handle body)))]
                 (is (= 200 status))
                 (is (string? (:query body))
                     "the iframe needs a base64 query to build a card from")))))))))
@@ -459,13 +457,12 @@
       (let [user-id (mt/user->id :crowberto)]
         (mt/with-current-user user-id
           (let [sid        (str (random-uuid))
-                ;; The shape `POST /api/embed-mcp/drills` mints: legacy dataset_query, no prompt.
+                ;; The shape `POST /api/embed-mcp/drills` minted before drills were derived on the server:
+                ;; legacy dataset_query, no prompt.
                 drill      (mcp.session/store-handle! sid user-id "ZW5jb2RlZA==")
                 body       (payload (call! "render_drill_through" sid {:query_handle drill}))
-                credential (mcp.session/issue-ui-credential sid user-id #{"agent:query:run"})]
+                credential (ui.tu/credential! sid user-id #{"agent:query:run"})]
             (is (= drill (:query_handle body)))
             (is (=? {:status 200 :body {:query "ZW5jb2RlZA=="}}
-                    (client/client-full-response
-                     :get 200 (str "embed-mcp/queries/" (:query_handle body))
-                     {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
-                                                  "mcp-session-id" sid}}})))))))))
+                    (ui.tu/ui-request! {:credential credential :session-id sid}
+                                       :get 200 (str "embed-mcp/queries/" (:query_handle body)))))))))))
