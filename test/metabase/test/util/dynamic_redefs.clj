@@ -62,18 +62,23 @@
         (let [current-f (dynamic-value a-var)]
           (apply current-f args))))))
 
+(defn- proxied?
+  "Whether the root of `a-var` is still its own proxy. Something else can replace the root after it is patched: the
+   watch potemkin puts on a re-export's source copies the source's root over it whenever that root changes."
+  [^Var a-var]
+  (identical? a-var (::proxy-for (meta (.getRawRoot a-var)))))
+
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
   [vars]
-  (let [unpatched-vars (remove #(::patched? (meta %)) vars)]
-    (doseq [^Var a-var unpatched-vars]
-      (locking a-var
-        (when-not (::patched? (meta a-var))
-          (let [old-val (.getRawRoot a-var)
-                patch-meta #(assoc % ::original old-val ::patched? true)]
-            (.bindRoot a-var (with-meta (var->proxy a-var)
-                                        (patch-meta (meta (get *local-redefs* a-var)))))
-            (alter-meta! a-var patch-meta)))))))
+  (doseq [^Var a-var (remove proxied? vars)]
+    (locking a-var
+      (when-not (proxied? a-var)
+        (let [old-val (.getRawRoot a-var)
+              patch-meta #(assoc % ::original old-val)]
+          (.bindRoot a-var (with-meta (var->proxy a-var)
+                                      (assoc (patch-meta (meta (get *local-redefs* a-var))) ::proxy-for a-var)))
+          (alter-meta! a-var patch-meta))))))
 
 (defn- sym->var [sym] `(var ~sym))
 
