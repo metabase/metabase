@@ -1,6 +1,8 @@
 ---
 name: metabase-data-app-routing
 description: Add client-side routing (multiple pages) to an existing Metabase data-app project using the host-provided `DataAppRouter`, `DataAppLink`, and `useDataAppLocation` primitives. Use when the user has an existing data-app project and wants more than one page.
+metadata:
+  version: development
 ---
 
 # Add routing to a data-app
