@@ -108,23 +108,59 @@
   [{:keys [^String remote-url]}]
   (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> remote-url buddy-hash/sha1 codecs/bytes->hex)))
 
+(defn- ref-branch-names
+  "Sorted branch names (without 'refs/heads/') among the `refs` returned by an lsRemote."
+  [refs]
+  (->> refs
+       (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
+       (remove #(.isSymbolic ^Ref %))
+       (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
+       sort))
+
+(defn- branch-without-head
+  "For the `refs` returned by an lsRemote of a remote that advertises no HEAD, the branch that stands in for HEAD: the
+  first of its branches. Nil when the remote advertises HEAD, or has no branches.
+
+  A remote with branches can advertise no HEAD, for example a bare repository whose HEAD names `master` when only
+  `main` was pushed. A clone of such a remote (see [[clone-branch]]) and its default branch (see [[ref-head-branch]])
+  both use this branch, so they agree."
+  [refs]
+  (when-not (some #(= Constants/HEAD (.getName ^Ref %)) refs)
+    (first (ref-branch-names refs))))
+
+(defn- clone-branch
+  "The branch to give a clone of the remote at `remote-url`, or nil to let the clone follow the remote HEAD.
+
+  A JGit clone first fetches the branch that it is given (by default HEAD), and fails when the remote does not
+  advertise that ref. For a remote that advertises no HEAD, this returns [[branch-without-head]]. The clone is bare
+  and fetches every branch, and nothing reads the HEAD of the clone, so the choice of branch has no other effect."
+  [{:keys [^String remote-url] :as args}]
+  (branch-without-head (call-remote-command (-> (Git/lsRemoteRepository)
+                                                (.setRemote remote-url))
+                                            args)))
+
 (defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
 
   Takes a map with :remote-url (the git repository URL) and optional :token (authentication token for private
   repositories). Returns a Git instance for the cloned repository. If the repository already exists in the temp
-  directory and is valid, returns the existing repository after fetching.
+  directory and is valid, returns the existing repository after fetching. A remote that advertises no HEAD is cloned
+  too (see [[clone-branch]]).
 
   Throws ExceptionInfo if cloning fails due to network issues, invalid URL, authentication failure, etc."
   [repo-path {:keys [^String remote-url ^String token]}]
   (log/info "Cloning repository" {:url remote-url :repo-path repo-path})
   (io/make-parents repo-path)
   (try
-    (u/prog1 (call-remote-command (-> (Git/cloneRepository)
-                                      (.setDirectory repo-path)
-                                      (.setURI remote-url)
-                                      (.setBare true)) {:token token :remote-url remote-url})
-      (log/info "Successfully cloned repository" {:repo-path repo-path}))
+    (let [args    {:token token :remote-url remote-url}
+          command (-> (Git/cloneRepository)
+                      (.setDirectory repo-path)
+                      (.setURI remote-url)
+                      (.setBare true))]
+      (when-let [branch (clone-branch args)]
+        (.setBranch command (qualify-branch branch)))
+      (u/prog1 (call-remote-command command args)
+        (log/info "Successfully cloned repository" {:repo-path repo-path})))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
                       {:url       remote-url
@@ -374,14 +410,16 @@
      push-response)))
 
 (defn- ref-head-branch
-  "The branch (without 'refs/heads/') that the symbolic HEAD among the `refs` returned by an lsRemote points at.
-  Throws ExceptionInfo if there is none."
+  "The branch (without 'refs/heads/') that the symbolic HEAD among the `refs` returned by an lsRemote points at. For a
+  remote that advertises no HEAD, the branch that a clone of it gets (see [[branch-without-head]]). Throws
+  ExceptionInfo if there is none."
   [refs]
   (let [head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
     (or (when head-ref
           (when (.isSymbolic ^Ref head-ref)
             (when-let [target (.getTarget ^Ref head-ref)]
               (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
+        (branch-without-head refs)
         (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
 (defn default-branch
@@ -492,15 +530,6 @@
       (.finish builder))
     (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id
                  (when parent-tree (.copy ^RevTree parent-tree)) (atom nil))))
-
-(defn- ref-branch-names
-  "Sorted branch names (without 'refs/heads/') among the `refs` returned by an lsRemote."
-  [refs]
-  (->> refs
-       (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
-       (remove #(.isSymbolic ^Ref %))
-       (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
-       sort))
 
 (defn branches
   "Retrieves all branch names from the remote repository.
