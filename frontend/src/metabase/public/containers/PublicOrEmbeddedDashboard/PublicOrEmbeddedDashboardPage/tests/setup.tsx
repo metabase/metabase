@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -36,6 +37,8 @@ export type SetupOpts = {
   tokenFeatures?: TokenFeatures;
   dashboardTitle: string;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  /** Holds the dashboard request until `releaseDashboardRequest` is called. */
+  holdDashboardRequest?: boolean;
 };
 
 export async function setup(
@@ -46,6 +49,7 @@ export async function setup(
     tokenFeatures = createMockTokenFeatures(),
     dashboardTitle,
     enterprisePlugins,
+    holdDashboardRequest = false,
   }: SetupOpts = { dashboardTitle: "" },
 ) {
   mockSettings({
@@ -87,6 +91,18 @@ export async function setup(
     tabs,
   });
 
+  let releaseDashboardRequest = () => {};
+  if (holdDashboardRequest) {
+    // Registered first, so it answers the dashboard request instead of the
+    // route `setupEmbedDashboardEndpoints` adds.
+    fetchMock.get(
+      `path:/api/embed/dashboard/${MOCK_TOKEN}`,
+      () =>
+        new Promise((resolve) => {
+          releaseDashboardRequest = () => resolve(dashboard);
+        }),
+    );
+  }
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
   const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
@@ -109,9 +125,9 @@ export async function setup(
     },
   );
 
-  if (numberOfTabs > 0) {
+  if (numberOfTabs > 0 && !holdDashboardRequest) {
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
   }
 
-  return view;
+  return { ...view, releaseDashboardRequest: () => releaseDashboardRequest() };
 }

@@ -48,6 +48,7 @@ import type {
   DashboardParameterMapping,
   DashboardTabId,
   EmbeddingParameterVisibility,
+  Parameter,
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
@@ -183,50 +184,94 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
 };
 
 const EMPTY_DASHCARDS: StoreDashcard[] = [];
+const EMPTY_PARAMETERS: Parameter[] = [];
 
 /**
- * The dashcards of a dashboard's default tab, read from the persisted Redux
- * cache by id. Unlike `getDashboardComplete`, this survives the reset of the
- * active `dashboardId` pointer during a (re)fetch, so a previously-visited
- * dashboard can render its real card layout as a skeleton instantly instead
- * of a loading spinner. Empty on a first-ever cold load. Memoized so the
- * result is referentially stable across the loading window's re-renders.
+ * The dashboard as we last saw it, looked up by id in the in-memory Redux
+ * cache. Unlike `getDashboard`, it survives the reset of the active
+ * `dashboardId` while a dashboard (re)loads, so a dashboard seen earlier in
+ * this session can draw its real layout as a skeleton. Undefined on any fresh
+ * page load.
+ */
+export const getLastSeenDashboard = (
+  state: State,
+  dashboardId: DashboardId | null,
+): StoreDashboard | undefined =>
+  dashboardId == null ? undefined : getDashboardById(state, dashboardId);
+
+/**
+ * Whether the dashboard as last seen is fixed width. Without it in the cache,
+ * assume it is, since fixed is the default width for dashboards.
+ */
+export const getIsLastSeenDashboardFixedWidth = (
+  state: State,
+  dashboardId: DashboardId | null,
+): boolean =>
+  (getLastSeenDashboard(state, dashboardId)?.width ?? "fixed") === "fixed";
+
+/**
+ * The dashcards of the tab the user is landing on, in the dashboard as last
+ * seen. The tab is chosen the way `getSelectedTabId` chooses it on load.
  */
 export const getLastSeenTabDashcards = createSelector(
   [
-    getDashboards,
+    getLastSeenDashboard,
     getDashcards,
-    (_state: State, dashboardId: DashboardId | null) => dashboardId,
+    getIsWebApp,
+    (state: State) => getSetting(state, "site-url"),
+    (state: State & Partial<SdkSharedStoreState>) =>
+      state.sdk?.initialDashboardTabId,
   ],
-  (dashboards, dashcardMap, dashboardId): StoreDashcard[] => {
-    const dashboard = dashboardId == null ? null : dashboards[dashboardId];
-    if (!dashboard || dashboard.dashcards.length === 0) {
+  (
+    dashboard,
+    dashcardMap,
+    isWebApp,
+    siteUrl,
+    sdkInitialDashboardTabId,
+  ): StoreDashcard[] => {
+    if (!dashboard) {
       return EMPTY_DASHCARDS;
     }
+
+    const dashboardWithVisibleTabs = {
+      ...dashboard,
+      tabs: dashboard.tabs?.filter((tab) => !tab.isRemoved),
+    };
+    const tabId = isEmbeddingSdk()
+      ? getSdkInitialDashboardTabId(
+          dashboardWithVisibleTabs,
+          sdkInitialDashboardTabId,
+        )
+      : getInitialSelectedTabId(dashboardWithVisibleTabs, siteUrl, isWebApp);
 
     const dashcards = dashboard.dashcards
       .map((id) => dashcardMap[id])
       .filter((dc): dc is StoreDashcard => isNotNull(dc) && !dc.isRemoved);
-
-    const defaultTabId = dashboard.tabs?.[0]?.id ?? null;
-    return defaultTabId == null
+    return tabId == null
       ? dashcards
-      : dashcards.filter((dc) => dc.dashboard_tab_id === defaultTabId);
+      : dashcards.filter((dc) => dc.dashboard_tab_id === tabId);
   },
 );
 
 /**
- * The number of filter widgets a previously-visited dashboard has, read from
- * the persisted Redux cache by id so the skeleton can render filter
- * placeholders instantly. Zero on a first-ever cold load.
+ * The filters shown in the header of the dashboard as last seen: its
+ * parameters except those placed inline on a dashcard.
  */
-export const getLastSeenDashboardParameterCount = (
-  state: State,
-  dashboardId: DashboardId | null,
-): number =>
-  dashboardId == null
-    ? 0
-    : (getDashboardById(state, dashboardId)?.parameters?.length ?? 0);
+export const getLastSeenDashboardHeaderParameters = createSelector(
+  [getLastSeenDashboard, getDashcards],
+  (dashboard, dashcardMap): Parameter[] => {
+    if (!dashboard?.parameters) {
+      return EMPTY_PARAMETERS;
+    }
+
+    const dashcards = dashboard.dashcards
+      .map((id) => dashcardMap[id])
+      .filter(isNotNull);
+    return dashboard.parameters.filter(
+      (parameter) => !isDashcardInlineParameter(parameter.id, dashcards),
+    );
+  },
+);
 
 export const getLinkTargetEntities = (state: State) =>
   state.dashboard.linkTargets;

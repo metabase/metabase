@@ -22,7 +22,7 @@ import {
   act,
   renderWithProviders,
   screen,
-  waitForLoaderToBeRemoved,
+  waitForDashboardToLoad,
 } from "__support__/ui";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
@@ -145,7 +145,7 @@ function renderDashboardApp({
 async function setup(options: Options = {}) {
   const view = renderDashboardApp(options);
 
-  await waitForLoaderToBeRemoved();
+  await waitForDashboardToLoad();
 
   return view;
 }
@@ -193,7 +193,7 @@ describe("DashboardApp", () => {
         router.navigate(`/dashboard/${dashboardId}`);
       });
 
-      await waitForLoaderToBeRemoved();
+      await waitForDashboardToLoad();
 
       await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
@@ -214,7 +214,7 @@ describe("DashboardApp", () => {
         router.navigate(`/dashboard/${dashboardId}`);
       });
 
-      await waitForLoaderToBeRemoved();
+      await waitForDashboardToLoad();
 
       await userEvent.click(screen.getByLabelText("Edit dashboard"));
       await userEvent.click(screen.getByTestId("dashboard-name-heading"));
@@ -310,21 +310,21 @@ describe("DashboardApp", () => {
   });
 
   describe("loading state (DSN-749)", () => {
-    it("renders a skeleton card layout instead of a loading spinner while the definition loads", async () => {
+    it("renders the dashboard with skeletons, instead of a loading spinner, while it loads", async () => {
       renderDashboardApp();
 
-      // The dashboard skeleton (header chrome + card layout) renders
-      // immediately — a loading spinner is never shown when opening a dashboard.
-      expect(screen.getByTestId("dashboard-skeleton")).toBeInTheDocument();
-      expect(screen.getByTestId("dashboard-grid-skeleton")).toBeInTheDocument();
-      expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
-
-      // Once the definition arrives, the real dashboard replaces the skeleton.
-      await waitForLoaderToBeRemoved();
-      expect(await screen.findByTestId("dashboard")).toBeInTheDocument();
+      // The real dashboard page renders right away, with skeletons for its
+      // header and grid, and a loading spinner is never shown.
+      expect(screen.getByTestId("dashboard")).toBeInTheDocument();
       expect(
-        screen.queryByTestId("dashboard-skeleton"),
-      ).not.toBeInTheDocument();
+        screen.getByTestId("dashboard-header-skeleton"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-grid-skeleton")).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+
+      // Once the dashboard arrives, its real header and grid replace them.
+      await waitForDashboardToLoad();
+      expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
     });
 
     it("switches to the dashboard's real card layout as soon as it is known, before the load finishes", async () => {
@@ -347,12 +347,14 @@ describe("DashboardApp", () => {
         expect(
           await screen.findAllByTestId("dashboard-skeleton-text"),
         ).toHaveLength(2);
-        expect(screen.queryByTestId("dashboard")).not.toBeInTheDocument();
       } finally {
         resolveQueryMetadata();
       }
 
-      expect(await screen.findByTestId("dashboard")).toBeInTheDocument();
+      await waitForDashboardToLoad();
+      expect(
+        screen.queryByTestId("dashboard-skeleton-text"),
+      ).not.toBeInTheDocument();
     });
   });
 

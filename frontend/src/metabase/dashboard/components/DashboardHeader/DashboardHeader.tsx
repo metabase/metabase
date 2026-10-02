@@ -25,6 +25,7 @@ import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
 
+import { DashboardHeaderSkeleton } from "./DashboardHeaderSkeleton";
 import { DashboardHeaderView } from "./DashboardHeaderView";
 import { CancelEditButton, SaveEditButton } from "./buttons";
 
@@ -151,10 +152,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
 };
 
 export const DashboardHeader = () => {
-  const { dashboard } = useDashboardContext();
+  const { dashboard, dashboardId, titled } = useDashboardContext();
 
   if (!dashboard) {
-    return null;
+    return (
+      <DashboardHeaderSkeleton dashboardId={dashboardId} titled={titled} />
+    );
   }
 
   return <DashboardHeaderInner dashboard={dashboard} />;

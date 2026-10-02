@@ -4,11 +4,7 @@ import { useMemo } from "react";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
-import {
-  getIsHeaderVisible,
-  getLastSeenDashboardParameterCount,
-  getLastSeenTabDashcards,
-} from "metabase/dashboard/selectors";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
@@ -25,7 +21,6 @@ import {
 } from "../DashboardHeader/buttons";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
-import { DashboardSkeleton } from "../DashboardSkeleton";
 import { DashboardTabs } from "../DashboardTabs";
 import { DashboardTitle } from "../DashboardTitle";
 import { FilterApplyToast } from "../FilterApplyToast";
@@ -36,24 +31,12 @@ import { Grid, ParametersList } from "./components";
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
-  const {
-    dashboard,
-    dashboardId,
-    isEditing,
-    isFullscreen,
-    isSharing,
-    selectedTabId,
-  } = useDashboardContext();
+  const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
+    useDashboardContext();
 
   useDashboardChartPaste();
 
   const isHeaderVisible = useSelector(getIsHeaderVisible);
-  const lastSeenTabDashcards = useSelector((state) =>
-    getLastSeenTabDashcards(state, dashboardId),
-  );
-  const lastSeenFilterCount = useSelector((state) =>
-    getLastSeenDashboardParameterCount(state, dashboardId),
-  );
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -70,17 +53,10 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
-  if (!dashboard) {
-    return (
-      <DashboardSkeleton
-        cards={lastSeenTabDashcards}
-        filterCount={lastSeenFilterCount}
-      />
-    );
-  }
-
-  const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-  const hasTabs = dashboard.tabs && dashboard.tabs.length > 1;
+  // While the dashboard loads, its header and grid render skeletons, so lay
+  // the page out as for a dashboard with cards.
+  const isEmpty = dashboard != null && (!dashboardHasCards || !tabHasCards);
+  const hasTabs = (dashboard?.tabs?.length ?? 0) > 1;
 
   // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
   const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
@@ -102,7 +78,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
       flex="1 0 auto"
       data-testid="dashboard"
     >
-      {dashboard.archived && <DashboardArchivedEntityBanner />}
+      {dashboard?.archived && <DashboardArchivedEntityBanner />}
 
       <Box
         component="header"

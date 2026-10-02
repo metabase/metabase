@@ -1,11 +1,27 @@
 import cx from "classnames";
+import { t } from "ttag";
 
+import visuallyHidden from "metabase/css/core/visually-hidden.module.css";
+import {
+  getIsLastSeenDashboardFixedWidth,
+  getLastSeenDashboard,
+  getLastSeenTabDashcards,
+} from "metabase/dashboard/selectors";
 import { isHeadingDashCard, isTextDashCard } from "metabase/dashboard/utils";
+import { useSelector } from "metabase/redux";
 import type { StoreDashcard } from "metabase/redux/store";
 import { Box, Skeleton } from "metabase/ui";
+import {
+  GRID_ASPECT_RATIO,
+  GRID_MARGINS,
+  GRID_WIDTH,
+  MIN_ROW_HEIGHT,
+} from "metabase/utils/dashboard_grid";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import type { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType, DashboardId } from "metabase-types/api";
 import { isCardDisplayType } from "metabase-types/api";
+
+import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
 
 import S from "./DashboardGridSkeleton.module.css";
 
@@ -13,25 +29,32 @@ type SkeletonCardContent =
   | { kind: "chart"; display: CardDisplayType | undefined }
   | { kind: "text"; lines: string[]; isHeading: boolean };
 
-type SkeletonCardPlacement = {
+export type SkeletonCardPlacement = {
   key: string;
   content: SkeletonCardContent;
   col: number;
   row: number;
   size_x: number;
   size_y: number;
-  /** Overrides the row-based height with a fixed pixel height when set. */
-  heightPx?: number;
 };
 
-const TABLE_SKELETON_HEIGHT_PX = 360;
 const MAX_TEXT_SKELETON_LINES = 12;
 const MIN_TEXT_LINE_CHARS = 3;
 const MAX_TEXT_LINE_CHARS = 40;
 
+/** The grid geometry react-grid-layout uses, handed to the CSS. */
+const GRID_GEOMETRY_STYLE = {
+  "--grid-columns": GRID_WIDTH,
+  "--grid-aspect-ratio": GRID_ASPECT_RATIO,
+  "--grid-min-row-height": `${MIN_ROW_HEIGHT}px`,
+  "--grid-margin-x": `${GRID_MARGINS.desktop[0]}px`,
+  "--grid-margin-y": `${GRID_MARGINS.desktop[1]}px`,
+  "--grid-mobile-margin-y": `${GRID_MARGINS.mobile[1]}px`,
+};
+
 /**
- * A generic layout used only on a first-ever cold load, when no cached
- * layout is available for the dashboard yet.
+ * A generic layout, drawn only when the dashboard isn't in the in-memory
+ * Redux cache, as on any fresh page load.
  */
 const GENERIC_SKELETON_CARDS: readonly SkeletonCardPlacement[] = [
   {
@@ -80,8 +103,7 @@ const GENERIC_SKELETON_CARDS: readonly SkeletonCardPlacement[] = [
     col: 0,
     row: 12,
     size_x: 24,
-    size_y: 9,
-    heightPx: TABLE_SKELETON_HEIGHT_PX,
+    size_y: 8,
   },
 ];
 
@@ -103,14 +125,10 @@ const getCardContent = (dc: StoreDashcard): SkeletonCardContent => {
   };
 };
 
-const getPlacements = (
-  cards: readonly StoreDashcard[] | undefined,
-): readonly SkeletonCardPlacement[] => {
-  if (!cards || cards.length === 0) {
-    return GENERIC_SKELETON_CARDS;
-  }
-
-  return cards.map((dc) => ({
+export const getPlacements = (
+  cards: readonly StoreDashcard[],
+): SkeletonCardPlacement[] =>
+  cards.map((dc) => ({
     key: String(dc.id),
     content: getCardContent(dc),
     col: dc.col,
@@ -118,23 +136,9 @@ const getPlacements = (
     size_x: dc.size_x,
     size_y: dc.size_y,
   }));
-};
 
 const getRowCount = (placements: readonly SkeletonCardPlacement[]): number =>
-  placements.reduce(
-    (rows, { row, size_y, heightPx }) =>
-      Math.max(rows, heightPx != null ? row : row + size_y),
-    0,
-  );
-
-const getExtraHeightPx = (
-  placements: readonly SkeletonCardPlacement[],
-): number =>
-  placements.reduce(
-    (extra, { heightPx }) =>
-      heightPx != null ? Math.max(extra, heightPx) : extra,
-    0,
-  );
+  placements.reduce((rows, { row, size_y }) => Math.max(rows, row + size_y), 0);
 
 const getLineWidth = (chars: number): string => {
   const clamped = Math.min(
@@ -172,64 +176,84 @@ const TextCardSkeleton = ({
 );
 
 /**
- * Renders a dashboard's card layout as a skeleton, shown instantly when a
- * dashboard is opened so that a loading spinner is never displayed. When the
- * dashboard's real layout is known (cached from a prior visit) it is drawn to
- * the same grid geometry the real cards will use, so the transition is
- * seamless; otherwise a generic placeholder layout is used. Heading and text
- * cards render title-style line skeletons rather than a chart. The cards then
- * keep their own per-card content skeletons once the real grid mounts.
+ * Draws card placements at the grid geometry the real cards will use, so the
+ * transition to the loaded dashboard is seamless. Heading and text cards render
+ * title-style line skeletons rather than a chart.
+ */
+export const CardLayoutSkeleton = ({
+  placements,
+}: {
+  placements: readonly SkeletonCardPlacement[];
+}) => (
+  <Box className={S.root}>
+    <Box
+      className={S.grid}
+      style={{
+        ...GRID_GEOMETRY_STYLE,
+        "--skeleton-rows": getRowCount(placements),
+      }}
+      data-testid="dashboard-grid-skeleton-cards"
+    >
+      {placements.map(({ key, content, col, row, size_x, size_y }) => (
+        <Box
+          key={key}
+          className={cx(S.card, { [S.transparent]: content.kind === "text" })}
+          style={{
+            "--skeleton-col": col,
+            "--skeleton-row": row,
+            "--skeleton-w": size_x,
+            "--skeleton-h": size_y,
+          }}
+        >
+          {content.kind === "text" ? (
+            <TextCardSkeleton
+              lines={content.lines}
+              isHeading={content.isHeading}
+            />
+          ) : (
+            <ChartSkeleton display={content.display} />
+          )}
+        </Box>
+      ))}
+    </Box>
+  </Box>
+);
+
+/**
+ * The dashboard's card grid as a skeleton, shown while the dashboard loads so
+ * that no spinner is needed. A dashboard seen earlier in this session is drawn
+ * from the in-memory Redux cache: the cards of the tab the user is landing on,
+ * at the dashboard's own width. Otherwise a generic layout is drawn. Once the
+ * real grid mounts, its cards keep their own per-card content skeletons.
  */
 export const DashboardGridSkeleton = ({
-  cards,
-  className,
+  dashboardId,
 }: {
-  cards?: readonly StoreDashcard[];
-  className?: string;
+  dashboardId: DashboardId | null;
 }) => {
-  const placements = getPlacements(cards);
+  const lastSeenDashboard = useSelector((state) =>
+    getLastSeenDashboard(state, dashboardId),
+  );
+  const lastSeenTabDashcards = useSelector((state) =>
+    getLastSeenTabDashcards(state, dashboardId),
+  );
+  const isFixedWidth = useSelector((state) =>
+    getIsLastSeenDashboardFixedWidth(state, dashboardId),
+  );
+  const placements = lastSeenDashboard
+    ? getPlacements(lastSeenTabDashcards)
+    : GENERIC_SKELETON_CARDS;
 
   return (
-    <Box
-      className={cx(S.root, className)}
+    <FixedWidthContainer
+      isFixedWidth={isFixedWidth}
+      aria-busy
       data-testid="dashboard-grid-skeleton"
     >
-      <Box
-        className={S.grid}
-        style={{
-          "--skeleton-rows": getRowCount(placements),
-          "--skeleton-extra": `${getExtraHeightPx(placements)}px`,
-        }}
-      >
-        {placements.map(
-          ({ key, content, col, row, size_x, size_y, heightPx }) => (
-            <Box
-              key={key}
-              className={cx(S.card, {
-                [S.transparent]: content.kind === "text",
-              })}
-              style={{
-                "--skeleton-col": col,
-                "--skeleton-row": row,
-                "--skeleton-w": size_x,
-                "--skeleton-h": size_y,
-                ...(heightPx != null
-                  ? { "--skeleton-card-height": `${heightPx}px` }
-                  : {}),
-              }}
-            >
-              {content.kind === "text" ? (
-                <TextCardSkeleton
-                  lines={content.lines}
-                  isHeading={content.isHeading}
-                />
-              ) : (
-                <ChartSkeleton display={content.display} />
-              )}
-            </Box>
-          ),
-        )}
-      </Box>
-    </Box>
+      <span role="status" className={visuallyHidden.visuallyHidden}>
+        {t`Loading…`}
+      </span>
+      <CardLayoutSkeleton placements={placements} />
+    </FixedWidthContainer>
   );
 };

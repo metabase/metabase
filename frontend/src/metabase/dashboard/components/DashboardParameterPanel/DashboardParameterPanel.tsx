@@ -16,11 +16,13 @@ import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
 import { ParametersList } from "../Dashboard/components";
 
 import S from "./DashboardParameterPanel.module.css";
+import { DashboardParameterPanelSkeleton } from "./DashboardParameterPanelSkeleton";
 
 export function DashboardParameterPanel() {
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
-  const { dashboard, hideParameters, isEditing } = useDashboardContext();
+  const { dashboard, dashboardId, hideParameters, isEditing } =
+    useDashboardContext();
 
   const visibleParameters = getVisibleParameters(parameters, hideParameters);
   const hasVisibleParameters = visibleParameters.length > 0;
@@ -33,6 +35,15 @@ export function DashboardParameterPanel() {
     parameterPanelRef,
     disabled: !allowSticky || !hasVisibleParameters,
   });
+
+  if (!dashboard) {
+    return (
+      <DashboardParameterPanelSkeleton
+        dashboardId={dashboardId}
+        hideParameters={hideParameters}
+      />
+    );
+  }
 
   if (!hasVisibleParameters) {
     return null;

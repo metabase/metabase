@@ -13,8 +13,10 @@ import {
   getDashboardHeaderParameters,
   getEditingParameterId,
   getIsEditingParameter,
+  getIsLastSeenDashboardFixedWidth,
   getIsSharing,
-  getLastSeenDashboardParameterCount,
+  getLastSeenDashboard,
+  getLastSeenDashboardHeaderParameters,
   getLastSeenTabDashcards,
   getParameters,
   getQuestionByCard,
@@ -571,7 +573,7 @@ describe("getQuestionByCard", () => {
 
   describe("getLastSeenTabDashcards", () => {
     // The active pointer is null, mimicking the window during a (re)fetch when
-    // the layout can only be read from the persisted cache by id.
+    // the layout can only be read from the in-memory Redux cache by id.
     const CACHED_STATE = createMockState({
       dashboard: createMockDashboardState({
         dashboardId: null,
@@ -598,35 +600,80 @@ describe("getQuestionByCard", () => {
       expect(cards.map((dc) => dc.id)).toEqual([10, 11]);
     });
 
-    it("returns an empty array for an uncached dashboard (first cold visit)", () => {
+    it("returns an empty array for a dashboard that isn't cached", () => {
       expect(getLastSeenTabDashcards(CACHED_STATE, 999)).toEqual([]);
       expect(getLastSeenTabDashcards(CACHED_STATE, null)).toEqual([]);
     });
   });
 
-  describe("getLastSeenDashboardParameterCount", () => {
-    const CACHED_STATE = createMockState({
+  describe("getLastSeenDashboard", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: { 5: createMockStoreDashboard({ id: 5 }) },
+      }),
+    });
+
+    it("returns the dashboard from the cache even when the active dashboard id is reset", () => {
+      expect(getLastSeenDashboard(STATE, 5)).toMatchObject({ id: 5 });
+    });
+
+    it("returns nothing for a dashboard that isn't cached", () => {
+      expect(getLastSeenDashboard(STATE, 999)).toBeUndefined();
+      expect(getLastSeenDashboard(STATE, null)).toBeUndefined();
+    });
+  });
+
+  describe("getIsLastSeenDashboardFixedWidth", () => {
+    const STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({ id: 5, width: "fixed" }),
+          6: createMockStoreDashboard({ id: 6, width: "full" }),
+        },
+      }),
+    });
+
+    it("follows the cached dashboard's width", () => {
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 5)).toBe(true);
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 6)).toBe(false);
+    });
+
+    it("assumes the default fixed width for a dashboard that isn't cached", () => {
+      expect(getIsLastSeenDashboardFixedWidth(STATE, 999)).toBe(true);
+      expect(getIsLastSeenDashboardFixedWidth(STATE, null)).toBe(true);
+    });
+  });
+
+  describe("getLastSeenDashboardHeaderParameters", () => {
+    const STATE = createMockState({
       dashboard: createMockDashboardState({
         dashboardId: null,
         dashboards: {
           5: createMockStoreDashboard({
             id: 5,
+            dashcards: [10],
             parameters: [
               createMockParameter({ id: "a" }),
               createMockParameter({ id: "b" }),
             ],
           }),
         },
+        dashcards: {
+          10: createMockDashboardCard({ id: 10, inline_parameters: ["b"] }),
+        },
       }),
     });
 
-    it("returns the cached filter count for a previously-visited dashboard", () => {
-      expect(getLastSeenDashboardParameterCount(CACHED_STATE, 5)).toBe(2);
+    it("returns the cached dashboard's parameters except those inline on a dashcard", () => {
+      expect(
+        getLastSeenDashboardHeaderParameters(STATE, 5).map(({ id }) => id),
+      ).toEqual(["a"]);
     });
 
-    it("returns 0 for an uncached dashboard (first cold visit)", () => {
-      expect(getLastSeenDashboardParameterCount(CACHED_STATE, 999)).toBe(0);
-      expect(getLastSeenDashboardParameterCount(CACHED_STATE, null)).toBe(0);
+    it("returns no parameters for a dashboard that isn't cached", () => {
+      expect(getLastSeenDashboardHeaderParameters(STATE, 999)).toEqual([]);
     });
   });
 });
