@@ -2,13 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import {
-  act,
-  renderWithProviders,
-  screen,
-  settlePendingUpdates,
-  waitFor,
-} from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -153,7 +147,9 @@ describe("ParameterSidebar", () => {
     });
     expect(labelInput).toHaveValue("Bar");
 
-    await settlePendingUpdates();
+    // `MoveParameterMenu` loads the dashboard's tabs, which lands after these
+    // assertions with nothing visible to wait on.
+    await waitFor(() => {});
   });
 
   it("if the parameter updates, the label should update (metabase#34611)", async () => {
