@@ -53,7 +53,7 @@ The current names show the range:
 |---|---|---|
 | `galactic-center` | `query-processor` | The dense core everything orbits |
 | `foundation` | `app-db` | The base layer, and Asimov's Foundation |
-| `tanagra` | `lib` | The shared language that lets client and server understand each other |
+| `tardis` | `lib` | Bigger on the inside: queries hold far more than they show |
 | `stargate` | `api-routes` | The gateway every request comes through |
 | `first-contact` | `mcp` | The protocol outside agents use to talk to Metabase |
 
