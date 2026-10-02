@@ -1,12 +1,7 @@
 (ns metabase.request.schema
   (:require
-   [metabase.server.streaming-response]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
-  (:import
-   (metabase.server.streaming_response StreamingResponse)))
-
-(comment metabase.server.streaming-response/keep-me)
+   [metabase.util.malli.schema :as ms]))
 
 ;;; TODO (Cam 8/13/25) -- should this map be closed, that way we can make sure all the keys we might be using are
 ;;; enumerated here?
@@ -121,20 +116,3 @@
                                                 [:scp          {:optional true} [:sequential :string]]
                                                 [:unr          {:optional true} :boolean]
                                                 [:token-scopes {:optional true} [:maybe [:set [:or :string :keyword]]]]]]]])
-
-(mr/def ::response
-  "What an endpoint handler can return: JSON-shaped data, a full Ring response map, or a file/stream for downloads."
-  [:or
-   ms/RingResponseBody
-   [:map {:closed true} [:id :string]]
-   [:map {:closed true} [:success :boolean] [:session_id :string]]
-   [:map {:closed true}
-    [:status  {:optional true} :int]
-    [:headers {:optional true} [:map-of :string :string]]
-    [:cookies {:optional true} [:map-of :string ::cookie-attrs]]
-    [:body    {:optional true} [:maybe [:or ms/RingResponseBody
-                                        (ms/InstanceOfClass java.io.File)
-                                        (ms/InstanceOfClass java.io.InputStream)]]]]
-   (ms/InstanceOfClass java.io.File)
-   (ms/InstanceOfClass java.io.InputStream)
-   (ms/InstanceOfClass StreamingResponse)])

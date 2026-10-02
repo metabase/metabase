@@ -19,7 +19,7 @@ describe("scenarios > question > snippets", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should let you create and use a snippet", () => {
+  it("should let you create, use and edit a snippet", () => {
     cy.log("Type a query and highlight some of the text");
     H.startNewNativeQuestion();
     H.NativeEditor.type("select 'stuff'");
@@ -45,31 +45,38 @@ describe("scenarios > question > snippets", () => {
     cy.log("Run the query and check the value");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.findByTestId("scalar-value").should("have.text", "stuff");
-  });
 
-  it("should let you edit snippet", () => {
-    // Re-create the above snippet via API without the need to rely on the previous test
-    cy.request("POST", "/api/native-query-snippet", {
-      name: "stuff-snippet",
-      content: "stuff",
-    });
-
-    // Populate the native editor first
-    // 1. select
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select ");
-
-    // 2. snippet
-    cy.icon("snippet").click();
-    cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("stuff-snippet").click();
-
-      // Open the snippet edit modal
+    cy.log(
+      "A short snippet preview should not show scrollbars (metabase#21550)",
+    );
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("stuff-snippet").realHover();
       cy.icon("chevrondown").click({ force: true });
-      cy.findByRole("button", { name: /pencil icon edit/i }).click();
+      cy.get("pre").should(($pre) => {
+        expect($pre).to.contain("'stuff'");
+        const preWidth = $pre[0].getBoundingClientRect().width;
+        const clientWidth = $pre[0].clientWidth;
+        const BORDERS = 2; // 1px left and right
+        expect(clientWidth).to.be.gte(preWidth - BORDERS);
+      });
     });
 
-    // Update the name and content
+    cy.log(
+      "The add icon should be visible with existing snippets (metabase#57441)",
+    );
+    H.rightSidebar().icon("add").should("be.visible").click();
+    H.popover().findByText("New snippet").click();
+    H.modal().within(() => {
+      cy.findByText("Create your new snippet").should("be.visible");
+      cy.button("Cancel").click();
+    });
+    H.modal().should("not.exist");
+
+    cy.log("Edit the snippet");
+    H.rightSidebar()
+      .findByRole("button", { name: /pencil icon edit/i })
+      .click();
+
     H.modal().within(() => {
       cy.findByText("Editing stuff-snippet");
 
@@ -152,25 +159,10 @@ describe("scenarios > question > snippets", () => {
     cy.get("@results").contains(/christ/i);
   });
 
-  it("should be possible to search snippets", () => {
+  it("should be possible to search snippets and preview a query that has a snippet in it (metabase#60534)", () => {
     for (let i = 0; i < 16; i++) {
       H.createSnippet({ name: `snippet ${i}`, content: `select ${i}` });
     }
-
-    H.startNewNativeQuestion();
-    cy.icon("snippet").click();
-
-    H.rightSidebar().icon("search").click();
-    H.rightSidebar().findByRole("textbox").type("snippet 14");
-
-    H.rightSidebar().findByText("snippet 14").should("be.visible");
-    H.rightSidebar().findByText("snippet 2").should("not.exist");
-
-    H.rightSidebar().icon("close").click();
-    H.rightSidebar().findByText("snippet 2").should("be.visible");
-  });
-
-  it("should be possible to preview a query that has a snippet in it (metabase#60534)", () => {
     cy.request("POST", "/api/native-query-snippet", {
       content: "'foo'",
       name: "Foo",
@@ -179,6 +171,18 @@ describe("scenarios > question > snippets", () => {
 
     H.startNewNativeQuestion();
     cy.icon("snippet").click();
+
+    H.rightSidebar().findByText("snippet 2").should("be.visible");
+    H.rightSidebar().icon("search").click();
+    H.rightSidebar().findByRole("textbox").type("snippet 14");
+
+    H.rightSidebar().findByText("snippet 14").should("be.visible");
+    H.rightSidebar().findByText("snippet 2").should("not.exist");
+
+    H.rightSidebar().icon("close").click();
+    H.rightSidebar().findByText("snippet 2").should("be.visible");
+
+    cy.log("preview a query that has a snippet in it (metabase#60534)");
     H.NativeEditor.type("select {{snippet: Foo}}");
     cy.findByTestId("native-query-top-bar")
       .findByLabelText("Preview the query")
@@ -204,6 +208,7 @@ describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
     // Confirm snippet is not in folder
     H.rightSidebar().within(() => {
       cy.findByText("snippet 1").should("be.visible");
+      cy.findByText("Snippet Folder").should("not.exist");
     });
   });
 });
@@ -245,7 +250,6 @@ describe("scenarios > question > snippets (EE)", () => {
   });
 
   it("should let you create a snippet folder and move a snippet into it", () => {
-    cy.signInAsAdmin();
     // create snippet via API
     cy.request("POST", "/api/native-query-snippet", {
       content: "snippet 1",
@@ -329,22 +333,26 @@ describe("scenarios > question > snippets (EE)", () => {
     });
   });
 
-  ["admin", "nocollection"].map((user) => {
-    it("should display nested snippets in their folder", () => {
-      createNestedSnippet();
-
-      cy.signIn(user);
-
-      // Open editor and sidebar
-      H.startNewNativeQuestion();
+  it("should display nested snippets in their folder", () => {
+    function assertSnippetInFolder() {
       cy.icon("snippet").click();
-
-      // Confirm snippet is in folder
       H.rightSidebar().within(() => {
         cy.findByText("Snippet Folder").click();
         cy.findByText("snippet 1").click();
       });
-    });
+    }
+
+    createNestedSnippet();
+
+    cy.log("as admin user");
+    cy.signIn("admin");
+    H.startNewNativeQuestion();
+    assertSnippetInFolder();
+
+    cy.log("as nocollection user");
+    cy.signIn("nocollection");
+    cy.reload();
+    assertSnippetInFolder();
   });
 
   describe("navigation", () => {
@@ -393,7 +401,7 @@ describe("scenarios > question > snippets (EE)", () => {
       });
     });
 
-    it("should not allow you to move a snippet collection into a itself or a child (metabase#44930)", () => {
+    it("should not allow you to move a snippet collection into itself (metabase#44930)", () => {
       H.startNewNativeQuestion();
       cy.icon("snippet").click();
 
@@ -415,19 +423,25 @@ describe("scenarios > question > snippets (EE)", () => {
       );
     });
 
-    it("should not display snippet folder as part of collections (metabase#14907)", () => {
-      cy.visit("/collection/root");
-
-      cy.wait("@collections");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Snippet Folder").should("not.exist");
-    });
-
-    it("shouldn't update root permissions when changing permissions on a created folder (metabase#17268)", () => {
+    it("should not display snippet folder as part of collections and shouldn't update root permissions when changing permissions on a created folder (metabase#14907, metabase#17268)", () => {
       cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
         "updatePermissions",
       );
 
+      cy.log(
+        "should not display snippet folder as part of collections (metabase#14907)",
+      );
+      cy.visit("/collection/root");
+
+      cy.wait("@collections");
+      H.navigationSidebar().findByText("First collection").should("be.visible");
+      H.navigationSidebar().findByText("Snippet Folder").should("not.exist");
+      H.collectionTable().findByText("First collection").should("be.visible");
+      H.collectionTable().findByText("Snippet Folder").should("not.exist");
+
+      cy.log(
+        "shouldn't update root permissions when changing permissions on a created folder (metabase#17268)",
+      );
       H.startNewNativeQuestion();
       cy.icon("snippet").click();
 
@@ -492,38 +506,30 @@ describe("scenarios > question > read-only snippets", () => {
     H.setupGitSync();
   });
 
-  it("should not let you create or edit a snippet", () => {
+  it("should not let you create or edit a snippet or a snippet folder", () => {
     H.configureGitAndPullChanges("read-only");
     H.startNewNativeQuestion();
     cy.findByTestId("native-query-editor-action-buttons")
       .icon("snippet")
       .click();
-    cy.findByTestId("sidebar-content")
-      .findByText("Create snippet")
-      .should("not.exist");
-
-    cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("stuff-snippet").click();
-      cy.findByRole("button", { name: /pencil icon edit/i }).should(
-        "not.exist",
-      );
-    });
-  });
-
-  it("should not let you create or edit a snippet folder", () => {
-    H.configureGitAndPullChanges("read-only");
-    H.startNewNativeQuestion();
-    cy.icon("snippet").click();
-
-    cy.log("Menu that allows creating a snippet folder is not rendered");
-    cy.findByTestId("sidebar-right")
-      .as("sidebar")
-      .find(".Icon-add")
-      .should("not.exist");
 
     cy.findByTestId("sidebar-right").within(() => {
       cy.findByText("My favorite snippets").should("be.visible");
+      cy.findByText("stuff-snippet").should("be.visible");
+
+      cy.log("Menu that allows creating a snippet or a folder is not rendered");
+      cy.findByTestId("snippet-header-buttons")
+        .icon("search")
+        .should("be.visible");
+      cy.findByTestId("snippet-header-buttons").icon("add").should("not.exist");
       cy.findByRole("button", { name: "Snippet folder options" }).should(
+        "not.exist",
+      );
+
+      cy.log("An expanded snippet has no edit button");
+      cy.icon("chevrondown").click({ force: true });
+      cy.get("pre").should("have.text", "select 'snippet 1'");
+      cy.findByRole("button", { name: /pencil icon edit/i }).should(
         "not.exist",
       );
     });
