@@ -8,6 +8,7 @@
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [oidc-provider.store :as oidc.store]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
   (:import
@@ -2423,6 +2424,53 @@
                   :authorization (basic-auth-header (:client_id client) (:client_secret client))))
 
 (def ^:private claude-redirect "https://claude.ai/api/mcp/auth_callback")
+
+(defn- access-token-resource
+  "The stored RFC 8707 resource binding of `token-response`'s access token."
+  [token-response]
+  (:resource (oauth-server/resolve-access-token (:access_token token-response))))
+
+(deftest refresh-keeps-the-resource-binding-test
+  (testing "The resource binding decides where an access token works, so a refreshed access token carries the
+            refresh token's binding. A refresh request that names a different resource neither moves nor widens it."
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (register-app-client! "Claude" claude-redirect)
+              basic  (basic-auth-header (:client_id client) (:client_secret client))
+              token  (authorize-at! client claude-redirect all-v2-scopes nil)]
+          (is (= [(mcp-resource-uri)] (access-token-resource token)))
+          (testing "a refresh that names no resource keeps the MCP binding"
+            (let [refreshed (refresh! client token)]
+              (is (= [(mcp-resource-uri)] (access-token-resource refreshed)))
+              (testing "a refresh that names another resource is refused, and the binding is not moved"
+                (let [response (token-request! {:grant_type    "refresh_token"
+                                                :refresh_token (:refresh_token refreshed)
+                                                :resource      "http://localhost:3000/api"}
+                                               :expected-status 400
+                                               :authorization basic)]
+                  (is (= "invalid_target" (:error response)))))
+              (testing "a refresh that names the same resource, spelled differently, keeps the stored binding"
+                (let [again (token-request! {:grant_type    "refresh_token"
+                                             :refresh_token (:refresh_token refreshed)
+                                             :resource      "http://LOCALHOST:3000/api/metabase-mcp/"}
+                                            :authorization basic)]
+                  (is (= [(mcp-resource-uri)] (access-token-resource again)))))))
+          (testing "a REST refresh token, with no binding, cannot be moved onto the MCP resource"
+            (let [rest-refresh (str (random-uuid))]
+              (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) rest-refresh
+                                             (str (mt/user->id :crowberto)) (:client_id client)
+                                             ["agent:content:read"] nil nil)
+              (let [response (token-request! {:grant_type    "refresh_token"
+                                              :refresh_token rest-refresh
+                                              :resource      (mcp-resource-uri)}
+                                             :expected-status 400
+                                             :authorization basic)]
+                (is (= "invalid_target" (:error response))))
+              (testing "and without a resource it refreshes as a REST token"
+                (is (nil? (access-token-resource (token-request! {:grant_type    "refresh_token"
+                                                                  :refresh_token rest-refresh}
+                                                                 :authorization basic))))))))))))
 
 (deftest untick-leaves-other-live-tokens-alone-test
   (testing (str "GHY-4555: a consent decision governs only the token this authorization mints. Unticking a scope the "
