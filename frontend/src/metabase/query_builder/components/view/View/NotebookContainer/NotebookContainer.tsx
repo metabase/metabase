@@ -1,10 +1,16 @@
-import type { SyntheticEvent, TransitionEventHandler } from "react";
+import type {
+  HTMLAttributes,
+  SyntheticEvent,
+  TransitionEventHandler,
+} from "react";
 import { forwardRef, useEffect, useState } from "react";
-import type { ResizableBoxProps, ResizeCallbackData } from "react-resizable";
+import type { ResizeCallbackData } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { NodeBuilder } from "metabase/querying/notebook/components/NodeBuilder";
+import { getUnsupportedReason } from "metabase/querying/notebook/components/NodeBuilder/graph";
 import {
   Notebook,
   type NotebookProps,
@@ -12,16 +18,51 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Flex, rem } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 
 import { setNotebookNativePreviewSidebarWidth } from "../../../../actions";
 import { getUiControls } from "../../../../store/selectors";
 import { canShowNativePreview } from "../../ViewHeader/utils";
 
 import { NotebookNativePreview } from "./NotebookNativePreview";
+import { QueryPreviewSidebar } from "./QueryPreviewSidebar";
 
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component
 const delayBeforeNotRenderingNotebook = 10;
+
+// Defined once at module level: a component created inside render remounts on every render.
+type HandleProps = HTMLAttributes<HTMLDivElement> & {
+  handleAxis?: string; // undocumented prop https://github.com/react-grid-layout/react-resizable/issues/175
+};
+
+const Handle = forwardRef<HTMLDivElement, HandleProps>(
+  function Handle(props, ref) {
+    const handleWidth = 10;
+    const borderWidth = 1;
+    const left = rem(-((handleWidth + borderWidth) / 2));
+
+    const { handleAxis, ...rest } = props;
+
+    return (
+      <Box
+        data-testid="notebook-native-preview-resize-handle"
+        ref={ref}
+        {...rest}
+        pos="absolute"
+        top={0}
+        bottom={0}
+        m="auto 0"
+        w={rem(handleWidth)}
+        left={left}
+        style={{
+          zIndex: 5,
+          cursor: "ew-resize",
+        }}
+      ></Box>
+    );
+  },
+);
 
 type NotebookContainerProps = {
   isOpen: boolean;
@@ -49,17 +90,37 @@ export const NotebookContainer = ({
     }
   }, [isOpen]);
 
-  const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
-    useSelector(getUiControls);
+  const {
+    isShowingNotebookNativePreview,
+    isShowingNodeBuilder,
+    notebookNativePreviewSidebarWidth,
+  } = useSelector(getUiControls);
+  // The canvas only opens for queries it can hold in full; the toggle is
+  // disabled for the rest, and this covers the flag being set some other way.
+  const isShowingBuilder =
+    isShowingNodeBuilder && getUnsupportedReason(question.query()) == null;
 
+  // The builder's preview also covers the empty canvas, before a database is known.
   const renderNativePreview =
     isShowingNotebookNativePreview &&
-    canShowNativePreview({ question, queryBuilderMode: "notebook" });
+    (isShowingBuilder ||
+      canShowNativePreview({ question, queryBuilderMode: "notebook" }));
 
-  const minNotebookWidth = 640;
-  const minSidebarWidth = 428;
-  const maxSidebarWidth = windowWidth - minNotebookWidth;
+  // The canvas copes with far less room than the step editor, and the range must never be empty.
+  const minNotebookWidth = isShowingBuilder ? 360 : 640;
+  const minSidebarWidth = isShowingBuilder ? 360 : 428;
+  const maxSidebarWidth = Math.max(
+    minSidebarWidth,
+    windowWidth - minNotebookWidth,
+  );
   const sidebarWidth = notebookNativePreviewSidebarWidth || minSidebarWidth;
+  // The canvas has no query to preview while nothing is wired into Result.
+  const [builderHasQuery, setBuilderHasQuery] = useState(true);
+  const sidebar = isShowingBuilder ? (
+    <QueryPreviewSidebar hasQuery={builderHasQuery} />
+  ) : (
+    <NotebookNativePreview />
+  );
 
   const handleTransitionEnd: TransitionEventHandler<HTMLDivElement> = (
     event,
@@ -70,6 +131,11 @@ export const NotebookContainer = ({
   };
 
   const dispatch = useDispatch();
+  // Same as the notebook: a canvas edit counts for the unsaved-changes warning.
+  const handleUpdateQuestion = (question: Question): Promise<void> => {
+    dispatch(setUIControls({ isModifiedFromNotebook: true }));
+    return updateQuestion(question);
+  };
   const handleResizeStop = (
     _event: SyntheticEvent,
     data: ResizeCallbackData,
@@ -82,38 +148,6 @@ export const NotebookContainer = ({
 
   const shouldShowFullWidthNativePreview = useIsSmallScreen();
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
-
-  const Handle = forwardRef<
-    HTMLDivElement,
-    Partial<ResizableBoxProps> & {
-      onResize?: any; //Mantine and react-resizable have different opinions on what onResize should be
-      handleAxis?: string; // undocumented prop https://github.com/react-grid-layout/react-resizable/issues/175
-    }
-  >(function Handle(props, ref) {
-    const handleWidth = 10;
-    const borderWidth = 1;
-    const left = rem(-((handleWidth + borderWidth) / 2));
-
-    const { handleAxis, ...rest } = props;
-
-    return (
-      <Box
-        data-testid="notebook-native-preview-resize-handle"
-        ref={ref}
-        {...rest}
-        pos="absolute"
-        top={0}
-        bottom={0}
-        m="auto 0"
-        w={rem(handleWidth)}
-        left={left}
-        style={{
-          zIndex: 5,
-          cursor: "ew-resize",
-        }}
-      ></Box>
-    );
-  });
 
   return (
     <Flex
@@ -132,20 +166,39 @@ export const NotebookContainer = ({
       {shouldShowNotebook && (
         <Box
           miw={{ lg: minNotebookWidth }}
-          style={{ flex: 1, overflowY: "auto" }}
+          style={{
+            flex: 1,
+            overflowY: isShowingBuilder ? "hidden" : "auto",
+            position: "relative",
+          }}
         >
-          <Notebook
-            question={question.setType("question")}
-            isDirty={isDirty}
-            isRunnable={isRunnable}
-            isResultDirty={isResultDirty}
-            reportTimezone={reportTimezone}
-            readOnly={readOnly}
-            updateQuestion={updateQuestion}
-            runQuestionQuery={runQuestionQuery}
-            setQueryBuilderMode={setQueryBuilderMode}
-            hasVisualizeButton={hasVisualizeButton}
-          />
+          {isShowingBuilder ? (
+            <NodeBuilder
+              question={question.setType("question")}
+              isDirty={isDirty}
+              isRunnable={isRunnable}
+              isResultDirty={isResultDirty}
+              readOnly={readOnly}
+              isMetric={question.type() === "metric"}
+              updateQuestion={handleUpdateQuestion}
+              runQuestionQuery={runQuestionQuery}
+              setQueryBuilderMode={setQueryBuilderMode}
+              onQueryStateChange={setBuilderHasQuery}
+            />
+          ) : (
+            <Notebook
+              question={question.setType("question")}
+              isDirty={isDirty}
+              isRunnable={isRunnable}
+              isResultDirty={isResultDirty}
+              reportTimezone={reportTimezone}
+              readOnly={readOnly}
+              updateQuestion={updateQuestion}
+              runQuestionQuery={runQuestionQuery}
+              setQueryBuilderMode={setQueryBuilderMode}
+              hasVisualizeButton={hasVisualizeButton}
+            />
+          )}
         </Box>
       )}
 
@@ -153,7 +206,7 @@ export const NotebookContainer = ({
         <>
           {shouldShowFullWidthNativePreview ? (
             <Box pos="absolute" inset={0}>
-              <NotebookNativePreview />
+              {sidebar}
             </Box>
           ) : (
             <ResizableBox
@@ -165,11 +218,12 @@ export const NotebookContainer = ({
               handle={<Handle />}
               onResizeStop={handleResizeStop}
               style={{
+                position: "relative",
                 borderLeft: "1px solid var(--mb-color-border-neutral)",
                 marginInlineStart: "0.25rem",
               }}
             >
-              <NotebookNativePreview />
+              {sidebar}
             </ResizableBox>
           )}
         </>

@@ -158,6 +158,7 @@
     "frontend/src/metabase/querying/components/CodeMirrorEditor/language.ts": "self",
     "frontend/src/metabase/querying/components/NativeQueryEditor/SnippetForm/SnippetForm.tsx": "self",
     "frontend/src/metabase/querying/expressions/pratt/syntax.ts": "self",
+    "frontend/src/metabase/querying/notebook/components/NodeBuilder/NodeBuilder.tsx": "self",
     "frontend/src/metabase/redux/embed/embed.ts": "self",
     "frontend/src/metabase/redux/hooks.ts": "self",
     "frontend/src/metabase/redux/utils.ts": "self",

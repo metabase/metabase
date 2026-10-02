@@ -4,12 +4,16 @@ import { t } from "ttag";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/redux";
 import { Box, Flex, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardId } from "metabase-types/api";
 
+import { getUiControls } from "../../../../store/selectors";
 import { ViewTitleHeader } from "../../ViewHeader";
+import { ToggleNativeQueryPreview } from "../../ViewHeader/components/ToggleNativeQueryPreview";
+import { ToggleNodeBuilder } from "../../ViewHeader/components/ToggleNodeBuilder";
 import { ViewHeading, ViewSection } from "../../ViewSection";
 
 import ViewHeaderContainerS from "./ViewHeaderContainer.module.css";
@@ -27,7 +31,14 @@ const fadeIn = {
 };
 
 export const ViewHeaderContainer = (props: ViewHeaderContainerProps) => {
-  const { question, onUnarchive, onMove, onDeletePermanently } = props;
+  const {
+    question,
+    queryBuilderMode,
+    onUnarchive,
+    onMove,
+    onDeletePermanently,
+  } = props;
+  const { isShowingNodeBuilder } = useSelector(getUiControls);
   const query = question.query();
   const card = question.card();
   const { isNative } = Lib.queryDisplayInfo(query);
@@ -67,8 +78,21 @@ export const ViewHeaderContainer = (props: ViewHeaderContainerProps) => {
               borderBottom: "1px solid var(--mb-color-border-neutral)",
             }}
           >
-            <Flex direction="column" gap="xxs">
+            <Flex
+              align="center"
+              justify="space-between"
+              gap="md"
+              style={{ flex: 1 }}
+            >
               <ViewHeading>{t`Pick your starting data`}</ViewHeading>
+              {queryBuilderMode === "notebook" && (
+                <Flex align="center" gap="sm">
+                  {isShowingNodeBuilder && (
+                    <ToggleNativeQueryPreview question={question} />
+                  )}
+                  <ToggleNodeBuilder />
+                </Flex>
+              )}
             </Flex>
           </ViewSection>
         )}

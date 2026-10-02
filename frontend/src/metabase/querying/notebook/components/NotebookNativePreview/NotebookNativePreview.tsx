@@ -38,6 +38,7 @@ type NotebookNativePreviewProps = {
   onConvertClick: (newQuestion: Question) => void;
   readOnly?: boolean;
   disableConvert?: boolean;
+  hideHeader?: boolean;
 };
 
 export const NotebookNativePreview = ({
@@ -47,6 +48,7 @@ export const NotebookNativePreview = ({
   onConvertClick,
   readOnly,
   disableConvert,
+  hideHeader = false,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
   const metadataProvider = useMetadataProvider(database?.id ?? null);
@@ -87,17 +89,19 @@ export const NotebookNativePreview = ({
       display="flex"
       style={{ flexDirection: "column" }}
     >
-      <Box
-        component="header"
-        c="text-primary"
-        fz={rem(20)}
-        lh={rem(24)}
-        fw="bold"
-        ta="start"
-        p="1.5rem"
-      >
-        {title ?? TITLE[engineType]}
-      </Box>
+      {!hideHeader && (
+        <Box
+          component="header"
+          c="text-primary"
+          fz={rem(20)}
+          lh={rem(24)}
+          fw="bold"
+          ta="start"
+          p="1.5rem"
+        >
+          {title ?? TITLE[engineType]}
+        </Box>
+      )}
       <Flex
         style={{
           flex: 1,
