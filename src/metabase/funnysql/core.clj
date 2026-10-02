@@ -350,9 +350,12 @@
                                        subclause
                                        [subclause :asc])]
                 (compile! expr context)
-                (append-sql! context (case direction
+                ;; a subclause with no direction, e.g. [:my-col], sorts ASC
+                (append-sql! context (case (or direction :asc)
                                        :asc  " ASC"
-                                       :desc " DESC"))))]
+                                       :desc " DESC"
+                                       (throw (ex-info "Invalid order by direction"
+                                                       {:direction direction, :subclause subclause}))))))]
       (interpose-fn subclauses subclause! #(append-sql! context ", ")))))
 
 (defn- inline? [x]

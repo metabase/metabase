@@ -208,9 +208,17 @@
   (are [order-by sql] (= [(str "ORDER BY " sql)]
                          (funnysql/format {:order-by order-by} :postgres))
     [:field]                             "\"field\" ASC"
+    [[:field]]                           "\"field\" ASC"
     [[:field :asc]]                      "\"field\" ASC"
     [[:field :desc]]                     "\"field\" DESC"
+    [[:field] [:other_field :desc]]      "\"field\" ASC, \"other_field\" DESC"
     [[:field :asc] [:other_field :desc]] "\"field\" ASC, \"other_field\" DESC"))
+
+(deftest ^:parallel order-by-invalid-direction-test
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"Invalid order by direction"
+       (funnysql/format {:order-by [[:field :sideways]]} :postgres))))
 
 (deftest ^:parallel limit-test
   (is (= ["LIMIT 10"]
