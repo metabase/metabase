@@ -695,9 +695,14 @@
     @retired-clones-reaper
     (open-checked! fresh args)))
 
-(defn- get-jgit
-  "The Git instance for the [[repo-path]] `path`. It opens or clones the repository on first use. Concurrent first
-  uses wait for one clone.
+(defonce ^:private ^{:doc "The first use in progress for each clone path, as a delay that all concurrent first uses of
+  that path deref. See [[get-jgit]]."}
+  first-uses
+  (atom {}))
+
+(defn- first-use!
+  "Opens or clones the repository for the [[repo-path]] `path`, caches the Git instance, and returns it. Runs with the
+  [[clone-lock]] of `path`, so it does not overlap a stale-cache recovery of the same URL.
 
   If this process retired the clone at `path` (see [[replace-stale-clone!]]), it clones into a fresh sibling, because
   an operation may still hold the retired clone. If an earlier process left fresh siblings, the clone at `path` is
@@ -705,23 +710,39 @@
   [^File path args]
   (let [k    (.getPath path)
         lock (clone-lock path)]
+    (locking lock
+      (or (usable-cached-jgit k)
+          (let [leftovers? (delete-leftover-siblings! path)
+                git        (cond
+                             (retired? path)
+                             (clone-into-fresh-sibling! path args)
+
+                             leftovers?
+                             (do (log/info "Deleting a stale git clone that an earlier process left" {:path (str path)})
+                                 (FileUtils/deleteQuietly path)
+                                 (open-checked! path args))
+
+                             :else
+                             (open-checked! path args))]
+            (swap! jgit assoc k git)
+            git)))))
+
+(defn- get-jgit
+  "The Git instance for the [[repo-path]] `path`. It opens or clones the repository on first use (see [[first-use!]]).
+
+  Concurrent first uses of a path share one attempt: they deref the same delay in [[first-uses]], so they get the same
+  Git instance, or they all fail with the same exception after one clone attempt. The delay leaves [[first-uses]] when
+  the attempt ends, so a later first use after a failure tries again."
+  [^File path args]
+  (let [k (.getPath path)]
     (or (usable-cached-jgit k)
-        (locking lock
-          (or (usable-cached-jgit k)
-              (let [leftovers? (delete-leftover-siblings! path)
-                    git        (cond
-                                 (retired? path)
-                                 (clone-into-fresh-sibling! path args)
-
-                                 leftovers?
-                                 (do (log/info "Deleting a stale git clone that an earlier process left" {:path (str path)})
-                                     (FileUtils/deleteQuietly path)
-                                     (open-checked! path args))
-
-                                 :else
-                                 (open-checked! path args))]
-                (swap! jgit assoc k git)
-                git))))))
+        (let [mine   (delay (first-use! path args))
+              shared (get (swap! first-uses update k #(or % mine)) k)]
+          (try
+            @shared
+            (finally
+              (when (identical? shared mine)
+                (swap! first-uses (fn [m] (cond-> m (identical? (get m k) mine) (dissoc k)))))))))))
 
 (defn- replace-stale-clone!
   "Recovers from a stale clone (see [[stale-cache-error?]]) of `source`'s URL: clones into a fresh sibling of its
