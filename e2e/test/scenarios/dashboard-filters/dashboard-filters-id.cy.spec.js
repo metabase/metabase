@@ -43,7 +43,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findByTestId("dashcard").should("contain", "114.42");
+      cy.findByTestId("dashcard")
+        .should("contain", "114.42")
+        .and("not.contain", "39.72");
     });
 
     it("when set as the default filter", () => {
@@ -55,7 +57,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findByTestId("dashcard").should("contain", "114.42");
+      cy.findByTestId("dashcard")
+        .should("contain", "114.42")
+        .and("not.contain", "39.72");
     });
   });
 
@@ -73,7 +77,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findByTestId("dashcard").should("contain", "47.68");
+      cy.findByTestId("dashcard")
+        .should("contain", "47.68")
+        .and("not.contain", "39.72");
       H.checkFilterLabelAndValue("ID", "Arnold Adams - 4");
     });
 
@@ -86,7 +92,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findByTestId("dashcard").should("contain", "47.68");
+      cy.findByTestId("dashcard")
+        .should("contain", "47.68")
+        .and("not.contain", "39.72");
       H.checkFilterLabelAndValue("ID", "Arnold Adams - 4");
     });
   });
@@ -110,7 +118,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findByTestId("dashcard").should("contain", "6.75");
+      cy.findByTestId("dashcard")
+        .should("contain", "6.75")
+        .and("not.contain", "39.72");
     });
 
     it("when set as the default filter", () => {
@@ -122,7 +132,9 @@ describe("scenarios > dashboard > filters > ID", () => {
       cy.wait("@dashboardData");
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findByTestId("dashcard").should("contain", "6.75");
+      cy.findByTestId("dashcard")
+        .should("contain", "6.75")
+        .and("not.contain", "39.72");
     });
   });
 });
