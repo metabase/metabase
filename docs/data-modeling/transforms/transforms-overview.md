@@ -181,7 +181,7 @@ For Python transforms, you'll also see the transform's execution logs.
 
 _Data Studio > Data transformation > [transform name] > Indexes_
 
-Indexes can speed up queries on a transform's table. Metabase saves the indexes you add here and recreates indexes whenever the transform rebuilds its table. Avoid creating indexes directly in your database for tables created by Metabase transforms, because Metabase will clobber those indexes the next time the transform runs. Indexes created outside of Metabase will show as **Unmanaged**: you can't edit or delete them in Metabase.
+Indexes can speed up queries on a transform's table. Metabase saves the indexes you add here and recreates indexes whenever the transform rebuilds its table. Indexes created directly in your database show as **Unmanaged**: you can't edit or delete them in Metabase, and they disappear the next time the transform rebuilds its table. To keep an index, add it here.
 
 ![Transform indexes tab](../images/index-tab.png)
 
@@ -265,7 +265,7 @@ To set a lookback window:
 
    ![Lookback window](../images/lookback-window.png)
 
-If you later switch the checkpoint to a column that doesn't support a lookback, Metabase clears the lookback window.
+If you later switch the checkpoint to a column that doesn't support a lookback, Metabase clears the lookback window. If you switch to a date-only column, Metabase changes a minutes or hours unit to days, so a 4-hour window becomes 4 days.
 
 You should pair a lookback window with a [merge key](#add-merge-keys-to-upsert-rows). Otherwise, every run appends the reprocessed rows again as duplicates.
 

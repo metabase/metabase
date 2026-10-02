@@ -11,7 +11,7 @@ _Data Studio > Semantic layer_
 
 Published tables are the tables you add to your [semantic layer](library.md#semantic-layer). They live in the **Data** collection.
 
-Published tables also show up in the **Library** section of the main app's navigation sidebar. When people pick data for a new question, Metabase shows published tables first. You can also tell [Metabot](../../ai/metabot.md) to only use [curated content](../../ai/settings.md#verified-content) like published tables, and you can [sync published tables to Git](library.md#versioning-the-library), along with their metadata, segments, and measures.
+Published tables also show up in the **Library** section of the main app's navigation sidebar. When people pick data for a new question, Metabase shows published tables first. You can also tell [Metabot](../../ai/metabot.md) to only use [curated content](../../ai/settings.md#verified-or-curated-content) like published tables, and you can [sync published tables to Git](library.md#versioning-the-library), along with their metadata, segments, and measures.
 
 We use the word "publish" because the tables in your Library should be finished, polished tables. If your tables need to be cleaned or combined before they're ready for analytical queries, check out [transforms](../transforms/transforms-overview.md).
 
