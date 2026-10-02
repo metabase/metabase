@@ -92,11 +92,10 @@
 
 (deftest ^:parallel an-anchor-must-be-a-module-test
   (is (=? [#"A cluster without a name.*"
-           #"galactic-center is anchored on query-processor, which is not a module\..*"]
+           #"galactic-center is anchored on query-processor, which is not a declared module\..*"]
           (headlines graph modules '{foundation app-db, galactic-center query-processor})))
-  (testing "an anchor inside a cycle still names nothing unless the config declares it"
-    (is (=? [#"A cluster without a name: 2 modules, qp, sync\."
-             #"galactic-center is anchored on qp, which is not a module\..*"]
+  (testing "an undeclared anchor inside a cycle gets one message, to declare it or move the name"
+    (is (=? [#"galactic-center is anchored on qp, which is not a declared module\. Declare it .*"]
             (headlines graph (disj modules 'qp) '{foundation app-db, galactic-center qp}))))
   (testing "a proposal only anchors on a configured module"
     (is (=? [#".*`sync-knot sync`.*"]

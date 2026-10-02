@@ -197,7 +197,12 @@
   (let [components   (deps-graph/cyclic-components graph)
         clusters     (map (juxt identity (names-in modules anchors)) components)
         in-any       (into #{} cat components)
-        unnamed      (keep (fn [[cluster named]] (when (empty? named) cluster)) clusters)
+        undeclared   (into #{} (remove modules) (vals anchors))
+        ;; A cluster holding an undeclared anchor already has a name waiting on it, so it gets only that message.
+        unnamed      (keep (fn [[cluster named]]
+                             (when (and (empty? named) (not-any? undeclared cluster))
+                               cluster))
+                           clusters)
         placeholders (proposals graph modules anchors unnamed)]
     (concat
      (for [[cluster named] clusters
@@ -208,7 +213,8 @@
      (keep (fn [[cluster-name anchor]]
              (cond
                (not (modules anchor))
-               (format "%s is anchored on %s, which is not a module. Anchor it on another module of the cluster in %s."
+               (format (str "%s is anchored on %s, which is not a declared module. Declare it in"
+                            " .clj-kondo/config/modules/config.edn, or anchor the name on a declared module in %s.")
                        cluster-name anchor clusters-file)
 
                (not (in-any anchor))
