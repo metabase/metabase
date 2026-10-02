@@ -170,9 +170,7 @@ describe(
       });
 
       cy.findByRole("main").within(() => {
-        cy.findByText("No actions have been created yet.").should(
-          "be.visible",
-        );
+        cy.findByText("No actions have been created yet.").should("be.visible");
         cy.findByLabelText("Action list").should("not.exist");
         cy.findByText("Create").should("not.exist");
         cy.findByText("Update").should("not.exist");
