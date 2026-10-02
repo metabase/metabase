@@ -15,6 +15,7 @@ import {
   Icon,
   Menu,
   Text,
+  Title,
 } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 
@@ -127,9 +128,9 @@ export const AuthCardBody = ({
     <SettingsSection>
       <Box flex={1} maw="52rem" data-testid={`${type}-setting`}>
         <Flex align="flex-end" gap="lg" mb="xxs">
-          <Box c="text-primary" fz="1.5rem" fw="bold">
+          <Title order={2} c="text-primary">
             {title}
-          </Box>
+          </Title>
           {isConfigured && (
             <Box
               c={isEnabled ? "core-brand" : "feedback-negative"}
