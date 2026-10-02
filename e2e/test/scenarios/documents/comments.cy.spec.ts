@@ -37,6 +37,7 @@ describe("document comments", () => {
     cy.wait("@comments");
 
     cy.log("does not need schema adjustments by default");
+    H.getHeading1().should("be.visible");
     cy.findByRole("button", { name: "Save" }).should("not.exist");
 
     cy.log("does not have any comments by default");
@@ -234,6 +235,7 @@ describe("document comments", () => {
     cy.findByRole("textbox", { name: "Document Title" })
       .should("be.visible")
       .and("have.value", "Lorem ipsum");
+    H.getParagraph().should("be.visible");
     cy.findByRole("button", { name: "Save" }).should("not.exist");
   });
 
@@ -577,6 +579,7 @@ describe("document comments", () => {
       });
 
       cy.log("does not allow to edit or delete other people's comments");
+      H.popover().findByText("Copy link").should("be.visible");
       H.popover().findByText(/edit/i).should("not.exist");
       H.popover()
         .findByText(/delete|remove/i)
@@ -1264,6 +1267,11 @@ describe("document comments", () => {
       H.visitDocumentComment("@documentId", PARAGRAPH_ID);
 
       Comments.getSidebar().within(() => {
+        Comments.getCommentByText("Test II").realHover();
+        Comments.getCommentByText("Test II")
+          .findByRole("button", { name: "Add reaction" })
+          .should("be.visible");
+
         cy.findByTestId("discussion-comment-deleted")
           .realHover()
           .within(() => {

@@ -785,7 +785,7 @@ describe("documents card embed node custom logic", () => {
         .findAllByTestId("document-card-embed")
         .should("have.length", 2);
 
-      H.documentContent().get('[data-type="flexContainer"]').should("exist");
+      H.documentContent().find('[data-type="flexContainer"]').should("exist");
 
       // Click on one of the cards in the flexContainer to select it
       H.getDocumentCard("Orders, Count").realClick({ position: "top" });
@@ -795,7 +795,7 @@ describe("documents card embed node custom logic", () => {
 
       // Verify the flexContainer now has only 1 card and should be unwrapped back to standalone
       H.documentContent()
-        .get('[data-type="flexContainer"]')
+        .find('[data-type="flexContainer"]')
         .should("not.exist"); // FlexContainer should be unwrapped when only 1 card remains
 
       // Verify only the Orders, Count card remains as a standalone card
