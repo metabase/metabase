@@ -31,11 +31,9 @@
   "xAI models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog.
 
-  `:lowest-effort` is the lowest `reasoning_effort` the model accepts, `none` where reasoning can be turned off.
-  `:reasoning-summaries?` marks the models xAI documents as streaming summaries of their reasoning, as
-  `delta.reasoning_content`: https://docs.x.ai/developers/model-capabilities/text/reasoning"
+  `:lowest-effort` is the lowest `reasoning_effort` the model accepts, `none` where reasoning can be turned off."
   {"grok-4.3" {:display-name "Grok 4.3" :context-window 1000000 :lowest-effort "none"}
-   "grok-4.7" {:display-name "Grok 4.7" :context-window 500000 :lowest-effort "low" :reasoning-summaries? true}})
+   "grok-4.7" {:display-name "Grok 4.7" :context-window 500000 :lowest-effort "low"}})
 
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
@@ -43,9 +41,9 @@
   (get-in supported-models [model :context-window]))
 
 (mu/defn streams-reasoning? :- :boolean
-  "Registry capability. xAI answers from the model name."
+  "Registry capability. Every xAI model we offer streams summaries of its reasoning as `delta.reasoning_content`."
   [{:keys [model]} :- adapter/ResolvedRef]
-  (boolean (get-in supported-models [model :reasoning-summaries?])))
+  (contains? supported-models model))
 
 (mu/defn list-models :- adapter/ModelListing
   "List the xAI models supported by this adapter (see [[supported-models]]).

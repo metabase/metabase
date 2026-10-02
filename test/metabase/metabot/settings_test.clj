@@ -242,8 +242,7 @@
                ;; thinking-capable but excluded from supported-models — see moonshot/reasoning-model?
                "moonshot/kimi-k2.7-code"                    false
                "xai/grok-4.7"                               true
-               ;; reasoning summaries are documented for Grok 4.7 only
-               "xai/grok-4.3"                               false}]
+               "xai/grok-4.3"                               true}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
