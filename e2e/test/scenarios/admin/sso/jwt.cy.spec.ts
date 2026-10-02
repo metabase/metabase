@@ -243,6 +243,6 @@ const selectGroupMappingMode = (mode: string) => {
   // a click during a write is ignored, so wait for the control to be free first
   groupMappingSection()
     .contains("label", mode)
-    .should("not.have.attr", "data-read-only")
-    .click();
+    .should("not.have.attr", "data-read-only");
+  groupMappingSection().contains("label", mode).click();
 };
