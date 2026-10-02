@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.server.routes.static :as static]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel parse-accept-encoding-nil-header-test
   (testing "nil header returns identity-only defaults"
     (is (= {:identity 1.0 :* 0.0}
@@ -173,6 +175,15 @@
       (is (re-matches #"[0-9a-f]{64}" (::static/content-hash plain)))
       (is (not= (::static/content-hash gzipped)
                 (::static/content-hash plain))))))
+
+(deftest ^:parallel file-on-disk-is-hashed-on-every-request-test
+  (testing "a file on disk can change under a running dev process, so its hash is never memoised"
+    (let [file (doto (java.io.File/createTempFile "static-test" ".js") .deleteOnExit)
+          hash #(#'static/content-hash {:body file} "static_test/app.js")]
+      (spit file "one")
+      (let [before (hash)]
+        (spit file "two")
+        (is (not= before (hash)))))))
 
 (deftest ^:parallel not-modified-carries-only-cache-headers-test
   (testing "a 304 echoes the headers that guide a cache and drops the metadata of a body it has no room for"

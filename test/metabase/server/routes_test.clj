@@ -99,6 +99,8 @@
       (testing "and is validated by a strong hash of its bytes"
         (let [etag (get-in response [:headers "ETag"])]
           (is (re-matches #"\"[0-9a-f]{64}\"" etag))
+          (testing "which are the bytes on the wire: the gzip middleware leaves a body with a Content-Encoding alone"
+            (is (= "identity" (get-in response [:headers "Content-Encoding"]))))
           (testing "so a client that already holds it gets a body-less 304"
             (let [not-modified (get-static-asset 304 {"if-none-match" etag})]
               (is (= 304 (:status not-modified)))

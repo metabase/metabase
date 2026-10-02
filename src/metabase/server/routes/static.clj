@@ -13,7 +13,9 @@
    [compojure.core :as compojure]
    [metabase.server.lib.etag-cache :as lib.etag-cache]
    [ring.util.mime-type :as mime]
-   [ring.util.response :as response]))
+   [ring.util.response :as response])
+  (:import
+   (java.io File)))
 
 (def ^:private encoding->extension
   {:gzip     ".gz"
@@ -72,18 +74,26 @@
   [resource-path encoding]
   (str resource-path (encoding->extension encoding)))
 
-(defn- content-hash
-  "A hash of the bytes of one variant on the classpath.
-
-   Each encoding is a separate representation and so needs its own validator,
-   which hashing the bytes we actually send gives us for free."
-  [variant-path]
-  (with-open [stream (io/input-stream (io/resource variant-path))]
+(defn- sha256-hex [source]
+  (with-open [stream (io/input-stream source)]
     (codecs/bytes->hex (buddy-hash/sha256 stream))))
 
-(def ^:private variant-hash
-  "Static resources cannot change while the process runs, so each is hashed once."
-  (memoize content-hash))
+(def ^:private jar-resource-hash
+  "A resource inside the jar cannot change while the process runs, so each is hashed once."
+  (memoize (fn [variant-path] (sha256-hex (io/resource variant-path)))))
+
+(defn- content-hash
+  "A hash of the bytes of one variant, which is the validator for that representation.
+
+   Each encoding is a separate representation and so needs its own validator,
+   which hashing the bytes we actually send gives us for free.
+
+   A file on disk is hashed on every request. In dev a rebuild changes it under
+   the running process, and a memoised hash would answer 304 for bytes that moved."
+  [{body :body} variant-path]
+  (if (instance? File body)
+    (sha256-hex body)
+    (jar-resource-hash variant-path)))
 
 (defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
@@ -94,13 +104,14 @@
   [request resource-path encoding]
   (when (accepts-encoding? request encoding)
     (let [variant-path (compressed-path resource-path encoding)]
-      ;; `resource-response` not returning nil is what proves the path resolves, so only
-      ;; a real file ever reaches `variant-hash` and grows its memo.
-      (some-> (response/resource-response variant-path)
-              (response/content-type (mime/ext-mime-type resource-path))
-              (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
-              (assoc-in [:headers "Vary"] "Accept-Encoding")
-              (assoc ::content-hash (variant-hash variant-path))))))
+      ;; `resource-response` returning a response is what proves the path resolves, so only
+      ;; a real file is ever hashed or grows the memo.
+      (when-let [resource (response/resource-response variant-path)]
+        (-> resource
+            (response/content-type (mime/ext-mime-type resource-path))
+            (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
+            (assoc-in [:headers "Vary"] "Accept-Encoding")
+            (assoc ::content-hash (content-hash resource variant-path)))))))
 
 (defn static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
