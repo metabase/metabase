@@ -256,10 +256,10 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
 
     it("should not support internal navigation on guest embeds", () => {
       // Enable guest embedding settings
-      cy.request("PUT", "/api/setting/enable-embedding-simple", {
+      cy.request("PUT", "/api/setting/enable-embedding-modular", {
         value: true,
       });
-      cy.request("PUT", "/api/setting/enable-embedding-static", {
+      cy.request("PUT", "/api/setting/enable-embedding-modular", {
         value: true,
       });
       updateSetting("embedding-secret-key", JWT_SHARED_SECRET);

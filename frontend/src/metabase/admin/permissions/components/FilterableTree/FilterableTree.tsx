@@ -9,8 +9,8 @@ import { Icon, Input, TextInput, type TextInputProps } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { IconName } from "metabase-types/api";
 
+import { AdminTreeNode } from "./AdminTreeNode";
 import {
-  AdminTreeNode,
   EmptyStateContainer,
   FilterInputContainer,
   FilterableTreeContainer,

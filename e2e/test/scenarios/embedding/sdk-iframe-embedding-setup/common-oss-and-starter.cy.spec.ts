@@ -26,7 +26,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common (oss and start
     });
 
     it("allows to select the `guest` item even when static embedding setting is disabled", () => {
-      H.updateSetting("enable-embedding-static", false);
+      H.updateSetting("enable-embedding-modular", false);
 
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
@@ -36,7 +36,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common (oss and start
     });
 
     it("does not allow to select the `Metabase Account`, when token feature is missing (oss)", () => {
-      H.updateSetting("enable-embedding-simple", false);
+      H.updateSetting("enable-embedding-modular", false);
 
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
