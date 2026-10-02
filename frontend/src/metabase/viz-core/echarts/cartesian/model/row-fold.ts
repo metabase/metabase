@@ -3,17 +3,11 @@ import { t } from "ttag";
 import { checkNumber } from "metabase/utils/types";
 
 import type { ComputedVisualizationSettings } from "../../../types";
-import {
-  INDEX_KEY,
-  IS_FOLDED_ROW_DATA_KEY,
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "../constants/dataset";
+import { IS_FOLDED_ROW_DATA_KEY, X_AXIS_DATA_KEY } from "../constants/dataset";
 
 import { getYAxisExtent } from "./axis";
+import { applyVisualizationSettingsDataTransformations } from "./dataset";
 import type { CartesianChartModel, ChartDataset, Datum } from "./types";
-import { getBarSeriesDataLabelKey } from "./util";
 
 // Rows that don't fit fold into one summed "Other" row. One rule for app and
 // email: each band (per series, or one when stacked) needs MIN_BAR_HEIGHT.
@@ -36,42 +30,11 @@ const sumInto = (target: Datum, source: Datum, keys: string[]) => {
   });
 };
 
-// Label series draw only where the dataset transforms left sign markers; set
-// them from the summed values, since folded rows can mix signs.
-const markLabelSigns = (
-  total: Datum,
-  seriesKeys: string[],
-  isStacked: boolean,
-) => {
-  seriesKeys.forEach((key) => {
-    const value = total[key];
-    if (typeof value !== "number") {
-      return;
-    }
-    const isPositive = value >= 0;
-    const marker = isPositive ? Number.MIN_VALUE : -Number.MIN_VALUE;
-    total[getBarSeriesDataLabelKey(key, isPositive ? "+" : "-")] = marker;
-    if (isStacked) {
-      total[
-        isPositive
-          ? POSITIVE_STACK_TOTAL_DATA_KEY
-          : NEGATIVE_STACK_TOTAL_DATA_KEY
-      ] = marker;
-    }
-  });
-};
-
 const foldDataset = (
   dataset: ChartDataset,
   budget: number,
   seriesKeys: string[],
-  // Set when folding `transformedDataset`, whose rows carry extra keys.
-  transformed?: { isStacked: boolean },
 ): ChartDataset => {
-  if (dataset.length <= budget) {
-    return dataset;
-  }
-
   const kept = dataset.slice(0, budget - 1);
   const folded = dataset.slice(budget - 1);
 
@@ -85,11 +48,6 @@ const foldDataset = (
     [IS_FOLDED_ROW_DATA_KEY]: true,
   };
   folded.forEach((datum) => sumInto(total, datum, seriesKeys));
-  if (transformed) {
-    markLabelSigns(total, seriesKeys, transformed.isStacked);
-    // Events map transformed rows back to `dataset` by this index.
-    total[INDEX_KEY] = kept.length;
-  }
 
   return [...kept, total];
 };
@@ -106,25 +64,31 @@ export const foldRowChartModel = (
     return chartModel;
   }
 
-  const isStacked = settings["stackable.stack_type"] != null;
-  const bandCount = isStacked ? 1 : visibleSeries.length;
+  const stackType = settings["stackable.stack_type"] ?? null;
+  const bandCount = stackType != null ? 1 : visibleSeries.length;
   const budget = getRowChartBudget(plotHeight, bandCount);
 
-  if (chartModel.transformedDataset.length <= budget) {
+  if (chartModel.dataset.length <= budget) {
     return chartModel;
   }
 
+  // Fold the untransformed values, then re-run the chart's own transforms, so
+  // "Other" is normalized and scaled like every other row.
   const seriesKeys = chartModel.seriesModels.map((series) => series.dataKey);
-  const transformedDataset = foldDataset(
-    chartModel.transformedDataset,
-    budget,
-    seriesKeys,
-    { isStacked: settings["stackable.stack_type"] === "stacked" },
+  const dataset = foldDataset(chartModel.dataset, budget, seriesKeys);
+  const transformedDataset = applyVisualizationSettingsDataTransformations(
+    dataset,
+    chartModel.stackModels,
+    chartModel.xAxisModel,
+    chartModel.seriesModels,
+    chartModel.groupedSeriesModels ?? [],
+    chartModel.yAxisScaleTransforms,
+    settings,
   );
 
   return {
     ...chartModel,
-    dataset: foldDataset(chartModel.dataset, budget, seriesKeys),
+    dataset,
     transformedDataset,
     // "Other" can exceed every row's range; row charts only have a left axis.
     leftAxisModel: chartModel.leftAxisModel && {
@@ -133,7 +97,7 @@ export const foldRowChartModel = (
         chartModel.leftAxisModel.seriesKeys,
         chartModel.stackModels,
         transformedDataset,
-        settings["stackable.stack_type"] ?? null,
+        stackType,
       ),
     },
   };
