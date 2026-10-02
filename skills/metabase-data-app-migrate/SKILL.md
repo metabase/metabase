@@ -29,9 +29,10 @@ Every step below follows from these. Never break them.
 3. **Compiler and build gates run only at the target version.** The installed
    SDK is the target, so an app halfway through several upgrades cannot type-check
    or build. Do not run them earlier and do not "fix" their failures earlier.
-4. **Nothing generated is edited by hand.** `savedQuestionSourceId`,
-   `copiedActionId`, `resources_metadata.json`, and `dist/` are written by
-   `npm run build` (`sync-resources`), never by you.
+4. **Nothing generated is edited by hand.** `dist/` is written by
+   `npm run build` and `src/metabase.data.ts` by the typed-schema export, never
+   by you. The entity IDs a definition names (`savedQuestionEntityId`,
+   `copiedActionEntityId`) change only where an upgrade guide says so.
 
 ## Step 0 - Locate the app and read its state
 
