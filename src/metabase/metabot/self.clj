@@ -74,24 +74,54 @@
      :credentials    credentials
      :ai-proxy?      ai-proxy?}))
 
+(defn- provider-stream
+  "The reducible `stream-fn` returns for `streaming-opts`, opened when it is reduced, with whatever the provider
+  throws — on the request, or mid-stream — kept in `provider-error`. What the consumer throws back through the
+  stream is not kept: a tool, a transducer or the client going away is not the provider failing. Each reduction
+  starts clean, so after retries `provider-error` describes the last attempt."
+  [stream-fn streaming-opts provider-error]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (vreset! provider-error nil)
+      (let [consumer-threw? (volatile! false)
+            guarded-rf      (fn
+                              ([acc] (rf acc))
+                              ([acc x]
+                               (try
+                                 (rf acc x)
+                                 (catch Throwable t
+                                   (vreset! consumer-threw? true)
+                                   (throw t)))))]
+        (try
+          (reduce guarded-rf init (stream-fn streaming-opts))
+          (catch Throwable t
+            (when-not @consumer-threw?
+              (vreset! provider-error t))
+            (throw t)))))))
+
 (defn- with-health-recorded
   "Run `thunk`, reporting to [[metabase.llm.health]] whether `conn-key` served the request. A failure recorded here
   is what takes the connection out of the fallback rotation, so the user's next message — or their retry of a
   response that died mid-stream — runs on the next provider instead of hitting the same wall.
 
+  Only what the [[provider-stream]] kept in `provider-error` counts as a failure. A provider that answered with
+  something the caller could not use — no tool call, malformed JSON — or a consumer that threw is not the
+  connection failing, and records nothing.
+
   `errored?` covers the provider that fails without throwing: it streams an `:error` part and then ends the
   response normally, which [[report-aisdk-errors-xf]] has already recorded. Returning true keeps that from being
   overwritten by a success the stream did not earn."
-  ([conn-key thunk]
-   (with-health-recorded conn-key (constantly false) thunk))
-  ([conn-key errored? thunk]
+  ([conn-key provider-error thunk]
+   (with-health-recorded conn-key provider-error (constantly false) thunk))
+  ([conn-key provider-error errored? thunk]
    (try
      (let [result (thunk)]
        (when-not (errored?)
          (llm.health/record-success! conn-key))
        result)
      (catch Exception e
-       (llm.health/record-exception! conn-key e)
+       (when-let [failure @provider-error]
+         (llm.health/record-exception! conn-key failure))
        (throw e)))))
 
 (defn context-window-tokens
@@ -542,6 +572,7 @@
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)
                                 (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
+               provider-error (volatile! nil)
                make-source    (fn []
                                 (eduction (comp (core/tool-executor-xf tools)
                                                 (core/lite-aisdk-xf)
@@ -549,7 +580,7 @@
                                                 (report-aisdk-errors-xf tracking-opts)
                                                 (report-token-usage-xf tracking-opts)
                                                 (report-tool-usage-xf tracking-opts tools))
-                                          (stream-fn streaming-opts)))]
+                                          (provider-stream stream-fn streaming-opts provider-error)))]
            (reify clojure.lang.IReduceInit
              (reduce [_ rf init]
                (with-span :info {:name       :metabot.agent/call-llm
@@ -572,6 +603,7 @@
                                    (rf acc x)))]
                    (with-health-recorded
                      connection-key
+                     provider-error
                      #(deref errored?)
                      #(with-retries
                         tracking-opts
@@ -685,12 +717,14 @@
                                 :ai-proxy?   ai-proxy?}
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))
-                         (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
+                         (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
+        provider-error (volatile! nil)]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count input)}
       (with-health-recorded
         connection-key
+        provider-error
         #(with-retries
            tracking-opts
            (fn []
@@ -698,7 +732,7 @@
                                (comp (core/aisdk-xf)
                                      (report-aisdk-errors-xf tracking-opts)
                                      (report-token-usage-xf tracking-opts))
-                               (stream-fn streaming-opts))
+                               (provider-stream stream-fn streaming-opts provider-error))
                    result (some (fn [{:keys [type arguments]}]
                                   (when (= type :tool-input)
                                     arguments))

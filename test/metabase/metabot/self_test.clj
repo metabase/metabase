@@ -189,7 +189,38 @@
             (mt/with-log-level [metabase.metabot.self :fatal]
               (call!))
             (is (=? {:message "upstream is overloaded" :fatal? false}
-                    (llm.health/failure "anthropic")))))))))
+                    (llm.health/failure "anthropic")))))
+        (testing "a consumer that throws while the provider is streaming is not the provider failing"
+          (llm.health/record-success! "anthropic")
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bug in a downstream xf"
+                                  (transduce (map (fn [_] (throw (ex-info "bug in a downstream xf" {}))))
+                                             conj
+                                             (self/call-llm "anthropic/claude-haiku-4-5" nil [] {}
+                                                            {:tag "agent" :required-permission :permission/metabot}
+                                                            nil))))
+            (is (true? (llm.health/healthy? "anthropic")))))))))
+
+(deftest call-llm-structured-records-only-provider-failures-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(call! []
+                (self/call-llm-structured-with-trace "anthropic/claude-haiku-4-5" [] {} 0.0 100
+                                                     {:tag "agent" :required-permission :permission/metabot}))]
+        (testing "a provider that answers without the tool call has served the request, so nothing is recorded"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call!)))
+            (is (true? (llm.health/healthy? "anthropic")))))
+        (testing "a provider that rejects the request is still recorded"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (throw (ex-info "invalid x-api-key" {:status 401})))]
+            (try
+              (is (thrown? clojure.lang.ExceptionInfo (call!)))
+              (is (=? {:message "invalid x-api-key" :fatal? true} (llm.health/failure "anthropic")))
+              (finally
+                (llm.health/record-success! "anthropic")))))))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections
