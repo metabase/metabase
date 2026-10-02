@@ -134,16 +134,7 @@ describe("Metabot UI", () => {
         cy.wait("@xrayCandidates");
       });
 
-      it("should be able to be opened and closed", () => {
-        H.openMetabotViaSearchButton();
-        H.expectUnstructuredSnowplowEvent({
-          event: "metabot_chat_opened",
-          triggered_from: "header",
-        });
-        H.closeMetabotViaCloseButton();
-      });
-
-      it("should be controlled via keyboard shortcut", () => {
+      it("should be controlled via keyboard shortcut and be able to be opened and closed", () => {
         H.openMetabotViaShortcutKey();
         H.expectUnstructuredSnowplowEvent({
           event: "metabot_chat_opened",
@@ -158,9 +149,16 @@ describe("Metabot UI", () => {
           },
           1,
         );
+
+        H.openMetabotViaSearchButton();
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_chat_opened",
+          triggered_from: "header",
+        });
+        H.closeMetabotViaCloseButton();
       });
 
-      it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
+      it("should allow a user to send a message to the agent, handle successful or failed responses, and start a new conversation via /metabot/new", () => {
         H.openMetabotViaSearchButton();
         H.chatMessages().should("not.exist");
 
@@ -178,9 +176,8 @@ describe("Metabot UI", () => {
         H.mockMetabotResponse({ statusCode: 200, body: apiKeyInvalidResponse });
         H.sendMetabotMessage("Who is your favorite?");
         H.lastChatMessage().should("contain.text", "Something went wrong");
-      });
 
-      it("should allow starting a new metabot conversation via the /metabot/new", () => {
+        cy.log("start a new conversation via /metabot/new");
         H.mockMetabotResponse({
           statusCode: 200,
           body: whoIsYourFavoriteResponse,
@@ -189,14 +186,21 @@ describe("Metabot UI", () => {
         H.assertChatVisibility("visible");
         H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
       });
+    });
 
-      it("should not submit a prompt via /metabot/new when metabot is disabled", () => {
-        H.updateSetting("metabot-enabled?", false);
-        cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
-        cy.url().should("eq", Cypress.config().baseUrl + "/");
-        H.assertChatVisibility("not.visible");
-        cy.get("@agentReq.all").should("have.length", 0);
-      });
+    it("should not submit a prompt via /metabot/new and redirect /question/ask to the notebook when metabot is disabled", () => {
+      H.updateSetting("metabot-enabled?", false);
+      cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
+      cy.url().should("eq", Cypress.config().baseUrl + "/");
+      H.assertChatVisibility("not.visible");
+      cy.get("@agentReq.all").should("have.length", 0);
+
+      cy.log(
+        "visiting '/question/ask' should redirect to notebook when metabot is disabled",
+      );
+      cy.visit("/question/ask");
+      cy.url().should("include", "/question#");
+      cy.findByTestId("metabot-chat").should("not.exist");
     });
   });
 });
@@ -209,18 +213,7 @@ describe("Metabot in full-app embedding", () => {
     H.setupAnthropicLlmProvider();
   });
 
-  it("should show the metabot button when embedded-metabot-enabled? is true", () => {
-    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": true });
-
-    H.visitFullAppEmbeddingUrl({
-      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
-      qs: {},
-    });
-
-    H.appBar().icon("metabot").should("be.visible");
-  });
-
-  it("should not show the metabot button when embedded-metabot-enabled? is false", () => {
+  it("should show the metabot button only when embedded-metabot-enabled? is true", () => {
     H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
 
     H.visitFullAppEmbeddingUrl({
@@ -233,6 +226,15 @@ describe("Metabot in full-app embedding", () => {
 
     cy.log("Assert metabot buttons are not rendered");
     H.appBar().icon("metabot").should("not.exist");
+
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": true });
+
+    H.visitFullAppEmbeddingUrl({
+      url: `/question/${ORDERS_BY_YEAR_QUESTION_ID}`,
+      qs: {},
+    });
+
+    H.appBar().icon("metabot").should("be.visible");
   });
 });
 

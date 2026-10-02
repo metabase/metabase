@@ -24,17 +24,6 @@ describe("Metabot Query Builder", () => {
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
   });
 
-  it("should redirect to notebook when metabot-enabled? is false", () => {
-    H.updateSetting("metabot-enabled?", false);
-
-    cy.log(
-      "visiting '/question/ask' should redirect to notebook when metabot is disabled",
-    );
-    cy.visit("/question/ask");
-    cy.url().should("include", "/question#");
-    cy.findByTestId("metabot-chat").should("not.exist");
-  });
-
   it("should render the agent's reply inline without leaving the page", () => {
     cy.visit("/question/ask");
     H.metabotChatInput().should("be.visible");
