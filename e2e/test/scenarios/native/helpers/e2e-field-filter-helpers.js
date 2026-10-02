@@ -104,20 +104,6 @@ export function addWidgetNumberFilter(
     : addSimpleNumberFilter(value, buttonLabel);
 }
 
-/**
- *
- * @param {array|string} value
- * @return {function}
- */
-export function addDefaultNumberFilter(value, buttonLabel = "Add filter") {
-  if (isBetweenFilter(value)) {
-    cy.findByText("Enter a default value…").click();
-    addBetweenFilter(value, buttonLabel);
-  } else {
-    enterDefaultValue(value, buttonLabel);
-  }
-}
-
 // UI PATTERNS
 
 /**
@@ -190,44 +176,12 @@ function enterDefaultValue(value, buttonLabel = "Add filter") {
 }
 
 /**
- * @param {string} searchTerm
- * @param {string} result
- */
-export function pickDefaultValue(
-  searchTerm,
-  result,
-  buttonLabel = "Add filter",
-) {
-  cy.findByText("Enter a default value…").click();
-  cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
-
-  // Popover is re-rendering every 100ms!
-  // That prevents us from targeting popover() element first,
-  // and then searching for strings inside of it.
-  //
-  // Until FE finds a better solution, our best bet for E2E tests
-  // is to make sure the string is "visible" before acting on it.
-  // This seems to help with the flakiness.
-  //
-  cy.findByLabelText(result).should("be.visible").click();
-
-  cy.button(buttonLabel).click();
-}
-
-/**
  *
  * @param {string|Array.<string>} value
  * @returns {boolean}
  */
 function isBetweenFilter(value) {
   return Array.isArray(value) && value.length === 2;
-}
-
-export function clearDefaultFilterValue() {
-  cy.findByText("Default filter widget value")
-    .parent()
-    .find(".Icon-close")
-    .click();
 }
 
 export function selectDefaultValueFromPopover(
