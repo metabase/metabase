@@ -522,6 +522,33 @@
                 []
                 known)
                (get-in [:actual :discouraged-namespace])))))
+  (testing "a var used through an alias is keyed by the namespace the file requires, not where kondo resolved it"
+    (is (= {:lib.core/->legacy-MBQL 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"d.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(lib/->legacy-MBQL q)\n"}
+                {:findings [{:filename "d.clj", :row 2, :col 2, :type "discouraged-var"}]
+                 :analysis {:var-usages       [{:filename "d.clj"
+                                                :row      2
+                                                :col      2
+                                                :to       "metabase.lib.convert"
+                                                :alias    "lib"
+                                                :name     "->legacy-MBQL"}]
+                            :namespace-usages [{:filename "d.clj", :row 1, :col 1, :to "metabase.lib.core", :alias "lib"}]}}
+                []
+                {:discouraged-var #{'metabase.lib.convert/->legacy-MBQL 'metabase.lib.core/->legacy-MBQL}})
+               (get-in [:actual :discouraged-var])))))
+  (testing "in a .cljc file, each language's usage takes the alias that language requires"
+    (is (= {:clojure.pprint/print-table 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"e.cljc" "#_{:clj-kondo/ignore [:discouraged-var]}\n(pprint/print-table [])\n"}
+                {:findings [{:filename "e.cljc", :row 2, :col 2, :type "discouraged-var"}]
+                 :analysis {:var-usages       [{:filename "e.cljc", :row 2, :col 2, :lang "clj", :to "clojure.pprint", :alias "pprint", :name "print-table"}
+                                               {:filename "e.cljc", :row 2, :col 2, :lang "cljs", :to "cljs.pprint", :alias "pprint", :name "print-table"}]
+                            :namespace-usages [{:filename "e.cljc", :lang "clj", :to "clojure.pprint", :alias "pprint"}
+                                               {:filename "e.cljc", :lang "cljs", :to "cljs.pprint", :alias "pprint"}]}}
+                []
+                {:discouraged-var #{'clojure.pprint/print-table}})
+               (get-in [:actual :discouraged-var])))))
   (testing "a finding whose usage isn't a configured symbol is unresolved"
     (is (= [{:file "a.clj", :line 3, :linters [:discouraged-var]}]
            (:unresolved

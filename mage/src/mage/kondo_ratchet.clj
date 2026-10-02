@@ -36,13 +36,18 @@
 
 (defn- run-kondo!
   "Output of a `clojure -M:kondo` run over `paths`, with `config` merged over the repository's, as
-  [[parse-kondo-output]] reads it."
-  [output-format config paths]
-  (parse-kondo-output output-format
-                      (apply shell/sh* {:quiet? true}
-                             "clojure" "-M:kondo"
-                             "--config" (pr-str (assoc-in config [:output :format] output-format))
-                             "--lint" paths)))
+  [[parse-kondo-output]] reads it.
+  With `cache?` false the run neither reads nor writes kondo's cache."
+  ([output-format config paths]
+   (run-kondo! output-format config paths true))
+  ([output-format config paths cache?]
+   (parse-kondo-output output-format
+                       (apply shell/sh* {:quiet? true}
+                              "clojure" "-M:kondo"
+                              "--config" (pr-str (assoc-in config [:output :format] output-format))
+                              (concat (when-not cache? ["--cache" "false"])
+                                      ["--lint"]
+                                      paths)))))
 
 (defn- kondo-findings!
   "Kondo run over `roots`, optionally with `linter` forced to `:warning`; returns findings as EDN maps
@@ -92,10 +97,14 @@
    :discouraged-namespace :namespace-usages})
 
 (defn- usage-symbol
-  "The fully-qualified symbol a var-usage or namespace-usage resolves to."
-  [{:keys [to name]}]
+  "The fully-qualified symbol a var-usage or namespace-usage names.
+  A var used through an alias takes its namespace from that alias in `alias-ns`, a map of `[file lang alias]` to
+  the namespace the file requires under it; a `.cljc` file can require a different one for each language."
+  [alias-ns {:keys [filename lang alias to name]}]
+  ;; Kondo resolves a re-exported var to the namespace it learned the var came from, which depends on its cache
+  ;; and on which files share the run. The namespace the file required under the alias doesn't move.
   (if name
-    (symbol (str to) (str name))
+    (symbol (str (get alias-ns [filename (some-> lang str) (str alias)] to)) (str name))
     (symbol (str to))))
 
 (defn attribute-discouraged
@@ -122,6 +131,10 @@
   (let [ignores   (update-vals contents discouraged-ignores)
         offsets   (update-vals contents offset-fn)
         reported? (set (map (juxt :filename :row :col :type) baseline))
+        alias-ns  (into {}
+                        (for [{:keys [filename lang alias to]} (get-in output [:analysis :namespace-usages])
+                              :when                            alias]
+                          [[filename (some-> lang str) (str alias)] to]))
         ;; kondo puts each finding at its usage's own :row/:col
         usages-at (group-by (juxt :linter :filename :row :col)
                             (for [[linter k] usages-key
@@ -138,7 +151,7 @@
                      :linter linter
                      :ignore (last (filter #(and (<= (:end %) offset) (some #{linter} (:linters %)))
                                            (ignores filename)))
-                     :symbol (some (comp (known linter) usage-symbol)
+                     :symbol (some (comp (known linter) (partial usage-symbol alias-ns))
                                    (usages-at [linter filename row col]))})
         counted   (distinct (for [{:keys [file linter ignore symbol]} hits
                                   :when (and ignore symbol)]
@@ -173,9 +186,11 @@
               :let        [content (contents file)]]
         (fs/create-dirs (fs/parent copy))
         (spit copy (disable-ignores content (discouraged-ignores content))))
+      ;; Without the cache, a run's findings depend only on the files in it, so CI and a local run agree.
       (let [output (run-kondo! :json
                                {:output {:analysis {:var-usages true, :namespace-usages true}}}
-                               (concat (keys contents) (keys original)))]
+                               (concat (keys contents) (keys original))
+                               false)]
         [(-> output
              (update :findings restore)
              (update-in [:analysis :var-usages] restore)
