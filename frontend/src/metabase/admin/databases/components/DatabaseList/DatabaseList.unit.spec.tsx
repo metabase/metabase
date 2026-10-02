@@ -6,12 +6,19 @@ import { DatabaseList } from "./DatabaseList";
 const CREATE_SAMPLE_DATABASE_BUTTON_LABEL = "Bring the sample database back";
 
 interface SetupOpts {
-  isSampleDb: boolean;
+  isSampleDb?: boolean;
+  isStub?: boolean;
   isAdmin: boolean;
 }
 
-async function setup({ isSampleDb, isAdmin }: SetupOpts) {
-  const databases = [createMockDatabase({ is_sample: isSampleDb })];
+async function setup({
+  isSampleDb = false,
+  isStub = false,
+  isAdmin,
+}: SetupOpts) {
+  const databases = [
+    createMockDatabase({ is_sample: isSampleDb, is_stub: isStub }),
+  ];
 
   render(
     <DatabaseList
@@ -42,6 +49,18 @@ describe("DatabaseListApp", () => {
     expect(
       screen.queryByText(CREATE_SAMPLE_DATABASE_BUTTON_LABEL),
     ).not.toBeInTheDocument();
+  });
+
+  it("marks stub databases as not connected", async () => {
+    await setup({ isStub: true, isAdmin: true });
+
+    expect(screen.getByText("Not connected")).toBeInTheDocument();
+  });
+
+  it("does not mark regular databases as not connected", async () => {
+    await setup({ isAdmin: true });
+
+    expect(screen.queryByText("Not connected")).not.toBeInTheDocument();
   });
 
   it("does not show restore sample database button to non-admins", async () => {

@@ -90,7 +90,18 @@ export const DatabaseConnectionInfoSection = ({
         </Alert>
       )}
 
-      {!database.is_attached_dwh && (
+      {database.is_stub && (
+        <Alert
+          size="compact"
+          color="warning"
+          icon={<Icon name="warning" />}
+          title={t`Not connected`}
+        >
+          {t`This database was created by a serialization import. Add its connection details to make the content that uses it work.`}
+        </Alert>
+      )}
+
+      {!database.is_attached_dwh && !database.is_stub && (
         <Flex gap="sm" wrap="wrap">
           {!isSynced && <Button disabled>{t`Syncing database…`}</Button>}
           <ActionButton
