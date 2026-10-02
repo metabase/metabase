@@ -46,11 +46,14 @@ and references rewritten to the copies.
 
 `embedding-sdk-react data-apps print-resources [file]` (`export.ts`) sends the evaluated definitions (all
 of them, or those in `file`, relative to the app directory) to `POST /api/apps/export-resources`, with the
-instance and API key from `.env.local`, and prints the answer as JSON: the query Metabase builds from
-each `defineQuery` definition, each `defineAction`'s source action, the models those actions belong to,
-and the metrics the queries aggregate, all as serialization writes them, each beside the definition's
-file and entity ID. Metabase builds each query with the same `createTestQuery` code the dev preview
-runs, so a saved question written from it holds exactly the query the preview ran. An item that can't
+instance and API key from `.env.local`, and prints the answer as JSON: the saved question Metabase
+writes for each `defineQuery` definition, each `defineAction`'s source action, the models those actions
+belong to, and the metrics the queries aggregate, all as serialization writes them, each beside the
+definition's file and entity ID. The saved question is complete: named after the export, in the
+collection `data_app.yaml` names, with the definition's `savedQuestionEntityId`, created by the API
+key's user, and holding the query Metabase builds with the same `createTestQuery` code the dev preview
+runs. Every entity comes in the key order serialization writes a file and without the keys serialization
+leaves unset, which the format omits, so the author transcribes rather than composes. An item that can't
 be built or copied comes back with its `error`; the rest still come back.
 
 ## `check-resources`

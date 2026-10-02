@@ -67,29 +67,39 @@ describe("Embedding SDK: data-app resources (queries)", () => {
       H.dataAppCliEnv().then((env) =>
         H.runDataAppCli("print-resources", env).then(({ exitCode, stdout }) => {
           expect(exitCode, stdout).to.eq(0);
-          expect(JSON.parse(stdout)).to.deep.eq({
-            queries: [
-              {
-                export: "Orders",
-                file: "queries/orders.query.ts",
-                savedQuestionEntityId: question,
-                dataset_query: {
-                  "lib/type": "mbql/query",
-                  database: "Sample Database",
-                  stages: [
-                    {
-                      "lib/type": "mbql.stage/mbql",
-                      "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-                    },
-                  ],
-                },
-                metrics: [],
-              },
-            ],
+          const printed = JSON.parse(stdout);
+          expect(printed).to.deep.include({
             actions: [],
             models: [],
             metrics: [],
           });
+          const [query] = printed.queries;
+          expect(query).to.deep.include({
+            export: "Orders",
+            file: "queries/orders.query.ts",
+            savedQuestionEntityId: question,
+            metrics: [],
+          });
+          // The saved question is complete: the author writes it as it is.
+          expect(query.entity).to.deep.include({
+            entity_id: question,
+            collection_id: COLLECTION,
+            name: "Orders",
+            type: "question",
+            display: "table",
+            dataset_query: {
+              "lib/type": "mbql/query",
+              database: "Sample Database",
+              stages: [
+                {
+                  "lib/type": "mbql.stage/mbql",
+                  "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+                },
+              ],
+            },
+            "serdes/meta": [{ model: "Card", id: question, label: "orders" }],
+          });
+          expect(query.entity.creator_id).to.be.a("string");
         }),
       );
     });
