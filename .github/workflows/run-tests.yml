@@ -40,18 +40,6 @@ jobs:
     outputs:
       verdict: ${{ steps.decide.outputs.verdict }}
     steps:
-      # Every job that uses `base` needs this one, so a bad value fails the run before git sees it.
-      - name: Check the base branch name
-        if: inputs.base != ''
-        run: |
-          git check-ref-format --branch "$BASE" > /dev/null
-          if [ "$BASE" = "$BRANCH" ]; then
-            echo "::error::base must differ from the branch being run, or nothing counts as changed."
-            exit 1
-          fi
-        env:
-          BASE: ${{ inputs.base }}
-          BRANCH: ${{ github.ref_name }}
       - name: Decide
         id: decide
         # Precedence matters for the conditions below.
@@ -64,6 +52,19 @@ jobs:
             || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
             || 'defer' }}
         run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
+      # Only a narrowed run uses `base`, and every job that does needs this one, so a bad value fails the run
+      # before git sees it.
+      - name: Check the base branch name
+        if: steps.decide.outputs.verdict == 'defer' && inputs.base != ''
+        run: |
+          git check-ref-format --branch "$BASE" > /dev/null
+          if [ "$BASE" = "$BRANCH" ]; then
+            echo "::error::base must differ from the branch being run, or nothing counts as changed."
+            exit 1
+          fi
+        env:
+          BASE: ${{ inputs.base }}
+          BRANCH: ${{ github.ref_name }}
 
   files-changed:
     needs: should-run
@@ -317,7 +318,7 @@ jobs:
         needs.files-changed.outputs.backend_all != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
       # Without it, a narrowed run started by hand compares the branch with itself and skips the drivers it touched.
-      base-ref: ${{ inputs.base }}
+      base-ref: ${{ needs.should-run.outputs.verdict == 'defer' && inputs.base || '' }}
 
   frontend-tests:
     needs: [should-run, files-changed, create-test-plan]

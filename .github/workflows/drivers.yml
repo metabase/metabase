@@ -11,7 +11,7 @@ on:
         type: boolean
         default: false
       base-ref:
-        description: Branch to compare against on a run started by hand. Pull request runs use the PR base.
+        description: Branch to compare against on a narrowed run started by hand. Empty otherwise.
         type: string
         default: ""
 
@@ -63,8 +63,8 @@ jobs:
       # changes. A run started by hand checks out the branch tip, so it diffs against where the branch split off.
       - name: Find where the branch split off
         id: merge-base
-        # A forced run ignores the diff, so it skips the lookup.
-        if: inputs.base-ref != '' && inputs.base-ref != github.ref_name && !inputs.force-run
+        # A skipped run ignores the diff, so it skips the lookup.
+        if: inputs.base-ref != '' && !inputs.skip
         uses: actions/github-script@v9
         env:
           BASE: ${{ inputs.base-ref }}
@@ -76,10 +76,7 @@ jobs:
             });
             return data.merge_base_commit.sha;
       - name: Fetch base branch
-        # Git refuses to fetch into the checked-out branch, as on a run started by hand on the base branch itself.
-        if: |
-          (github.event.pull_request.base.ref || inputs.base-ref) != '' &&
-          (github.event.pull_request.base.ref || inputs.base-ref) != github.ref_name
+        if: github.event.pull_request.base.ref != '' || steps.merge-base.outputs.result != ''
         run: |
           # Fetch what the diff compares against
           if [ -n "$MERGE_BASE" ]; then
@@ -88,7 +85,7 @@ jobs:
             git fetch --depth=1 origin "${BASE}:${BASE}"
           fi
         env:
-          BASE: ${{ github.event.pull_request.base.ref || inputs.base-ref }}
+          BASE: ${{ github.event.pull_request.base.ref }}
           MERGE_BASE: ${{ steps.merge-base.outputs.result }}
       - name: Determine which drivers should run
         id: driver-decisions
@@ -113,9 +110,7 @@ jobs:
           # Second call: output only key=value lines for GITHUB_OUTPUT
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
-          BASE_REF: >-
-            ${{ steps.merge-base.outputs.result || github.event.pull_request.base.ref || inputs.base-ref
-            || github.ref_name }}
+          BASE_REF: ${{ steps.merge-base.outputs.result || github.event.pull_request.base.ref || github.ref_name }}
           FORCE_RUN: ${{ inputs.force-run }}
           # Set only by test.profile-backend.yml. Absent on a normal CI run, which leaves the decision rules
           # alone; mage rejects a name that is not a driver.
