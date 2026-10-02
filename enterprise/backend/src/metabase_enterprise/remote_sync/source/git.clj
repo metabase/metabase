@@ -10,8 +10,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.io File)
+   (java.io File InterruptedIOException)
    (java.net URI)
+   (java.nio.channels ClosedByInterruptException)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEditor DirCacheEditor$DeletePath
@@ -727,22 +728,45 @@
             (swap! jgit assoc k git)
             git)))))
 
+(defn- interrupt?
+  "True when `e`, or one of its causes, is the result of a thread interrupt."
+  [^Throwable e]
+  (some #(or (instance? InterruptedException %)
+             (instance? InterruptedIOException %)
+             (instance? ClosedByInterruptException %))
+        (take-while some? (iterate #(.getCause ^Throwable %) e))))
+
 (defn- get-jgit
   "The Git instance for the [[repo-path]] `path`. It opens or clones the repository on first use (see [[first-use!]]).
 
   Concurrent first uses of a path share one attempt: they deref the same delay in [[first-uses]], so they get the same
   Git instance, or they all fail with the same exception after one clone attempt. The delay leaves [[first-uses]] when
-  the attempt ends, so a later first use after a failure tries again."
+  the attempt ends, so a later first use after a failure tries again.
+
+  An attempt that failed because its thread was interrupted is not shared: the interrupt belongs to that thread alone.
+  A waiter that was not interrupted removes that attempt and makes its own."
   [^File path args]
   (let [k (.getPath path)]
-    (or (usable-cached-jgit k)
-        (let [mine   (delay (first-use! path args))
-              shared (get (swap! first-uses update k #(or % mine)) k)]
-          (try
-            @shared
-            (finally
-              (when (identical? shared mine)
-                (swap! first-uses (fn [m] (cond-> m (identical? (get m k) mine) (dissoc k)))))))))))
+    (loop []
+      (let [result (or (usable-cached-jgit k)
+                       (let [mine   (delay (first-use! path args))
+                             shared (get (swap! first-uses update k #(or % mine)) k)
+                             forget #(swap! first-uses (fn [m] (cond-> m (identical? (get m k) shared) (dissoc k))))]
+                         (try
+                           @shared
+                           (catch Throwable e
+                             (if (and (not (identical? shared mine))
+                                      (interrupt? e)
+                                      (not (.isInterrupted (Thread/currentThread))))
+                               (do (forget)
+                                   ::retry)
+                               (throw e)))
+                           (finally
+                             (when (identical? shared mine)
+                               (forget))))))]
+        (if (= ::retry result)
+          (recur)
+          result)))))
 
 (defn- replace-stale-clone!
   "Recovers from a stale clone (see [[stale-cache-error?]]) of `source`'s URL: clones into a fresh sibling of its
