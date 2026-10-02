@@ -2,6 +2,8 @@ const { H } = cy;
 
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  ACCOUNTS_COUNT_BY_COUNTRY,
+  COUNTRY_CODES,
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
@@ -83,7 +85,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
   });
 
-  it("should allow to change viz settings", () => {
+  it("should allow to change cartesian and pie viz settings (metabase#61197)", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
 
@@ -93,6 +95,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.goalLine().should("not.exist");
       cy.findByTestId("chartsettings-sidebar").findByText("Goal line").click();
       H.goalLine().should("exist");
+
+      cy.findByTestId("chartsettings-sidebar").findByText("Trend line").click();
+      H.trendLine().should("have.length", 2);
 
       // Ensure the chart legend contains original series name
       H.chartLegend().within(() => {
@@ -120,6 +125,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     const assertUpdatedVizSettingsApplied = () => {
       H.goalLine().should("exist");
+      H.trendLine().should("have.length", 2);
       // Ensure the chart legend contains renamed series
       H.chartLegend().within(() => {
         cy.findByText("Series B").should("exist");
@@ -136,6 +142,36 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.getDashboardCard(0).within(() => {
       assertUpdatedVizSettingsApplied();
+    });
+
+    // Pie chart
+    H.getDashboardCard(2).within(() => {
+      H.echartsContainer().findByText("Total").should("exist");
+    });
+    H.showDashcardVisualizerModalSettings(2);
+    H.modal().within(() => {
+      cy.findByText("Display").click();
+
+      H.echartsContainer().within(() => {
+        cy.findByText("200").should("exist");
+        cy.findByText("Total").should("exist");
+      });
+      cy.findByTestId("chartsettings-sidebar").findByText("Show total").click();
+      H.echartsContainer().within(() => {
+        cy.findByText("200").should("not.exist");
+        cy.findByText("Total").should("not.exist");
+      });
+    });
+    H.saveDashcardVisualizerModalSettings();
+
+    // Hovering a pie slice hides the total, so move the pointer away first
+    H.getDashboardCard(0).realHover();
+    H.getDashboardCard(2).within(() => {
+      H.pieSlices().should("have.length", 4);
+      H.echartsContainer().within(() => {
+        cy.findByText("200").should("not.exist");
+        cy.findByText("Total").should("not.exist");
+      });
     });
   });
 
@@ -242,7 +278,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
   });
 
-  it("should preserve default colors (VIZ-1211)", () => {
+  it("should preserve default colors and remap columns when changing a viz type (VIZ-1211)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
     H.openQuestionsSidebar();
@@ -259,6 +295,80 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.chartPathWithFillColor("#509EE3").should("have.length", 4);
+
+      // Turn into a pie chart
+      cy.findByTestId("viz-picker-main").icon("pie").click();
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+        "Count",
+      );
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+        "Product → Category",
+      );
+      H.pieMetricWell().findByText("Count").should("exist");
+      H.pieDimensionWell().findByText("Product → Category").should("exist");
+      H.echartsContainer().findByText("18,760").should("exist"); // total value
+
+      // Turn into a funnel
+      cy.findByTestId("viz-picker-main").icon("funnel").click();
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+        "Count",
+      );
+      H.assertDataSourceColumnSelected(
+        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+        "Product → Category",
+      );
+      H.verticalWell().findByText("Count").should("exist");
+      H.horizontalWell().within(() => {
+        cy.findByText("Product → Category").should("exist");
+        cy.findByText("Doohickey").should("exist");
+        cy.findByText("Gadget").should("exist");
+        cy.findByText("Gizmo").should("exist");
+        cy.findByText("Widget").should("exist");
+        cy.findAllByTestId("well-item").should("have.length", 5);
+      });
+    });
+  });
+
+  it("should preserve column mapping when switching between cartesian and pie", () => {
+    H.createQuestion(ACCOUNTS_COUNT_BY_COUNTRY);
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.visitDashboard(dashboardId);
+    });
+
+    H.editDashboard();
+
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(ACCOUNTS_COUNT_BY_COUNTRY.name);
+
+    H.modal().within(() => {
+      H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
+
+      cy.log("cartesian (starting point) -> funnel -> scatter");
+      H.selectVisualization("funnel");
+      H.assertWellItems({
+        horizontal: ["Country", ...COUNTRY_CODES],
+        vertical: ["Count"],
+      });
+      H.selectVisualization("scatter");
+      H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
+
+      cy.log("Resetting the visualization to cartesian");
+      H.clickUndoButton();
+      H.clickUndoButton();
+
+      cy.log("cartesian (starting point) -> pie -> funnel -> scatter");
+      H.selectVisualization("pie");
+      H.assertWellItems({ pieDimensions: ["Country"], pieMetric: ["Count"] });
+      H.selectVisualization("funnel");
+      H.assertWellItems({
+        horizontal: ["Country", ...COUNTRY_CODES],
+        vertical: ["Count"],
+      });
+      H.selectVisualization("scatter");
+      H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
     });
   });
 
@@ -337,23 +447,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
       H.chartLegendItems().should("have.length", 2);
-    });
-  });
-
-  it("should support trend lines (metabase #61197)", () => {
-    createDashboardWithVisualizerDashcards();
-    H.editDashboard();
-
-    H.showDashcardVisualizerModalSettings(0);
-
-    H.modal().within(() => {
-      cy.findByText("Trend line").click();
-      H.trendLine().should("have.length", 2);
-      cy.findByText("Save").click();
-    });
-
-    H.getDashboardCard(0).within(() => {
-      H.trendLine().should("have.length", 2);
     });
   });
 
