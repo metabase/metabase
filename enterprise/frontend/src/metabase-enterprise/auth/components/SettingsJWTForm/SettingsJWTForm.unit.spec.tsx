@@ -1067,7 +1067,117 @@ describe("SettingsJWTForm", () => {
       expect(findMappingRow("existing")).toBeDefined();
     });
 
-    it("disables the new mapping button while a save is in flight", async () => {
+    it("keeps Enter on the mode control from submitting the page form", async () => {
+      await setup({ configured: true });
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
+        "/sso",
+      );
+      const saveButton = screen.getByRole("button", {
+        name: "Save and enable",
+      });
+      expect(saveButton).toBeEnabled();
+
+      act(() => screen.getByRole("radio", { name: "Off" }).focus());
+      await userEvent.keyboard("{Enter}");
+
+      expect(await findRequests("PUT")).toHaveLength(0);
+      expect(saveButton).toBeEnabled();
+    });
+
+    it("still switches the mode with the other keys", async () => {
+      await setup({ jwtEnabled: true, configured: true, groupSync: true });
+      const offRadio = screen.getByRole("radio", { name: "Off" });
+
+      act(() => offRadio.focus());
+      await userEvent.keyboard(" ");
+
+      await waitFor(() => expect(offRadio).toBeChecked());
+      const [{ body }] = await findRequests("PUT");
+      expect(body).toEqual({ "jwt-group-sync": false });
+    });
+
+    it("keeps an open draft when the switch to automatic is cancelled", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        groupSync: true,
+        groupMappings: { devs: [3] },
+      });
+
+      await clickWhenEnabled(
+        within(findMappingRow("devs")!).getByRole("button", {
+          name: "Edit mapping",
+        }),
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter JWT group..."),
+        "-team",
+      );
+      await userEvent.click(screen.getByRole("radio", { name: "Automatic" }));
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Cancel",
+        }),
+      );
+
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
+      expect(screen.getByPlaceholderText("Enter JWT group...")).toHaveValue(
+        "devs-team",
+      );
+    });
+
+    it("keeps an open draft when turning group mapping off fails", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        groupSync: true,
+        groupMappings: { existing: [3] },
+        saveStatus: 500,
+      });
+
+      await clickWhenEnabled(
+        screen.getByRole("button", { name: "New mapping" }),
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText("Enter JWT group..."),
+        "devs",
+      );
+      await userEvent.click(screen.getByRole("radio", { name: "Off" }));
+
+      expect(
+        await screen.findByText("Error saving group mapping"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
+      expect(screen.getByPlaceholderText("Enter JWT group...")).toHaveValue(
+        "devs",
+      );
+    });
+
+    it("disables the new mapping button while a draft is open", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        groupSync: true,
+        groupMappings: { devs: [3] },
+      });
+      const newButton = screen.getByRole("button", { name: "New mapping" });
+
+      await clickWhenEnabled(
+        within(findMappingRow("devs")!).getByRole("button", {
+          name: "Edit mapping",
+        }),
+      );
+      expect(newButton).toBeDisabled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(newButton).toBeEnabled();
+    });
+
+    it("holds the mapping rows while a save is in flight", async () => {
       const saveGate = defer<void>();
       await setup({
         jwtEnabled: true,
@@ -1076,17 +1186,20 @@ describe("SettingsJWTForm", () => {
         groupMappings: { existing: [3] },
         saveGate: saveGate.promise,
       });
-      const newButton = screen.getByRole("button", { name: "New mapping" });
+      const deleteButton = within(findMappingRow("existing")!).getByRole(
+        "button",
+        { name: "Delete mapping" },
+      );
 
       await addMapping("devs", "bar");
 
       try {
-        expect(newButton).toBeDisabled();
+        expect(deleteButton).toBeDisabled();
       } finally {
         saveGate.resolve();
       }
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
-      await waitFor(() => expect(newButton).toBeEnabled());
+      await waitFor(() => expect(deleteButton).toBeEnabled());
     });
 
     it("holds the mapping controls until the groups have loaded", async () => {

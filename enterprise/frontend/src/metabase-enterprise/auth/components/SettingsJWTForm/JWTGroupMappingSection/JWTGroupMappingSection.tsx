@@ -67,6 +67,7 @@ export function JWTGroupMappingSection({
   const isReadOnly = isLocked || !isServerConfigured;
   const isLockedUntilSave = !isServerConfigured && !isLocked;
   const isLastMapping = Object.keys(groupMapping.mappings).length === 1;
+  const hasOpenDraft = editor.draft != null;
 
   return (
     <Stack gap="lg">
@@ -79,9 +80,12 @@ export function JWTGroupMappingSection({
         <SegmentedControl<JWTGroupSyncMode>
           aria-label={t`Group mapping mode`}
           value={modeSwitch.mode}
-          onChange={(nextMode) => {
-            editor.cancel();
-            modeSwitch.select(nextMode);
+          onChange={modeSwitch.select}
+          // the control sits inside the page form, so Enter must not reach its submit button
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+            }
           }}
           disabled={isReadOnly}
           // read-only keeps the options focusable, so a keyboard user keeps their place during a write
@@ -98,7 +102,8 @@ export function JWTGroupMappingSection({
             // the heading wraps before the button does, so the button keeps its whole label
             flex="0 0 auto"
             leftSection={<Icon name="add" aria-hidden />}
-            disabled={isListHeld}
+            // a new mapping would replace the open draft
+            disabled={isListHeld || hasOpenDraft}
             onClick={editor.startNew}
           >{t`New mapping`}</Button>
         )}
