@@ -813,7 +813,7 @@
   ;; `:collection_id` and `:document_id` feed `mi/can-read?`; without `:collection_id` a card in a restricted
   ;; collection reads as readable.
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select [:model/Card :id :card_schema :name :entity_id :collection_id :document_id] :id [:in card-ids]))
+  (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in card-ids]))
 
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."

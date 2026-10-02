@@ -295,28 +295,24 @@
   than read as stageless: its `\"card__N\"` source is exactly the card-based case, and falling back to the table for it
   would offer the base table the QP rejects.
 
-  When the definition itself cannot be read -- a blank `dataset_query` (see
+  The unreadable definitions are a blank `dataset_query` (see
   [[metabase.queries.models.card/monitor-blank-dataset-query]], which exists because MBQL 4->5 conversion failures
-  really do ship these) or a legacy one that fails to convert -- falls back to `report_card.table_id`, read as
-  single-stage. Returns nil only when there is no table either."
+  really do ship these) and a legacy one that fails to convert. The QP cannot convert or splice such a metric on any
+  source, so offering one would only move the failure to execution. `report_card.dataset_query` is NOT NULL, so a
+  nil definition means the caller did not load it, and is read the same way rather than guessed at."
   [card]
   (let [definition (metric-card-shape-get card :dataset-query :dataset_query)
         stages     (or (not-empty (:stages definition))
                        (when (seq definition)
                          (try
                            (:stages (lib/->mbql5 definition))
-                           (catch Exception _ nil))))
-        table-id   (metric-card-shape-get card :table-id :table_id)]
-    (cond
-      (seq stages)
+                           (catch Exception _ nil))))]
+    (when (seq stages)
       (if-let [card-id (and (= 1 (count stages)) (:source-card (first stages)))]
         {:kind :card, :card-id card-id}
         {:kind             :table
-         :table-id         table-id
-         :bare-table-only? (> (count stages) 1)})
-
-      table-id
-      {:kind :table, :table-id table-id, :bare-table-only? false})))
+         :table-id         (metric-card-shape-get card :table-id :table_id)
+         :bare-table-only? (> (count stages) 1)}))))
 
 (defn metric-compatible-with-stage?
   "Can a metric requiring `required` (from [[metric-required-source]]) be spliced into a stage whose source is
@@ -330,3 +326,31 @@
                 (or (not (:bare-table-only? required))
                     (nil? stage-card-id)))
     (throw (ex-info "Unrecognized metric source kind" {:required required}))))
+
+(defn metric-source-fields
+  "The LLM-facing fields naming the source a metric is consumed from -- exactly one of three groups:
+
+    {:source_card_id … :source_card_name … :source_card_portable_entity_id …}
+    {:base_table_id … :base_table_name … :base_table_schema … :base_table_portable_fk …}
+    {:source_unavailable true}
+
+  `source-card` is `{:id :name :entity_id}` and `source-table` is `{:id :schema :name}`, each nil unless it is the
+  source [[metric-required-source]] names AND the current user may use it. `:base_table_portable_fk` needs
+  `database-name`. Absence alone reads to the LLM as \"look it up elsewhere\", so no usable source is said positively."
+  ;; `metric-details` and search enrichment both build their metric output through this, so the two surfaces
+  ;; describing the same metric cannot disagree.
+  [{:keys [source-card source-table database-name]}]
+  (cond
+    source-card
+    {:source_card_id                 (:id source-card)
+     :source_card_name               (:name source-card)
+     :source_card_portable_entity_id (:entity_id source-card)}
+
+    source-table
+    (cond-> {:base_table_id     (:id source-table)
+             :base_table_name   (:name source-table)
+             :base_table_schema (:schema source-table)}
+      database-name (assoc :base_table_portable_fk [database-name (:schema source-table) (:name source-table)]))
+
+    :else
+    {:source_unavailable true}))

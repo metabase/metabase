@@ -2244,9 +2244,9 @@
 
 (defn- fill-from-candidates
   "Stamp `source-field` from the single candidate, or throw the appropriate agent error. `stamp-name?` also records
-  `source-field-name` when the source exposes the FK column under a different alias than the field's own name --
-  `:metabase.lib.schema.ref/source-field-name` exists for exactly that case, and without it the join condition is
-  emitted against a column name the source does not have."
+  `source-field-name` -- the name the source exposes the FK column under -- whenever the candidate carries one, as
+  `lib/ref` does for an implicitly-joinable column. Where that name differs from the field's own, without it the join
+  condition is emitted against a column name the source does not have."
   [clause opts fk export-resolver candidates
    {:keys [source-label target-table-id ex-data-extra stamp-name? strict?]}]
   (case (count candidates)

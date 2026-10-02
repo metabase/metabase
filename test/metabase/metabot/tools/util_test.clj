@@ -362,19 +362,19 @@
       {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-table 5} {}]
       {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-card 42} {}])))
 
-(deftest ^:parallel metric-required-source-falls-back-to-the-table-column-test
-  (testing (str "When the definition cannot be read -- a blank `dataset_query`, which MBQL 4->5 conversion\n"
-                "failures really do produce (`monitor-blank-dataset-query` exists to count them), or a legacy\n"
-                "one that fails to convert -- fall back to `report_card.table_id`, which is what every surface used\n"
-                "before this rule existed. Returning nil is read as 'no source available' and the surfaces say so\n"
-                "positively, so the agent would be told to skip a metric that still works on its base table.")
-    (are [expected card] (= expected (metabot.tools.util/metric-required-source card))
-      {:kind :table, :table-id 5, :bare-table-only? false} {:dataset_query {} :table_id 5}
-      {:kind :table, :table-id 5, :bare-table-only? false} {:dataset_query nil :table_id 5}
+(deftest ^:parallel metric-required-source-unreadable-definition-test
+  (testing (str "A definition that is present but unreadable -- a blank `dataset_query`, which MBQL 4->5\n"
+                "conversion failures really do produce (`monitor-blank-dataset-query` exists to count them), or a\n"
+                "legacy one that fails to convert -- offers no source, even with a `table_id`. The QP has no\n"
+                "aggregation to splice from it on any source, so naming the base table would only move the failure\n"
+                "to execution.")
+    (are [card] (nil? (metabot.tools.util/metric-required-source card))
+      {:dataset_query {} :table_id 5}
       ;; legacy, but unconvertible
-      {:kind :table, :table-id 5, :bare-table-only? false} {:dataset_query {:type :bogus} :table_id 5}))
-  (testing "with neither a readable definition nor a table there is genuinely nothing to offer"
-    (is (nil? (metabot.tools.util/metric-required-source {:dataset_query {} :table_id nil})))))
+      {:dataset_query {:type :bogus} :table_id 5}))
+  (testing (str "`report_card.dataset_query` is NOT NULL, so a missing definition means the caller did not load it.\n"
+                "It must not be guessed into a single-stage table-based metric.")
+    (is (nil? (metabot.tools.util/metric-required-source {:table_id 5})))))
 
 (deftest ^:parallel metric-required-source-legacy-definition-test
   (testing (str "A legacy definition is converted and classified like any other, NOT read as stageless: falling\n"
@@ -437,3 +437,20 @@
           (is (= {:kind :card, :card-id question-id}
                  (metabot.tools.util/metric-required-source lib-card))
               "and reading the lib shape does not throw a snake_case deprecation error"))))))
+
+(deftest ^:parallel metric-source-fields-test
+  (testing "exactly one group of fields, card first, `source_unavailable` when neither source is usable"
+    (are [expected input] (= expected (metabot.tools.util/metric-source-fields input))
+      {:source_card_id 7, :source_card_name "Q", :source_card_portable_entity_id "eid"}
+      {:source-card {:id 7, :name "Q", :entity_id "eid", :collection_id 3}, :database-name "Sample"}
+
+      {:base_table_id 5, :base_table_name "ORDERS", :base_table_schema "PUBLIC"
+       :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]}
+      {:source-table {:id 5, :schema "PUBLIC", :name "ORDERS"}, :database-name "Sample"}
+
+      ;; no database name, no portable FK
+      {:base_table_id 5, :base_table_name "ORDERS", :base_table_schema "PUBLIC"}
+      {:source-table {:id 5, :schema "PUBLIC", :name "ORDERS"}}
+
+      {:source_unavailable true}
+      {:database-name "Sample"})))

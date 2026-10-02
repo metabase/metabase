@@ -718,6 +718,13 @@
             (mt/with-test-user :rasta
               (is (empty? (search/entity-refs->search-results refs))))))))))
 
+(def ^:private metric-source-keys
+  "Every key [[metabase.metabot.tools.util/metric-source-fields]] can set, so `select-keys` over it asserts presence and
+  absence in one comparison."
+  [:base_table_id :base_table_name :base_table_schema :base_table_portable_fk
+   :source_card_id :source_card_name :source_card_portable_entity_id
+   :source_unavailable])
+
 (deftest enrich-with-metric-sources-base-table-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
                 "`source-table:` without a separate read_resource call. We look up\n"
@@ -879,18 +886,12 @@
                                                    :aggregation  [[:count]]}}}]
           (let [results    (search/search {:term-queries ["SourceCard Sample Metric"]})
                 metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
-            (is (some? metric-res) "metric should appear in search results")
-            (testing "the source card is surfaced, entity id included so it can go into `source-card:`"
-              (is (=? {:source_card_id                 question-id
-                       :source_card_name               "SourceCard Sample Question"
-                       :source_card_portable_entity_id question-eid}
-                      metric-res)))
-            (testing "and the base table is not offered as a source"
-              (is (not-any? #(contains? metric-res %)
-                            [:base_table_id
-                             :base_table_name
-                             :base_table_schema
-                             :base_table_portable_fk])))))))))
+            (is (= {:source_card_id                 question-id
+                    :source_card_name               "SourceCard Sample Question"
+                    :source_card_portable_entity_id question-eid}
+                   (select-keys metric-res metric-source-keys))
+                "the source card is surfaced, entity id included so it can go into `source-card:`, and the base
+                 table is not offered as a source")))))))
 
 (deftest enrich-with-metric-source-cards-respects-card-permissions-test
   (testing (str "A readable metric does not reveal an unreadable source card, and does not fall back to\n"
@@ -920,17 +921,10 @@
           (let [results    (search/search {:term-queries ["Restricted SourceCard Metric"]})
                 metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
             (is (some? metric-res) "collection access still makes the metric searchable")
-            (is (not-any? #(contains? metric-res %)
-                          [:source_card_id
-                           :source_card_name
-                           :source_card_portable_entity_id
-                           :base_table_id
-                           :base_table_name
-                           :base_table_schema
-                           :base_table_portable_fk]))
-            (testing "it is marked unusable instead, matching what `metric-details` reports for the same metric --
-                      absence alone reads to the LLM as an invitation to guess a source"
-              (is (true? (:source_unavailable metric-res))))))))))
+            (is (= {:source_unavailable true}
+                   (select-keys metric-res metric-source-keys))
+                "neither source is offered; it is marked unusable instead, matching what `metric-details` reports
+                 for the same metric -- absence alone reads to the LLM as an invitation to guess a source")))))))
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
@@ -1017,30 +1011,20 @@
                 card-m  (get by-id card-metric-id)
                 table-m (get by-id table-metric-id)
                 multi-m (get by-id multi-metric-id)]
-            (is (some? card-m) "card-based metric should appear")
-            (is (some? table-m) "table-based metric should appear")
-            (is (some? multi-m) "multi-stage card-based metric should appear")
-            (testing (str "the multi-stage card-based one carries base-table fields: its definition names a card "
-                          "in stage 0, but its last stage does not, so the QP only accepts the base table")
-              (is (=? {:base_table_id (mt/id :orders)} multi-m))
-              (is (not-any? #(contains? multi-m %)
-                            [:source_card_id :source_card_name :source_card_portable_entity_id
-                             :source_unavailable])))
-            (testing "the card-based one carries only source-card fields"
-              (is (=? {:source_card_id                 question-id
-                       :source_card_portable_entity_id question-eid}
-                      card-m))
-              (is (not-any? #(contains? card-m %)
-                            [:base_table_id :base_table_name :base_table_schema :base_table_portable_fk])))
-            (testing "the table-based one carries only base-table fields"
-              (is (=? {:base_table_id          (mt/id :orders)
-                       :base_table_name        "ORDERS"
-                       :base_table_schema      "PUBLIC"
-                       :base_table_portable_fk [(:database_name table-m) "PUBLIC" "ORDERS"]}
-                      table-m))
-              (is (not-any? #(contains? table-m %)
-                            [:source_card_id :source_card_name :source_card_portable_entity_id
-                             :source_unavailable])))))))))
+            (let [orders-fields {:base_table_id          (mt/id :orders)
+                                 :base_table_name        "ORDERS"
+                                 :base_table_schema      "PUBLIC"
+                                 :base_table_portable_fk [(:database_name table-m) "PUBLIC" "ORDERS"]}]
+              (is (= {:card  {:source_card_id                 question-id
+                              :source_card_name               "MixedSources Question"
+                              :source_card_portable_entity_id question-eid}
+                      :table orders-fields
+                      ;; Its definition names a card in stage 0, but its last stage does not, so the QP only
+                      ;; accepts the base table.
+                      :multi orders-fields}
+                     (update-vals {:card card-m, :table table-m, :multi multi-m}
+                                  #(select-keys % metric-source-keys)))
+                  "each metric carries only its own source's fields"))))))))
 
 (deftest enrich-with-metric-sources-marks-unreadable-base-table-unavailable-test
   (testing (str "The `source_unavailable` marker is symmetric across both source kinds. A table-based metric whose\n"
@@ -1060,7 +1044,6 @@
             (let [results (search/search {:term-queries ["Unreadable Base Table Metric"]})
                   metric  (first (filter #(= metric-id (:id %)) results))]
               (is (some? metric) "the metric is still readable via its collection")
-              (is (not-any? #(contains? metric %)
-                            [:base_table_id :base_table_name :base_table_schema :base_table_portable_fk]))
-              (testing "and it says so positively rather than just omitting the source"
-                (is (true? (:source_unavailable metric)))))))))))
+              (is (= {:source_unavailable true}
+                     (select-keys metric metric-source-keys))
+                  "no base table, and it says so positively rather than just omitting the source"))))))))

@@ -390,8 +390,6 @@
                                 ;; its source card.
                                 (card-readable? source-card-id))
                        (lib.metadata/card metadata-provider source-card-id))
-         base-table-portable-fk (when (and database-name source-table)
-                                  [database-name (:schema source-table) (:name source-table)])
          ;; No source can be offered, so the LLM is told to skip the metric (`:source_unavailable` below).
          ;; Describing its dimensions would contradict that in the same tag, and they are the costly part here.
          ;; Symmetric across both kinds on purpose: a table-based metric whose base table fails `can-query?` is
@@ -452,26 +450,17 @@
               ;; Same two card shapes as `required` above.
               :portable_entity_id (metabot.tools.u/metric-card-shape-get card :entity-id :entity_id)
               :verified (verified-review? id "card")}
-       ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
-       ;; verbatim as `source-table:` in the query that consumes the metric. These fields
-       ;; are added only when the base Table is readable. Whether the base table is the right source at all
-       ;; was already decided by `required` above.
-       source-table
-       (assoc :base_table_id source-table-id
-              :base_table_name (:name source-table)
-              :base_table_portable_fk base-table-portable-fk)
-
-       ;; Source card the metric is consumed from, replacing the base-table fields above. The LLM copies
-       ;; `:source_card_portable_entity_id` verbatim into `source-card:`.
-       source-card
-       (assoc :source_card_id (:id source-card)
-              :source_card_name (:name source-card)
-              :source_card_portable_entity_id (:entity-id source-card))
-
-       ;; Neither source can be offered. Say so positively -- absence alone reads as "look it up elsewhere",
-       ;; which is the guess-a-table behaviour this enrichment prevents.
-       source-unavailable?
-       (assoc :source_unavailable true)
+       ;; The source the LLM builds the consuming stage on: `:base_table_portable_fk` as `source-table:`, or
+       ;; `:source_card_portable_entity_id` as `source-card:`, or `:source_unavailable`. Shared with search
+       ;; enrichment, which describes the same metric.
+       true
+       (merge (metabot.tools.u/metric-source-fields
+               {:source-card   (when source-card
+                                 {:id        (:id source-card)
+                                  :name      (:name source-card)
+                                  :entity_id (:entity-id source-card)})
+                :source-table  source-table
+                :database-name database-name}))
 
        ;; Both the id and the name: the id is what `read_resource` addresses the dimension by, the name is what
        ;; renders in the `<metric>` tag. Deriving the name downstream by scanning `:queryable-dimensions` fails for
