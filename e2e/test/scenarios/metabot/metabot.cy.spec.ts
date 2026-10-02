@@ -23,45 +23,22 @@ describe("Metabot UI", () => {
       cy.wait("@xrayCandidates");
     });
 
-    it("should not show filler element if there are not messages", () => {
+    it("should size the filler element and manage the scroll position as messages are added", () => {
       H.openMetabotViaSearchButton();
+      cy.findByTestId("metabot-empty-chat-info").should("be.visible");
       H.chatMessages().should("not.exist");
       cy.findByTestId("metabot-message-filler").should("not.exist");
-    });
 
-    it("should correctly size the filler element to take remaining space if messages aren't scrollable", () => {
-      H.openMetabotViaSearchButton();
-
-      H.mockMetabotResponse({
-        statusCode: 200,
-        body: whoIsYourFavoriteResponse,
-      });
-
-      H.sendMetabotMessage("Who is your favorite?");
-      cy.findByTestId("metabot-chat-inner-messages")
-        .invoke("innerHeight")
-        .then((containerHeight) => {
-          cy.findByTestId("metabot-chat-inner-messages")
-            .children()
-            .then(($children) => {
-              // span from the first child to the last so inter-message margins count
-              const contentHeight =
-                $children[$children.length - 1].getBoundingClientRect().bottom -
-                $children[0].getBoundingClientRect().top;
-              expect(containerHeight).not.to.equal(undefined);
-              // we can get some subpixel differences, this isn't a big deal
-              expect(contentHeight).to.be.closeTo(containerHeight ?? 0, 1);
-            });
-        });
-    });
-
-    it("should resize filler element and auto-scroll to new prompt on subsequent messages", () => {
-      H.openMetabotViaSearchButton();
+      cy.log(
+        "if the messages aren't scrollable, the filler takes the remaining space",
+      );
       H.mockMetabotResponse({
         statusCode: 200,
         body: whoIsYourFavoriteResponse,
       });
       H.sendMetabotMessage("Who is your favorite?");
+      H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
+      assertFillerReachesContainerBottom();
 
       cy.log("test on message shorter than prompt");
       H.mockMetabotResponse({
@@ -69,16 +46,15 @@ describe("Metabot UI", () => {
         body: H.createMetabotSSEBody(H.metabotTextPart(loremIpsum.repeat(5))),
       });
       H.sendMetabotMessage("You really mean that?");
+      H.lastChatMessage().should("contain.text", "Lorem ipsum");
+
       cy.log("scroll new prompt to top of the scroll area");
-      cy.findByTestId("metabot-chat-inner-messages")
-        .findByText("You really mean that?")
-        .invoke("scrollTop")
-        .then((scrollTop) => expect(scrollTop).to.equal(0));
+      assertLastPromptAtContainerTop();
 
       cy.log(
         "if the response is shorter than the scroll area, filler should have height",
       );
-      cy.findByTestId("metabot-message-filler").then(($el) => {
+      cy.findByTestId("metabot-message-filler").should(($el) => {
         expect($el[0].clientHeight).to.be.greaterThan(0);
       });
 
@@ -91,25 +67,23 @@ describe("Metabot UI", () => {
       cy.log(
         "if the response is longer than the scroll area the filler height should be zero",
       );
-      cy.findByTestId("metabot-message-filler").then(($el) => {
+      cy.findByTestId("metabot-message-filler").should(($el) => {
         expect($el[0].clientHeight).to.equal(0);
       });
-    });
+      assertLastPromptAtContainerTop();
 
-    it("should open metabot to the bottom of the conversation when reopened with message history", () => {
-      H.mockMetabotResponse({
-        statusCode: 200,
-        body: H.createMetabotSSEBody(H.metabotTextPart(loremIpsum.repeat(5))),
-      });
-      H.openMetabotViaSearchButton();
-      H.sendMetabotMessage("Who is your favorite?");
-
+      cy.log(
+        "open metabot to the bottom of the conversation when reopened with message history",
+      );
       H.closeMetabotViaCloseButton();
       H.openMetabotViaSearchButton();
-      cy.findByTestId("metabot-chat-inner-messages").then(($el) => {
+      cy.findByTestId("metabot-chat-messages").should(($el) => {
         const el = $el[0];
-        const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight;
-        expect(isAtBottom).to.be.true;
+        expect(el.scrollHeight).to.be.greaterThan(el.clientHeight);
+        expect(el.scrollTop + el.clientHeight).to.be.closeTo(
+          el.scrollHeight,
+          1,
+        );
       });
     });
   });
@@ -246,3 +220,38 @@ const apiKeyInvalidResponse = H.createMetabotSSEBody(
   H.metabotErrorPart("Anthropic API key expired or invalid"),
   H.metabotFinishPart("error"),
 );
+
+function getContainerPadding($container: JQuery<HTMLElement>) {
+  const style = getComputedStyle($container[0]);
+  return {
+    top: parseFloat(style.paddingTop),
+    bottom: parseFloat(style.paddingBottom),
+  };
+}
+
+function assertFillerReachesContainerBottom() {
+  cy.findByTestId("metabot-chat-messages").should(($container) => {
+    const containerRect = $container[0].getBoundingClientRect();
+    const fillerRect = $container
+      .find("[data-testid='metabot-message-filler']")[0]
+      .getBoundingClientRect();
+    expect(fillerRect.height).to.be.greaterThan(0);
+    expect(fillerRect.bottom).to.be.closeTo(
+      containerRect.bottom - getContainerPadding($container).bottom,
+      1,
+    );
+  });
+}
+
+function assertLastPromptAtContainerTop() {
+  cy.findByTestId("metabot-chat-messages").should(($container) => {
+    const containerRect = $container[0].getBoundingClientRect();
+    const prompts = $container.find("[data-message-role='user']").toArray();
+    expect(prompts).to.have.length.greaterThan(0);
+    const promptRect = prompts[prompts.length - 1].getBoundingClientRect();
+    expect(promptRect.top).to.be.closeTo(
+      containerRect.top + getContainerPadding($container).top,
+      2,
+    );
+  });
+}

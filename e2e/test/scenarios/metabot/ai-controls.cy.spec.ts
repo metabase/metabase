@@ -75,6 +75,20 @@ describe("AI Controls > Metabot access and customization", () => {
         });
       });
 
+      cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
+        "getUserPermissions",
+      );
+
+      cy.log(
+        "a user in a group with Metabot access sees the Metabot chat icon",
+      );
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.wait("@getUserPermissions");
+      H.appBar().find('[aria-label*="Chat with"]').should("be.visible");
+
+      cy.signInAsAdmin();
+
       // First, get the current permissions so we can update only the All Users group
       cy.request("GET", "/api/ee/ai-controls/permissions").then((response) => {
         const currentPermissions: Array<{
@@ -102,6 +116,9 @@ describe("AI Controls > Metabot access and customization", () => {
       // Sign in as a normal user (who is only in the All Users group)
       cy.signInAsNormalUser();
       cy.visit("/");
+      cy.wait("@getUserPermissions")
+        .its("response.body.permissions.metabot")
+        .should("eq", "no");
 
       // Wait for the navigation bar to be present
       cy.findByLabelText("Navigation bar").should("be.visible");

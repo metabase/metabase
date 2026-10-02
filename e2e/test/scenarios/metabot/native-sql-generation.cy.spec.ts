@@ -216,8 +216,10 @@ describe("Native SQL generation", () => {
 
       // leave the page, go to new SQL page and send a new prompt
       acceptButton().click();
-      cy.visit("/");
-      H.startNewNativeQuestion();
+      cy.findByTestId("main-logo-link").click();
+      H.modal().button("Discard changes").click();
+      cy.location("pathname").should("eq", "/");
+      H.newButton("SQL query").click();
       H.NativeEditor.get().should("be.visible");
       toggleInlineSQLPrompt();
       inlinePromptInput().click();
