@@ -62,6 +62,7 @@
   [#'normalize/normalize-preprocessing-middleware
    #'qp.perms.preprocess/remove-internal-keys
    #'qp.perms.preprocess/record-referenced-card-ids
+   #'qp.perms.preprocess/record-referenced-snippet-ids
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'prefetch-metadata/prefetch-metadata

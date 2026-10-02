@@ -18,6 +18,11 @@
    database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Card :id card-id :database_id [:!= database-id]))
 
+(mu/defn existing-snippet-ids
+  "The subset of `snippet-ids` that belong to existing NativeQuerySnippets."
+  [snippet-ids :- [:set ::lib.schema.id/snippet]]
+  (t2/select-pks-set :model/NativeQuerySnippet :id [:in snippet-ids]))
+
 (mu/defn field-table-ids
   "The set of Table ids of the Fields with `field-ids`."
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]
