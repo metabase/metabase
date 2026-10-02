@@ -9,7 +9,9 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt])
   (:import
-   (java.io File)))
+   (java.io File)
+   (org.apache.commons.io FileUtils)
+   (org.eclipse.jgit.api Git)))
 
 (set! *warn-on-reflection* true)
 
@@ -264,20 +266,25 @@
                                                               (when-not (= good-token token)
                                                                 (throw (ex-info "Authentication failed" {:token token})))
                                                               (call-remote-command command args))]
-          (git/git-source url "master" good-token nil)
-          (is (contains? @@#'git/jgit (.getPath clone-dir))
-              "Precondition: this process holds a clone of the URL")
-          (mt/with-temporary-setting-values [:remote-sync-url    nil
-                                             :remote-sync-token  nil
-                                             :remote-sync-type   nil
-                                             :remote-sync-branch nil]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Authentication failed"
-                                  (settings/check-and-update-remote-settings! {:remote-sync-url    url
-                                                                               :remote-sync-token  "wrong-token"
-                                                                               :remote-sync-type   :read-write
-                                                                               :remote-sync-branch ""})))
-            (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
-            (is (nil? (settings/remote-sync-token)) "The rejected token is not saved")))
+          (try
+            (git/git-source url "master" good-token nil)
+            (is (contains? @@#'git/jgit (.getPath clone-dir))
+                "Precondition: this process holds a clone of the URL")
+            (mt/with-temporary-setting-values [:remote-sync-url    nil
+                                               :remote-sync-token  nil
+                                               :remote-sync-type   nil
+                                               :remote-sync-branch nil]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Authentication failed"
+                                    (settings/check-and-update-remote-settings! {:remote-sync-url    url
+                                                                                 :remote-sync-token  "wrong-token"
+                                                                                 :remote-sync-type   :read-write
+                                                                                 :remote-sync-branch ""})))
+              (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
+              (is (nil? (settings/remote-sync-token)) "The rejected token is not saved"))
+            (finally
+              (some-> ^Git (get @@#'git/jgit (.getPath clone-dir)) .close)
+              (swap! @#'git/jgit dissoc (.getPath clone-dir))
+              (FileUtils/deleteQuietly clone-dir))))
         (testing "the test leaves no clone directory and no cached Git instance for the URL"
           (is (not (.exists clone-dir)))
           (is (not (contains? @@#'git/jgit (.getPath clone-dir)))))))))
