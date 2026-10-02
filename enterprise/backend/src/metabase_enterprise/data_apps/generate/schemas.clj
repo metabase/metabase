@@ -11,7 +11,6 @@
   `metabase-enterprise.data-apps.generate.schemas.javascript` printer. The table and metric details lookups
   read-check the current user, so callers outside a request must bind a current-user context first."
   (:require
-   [clojure.set :as set]
    [metabase-enterprise.data-apps.generate.schemas.common :as schemas.common]
    [metabase-enterprise.data-apps.generate.schemas.javascript :as schemas.javascript]
    [metabase-enterprise.data-apps.generate.schemas.render :as schemas.render]
@@ -30,15 +29,13 @@
    [:metrics [:sequential :map]]])
 
 (defn fetch-items
-  "Fetches the library's metrics, its published tables and the tables those metrics map, and the query actions that
-  belong to no model."
+  "Fetches the library's eligible metrics and published tables, and eligible query actions without a model."
   ([]
    (fetch-items schemas.source/app-db-source))
   ([source]
    (let [{:keys [data-collection-ids metric-collection-ids]} (schemas.source/library-scope source)
          metrics   (schemas.source/metrics source metric-collection-ids)
-         table-ids (set/union (into #{} (map :id) (schemas.source/library-tables source data-collection-ids))
-                              (into #{} (mapcat :mappedTableIds) metrics))]
+         table-ids (into #{} (map :id) (schemas.source/library-tables source data-collection-ids))]
      {:actions (vec (schemas.source/actions source))
       :tables  (vec (schemas.source/tables source table-ids))
       :metrics (vec metrics)})))

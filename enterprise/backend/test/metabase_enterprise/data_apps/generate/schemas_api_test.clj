@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
+   [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.lib.core :as lib]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -11,6 +13,17 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+(use-fixtures :each
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
+      (data-apps.tu/do-with-library!
+       (fn [{:keys [data-id metrics-id]}]
+         (with-library-synced
+           (mt/with-temp-vals-in-db :model/Collection data-id {:is_remote_synced true}
+             (mt/with-temp-vals-in-db :model/Collection metrics-id {:is_remote_synced true}
+               (f)))))))))
+
 
 (defn- get-schemas
   "The response of `GET /api/apps/generate/schemas` as `user`, expecting `status`, with the data apps feature on."
@@ -62,10 +75,10 @@
                                                                   :id (mt/id :orders :total)}]}
                             :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
                             :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}
-                            :model/Action standalone {:name "Discount order", :type :query}
+                            :model/Action standalone {:name "Discount order", :type :query, :collection_id data-id}
                             :model/QueryAction _ {:action_id     (:id standalone)
                                                   :dataset_query (lib/native-query mp "UPDATE orders SET discount = 0")}
-                            :model/Collection copies {:name "Data App: orders", :namespace "data-apps"}
+                            :model/Collection copies {:name "Data App: orders", :namespace "data-apps", :is_remote_synced true}
                             :model/Action copy {:name "Copied order", :type :query, :collection_id (:id copies)}
                             :model/QueryAction _ {:action_id     (:id copy)
                                                   :dataset_query (lib/native-query mp "UPDATE orders SET discount = 0")}]

@@ -26,6 +26,14 @@
  [source.p
   ->ingestable])
 
+(defenterprise previously-synced-ids
+  "Returns ids with last-known Git presence, including pending edits with stored representation metadata."
+  :feature :none
+  [model-key ids]
+  (if (seq ids)
+    (set (remote-sync.db/previously-synced-ids (name model-key) ids))
+    #{}))
+
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
 

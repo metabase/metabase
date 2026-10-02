@@ -292,11 +292,10 @@
     (and (= (:lib/type query) :mbql/query)
          (boolean (seq (lib/all-source-card-ids query))))))
 
-(defn metric-schemas
-  "Returns the schemas of the metrics in the collections with `collection-ids`."
-  [collection-ids]
-  (for [metric (remove source-card-id
-                       (schemas.common/without-unavailable-cards (data-apps.db/metric-cards-in-collections collection-ids)))
+(defn metric-schemas-for-cards
+  "Returns metric schemas for selected metric cards."
+  [cards]
+  (for [metric (remove source-card-id cards)
         ;; A data app can copy only metrics that resolve entirely from tables: a copy reading a
         ;; saved question references a card outside the app's resources, which the pull refuses.
         ;; `source-card-id` sees only stage 0, so a table-sourced metric joining a saved question
@@ -305,3 +304,9 @@
         :let [details (metric-details metric)]
         :when details]
     (metric-schema details metric)))
+
+(defn metric-schemas
+  "Returns the schemas of the metrics in the collections with `collection-ids`."
+  [collection-ids]
+  (metric-schemas-for-cards
+   (schemas.common/without-unavailable-cards (data-apps.db/metric-cards-in-collections collection-ids))))

@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -78,10 +79,11 @@
      :entityId entity_id)))
 
 (defn action-schemas
-  "Returns schema entries for the query actions without a model, leaving out the copies data apps own and those a
-  routing destination backs."
+  "Returns previously synchronized query actions in sync scope, excluding models, data app copies, and routing destinations."
   []
   (let [ids             (data-apps.db/model-less-query-action-ids (set (perms/data-app-collection-ids)))
+        synced-ids      (remote-sync/previously-synced-ids :model/Action (set ids))
+        ids             (filterv synced-ids ids)
         details-by-id   (when (seq ids) (u/index-by :id (actions/select-actions-for-ids nil ids)))
         details         (keep details-by-id ids)
         destination-ids (data-apps.db/destination-database-ids (into #{} (keep :database_id) details))]

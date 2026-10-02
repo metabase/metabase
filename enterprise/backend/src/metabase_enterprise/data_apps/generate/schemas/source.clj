@@ -7,11 +7,15 @@
   `metabase-enterprise.data-apps.generate.schemas.*` builders, except [[library-tables]], which returns raw table rows
   (only `:id` is consumed)."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.generate.schemas.action :as schemas.action]
+   [metabase-enterprise.data-apps.generate.schemas.common :as schemas.common]
    [metabase-enterprise.data-apps.generate.schemas.metric :as schemas.metric]
    [metabase-enterprise.data-apps.generate.schemas.table :as schemas.table]
-   [metabase.collections.models.collection :as collection]))
+   [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
+   [metabase.remote-sync.core :as remote-sync]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,8 +34,10 @@
   "The [[LibraryScope]] of the root libraries and their descendants, empty where the instance has no library."
   []
   (let [roots       (filter #(contains? collection/library-collection-types (:type %))
-                            (data-apps.db/collections-with-entity-ids library-root-entity-ids))
-        collections (concat roots (when (seq roots) (collection/descendants-flat-for roots)))
+                            (when (:is_remote_synced (collections/library-collection))
+                              (data-apps.db/collections-with-entity-ids library-root-entity-ids)))
+        collections (filter #(and (:is_remote_synced %) (not (:archived %)))
+                            (concat roots (when (seq roots) (collection/descendants-flat-for roots))))
         ids-of-type (fn [collection-type]
                       (into #{} (comp (filter #(= (:type %) collection-type)) (map :id)) collections))]
     {:data-collection-ids   (ids-of-type collection/library-data-collection-type)
@@ -50,6 +56,22 @@
   (library-tables [source collection-ids]
     "Published table rows in `collection-ids`."))
 
+(defn- previously-synced
+  [model-key rows]
+  (let [ids (remote-sync/previously-synced-ids model-key (into #{} (map :id) rows))]
+    (filterv #(contains? ids (:id %)) rows)))
+
+(defn- curated-library-ids
+  [scope-key requested-ids]
+  (set/intersection (scope-key (app-db-library-scope)) requested-ids))
+
+(defn- curated-tables
+  [table-ids]
+  (let [collection-ids (:data-collection-ids (app-db-library-scope))
+        published-ids  (into #{} (map :id) (schemas.table/select-library-tables collection-ids))
+        table-ids      (set/intersection published-ids table-ids)]
+    (previously-synced :model/Table (schemas.table/select-tables table-ids))))
+
 (def app-db-source
   "The production [[SchemaSource]], backed by the application database."
   (reify SchemaSource
@@ -58,8 +80,15 @@
     (actions [_]
       (schemas.action/action-schemas))
     (metrics [_ collection-ids]
-      (vec (schemas.metric/metric-schemas collection-ids)))
+      (vec (schemas.metric/metric-schemas-for-cards
+            (previously-synced
+             :model/Card
+             (schemas.common/without-unavailable-cards
+              (data-apps.db/metric-cards-in-collections
+               (curated-library-ids :metric-collection-ids collection-ids)))))))
     (tables [_ table-ids]
-      (vec (schemas.table/table-schemas (schemas.table/select-tables table-ids))))
+      (vec (schemas.table/table-schemas (curated-tables table-ids))))
     (library-tables [_ collection-ids]
-      (vec (schemas.table/select-library-tables collection-ids)))))
+      (previously-synced
+       :model/Table
+       (schemas.table/select-library-tables (curated-library-ids :data-collection-ids collection-ids))))))

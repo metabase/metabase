@@ -15,13 +15,26 @@
    [metabase-enterprise.data-apps.generate.schemas :as schemas]
    [metabase-enterprise.data-apps.generate.schemas.source :as schemas.source]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
+   [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.lib.core :as lib]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(use-fixtures :each
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
+      (data-apps.tu/do-with-library!
+       (fn [{:keys [data-id metrics-id]}]
+         (with-library-synced
+           (mt/with-temp-vals-in-db :model/Collection data-id {:is_remote_synced true}
+             (mt/with-temp-vals-in-db :model/Collection metrics-id {:is_remote_synced true}
+               (f)))))))))
+
 
 (def ^:private test-info
   {:generated-at "2026-01-01T00:00:00Z"
@@ -66,7 +79,7 @@
     (tables [_ table-ids] (filterv #(contains? table-ids (:id %)) tables))
     (library-tables [_ _] (vec library-tables))))
 
-(deftest fetch-items-includes-tables-mapped-by-library-metrics-test
+(deftest fetch-items-does-not-export-unpublished-metric-backing-tables-test
   (let [source (literal-source
                 {:library-scope  {:metric-collection-ids #{20}
                                   :data-collection-ids   #{10}}
@@ -77,8 +90,7 @@
                                   {:id 42, :type "table", :key "mappedTable"}
                                   {:id 99, :type "table", :key "notInScope"}]})]
     (is (= {:actions [{:kind "action", :key "shipOrder", :id 11}]
-            :tables  [{:id 10, :type "table", :key "publishedTable"}
-                      {:id 42, :type "table", :key "mappedTable"}]
+            :tables  [{:id 10, :type "table", :key "publishedTable"}]
             :metrics [{:type "metric", :key "revenue", :id 1, :mappedTableIds [42]}]}
            (schemas/fetch-items source)))))
 
@@ -118,7 +130,7 @@
                                                                   :id (mt/id :orders :total)}]}
                             :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
                             :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}
-                            :model/Action standalone {:name "Discount order", :type :query}
+                            :model/Action standalone {:name "Discount order", :type :query, :collection_id data-id}
                             :model/QueryAction _ {:action_id     (:id standalone)
                                                   :dataset_query (lib/native-query mp "UPDATE orders SET discount = 0 WHERE id = {{id}}")}]
                (mt/with-current-user (mt/user->id :crowberto)

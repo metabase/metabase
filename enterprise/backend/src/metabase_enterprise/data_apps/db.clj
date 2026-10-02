@@ -313,14 +313,20 @@
   (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn model-less-query-action-ids
-  "The ids of the unarchived query Actions without a model outside `excluded-collection-ids`, in name then id
-  order."
+  "The ids of unarchived query Actions without a model in Git-synced collections, excluding `excluded-collection-ids`,
+  in name then id order."
   [excluded-collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pks-vec :model/Action
                      {:where    [:and
                                  [:= :model_id nil]
                                  [:= :type "query"]
                                  [:= :archived false]
+                                 [:exists ^:allow-subquery {:select [1]
+                                                            :from [[(t2/table-name :model/Collection) :c]]
+                                                            :where [:and
+                                                                    [:= :c.id :action.collection_id]
+                                                                    [:= :c.archived false]
+                                                                    [:= :c.is_remote_synced true]]}]
                                  (when (seq excluded-collection-ids)
                                    [:or [:= :collection_id nil] [:not-in :collection_id excluded-collection-ids]])]
                       :order-by [[:name :asc] [:id :asc]]}))
