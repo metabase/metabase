@@ -334,6 +334,23 @@
               (is (some #(and (= :usage (:type %)) (= "length" (:finish-reason %))) result))
               (is (some #(= :data (:type %)) result)
                   "state data part still closes the turn")))))
+      (testing "a turn whose stream failed stops the loop, even with a tool call present"
+        (let [call-count (atom 0)]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (swap! call-count inc)
+                                                              (mut/mock-llm-response
+                                                               [{:type      :tool-input
+                                                                 :id        "t1"
+                                                                 :function  "search"
+                                                                 :arguments {:query "test"}}
+                                                                {:type :error :errorText "Overloaded"}]))]
+            (let [result (into [] (agent/run-agent-loop
+                                   {:messages   [{:role :user :content "Hi"}]
+                                    :state      {}
+                                    :profile-id :embedding_next
+                                    :context    {}}))]
+              (is (= 1 @call-count))
+              (is (= {:type :finish :finish-reason :error} (last result)))))))
       (testing "handles errors gracefully"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (throw (ex-info "Mock error" {})))]
