@@ -26,6 +26,7 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/");
     cy.location("pathname").should("eq", "/auth/login");
     cy.findByLabelText("Email address").should("be.focused");
+    cy.clock();
 
     cy.log("reject invalid credentials");
     [
@@ -41,9 +42,13 @@ describe("scenarios > auth > signin", () => {
       cy.findByRole("alert")
         .filter(':contains("did not match stored password")')
         .should("be.visible");
+      cy.button("Failed").should("be.visible");
+      cy.tick(5000);
+      cy.button("Sign in").should("be.visible");
     });
 
     cy.log("allow login regardless of email case");
+    cy.clock().invoke("restore");
     cy.findByLabelText("Email address").clear();
     cy.findByLabelText("Password").clear();
     cy.findByLabelText("Email address").type(admin.email.toUpperCase());
