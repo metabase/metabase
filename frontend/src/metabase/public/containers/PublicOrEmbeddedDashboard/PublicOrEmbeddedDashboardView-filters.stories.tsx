@@ -599,10 +599,7 @@ export const LightThemeParameterListSingleWithValue = {
     );
     await userEvent.click(documentElement.getByText("Widget"));
     const popover = getLastPopover();
-    // Unjustified type cast. FIXME
-    (popover.getByText("Gadget").parentNode as HTMLElement).classList.add(
-      "pseudo-hover",
-    );
+    popover.getByTestId("Gadget-filter-value").classList.add("pseudo-hover");
   },
 };
 
