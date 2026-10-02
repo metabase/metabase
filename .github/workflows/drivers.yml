@@ -60,7 +60,10 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Fetch base branch
-        if: (github.event_name == 'pull_request' && github.event.pull_request.base.ref != '') || inputs.base-ref != ''
+        # Git refuses to fetch into the checked-out branch, as on a run started by hand on the base branch itself.
+        if: |
+          (github.event.pull_request.base.ref || inputs.base-ref) != '' &&
+          (github.event.pull_request.base.ref || inputs.base-ref) != github.ref_name
         run: |
           # Fetch the base branch to ensure its history is available for diffing
           git fetch --depth=1 origin "${BASE}:${BASE}"
