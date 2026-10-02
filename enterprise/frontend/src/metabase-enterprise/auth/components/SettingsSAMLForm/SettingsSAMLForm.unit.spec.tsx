@@ -350,6 +350,14 @@ describe("SettingsSAMLForm", () => {
   });
 
   describe("user provisioning", () => {
+    it("says that SAML sign-in also reactivates deactivated accounts", async () => {
+      await setupConfigured();
+
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toHaveAccessibleDescription(/reactivate deactivated accounts/);
+    });
+
     it("saves right away without touching the page form", async () => {
       await setupConfigured({ "saml-user-provisioning-enabled?": true });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });

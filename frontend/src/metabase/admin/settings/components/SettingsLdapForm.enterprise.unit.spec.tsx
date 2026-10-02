@@ -63,6 +63,16 @@ describe("SettingsLdapForm (EE)", () => {
       ]);
     });
 
+    it("does not promise to reactivate accounts, which LDAP sign-in never does", async () => {
+      await setup();
+
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toHaveAccessibleDescription(
+        /create accounts for new users/,
+      );
+      expect(toggle).not.toHaveAccessibleDescription(/reactivate/);
+    });
+
     it("stays editable before LDAP is configured", async () => {
       await setup({ "ldap-host": null, "ldap-configured?": false });
 

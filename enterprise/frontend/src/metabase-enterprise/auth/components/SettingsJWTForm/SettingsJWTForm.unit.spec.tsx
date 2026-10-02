@@ -561,6 +561,14 @@ describe("SettingsJWTForm", () => {
       ]);
     });
 
+    it("says that JWT sign-in also reactivates deactivated accounts", async () => {
+      await setup({ configured: true });
+
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toHaveAccessibleDescription(/reactivate deactivated accounts/);
+    });
+
     it("stays editable while JWT is paused but configured", async () => {
       await setup({ jwtEnabled: false, configured: true });
 

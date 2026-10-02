@@ -131,6 +131,7 @@ export function SettingsSAMLForm() {
               <UserProvisioningSection
                 settingKey="saml-user-provisioning-enabled?"
                 providerName="SAML"
+                reactivatesAccounts
                 lockedNote={scimNote}
               />
 

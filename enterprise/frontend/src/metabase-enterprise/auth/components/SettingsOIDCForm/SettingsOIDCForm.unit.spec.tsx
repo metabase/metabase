@@ -565,6 +565,16 @@ describe("SettingsOIDCForm", () => {
       );
     });
 
+    it("does not promise to reactivate accounts, which OIDC sign-in never does", async () => {
+      await setup({ providers: [EXISTING_PROVIDER] });
+
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toHaveAccessibleDescription(
+        /create accounts for new users/,
+      );
+      expect(toggle).not.toHaveAccessibleDescription(/reactivate/);
+    });
+
     it("stays editable while the provider is paused", async () => {
       await setup({ providers: [{ ...EXISTING_PROVIDER, enabled: false }] });
 

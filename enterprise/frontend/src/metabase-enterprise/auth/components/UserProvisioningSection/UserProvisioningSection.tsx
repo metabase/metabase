@@ -16,6 +16,8 @@ type UserProvisioningSectionProps = {
   settingKey: UserProvisioningSettingKey;
   // the sign-in method as the description names it
   providerName: string;
+  // set when this sign-in method also brings a deactivated account back
+  reactivatesAccounts?: boolean;
   // says why the switch cannot be toggled and keeps it disabled while shown
   lockedNote?: React.ReactNode;
 };
@@ -23,16 +25,20 @@ type UserProvisioningSectionProps = {
 export function UserProvisioningSection({
   settingKey,
   providerName,
+  reactivatesAccounts = false,
   lockedNote,
 }: UserProvisioningSectionProps) {
   const applicationName = useSelector(getApplicationName);
   const provisioningSwitch = useSettingSwitch(settingKey);
   const hasLockedNote = Boolean(lockedNote);
+  const description = reactivatesAccounts
+    ? t`Allow ${providerName} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active ${applicationName} accounts can sign in.`
+    : t`Allow ${providerName} sign-in to create accounts for new users. When disabled, only users with active ${applicationName} accounts can sign in.`;
 
   return (
     <SwitchSettingsSection
       title={t`User provisioning`}
-      description={t`Allow ${providerName} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active ${applicationName} accounts can sign in.`}
+      description={description}
       // a caller's note explains the lock, so the env line steps aside
       lockedEnvName={hasLockedNote ? undefined : provisioningSwitch.envName}
       note={

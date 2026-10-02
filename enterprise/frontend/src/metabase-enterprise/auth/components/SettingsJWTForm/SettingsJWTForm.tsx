@@ -190,6 +190,7 @@ export const SettingsJWTForm = () => {
               <UserProvisioningSection
                 settingKey="jwt-user-provisioning-enabled?"
                 providerName="JWT"
+                reactivatesAccounts
               />
               <SettingsSection
                 title={t`Server settings`}
