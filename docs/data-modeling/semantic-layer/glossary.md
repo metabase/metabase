@@ -7,7 +7,12 @@ summary: Define terms to help your team and Metabot understand your data.
 
 _Data Studio > Glossary_
 
-The glossary is a place to define terms relevant to your data. Everyone in your Metabase can read the glossary, but only admins and people in the [Data Analysts](../../people-and-groups/managing.md#data-analysts) group can add, edit, or delete terms.
+The glossary is a place to define terms relevant to your data. Example:
+
+```txt
+Credit note: An amount applied after the invoice total to reduce what is due. Excluded from ARR; recognized as a one-time revenue impact in accounting, and avoided where possible.
+```
+Everyone in your Metabase can read the glossary, but only admins and people in the [Data Analysts](../../people-and-groups/managing.md#data-analysts) group can add, edit, or delete terms.
 
 To see the glossary in Data Reference:
 
