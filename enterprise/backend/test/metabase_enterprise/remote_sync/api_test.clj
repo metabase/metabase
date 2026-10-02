@@ -137,7 +137,7 @@
   (testing "POST /api/ee/remote-sync/test-connection lists the remote's branches without cloning it"
     (mt/with-temp-dir [remote-dir nil]
       (let [url                  (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
-            ^java.io.File clone  (#'source.git/repo-path {:remote-url url :token nil})]
+            ^java.io.File clone  (#'source.git/repo-path {:remote-url url})]
         (mt/with-temporary-setting-values [remote-sync-url    nil
                                            remote-sync-token  nil
                                            remote-sync-branch nil]

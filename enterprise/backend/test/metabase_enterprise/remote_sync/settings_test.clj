@@ -232,7 +232,7 @@
   (testing "validating git settings lists the remote's branches without cloning it"
     (mt/with-temp-dir [remote-dir nil]
       (let [url                (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
-            ^File clone-dir    (#'git/repo-path {:remote-url url :token nil})
+            ^File clone-dir    (#'git/repo-path {:remote-url url})
             check!             (fn [branch]
                                  (settings/check-git-settings! {:remote-sync-url    url
                                                                 :remote-sync-token  nil
@@ -250,3 +250,30 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
                               (settings/check-git-settings! {:remote-sync-url   url
                                                              :remote-sync-token nil})))))))
+
+(deftest settings-save-rejects-wrong-token-with-cached-clone-test
+  (testing "a read-write settings save with a wrong token fails even when this process already holds a clone of the URL"
+    ;; The clone directory does not depend on the token, so a cached clone must never stand in for authenticating
+    ;; the new token. A file:// remote checks no credentials, so the remote command seam rejects any other token.
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url                 (test-helpers/init-local-git-remote! remote-dir)
+            good-token          "good-token"
+            call-remote-command (mt/original-fn #'git/call-remote-command)]
+        (mt/with-dynamic-fn-redefs [git/call-remote-command (fn [command {:keys [token] :as args}]
+                                                              (when-not (= good-token token)
+                                                                (throw (ex-info "Authentication failed" {:token token})))
+                                                              (call-remote-command command args))]
+          (git/git-source url "master" good-token nil)
+          (is (contains? @@#'git/jgit (.getPath ^File (#'git/repo-path {:remote-url url})))
+              "Precondition: this process holds a clone of the URL")
+          (mt/with-temporary-setting-values [:remote-sync-url    nil
+                                             :remote-sync-token  nil
+                                             :remote-sync-type   nil
+                                             :remote-sync-branch nil]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Authentication failed"
+                                  (settings/check-and-update-remote-settings! {:remote-sync-url    url
+                                                                               :remote-sync-token  "wrong-token"
+                                                                               :remote-sync-type   :read-write
+                                                                               :remote-sync-branch ""})))
+            (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
+            (is (nil? (settings/remote-sync-token)) "The rejected token is not saved")))))))

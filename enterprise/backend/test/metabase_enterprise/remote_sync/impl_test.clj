@@ -707,7 +707,7 @@
   (testing "filling in a blank branch asks the remote for its HEAD without cloning the repository"
     (mt/with-temp-dir [remote-dir nil]
       (let [url             (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
-            ^File clone-dir (#'git/repo-path {:remote-url url :token nil})]
+            ^File clone-dir (#'git/repo-path {:remote-url url})]
         (mt/with-temporary-setting-values [remote-sync-url    url
                                            remote-sync-token  nil
                                            remote-sync-type   :read-write

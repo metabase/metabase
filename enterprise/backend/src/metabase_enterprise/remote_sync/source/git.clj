@@ -102,8 +102,11 @@
                                   git-source)
       (log/info "Successfully fetched repository"))))
 
-(defn- repo-path [{:keys [^String remote-url ^String token]}]
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
+(defn- repo-path
+  "The local bare clone directory for `remote-url`. Keyed on the URL alone: credentials are passed to each remote
+  command, so rotating the token reuses the existing clone instead of cloning into (and leaking) a new directory."
+  [{:keys [^String remote-url]}]
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> remote-url buddy-hash/sha1 codecs/bytes->hex)))
 
 (defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
@@ -639,7 +642,7 @@
     (snapshot* source)
     (catch Exception e
       (if (stale-cache-error? e)
-        (let [path (repo-path {:remote-url remote-url :token token})]
+        (let [path (repo-path {:remote-url remote-url})]
           (clear-cached-repo! path)
           (let [fresh-git (get-jgit path {:remote-url remote-url :token token})
                 fresh-source (assoc source :git fresh-git)]
@@ -681,5 +684,5 @@
 
   Returns a GitSource record implementing the Source protocol."
   [url branch token managed-dirs]
-  (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
+  (->GitSource (get-jgit (repo-path {:remote-url url}) {:remote-url url :token token})
                url branch token managed-dirs))
