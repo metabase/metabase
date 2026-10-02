@@ -359,27 +359,25 @@
   ;; States the numbering rules day by day instead of restating the formula, for every first day of the week.
   ;; 2015 through 2030 starts a year on every day of the week and includes leap years. The other ranges cross century
   ;; years: 1900 and 2100 are not leap years, while 2000 is.
-  (doseq [[start end] [["2015-01-01" "2031-01-01"]
-                       ["1899-12-01" "1901-02-01"]
-                       ["1999-12-01" "2001-02-01"]
-                       ["2099-12-01" "2101-02-01"]]
-          :let        [dates (consecutive-dates start end)]
+  (doseq [[start end]                 [["2015-01-01" "2031-01-01"]
+                                       ["1899-12-01" "1901-02-01"]
+                                       ["1999-12-01" "2001-02-01"]
+                                       ["2099-12-01" "2101-02-01"]]
           [start-index start-of-week] (map-indexed vector days-of-week)]
     (testing (str start " to " end ", " start-of-week)
-      (let [weeks (mapv (fn [[date _]]
-                          (parse-long (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year)))
-                        dates)]
+      (let [week-of (fn [date] (parse-long (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year)))
+            days    (for [[date day-of-week] (consecutive-dates start end)]
+                      {:date        date
+                       :day-of-week day-of-week
+                       :week        (week-of date)})]
         (is (= []
-               (for [i     (range 1 (count dates))
-                     :let  [[date day-of-week] (nth dates i)
-                            week     (nth weeks i)
-                            previous (nth weeks (dec i))
-                            expected (cond
+               (for [[previous {:keys [date day-of-week week]}] (partition 2 1 days)
+                     :let  [expected (cond
                                        ;; A week keeps its number until the next one starts.
-                                       (not= start-index day-of-week) previous
+                                       (not= start-index day-of-week) (:week previous)
                                        ;; Week 1 is the first week that starts in the new year.
                                        (<= (compare date (str (subs date 0 4) "-01-07")) 0) 1
-                                       :else (inc previous))]
+                                       :else (inc (:week previous)))]
                      :when (not= expected week)]
                  [date week expected])))))))
 
@@ -388,10 +386,10 @@
     (is (= []
            (for [year          (range 2015 2031)
                  start-of-week days-of-week
-                 :let          [config {:start-of-week start-of-week}
+                 :let          [config    {:start-of-week start-of-week}
                                 ;; The week holding Dec 31 is the year's last.
-                                weeks  (parse-long (shared.ut/format-unit config (str year "-12-31") :week-of-year))]
-                 week          (range 1 (inc weeks))
+                                last-week (parse-long (shared.ut/format-unit config (str year "-12-31") :week-of-year))]
+                 week          (range 1 (inc last-week))
                  :let          [round-trip (with-redefs [internal/now (fn [] (from (str year "-06-15T12:00:00")))]
                                              (shared.ut/extract config
                                                                 (shared.ut/coerce-to-timestamp
