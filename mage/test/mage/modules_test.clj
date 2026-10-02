@@ -2,6 +2,7 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -471,6 +472,25 @@
         (is (= '#{metabase.gadget.core metabase.lib.core metabase.lib.schema metabase.server.core metabase.util}
                (#'module-explorer/file-requires (str file)))))
       (finally (.delete file)))))
+
+(deftest explorer-any-uses-test
+  (let [config '{core   {:uses :any}
+                 gadget {}
+                 widget {}}
+        dir    (doto (java.io.File/createTempFile "any-uses" "") (.delete) (.mkdirs))
+        source (fn [path ns-form]
+                 (let [file (io/file dir path)]
+                   (io/make-parents file)
+                   (spit file (pr-str ns-form))
+                   (str file)))
+        clj    (source "src/core/init.clj" '(ns metabase.core.init (:require [metabase.widget.core] [metabase.core.util])))
+        tst    (source "test/core/init_test.clj" '(ns metabase.core.init-test (:require [metabase.gadget.core])))
+        cljs   (source "src/core/ui.cljs" '(ns metabase.core.ui (:require [metabase.gadget.core])))]
+    (try
+      (testing "a :uses :any module gets the modules its sources require, not its tests, ClojureScript, or itself"
+        (is (= '{core #{widget}}
+               (#'module-explorer/any-uses config {clj 'core, tst 'core, cljs 'core}))))
+      (finally (run! io/delete-file (reverse (file-seq dir)))))))
 
 (deftest explorer-resolved-any-uses-test
   (let [config '{core   {:uses :any}
