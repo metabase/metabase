@@ -562,20 +562,6 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
 }
 
 /**
- * Let a request that is already in flight deliver its store update.
- *
- * A component that keeps loading past the last assertion rerenders when its
- * request resolves. That rerender lands after the test, where React reports it
- * as an update outside act(). Awaiting here moves it inside act().
- *
- * Reach for this only when the test has nothing of its own left to await, such
- * as one that asserts an element is absent.
- */
-export const settlePendingUpdates = async () => {
-  await waitFor(() => {});
-};
-
-/**
  * This utility was created as a replacement for waitForElementToBeRemoved.
  * The difference is that waitForElementToBeRemoved expects the element
  * to exist before being removed.
