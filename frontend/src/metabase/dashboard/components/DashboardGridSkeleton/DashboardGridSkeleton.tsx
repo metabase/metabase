@@ -4,7 +4,6 @@ import { t } from "ttag";
 import visuallyHidden from "metabase/css/core/visually-hidden.module.css";
 import {
   getIsLastSeenDashboardFixedWidth,
-  getLastSeenDashboard,
   getLastSeenTabDashcards,
 } from "metabase/dashboard/selectors";
 import { isHeadingDashCard, isTextDashCard } from "metabase/dashboard/utils";
@@ -51,61 +50,6 @@ const GRID_GEOMETRY_STYLE = {
   "--grid-margin-y": `${GRID_MARGINS.desktop[1]}px`,
   "--grid-mobile-margin-y": `${GRID_MARGINS.mobile[1]}px`,
 };
-
-/**
- * A generic layout, drawn only when the dashboard isn't in the in-memory
- * Redux cache, as on any fresh page load.
- */
-const GENERIC_SKELETON_CARDS: readonly SkeletonCardPlacement[] = [
-  {
-    key: "0",
-    content: { kind: "chart", display: "line" },
-    col: 0,
-    row: 0,
-    size_x: 12,
-    size_y: 6,
-  },
-  {
-    key: "1",
-    content: { kind: "chart", display: "bar" },
-    col: 12,
-    row: 0,
-    size_x: 12,
-    size_y: 6,
-  },
-  {
-    key: "2",
-    content: { kind: "chart", display: "scalar" },
-    col: 0,
-    row: 6,
-    size_x: 8,
-    size_y: 6,
-  },
-  {
-    key: "3",
-    content: { kind: "chart", display: "pie" },
-    col: 8,
-    row: 6,
-    size_x: 8,
-    size_y: 6,
-  },
-  {
-    key: "4",
-    content: { kind: "chart", display: "area" },
-    col: 16,
-    row: 6,
-    size_x: 8,
-    size_y: 6,
-  },
-  {
-    key: "5",
-    content: { kind: "chart", display: "table" },
-    col: 0,
-    row: 12,
-    size_x: 24,
-    size_y: 8,
-  },
-];
 
 const getTextLines = (text: string): string[] =>
   text.split("\n").slice(0, MAX_TEXT_SKELETON_LINES);
@@ -221,28 +165,24 @@ export const CardLayoutSkeleton = ({
 
 /**
  * The dashboard's card grid as a skeleton, shown while the dashboard loads so
- * that no spinner is needed. A dashboard seen earlier in this session is drawn
- * from the in-memory Redux cache: the cards of the tab the user is landing on,
- * at the dashboard's own width. Otherwise a generic layout is drawn. Once the
- * real grid mounts, its cards keep their own per-card content skeletons.
+ * that no spinner is needed. Cards are only drawn once the dashboard's real
+ * layout is known, from the in-memory Redux cache: the cards of the tab the
+ * user is landing on, at the dashboard's own width. Until then the grid stays
+ * empty rather than showing cards the dashboard may not have. Once the real
+ * grid mounts, its cards keep their own per-card content skeletons.
  */
 export const DashboardGridSkeleton = ({
   dashboardId,
 }: {
   dashboardId: DashboardId | null;
 }) => {
-  const lastSeenDashboard = useSelector((state) =>
-    getLastSeenDashboard(state, dashboardId),
-  );
   const lastSeenTabDashcards = useSelector((state) =>
     getLastSeenTabDashcards(state, dashboardId),
   );
   const isFixedWidth = useSelector((state) =>
     getIsLastSeenDashboardFixedWidth(state, dashboardId),
   );
-  const placements = lastSeenDashboard
-    ? getPlacements(lastSeenTabDashcards)
-    : GENERIC_SKELETON_CARDS;
+  const placements = getPlacements(lastSeenTabDashcards);
 
   return (
     <FixedWidthContainer
@@ -253,7 +193,7 @@ export const DashboardGridSkeleton = ({
       <span role="status" className={visuallyHidden.visuallyHidden}>
         {t`Loading…`}
       </span>
-      <CardLayoutSkeleton placements={placements} />
+      {placements.length > 0 && <CardLayoutSkeleton placements={placements} />}
     </FixedWidthContainer>
   );
 };

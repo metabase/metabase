@@ -342,8 +342,8 @@ describe("DashboardApp", () => {
       });
 
       try {
-        // The generic layout has no text cards, so these can only come from
-        // the dashboard's own layout, drawn while its query metadata loads.
+        // These can only come from the dashboard's own layout, drawn while
+        // its query metadata loads.
         expect(
           await screen.findAllByTestId("dashboard-skeleton-text"),
         ).toHaveLength(2);

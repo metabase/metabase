@@ -55,10 +55,13 @@ describe("DashboardGridSkeleton", () => {
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 
-  it("draws a generic layout when the dashboard isn't cached", () => {
+  it("draws no cards until the dashboard's layout is known", () => {
     setup({ isCached: false });
 
-    expect(getSkeletonCards().length).toBeGreaterThan(0);
+    expect(screen.getByTestId("dashboard-grid-skeleton")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("dashboard-grid-skeleton-cards"),
+    ).not.toBeInTheDocument();
   });
 
   it("draws exactly the cached dashboard's cards", () => {
