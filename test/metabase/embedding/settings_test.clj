@@ -88,7 +88,6 @@
   ;; These tests intentionally exercise deprecated settings.
   #_{:clj-kondo/ignore [:deprecated-var]}
   (case embedding-method
-    :sdk    (embed.settings/enable-embedding-sdk)
     :simple (embed.settings/enable-embedding-simple)
     :static (embed.settings/enable-embedding-static)))
 
@@ -127,7 +126,7 @@
       (let [origin-value (str "localhost:* " other-ip " "
                               (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        (is (not (and (legacy-setting :sdk)
+        (is (not (and (embed.settings/enable-embedding-sdk)
                       (embed.settings/embedding-app-origins-sdk))))))))
 
 (defn- depricated-setting-throws [f env & [reason]]
@@ -189,24 +188,24 @@
   ;; reads the deprecated enable-embedding setting on purpose; the sync under test bridges from it
   (let [unsyncd-settings {:enable-embedding             #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
-                          :enable-embedding-sdk         (legacy-setting :sdk)
+                          :enable-embedding-sdk         (embed.settings/enable-embedding-sdk)
                           :enable-embedding-static      (legacy-setting :static)}]
     ;; called for side effects:
     (#'embed.settings/sync-enable-settings! env)
     (cond
       (= expected-behavior :no-op)
       (do (is (= [:no-op (:enable-embedding-interactive unsyncd-settings)] [:no-op (embed.settings/enable-embedding-interactive)]))
-          (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op (legacy-setting :sdk)]))
+          (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op (embed.settings/enable-embedding-sdk)]))
           (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op (legacy-setting :static)])))
 
       (= expected-behavior :sets-all-true)
       (do (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-interactive)]))
-          (is (= [expected-behavior true] [:sets-all-true (legacy-setting :sdk)]))
+          (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-sdk)]))
           (is (= [expected-behavior true] [:sets-all-true (legacy-setting :static)])))
 
       (= expected-behavior :sets-all-false)
       (do (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-interactive)]))
-          (is (= [expected-behavior false] [:sets-all-false (legacy-setting :sdk)]))
+          (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-sdk)]))
           (is (= [expected-behavior false] [:sets-all-false (legacy-setting :static)])))
 
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
