@@ -5,7 +5,9 @@
    [babashka.process :as p]
    [clojure.string :as str]
    [mage.color :as c]
-   [mage.util :as u]))
+   [mage.util :as u])
+  (:import
+   (java.net URLEncoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -130,7 +132,8 @@
                     ", so the branch may need a rebase."))
         out  (apply gh {:hint hint} (dispatch-args branch base))]
     (or (re-find #"https://github\.com/\S+/actions/runs/\d+" out)
-        (format "https://github.com/%s/actions/workflows/%s?query=branch%%3A%s" repo workflow branch))))
+        (format "https://github.com/%s/actions/workflows/%s?query=%s" repo workflow
+                (URLEncoder/encode (str "branch:" branch) "UTF-8")))))
 
 (defn ci-run-skipped!
   "Print a \"Run tests\" run URL for the current branch.
@@ -146,7 +149,8 @@
                                (short-sha local) (short-sha sha))))
         pr-run (or (decided-pr-run branch sha)
                    (fail! 1 (format "The PR run for %s has not decided yet." (short-sha sha))))
-        {:keys [step run]} (next-step pr-run (runs branch sha "workflow_dispatch"))]
+        ;; Lazy, so the lookup only happens when the PR run was skipped.
+        {:keys [step run]} (next-step pr-run (lazy-seq (runs branch sha "workflow_dispatch")))]
     (case step
       :not-skipped
       (do (info (format "Not skipped (verdict %s); here is the PR run." (:verdict run)))
@@ -157,12 +161,14 @@
           (println (run-url (:databaseId run))))
 
       :start
-      (let [base   (stack-base pr)
-            _      (info (format "PR #%s was force-skipped; starting a run on %s against %s."
-                                 (:number pr) branch base))
-            url    (start-run! branch base)
-            run-id (second (re-find #"/actions/runs/(\d+)$" url))]
+      (let [base        (stack-base pr)
+            _           (info (format "PR #%s was force-skipped; starting a run on %s against %s."
+                                      (:number pr) branch base))
+            url         (start-run! branch base)
+            run-id      (second (re-find #"/actions/runs/(\d+)$" url))
+            new-verdict (when run-id (poll "the new run" waits-s #(verdict run-id)))]
         ;; `should-run` never skips a run started by hand, but a later skip rule could break that.
-        (when (and run-id (= "force-skip" (poll "the new run" waits-s #(verdict run-id))))
-          (fail! 3 (str "The new run was force-skipped too: " url)))
+        (cond
+          (= "force-skip" new-verdict) (fail! 3 (str "The new run was force-skipped too: " url))
+          (nil? new-verdict)           (info "Could not confirm that the new run was not skipped; check it."))
         (println url)))))

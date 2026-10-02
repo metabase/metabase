@@ -10,6 +10,10 @@
     (testing "a PR run that was not skipped is the answer"
       (is (= {:step :not-skipped, :run {:databaseId 1, :verdict "defer"}}
              (ci-run-skipped/next-step {:databaseId 1, :verdict "defer"} [{:databaseId 2}]))))
+    (testing "a PR run that was not skipped never looks up runs started by hand"
+      (is (= :not-skipped
+             (:step (ci-run-skipped/next-step {:databaseId 1, :verdict "defer"}
+                                              (lazy-seq (throw (ex-info "looked up" {}))))))))
     (testing "a skipped PR run reuses a run already started for the commit"
       (is (= {:step :already-started, :run {:databaseId 3, :conclusion "success"}}
              (ci-run-skipped/next-step pr-run [{:databaseId 2, :conclusion "cancelled"}

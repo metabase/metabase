@@ -304,6 +304,10 @@ jobs:
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.backend_all != 'true' }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
+      # Without it, a run started by hand compares the branch with itself and skips the drivers it touched.
+      base-ref: >-
+        ${{ github.event_name == 'workflow_dispatch' &&
+        (inputs.base || github.event.repository.default_branch) || '' }}
 
   frontend-tests:
     needs: [should-run, files-changed, create-test-plan]

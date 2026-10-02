@@ -10,6 +10,10 @@ on:
         description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
         type: boolean
         default: false
+      base-ref:
+        description: Branch to compare against on a run started by hand. Pull request runs use the PR base.
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -56,10 +60,12 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Fetch base branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
+        if: (github.event_name == 'pull_request' && github.event.pull_request.base.ref != '') || inputs.base-ref != ''
         run: |
           # Fetch the base branch to ensure its history is available for diffing
-          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+          git fetch --depth=1 origin "${BASE}:${BASE}"
+        env:
+          BASE: ${{ github.event.pull_request.base.ref || inputs.base-ref }}
       - name: Determine which drivers should run
         id: driver-decisions
         run: |
@@ -83,7 +89,7 @@ jobs:
           # Second call: output only key=value lines for GITHUB_OUTPUT
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
-          BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref || inputs.base-ref || github.ref_name }}
           FORCE_RUN: ${{ inputs.force-run }}
           # Set only by test.profile-backend.yml. Absent on a normal CI run, which leaves the decision rules
           # alone; mage rejects a name that is not a driver.
