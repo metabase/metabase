@@ -9,11 +9,18 @@ const QUESTION = "questionEntityId00010";
 const ACTION_COPY = "actionCopyEntityId001";
 const MODEL = "modelEntityId00000001";
 
+const COLLECTION = "appCollectionEntity01";
+
 const EXPORTED = {
   queries: [
     {
       export: "Orders",
-      dataset_query: { database: "Sample Database" },
+      entity: {
+        entity_id: QUESTION,
+        collection_id: COLLECTION,
+        name: "Orders",
+        dataset_query: { database: "Sample Database" },
+      },
       metrics: [],
     },
   ],
@@ -29,6 +36,10 @@ function appWithDefinitions() {
   fs.writeFileSync(
     path.join(appRoot, ".env.local"),
     "DATA_APP_MB_URL=http://metabase.test/\nDATA_APP_MB_API_KEY=mb_test_key\n",
+  );
+  fs.writeFileSync(
+    path.join(appRoot, "data_app.yaml"),
+    `name: Orders\npath: ./dist/index.js\ncollection: ${COLLECTION}\n`,
   );
   writeQuery(
     appRoot,
@@ -48,7 +59,7 @@ function mockExport(response: Response) {
 describe("exporting what resources are written from", () => {
   setupResourceTests();
 
-  it("sends the definitions and action IDs in one request, and prints the export with each definition's IDs", async () => {
+  it("sends the definitions with their IDs, the app's collection, and the action IDs in one request, and prints the export beside each definition", async () => {
     const appRoot = appWithDefinitions();
     const fetchSpy = mockExport(new Response(JSON.stringify(EXPORTED)));
 
@@ -62,9 +73,11 @@ describe("exporting what resources are written from", () => {
       "X-API-Key": "mb_test_key",
     });
     expect(JSON.parse(String(init?.body))).toEqual({
+      collection: COLLECTION,
       queries: [
         {
           export: "Orders",
+          entity_id: QUESTION,
           query: { stages: [{ source: { type: "table", id: 1 }, limit: 5 }] },
         },
       ],
@@ -76,7 +89,7 @@ describe("exporting what resources are written from", () => {
           export: "Orders",
           file: "queries/orders.query.ts",
           savedQuestionEntityId: QUESTION,
-          dataset_query: { database: "Sample Database" },
+          entity: EXPORTED.queries[0].entity,
           metrics: [],
         },
       ],
@@ -103,6 +116,7 @@ describe("exporting what resources are written from", () => {
     await exportResources(appRoot, "queries/orders.query.ts");
 
     expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toEqual({
+      collection: COLLECTION,
       queries: [expect.objectContaining({ export: "Orders" })],
       actions: [],
     });

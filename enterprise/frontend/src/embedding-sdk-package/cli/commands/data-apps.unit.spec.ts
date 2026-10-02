@@ -55,7 +55,7 @@ describe("data app commands", () => {
     jest.spyOn(global, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
-          queries: [{ export: "Orders", dataset_query: {}, metrics: [] }],
+          queries: [{ export: "Orders", entity: {}, metrics: [] }],
           actions: [],
           models: [],
           metrics: [],
@@ -76,7 +76,7 @@ describe("data app commands", () => {
           export: "Orders",
           file: "queries/orders.query.ts",
           savedQuestionEntityId: QUESTION,
-          dataset_query: {},
+          entity: {},
           metrics: [],
         },
       ],

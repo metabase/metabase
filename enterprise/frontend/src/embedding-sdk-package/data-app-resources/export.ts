@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import { readManifest } from "../data-app-dev/config/read-manifest";
+
 import {
   QUERY_DEFINITIONS,
   discoverActions,
@@ -30,7 +32,7 @@ function isExportedResources(value: unknown): value is ExportedResources {
 
 async function requestExport(
   appRoot: string,
-  body: { queries: unknown[]; actions: number[] },
+  body: { collection?: string; queries: unknown[]; actions: number[] },
 ): Promise<ExportedResources> {
   const { metabaseUrl, apiKey } = getMetabaseCredentials(appRoot);
   const response = await fetch(`${metabaseUrl}/api/apps/export-resources`, {
@@ -57,10 +59,11 @@ async function requestExport(
 /**
  * What the app's `resources/` files are written from, as JSON, for the
  * definitions in `file` (relative to the app root, as files are printed) or
- * every definition: Metabase builds each `defineQuery` definition's query and
- * exports it, each `defineAction`'s action, the models they belong to, and the
- * metrics the queries aggregate, all as serialization writes them. One request
- * to the Metabase instance and API key in `.env.local`.
+ * every definition: the saved question Metabase writes for each `defineQuery`
+ * definition, in the collection `data_app.yaml` names and with the
+ * definition's entity ID, each `defineAction`'s action, the models they belong
+ * to, and the metrics the queries aggregate, all as serialization writes them.
+ * One request to the Metabase instance and API key in `.env.local`.
  */
 export async function exportResources(appDirectory: string, file?: string) {
   const appRoot = path.resolve(appDirectory);
@@ -77,9 +80,14 @@ export async function exportResources(appDirectory: string, file?: string) {
   }
 
   const exported = await requestExport(appRoot, {
-    queries: queries.map(({ exportName, query }) => {
+    collection: readManifest(appRoot)?.manifest.collection,
+    queries: queries.map(({ exportName, query, savedQuestionEntityId }) => {
       const { [QUERY_DEFINITIONS.idKey]: _entityId, ...definition } = query;
-      return { export: exportName, query: { stages: [definition] } };
+      return {
+        export: exportName,
+        entity_id: savedQuestionEntityId,
+        query: { stages: [definition] },
+      };
     }),
     actions: actions.map(({ sourceActionId }) => sourceActionId),
   });
