@@ -21,11 +21,7 @@
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
-(def ^:private LastEditInfo ::revisions.schema/last-edit-info)
-
-(def ^:private MaybeAnnotated ::revisions.schema/maybe-annotated)
-
-(mu/defn with-last-edit-info :- [:maybe [:sequential MaybeAnnotated]]
+(mu/defn with-last-edit-info :- [:maybe [:sequential ::revisions.schema/maybe-annotated]]
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
@@ -49,7 +45,7 @@
                  (m/assoc-some item :last-edit-info (-> item :id id->updated-info)))
                items))))))
 
-(mu/defn edit-information-for-user :- LastEditInfo
+(mu/defn edit-information-for-user :- ::revisions.schema/last-edit-info
   "Construct the `:last-edit-info` map given a user. Useful for editing routes. Most edit info information comes from
   the revisions table. But this table is populated from events asynchronously so when editing and wanting
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
@@ -62,8 +58,8 @@
   "Schema for the map of bulk last-item-info. A map of two keys, `:card` and `:dashboard`, each of which is a map from
   id to a LastEditInfo.:Schema"
   [:map
-   [:card      {:optional true} [:map-of :int LastEditInfo]]
-   [:dashboard {:optional true} [:map-of :int LastEditInfo]]])
+   [:card      {:optional true} [:map-of :int ::revisions.schema/last-edit-info]]
+   [:dashboard {:optional true} [:map-of :int ::revisions.schema/last-edit-info]]])
 
 (def ^:private FetchLastEditedInfoArgs
   [:map {:closed true}

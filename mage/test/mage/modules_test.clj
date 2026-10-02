@@ -313,9 +313,7 @@
           ;; 2026-09-11 Bumped to 47: lib.schema, lib.metadata and query-processor.cache-backend are carved out of
           ;;            lib and query-processor, which already trigger driver tests
           ;; 2026-10-01 Bumped to 48: parameters.schema is carved out of parameters, which already triggers driver tests
-          ;; 2026-10-01 Bumped to 49: revisions.schema and transforms.feature-gating are carved out of revisions and
-          ;;            transforms, which already trigger driver tests; bug-reporting no longer does
-          max-allowed-count 49]
+          max-allowed-count 48]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

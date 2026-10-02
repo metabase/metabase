@@ -204,6 +204,7 @@
      tiles
      timeline
      tracing
+     transforms.feature-gating
      lib.types
      users
      util

@@ -1,4 +1,4 @@
-(ns metabase.documents.revisions.integration-test
+(ns metabase.revisions.impl.document-integration-test
   "Integration tests for Document revision history including API endpoints, events, and permissions."
   (:require
    [clojure.string :as str]
