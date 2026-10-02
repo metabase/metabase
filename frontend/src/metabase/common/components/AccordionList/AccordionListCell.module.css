@@ -26,14 +26,6 @@
   }
 }
 
-.content {
-  cursor: default;
-}
-
-.clickable {
-  cursor: pointer;
-}
-
 .sticky {
   position: sticky;
   z-index: 10;

@@ -22,6 +22,7 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import CS from "metabase/css/core/index.css";
 import { hasFeature } from "metabase/databases";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import {
@@ -33,10 +34,8 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import S from "./AggregationPicker.module.css";
 
 export interface AggregationPickerProps {
   className?: string;
@@ -485,15 +484,14 @@ function ColumnPickerHeader({
 }) {
   return (
     <Flex
-      className={S.header}
+      className={CS.borderBottom}
       align="center"
       py="lg"
       px="sm"
       c="text-secondary"
     >
       <Flex
-        component="a"
-        className={S.backLink}
+        component={UnstyledButton}
         align="center"
         gap="sm"
         onClick={onClick}

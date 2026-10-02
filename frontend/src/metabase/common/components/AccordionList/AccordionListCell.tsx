@@ -357,7 +357,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
         style={getItemStyles(item, itemIndex) ?? {}}
       >
         <Flex
-          className={cx(styles.content, { [styles.clickable]: isClickable })}
+          className={isClickable ? CS.cursorPointer : CS.cursorDefault}
           flex="1 1 auto"
           align="center"
           p="sm"
