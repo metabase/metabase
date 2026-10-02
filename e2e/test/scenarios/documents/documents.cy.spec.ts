@@ -13,11 +13,8 @@ import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
-  PIVOT_TABLE_CARD,
   PRODUCTS_AVERAGE_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
-  SCALAR_CARD,
-  STEP_COLUMN_CARD,
 } from "e2e/support/test-visualization-data";
 import type { Document } from "metabase-types/api";
 
@@ -709,9 +706,6 @@ describe("documents", () => {
       beforeEach(() => {
         H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY);
         H.createQuestion(ACCOUNTS_COUNT_BY_CREATED_AT);
-        H.createQuestion(PIVOT_TABLE_CARD);
-        H.createNativeQuestion(STEP_COLUMN_CARD);
-        H.createNativeQuestion(SCALAR_CARD.LANDING_PAGE_VIEWS);
         // Need to get this one to simulate recent activity
         H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY_PIE).then(
           ({ body: { id } }) => cy.request("POST", `/api/card/${id}/query`),

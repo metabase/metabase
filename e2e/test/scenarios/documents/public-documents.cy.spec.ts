@@ -34,14 +34,14 @@ function createTestDocumentWithCard(name = "Test Document") {
 }
 
 // Helper function to visit a public document
-function visitPublicDocument() {
+function createPublicLink() {
   cy.get("@documentId")
-    .then((documentId) => {
-      return H.createPublicDocumentLink(documentId);
-    })
-    .then(({ body: { uuid } }) => {
-      cy.visit(`/public/document/${uuid}`);
-    });
+    .then((documentId) => H.createPublicDocumentLink(documentId))
+    .then(({ body: { uuid } }) => cy.wrap(uuid).as("publicUuid"));
+}
+
+function visitPublicDocument() {
+  cy.get("@publicUuid").then((uuid) => cy.visit(`/public/document/${uuid}`));
 }
 
 // Helper function to verify document is read-only
@@ -146,6 +146,7 @@ describe("scenarios > documents > public", () => {
     H.Comments.getSidebar().should("be.visible");
 
     cy.log("Create public link and visit public document");
+    createPublicLink();
     visitPublicDocument();
 
     cy.log("Verify document content is visible");
@@ -176,14 +177,8 @@ describe("scenarios > documents > public", () => {
     createTestDocumentWithCard("Test Document with Card");
 
     cy.log("Create public link and visit public document");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.wrap(uuid).as("publicUuid");
-        cy.visit(`/public/document/${uuid}`);
-      });
+    createPublicLink();
+    visitPublicDocument();
 
     cy.log("Verify document and card are visible in public view");
     H.documentContent().should("contain", "Test content");
@@ -219,12 +214,10 @@ describe("scenarios > documents > public", () => {
     cy.wait("@updateDocument");
 
     cy.log("Try to access public link after document deletion");
-    cy.get("@publicUuid").then((uuid) => {
-      cy.visit(`/public/document/${uuid}`);
+    visitPublicDocument();
 
-      cy.log("Verify error message is shown");
-      verifyErrorMessage("Not found");
-    });
+    cy.log("Verify error message is shown");
+    verifyErrorMessage("Not found");
   });
 
   it("should be accessible anonymously with branding, inaccessible once public sharing is disabled, and unbranded on premium", () => {
@@ -232,18 +225,12 @@ describe("scenarios > documents > public", () => {
     createTestDocumentWithCard("Document for Disabling Test");
 
     cy.log("Create public link while sharing is enabled");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.wrap(uuid).as("publicUuid");
+    createPublicLink();
 
-        cy.log("Verify document is accessible with sharing enabled");
-        cy.signOut();
-        cy.visit(`/public/document/${uuid}`);
-        H.documentContent().should("contain", "Test content");
-      });
+    cy.log("Verify document is accessible with sharing enabled");
+    cy.signOut();
+    visitPublicDocument();
+    H.documentContent().should("contain", "Test content");
 
     cy.log("Verify the document is read-only without authentication");
     H.getDocumentCard("Orders").should("exist");
@@ -264,12 +251,10 @@ describe("scenarios > documents > public", () => {
     cy.signOut();
 
     cy.log("Try to access public document after disabling sharing");
-    cy.get("@publicUuid").then((uuid) => {
-      cy.visit(`/public/document/${uuid}`);
+    visitPublicDocument();
 
-      cy.log("Verify document is no longer accessible");
-      verifyErrorMessage("An error occurred.");
-    });
+    cy.log("Verify document is no longer accessible");
+    verifyErrorMessage("An error occurred.");
 
     cy.log("Re-enable public sharing with a premium token");
     cy.signInAsAdmin();
@@ -277,9 +262,7 @@ describe("scenarios > documents > public", () => {
     H.activateToken("pro-self-hosted");
     cy.signOut();
 
-    cy.get("@publicUuid").then((uuid) => {
-      cy.visit(`/public/document/${uuid}`);
-    });
+    visitPublicDocument();
     H.documentContent().should("contain", "Test content");
 
     cy.log("Verify 'Powered by Metabase' link is hidden for premium");
