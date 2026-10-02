@@ -4,11 +4,7 @@ import {
   setupActionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  settlePendingUpdates,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
@@ -88,8 +84,9 @@ function setup({
 describe("DetailViewSidesheet", () => {
   it("navigates rows with arrow keys when keyboard navigation is enabled", async () => {
     const { onNextClick, onPreviousClick } = setup();
-    // The action modal prefetches its initial values after this render.
-    await settlePendingUpdates();
+    // `ActionExecuteModal` initialises its values state after this render,
+    // with nothing observable to wait on, so flush that update here.
+    await waitFor(() => {});
 
     fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
     expect(onPreviousClick).toHaveBeenCalledTimes(1);
@@ -100,7 +97,7 @@ describe("DetailViewSidesheet", () => {
 
   it("does not navigate rows with arrow keys when keyboard navigation is disabled", async () => {
     const { onNextClick, onPreviousClick } = setup({ showNav: false });
-    await settlePendingUpdates();
+    await waitFor(() => {});
 
     fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
     expect(onPreviousClick).not.toHaveBeenCalled();
