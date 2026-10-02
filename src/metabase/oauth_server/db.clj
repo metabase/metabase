@@ -150,6 +150,18 @@
   [token :- :string]
   (t2/select-one :model/OAuthRefreshToken :token token :revoked_at nil))
 
+(mu/defn rebind-tokens!
+  "Set the RFC 8707 `resource` binding of the OAuthAccessToken and OAuthRefreshToken whose hashed tokens are
+  `access-token` and `refresh-token` (either may be nil). Returns nil."
+  [access-token  :- [:maybe :string]
+   refresh-token :- [:maybe :string]
+   resource      :- [:sequential :string]]
+  (when access-token
+    (t2/update! :model/OAuthAccessToken {:token access-token} {:resource (vec resource)}))
+  (when refresh-token
+    (t2/update! :model/OAuthRefreshToken {:token refresh-token} {:resource (vec resource)}))
+  nil)
+
 (mu/defn revoke-access-token!
   "Revoke the OAuthAccessToken `token`, returning the number revoked."
   [token :- :string]

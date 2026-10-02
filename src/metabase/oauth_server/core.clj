@@ -182,13 +182,24 @@
     (filter #(contains? named (canonical-resource-uri (str (system/site-url) %)))
             (mcp/mcp-endpoint-paths))))
 
+(defn- mcp-endpoint-resource?
+  "Whether the canonical resource URI `resource` names an MCP endpoint path under any host and subpath: its path ends
+  with one of [[metabase.mcp.core/mcp-endpoint-paths]]. Every endpoint path starts with `/`, so the match is at a
+  segment boundary."
+  [resource]
+  (let [path (try (.getPath (java.net.URI. ^String resource))
+                  (catch java.net.URISyntaxException _ nil))]
+    (boolean (and path (some #(str/ends-with? path %) (mcp/mcp-endpoint-paths))))))
+
 (defn mcp-resource?
   "Whether `resources`, the RFC 8707 binding stored on a token, names the MCP endpoint.
 
   This is the token's audience: a token bound to the MCP endpoint authenticates only requests to it (see
-  [[mcp-endpoint-request?]]), and the MCP endpoint accepts no other OAuth token."
+  [[mcp-endpoint-request?]]), and the MCP endpoint accepts no other OAuth token. The binding is decided by the path of
+  each canonical resource, not by the current Site URL, so a token stays bound when an admin changes the Site URL's
+  host or subpath. A resource that does not parse as an absolute URI binds nothing."
   [resources]
-  (boolean (seq (mcp-paths-named resources))))
+  (boolean (some mcp-endpoint-resource? (canonical-resources resources))))
 
 (defn mcp-endpoint-request?
   "Whether the request path `uri` is served by the MCP endpoint, under any of its paths."
