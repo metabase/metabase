@@ -117,19 +117,27 @@
        (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
        sort))
 
+(defn- branch-without-head
+  "For the `refs` returned by an lsRemote of a remote that advertises no HEAD, the branch that stands in for HEAD: the
+  first of its branches. Nil when the remote advertises HEAD, or has no branches.
+
+  A remote with branches can advertise no HEAD, for example a bare repository whose HEAD names `master` when only
+  `main` was pushed. A clone of such a remote (see [[clone-branch]]) and its default branch (see [[ref-head-branch]])
+  both use this branch, so they agree."
+  [refs]
+  (when-not (some #(= Constants/HEAD (.getName ^Ref %)) refs)
+    (first (ref-branch-names refs))))
+
 (defn- clone-branch
   "The branch to give a clone of the remote at `remote-url`, or nil to let the clone follow the remote HEAD.
 
   A JGit clone first fetches the branch that it is given (by default HEAD), and fails when the remote does not
-  advertise that ref. A remote with branches can advertise no HEAD, for example a bare repository whose HEAD names
-  `master` when only `main` was pushed. For such a remote, this returns the first of its branches. The clone is bare
+  advertise that ref. For a remote that advertises no HEAD, this returns [[branch-without-head]]. The clone is bare
   and fetches every branch, and nothing reads the HEAD of the clone, so the choice of branch has no other effect."
   [{:keys [^String remote-url] :as args}]
-  (let [refs (call-remote-command (-> (Git/lsRemoteRepository)
-                                      (.setRemote remote-url))
-                                  args)]
-    (when-not (some #(= Constants/HEAD (.getName ^Ref %)) refs)
-      (first (ref-branch-names refs)))))
+  (branch-without-head (call-remote-command (-> (Git/lsRemoteRepository)
+                                                (.setRemote remote-url))
+                                            args)))
 
 (defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
@@ -402,14 +410,16 @@
      push-response)))
 
 (defn- ref-head-branch
-  "The branch (without 'refs/heads/') that the symbolic HEAD among the `refs` returned by an lsRemote points at.
-  Throws ExceptionInfo if there is none."
+  "The branch (without 'refs/heads/') that the symbolic HEAD among the `refs` returned by an lsRemote points at. For a
+  remote that advertises no HEAD, the branch that a clone of it gets (see [[branch-without-head]]). Throws
+  ExceptionInfo if there is none."
   [refs]
   (let [head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
     (or (when head-ref
           (when (.isSymbolic ^Ref head-ref)
             (when-let [target (.getTarget ^Ref head-ref)]
               (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
+        (branch-without-head refs)
         (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
 (defn default-branch
