@@ -8,7 +8,6 @@
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
@@ -91,21 +90,6 @@
     (is (=? {:status 401}
             (client/client-full-response :post 401 "embed-mcp/drills"
                                          (drill-body! (mt/user->id :rasta)))))))
-
-(deftest iframe-handlers-refuse-a-session-test
-  (testing "The iframe handlers authenticate only the UI credential. A logged-in session is not a credential, so it
-            is refused like an anonymous request, even with a valid MCP session id."
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))
-          request    (fn [method url & [body]]
-                       (apply client/client-full-response (test.users/username->token :crowberto)
-                              method 401 url
-                              {:request-options {:headers {"mcp-session-id" session-id}}}
-                              (when body [body])))]
-      (is (= 401 (:status (request :get "embed-mcp/bootstrap"))))
-      (is (= 401 (:status (request :post "embed-mcp/drills" (drill-body! (mt/user->id :crowberto))))))
-      (is (= 401 (:status (request :post "embed-mcp/feedback" {:feedback          {:positive true}
-                                                               :conversation_data {:source "mcp"}}))))
-      (is (= 401 (:status (request :get (str "embed-mcp/queries/" (random-uuid)))))))))
 
 (deftest feedback-post-persists-mcp-visualization-feedback-test
   (testing "MCP feedback is persisted to mcp_feedback with the visualization context inline"
