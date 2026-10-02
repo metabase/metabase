@@ -20,7 +20,10 @@ import {
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { useAdhocBreakoutQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAdhocBreakoutQuery";
 import type { ApiKeyUsageFilters } from "metabase-enterprise/monitor/api-key-usage/query-utils";
-import { buildKeyActivityQuery } from "metabase-enterprise/monitor/api-key-usage/query-utils";
+import {
+  apiKeyMatchesScope,
+  buildKeyActivityQuery,
+} from "metabase-enterprise/monitor/api-key-usage/query-utils";
 import type {
   CardMetadata,
   MetadataProvider,
@@ -56,11 +59,11 @@ const TABLE_HEIGHT = 500;
 
 /**
  * Per-key activity table: name, group, and most recent activity for every API key matching the
- * page's date/API key/user/group filters, most recently active first. Key metadata (name, group)
- * comes from `GET /api/api-key`; which keys appear, and their "Last used" timestamp, come from a
- * `MAX(occurred_at)` breakout over the audit view scoped to the same filters as the rest of the
- * page — so a key with no activity in the selected window drops out entirely, rather than always
- * showing every key that has ever existed.
+ * page's API key/user/group filters, most recently active first. Which keys appear is decided by
+ * the keys' own metadata from `GET /api/api-key` (id/creator/group), not by activity — a key with
+ * no activity in the selected date window still shows up, with a blank "Last used" cell. The
+ * timestamp itself comes from a `MAX(occurred_at)` breakout over the audit view, scoped to the
+ * same filters as the rest of the page, so it only reflects activity inside the current window.
  */
 export function ApiKeyActivityTable({
   provider,
@@ -144,12 +147,14 @@ function ApiKeyActivityTableInner({
   const rows = useMemo<ApiKeyActivityRow[] | undefined>(
     () =>
       apiKeys
-        ?.filter((apiKey) => lastActivityByKeyId.has(apiKey.id))
+        ?.filter((apiKey) =>
+          apiKeyMatchesScope(apiKey, { apiKeyId, userId, groupId }),
+        )
         .map((apiKey) => ({
           ...apiKey,
-          last_used_at: lastActivityByKeyId.get(apiKey.id) ?? null,
+          last_used_at: lastActivityByKeyId.get(apiKey.id) ?? undefined,
         })),
-    [apiKeys, lastActivityByKeyId],
+    [apiKeys, apiKeyId, userId, groupId, lastActivityByKeyId],
   );
 
   const columns = useMemo<TreeTableColumnDef<ApiKeyActivityRow>[]>(
@@ -175,6 +180,7 @@ function ApiKeyActivityTableInner({
         header: t`Last used`,
         minWidth: 120,
         accessorFn: (apiKey) => apiKey.last_used_at,
+        sortUndefined: "last",
         cell: ({ row }) =>
           row.original.last_used_at ? (
             <DateTime value={row.original.last_used_at} />
