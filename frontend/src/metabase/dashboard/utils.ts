@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
 import {
+  hasColumnLevelClickBehavior,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
@@ -498,7 +499,7 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)
     ? t`Open the drill-through menu`
     : t`Do nothing`;
-  if (isTableDisplay(dashcard)) {
+  if (hasColumnLevelClickBehavior(dashcard)) {
     const columnSettings: Record<string, ColumnSettings> =
       getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
 
@@ -557,8 +558,4 @@ export function hasActionsMenu(dashcard: DashboardCard) {
     dataset_query: dashcard.card.dataset_query,
   });
   return !question.isNative();
-}
-
-export function isTableDisplay(dashcard: DashboardCard) {
-  return dashcard?.card?.display === "table";
 }

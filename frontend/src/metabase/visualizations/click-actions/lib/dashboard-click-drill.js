@@ -8,11 +8,11 @@ import {
   getTargetForQueryParams,
 } from "metabase/parameters/utils/click-behavior";
 import * as Urls from "metabase/urls";
+import { hasColumnLevelClickBehavior } from "metabase/utils/dashboard";
 import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
 import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 import { getStructuredQuestionUrlWithParameters } from "./question-url";
@@ -164,26 +164,19 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
 
 export function getClickBehavior(clicked) {
   const settings = (clicked && clicked.settings) || {};
-  const columnClickBehavior = getColumnClickBehavior(settings, clicked?.column);
-  if (columnClickBehavior) {
-    return columnClickBehavior;
+  const dashcard = clicked?.extraData?.dashcard;
+  const columnSettings = clicked?.column
+    ? settings.column?.(clicked.column)
+    : undefined;
+
+  if (dashcard) {
+    return hasColumnLevelClickBehavior(dashcard)
+      ? columnSettings?.click_behavior
+      : settings.click_behavior;
   }
 
-  const dimensionClickBehavior = (clicked?.dimensions || [])
-    .map((dimension) => getColumnClickBehavior(settings, dimension.column))
-    .find(Boolean);
-
-  return dimensionClickBehavior || settings.click_behavior;
-}
-
-function getColumnClickBehavior(settings, column) {
-  if (!column) {
-    return undefined;
-  }
-  return (
-    getObjectColumnSettings(settings.column_settings, column)?.click_behavior ??
-    settings.column?.(column)?.click_behavior
-  );
+  // Standalone SDK questions can have column links without a dashboard card.
+  return columnSettings?.click_behavior || settings.click_behavior;
 }
 
 export function getClickBehaviorData(clicked, clickBehavior) {
