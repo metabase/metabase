@@ -206,7 +206,7 @@ export const MetabotChat = ({
               <Messages
                 messages={metabot.messages}
                 onRetryMessage={metabot.retryMessage}
-                onContinueMessage={metabot.submitInput}
+                onContinueMessage={metabot.continueResponse}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");
                   metabot.reloadConversation();
