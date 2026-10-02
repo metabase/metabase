@@ -94,6 +94,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
     index: 3,
     widget: "select",
+    // Only show or hide; a rotated or compact value saved as a bar chart would
+    // rotate the category labels.
+    isValid: (_series, vizSettings) =>
+      typeof vizSettings["graph.x_axis.axis_enabled"] === "boolean",
     getProps: () => ({
       options: [
         {

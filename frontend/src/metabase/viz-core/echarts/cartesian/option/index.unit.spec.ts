@@ -9,7 +9,11 @@ import * as echarts from "echarts/core";
 import { SVGRenderer } from "echarts/renderers";
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 
-import type { RawSeries, SingleSeries } from "metabase-types/api";
+import type {
+  RawSeries,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -20,9 +24,11 @@ import {
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import type { RenderingContext } from "../../../types";
 import { registerEChartsModules } from "../../index";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
 import { getChartLayout } from "../layout";
 import { getCartesianChartModel } from "../model";
+import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { buildAxes } from "./axis";
 import { buildEChartsSeries } from "./series";
@@ -237,6 +243,7 @@ describe("row chart bands", () => {
 
   const getRowChartOption = (
     values = CATEGORIES.map((_, index) => 100 * (index + 1)),
+    extraSettings: VisualizationSettings = {},
   ) => {
     const renderingContext: RenderingContext = {
       ...mockRenderingContext,
@@ -247,6 +254,7 @@ describe("row chart bands", () => {
       "graph.metrics": ["count"],
       "graph.x_axis.scale": "ordinal",
       series: () => ({ display: "bar" }),
+      ...extraSettings,
     });
     const rawSeries: RawSeries = [
       {
@@ -326,12 +334,26 @@ describe("row chart bands", () => {
     }
   });
 
-  it("labels each bar at its end on the side it grows, including negative bars", () => {
+  it("puts value labels at the end of each bar, on the side it grows", () => {
+    const option = getRowChartOption([120, -80, 60, -40], {
+      "graph.show_values": true,
+      series: () => ({ display: "bar", show_series_values: true }),
+    });
     // Row charts build an array of series options; the bar series comes first.
-    const [barSeries] = getRowChartOption([120, -80, 60, -40])
-      .series as BarSeriesOption[];
+    const [barSeries, ...labelSeries] = option.series as BarSeriesOption[];
+    const labelFor = (sign: "+" | "-") =>
+      labelSeries.find((series) =>
+        String(series.id).endsWith(getBarSeriesDataLabelKey("1:count", sign)),
+      );
 
+    // The bar's own label only shows on hover, in place of the label series.
     expect(barSeries.label?.position).toBe("outside");
+    expect(labelFor("+")?.label?.position).toBe("right");
+    expect(labelFor("-")?.label?.position).toBe("left");
+    expect(labelFor("-")?.encode).toEqual({
+      x: getBarSeriesDataLabelKey("1:count", "-"),
+      y: X_AXIS_DATA_KEY,
+    });
   });
 
   it("lets ECharts keep metric tick labels inside the chart, but not move axis names", () => {

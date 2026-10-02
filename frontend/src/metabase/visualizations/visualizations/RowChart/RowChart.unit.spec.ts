@@ -114,6 +114,25 @@ describe("row chart settings carried over from another chart type", () => {
     },
   );
 
+  it.each(["rotate-45", "rotate-90", "compact"] as const)(
+    "shows category labels unrotated despite a saved %s label setting",
+    (axisEnabled) => {
+      const { computedSettings } = setup("row", {
+        "graph.x_axis.axis_enabled": axisEnabled,
+      });
+
+      expect(computedSettings["graph.x_axis.axis_enabled"]).toBe(true);
+    },
+  );
+
+  it("keeps hidden category labels hidden", () => {
+    const { computedSettings } = setup("row", {
+      "graph.x_axis.axis_enabled": false,
+    });
+
+    expect(computedSettings["graph.x_axis.axis_enabled"]).toBe(false);
+  });
+
   it("draws every series as a bar despite a saved line or area display", () => {
     const { seriesDisplays } = setup("row", {
       series_settings: { count: { display: "line" }, sum: { display: "area" } },
