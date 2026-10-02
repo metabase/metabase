@@ -1,6 +1,8 @@
 (ns metabase.mcp.callback-api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.test :as mt]
@@ -13,9 +15,18 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+(defn- drill-body
+  "A drills request body: a sort drill on a venues handle owned by `user-id`."
+  [user-id]
+  (let [mp (mt/metadata-provider)]
+    {:handle    (ui.tu/store-query-handle! (mcp.session/create! user-id) user-id
+                                           (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+     :operation {:type "drill-thru" :drill "sort" :context {:column "PRICE"} :direction "asc"}}))
+
 (defn- post-drill
   [auth expected-status]
-  (ui.tu/ui-request auth :post expected-status "embed-mcp/drills" {:encodedQuery "ZW5jb2RlZA=="}))
+  (ui.tu/ui-request auth :post expected-status "embed-mcp/drills"
+                    (drill-body (or (:user-id auth) (mt/user->id :rasta)))))
 
 (defn- post-mcp-feedback
   [auth expected-status body]
@@ -27,7 +38,8 @@
   (let [owner         (mt/user->id :crowberto)
         owner-session (mcp.session/create! owner)]
     (mcp.session/get-or-create-embedding-session! owner-session owner)
-    {:session-id owner-session
+    {:user-id    (mt/user->id :rasta)
+     :session-id owner-session
      :credential (mcp.session/issue-ui-credential owner-session (mt/user->id :rasta) ui.tu/query-scopes)}))
 
 (deftest drills-post-stores-handle-test
@@ -63,15 +75,16 @@
                                         401))))))))
 
 (deftest drills-post-rejects-blank-body-test
-  (testing "blank encodedQuery returns 400"
+  (testing "a blank handle returns 400"
     (is (=? {:status 400}
-            (ui.tu/ui-request (ui.tu/ui-auth! :crowberto) :post 400 "embed-mcp/drills" {:encodedQuery ""})))))
+            (ui.tu/ui-request (ui.tu/ui-auth! :crowberto) :post 400 "embed-mcp/drills"
+                              (assoc (drill-body (mt/user->id :crowberto)) :handle ""))))))
 
 (deftest drills-post-requires-auth-test
   (testing "unauthenticated request returns 401"
     (is (=? {:status 401}
             (client/client-full-response :post 401 "embed-mcp/drills"
-                                         {:encodedQuery "ZW5jb2RlZA=="})))))
+                                         (drill-body (mt/user->id :rasta)))))))
 
 (deftest iframe-handlers-refuse-a-session-test
   (testing "The iframe handlers authenticate only the UI credential. A logged-in session is not a credential, so it
@@ -83,7 +96,7 @@
                               {:request-options {:headers {"mcp-session-id" session-id}}}
                               (when body [body])))]
       (is (= 401 (:status (request :get "embed-mcp/bootstrap"))))
-      (is (= 401 (:status (request :post "embed-mcp/drills" {:encodedQuery "ZW5jb2RlZA=="}))))
+      (is (= 401 (:status (request :post "embed-mcp/drills" (drill-body (mt/user->id :crowberto))))))
       (is (= 401 (:status (request :post "embed-mcp/feedback" {:feedback          {:positive true}
                                                                :conversation_data {:source "mcp"}}))))
       (is (= 401 (:status (request :get (str "embed-mcp/queries/" (random-uuid)))))))))

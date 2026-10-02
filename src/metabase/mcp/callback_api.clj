@@ -16,6 +16,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mcp.db :as mcp.db]
+   [metabase.mcp.derive :as mcp.derive]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
@@ -144,17 +145,6 @@
 
 ;;; -------------------------------------------------- Handles ---------------------------------------------------
 
-(def ^:private drills-body
-  [:map {:closed true} [:encodedQuery ms/NonBlankString]])
-
-(defn- store-drill
-  "Stash a base64-encoded MBQL query for the iframe's pending drill-through and return a handle UUID the iframe will
-   thread into the agent message so the `render_drill_through` tool can fetch it."
-  [{:keys [session-id]} request]
-  (let [{:keys [encodedQuery]} (check-body! drills-body (:body request))]
-    {:status 200
-     :body   {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}}))
-
 (defn- query-by-handle
   "Resolve a query handle to the base64-encoded MBQL the iframe should render. The lookup is scoped to the
    credential's user, not the MCP session, because clients rotate sessions."
@@ -253,6 +243,55 @@
     {:status 200
      :body   (qp.api/param-remapped-value field-ids parameter value)}))
 
+;;; -------------------------------------------------- Derive ----------------------------------------------------
+
+(defn- group-policy-permits-derive?
+  "Whether the group policy of the current user permits storing `derived-query`, derived from `base-query`, as a new
+   handle. Returns true when it does."
+  [_base-query _derived-query]
+  true)
+
+(defn- derive-handle!
+  "Derive a new query from the query stored under `handle` by `operations`, store it under a new handle owned by the
+   current user, and return `{:handle :query}` where `:query` is the new query base64-encoded."
+  [session-id handle operations]
+  (let [{:keys [query prompt]} (resolve-handle! session-id handle)
+        base    (lib/query (lib-be/application-database-metadata-provider (:database query)) query)
+        derived (mcp.derive/derive-query base operations)]
+    (api/check-403 (group-policy-permits-derive? base derived))
+    ;; A derived query keeps the base query's parameters, which serialization strips.
+    (let [encoded (-> (lib/prepare-for-serialization derived)
+                      (cond-> (seq (:parameters query)) (assoc :parameters (:parameters query)))
+                      json/encode
+                      u/encode-base64)]
+      {:handle (mcp.session/store-handle! session-id api/*current-user-id* encoded prompt)
+       :query  encoded})))
+
+(mr/def ::derive-body
+  [:map {:closed true}
+   [:operations [:sequential {:min 1 :max 10} ::mcp.derive/operation]]])
+
+(defn- derive-query
+  "Derive a new handle from the route's handle by the operations in the body, and return the new handle and its
+   base64-encoded query."
+  [{:keys [session-id] [handle] :route-params} request]
+  (let [{:keys [operations]} (check-body! ::derive-body (:body request))]
+    {:status 200
+     :body   (derive-handle! session-id handle operations)}))
+
+(mr/def ::drills-body
+  [:map {:closed true}
+   [:handle    ms/UUIDString]
+   [:operation ::mcp.derive/drill-operation]])
+
+(defn- store-drill
+  "Derive the drill-through the user clicked from the handle they clicked it on, and return the new handle. The iframe
+   threads the handle into the agent message so the `render_drill_through` tool renders it."
+  [{:keys [session-id]} request]
+  (let [{:keys [handle operation]} (check-body! ::drills-body (:body request))]
+    {:status 200
+     :body   {:handle (:handle (derive-handle! session-id handle [operation]))}}))
+
 ;;; -------------------------------------------------- Routing ---------------------------------------------------
 
 (def ^:private uuid-pattern
@@ -266,6 +305,8 @@
    [:post #"/feedback"                                      nil                           feedback]
    [:post #"/drills"                                        metabot.scope/agent-query-run store-drill]
    [:get  (re-pattern (str "/queries/(" uuid-pattern ")")) metabot.scope/agent-query-run query-by-handle]
+   [:post (re-pattern (str "/queries/(" uuid-pattern ")/derive"))
+    metabot.scope/agent-query-run derive-query]
    [:post (re-pattern (str "/queries/(" uuid-pattern ")/run"))
     metabot.scope/agent-query-run run-handle]
    [:post (re-pattern (str "/queries/(" uuid-pattern ")/pivot"))
