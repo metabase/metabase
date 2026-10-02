@@ -152,6 +152,7 @@
             ;; Clear the throbber when done
             (print "\r")
             (flush))
+
     ;; Execute the function
     (try
       (let [res (f)]
