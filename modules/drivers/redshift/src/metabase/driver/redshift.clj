@@ -52,6 +52,23 @@
   ["assumeminserverversion" "hostrecheckseconds" "isserverless" "kerberosservername" "loadbalancehosts"
    "logservererrordetail" "serverlessacctid" "serverlessworkgroup" "sslhostnameverifier" "targetservertype"])
 
+(defmethod driver/file-path-parameters :redshift
+  [_driver]
+  {"sslcert"           :read
+   "sslkey"            :read
+   "sslrootcert"       :read
+   "ssltruststore"     :read
+   "ssltruststorepath" :read
+   "inifile"           :read
+   "logpath"           :write})
+
+(defmethod driver/non-file-path-parameters :redshift
+  [_driver]
+  ["authprofile" "databasemetadatacachefields" "databasemetadatacachefieldsmib" "dsiloglevel" "enablestatementcache"
+   "iamdisablecache" "jaaslogin" "kerberosservername" "logintimeout" "loglevel" "logservererrordetail"
+   "logunclosedconnections" "maxlogfilecount" "maxlogfilesize" "preparedstatementcachequeries"
+   "preparedstatementcachesizemib" "profile"])
+
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
                               :database-routing                 true
@@ -746,8 +763,6 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
   [_ {:keys [host port db dbname], :as opts}]
-  (sql-jdbc.common/check-file-path-parameters!
-   opts #{"sslcert" "sslkey" "sslrootcert" "ssltruststorepath" "inifile"} driver-api/ensure-readable-path!)
   (when (and db dbname)
     (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options

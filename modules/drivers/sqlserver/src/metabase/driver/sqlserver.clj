@@ -58,6 +58,16 @@
   ["hostNameInCertificate" "iPAddressPreference" "instanceName" "integratedSecurity" "serverCertificate"
    "serverNameAsACE" "serverPreparedStatementDiscardThreshold" "serverSpn" "trustServerCertificate"])
 
+(defmethod driver/file-path-parameters :sqlserver
+  [_driver]
+  {"trustStore"        :read
+   "clientCertificate" :read
+   "clientKey"         :read
+   "serverCertificate" :read
+   "keyStoreLocation"  :read})
+
+(defmethod driver/additional-options-style :sqlserver [_driver] :semicolon)
+
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
                               :connection-impersonation-requires-role true
@@ -231,8 +241,6 @@
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"
              auth-mode "sql"}
       :as   details}]
-  (sql-jdbc.common/check-file-path-parameters!
-   details #{"trustStore" "clientCertificate" "clientKey" "serverCertificate" "keyStoreLocation"} driver-api/ensure-readable-path! :semicolon)
   (let [base       {:applicationName    driver-api/mb-version-and-process-identifier
                     :subprotocol        "sqlserver"
                     ;; it looks like the only thing that actually needs to be passed as the `subname` is the host;

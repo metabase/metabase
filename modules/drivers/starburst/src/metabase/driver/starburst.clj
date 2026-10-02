@@ -59,6 +59,22 @@
   [_driver]
   ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
+(defmethod driver/file-path-parameters :starburst
+  [_driver]
+  {"SSLKeyStorePath"             :read
+   "SSLTrustStorePath"           :read
+   "KerberosConfigPath"          :read
+   "KerberosCredentialCachePath" :read
+   "KerberosKeytabPath"          :read})
+
+(defmethod driver/non-file-path-parameters :starburst
+  [_driver]
+  ["KerberosConstrainedDelegation" "KerberosDelegation" "KerberosPrincipal" "KerberosRemoteServiceName"
+   "KerberosServicePrincipalPattern" "KerberosUseCanonicalHostname" "SSLKeyStorePassword" "SSLKeyStoreType"
+   "SSLTrustStorePassword" "SSLTrustStoreType" "SSLUseSystemKeyStore" "SSLUseSystemTrustStore"
+   "assumeNullCatalogMeansCurrentCatalog" "catalog" "externalAuthenticationRedirectHandlers"
+   "externalAuthenticationTokenCache" "hostnameInCertificate" "httpLoggingLevel" "path"])
+
 (set! *warn-on-reflection* true)
 
 (prefer-method driver/database-supports? [:starburst :set-timezone] [:sql-jdbc :set-timezone])
@@ -972,8 +988,6 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :starburst
   [_ details-map]
-  (sql-jdbc.common/check-file-path-parameters!
-   details-map #{"SSLKeyStorePath" "SSLTrustStorePath"} driver-api/ensure-readable-path!)
   (let [props (-> details-map
                   (update :port (fn [port]
                                   (if (string? port)

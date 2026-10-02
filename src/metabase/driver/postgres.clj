@@ -68,6 +68,19 @@
   ["assumeMinServerVersion" "hostRecheckSeconds" "loadBalanceHosts" "logServerErrorDetail" "tcpNoDelay"
    "targetServerType" "localSocketAddress" "kerberosServerName" "sslhostnameverifier"])
 
+(defmethod driver/file-path-parameters :postgres
+  [_driver]
+  {"sslcert"     :read
+   "sslkey"      :read
+   "sslrootcert" :read
+   "loggerFile"  :write})
+
+(defmethod driver/non-file-path-parameters :postgres
+  [_driver]
+  ["databaseMetadataCacheFields" "databaseMetadataCacheFieldsMiB" "jaasLogin" "kerberosServerName"
+   "logServerErrorDetail" "logUnclosedConnections" "loggerLevel" "loginTimeout" "pemKeyAlgorithm"
+   "preparedStatementCacheQueries" "preparedStatementCacheSizeMiB"])
+
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
@@ -1031,8 +1044,6 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
   [_ {ssl? :ssl, :keys [auth-provider], :as details-map}]
-  (sql-jdbc.common/check-file-path-parameters!
-   details-map #{"sslrootcert" "sslcert" "sslkey" "service"} driver-api/ensure-readable-path!)
   (let [use-iam? (= (some-> auth-provider keyword) :aws-iam)
         props (-> details-map
                   (update :port (fn [port]

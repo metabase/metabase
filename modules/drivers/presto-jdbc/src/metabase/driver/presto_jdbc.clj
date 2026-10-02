@@ -57,6 +57,22 @@
   [_driver]
   ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
+(defmethod driver/file-path-parameters :presto-jdbc
+  [_driver]
+  {"SSLKeyStorePath"             :read
+   "SSLTrustStorePath"           :read
+   "KerberosConfigPath"          :read
+   "KerberosCredentialCachePath" :read
+   "KerberosKeytabPath"          :read})
+
+(defmethod driver/non-file-path-parameters :presto-jdbc
+  [_driver]
+  ["KerberosConstrainedDelegation" "KerberosDelegation" "KerberosPrincipal" "KerberosRemoteServiceName"
+   "KerberosServicePrincipalPattern" "KerberosUseCanonicalHostname" "SSLKeyStorePassword" "SSLKeyStoreType"
+   "SSLTrustStorePassword" "SSLTrustStoreType" "SSLUseSystemKeyStore" "SSLUseSystemTrustStore"
+   "assumeNullCatalogMeansCurrentCatalog" "catalog" "externalAuthenticationRedirectHandlers"
+   "externalAuthenticationTokenCache" "hostnameInCertificate" "httpLoggingLevel" "path"])
+
 (doseq [[feature supported?] {:basic-aggregations               true
                               :binning                          true
                               :database-routing                 true
@@ -537,8 +553,6 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :presto-jdbc
   [_ details-map]
-  (sql-jdbc.common/check-file-path-parameters!
-   details-map #{"SSLKeyStorePath" "SSLTrustStorePath"} driver-api/ensure-readable-path!)
   (let [props (-> details-map
                   (update :port (fn [port]
                                   (if (string? port)

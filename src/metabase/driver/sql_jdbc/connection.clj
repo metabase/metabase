@@ -277,6 +277,7 @@
         ;; went through a connection test (serialization import, config files).
         _                   (driver.u/with-database-network-policy database
                               (driver.u/validate-connection-hosts! driver details))
+        _                   (driver.u/validate-connection-file-paths! driver details)
         details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))

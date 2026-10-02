@@ -95,25 +95,3 @@
       "//:5439/db"
       "//:443/;ConnCatalog=c"
       "//a.example.com:5432,:5432/db")))
-
-(deftest check-file-path-parameters!-test
-  (let [checked (atom [])
-        check   (fn [p] (swap! checked conj p) p)
-        names   #{"sslrootcert" "sslkey"}]
-    (testing "a declared parameter's value is checked whether it is a detail key or in additional-options, case-insensitively"
-      (doseq [details [{:sslrootcert "/a/ca.pem"}
-                       {:SslRootCert "/a/ca.pem"}
-                       {:additional-options "sslmode=verify-full&sslrootcert=/a/ca.pem"}]]
-        (reset! checked [])
-        (sql-jdbc.common/check-file-path-parameters! details names check :url)
-        (is (= ["/a/ca.pem"] @checked) (pr-str details))))
-    (testing "undeclared parameters and blank values are left alone, and details are returned"
-      (reset! checked [])
-      (is (= {:sslmode "x" :sslrootcert ""}
-             (sql-jdbc.common/check-file-path-parameters! {:sslmode "x" :sslrootcert ""} names check :url)))
-      (is (= [] @checked)))
-    (testing "both routes are checked when both are present"
-      (reset! checked [])
-      (sql-jdbc.common/check-file-path-parameters!
-       {:sslkey "/k.pem" :additional-options "sslrootcert=/ca.pem"} names check :url)
-      (is (= #{"/k.pem" "/ca.pem"} (set @checked))))))

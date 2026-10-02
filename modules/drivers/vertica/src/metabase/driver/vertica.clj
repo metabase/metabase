@@ -37,6 +37,18 @@
   ["failonmultinodeplans" "hostnameverifier" "kerberoshostname" "maxpooledconnectionspernode" "nodedownwaittime"
    "preferredaddressfamily"])
 
+(defmethod driver/file-path-parameters :vertica
+  [_driver]
+  {"keystorepath"        :read
+   "truststorepath"      :read
+   "oauthtruststorepath" :read
+   "LogPath"             :write})
+
+(defmethod driver/non-file-path-parameters :vertica
+  [_driver]
+  ["directbatchinsert" "jaasconfigname" "kerberoshostname" "kerberosservicename" "keystorepassword" "logintimeout"
+   "loglevel" "lognamespace" "metadatacachelifetime" "oauthtruststorepassword" "truststorepassword"])
+
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
                               :datetime-diff                    true
@@ -83,8 +95,6 @@
   [_ {:keys [host port db dbname]
       :or   {host "localhost", port 5433, db ""}
       :as   details}]
-  (sql-jdbc.common/check-file-path-parameters!
-   details #{"keystorepath" "truststorepath" "oauthtruststorepath"} driver-api/ensure-readable-path!)
   (-> (merge {:classname   "com.vertica.jdbc.Driver"
               :subprotocol "vertica"
               :subname     (str "//" host ":" port "/" (or dbname db))}

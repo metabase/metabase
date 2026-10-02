@@ -27,6 +27,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -53,6 +54,15 @@
    (org.mariadb.jdbc UrlParser)))
 
 (set! *warn-on-reflection* true)
+
+(deftest file-path-parameters-must-be-readable-test
+  (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+    (let [check #(driver.u/validate-connection-file-paths! :mysql {:host "h" :port 3306 :dbname "db" :additional-options %})]
+      (doseq [param ["keyStore" "trustStore" "serverSslCert" "localSocket"]]
+        (testing param
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (check (str param "=/etc/secret"))))
+          (is (nil? (check (str param "=/allowed-dir/ok")))))))))
 
 (deftest default-schema-test
   (mt/test-driver :mysql

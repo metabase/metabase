@@ -42,6 +42,18 @@
   ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
    "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
 
+(defmethod driver/file-path-parameters :clickhouse
+  [_driver]
+  {"sslrootcert"   :read
+   "sslcert"       :read
+   "ssl_key"       :read
+   "ssl_key_store" :read
+   "trust_store"   :read})
+
+(defmethod driver/non-file-path-parameters :clickhouse
+  [_driver]
+  ["clickhouse_setting_log_comment" "key_store_password" "key_store_type"])
+
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
 
 (defmethod driver/prettify-native-form :clickhouse
@@ -155,8 +167,6 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
-  (sql-jdbc.common/check-file-path-parameters!
-   details #{"sslrootcert" "sslcert" "ssl_key" "trust_store" "ssl_key_store"} driver-api/ensure-readable-path!)
   (let [;; ensure defaults merge on top of nils
         details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details

@@ -31,6 +31,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -77,7 +78,7 @@
   (testing "a user-supplied certificate path, as a detail key or in additional-options, must be in the readable paths"
     (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
       (let [base {:host "h" :port 5432 :dbname "db" :user "u" :ssl true}
-            spec #(sql-jdbc.conn/connection-details->spec :postgres (merge base %))]
+            spec #(driver.u/validate-connection-file-paths! :postgres (merge base %))]
         (doseq [extra [{:sslrootcert "/etc/ca.pem"}
                        {:sslcert "/etc/c.pem"}
                        {:sslkey "/etc/k.pem"}
@@ -86,7 +87,7 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec extra)))))
         (testing "a path inside an allowed directory, or no file path, is fine"
           (doseq [extra [{:sslrootcert "/allowed-dir/ca.pem"} {} {:additional-options "sslmode=require"}]]
-            (is (map? (spec extra)) (pr-str extra))))))))
+            (is (nil? (spec extra)) (pr-str extra))))))))
 
 (deftest default-schema-test
   (mt/test-driver :postgres

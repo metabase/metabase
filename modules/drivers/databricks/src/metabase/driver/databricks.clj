@@ -10,7 +10,6 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc :as sql-jdbc]
-   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
@@ -46,6 +45,23 @@
 (defmethod driver/host-carrying-parameters :databricks
   [_driver]
   ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+
+(defmethod driver/file-path-parameters :databricks
+  [_driver]
+  {"SSLTrustStore"                    :read
+   "SSLKeyStore"                      :read
+   "Auth_JWT_Key_File"                :read
+   "GoogleCredentialsFile"            :read
+   "LogPath"                          :write
+   ;; local files a `PUT`/`GET` against a volume or staging location may read and write
+   "VolumeOperationAllowedLocalPaths" :read-write
+   "StagingAllowedLocalPaths"         :read-write})
+
+(defmethod driver/non-file-path-parameters :databricks
+  [_driver]
+  ["httppath"])
+
+(defmethod driver/additional-options-style :databricks [_driver] :semicolon)
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
@@ -271,11 +287,8 @@
     (str/replace-first additional-options #"^(?!;)" ";")))
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
-  [_driver {:keys [catalog host http-path use-m2m token client-id oauth-secret log-level additional-options] :as details}]
+  [_driver {:keys [catalog host http-path use-m2m token client-id oauth-secret log-level additional-options] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
-  (sql-jdbc.common/check-file-path-parameters!
-   details #{"SSLTrustStore" "SSLKeyStore" "Auth_JWT_Key_File" "GoogleCredentialsFile"}
-   driver-api/ensure-readable-path! :semicolon)
   (let [base-spec
         {:classname      "com.databricks.client.jdbc.Driver"
          :subprotocol    "databricks"

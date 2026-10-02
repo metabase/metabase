@@ -18,6 +18,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru trs]]
@@ -27,9 +28,11 @@
    [metabase.warehouses.schema :as warehouses.schema])
   (:import
    (java.io ByteArrayInputStream)
+   (java.net URLDecoder)
    (java.security KeyFactory KeyStore PrivateKey)
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
+   (java.util.regex Pattern)
    (javax.net SocketFactory)
    (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
 
@@ -234,6 +237,77 @@
         (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
           (throw (blocked-network-address-exception)))))))
 
+(def ^:private additional-options-entry-separator
+  {:url "&", :semicolon ";", :comma ","})
+
+(defn- split-additional-options
+  "The `[name value]` entries of `additional-options`, split on `separator` with no regard for quoting."
+  [additional-options separator]
+  (for [entry (str/split additional-options (re-pattern (Pattern/quote separator)))
+        :let  [[k v] (str/split entry #"=" 2)]
+        :when v]
+    [k v]))
+
+(defn- brace-quoted-additional-options
+  "The `[name value]` entries of `additional-options` as a client that lets a value be wrapped in braces reads them --
+  mssql-jdbc and the Simba-based clients do -- where `{...}` holds the separator literally and `}}` is an escaped `}`:
+  `name={/a;/b}` is one entry whose value is `/a;/b`."
+  [additional-options separator]
+  (let [entry (re-pattern (str "([^=" separator "]+)=\\s*(?:\\{((?:[^}]|\\}\\})*)\\}?|([^" separator "]*))"))]
+    (for [[_ k braced plain] (re-seq entry additional-options)]
+      [k (if braced (str/replace braced "}}" "}") plain)])))
+
+(defn- supplied-connection-parameters
+  "Every `[name value]` an admin supplies to `driver`'s client in `details`: each string detail, and each entry of the
+  driver's [[driver/additional-options-detail-key]] -- every occurrence of a repeated name, and read both with and
+  without brace quoting, so that whichever one the client acts on has been seen."
+  [driver details]
+  (let [options (get details (driver/additional-options-detail-key driver))]
+    (concat
+     (for [[k v] details
+           :when (string? v)]
+       [(name k) v])
+     (when (and (string? options) (not (str/blank? options)))
+       (let [separator (additional-options-entry-separator (driver/additional-options-style driver))]
+         (concat (split-additional-options options separator)
+                 (brace-quoted-additional-options options separator)))))))
+
+(defn- path-readings
+  "The paths a client might take `value` to name: as written, percent-decoded -- pgjdbc, Trino and Snowflake decode a
+  URL parameter before using it, so `..%2F` is a `../` to them -- and, since some parameters take a comma-separated
+  list of paths, each entry of it; all of those trimmed as well."
+  [^String value]
+  (let [decoded (try
+                  (URLDecoder/decode value "UTF-8")
+                  (catch IllegalArgumentException _ nil))]
+    (into #{}
+          (comp (mapcat #(cons % (str/split % #",")))
+                (mapcat (juxt identity str/trim))
+                (remove str/blank?))
+          (cond-> [value] decoded (conj decoded)))))
+
+(defn validate-connection-file-paths!
+  "Throw a 400 if `details` hand `driver`'s client a local file path, through a parameter it declares in
+  [[driver/file-path-parameters]], that is outside the readable paths (for a file it reads) or the writable paths (for
+  one it writes). Returns nil when the details are acceptable.
+
+  Reads what an admin supplied -- detail keys and `:additional-options` -- not the connection spec built from them,
+  since the spec also carries paths Metabase sets itself (an uploaded secret written to a temp file), which are
+  checked where Metabase reads them."
+  [driver details]
+  (let [declared (into {}
+                       (map (fn [[param access]] [(u/lower-case-en param) access]))
+                       (driver/file-path-parameters driver))]
+    (when (seq declared)
+      (doseq [[k v]  (supplied-connection-parameters driver details)
+              :let   [access (declared (u/lower-case-en (str/trim k)))]
+              :when  access
+              path   (path-readings v)]
+        (when (#{:read :read-write} access)
+          (system/ensure-readable-path! path))
+        (when (#{:write :read-write} access)
+          (system/ensure-writable-path! path))))))
+
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
   1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
@@ -249,6 +323,7 @@
       ;; running it through `humanize-connection-error-message` would let a driver turn it into something more
       ;; revealing. The boolean arity reaches it through its own `try`, so that one still answers `false`.
       (validate-connection-hosts! driver details-map)
+      (validate-connection-file-paths! driver details-map)
       (try
         (u/with-timeout (driver.settings/db-connection-timeout-ms)
           (or (driver/can-connect? driver details-map)

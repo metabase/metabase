@@ -33,6 +33,14 @@
 
 (driver/register! :sqlite, :parent #{:sql-jdbc})
 
+(defmethod driver/file-path-parameters :sqlite
+  [_driver]
+  {"temp_store_directory" :write})
+
+(defmethod driver/non-file-path-parameters :sqlite
+  [_driver]
+  ["cache_size" "default_cache_size" "legacy_file_format" "shared_cache" "temp_store"])
+
 (defmethod driver/display-name :sqlite
   [_driver]
   "SQLite")

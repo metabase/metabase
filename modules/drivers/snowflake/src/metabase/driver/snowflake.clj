@@ -54,6 +54,13 @@
   [_driver]
   ["proxyHost" "host"])
 
+(defmethod driver/file-path-parameters :snowflake
+  [_driver]
+  {"private_key_file"           :read
+   "privateKeyFile"             :read
+   "client_config_file"         :read
+   "DIAGNOSTICS_ALLOWLIST_FILE" :read})
+
 (defmethod driver/connection-hosts :snowflake
   [_driver {:keys [account host use-hostname]}]
   (driver/hosts-from-details
@@ -397,8 +404,6 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname], :as details}]
-  (sql-jdbc.common/check-file-path-parameters!
-   details #{"private_key_file" "privateKeyFile" "client_config_file" "DIAGNOSTICS_ALLOWLIST_FILE"} driver-api/ensure-readable-path!)
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
     (log/warn (str "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect "
                    "results. Set the Start of Week Setting instead.")))

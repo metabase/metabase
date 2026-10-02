@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -613,3 +614,12 @@
           ;; should escape single quotes
           "'); OR 1 = 1 --"
           "SELECT * FROM categories WHERE regexp_like(name, '''); OR 1 = 1 --')")))))
+
+(deftest file-path-parameters-must-be-allowed-test
+  (testing "a log path in additional-options has to be in the writable paths"
+    (mt/with-temp-env-var-value! [mb-writable-paths "/allowed-dir"]
+      (let [check #(driver.u/validate-connection-file-paths!
+                    :athena {:region "us-east-1" :s3_staging_dir "s3://b/p" :additional-options %})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Writing to path is disallowed"
+                              (check "LogLevel=6;LogPath=/etc")))
+        (is (nil? (check "LogLevel=6;LogPath=/allowed-dir")))))))
