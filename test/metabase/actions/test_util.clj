@@ -29,6 +29,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *actions-test-data-tables*
   #{"categories"})
 

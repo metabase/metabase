@@ -544,7 +544,7 @@
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
     :content-diagnostics
-    :data-apps-preview
+    :data-apps
     :data-complexity-score
     :development-mode
     :library
@@ -585,6 +585,12 @@
           (is (not (< (get query_executions k)
                       (get query_executions_24h k)))
               "There are never more query executions in the 24h version than all-of-time."))))))
+
+(deftest snowplow-anonymous-usage-stats-test
+  (testing "the stats ping sends every metric it collects"
+    (let [{:strs [metrics]} (#'stats/snowplow-anonymous-usage-stats (legacy-anonymous-usage-stats))]
+      (is (empty? (set/difference (set (map name (keys (#'stats/->snowplow-metric-info))))
+                                  (set (map #(get % "name") metrics))))))))
 
 (deftest snowplow-setting-tests
   (testing "snowplow formated settings"

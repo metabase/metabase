@@ -25,7 +25,7 @@
                               :config-text-file
                               :content-translation
                               :content-verification
-                              :data-apps-preview
+                              :data-apps
                               :data-complexity-score
                               :dashboard-subscription-filters
                               :disable-password-login

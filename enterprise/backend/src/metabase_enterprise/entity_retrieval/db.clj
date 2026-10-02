@@ -13,7 +13,7 @@
   `collection-ids`, optionally narrowed to just `id`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    id             :- [:maybe ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name :description :type :card_schema]
+  (t2/select [:model/Card :id :name :description :type]
              {:where [:and
                       [:in :collection_id collection-ids]
                       [:= :archived false]

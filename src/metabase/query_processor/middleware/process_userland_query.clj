@@ -210,6 +210,7 @@
              :is_db_routed    (qp.middleware.enterprise/currently-db-routed?)}
       destination-db-id (assoc :database_id destination-db-id))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *execution-context-ref*
   "Bound to an atom by [[process-userland-query-middleware]] for each userland query.
   [[capture-execution-context-middleware]] writes the snapshotted impersonation/db-routing context here while the

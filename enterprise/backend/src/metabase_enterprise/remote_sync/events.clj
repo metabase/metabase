@@ -67,6 +67,29 @@
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
+(defn track-untracked-actions!
+  "Insert a 'create' ledger row for every unarchived Action with none whose model is in the Collections with
+  `collection-ids`. Returns the number of rows inserted."
+  [collection-ids]
+  (let [action-spec (spec/spec-for-model-key :model/Action)
+        timestamp   (t/offset-date-time)
+        rows        (when (seq collection-ids)
+                      (for [action (remote-sync.db/untracked-actions-in-collections (vec collection-ids))]
+                        (merge {:model_type        "Action"
+                                :model_id          (:id action)
+                                :status            "create"
+                                :status_changed_at timestamp}
+                               (spec/build-sync-object-fields action-spec action))))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
+(defn backfill-action-tracking!
+  "Insert a 'create' ledger row for every untracked Action of a model in a remote-synced collection, so an instance
+  upgraded with synced models still pushes their actions. Returns the number of rows inserted."
+  []
+  (track-untracked-actions! (remote-sync.db/remote-synced-collection-ids)))
+
 (defn disable-library-tracking!
   "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
   []
@@ -207,7 +230,7 @@
 (defn- cascade-to-children!
   "When a parent model becomes eligible/ineligible, cascade to its children.
    For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
-   For ineligible: query existing RSOs by model_table_id and mark as removed."
+   For ineligible: find the children's active RSOs and mark them as removed."
   [model-spec model-id status eligible?]
   (doseq [child-spec (spec/children-specs (:model-key model-spec))]
     (let [fk     (:parent-fk child-spec)
@@ -218,7 +241,10 @@
           (when (spec/check-eligibility child-spec child)
             (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
         ;; Ineligible branch: mark existing child RSOs as removed
-        (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
+        (doseq [child-rso (if-let [rso-key (:parent-rso-key child-spec)]
+                            (remote-sync.db/active-child-rsos (:model-type child-spec) rso-key model-id)
+                            (remote-sync.db/active-rsos-of-children (:model-key child-spec) (:model-type child-spec)
+                                                                    fk model-id))]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
 (defn- handle-model-event-from-spec
@@ -231,6 +257,11 @@
         existing-entry (remote-sync.db/rso model-type model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
+      ;; a synced item on a read-only instance can still change (e.g. an admin's public link), but that change can
+      ;; never be pushed, so tracking it would only block the next pull
+      (not (spec/model-editable? (:model-key model-spec) object))
+      nil
+
       eligible?
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
@@ -295,6 +326,37 @@
         (log/info "Library collection is no longer remote-synced, disabling Library content sync tracking")
         (disable-library-tracking!)))))
 
+(defn- cascade-archived-state!
+  "Brings the RemoteSyncObject rows of `collection`'s subtree, other than its own row, in line with the archived state
+  of each entity and of the collection it is in: rows of entities that are archived or in an archived collection
+  become 'delete', and 'delete' rows of existing entities that are neither become 'update'."
+  [collection]
+  ;; Archiving a collection archives its subtree in bulk SQL, which publishes no event per descendant. Transforms
+  ;; have no archived column, so only their collection shows that they were archived.
+  (let [collection-ids       (remote-sync.db/subtree-collection-ids [collection])
+        collection-archived? (remote-sync.db/archived-by-id :model/Collection (vec collection-ids))
+        rows                 (->> (remote-sync.db/content-rsos collection-ids)
+                                  (remove #(and (= "Collection" (:model_type %)) (= (:id collection) (:model_id %)))))
+        now                  (t/offset-date-time)]
+    (doseq [[model-type type-rows] (group-by :model_type rows)
+            :let  [{:keys [model-key archived-key]} (spec/spec-for-model-type model-type)]
+            :when (= :archived archived-key)
+            :let  [entity-archived? (remote-sync.db/archived-by-id model-key (mapv :model_id type-rows))
+                   archived?        (fn [{:keys [model_id model_collection_id]}]
+                                      (or (true? (entity-archived? model_id))
+                                          (true? (collection-archived? model_collection_id))))
+                   deleted          (filter #(and (archived? %)
+                                                  (not (contains? #{"delete" "removed"} (:status %))))
+                                            type-rows)
+                   restored         (filter #(and (contains? entity-archived? (:model_id %))
+                                                  (not (archived? %))
+                                                  (= "delete" (:status %)))
+                                            type-rows)]]
+      (when (seq deleted)
+        (remote-sync.db/set-rsos-status! (map :id deleted) "delete" now))
+      (when (seq restored)
+        (remote-sync.db/set-rsos-status! (map :id restored) "update" now)))))
+
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object]} event
@@ -313,7 +375,10 @@
       should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details)
+        (when (and (= topic :event/collection-update)
+                   (or (:archived object) (= "delete" (:status existing-entry))))
+          (cascade-archived-state! object)))
       (and existing-entry (not should-sync?))
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
