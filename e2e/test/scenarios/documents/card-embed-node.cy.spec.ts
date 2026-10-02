@@ -24,7 +24,7 @@ describe("documents card embed node custom logic", () => {
       H.visitDocument("@documentId");
     });
 
-    it("should not group a card dropped onto itself, create a flexContainer when dropping a card onto another, and add supporting text to it", () => {
+    it("should not group a card dropped onto itself, group a card dropped onto another, and add supporting text to the group", () => {
       // Wait for cards to load
       H.getDocumentCard("Orders")
         .should("be.visible")
@@ -670,7 +670,7 @@ describe("documents card embed node custom logic", () => {
   });
 
   describe("deleting a cardEmbed", () => {
-    it("should allow you to remove a card if it is the first item in a docuemnt (UXW-2169)", () => {
+    it("should allow you to remove a card if it is the first item in a document (UXW-2169)", () => {
       cy.visit("/document/new");
 
       H.documentContent().click();
@@ -739,7 +739,7 @@ describe("documents card embed node custom logic", () => {
 
       H.visitDocument("@documentId");
 
-      // First create a flexContainer by dropping one card onto another
+      // Wait for the cards in the existing flexContainer to load
       H.getDocumentCard("Orders")
         .should("be.visible")
         .findByTestId("table-root")
@@ -749,14 +749,14 @@ describe("documents card embed node custom logic", () => {
         .findByTestId("table-root")
         .should("exist");
 
-      // Create flexContainer
+      // Add the standalone card to the flexContainer
       H.dragAndDropCardOnAnotherCard(
         "Orders, Count, Grouped by Created At (year)",
         "Orders",
         { side: "right" },
       );
 
-      // Verify flexContainer was created with 2 cards
+      // Verify the flexContainer now has 3 cards
       H.documentContent()
         .find('[data-type="flexContainer"]')
         .should("exist")
@@ -788,12 +788,12 @@ describe("documents card embed node custom logic", () => {
       // Press Backspace to delete the selected card
       cy.realPress("Backspace");
 
-      // Verify the flexContainer now has only 1 card and should be unwrapped back to standalone
+      // With only 1 card left, the flexContainer is unwrapped
       H.documentContent()
         .find('[data-type="flexContainer"]')
-        .should("not.exist"); // FlexContainer should be unwrapped when only 1 card remains
+        .should("not.exist");
 
-      // Verify only the Orders, Count card remains as a standalone card
+      // Verify only the Orders by year card remains as a standalone card
       H.documentContent()
         .findAllByTestId("document-card-embed")
         .should("have.length", 1);

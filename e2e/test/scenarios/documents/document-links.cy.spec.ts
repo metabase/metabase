@@ -128,7 +128,7 @@ describe("Links in documents", () => {
         .should("exist");
     });
 
-    it("should allow adding smart links using the suggestion menu, its 'Browse all' option, and the mention menu 'Browse all' option", () => {
+    it("should add smart links via the suggestion menu, its 'Browse all' picker, and the mention menu's 'Browse all' picker", () => {
       cy.visit("/document/new");
       H.documentContent().click();
 

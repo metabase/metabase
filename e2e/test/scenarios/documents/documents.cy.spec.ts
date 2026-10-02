@@ -31,7 +31,7 @@ describe("documents", () => {
   });
 
   describe("duplicating documents", () => {
-    it("should warn about unsaved changes when duplicating, keep them on cancel, and save, copy and redirect on confirm", () => {
+    it("should warn about unsaved changes on duplicate, keep them on cancel, and save, copy and redirect on confirm", () => {
       cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
 
       H.createDocument({
@@ -477,7 +477,7 @@ describe("documents", () => {
         });
       });
 
-      it("should allow you to print and handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
+      it("should print and handle undo/redo, resetting the history when a different document is viewed", () => {
         H.visitDocument("@documentId");
 
         cy.log("print");
@@ -1177,7 +1177,7 @@ describe("documents", () => {
 
       H.visitDocument("@flexDocumentId");
 
-      // Wait for all cards to load (16 chart types × 2 cards each = 32 queries)
+      // Wait for all cards to load (2 cards per chart type)
       for (let i = 0; i < chartTypes.length * 2; i++) {
         cy.wait("@cardQuery", { timeout: 15000 });
       }
@@ -1252,7 +1252,7 @@ describe("documents", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
-    it("should allow creating new notebook questions, including a time series one as a line chart, and embedding them in the document", () => {
+    it("should create notebook questions, including a time series line chart, and embed them in the document", () => {
       H.visitDocument("@documentId");
       H.documentContent().click();
 
@@ -1436,7 +1436,7 @@ describe("documents", () => {
       cy.findByRole("dialog", { name: "Edit SQL Query" }).should("not.exist");
     });
 
-    it("should show 'Create new question' footer when no search results are found and open the new question menu on Enter", () => {
+    it("should show the 'Create new question' footer for empty search results and open the new question menu on Enter", () => {
       H.visitDocument("@documentId");
       H.documentContent().click();
 

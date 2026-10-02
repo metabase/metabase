@@ -227,7 +227,7 @@ describe("scenarios > documents > public", () => {
     });
   });
 
-  it("should be accessible anonymously with branding, become inaccessible when public sharing is disabled, and hide branding for premium", () => {
+  it("should be accessible anonymously with branding, inaccessible once public sharing is disabled, and unbranded on premium", () => {
     // Create a document with public link
     createTestDocumentWithCard("Document for Disabling Test");
 

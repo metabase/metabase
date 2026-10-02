@@ -533,7 +533,9 @@ describe("document comments", () => {
     createLoremIpsumDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
-      cy.log("resolved 3-comments thread");
+      cy.log(
+        "a thread with comments from two users, and a comment on another node",
+      );
 
       createComment(documentId, HEADING_1_ID, "Test X");
 
@@ -603,7 +605,7 @@ describe("document comments", () => {
     });
   });
 
-  it("allows editing the document when comments are open, and opening comments when the document has changes", () => {
+  it("allows editing the document with comments open, and opening comments with unsaved changes", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -655,7 +657,7 @@ describe("document comments", () => {
   });
 
   describe("comment editor", () => {
-    it("supports basic formatting with keyboard shortcuts, markdown, and formatting menu, and emojis", () => {
+    it("supports formatting via keyboard shortcuts, markdown, and the formatting menu, and emojis", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.log("supports basic formatting with keyboard shortcuts");
@@ -884,7 +886,7 @@ describe("document comments", () => {
   });
 
   describe("resolve / unresolve", () => {
-    it("should resolve / unresolve basic discussion, show the resolved tab only when needed, and not allow replies to resolved threads", () => {
+    it("should resolve and unresolve a discussion, show the resolved tab only when needed, and block replies to resolved threads", () => {
       startNewCommentIn1ParagraphDocument();
 
       const commentText = "Test resolving";
@@ -929,7 +931,7 @@ describe("document comments", () => {
       Comments.getCommentByText("Reply 1").should("be.visible");
     });
 
-    it("only first comment in a thread can be resolved, and a thread can be resolved and unresolved when the first comment is deleted", () => {
+    it("allows resolving only via the first comment, and resolving and unresolving a thread whose first comment is deleted", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("Main comment");
@@ -1027,7 +1029,7 @@ describe("document comments", () => {
       });
     });
 
-    it("copies and opens a link to a comment in its thread, and switches between open/resolved tabs when resolving/unresolving it", () => {
+    it("copies and opens a comment link, switching between open and resolved tabs as its thread is resolved and unresolved", () => {
       H.visitDocument("@documentId");
 
       cy.get<number>("@documentId").then((documentId) => {
@@ -1117,7 +1119,7 @@ describe("document comments", () => {
   });
 
   describe("all comments sidebar", () => {
-    it("should show all threads new to old and not allow to create new threads", () => {
+    it("should show all threads newest first and not allow creating new threads", () => {
       startNewCommentIn1ParagraphDocument();
       cy.realType("thread 1");
       cy.realPress([META_KEY, "Enter"]);
@@ -1138,7 +1140,7 @@ describe("document comments", () => {
       Comments.getNewThreadInput().should("not.exist");
     });
 
-    it("should render placeholder when no comments, and when no open comments, but resolved", () => {
+    it("should render a placeholder when there are no comments and when all comments are resolved", () => {
       create1ParagraphDocument();
       H.visitDocumentComment("@documentId", "all");
 
@@ -1180,7 +1182,7 @@ describe("document comments", () => {
   });
 
   describe("comment reactions", () => {
-    it("should allow to add multiple reactions to a comment and remove own reactions", () => {
+    it("should allow adding multiple reactions to a comment and removing own reactions", () => {
       create1ParagraphDocument();
       cy.get<DocumentId>("@documentId").then((documentId) => {
         createParagraphComment(documentId, "Test 1");
@@ -1385,7 +1387,7 @@ describe("document comments", () => {
       H.setupSMTP();
     });
 
-    it("notifies the owner of the document about a new thread, anyone in the thread about a reply, and an explicitly @mentioned person", () => {
+    it("notifies the document owner of a new thread, thread participants of a reply, and an @mentioned user", () => {
       create1ParagraphDocument();
 
       cy.get<DocumentId>("@documentId").then((documentId) => {
