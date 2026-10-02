@@ -507,10 +507,16 @@
          compile!) y context))
     (append-sql! context nil-sql)))
 
-(defn- -compound! [sql xs context]
-  (if (= (count xs) 1)
-    (compile! (first xs) context)
-    (interpose-fn xs #(-parens! % context) #(append-sql! context sql))))
+(defn- -compound!
+  "Compile a compound boolean expression like `:and` or `:or`. Like Honey SQL we ignore `nil` args -- this is what makes
+  `[:and x (when y z)]` work -- and if nothing is left we compile `identity-value` (`TRUE` for AND, `FALSE` for OR)
+  rather than emitting nothing at all."
+  [sql identity-value xs context]
+  (let [xs (filter some? xs)]
+    (condp = (count xs)
+      0 (compile! identity-value context)
+      1 (compile! (first xs) context)
+      (interpose-fn xs #(-parens! % context) #(append-sql! context sql)))))
 
 (defn- not! [[x] context]
   (append-sql! context "NOT ")
@@ -739,7 +745,7 @@
   (case f
     (:<> :!= :not= :is-not) (-equals! " <> " " IS NOT NULL" args context)
     (:= :is)                (-equals! " = " " IS NULL" args context)
-    :and                    (-compound! " AND " args context)
+    :and                    (-compound! " AND " true args context)
     :between                (between! args context)
     :case                   (case! args context)
     :cast                   (cast! args context)
@@ -752,7 +758,7 @@
     :not                    (not! args context)
     :not-exists             (-exists! "NOT EXISTS " (first args) context)
     :not-in                 (-in! f args context)
-    :or                     (-compound! " OR " args context)
+    :or                     (-compound! " OR " false args context)
     :over                   (over! (first args) context)
     :param                  (param! (first args) context)
     :timestampdiff          (timestamp-diff! args context)

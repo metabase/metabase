@@ -121,6 +121,16 @@
     :is     "IS NULL"
     :is-not "IS NOT NULL"))
 
+(deftest ^:parallel and-ignore-nils-test
+  (is (= ["SELECT * FROM \"metabase_table\" WHERE (\"schema\" IN (?)) AND (\"db_id\" = 429)" "PUBLIC"]
+         (funnysql/format {:select [:*]
+                           :from   [:metabase_table]
+                           :where  [:and
+                                    [:in :schema ["PUBLIC"]]
+                                    nil
+                                    [:= :db_id 429]]}
+                          :postgres))))
+
 (deftest ^:parallel between-test
   (is (= ["WHERE \"field\" BETWEEN 1 AND 10"]
          (funnysql/format {:where [:between :field 1 10]} :postgres))))
