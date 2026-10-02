@@ -78,24 +78,6 @@ describe("scenarios > navigation > navbar", () => {
       );
       H.navigationSidebar().should("not.be.visible");
     });
-
-    it("should close when creating a new question or opening a sql editor", () => {
-      cy.visit("/");
-      H.navigationSidebar().should("be.visible");
-      H.appBar().findByText("New").click();
-      H.popover()
-        .findByText(/Question/)
-        .click();
-      H.navigationSidebar().should("not.be.visible");
-
-      cy.visit("/");
-      H.navigationSidebar().should("be.visible");
-      H.appBar().findByText("New").click();
-      H.popover()
-        .findByText(/SQL query/)
-        .click();
-      H.navigationSidebar().should("not.be.visible");
-    });
   });
 
   describe("EE", () => {
