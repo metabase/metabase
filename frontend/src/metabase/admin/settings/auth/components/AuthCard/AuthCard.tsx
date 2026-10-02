@@ -15,7 +15,6 @@ import {
   Icon,
   Menu,
   Text,
-  rem,
 } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 
@@ -150,7 +149,7 @@ export const AuthCardBody = ({
           )}
           {children}
         </Flex>
-        <Box c="text-primary" fz="md" lh={rem(24)} mb="lg" maw="40rem">
+        <Box c="text-primary" fz="md" lh="1.5rem" mb="lg" maw="40rem">
           {description}
         </Box>
         {footer ? (

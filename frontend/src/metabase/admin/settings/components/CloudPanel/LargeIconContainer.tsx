@@ -1,4 +1,4 @@
-import { Flex, type FlexProps, rem } from "metabase/ui";
+import { Flex, type FlexProps } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
 
 type LargeIconContainerProps = FlexProps & {
@@ -13,8 +13,8 @@ export const LargeIconContainer = ({
   ...props
 }: LargeIconContainerProps) => (
   <Flex
-    w={rem(64)}
-    h={rem(64)}
+    w="4rem"
+    h="4rem"
     bdrs="50%"
     flex="0 0 auto"
     align="center"
