@@ -188,6 +188,18 @@ function InvalidTypeFixtures() {
   // @ts-expect-error aggregation result rows should not include source fields
   void scalarAggregationResult.data?.rows[0]?.amount;
 
+  const namedAggregationResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        sum(TEST_SCHEMA.tables.orders.fields.amount, { name: "total amount" }),
+      ],
+    }),
+  );
+
+  // @ts-expect-error a named aggregation's column takes its name, not `sum`
+  void namedAggregationResult.data?.rows[0]?.sum;
+
   const metricResult = useMetabaseQuery(
     defineQuery({
       source: TEST_SCHEMA.tables.orders,

@@ -11,6 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *text-wrapping-fallback-width*
   "The CSS width given to a text-wrapping column that has no explicit `table.column_widths` entry. Email and Slack
   clients won't wrap a cell without an explicit width, so this defaults to a wide value. Renderers that lay the table
@@ -184,6 +185,12 @@
                  [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]])
     (h val)))
 
+(defn- image-url?
+  "Whether a `view_as: \"image\"` cell may become an `<img src>`: only http(s), never an attacker-supplied
+  `file:`/`javascript:`/`data:`. Matches `(str cell)`, which is what `h` puts in the attribute."
+  [cell]
+  (boolean (re-matches #"(?i)https?://\S+" (str cell))))
+
 (defn- render-table-body
   "Renders the body (<tbody>) of an HTML table as a Hiccup data structure.
 
@@ -225,7 +232,8 @@
              (render-minibar cell (get-in minibar-col [:fingerprint :type :type/Number]) (get col->styles (:name column)))
 
              ;; View as image
-             (= (get col-settings ::mb.viz/view-as) "image")
+             (and (= (get col-settings ::mb.viz/view-as) "image")
+                  (image-url? cell))
              [:img {:src (h cell)
                     :style (style/style style/view-as-img-style)}]
 

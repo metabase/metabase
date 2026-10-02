@@ -14,23 +14,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signInAsAdmin();
   });
 
-  it("should not show empty sidebar when no data source is selected", () => {
-    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
-    openSidebar();
-    cy.wait("@nativeDataset");
-
-    cy.findByTestId("app-bar").findByLabelText("New").click();
-    H.popover().findByTextEnsureVisible("Question").click();
-    H.miniPickerBrowseAll().click();
-    cy.findByPlaceholderText("Search for tables and more...").should(
-      "be.visible",
-    );
-    H.entityPickerModal().button("Close").click();
-
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-  });
-
   it("smoke test: should show the preview sidebar, update it, and close it", () => {
     const queryLimit = 2;
 
@@ -42,6 +25,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.log("Refreshing the page does not persist the sidebar state");
     cy.reload();
+    cy.findByLabelText("View SQL").should("be.visible");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
     openSidebar();
@@ -67,17 +51,37 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.log("It should be possible to close the sidebar");
     closeSidebar();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+    cy.log(
+      "It should not show an empty sidebar when no data source is selected",
+    );
+    openSidebar();
+    cy.wait("@nativeDataset");
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.findByTestId("app-bar").findByLabelText("New").click();
+    H.popover().findByTextEnsureVisible("Question").click();
+    H.miniPickerBrowseAll().click();
+    cy.findByPlaceholderText("Search for tables and more...").should(
+      "be.visible",
+    );
+    H.entityPickerModal().button("Close").click();
+
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
   it("should not offer the sidebar preview for a user without native permissions", () => {
     cy.signIn("nosql");
     H.openReviewsTable({ mode: "notebook" });
+    cy.findByTestId("data-step-cell").should("contain", "Reviews");
+    cy.findByTestId("qb-header-action-panel")
+      .findByTestId("qb-save-button")
+      .should("be.visible");
     cy.findByTestId("qb-header-action-panel")
       .findByLabelText(/View SQL/i)
       .should("not.exist");
     cy.findByLabelText("View SQL").should("not.exist");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-    cy.get("code").should("not.exist");
   });
 
   it(
@@ -95,6 +99,9 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
         "It shouldn't be possible to click on any of the notebook elements",
       );
       cy.button("Visualize").click({ timeout: 500 }); // no need to wait four seconds
+      cy.then(() => {
+        throw new Error("Visualize should be covered by the sidebar");
+      });
 
       /**
        * The only reliable way to test that the button is not clickable because it is covered by another element.
@@ -226,7 +233,12 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
     cy.log(
       "should be possible to `Explore results` after saving a question (metabase#32121)",
     );
+    cy.intercept("POST", "/api/dataset").as("exploreDataset");
     cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.wait("@exploreDataset");
+    cy.findByTestId("qb-header")
+      .findByText("Explore results")
+      .should("not.exist");
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
   });
 

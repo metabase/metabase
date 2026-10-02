@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { t } from "ttag";
 
+import { Box } from "metabase/ui";
 import { isObject } from "metabase-types/guards";
 
-import { FormMessageStyled } from "./FormMessage.styled";
+import S from "./FormMessage.module.css";
 
 export type Response = {
   status: number;
@@ -75,13 +77,14 @@ export function FormMessage({
 }: FormMessageProps) {
   const treatedMessage = getMessage({ message, formSuccess, formError });
   return (
-    <FormMessageStyled
-      className={className}
-      visible={!!message}
-      noPadding={noPadding}
-      hasSucceeded={!!formSuccess}
+    <Box
+      component="span"
+      className={cx(S.root, className, { [S.visible]: Boolean(message) })}
+      c={formSuccess ? "feedback-positive" : "feedback-negative"}
+      pb={noPadding ? undefined : "lg"}
+      w="100%"
     >
       {treatedMessage}
-    </FormMessageStyled>
+    </Box>
   );
 }
