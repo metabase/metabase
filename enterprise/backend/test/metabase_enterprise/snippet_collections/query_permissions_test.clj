@@ -53,6 +53,52 @@
          (is (= "completed" (:status response)))
          (is (= [[1]] (mt/rows response))))))))
 
+(defn- snippet-tag [snippet-id]
+  {:lib/type     :mbql.stage/native
+   :native       "SELECT {{snippet: x}}"
+   :template-tags [{:id           (str (random-uuid))
+                    :name         "snippet: x"
+                    :display-name "Snippet: x"
+                    :type         :snippet
+                    :snippet-name "x"
+                    :snippet-id   snippet-id}]})
+
+(defn- same-tag-name-query
+  "A query whose first stage uses `secret-snippet-id` and whose join's native stage uses `readable-snippet-id`, both
+  under the template tag name `snippet: x`. Each stage is substituted from its own template tags."
+  [secret-snippet-id readable-snippet-id]
+  (let [value (fn [] [:value {:lib/uuid (str (random-uuid)), :effective-type :type/Integer} 1])]
+    {:lib/type :mbql/query
+     :database (mt/id)
+     :stages   [(snippet-tag secret-snippet-id)
+                {:lib/type :mbql.stage/mbql
+                 :joins    [{:lib/type   :mbql/join
+                             :alias      "J"
+                             :strategy   :left-join
+                             :conditions [[:= {:lib/uuid (str (random-uuid))} (value) (value)]]
+                             :stages     [(snippet-tag readable-snippet-id)]}]}]}))
+
+(deftest snippets-in-stages-sharing-a-tag-name-are-all-checked-test
+  (testing "every native stage's Snippets are checked, even when two stages use the same template tag name"
+    (do-with-snippet-in-collection!
+     (fn [secret-snippet-id _snippet-coll]
+       (mt/with-temp [:model/Collection         readable-coll {:namespace "snippets"}
+                      :model/NativeQuerySnippet {readable-snippet-id :id} {:name          "readable"
+                                                                           :content       "1 AS one"
+                                                                           :collection_id (:id readable-coll)}
+                      :model/Collection         card-coll {}]
+         (perms/grant-collection-read-permissions! (perms-group/all-users) readable-coll)
+         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) card-coll)
+         (let [query (same-tag-name-query secret-snippet-id readable-snippet-id)]
+           (testing "ad-hoc"
+             (is (not (leaks-content? (mt/user-http-request :rasta :post 403 "dataset" query)))))
+           (testing "saving a Card"
+             (mt/user-http-request :rasta :post 403 "card" {:name                   "snippet card"
+                                                            :collection_id          (:id card-coll)
+                                                            :display                "table"
+                                                            :visualization_settings {}
+                                                            :dataset_query          query}))))))))
+
 (deftest save-card-requires-snippet-read-perms-test
   (do-with-snippet-in-collection!
    (fn [snippet-id snippet-coll]

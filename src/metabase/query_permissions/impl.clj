@@ -443,11 +443,16 @@
                                 {:snippet-id snippet-id, :status-code 403}))))))
 
 (defn- query-snippet-ids
-  "The IDs of the Snippets referenced by `:snippet` template tags in `query`."
+  "The IDs of the Snippets referenced by `:snippet` template tags in `query`, or nil if `query` is too broken to read
+  them from. Such a query fails the run-permissions check anyway."
   [{database-id :database, :as query}]
   (when (pos-int? database-id)
-    (lib/all-template-tag-snippet-ids
-     (lib/query (lib-be/application-database-metadata-provider database-id) query))))
+    (try
+      (lib/all-template-tag-snippet-ids
+       (lib/query (lib-be/application-database-metadata-provider database-id) query))
+      (catch Exception e
+        (log/debugf e "Unable to read the Snippet IDs of query %s" (pr-str query))
+        nil))))
 
 (defn check-data-perms
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
