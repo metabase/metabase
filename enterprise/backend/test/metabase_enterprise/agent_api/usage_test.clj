@@ -1,12 +1,12 @@
 (ns metabase-enterprise.agent-api.usage-test
   "Tests for the Agent API (CLI) usage write point — one lean `agent_api_call_log` row per direct
   Agent API HTTP call. Exercises the `defenterprise` dispatch via the OSS entry point in
-  `metabase.agent-api.usage`. Collection runs on every EE instance (`:feature :none`); PII is gated
+  `metabase.metabot.agent-api.usage`. Collection runs on every EE instance (`:feature :none`); PII is gated
   by `analytics-pii-retention-enabled` (itself `:audit-app`-gated). The end-to-end path through the
   real `routes` wrapper is covered in `metabase-enterprise.agent-api.api-test`."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase.agent-api.usage :as usage]
+   [metabase.metabot.agent-api.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
