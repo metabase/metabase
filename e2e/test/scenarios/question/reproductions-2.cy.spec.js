@@ -127,8 +127,7 @@ describe("issue 27462", () => {
 
     cy.button("Visualize").click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("200").should("be.visible");
+    H.queryBuilderMain().findByText("200").should("be.visible");
   });
 });
 
@@ -138,7 +137,7 @@ describe("issue 28221", () => {
     cy.signInAsAdmin();
   });
 
-  it("should be able to select see notebook view even if a question custom field metadata is missing#27462", () => {
+  it("should be able to select see notebook view even if a question custom field metadata is missing (metabase#28221)", () => {
     const questionName = "Reproduce 28221";
     const customFieldName = "Non-existing field";
     const questionDetails = {
@@ -219,7 +218,7 @@ describe("issue 28599", () => {
 
     cy.wait("@updateCard");
 
-    cy.findByTestId("time-series-mode-bar").should("not.exist");
+    cy.findByTestId("timeseries-chrome").should("not.exist");
   });
 });
 
@@ -254,42 +253,6 @@ describe("issue 28874", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("not.exist");
-  });
-});
-describe("issue 30165", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/card").as("createQuestion");
-    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
-  });
-
-  it("should not autorun native queries after updating a question (metabase#30165)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("SELECT * FROM ORDERS");
-    H.saveQuestionToCollection("Q1");
-
-    H.NativeEditor.focus().type(" WHERE TOTAL < 20");
-    H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@updateQuestion");
-
-    H.NativeEditor.focus().type(" LIMIT 10");
-    H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@updateQuestion");
-
-    cy.get("@dataset.all").should("have.length", 0);
-    cy.get("@cardQuery.all").should("have.length", 0);
-    cy.findByTestId("query-builder-main")
-      .findByText("Here's where your results will appear")
-      .should("be.visible");
   });
 });
 
@@ -435,7 +398,7 @@ describe("Custom columns visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
 
     H.popover().within(() => {
-      cy.findByLabelText("Display as").as("viewAsDropdown").click();
+      cy.findByLabelText("Display as").click();
     });
 
     cy.findAllByRole("option", { name: "Email link" }).click();

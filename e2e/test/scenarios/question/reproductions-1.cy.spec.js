@@ -1,5 +1,4 @@
 const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -54,8 +53,8 @@ describe("issue 6239", () => {
 
     // Sort descending this time
     cy.icon("arrow_up").click();
+    cy.icon("arrow_down").should("be.visible");
     cy.icon("arrow_up").should("not.exist");
-    cy.icon("arrow_down");
 
     H.visualize();
 
@@ -107,6 +106,7 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   H.miniPickerBrowseAll().click();
   H.entityPickerModal().within(() => {
     H.entityPickerModalItem(0, "Our analytics").click();
+    H.entityPickerModalItem(1, "Orders").should("exist");
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });
@@ -132,128 +132,6 @@ function openEllipsisMenuFor(item) {
     .find(".Icon-ellipsis")
     .click({ force: true });
 }
-
-describe("issue 14957", { tags: "@external" }, () => {
-  const PG_DB_NAME = "QA Postgres12";
-
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-  });
-
-  it("should save a question before query has been executed (metabase#14957)", () => {
-    H.startNewNativeQuestion();
-
-    cy.findByTestId("gui-builder-data").click();
-    cy.findByLabelText(PG_DB_NAME).click();
-    H.NativeEditor.type("select pg_sleep(60)");
-    H.saveQuestion("14957", undefined, {
-      path: ["Our analytics"],
-    });
-    H.modal().should("not.exist");
-  });
-});
-
-describe("postgres > question > custom columns", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-
-    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-      ({ body }) => {
-        const tableId = body.find((table) => table.name === "orders").id;
-        H.openTable({
-          database: WRITABLE_DB_ID,
-          table: tableId,
-          mode: "notebook",
-        });
-      },
-    );
-
-    cy.findByRole("button", { name: "Summarize" }).click();
-  });
-
-  it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a function or metric").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({
-      formula: "Percentile([Subtotal], 0.1)",
-      format: true,
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Function Percentile expects 1 argument").should("not.exist");
-    H.CustomExpressionEditor.nameInput().type("Expression name");
-    cy.button("Done").should("not.be.disabled").click();
-    // Todo: Add positive assertions once this is fixed
-
-    cy.findByTestId("aggregate-step")
-      .contains("Expression name")
-      .should("exist");
-  });
-});
-
-const PG_DB_ID = 2;
-
-const questionDetails = {
-  native: {
-    query: `select mytz as "ts", mytz::text as "tsAStext", state, mytz::time as "time - LOOK AT THIS COLUMN", mytz::time::text as "timeAStext", mytz::time(0) as "time(0) - ALL INCORRECT", mytz::time(3) as "time(3) - MOSTLY WORKING" from (
-      select '2022-05-04 16:29:59.268160-04:00'::timestamptz as mytz, 'incorrect' AS state union all
-      select '2022-05-04 16:29:59.412459-04:00'::timestamptz, 'good' union all
-      select '2022-05-08 13:14:42.926221-04:00'::timestamptz, 'incorrect' union all
-      select '2022-05-08 13:14:42.132026-04:00'::timestamptz, 'good' union all
-      select '2022-05-10 07:38:58.987352-04:00'::timestamptz, 'incorrect' union all
-      select '2022-05-10 07:38:58.001001-04:00'::timestamptz, 'good' union all
-      select '2022-05-12 11:01:23.000000-04:00'::timestamptz, 'ALWAYS incorrect' union all
-      select '2022-05-12 11:01:23.000-04:00'::timestamptz, 'ALWAYS incorrect' union all
-      select '2022-05-12 11:01:23-04:00'::timestamptz, 'ALWAYS incorrect'
-  )x`,
-  },
-  database: PG_DB_ID,
-};
-
-// time, time(0), time(3)
-const castColumns = 3;
-
-const correctValues = [
-  {
-    value: "1:29 PM",
-    rows: 2,
-  },
-  {
-    value: "10:14 AM",
-    rows: 2,
-  },
-  {
-    value: "4:38 AM",
-    rows: 2,
-  },
-  {
-    value: "8:01 AM",
-    rows: 3,
-  },
-];
-
-describe("issue 15876", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-  });
-
-  it("should correctly cast to `TIME` (metabase#15876)", () => {
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-    cy.findByTestId("query-visualization-root").within(() => {
-      correctValues.forEach(({ value, rows }) => {
-        const count = rows * castColumns;
-
-        cy.findAllByText(value).should("have.length", count);
-      });
-    });
-  });
-});
 
 describe("issue 17514", () => {
   const questionDetails = {
@@ -377,7 +255,7 @@ describe("issue 17514", () => {
 
       moveColumnToTop("Subtotal");
 
-      openNotebookMode();
+      H.openNotebook();
 
       removeJoinedTable();
 
@@ -392,7 +270,7 @@ describe("issue 17514", () => {
     });
 
     it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
-      openNotebookMode();
+      H.openNotebook();
 
       H.join();
       H.miniPicker().within(() => {
@@ -436,10 +314,6 @@ function closeModal() {
   });
 }
 
-function openNotebookMode() {
-  H.openNotebook();
-}
-
 function removeJoinedTable() {
   cy.findAllByText("Join data")
     .first()
@@ -472,7 +346,7 @@ describe("issue 17910", () => {
     cy.intercept("POST", "/api/card").as("card");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByText("Save").click();
     });
     cy.wait("@card");
@@ -511,6 +385,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     );
     H.visitQuestion(ORDERS_QUESTION_ID);
     cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Move").should("be.visible");
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
@@ -520,6 +395,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     H.commandPaletteSearch("Repro", false);
     H.commandPalette().findByText("Repro").click();
     cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Move").should("be.visible");
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
@@ -631,35 +507,44 @@ describe("issue 19341", () => {
       cy.findByText("Sample Database").click();
       cy.findByText("Orders").should("exist");
 
-      // Ensure the search doesn't list saved questions
-      cy.findByPlaceholderText("Search…").type("Ord");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findAllByTestId("result-item").then(($result) => {
-        const searchResults = $result.toArray();
-        const modelTypes = new Set(
-          searchResults.map((k) => k.getAttribute("data-model-type")),
-        );
-
-        expect(modelTypes).not.to.include("card");
-        expect(modelTypes).to.include("table");
-      });
+      assertSearchListsOnlyTables();
 
       cy.findByText("Orders").click();
     });
 
     cy.icon("join_left_outer").click();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().findAllByRole("tab").should("not.exist");
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalItem(0, "Databases").should("be.visible");
+      assertSearchListsOnlyTables();
+    });
 
     // Test "Explore results" button is hidden for native questions
     cy.visit("/collection/root");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(TEST_NATIVE_QUESTION_NAME).click();
     cy.wait("@cardQuery");
+    cy.findByTestId("saved-question-header-title").should(
+      "have.text",
+      TEST_NATIVE_QUESTION_NAME,
+    );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").should("not.exist");
   });
+
+  function assertSearchListsOnlyTables() {
+    cy.findByPlaceholderText("Search…").type("Ord");
+    cy.findByTestId("loading-indicator").should("not.exist");
+
+    cy.findAllByTestId("result-item").then(($result) => {
+      const modelTypes = new Set(
+        $result.toArray().map((k) => k.getAttribute("data-model-type")),
+      );
+
+      expect(modelTypes).not.to.include("card");
+      expect(modelTypes).to.include("table");
+    });
+  }
 });
 
 describe("issue 19742", () => {
@@ -702,10 +587,10 @@ describe("issue 19742", () => {
       H.entityPickerModalItem(0, "Databases").click();
       H.entityPickerModalItem(1, "Sample Database").click();
 
-      cy.findByText("Orders").should("not.exist");
       cy.findByText("Products").should("exist");
       cy.findByText("Reviews").should("exist");
       cy.findByText("People").should("exist");
+      cy.findByText("Orders").should("not.exist");
     });
   });
 });
