@@ -110,15 +110,6 @@
                                    [:include {:optional true} [:seqable :keyword]]]]]
   (t2/select (queries.card-schema/selection include) :id [:in card-ids]))
 
-(mu/defn mbql-model-cards
-  "The unarchived MBQL models that query the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select (queries.card-schema/selection)
-             :database_id database-id
-             :type        :model
-             :query_type  :query
-             :archived    false))
-
 (mu/defn source-card-dependents
   "The IDs and source Card IDs of the Cards whose source Card is one of `source-card-ids`."
   [source-card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
