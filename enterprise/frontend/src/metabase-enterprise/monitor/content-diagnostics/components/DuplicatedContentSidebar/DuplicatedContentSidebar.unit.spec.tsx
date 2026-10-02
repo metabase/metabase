@@ -73,7 +73,7 @@ describe("DuplicatedContentSidebar", () => {
     expect(link).toHaveAttribute("href", expect.stringContaining("/model/11"));
   });
 
-  it("distinguishes opening a duplicate from opening the finding itself", async () => {
+  it("tracks opening a duplicate peer", async () => {
     trackSimpleEvent.mockClear();
     setup(
       createMockContentDiagnosticsDuplicatedFinding({
