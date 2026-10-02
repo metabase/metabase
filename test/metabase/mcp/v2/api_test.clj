@@ -665,8 +665,8 @@
           (is (= 401 (:status (client/client-full-response :get 401 "collection"
                                                            {:request-options {:headers headers}})))))
         (testing "and the iframe still boots, on the endpoint built for it"
-          (is (= 200 (:status (ui.tu/ui-request {:credential credential :session-id session-id}
-                                                :get 200 "embed-mcp/bootstrap")))))
+          (is (= 200 (:status (ui.tu/ui-request! {:credential credential :session-id session-id}
+                                                 :get 200 "embed-mcp/bootstrap")))))
         (testing "a dataset route is refused: the credential is not a query credential outside the iframe routes"
           (is (= 401 (:status (client/client-full-response :post 401 "dataset"
                                                            {:request-options {:headers headers}}

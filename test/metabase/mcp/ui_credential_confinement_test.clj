@@ -36,10 +36,10 @@
                             ["dataset/query_metadata" legacy]
                             ["dataset/parameter/remapping" {:parameter {:id "x" :type "category"} :value 1}]]]
           (testing url
-            (is (= 401 (:status (ui.tu/ui-request auth :post 401 url body))))))
+            (is (= 401 (:status (ui.tu/ui-request! auth :post 401 url body))))))
         (testing "control: the same credential runs a handle holding the same query"
           (let [handle (ui.tu/store-query-handle! (:session-id auth) (:user-id auth) (lib/limit (venues-query) 1))]
-            (is (= 202 (:status (ui.tu/ui-request auth :post nil (str "embed-mcp/queries/" handle "/run") {}))))))))))
+            (is (= 202 (:status (ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" handle "/run") {}))))))))))
 
 (deftest ui-credential-cannot-read-the-profile-test
   (testing "GHY-4400: `refresh_ui_credential` is not a scope-escalation primitive — the credential cannot read
@@ -51,16 +51,16 @@
                             [:get "card"]
                             [:put (str "user/" (mt/user->id :crowberto))]]]
         (testing (str method " " url)
-          (is (= 401 (:status (ui.tu/ui-request auth method 401 url))))))
+          (is (= 401 (:status (ui.tu/ui-request! auth method 401 url))))))
       (testing "`/api/session/properties` serves anonymous callers, so the credential degrades to the public payload"
-        (let [with-credential (:body (ui.tu/ui-request auth :get 200 "session/properties"))
+        (let [with-credential (:body (ui.tu/ui-request! auth :get 200 "session/properties"))
               anonymous       (:body (client/client-full-response :get 200 "session/properties"))
               authenticated   (mt/user-http-request :rasta :get 200 "session/properties")]
           (is (= (set (keys anonymous)) (set (keys with-credential)))
               "the credential buys nothing here")
           (is (seq (remove (set (keys anonymous)) (keys authenticated)))
               "and a logged-in user really does see more, so the assertion above is not vacuous")))
-      (is (= 200 (:status (ui.tu/ui-request auth :get 200 "embed-mcp/bootstrap")))
+      (is (= 200 (:status (ui.tu/ui-request! auth :get 200 "embed-mcp/bootstrap")))
           "the purpose-built endpoint serves what the iframe actually needs"))))
 
 (defn- authenticated-as

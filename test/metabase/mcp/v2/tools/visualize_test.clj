@@ -444,8 +444,8 @@
                   (str "structuredContent has no key useMcpApp.tsx acts on: " (pr-str (keys body)))))
             (testing "and resolving that handle over the callback route yields the query"
               (let [{:keys [status body]}
-                    (ui.tu/ui-request {:credential credential :session-id sid}
-                                      :get 200 (str "embed-mcp/queries/" (:query_handle body)))]
+                    (ui.tu/ui-request! {:credential credential :session-id sid}
+                                       :get 200 (str "embed-mcp/queries/" (:query_handle body)))]
                 (is (= 200 status))
                 (is (string? (:query body))
                     "the iframe needs a base64 query to build a card from")))))))))
@@ -464,5 +464,5 @@
                 credential (ui.tu/credential! sid user-id #{"agent:query:run"})]
             (is (= drill (:query_handle body)))
             (is (=? {:status 200 :body {:query "ZW5jb2RlZA=="}}
-                    (ui.tu/ui-request {:credential credential :session-id sid}
-                                      :get 200 (str "embed-mcp/queries/" (:query_handle body)))))))))))
+                    (ui.tu/ui-request! {:credential credential :session-id sid}
+                                       :get 200 (str "embed-mcp/queries/" (:query_handle body)))))))))))
