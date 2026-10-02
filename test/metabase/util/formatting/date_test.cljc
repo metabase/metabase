@@ -203,7 +203,9 @@
     (are [week] (= (str week) (format-datetime-with-unit week {:unit "week-of-year"}))
       1
       52
-      53)))
+      53))
+  (testing "input that is not a date keeps its text"
+    (is (= "not a date" (format-datetime-with-unit "not a date" {:unit "week-of-year"})))))
 
 (deftest ^:parallel format-datetime-with-unit-test-2b
   (testing "general dates"
