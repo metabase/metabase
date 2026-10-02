@@ -88,7 +88,9 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           {
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
-            [S.noBorder]: !hasTabs && !isHeaderVisible,
+            // The tab row draws its own full-width bottom border, so drop the
+            // header container's border when tabs are shown to avoid a doubled line.
+            [S.noBorder]: hasTabs || isEditing || !isHeaderVisible,
           },
         )}
         data-element-id="dashboard-header-container"

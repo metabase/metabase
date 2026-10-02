@@ -21,6 +21,7 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.registry :as registry]
+   [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
@@ -48,6 +49,7 @@
    "moonshot"   #'moonshot/supported-models
    "openai"     #'openai/supported-models
    "openrouter" #'openrouter/supported-models
+   "xai"        #'xai/supported-models
    "zai"        #'zai/supported-models})
 
 (deftest ^:parallel registry-models-are-listable-test
@@ -82,6 +84,8 @@
               (#'self/parse-provider-model "moonshot/kimi-k3")))
       (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
               (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
+      (is (=? {:provider "xai" :model "grok-4.7" :ai-proxy? false}
+              (#'self/parse-provider-model "xai/grok-4.7")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "resolves the provider type, not the admin's name for the connection"
@@ -2341,7 +2345,7 @@
                           #"Unrecognized supported-models entry"
                           (#'self/normalize-known-model "anthropic" "some-model" {:context-window 200000}))))
   (testing "every provider that publishes an allow-list names every model in it"
-    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "zai"]]
+    (doseq [provider ["anthropic" "bedrock" "deepseek" "mistral" "moonshot" "openai" "openrouter" "xai" "zai"]]
       (let [models (self/known-models provider)]
         (is (seq models) provider)
         (is (every? (comp string? :display-name val) models) provider)))))
