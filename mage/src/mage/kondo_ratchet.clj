@@ -114,6 +114,9 @@
   ;; A finding missing from `baseline` was suppressed by one of the disabled ignores: the last one before it
   ;; naming its linter. Kondo has already applied `:config-in-ns` scopes, `:off` overrides, and inline ns
   ;; config, so only usages it flagged are counted.
+  ;; The last ignore before a finding isn't always the one whose form holds it. When an ignore sits inside
+  ;; another for the same linter, the inner one takes the outer one's later findings too, so the outer ignore
+  ;; counts toward no budget and is reported as unattributed.
   (let [ignores   (update-vals contents discouraged-ignores)
         offsets   (update-vals contents offset-fn)
         reported? (set (map (juxt :filename :row :col :type) baseline))
