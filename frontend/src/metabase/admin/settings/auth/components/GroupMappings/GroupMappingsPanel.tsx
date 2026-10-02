@@ -12,12 +12,9 @@ import type { GroupLookup } from "./utils";
 type GroupMappingsPanelProps = {
   mappings: GroupMappings;
   saveMappings: SaveMappings;
-  // reports deletions to a page whose other controls write the same setting
   onDeletingChange?: (isDeleting: boolean) => void;
   groupLookup: GroupLookup;
-  // set by the page while it writes or refetches the mappings
   disabled?: boolean;
-  // locks the mappings for a reason the page explains elsewhere
   readOnly?: boolean;
   lockedEnvName?: string;
   namesValidatedOnSave?: boolean;
@@ -25,7 +22,7 @@ type GroupMappingsPanelProps = {
   namePlaceholder: string;
 };
 
-/** The manual group mappings of one provider: a header, the rows, and the editor the rows open */
+/** One provider's manual group mappings, with their header and inline editor */
 export function GroupMappingsPanel({
   mappings,
   saveMappings,

@@ -246,7 +246,6 @@ describe("SettingsOIDCForm", () => {
         screen.queryByRole("button", { name: "New" }),
       ).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Delete mapping")).not.toBeInTheDocument();
-      // provisioning is its own setting, so its switch stays live
       expect(
         screen.getByRole("switch", { name: "User provisioning" }),
       ).not.toHaveAttribute("aria-disabled");

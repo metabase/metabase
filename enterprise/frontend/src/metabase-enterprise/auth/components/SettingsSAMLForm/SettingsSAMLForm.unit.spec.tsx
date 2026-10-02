@@ -330,7 +330,6 @@ describe("SettingsSAMLForm", () => {
       expect(screen.getByLabelText(/SAML keystore path/)).toHaveValue(
         "/etc/metabase/keystore.jks",
       );
-      // the password needs no explanation, so the backend copy stays off the page
       expect(
         screen.queryByText("Password for opening the keystore"),
       ).not.toBeInTheDocument();

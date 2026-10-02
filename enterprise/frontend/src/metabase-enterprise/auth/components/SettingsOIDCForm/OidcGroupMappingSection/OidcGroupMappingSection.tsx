@@ -24,19 +24,16 @@ import {
 import { type OidcGroupSync, toGroupSync } from "../group-sync";
 
 type OidcGroupMappingSectionProps = {
-  // null until the provider is saved
   provider: CustomOidcConfig | null;
-  // reports the card's writes and deletions, so the page's save waits for them
   onSavingChange?: (isSaving: boolean) => void;
   children: React.ReactNode;
   lockedEnvName?: string;
-  // true while the page form saves the provider, which a card write would race
   isPageSaving?: boolean;
   disabled?: boolean;
   onToggle?: (enabled: boolean) => void;
 } & BoxProps;
 
-/** The group mapping card of an OIDC provider, with a switch that saves on its own and the mappings under it */
+/** OIDC group mapping card whose switch and mappings save apart from the page form */
 export function OidcGroupMappingSection({
   provider,
   onSavingChange,
@@ -100,7 +97,6 @@ export function OidcGroupMappingSection({
       }
       return { ok: false, error };
     }
-    // show the saved provider right away instead of waiting for the refetch
     patchCachedProvider(savedProvider);
     if (successMessage != null) {
       sendToast({ message: successMessage, icon: "check_filled" });

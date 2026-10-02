@@ -44,7 +44,6 @@ export function setupUpdateSettingEndpoint(
  * Stateful settings mocks for save-then-read tests: PUT /api/setting(/:key)
  * mutate a shared store that GET /api/session/properties returns, so the
  * post-save refetch reflects the write instead of the pre-save snapshot.
- * `updateDelay` answers the writes late and `readDelay` the properties reads, so in-flight states can be asserted.
  * Returns the mutable store for assertions.
  */
 export function setupStatefulSettingsEndpoints(

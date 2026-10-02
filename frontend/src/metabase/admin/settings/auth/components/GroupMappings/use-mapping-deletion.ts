@@ -87,7 +87,6 @@ export function useMappingDeletion({
       return;
     }
     const { deletedIds, failureCount } = await runCascade(cascade);
-    // the other mappings lose a group only once the backend has deleted it
     const deleted = new Set(deletedIds);
     const hasDeletedGroups = Object.values(nextMappings).some((ids) =>
       ids.some((groupId) => deleted.has(groupId)),

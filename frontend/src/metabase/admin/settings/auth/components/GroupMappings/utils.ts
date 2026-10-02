@@ -78,10 +78,9 @@ export function createGroupLookup(
   const existingGroups = (groupIds: GroupId[]) =>
     groupIds.flatMap((groupId) => groupsById.get(groupId) ?? []);
   return {
-    // every id reads as missing until the groups arrive, so callers hold their controls until then
+    // every id reads as missing until the groups arrive
     isLoaded: groups != null,
     loadFailed,
-    // the default groups can't be mapped to
     mappableGroups: loadedGroups.filter(
       (group) => !isDefaultGroup(group) && !isDefaultTenantGroup(group),
     ),

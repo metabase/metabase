@@ -22,7 +22,6 @@ export type GroupMappingsSaveResult =
 
 export type SaveOptions = {
   successMessage?: string;
-  // the row editor shows a failure under its field, everything else toasts it
   showErrorToast?: boolean;
 };
 

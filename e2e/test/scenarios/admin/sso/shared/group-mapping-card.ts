@@ -9,7 +9,7 @@ type GroupMappingCardOptions = {
   mappingsRequestAlias?: string;
 };
 
-/** Helpers for the group mapping card the SSO pages share, waiting on requests the spec intercepts. */
+/** The calling spec must alias the intercepts these helpers wait on. */
 export const groupMappingCardHelpers = ({
   sectionTestId,
   nameLabel,

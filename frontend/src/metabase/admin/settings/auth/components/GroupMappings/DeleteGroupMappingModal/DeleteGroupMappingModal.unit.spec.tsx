@@ -106,7 +106,6 @@ describe("DeleteGroupMappingModal", () => {
       keptOnDelete: ["Administrators"],
     });
 
-    // two groups are mapped, and each option acts on one of them
     expect(
       screen.getByText(
         "Membership of these groups will no longer be synced when users log in.",

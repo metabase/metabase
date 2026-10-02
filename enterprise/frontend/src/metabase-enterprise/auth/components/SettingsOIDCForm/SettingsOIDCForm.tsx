@@ -89,7 +89,6 @@ interface OIDCFormValues {
   "group-attribute": string | null;
 }
 
-// a stored value equal to the default reads as unset, so the default can show as the placeholder
 const withoutDefault = (
   value: string | undefined,
   defaultValue: string,
@@ -199,7 +198,6 @@ export function SettingsOIDCForm() {
   const isExisting = existingProvider != null;
   const isConfigured = settingValues?.["oidc-configured"] ?? false;
   const providersSetting = settingDetails?.["oidc-providers"];
-  // the env var holds every provider, so it locks the whole page
   const lockedEnvName = providersSetting?.is_env_setting
     ? providersSetting.env_name
     : undefined;
@@ -262,7 +260,6 @@ export function SettingsOIDCForm() {
 
   const handleSubmit = useCallback(
     async (values: OIDCFormValues, helpers: FormikHelpers<OIDCFormValues>) => {
-      // a failed connection check throws, which the form shows as its error
       await runCheck(values);
 
       // the card and the save button hold each other, so no card write can be in flight here
@@ -384,7 +381,6 @@ export function SettingsOIDCForm() {
                 </Stack>
               </SettingsSection>
 
-              {/* the claims are form fields sent with the provider, so they can be set before the first save */}
               <CollapsibleSettingsSection
                 title={t`Attributes`}
                 description={t`Map OIDC claims to the first name and last name fields in ${applicationName}. The email always comes from the standard email claim.`}

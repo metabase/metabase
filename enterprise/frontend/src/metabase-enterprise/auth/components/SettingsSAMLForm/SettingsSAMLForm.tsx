@@ -344,7 +344,7 @@ const getFormValues = (
     "saml-attribute-group",
   ]);
 
-  // mapObject widens every value to one union, so the shape is narrowed back to the form's
+  // mapObject widens every value to one union
   return {
     ..._.mapObject(samlSettings, (val) => val ?? null),
     "saml-application-name": getStoredFieldValue(

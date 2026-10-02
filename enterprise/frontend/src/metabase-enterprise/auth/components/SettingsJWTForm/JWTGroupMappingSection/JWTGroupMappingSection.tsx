@@ -80,14 +80,14 @@ export function JWTGroupMappingSection({
           aria-label={t`Group mapping mode`}
           value={modeSwitch.mode}
           onChange={modeSwitch.select}
-          // the control sits inside the page form, so Enter must not reach its submit button
+          // Enter must not submit the surrounding page form
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
             }
           }}
           disabled={isReadOnly}
-          // read-only keeps the options focusable, so a keyboard user keeps their place during a write
+          // read-only, not disabled, so keyboard focus survives a write
           readOnly={isBusy}
           data={[
             { label: t`Automatic`, value: "automatic" },

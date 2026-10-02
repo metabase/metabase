@@ -50,7 +50,7 @@ export function MappingEditorRow({
   const errorId = useId();
   const errorMessage = nameError ?? saveError;
 
-  // a read-only picker still drops its last group on Backspace, so edits wait for the save as well
+  // Mantine's read-only MultiSelect still drops its last group on Backspace
   const handleChange = (nextDraft: MappingDraft) => {
     if (!isSubmitting) {
       onChange(nextDraft);
@@ -92,7 +92,6 @@ export function MappingEditorRow({
       p="sm"
     >
       <Stack gap="xs">
-        {/* one wrapping row, buttons last, so a narrowing row sheds the buttons before the picker */}
         <Flex align="center" gap="lg" wrap="wrap">
           <TextInput
             flex={1}

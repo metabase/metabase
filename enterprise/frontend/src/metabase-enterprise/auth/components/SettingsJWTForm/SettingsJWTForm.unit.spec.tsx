@@ -1159,7 +1159,6 @@ describe("SettingsJWTForm", () => {
       try {
         expect(newButton()).toBeDisabled();
         expect(deleteButton()).toBeDisabled();
-        // the mode control writes settings, not group ids, so it does not wait for the groups
         expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
         await waitFor(() =>
           expect(modeLabel("Off")).not.toHaveAttribute("data-read-only"),

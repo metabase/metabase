@@ -88,14 +88,11 @@ export function SettingsSection({
 type SwitchSettingsSectionProps = {
   title: string;
   description: React.ReactNode;
-  // says why the switch is locked
   note?: React.ReactNode;
   checked: boolean;
-  // greys the whole card, locks the switch and keeps the children hidden
   disabled?: boolean;
-  // locks the switch alone but keeps it focusable, since a disabled switch would drop focus mid-write
+  // locks only the switch and keeps it focusable, so focus survives a write
   switchDisabled?: boolean;
-  // the env var that owns the value, named under the description
   lockedEnvName?: string;
   onChange: (checked: boolean) => void;
   children?: React.ReactNode;
@@ -119,14 +116,13 @@ export function SwitchSettingsSection({
   const isSwitchLocked = switchDisabled || lockedEnvName != null;
 
   const handleChange = (nextChecked: boolean) => {
-    // aria-disabled keeps the switch focusable, so it cannot block the event on its own
     if (isSwitchLocked) {
       return;
     }
     onChange(nextChecked);
   };
 
-  // the card sits inside a page form, so Enter must not reach its submit button
+  // Enter would otherwise submit the page form the card sits in
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -151,7 +147,6 @@ export function SwitchSettingsSection({
               {title}
             </Text>
           </Title>
-          {/* the note lives inside the described region so assistive tech hears why the switch is locked */}
           <Box id={descriptionId}>
             <Text c="text-secondary" {...SETTINGS_CARD_DESCRIPTION_PROPS}>
               {description}

@@ -17,7 +17,6 @@ export type MappingDraft = {
 export type MappingEditorState = {
   draft: MappingDraft | null;
   nameError: string | null;
-  // a failed save that says nothing about the name
   saveError: string | null;
   canSave: boolean;
   isSubmitting: boolean;
@@ -40,7 +39,6 @@ export function useMappingEditor({
   mappings: GroupMappings;
   saveMappings: SaveMappings;
   groupLookup: GroupLookup;
-  // the backend rejects bad names on write, so a failed save marks the name field
   namesValidatedOnSave?: boolean;
 }): MappingEditorState {
   const [draft, setDraft] = useState<MappingDraft | null>(null);
@@ -49,7 +47,6 @@ export function useMappingEditor({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const trimmedName = draft?.name.trim() ?? "";
-  // a draft whose mapping was deleted meanwhile carries on as a new one
   const isDraftNew =
     draft != null &&
     (draft.originalName == null ||

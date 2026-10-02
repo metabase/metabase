@@ -138,7 +138,7 @@ export const SettingsLdapForm = () => {
 
   const handleSubmit = useCallback(
     async (values: LdapFormValues, helpers: FormikHelpers<LdapFormValues>) => {
-      // hidden group fields stay out of the save, so a stored search base cannot fail the connection test unseen
+      // hidden group fields stay out of the save, so they cannot fail the connection test unseen
       const valuesToSave = isGroupMappingOn
         ? values
         : _.omit(values, GROUP_MAPPING_FIELD_KEYS);

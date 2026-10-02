@@ -86,7 +86,6 @@ export const SettingsJWTForm = () => {
   const applicationName = useSelector(getApplicationName);
   const [sendToast] = useToast();
 
-  // the URI and the shared secret are both saved, paused or not
   const isServerConfigured = settingValues?.["jwt-configured"] ?? false;
   // a saved URI or mapping means the setup is not new, even if the shared secret went missing since
   const uriSetting = settingDetails?.["jwt-identity-provider-uri"];
@@ -159,7 +158,6 @@ export const SettingsJWTForm = () => {
 
   const isSigningKeyEnvSet =
     settingDetails["jwt-shared-secret"]?.is_env_setting ?? false;
-  // the other cards unlock on a saved key, so a URI cannot be saved without one
   const validationSchema = Yup.object({
     "jwt-shared-secret": Yup.string()
       .nullable()
