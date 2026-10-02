@@ -353,7 +353,6 @@
    :hour-of-day-24     "H"
    :day-of-month       "d"
    :day-of-year        "D"
-   :week-of-year       "w"
    :quarter-of-year    "'Q'Q"})
 
 (defn ^:private format-extraction-unit
@@ -427,12 +426,15 @@
   ([str unit]
    (parse-unit str unit nil))
   ([str unit locale]
-   (some-> unit
-           unit-formats
-           t/formatter
-           (cond-> #_formatter
-            locale (.withLocale (i18n/locale locale)))
-           (.parse str))))
+   (if (= unit :week-of-year)
+     ;; A week number stands for itself, since `format-unit` numbers weeks by `:start-of-week`, not the locale.
+     (parse-long str)
+     (some-> unit
+             unit-formats
+             t/formatter
+             (cond-> #_formatter
+              locale (.withLocale (i18n/locale locale)))
+             (.parse str)))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.

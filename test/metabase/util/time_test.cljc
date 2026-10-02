@@ -404,6 +404,8 @@
                   (format-unit      unit-out locale-out)))
     "Wednesday" "Wed" :day-of-week-abbrev :day-of-week   "en" "en"
     "lundi"     "Mon" :day-of-week-abbrev :day-of-week   "en" "fr"
+    "53"        "53"  :week-of-year       :week-of-year  "en" "en"
+    "6"         "6"   :week-of-year       :week-of-year  "de" "de"
 
     "January"   "Jan" :month-of-year :month-of-year-full "en" "en"
     "janvier"   "Jan" :month-of-year :month-of-year-full "en" "fr"

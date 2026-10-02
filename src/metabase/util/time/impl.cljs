@@ -387,7 +387,6 @@
    :hour-of-day-24     "h"
    :day-of-month       "D"
    :day-of-year        nil ;; handled specially with dayOfYear() method
-   :week-of-year       "w"
    :quarter-of-year    "[Q]Q"})
 
 (defn ^:private format-extraction-unit
@@ -514,6 +513,10 @@
    (case unit
      (:day-of-week :day-of-week-abbrev)
      (parse-day-abbrev input)
+
+     ;; A week number stands for itself, since `format-unit` numbers weeks by `:start-of-week`, not the locale.
+     :week-of-year
+     (parse-long input)
 
      (:month-of-year :month-of-year-full)
      (parse-month-abbrev input)
