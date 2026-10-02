@@ -41,4 +41,5 @@ if ! git rebase --onto "$NEW_TAG" "$OLD_TAG" "$BRANCH"; then
 fi
 
 echo ">> OK. Branch $BRANCH agora está sobre $NEW_TAG."
-echo ">> Próximo passo: git push --force-with-lease origin $BRANCH && git tag ${NEW_TAG}-all.1 && git push origin ${NEW_TAG}-all.1"
+echo ">> Próximo passo: atualize BASE_VERSION para ${NEW_TAG} em .github/workflows/all-build.yml,"
+echo ">> faça commit e rode: git push --force-with-lease origin $BRANCH  (o push dispara o build)"

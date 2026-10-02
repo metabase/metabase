@@ -36,16 +36,16 @@ não é removido nem contornado.
 
 ## Build
 
-Pelo GitHub Actions (recomendado): crie e envie uma tag.
-```bash
-git tag v0.63.18.4-all.1
-git push origin v0.63.18.4-all.1
-```
-A imagem sai em `ghcr.io/<seu-usuario>/portal-bi:v0.63.18.4-all.1`. O build leva ~40–90 min.
+O GitHub Actions gera a imagem automaticamente a cada push no branch `all-branding`
+(ou manualmente em **Actions → Build ALL Portal BI → Run workflow**). O build leva ~40–90 min.
+
+Tags geradas em `ghcr.io/<seu-usuario>/portal-bi`:
+- `v0.63.18.4-all.<N>` — uma por build (N = número da execução); use esta no Portainer
+- `v0.63.18.4-all` e `latest` — sempre o build mais recente
 
 Local (máquina com 8+ GB de RAM livres):
 ```bash
-docker build --build-arg MB_EDITION=oss --build-arg VERSION=v0.63.18.4-all.1 -t portal-bi:local .
+docker build --build-arg MB_EDITION=oss --build-arg VERSION=v0.63.18.4-all.0 -t portal-bi:local .
 ```
 
 ## Deploy no Portainer
@@ -55,7 +55,7 @@ Troque só a imagem da stack atual; o banco de aplicação (Postgres/H2) continu
 ```yaml
 services:
   metabase:
-    image: ghcr.io/<seu-usuario>/portal-bi:v0.63.18.4-all.1
+    image: ghcr.io/<seu-usuario>/portal-bi:v0.63.18.4-all.<N>
     # ...mantenha environment, volumes e portas que você já usa
 ```
 
@@ -69,8 +69,8 @@ Depois do primeiro start:
 
 ```bash
 bin/all-upgrade.sh v0.63.18.4 v0.64.1
-git push --force-with-lease origin all-branding
-git tag v0.64.1-all.1 && git push origin v0.64.1-all.1
+# edite BASE_VERSION em .github/workflows/all-build.yml para v0.64.1 e faça commit
+git push --force-with-lease origin all-branding   # dispara o build
 ```
 
 ## Licença (AGPL-3.0)

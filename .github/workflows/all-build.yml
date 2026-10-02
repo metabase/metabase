@@ -1,20 +1,22 @@
 name: Build ALL Portal BI (Metabase OSS fork)
 
 # Gera a imagem Docker do fork e publica no GitHub Container Registry (ghcr.io).
-# Dispara quando você cria uma tag no formato v0.63.18.4-all.1, ou manualmente.
+# Dispara a cada push no branch all-branding, ou manualmente em Actions → Run workflow.
 on:
   push:
-    tags:
-      - "v*-all*"
+    branches:
+      - all-branding
+    paths-ignore:
+      - "ALL-FORK.md"
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Versão (ex.: v0.63.18.4-all.1)"
-        required: true
 
 permissions:
   contents: read
   packages: write
+
+env:
+  # Versão do Metabase em que este fork se baseia. Atualize ao migrar de versão.
+  BASE_VERSION: v0.63.18.4
 
 concurrency:
   group: build-${{ github.ref }}
@@ -31,16 +33,15 @@ jobs:
           df -h /
 
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # o build lê a versão do git
 
       - name: Definir versão e nome da imagem
         id: meta
         run: |
-          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          VERSION="${BASE_VERSION}-all.${{ github.run_number }}"
           IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/portal-bi"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "Imagem: $IMAGE:$VERSION"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -61,6 +62,7 @@ jobs:
             VERSION=${{ steps.meta.outputs.version }}
           tags: |
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.image }}:${{ env.BASE_VERSION }}-all
             ${{ steps.meta.outputs.image }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
