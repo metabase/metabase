@@ -1,4 +1,4 @@
-(ns metabase.channel.api.slack
+(ns metabase.channel.rest.api.slack
   "/api/slack endpoints"
   (:require
    [clojure.set :as set]

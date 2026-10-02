@@ -517,7 +517,6 @@
   ;; TODO -- way too many API namespaces.
   channel
   {:team "Gadget"
-   :module-exports #{channel.api}
    :api  #{metabase.channel.core
            metabase.channel.email
            metabase.channel.email.messages
@@ -568,9 +567,9 @@
                     :model/PulseChannel
                     :model/User}}
 
-  channel.api
+  channel.rest
   {:team "Gadget"
-   :api  #{metabase.channel.api}
+   :api  #{metabase.channel.rest.api}
    :uses #{analytics.interface
            api
            bug-reporting
@@ -1966,7 +1965,6 @@
 
   premium-features
   {:team "UX West"
-   :module-exports #{premium-features.api}
    :api  #{metabase.premium-features.core metabase.premium-features.defenterprise metabase.premium-features.init}
    :uses #{analytics.interface
            analytics.internal-stats
@@ -1981,9 +1979,9 @@
            util.config}
    :model-imports #{:model/User}}
 
-  premium-features.api
+  premium-features.rest
   {:team "UX West"
-   :api  #{metabase.premium-features.api}
+   :api  #{metabase.premium-features.rest.api}
    :uses #{api
            metabot.llm
            premium-features

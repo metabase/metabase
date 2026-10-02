@@ -1,4 +1,4 @@
-(ns metabase.channel.api.email-test
+(ns metabase.channel.rest.api.email-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email :as email]
