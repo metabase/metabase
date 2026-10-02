@@ -44,6 +44,7 @@ describe(
           allRowCountText: "200 rows",
           trueRowCountText: "1 row",
           falseRowCountText: "199 rows",
+          hasBooleanColumn: true,
         });
 
         cy.log("drill-thru");
@@ -132,12 +133,11 @@ describe(
           targetName: PARAMETER_NAME,
         });
 
-        cy.log("assert click behavior");
-        H.filterWidget().click();
-        H.popover().button("Add filter").click();
+        cy.log("assert click behavior passes the unmapped parameter's default");
         H.getDashboardCard().findAllByText("true").first().click();
         H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
-        H.filterWidget().findByText("True").should("be.visible");
+        H.filterWidget().findByText("False").should("be.visible");
+        H.getDashboardCard().findByText("199 rows").should("be.visible");
       });
     });
 
@@ -154,6 +154,7 @@ describe(
           allRowCountText: "2 rows",
           trueRowCountText: "1 row",
           falseRowCountText: "1 row",
+          hasBooleanColumn: true,
         });
 
         cy.log("drill-thru");
@@ -242,6 +243,7 @@ describe(
           allRowCountText: "200 rows",
           trueRowCountText: "53 rows",
           falseRowCountText: "54 rows",
+          hasBooleanColumn: false,
         });
 
         H.filterWidget().click();
@@ -258,6 +260,11 @@ describe(
 function createQuestionAndDashboard({
   questionName = QUESTION_NAME,
   dashboardName = DASHBOARD_NAME,
+  dashboardParameters = [],
+}: {
+  questionName?: string;
+  dashboardName?: string;
+  dashboardParameters?: DashboardDetails["parameters"];
 } = {}) {
   const questionDetails: StructuredQuestionDetails = {
     name: questionName,
@@ -274,6 +281,7 @@ function createQuestionAndDashboard({
   };
   const dashboardDetails: DashboardDetails = {
     name: dashboardName,
+    parameters: dashboardParameters,
   };
   return H.createQuestionAndDashboard({
     questionDetails,
@@ -382,10 +390,19 @@ function setupDashboardClickBehavior({ targetName }: { targetName: string }) {
   createQuestionAndDashboard({
     dashboardName: DASHBOARD_2_NAME,
     questionName: QUESTION_2_NAME,
+    dashboardParameters: [
+      {
+        id: "boolean-parameter-id",
+        name: PARAMETER_NAME,
+        slug: "boolean_parameter",
+        type: "boolean/=",
+        sectionId: "boolean",
+        default: [false],
+      },
+    ],
   }).then(({ dashboardId }) => {
     H.visitDashboard(dashboardId);
     H.editDashboard();
-    createAndMapParameter();
     H.showDashboardCardActions();
     cy.findByLabelText("Click behavior").click();
     H.sidebar().within(() => {
@@ -406,16 +423,28 @@ function testParameterWidget({
   allRowCountText,
   trueRowCountText,
   falseRowCountText,
+  hasBooleanColumn,
 }: {
   allRowCountText: string;
   trueRowCountText: string;
   falseRowCountText: string;
+  hasBooleanColumn: boolean;
 }) {
+  const assertBooleanCells = (value: boolean) => {
+    if (hasBooleanColumn) {
+      H.getDashboardCard().within(() => {
+        cy.findAllByText(String(value)).first().should("be.visible");
+        cy.findByText(String(!value)).should("not.exist");
+      });
+    }
+  };
+
   cy.log("parameter widget");
   H.getDashboardCard().findByText(allRowCountText).should("be.visible");
   H.filterWidget().click();
   H.popover().button("Add filter").click();
   H.getDashboardCard().findByText(trueRowCountText).should("be.visible");
+  assertBooleanCells(true);
   H.filterWidget().icon("close").click();
   H.getDashboardCard().findByText(allRowCountText).should("be.visible");
   H.filterWidget().click();
@@ -424,11 +453,13 @@ function testParameterWidget({
     cy.findByText("Add filter").click();
   });
   H.getDashboardCard().findByText(falseRowCountText).should("be.visible");
+  assertBooleanCells(false);
   H.filterWidget().click();
   H.popover().within(() => {
     cy.findByText("True").click();
     cy.findByText("Update filter").click();
   });
   H.getDashboardCard().findByText(trueRowCountText).should("be.visible");
+  assertBooleanCells(true);
   H.filterWidget().icon("close").click();
 }
