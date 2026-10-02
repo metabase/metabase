@@ -133,22 +133,23 @@
     (is (zero? (#'embedding/count-tokens "")))
     (is (nil? (#'embedding/count-tokens nil)))))
 
-(deftest in-process-token-usage-test
+(deftest ^:synchronized in-process-token-usage-test
   (let [model            {:provider "in-process" :model-name "local-model" :vector-dimensions 4}
         unnamed-model    (dissoc model :model-name)
         analytics-calls  (atom [])
         tracking-calls   (atom [])
         resolution-calls (atom [])]
-    (mt/with-dynamic-fn-redefs
-      [embeddings.provider/resolve-model            (fn [requested]
-                                                      (swap! resolution-calls conj requested)
-                                                      (assoc requested :model-name "local-model"))
-       embeddings.provider/embed-text               (fn [_ text _] [text])
-       embeddings.provider/embed-texts              (fn [_ texts _] (mapv vector texts))
-       analytics/inc!                               (fn [metric labels value]
-                                                      (swap! analytics-calls conj [metric labels value]))
-       semantic.models.token-tracking/record-tokens (fn [& args]
-                                                      (swap! tracking-calls conj args))]
+    ;; `analytics/inc!` is a hot path; avoid permanently proxying it via with-dynamic-fn-redefs.
+    (with-redefs
+     [embeddings.provider/resolve-model            (fn [requested]
+                                                     (swap! resolution-calls conj requested)
+                                                     (assoc requested :model-name "local-model"))
+      embeddings.provider/embed-text               (fn [_ text _] [text])
+      embeddings.provider/embed-texts              (fn [_ texts _] (mapv vector texts))
+      analytics/inc!                               (fn [metric labels value]
+                                                     (swap! analytics-calls conj [metric labels value]))
+      semantic.models.token-tracking/record-tokens (fn [& args]
+                                                     (swap! tracking-calls conj args))]
       (embedding/get-embedding model "Hello world" :type :query :record-tokens? true)
       (embedding/get-embeddings-batch model ["Hello world" "again"] :type :index :record-tokens? true)
       (testing "local calls report approximate token metrics and persistent usage"
@@ -261,7 +262,7 @@
               invalid-base64 (.encodeToString encoder (byte-array [1 2 3 5 6]))]
           (is (thrown? Exception (decode [{:embedding invalid-base64}]))))))))
 
-(deftest test-get-embedding
+(deftest ^:synchronized test-get-embedding
   (mt/with-temporary-setting-values [llm-openai-api-key              "sk-mock-openai-api-key"
                                      ee-embedding-service-base-url  "http://mock-embedding-service"
                                      ee-embedding-service-api-key   "mock-embedding-service-key"]
@@ -284,12 +285,13 @@
                 :mock-response  {:embedding mock-embedding}
                 :counts-tokens? false}]]
         (t2/delete! :model/SemanticSearchTokenTracking)
-        (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
-                                                     (swap! analytics-calls conj [metric args]))
-                                    http/post (fn post-mock [_url & _options]
-                                                {:status  200
-                                                 :headers {"Content-Type" "application/json"}
-                                                 :body    (json/encode mock-response)})]
+        ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+        (with-redefs [analytics/inc! (fn [metric & args]
+                                       (swap! analytics-calls conj [metric args]))
+                      http/post (fn post-mock [_url & _options]
+                                  {:status  200
+                                   :headers {"Content-Type" "application/json"}
+                                   :body    (json/encode mock-response)})]
           (testing provider
             (reset! analytics-calls [])
             (is (= mock-embedding (vec (#'embedding/get-embedding {:provider          provider

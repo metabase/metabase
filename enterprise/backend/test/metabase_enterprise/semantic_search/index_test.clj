@@ -141,8 +141,9 @@
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))
       (testing "vector-search-explain? runs EXPLAIN ANALYZE and emits the vector-scan instrumentation metrics"
         (let [analytics-calls (atom [])]
-          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
-                                                       (swap! analytics-calls conj [metric args]))]
+          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+          (with-redefs [analytics/inc! (fn [metric & args]
+                                         (swap! analytics-calls conj [metric args]))]
             (mt/with-test-user :crowberto
               (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                           {:search-string "dog training" :vector-search-explain? true}))
@@ -161,8 +162,9 @@
                                      [0 :plan-node]))))))))
       (testing "with instrumentation off (the default) no instrumentation metrics are emitted"
         (let [analytics-calls (atom [])]
-          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
-                                                       (swap! analytics-calls conj [metric args]))]
+          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+          (with-redefs [analytics/inc! (fn [metric & args]
+                                         (swap! analytics-calls conj [metric args]))]
             (mt/with-test-user :crowberto
               (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                           {:search-string "dog training"}))
@@ -642,8 +644,9 @@
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))
       (testing "Analytics metrics are recorded for semantic search operations"
         (let [analytics-calls (atom [])]
-          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
-                                                       (swap! analytics-calls conj [metric args]))]
+          ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+          (with-redefs [analytics/inc! (fn [metric & args]
+                                         (swap! analytics-calls conj [metric args]))]
             (testing "Permission filtering metrics"
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto

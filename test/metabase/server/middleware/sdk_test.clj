@@ -22,6 +22,19 @@
     version    (ring.mock/header (keyword (wonk-case "x-metabase-client-version")) version)
     identifier (ring.mock/header (keyword (wonk-case "x-metabase-client-identifier")) identifier)))
 
+(def ^:private embedding-response-metrics
+  #{:metabase-sdk/response
+    :metabase-embedding-iframe/response
+    :metabase-embedding-iframe-full-app/response
+    :metabase-embedding-iframe-static/response
+    :metabase-embedding-public/response
+    :metabase-embedding-simple/response})
+
+(defn- record-embedding-response! [counts metric & _args]
+  ;; `with-redefs` is process-wide, so ignore unrelated metrics emitted by background workers.
+  (when (contains? embedding-response-metrics metric)
+    (swap! counts update metric (fnil inc 0))))
+
 (deftest bind-client-test
   (are [client]
        (let [request (mock-request {:client client})
@@ -166,9 +179,10 @@
       (is (= 1.0 (mt/metric-value system :metabase-embedding-simple/response {:status "400"})))
       (is (= 1.0 (mt/metric-value system :metabase-embedding-simple/response {:status "500"}))))))
 
-(deftest embedding-mw-does-not-bump-metrics-with-data-app-client-header
+(deftest ^:synchronized embedding-mw-does-not-bump-metrics-with-data-app-client-header
   (let [prometheus-standin (atom {})]
-    (mt/with-dynamic-fn-redefs [analytics/inc! (fn [k _] (swap! prometheus-standin update k (fnil inc 0)))]
+    ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+    (with-redefs [analytics/inc! (partial record-embedding-response! prometheus-standin)]
       ;; data-app is a known SDK client, but a response-code counter tells us nothing
       ;; actionable about data apps, so the middleware intentionally emits no metric.
       (let [request (mock-request {:client "data-app"})
@@ -182,9 +196,10 @@
         (exception request identity identity)
         (is (= {} @prometheus-standin))))))
 
-(deftest embeding-mw-does-not-bump-metrics-with-random-sdk-header
+(deftest ^:synchronized embeding-mw-does-not-bump-metrics-with-random-sdk-header
   (let [prometheus-standin (atom {})]
-    (mt/with-dynamic-fn-redefs [analytics/inc! (fn [k _] (swap! prometheus-standin update k (fnil inc 0)))]
+    ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+    (with-redefs [analytics/inc! (partial record-embedding-response! prometheus-standin)]
       ;; has X-Metabase-Client header, but it's not the SDK, so we don't track it
       (let [request (mock-request {:client "my-client"})
             good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
@@ -197,9 +212,10 @@
         (exception request identity identity)
         (is (= {} @prometheus-standin))))))
 
-(deftest embeding-mw-does-not-bump-sdk-metrics-without-sdk-header
+(deftest ^:synchronized embeding-mw-does-not-bump-sdk-metrics-without-sdk-header
   (let [prometheus-standin (atom {})]
-    (mt/with-dynamic-fn-redefs [analytics/inc! (fn [k _] (swap! prometheus-standin update k (fnil inc 0)))]
+    ;; The analytics façade is a thin, frequently called hot path; avoid permanently proxying it.
+    (with-redefs [analytics/inc! (partial record-embedding-response! prometheus-standin)]
       (let [request (mock-request {}) ;; <= no X-Metabase-Client header => no SDK context
             good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
             bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))

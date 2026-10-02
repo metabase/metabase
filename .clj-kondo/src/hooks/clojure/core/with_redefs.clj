@@ -1,6 +1,35 @@
 (ns hooks.clojure.core.with-redefs
   (:require
-   [clj-kondo.hooks-api :as hooks]))
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]))
+
+(def ^:private dynamic-redefs-prohibited-vars
+  "Functions that are cheap and called frequently enough that permanently installing the
+   `with-dynamic-fn-redefs` proxy would measurably tax the rest of the test JVM.
+
+   Keep this list intentionally narrow. Add a var only when a concrete test needs to
+   redefine it and it is known to be a hot path; the `with-redefs` lint message prompts
+   callers to make that assessment."
+  '#{clojure.java.io/file
+     clojure.java.io/resource
+     clojure.tools.logging/log*
+     java-time.api/zoned-date-time
+     metabase.analytics-interface.core/inc!
+     metabase.analytics-interface.core/observe!
+     metabase.analytics-interface.core/set-gauge!
+     metabase.lib.metadata.protocols/table
+     metabase.lib.util.unique-name-generator/truncate-alias})
+
+(defn- resolved-lhs-symbol [lhs]
+  (when (and (hooks/token-node? lhs)
+             (symbol? (hooks/sexpr lhs)))
+    (let [{:keys [ns name]} (hooks/resolve {:name (hooks/sexpr lhs)})]
+      (when (and (symbol? ns) ; not :clj-kondo/unknown-namespace
+                 (symbol? name))
+        (symbol (str ns) (clojure.core/name name))))))
+
+(defn- dynamic-redefs-prohibited-lhs? [lhs]
+  (contains? dynamic-redefs-prohibited-vars (resolved-lhs-symbol lhs)))
 
 (defn- defn-arity?
   "Look up `var-sym` in `analysis` (the result of `hooks/ns-analysis`, keyed by language)
@@ -37,12 +66,9 @@
    nudge is small; the cost of a wrong nudge is a runtime error from
    `with-dynamic-fn-redefs` refusing to proxy a multimethod."
   [lhs]
-  (and (hooks/token-node? lhs)
-       (symbol? (hooks/sexpr lhs))
-       (let [resolved (hooks/resolve {:name (hooks/sexpr lhs)})
-             ns-sym   (:ns resolved)]
-         (and (symbol? ns-sym) ; not :clj-kondo/unknown-namespace
-              (defn-arity? (hooks/ns-analysis ns-sym) (:name resolved))))))
+  (when-let [resolved (resolved-lhs-symbol lhs)]
+    (defn-arity? (hooks/ns-analysis (symbol (namespace resolved)))
+      (symbol (name resolved)))))
 
 (defn lint-with-redefs
   "Suggest `with-dynamic-fn-redefs` when every LHS is known to be a `defn`-style var.
@@ -60,13 +86,41 @@
     (when (hooks/vector-node? bindings-vec)
       (let [pairs (partition-all 2 (:children bindings-vec))]
         (when (and (seq pairs)
+                   (not-any? (comp dynamic-redefs-prohibited-lhs? first) pairs)
                    (every? (fn [[lhs rhs]]
                              (and rhs (safely-nudgeable-lhs? lhs)))
                            pairs))
           (hooks/reg-finding!
            (assoc (meta node)
-                  :message (str "Every binding here redefines a defn-style var — prefer "
-                                "metabase.test/with-dynamic-fn-redefs for thread-safe "
-                                "redefs. [:metabase/prefer-with-dynamic-fn-redefs]")
+                  :message (str "Every binding here redefines a defn-style var. Before converting, "
+                                "consider whether any target is a cheap, frequently called test hot "
+                                "path; if so, add it to `dynamic-redefs-prohibited-vars` in "
+                                "`hooks.clojure.core.with-redefs` and keep synchronized `with-redefs`. "
+                                "Otherwise prefer `metabase.test/with-dynamic-fn-redefs` for "
+                                "thread-safe redefs. [:metabase/prefer-with-dynamic-fn-redefs]")
                   :type    :metabase/prefer-with-dynamic-fn-redefs))))))
+  {:node node})
+
+(defn lint-with-dynamic-fn-redefs
+  "Reject dynamic redefs of functions whose permanently installed proxy would impose
+   meaningful suite-wide overhead."
+  [{:keys [node]}]
+  (let [[_with-dynamic-fn-redefs bindings-vec] (:children node)]
+    (when (hooks/vector-node? bindings-vec)
+      (let [prohibited-vars (->> (:children bindings-vec)
+                                 (take-nth 2)
+                                 (keep resolved-lhs-symbol)
+                                 (filter dynamic-redefs-prohibited-vars)
+                                 distinct
+                                 sort
+                                 vec)]
+        (when (seq prohibited-vars)
+          (hooks/reg-finding!
+           (assoc (meta node)
+                  :message (format (str "Do not use `with-dynamic-fn-redefs` with %s: its proxy "
+                                        "would add suite-wide overhead to a hot path. Use `with-redefs` "
+                                        "in a `^:synchronized` test instead. "
+                                        "[:metabase/no-dynamic-fn-redefs-on-hot-path]")
+                                   (str/join ", " (map #(str "`" % "`") prohibited-vars)))
+                  :type :metabase/no-dynamic-fn-redefs-on-hot-path))))))
   {:node node})
