@@ -141,6 +141,7 @@ main{flex:1;display:flex;min-height:0}
 .bridge .arrow{color:var(--cycle);font-size:1.25em;line-height:1}
 .chip.bridge.dull{opacity:.35}
 .chip.bridge.teambridge{background:color-mix(in srgb,var(--team) 22%,var(--chip));border-color:var(--team)}
+.bridge .end.other{opacity:.5}
 .bridge .end.link{cursor:pointer}
 .bridge .end.link:hover{color:var(--accent);text-decoration:underline}
 .bridge .end.sel{color:var(--accent);font-weight:600}
@@ -343,6 +344,8 @@ function bridgeEl(a, b, linkable = () => true){
     const e=document.createElement('span'); e.className='end'; e.textContent=id;
     if(linkable(id) && byId[id]){ e.classList.add('link'); e.onclick=()=>navigate(id); }
     if(id===selected) e.classList.add('sel');
+    // with teams picked, the end no picked team owns recedes
+    if(focusTeams.size && !ownedByFocusTeam(byId[id])) e.classList.add('other');
     return e;
   };
   const arrow=document.createElement('span'); arrow.className='arrow'; arrow.textContent='→';
