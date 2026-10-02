@@ -54,19 +54,19 @@
             category    (field-path "CATEGORIES" "NAME")]
         (is (=? {:queries [{:export        "PriceByCategory"
                             :metrics       []
-                            :dataset_query {:lib/type "mbql/query"
-                                            :database (db-name)
-                                            :stages   [{:source-table (table-path "VENUES")
-                                                        :filters      [[">" {} ["field" {} price] 1]]
-                                                        :aggregation  [["sum" {:name "total"} ["field" {} price]]]
-                                                        :breakout     [["field" {:source-field category-id} category]]
-                                                        :order-by     [["desc" {} ["aggregation"
-                                                                                   {:lib/source-name "total"}
-                                                                                   string?]]]
-                                                        :limit        5}]}}]}
+                            :entity        {:dataset_query {:lib/type "mbql/query"
+                                                            :database (db-name)
+                                                            :stages   [{:source-table (table-path "VENUES")
+                                                                        :filters      [[">" {} ["field" {} price] 1]]
+                                                                        :aggregation  [["sum" {:name "total"} ["field" {} price]]]
+                                                                        :breakout     [["field" {:source-field category-id} category]]
+                                                                        :order-by     [["desc" {} ["aggregation"
+                                                                                                   {:lib/source-name "total"}
+                                                                                                   string?]]]
+                                                                        :limit        5}]}}}]}
                 response))))
     (testing "only the uuid the order by points at is kept, and it is the aggregation's"
-      (let [stage (-> response :queries first :dataset_query :stages first)]
+      (let [stage (-> response :queries first :entity :dataset_query :stages first)]
         (is (= (get-in stage [:aggregation 0 1 :lib/uuid])
                (get-in stage [:order-by 0 2 2])))
         (is (nil? (get-in stage [:filters 0 1 :lib/uuid])))))))
@@ -77,7 +77,7 @@
      (let [metric-eid (t2/select-one-fn :entity_id :model/Card :id metric-id)]
        (is (=? {:queries [{:export        "VenueCount"
                            :metrics       [metric-eid]
-                           :dataset_query {:stages [{:aggregation [["metric" {} metric-eid]]}]}}]
+                           :entity        {:dataset_query {:stages [{:aggregation [["metric" {} metric-eid]]}]}}}]
                 :metrics [{:id     metric-id
                            :entity {:entity_id     metric-eid
                                     :type          "metric"
@@ -88,7 +88,7 @@
                                                        :aggregations [{:type "metric" :id metric-id}]}]}}]})))))))
 
 (deftest answers-each-query-on-its-own-test
-  (is (=? {:queries [{:export "Venues" :dataset_query {:stages [{:source-table (table-path "VENUES")}]}}
+  (is (=? {:queries [{:export "Venues" :entity {:dataset_query {:stages [{:source-table (table-path "VENUES")}]}}}
                      {:export "Broken" :error "No column found"}]}
           (export! :crowberto 200
                    {:queries [{:export "Venues"
@@ -164,7 +164,7 @@
            (testing "an action that does not exist"
              (is (=? {:error #".*does not exist.*"} (nth (:actions response) 3))))
            (testing "a metric that reads a card; the query that aggregates it is still built"
-             (is (=? {:queries [{:export "ReadsMetric" :dataset_query map?}]
+             (is (=? {:queries [{:export "ReadsMetric" :entity map?}]
                       :metrics [{:id reading-metric-id :error (re-pattern (str ".*reads card " model-id ".*"))}]}
                      response)))))))))
 
@@ -192,7 +192,7 @@
   (testing "the export needs what the typed schema needs: a caller who can read the sources, not an admin"
     (data-apps.tu/do-with-sources!
      (fn [{:keys [metric-id implicit-id model-id]}]
-       (is (=? {:queries [{:export "VenueCount" :dataset_query map? :metrics [string?]}]
+       (is (=? {:queries [{:export "VenueCount" :entity map? :metrics [string?]}]
                 :actions [{:id implicit-id :entity map?}]
                 :models  [{:id model-id :entity map?}]
                 :metrics [{:id metric-id :entity map?}]}
@@ -249,8 +249,8 @@
                     :table_id   (mt/id :venues)
                     :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                     (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 3)))}]
-      (is (=? {:queries [{:export        "Cheap"
-                          :dataset_query {:stages [{:filters [["segment" {} segment-eid]]}]}}]}
+      (is (=? {:queries [{:export "Cheap"
+                          :entity {:dataset_query {:stages [{:filters [["segment" {} segment-eid]]}]}}}]}
               (export! :crowberto 200
                        {:queries [{:export "Cheap"
                                    :query  {:stages [{:source  {:type "table" :id (mt/id :venues)}
@@ -264,7 +264,7 @@
                                                :is_published  true
                                                :collection_id collection-id}]
       (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted :create-queries :no}}
-        (is (=? {:queries [{:export "Venues" :dataset_query {:stages [{:source-table (table-path "VENUES")}]}}]}
+        (is (=? {:queries [{:export "Venues" :entity {:dataset_query {:stages [{:source-table (table-path "VENUES")}]}}}]}
                 (export! :rasta 200
                          {:queries [{:export "Venues"
                                      :query  {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}]}
@@ -316,3 +316,60 @@
                                                            :aggregations [{:type "metric" :id metric-id}]}]}}]
                              :actions [implicit-id query-action-id]}))))
          (is (= {"Card" 1 "Action" 1} (frequencies @calls))))))))
+
+(deftest exports-the-saved-question-an-author-writes-test
+  (testing "a query comes back as the saved question that holds it: named after the export, in the app's collection,
+            with the definition's entity ID, created by the caller, and nothing unset"
+    (let [{:keys [entity]} (-> (export! :crowberto 200
+                                        {:collection "appCollectionEntity01"
+                                         :queries    [{:export    "VenuesList"
+                                                       :entity_id "savedQuestionEntity01"
+                                                       :query     {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                                                             :limit  5}]}}]})
+                               :queries first)]
+      (is (=? {:serdes/meta            [{:model "Card" :id "savedQuestionEntity01" :label "venues_list"}]
+               :entity_id              "savedQuestionEntity01"
+               :collection_id          "appCollectionEntity01"
+               :name                   "Venues list"
+               :type                   "question"
+               :display                "table"
+               :creator_id             "crowberto@metabase.com"
+               :visualization_settings {}
+               :parameters             []
+               :parameter_mappings     []
+               :dataset_query          {:database (db-name)
+                                        :stages   [{:source-table (table-path "VENUES") :limit 5}]}}
+              entity))
+      (is (not-any? (partial contains? entity)
+                    [:description :collection_position :public_uuid :card_schema :archived :enable_embedding])
+          "what serialization leaves unset or at its default is left out, as the format omits it"))))
+
+(deftest card-names-from-export-names-test
+  (are [export card-name] (= card-name (#'resource-export/export-name->card-name export))
+    "VenuesList"      "Venues list"
+    "ordersByMonth"   "Orders by month"
+    "top_10_products" "Top 10 products"
+    "Revenue"         "Revenue"))
+
+(deftest keys-come-in-the-order-serialization-writes-them-test
+  (testing "the printed entity comes in the order serialization writes a file, so an author keeps it"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [{:keys [entity]} (-> (resource-export/export-resources
+                                    [{:export "Venues" :query {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}]
+                                    [])
+                                   :queries first)]
+          (is (= [:database :stages :lib/type] (keys (:dataset_query entity))))
+          (is (< (.indexOf ^java.util.List (vec (keys entity)) :name)
+                 (.indexOf ^java.util.List (vec (keys entity)) :dataset_query))))))))
+
+(deftest omits-the-settings-an-action-leaves-unset-test
+  (testing "nulls inside an action's form settings, which the format omits, are left out of its export"
+    (data-apps.tu/do-with-sources!
+     (fn [{:keys [implicit-id]}]
+       (t2/update! :model/Action implicit-id
+                   {:visualization_settings {:fields          {:name {:id "name" :hidden true :description nil}}
+                                             :column_settings nil}})
+       (let [{:keys [entity]} (-> (export! :crowberto 200 {:actions [implicit-id]}) :actions first)]
+         (is (= {:fields {:name {:id "name" :hidden true}}} (:visualization_settings entity)))
+         (is (not (contains? entity :description))))))))
