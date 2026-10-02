@@ -5,6 +5,7 @@ import {
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import type { RenderingContext } from "../../../types";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
 import type { XAxisModel, YAxisModel } from "../model/types";
 
@@ -104,6 +105,48 @@ describe("getChartLayout", () => {
       WIDEST_MEASURED_TICK_WIDTH +
         CHART_STYLE.axisTicksMarginY +
         CHART_STYLE.padding.x,
+    );
+  });
+
+  it("reserves row value label room for the drawn label on a log scale", () => {
+    const chartContext: RenderingContext = {
+      ...getChartContext(),
+      measureText: (text) => text.length * 10,
+    };
+    const rowInput: ChartLayoutInput = {
+      ...input,
+      isRowChart: true,
+      // log10(1,000,000) and the sign-preserving log10(1,000).
+      transformedDataset: [
+        { [X_AXIS_DATA_KEY]: "A", count: 6 },
+        { [X_AXIS_DATA_KEY]: "B", count: -3 },
+      ],
+      yAxisScaleTransforms: {
+        toEChartsAxisValue: (value) =>
+          typeof value === "number"
+            ? Math.sign(value) * Math.log10(Math.abs(value))
+            : null,
+        fromEChartsAxisValue: (value) =>
+          Math.sign(value) * 10 ** Math.abs(value),
+      },
+      seriesLabelsFormatters: { count: (value) => String(value) },
+    };
+
+    const chartLayout = getChartLayout(
+      rowInput,
+      createMockVisualizationSettings({ "graph.show_values": true }),
+      false,
+      480,
+      274,
+      chartContext,
+    );
+
+    // "1000000" and "-1000", not "6" and "-3".
+    expect(chartLayout.padding.right).toBe(
+      CHART_STYLE.padding.x + 70 + CHART_STYLE.seriesLabels.offset,
+    );
+    expect(chartLayout.negativeDataLabelsWidth).toBe(
+      50 + CHART_STYLE.seriesLabels.offset,
     );
   });
 });

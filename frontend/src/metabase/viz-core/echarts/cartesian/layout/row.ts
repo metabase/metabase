@@ -109,11 +109,13 @@ const getRowChartDataLabelsWidths = (
     size: theme.cartesian.label.fontSize,
   };
   const sideOf = (value: number) => (value < 0 ? "negative" : "positive");
+  const { fromEChartsAxisValue } = input.yAxisScaleTransforms;
   const widestOn = (side: "positive" | "negative") => {
     const widths = labels
       .filter(({ value }) => sideOf(value) === side)
+      // Labels show the original value, not its log or power transform.
       .map(({ value, formatter }) =>
-        measureText(String(formatter(value)), fontStyle),
+        measureText(String(formatter(fromEChartsAxisValue(value))), fontStyle),
       );
     return widths.length === 0
       ? 0
