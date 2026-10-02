@@ -116,6 +116,10 @@ describe("scenarios > dashboard > filters > text/category", () => {
     H.filterWidget().click();
     applyFilterByType(filterType, filterValue);
     waitDashboardCardQuery();
+    H.filterWidget()
+      .should("contain", filterValue)
+      .icon("close")
+      .should("be.visible");
 
     H.filterWidget().click();
     cy.log("uncheck all values");
@@ -126,9 +130,13 @@ describe("scenarios > dashboard > filters > text/category", () => {
       waitDashboardCardQuery();
     });
 
-    H.filterWidget().within(() => {
-      cy.icon("close").should("not.exist");
-    });
+    H.filterWidget()
+      .should("contain", "Text")
+      .and("not.contain", filterValue)
+      .within(() => {
+        cy.icon("close").should("not.exist");
+      });
+    cy.location("search").should("eq", "?text=");
   });
 
   it("should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)", () => {
@@ -199,25 +207,29 @@ describe("scenarios > dashboard > filters > text/category", () => {
     );
 
     // Updates the filter value
-    selectDefaultValueFromPopover("Twitter", { buttonLabel: "Update filter" });
+    selectDefaultValueFromPopover("Organic", { buttonLabel: "Update filter" });
     H.saveDashboard();
     waitDashboardCardQuery();
-    H.ensureDashboardCardHasText("37.65");
+    assertOrganicOnly();
 
     // Resets the value back by clicking widget icon
-    H.toggleFilterWidgetValues(["Google", "Organic"], {
+    H.toggleFilterWidgetValues(["Google", "Twitter"], {
       buttonLabel: "Update filter",
     });
     waitDashboardCardQuery();
+    H.ensureDashboardCardHasText("37.65");
     H.resetFilterWidgetToDefault();
     waitDashboardCardQuery();
-    H.filterWidget().findByText("Twitter");
+    H.filterWidget().findByText("Organic");
+    assertOrganicOnly();
 
     // Removing value resets back to default
-    H.toggleFilterWidgetValues(["Twitter"], {
+    H.toggleFilterWidgetValues(["Organic"], {
       buttonLabel: "Set to default",
     });
-    H.filterWidget().findByText("Twitter").should("be.visible");
+    H.popover().should("not.exist");
+    H.filterWidget().findByText("Organic").should("be.visible");
+    assertOrganicOnly();
   });
 
   it("should use the list value picker for single-value category filters (metabase#49323)", () => {
@@ -232,8 +244,9 @@ describe("scenarios > dashboard > filters > text/category", () => {
 
     H.filterWidget().contains("Text").click();
     H.popover().within(() => {
+      cy.findByText("Aerodynamic Concrete Bench").should("be.visible");
       cy.findByRole("combobox").should("not.exist");
-      cy.findByText("Aerodynamic Concrete Bench").should("be.visible").click();
+      cy.findByText("Aerodynamic Concrete Bench").click();
       cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
       cy.button("Add filter").click();
     });
@@ -252,14 +265,21 @@ describe("scenarios > dashboard > filters > text/category", () => {
 
     H.filterWidget().contains("Text").click();
     H.popover().within(() => {
+      cy.findByText("Aerodynamic Concrete Bench").should("be.visible");
       cy.findByRole("combobox").should("not.exist");
-      cy.findByText("Aerodynamic Concrete Bench").should("be.visible").click();
+      cy.findByText("Aerodynamic Concrete Bench").click();
       cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
       cy.button("Add filter").click();
     });
     H.filterWidget().findByText("2 selections").should("be.visible");
   });
 });
+
+function assertOrganicOnly() {
+  cy.findByTestId("dashcard")
+    .should("contain", "39.58")
+    .and("not.contain", "37.65");
+}
 
 function waitDashboardCardQuery() {
   cy.get("@dashCardId").then((id) => {
