@@ -110,7 +110,7 @@ export function JWTGroupMappingSection({
 
       {modeSwitch.mode === "automatic" && (
         <Text c="text-secondary">
-          {t`Users will be assigned to ${applicationName} groups based on their JWT group names`}
+          {t`At each sign-in, people are added to the ${applicationName} groups named in their JWT and removed from all other groups, including Administrators.`}
         </Text>
       )}
 
@@ -140,7 +140,7 @@ export function JWTGroupMappingSection({
       <ConfirmModal
         opened={modeSwitch.isClearConfirmOpen}
         title={t`Switch to automatic group mapping?`}
-        message={t`Your existing group mappings will be deleted, and users will be assigned to ${applicationName} groups matching their JWT group names.`}
+        message={t`Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the ${applicationName} groups named in their JWT and removed from all other groups, including Administrators.`}
         confirmButtonText={t`Delete mappings and switch`}
         onClose={modeSwitch.cancelClear}
         // the modal's busy guard only engages on a returned promise, which also blocks double submits

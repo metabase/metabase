@@ -38,6 +38,7 @@ const setup = async ({
   useTenants,
   configured,
   uriOnly,
+  sharedSecretEnvConfigured,
   attributesConfigured,
   attributesEnvConfigured,
   tenantAttributeConfigured,
@@ -62,6 +63,7 @@ const setup = async ({
   configured?: boolean;
   // the identity provider URI is saved but the shared secret is not, so the backend does not count JWT as configured
   uriOnly?: boolean;
+  sharedSecretEnvConfigured?: boolean;
   attributesConfigured?: boolean;
   attributesEnvConfigured?: boolean;
   tenantAttributeConfigured?: boolean;
@@ -125,6 +127,15 @@ const setup = async ({
     ...(uriOnly
       ? ([
           { key: "jwt-identity-provider-uri", value: "http://example.com" },
+        ] as const)
+      : []),
+    ...(sharedSecretEnvConfigured
+      ? ([
+          {
+            key: "jwt-shared-secret",
+            is_env_setting: true,
+            env_name: "MB_JWT_SHARED_SECRET",
+          },
         ] as const)
       : []),
     ...(attributesConfigured
@@ -337,10 +348,63 @@ describe("SettingsJWTForm", () => {
     expect(screen.getByRole("radio", { name: "Automatic" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Automatic" })).toBeEnabled();
     expect(
-      screen.getByText(/Users will be assigned to Metabase groups/),
+      screen.getByText(
+        "At each sign-in, people are added to the Metabase groups named in their JWT and removed from all other groups, including Administrators.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Changes saved. Group mapping is set to Automatic."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Save the settings above to set up group mapping."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps Save and enable disabled until a signing key is set up", async () => {
+    await setup();
+    const saveButton = screen.getByRole("button", { name: /Save and enable/ });
+    // nothing has been entered yet, so the page does not complain
+    expect(
+      screen.queryByText("Set up a signing key before saving"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
+      ATTRS["jwt-identity-provider-uri"],
+    );
+
+    expect(
+      await screen.findByText("Set up a signing key before saving"),
+    ).toBeInTheDocument();
+    expect(saveButton).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: /Set up key/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
+
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    expect(
+      screen.queryByText("Set up a signing key before saving"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("saves without a key when the key comes from an env var", async () => {
+    await setup({ sharedSecretEnvConfigured: true });
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
+      ATTRS["jwt-identity-provider-uri"],
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Save and enable/ }),
+    );
+
+    const [{ body }] = await findRequests("PUT");
+    expect(body["jwt-identity-provider-uri"]).toBe(
+      ATTRS["jwt-identity-provider-uri"],
+    );
+    expect(body).not.toHaveProperty("jwt-shared-secret");
+    expect(
+      screen.queryByText("Set up a signing key before saving"),
     ).not.toBeInTheDocument();
   });
 
@@ -552,6 +616,11 @@ describe("SettingsJWTForm", () => {
     it("stays editable while only the identity provider URI is saved", async () => {
       await setup({ uriOnly: true });
 
+      // the missing key is what keeps the cards below locked, so the page says so on arrival
+      expect(
+        screen.getByText("Set up a signing key before saving"),
+      ).toBeInTheDocument();
+
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       expect(toggle).toBeEnabled();
       expect(toggle).not.toHaveAttribute("aria-disabled");
@@ -688,7 +757,7 @@ describe("SettingsJWTForm", () => {
       expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
       expect(screen.getByRole("radio", { name: "Off" })).toBeDisabled();
       expect(
-        screen.queryByText(/Users will be assigned to Metabase groups/),
+        screen.queryByText(/people are added to the Metabase groups/),
       ).not.toBeInTheDocument();
       expect(
         screen.getByText("Save the settings above to set up group mapping."),
@@ -1279,6 +1348,11 @@ describe("SettingsJWTForm", () => {
       expect(
         await screen.findByText("Switch to automatic group mapping?"),
       ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the Metabase groups named in their JWT and removed from all other groups, including Administrators.",
+        ),
+      ).toBeInTheDocument();
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(
@@ -1421,12 +1495,7 @@ describe("SettingsJWTForm", () => {
     it("does not turn sync on with the first save when it is env-configured", async () => {
       await setup({ groupSyncEnvConfigured: true });
 
-      await userEvent.type(
-        await screen.findByRole("textbox", {
-          name: /JWT Identity Provider URI/,
-        }),
-        ATTRS["jwt-identity-provider-uri"],
-      );
+      await fillServerSettings();
       await userEvent.click(
         await screen.findByRole("button", { name: /Save/ }),
       );

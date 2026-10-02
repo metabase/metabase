@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
+import * as Yup from "yup";
 
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -52,6 +53,24 @@ const getAttributeFieldProps = (
   return { placeholder };
 };
 
+// the other cards unlock on a saved key, so a URI cannot be saved without one
+function getJwtFormSchema({
+  isSigningKeyEnvSet,
+}: {
+  isSigningKeyEnvSet: boolean;
+}) {
+  return Yup.object({
+    "jwt-shared-secret": Yup.string()
+      .nullable()
+      // the key is asked for once there is a URI, so an untouched new page shows no error
+      .when("jwt-identity-provider-uri", {
+        is: (uri: string | null) => Boolean(uri) && !isSigningKeyEnvSet,
+        then: (schema) =>
+          schema.required(t`Set up a signing key before saving`),
+      }),
+  });
+}
+
 export type JWTFormValues = Pick<
   EnterpriseSettings,
   | "jwt-identity-provider-uri"
@@ -93,6 +112,8 @@ export const SettingsJWTForm = () => {
     setting?.is_env_setting && setting.env_name ? [setting.env_name] : [],
   );
   const isGroupMappingEnvConfigured = groupMappingEnvNames.length > 0;
+  // per the design, the first save turns automatic group mapping on; the section owns it from then on
+  const turnsOnGroupMapping = isNewSetup && !isGroupMappingEnvConfigured;
 
   const saveSettings = async (values: JWTFormValues) => {
     const { "jwt-shared-secret": jwtSecret, ...rest } = values;
@@ -104,8 +125,7 @@ export const SettingsJWTForm = () => {
       settingsToUpdate["jwt-shared-secret"] = jwtSecret;
     }
 
-    // per the design, the first save turns automatic group mapping on; the section owns it from then on
-    if (isNewSetup && !isGroupMappingEnvConfigured) {
+    if (turnsOnGroupMapping) {
       settingsToUpdate["jwt-group-sync"] = true;
       settingsToUpdate["jwt-group-mappings"] = {};
     }
@@ -122,7 +142,12 @@ export const SettingsJWTForm = () => {
       throw new Error(t`Error saving JWT Settings`);
     }
 
-    sendToast({ message: t`Changes saved`, icon: "check_filled" });
+    sendToast({
+      message: turnsOnGroupMapping
+        ? t`Changes saved. Group mapping is set to Automatic.`
+        : t`Changes saved`,
+      icon: "check_filled",
+    });
   };
 
   if (isLoadingDetails || isLoadingValues) {
@@ -135,6 +160,10 @@ export const SettingsJWTForm = () => {
     );
   }
 
+  const validationSchema = getJwtFormSchema({
+    isSigningKeyEnvSet:
+      settingDetails["jwt-shared-secret"]?.is_env_setting ?? false,
+  });
   const usingTenants = settingDetails["use-tenants"]?.value;
   const hasUserAttributes = [
     settingDetails["jwt-attribute-email"],
@@ -152,6 +181,7 @@ export const SettingsJWTForm = () => {
       <FormProvider
         initialValues={getFormValues(settingDetails)}
         onSubmit={saveSettings}
+        validationSchema={validationSchema}
         enableReinitialize
       >
         {({ dirty, isSubmitting }) => (
