@@ -11,11 +11,6 @@ const UPDATED_SCORE_FORMATTED = "987,654,321";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-const DASHBOARD = {
-  name: "Test dashboard",
-  database: WRITABLE_DB_ID,
-};
-
 describe(
   "scenarios > actions > actions-in-object-detail-view",
   { tags: ["@external", "@actions"] },
@@ -45,40 +40,6 @@ describe(
         H.createModelFromTableName({
           tableName: WRITABLE_TEST_TABLE,
           idAlias: "modelId",
-        });
-      });
-    });
-
-    describe("in dashboard", () => {
-      beforeEach(() => {
-        asAdmin(() => {
-          cy.get("@modelId").then((modelId) => {
-            H.createImplicitActions({ modelId });
-
-            H.createQuestionAndDashboard({
-              questionDetails: {
-                name: "Score detail",
-                display: "object",
-                database: WRITABLE_DB_ID,
-                query: {
-                  "source-table": `card__${modelId}`,
-                },
-              },
-              dashboardDetails: DASHBOARD,
-            }).then(({ body: { dashboard_id } }) => {
-              cy.wrap(dashboard_id).as("dashboardId");
-            });
-          });
-        });
-      });
-
-      it("does not show model actions in model visualization on a dashboard", () => {
-        asAdmin(() => {
-          H.visitDashboard("@dashboardId");
-
-          cy.findByTestId("dashcard").within(() => {
-            assertActionsDropdownNotExists();
-          });
         });
       });
     });
@@ -114,6 +75,27 @@ describe(
 
               asAdmin(() => {
                 H.createImplicitActions({ modelId });
+
+                H.createQuestionAndDashboard({
+                  questionDetails: {
+                    name: "Score detail",
+                    type: "model",
+                    display: "object",
+                    database: WRITABLE_DB_ID,
+                    query: {
+                      "source-table": `card__${modelId}`,
+                    },
+                  },
+                  dashboardDetails: { name: "Test dashboard" },
+                }).then(({ body: { card_id, dashboard_id } }) => {
+                  H.createImplicitActions({ modelId: card_id });
+                  cy.wrap(dashboard_id).as("dashboardId");
+                  cy.intercept({
+                    method: "GET",
+                    pathname: "/api/action",
+                    query: { "model-id": String(card_id) },
+                  }).as("getDashboardModelActions");
+                });
               });
 
               permissionFn(() => {
@@ -145,6 +127,24 @@ describe(
                       assertScoreFormPrefilled(firstScoreRow);
                     });
                   });
+
+                  cy.log(
+                    `As ${name} user: verify detailed form errors for constraint violations`,
+                  );
+                  actionForm().within(() => {
+                    cy.findByLabelText("Team Name").clear().type("Dusty Ducks");
+                    cy.findByText("Update").click();
+                  });
+
+                  cy.wait("@executeAction");
+
+                  cy.findByLabelText("Team Name").should("exist");
+                  cy.findByText("This Team_name value already exists.").should(
+                    "exist",
+                  );
+
+                  cy.findByText("Team_name already exists.").should("exist");
+
                   cy.button("Close").click();
                 });
                 objectDetailModal().icon("close").click();
@@ -186,40 +186,24 @@ describe(
                 deleteObjectModal().findByText("Delete forever").click();
                 assertSuccessfullDeleteToast();
                 assertUpdatedScoreNotInTable();
+
+                cy.log(
+                  `As ${name} user: verify model actions are not shown in an object detail dashcard`,
+                );
+                H.visitDashboard("@dashboardId");
+                cy.wait("@getDashboardModelActions");
+                H.getDashboardCard().within(() => {
+                  objectDetailModal()
+                    .should("be.visible")
+                    .and("contain.text", "Amorous Aardvarks");
+                  assertActionsDropdownNotExists();
+                });
               });
             });
           });
         });
       },
     );
-
-    it("should show detailed form errors for constraint violations when executing model actions", () => {
-      const actionName = "Update";
-
-      cy.signInAsAdmin();
-
-      cy.get("@modelId").then((modelId) => {
-        H.createImplicitActions({ modelId });
-        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-        openUpdateObjectModal();
-      });
-
-      actionExecuteModal().within(() => {
-        cy.wait("@prefetchValues");
-
-        actionForm().within(() => {
-          cy.findByLabelText("Team Name").clear().type("Dusty Ducks");
-          cy.findByText(actionName).click();
-        });
-
-        cy.wait("@executeAction");
-
-        cy.findByLabelText("Team Name").should("exist");
-        cy.findByText("This Team_name value already exists.").should("exist");
-
-        cy.findByText("Team_name already exists.").should("exist");
-      });
-    });
   },
 );
 
