@@ -606,10 +606,15 @@
                             ;; triggered by instance-creation setting being read for the first time)
                             (filter #(get-in % [:data "tag"])))]
             (is (=? [{:data {"model_id"      "test-model"
+                             "provider"      "ai-service"
+                             "model_name"    "test-model"
                              "total_tokens"  5
                              "prompt_tokens" 5
                              "tag"           "embedding_generation"}}]
-                    events))))))))
+                    events))
+            (testing "with no cache counts and a zero cost"
+              (is (=? [{:data {"cache_creation_tokens" nil "cache_read_tokens" nil "estimated_costs_usd" 0.0}}]
+                      events)))))))))
 
 (deftest test-embedding-service-snowplow-suppression
   (testing "ai-service fires no token_usage event when the caller passes :snowplow? false"

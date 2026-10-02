@@ -534,6 +534,8 @@
             :prometheus          false    ; already tracked via inc! above
             :request-id          (analytics.core/uuid->ai-service-hex-uuid (random-uuid))
             :model-id            model-name
+            :provider            provider
+            :model-name          model-name
             :total-tokens        total-tokens
             :prompt-tokens       prompt-tokens
             :completion-tokens   0        ; embedding models don't produce completion tokens
