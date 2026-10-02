@@ -2,7 +2,8 @@
 # STAGE 1: builder
 ###################
 
-FROM node:22-bullseye AS builder
+# ALL Tecnologias: bullseye (Debian 11) saiu de suporte; apt falhava no build
+FROM node:22-bookworm AS builder
 
 ARG MB_EDITION=oss
 ARG VERSION
