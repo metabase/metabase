@@ -10,6 +10,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -220,6 +221,24 @@
             (is (= ["African" "American"] (:field_values name-field)))))
         (finally
           (t2/delete! :model/FieldValues :field_id field-id :type :advanced))))))
+
+(deftest table-details-read-cached-field-values-in-one-query-test
+  (testing "table details read the cached values of unrestricted columns in one query, not one per column"
+    (mt/with-temp-copy-of-db
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [field-ids   (t2/select-pks-set :model/Field :table_id (mt/id :venues))
+              details     #(:structured-output (entity-details/get-table-details {:table-id (mt/id :venues)}))
+              query-count (fn [field-ids-with-values]
+                            (mt/with-dynamic-fn-redefs [field-values/field-should-have-field-values?
+                                                        #(contains? field-ids-with-values (:id %))]
+                              ;; creates the FieldValues and warms the memoized field and table lookups
+                              (is (= (t2/select-fn-set :name :model/Field :id [:in field-ids-with-values])
+                                     (set (keep #(when (:field_values %) (:name %)) (:fields (details))))))
+                              (t2/with-call-count [call-count]
+                                (details)
+                                (call-count))))]
+          (is (= (query-count #{(first field-ids)})
+                 (query-count field-ids))))))))
 
 (deftest get-dashboard-details-rejects-non-integer-id-test
   (testing (str "a non-integer dashboard-id reaches t2/select-one's queryable position and would run as "
