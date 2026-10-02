@@ -465,7 +465,7 @@ describe("scenarios > browse > metrics", () => {
 
       cy.intercept("GET", "/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["browse-filter-only-verified-metrics"] = true;
+          res.body["browse-filter-only-verified-metrics"] = false;
           res.send();
         });
       });
