@@ -26,8 +26,8 @@
              (position)))))
   (testing "if an Exception is thrown, original value should be restored"
     (u/ignore-exceptions
-     (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
-       (throw (Exception.))))
+      (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
+        (throw (Exception.))))
     (is (= 5
            (t2/select-one-fn :position :model/Field :id (data/id :venues :price))))))
 
@@ -171,25 +171,40 @@
                                                   (if (pos? x) (counting-target (dec x)) :recursed))]
       (is (= :recursed (counting-target 50))))))
 
-(deftest with-dynamic-fn-redefs-reexport-test
-  (testing "A redef of a potemkin re-export holds after its source var's root changes"
-    (let [src #'premium-features.settings/is-hosted?]
-      (is (contains? (.getWatches ^clojure.lang.Var src) #'premium-features/is-hosted?))
+(defn- reexport-source
+  "The var `premium-features/is-hosted?` is imported from, checked so these tests fail if the re-export moves."
+  []
+  (let [src #'premium-features.settings/is-hosted?]
+    (assert (contains? (.getWatches ^clojure.lang.Var src) #'premium-features/is-hosted?))
+    src))
+
+;; Not ^:parallel: patching a source, or `with-redefs` on it, replaces the re-export's root for every thread.
+
+(deftest with-dynamic-fn-redefs-reexport-after-source-patched-test
+  (testing "A redef of a potemkin re-export holds after its source var is patched"
+    (let [src (reexport-source)]
       (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
         (is (= ::reexport (premium-features/is-hosted?))))
-      ;; Each of these rebinds the source's root, and potemkin's watch copies it over the re-export's proxy.
-      (testing "after the source is patched"
-        (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly ::source)]
-          (is (= ::source (premium-features/is-hosted?))))
-        (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
-          (is (= ::reexport (premium-features/is-hosted?)))
-          (is (not= ::reexport (@src)))))
-      (testing "after `with-redefs` on the source"
-        ;; The global root swap is the case under test: it rebinds the source root without going through a proxy.
-        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-        (with-redefs [premium-features.settings/is-hosted? (constantly ::global)])
-        (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
-          (is (= ::reexport (premium-features/is-hosted?))))))))
+      (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly ::source)]
+        (is (= ::source (premium-features/is-hosted?))))
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
+        (is (= ::reexport (premium-features/is-hosted?)))
+        (is (not= ::reexport (@src)))))))
+
+(deftest with-dynamic-fn-redefs-reexport-after-source-with-redefs-test
+  (testing "A redef of a potemkin re-export holds after `with-redefs` on its source var"
+    (reexport-source)
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
+      (is (= ::reexport (premium-features/is-hosted?))))
+    ;; The global root swap is the case under test: it replaces the source root without going through a proxy.
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+    (with-redefs [premium-features.settings/is-hosted? (constantly ::global)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
+        (is (= ::reexport (premium-features/is-hosted?)))))
+    (testing "the original is not the stub that was the root when the re-export was last patched"
+      (is (not= ::global ((mt/original-fn #'premium-features/is-hosted?)))))
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
+      (is (= ::reexport (premium-features/is-hosted?))))))
 
 (deftest ^:parallel ordered-subset?-test
   (is (mt/ordered-subset? [1 2 3] [1 2 3]))
