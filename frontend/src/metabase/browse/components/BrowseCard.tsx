@@ -47,6 +47,14 @@ export const BrowseCard = ({
   children?: React.ReactNode;
   onClick?: () => void;
 }) => {
+  const cardIcon = (
+    <FixedSizeIcon
+      name={icon}
+      c={iconColor}
+      size={sizeOptions[size].iconSize}
+    />
+  );
+
   return (
     <Card
       withBorder
@@ -73,11 +81,14 @@ export const BrowseCard = ({
         h="100%"
         w="100%"
       >
-        <FixedSizeIcon
-          name={icon}
-          c={iconColor}
-          size={sizeOptions[size].iconSize}
-        />
+        {size === "lg" ? (
+          <Flex justify="space-between" align="flex-start" w="100%">
+            {cardIcon}
+            {children}
+          </Flex>
+        ) : (
+          cardIcon
+        )}
         <Ellipsified>
           <Title
             order={2}
