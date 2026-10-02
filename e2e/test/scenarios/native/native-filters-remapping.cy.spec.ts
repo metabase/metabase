@@ -15,7 +15,7 @@ describe("scenarios > native > filters > remapping", () => {
     addExternalRemapping();
   });
 
-  it("should remap dashboard parameter values", () => {
+  it("should remap native question parameter values", () => {
     createQuestion().then((questionId) => {
       H.visitQuestion(questionId);
       testWidgetsRemapping();
