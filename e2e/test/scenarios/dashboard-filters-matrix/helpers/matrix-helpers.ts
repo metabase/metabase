@@ -117,6 +117,7 @@ function setup(test: TestCase) {
       name: filterName(test),
       slug: "filter",
       type,
+      isMultiSelect: test.arity === "multi",
       values_query_type: queryType(test.type),
       ...parameterSource(test, otherCardId),
     };
