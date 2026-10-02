@@ -448,7 +448,61 @@ describe(
         });
       });
 
-      it("should allow query action execution from the model details page", () => {
+      it("should allow implicit and query action execution from the model details page", () => {
+        cy.log("Implicit action");
+        cy.get("@writableModelId").then((id) => {
+          cy.visit(`/model/${id}/detail`);
+          cy.wait("@getModel");
+        });
+
+        createBasicActions();
+
+        openActionEditorFor("Create");
+
+        cy.findByRole("dialog")
+          .findAllByTestId("form-field-container")
+          .should("have.length", 5);
+
+        cy.findAllByTestId("form-field-container")
+          .filter(":contains('Created At')")
+          .within(() => {
+            cy.findByLabelText("Show field").click();
+            cy.findByLabelText("Show field").should("not.be.checked");
+          });
+
+        cy.findByRole("button", { name: "Update" }).click();
+
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
+
+        runActionFor("Create");
+
+        H.modal().within(() => {
+          cy.findByLabelText("Created At").should("not.exist");
+          cy.findByLabelText("Team Name").type("Zebras");
+          cy.findByLabelText("Score").type("1");
+
+          cy.findByRole("button", { name: "Save" }).click();
+        });
+
+        cy.findByTestId("toast-undo")
+          .findByText("Successfully saved")
+          .should("be.visible");
+        H.undoToast().icon("close").click();
+        H.undoToast().should("not.exist");
+
+        H.queryWritableDB(
+          `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE team_name = 'Zebras'`,
+          dialect,
+        ).then((result) => {
+          expect(result.rows.length).to.equal(1);
+
+          const row = result.rows[0];
+
+          expect(row.score).to.equal(1);
+        });
+
+        cy.log("Query action");
         verifyScoreValue(0, dialect);
 
         cy.get("@writableModelId").then((modelId) => {
@@ -574,58 +628,6 @@ describe(
           .its("response.statusCode")
           .should("eq", 200);
         verifyScoreValue(22, dialect);
-      });
-
-      it("should allow implicit action execution from the model details page", () => {
-        cy.get("@writableModelId").then((id) => {
-          cy.visit(`/model/${id}/detail`);
-          cy.wait("@getModel");
-        });
-
-        createBasicActions();
-
-        openActionEditorFor("Create");
-
-        cy.findByRole("dialog")
-          .findAllByTestId("form-field-container")
-          .should("have.length", 5);
-
-        cy.findAllByTestId("form-field-container")
-          .filter(":contains('Created At')")
-          .within(() => {
-            cy.findByLabelText("Show field").click();
-            cy.findByLabelText("Show field").should("not.be.checked");
-          });
-
-        cy.findByRole("button", { name: "Update" }).click();
-
-        cy.wait("@updateAction");
-        cy.findByTestId("action-creator").should("not.exist");
-
-        runActionFor("Create");
-
-        H.modal().within(() => {
-          cy.findByLabelText("Created At").should("not.exist");
-          cy.findByLabelText("Team Name").type("Zebras");
-          cy.findByLabelText("Score").type("1");
-
-          cy.findByRole("button", { name: "Save" }).click();
-        });
-
-        cy.findByTestId("toast-undo")
-          .findByText("Successfully saved")
-          .should("be.visible");
-
-        H.queryWritableDB(
-          `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE team_name = 'Zebras'`,
-          dialect,
-        ).then((result) => {
-          expect(result.rows.length).to.equal(1);
-
-          const row = result.rows[0];
-
-          expect(row.score).to.equal(1);
-        });
       });
 
       if (dialect === "postgres") {
