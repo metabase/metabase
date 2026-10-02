@@ -259,7 +259,6 @@
               :content [:p
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
                         ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
-                        ;; Not a link: readers need to select and copy cells (#34165). The title links to the card.
                         [:div {:style (style/style (style/section-style))}
                          title
                          description

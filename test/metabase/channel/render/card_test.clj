@@ -7,6 +7,8 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -481,6 +483,22 @@
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
           (is (= [expected-href] (match/match-many rendered-card-content {:href href} href))))))))
+
+(deftest card-body-is-not-a-link-test
+  (testing "the card body is not wrapped in a link, so table cells can be selected; only the title links (#34165)"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card          card {:display       :table
+                                                :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                   (lib/limit 1))}
+                     :model/Dashboard     dashboard {}
+                     :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)}]
+        (let [results (qp/process-query (:dataset_query card))]
+          (doseq [dc [nil dashcard]]
+            (testing (if dc "dashcard" "card")
+              (let [doc (hiccup->hickory (:content (channel.render/render-pulse-card :inline "UTC" card dc results
+                                                                                     {:channel.render/include-title? true})))]
+                (is (seq (hik.s/select (hik.s/class "pulse-body") doc)))
+                (is (empty? (hik.s/select (hik.s/descendant (hik.s/tag :a) (hik.s/class "pulse-body")) doc)))))))))))
 
 (deftest dashcard-title-override-wins-over-card-name-test
   (testing "a dashcard's card.title override wins over the underlying card's own name in rendered emails (#18344)"

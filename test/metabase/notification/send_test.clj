@@ -2,8 +2,6 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.send-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [hickory.core :as hik]
-   [hickory.select :as hik.s]
    [java-time.api :as t]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
@@ -104,29 +102,6 @@
             (is (true? (has-link? (assoc-in notification [:payload :disable_links] nil)))))
           (testing "test that disable_links: true will disable all links in the alert email"
             (is (false? (has-link? (assoc-in notification [:payload :disable_links] true))))))))))
-
-(deftest alert-email-table-is-not-a-link-test
-  (testing "The table in an alert email is not wrapped in a link, so its cells can be selected (#34165)"
-    (notification.tu/with-notification-testing-setup!
-      (notification.tu/with-card-notification
-        [notification {:card     {:name          "Orders question"
-                                  :display       :table
-                                  :dataset_query (mt/mbql-query orders {:limit 2})}
-                       :handlers [{:channel_type :channel/email
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (mt/user->id :crowberto)}]}]}]
-        (mt/with-temporary-setting-values [site-url "https://testmb.com"]
-          (let [doc (-> (notification.tu/with-captured-channel-send!
-                          (#'notification.send/send-notification-sync! notification))
-                        :channel/email first :message first :content
-                        hik/parse
-                        hik/as-hickory)]
-            (is (seq (hik.s/select (hik.s/class "pulse-body") doc)))
-            (is (empty? (hik.s/select (hik.s/descendant (hik.s/tag :a) (hik.s/tag :table)) doc)))
-            (testing "the card title still links to the card"
-              (is (= #{(str "https://testmb.com/question/" (-> notification :payload :card_id))}
-                     (->> (hik.s/select (hik.s/and (hik.s/tag :a) (hik.s/find-in-text #"Orders question")) doc)
-                          (into #{} (map (comp :href :attrs)))))))))))))
 
 (defn- latest-task-history-entry
   [task-name]
