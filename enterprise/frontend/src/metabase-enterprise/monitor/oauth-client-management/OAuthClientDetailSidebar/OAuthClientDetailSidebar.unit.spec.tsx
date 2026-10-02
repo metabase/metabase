@@ -115,6 +115,17 @@ describe("OAuthClientDetailSidebar", () => {
       expect(screen.getByText("Ann Admin")).toBeInTheDocument();
     });
 
+    it("says so for a client that has never presented a token", async () => {
+      setup({
+        detail: createMockOAuthClientDetail({
+          ...ACTIVE_CLIENT,
+          last_used_at: null,
+        }),
+      });
+
+      expect(await screen.findByText("Never used")).toBeInTheDocument();
+    });
+
     it("shows a placeholder for each registration field the client left out", async () => {
       setup({
         clientFromPage: null,

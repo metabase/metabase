@@ -59,6 +59,7 @@ describe("OAuthClientsTable", () => {
       "Redirect URIs",
       "Users",
       "Live tokens",
+      "Last used",
       "Registered",
     ]);
   });
@@ -110,6 +111,22 @@ describe("OAuthClientsTable", () => {
       within(await getRow(other)).queryByText("This client"),
     ).not.toBeInTheDocument();
     expect(within(await getRow(other)).getByRole("checkbox")).toBeEnabled();
+  });
+
+  it("says so for a client that has never presented a token", async () => {
+    const used = createMockOAuthClient({ client_id: "used" });
+    const unused = createMockOAuthClient({
+      client_id: "unused",
+      last_used_at: null,
+    });
+    setup({ clients: [used, unused] });
+
+    expect(
+      within(await getRow(unused)).getByText("Never used"),
+    ).toBeInTheDocument();
+    expect(
+      within(await getRow(used)).queryByText("Never used"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a skeleton until the first page of clients arrives", () => {

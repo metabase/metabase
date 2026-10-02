@@ -71,6 +71,7 @@
    [:client_type                    {:optional true} [:maybe [:or :keyword :string]]]
    [:application_type               {:optional true} [:maybe [:or :keyword :string]]]
    [:registration_access_token_hash {:optional true} [:maybe :string]]
+   [:last_used_at                   {:optional true} [:maybe ms/TemporalInstant]]
    [:revoked_at                     {:optional true} [:maybe ms/TemporalInstant]]
    [:revoked_by_user_id             {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at                     {:optional true} [:maybe ms/TemporalInstant]]

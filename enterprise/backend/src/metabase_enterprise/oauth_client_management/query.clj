@@ -50,7 +50,8 @@
 
   Date ranges are half-open — `after` is inclusive, `before` exclusive — so adjacent ranges neither overlap nor leave
   a gap."
-  [{:keys [status ids user-id query registered-before registered-after revoked-before revoked-after]}
+  [{:keys [status ids user-id query registered-before registered-after revoked-before revoked-after
+           last-used-before last-used-after]}
    :- ::ocm.schema/client-filters]
   (let [clauses (cond-> (status-conditions status)
                   ;; an explicitly empty id list matches nothing; `IN ()` is not valid SQL anywhere
@@ -69,7 +70,13 @@
                   ;; `revoked_at` is null for an active client and a comparison against null is never true, so these
                   ;; two narrow to revoked clients without having to say so
                   revoked-after     (conj [:>= :c.revoked_at revoked-after])
-                  revoked-before    (conj [:< :c.revoked_at revoked-before]))]
+                  revoked-before    (conj [:< :c.revoked_at revoked-before])
+
+                  ;; the stored column rather than [[last-used-expr]], so a client that has never been used matches
+                  ;; neither bound: it was not used after the one, and it was not used before the other either.
+                  ;; The sort coalesces only because every row has to land somewhere in an ordering
+                  last-used-after   (conj [:>= :c.last_used_at last-used-after])
+                  last-used-before  (conj [:< :c.last_used_at last-used-before]))]
     (if (seq clauses)
       (into [:and] clauses)
       ;; `status=all` with no other filter asks for every client, and `[:and]` alone is not valid SQL
@@ -98,12 +105,15 @@
   [[(case sort-column
       ;; lowercased, so that H2 and Postgres, which compare byte by byte, agree with MySQL's case-insensitive default
       ;; collation on where `apple` sits relative to `Banana`
-      :client_name [:lower client-name-expr]
+      :client_name  [:lower client-name-expr]
       ;; the output aliases rather than the correlated subqueries again: ordering by an output column name is standard
       ;; SQL, and repeating the subquery would have the database compute each client's token counts twice
-      :live_tokens :live_tokens
-      :user_count  :user_count
-      :revoked_at  :c.revoked_at
+      :live_tokens  :live_tokens
+      :user_count   :user_count
+      :revoked_at   :c.revoked_at
+      ;; coalesced, so a client that has never been used sorts by when it registered rather than wherever each app
+      ;; database chooses to put nulls
+      :last_used_at oauth-server/client-last-used-expr
       :c.created_at)
     sort-direction]
    ;; a stable tiebreaker, so paging can't show or skip a row because two clients share a value

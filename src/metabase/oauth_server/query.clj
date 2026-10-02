@@ -14,6 +14,10 @@
   {:from      [[:oauth_client :c]]
    :left-join [[:core_user :revoker] [:= :c.revoked_by_user_id :revoker.id]]})
 
+(def client-last-used-expr
+  "`last_used_at`, coalesced to `created_at` for a client that has never presented a token."
+  [:coalesce :c.last_used_at :c.created_at])
+
 (def client-status-expr
   "A client's status — `active` or `revoked` — derived in SQL from `revoked_at`, so what callers are shown and what
   they filter on cannot disagree."

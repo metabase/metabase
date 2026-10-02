@@ -28,6 +28,7 @@
    [:c.created_at :created_at]
    [oauth-server/client-status-expr :status]
    [:c.revoked_at :revoked_at]
+   [:c.last_used_at :last_used_at]
    [:c.revoked_by_user_id :revoked_by_user_id]
    [:revoker.email :revoked_by_email]
    [:revoker.first_name :revoked_by_first_name]

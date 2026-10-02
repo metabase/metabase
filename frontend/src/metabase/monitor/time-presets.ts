@@ -39,3 +39,22 @@ export const getTimePresetLabel = (preset: MonitorTimePreset): string =>
     .with("week", () => t`Past week`)
     .with("month", () => t`Past month`)
     .exhaustive();
+
+/** The preset a filter Select names, or nothing. Anything else is dropped rather than sent on, as in the URL. */
+export const toTimePreset = (value: string | null): MonitorTimePreset | null =>
+  value !== null && isTimePreset(value) ? value : null;
+
+/**
+ * The options a Monitor filter Select offers.
+ *
+ * A function rather than a constant because the labels are translated: a module-level array would fix them at
+ * import time, before the locale is known.
+ */
+export const getTimePresetOptions = (): {
+  value: MonitorTimePreset;
+  label: string;
+}[] =>
+  MONITOR_TIME_PRESETS.map((preset) => ({
+    value: preset,
+    label: getTimePresetLabel(preset),
+  }));

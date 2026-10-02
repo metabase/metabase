@@ -1,0 +1,23 @@
+## When a registered OAuth client last acted as one of this instance's users, so an admin can tell a dormant
+## client from one in use right now. Written by the bearer-token resolver, throttled to at most one write a minute
+## per client per node; null until the client first presents a token.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-02T15:10:00
+      author: johnswanson
+      comment: Add last_used_at to oauth_client
+      changes:
+        - addColumn:
+            tableName: oauth_client
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: When a bearer token this client issued last authenticated a request; null until it is used
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: oauth_client
+            columnName: last_used_at

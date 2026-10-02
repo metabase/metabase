@@ -15,6 +15,7 @@ const ACTIVE_TAB_STATE: OAuthClientsUrlState = {
   tab: "active",
   registered: null,
   user: null,
+  last_used: null,
   sort_column: "created_at",
   sort_direction: "desc",
 };
@@ -34,6 +35,7 @@ const RASTA = createMockUserListResult({
 const NO_FILTERS = {
   registered: null,
   user: null,
+  last_used: null,
   page: 0,
 };
 
@@ -94,8 +96,8 @@ describe("OAuthClientsFilters", () => {
         expected: true,
       },
       {
-        description: "the revoked tab has only the active tab's user filter",
-        state: { ...REVOKED_TAB_STATE, user: 7 },
+        description: "the revoked tab has only active-tab filters",
+        state: { ...REVOKED_TAB_STATE, user: 7, last_used: "day" },
         expected: false,
       },
     ] satisfies {
@@ -110,13 +112,13 @@ describe("OAuthClientsFilters", () => {
   it.each([
     {
       state: ACTIVE_TAB_STATE,
-      shown: ["Registered", "User"],
+      shown: ["Registered", "Last used", "User"],
       hidden: [],
     },
     {
       state: REVOKED_TAB_STATE,
       shown: ["Registered"],
-      hidden: ["User"],
+      hidden: ["Last used", "User"],
     },
   ])(
     "offers the $state.tab tab's filters",
@@ -134,16 +136,18 @@ describe("OAuthClientsFilters", () => {
     },
   );
 
-  it("applies the chosen window, back on the first page", async () => {
+  it("applies the chosen filters, back on the first page", async () => {
     const { onChange } = setup();
     await openFilters();
 
     await choose("Registered", "Past week");
+    await choose("Last used", "Past day");
     await apply();
 
     expect(onChange).toHaveBeenCalledWith({
       ...NO_FILTERS,
       registered: "week",
+      last_used: "day",
     });
   });
 

@@ -107,6 +107,16 @@
   [row :- ::oauth-server.schema/oauth-client.update]
   (t2/insert! :model/OAuthClient row))
 
+(mu/defn touch-client!
+  "Set `last_used_at` of the OAuthClient with `client-id` to now, returning the number updated. Leaves `updated_at`
+  alone."
+  [client-id :- :string]
+  ;; raw HoneySQL rather than `t2/update!`, which would fire the model's `:hook/timestamped?` and bump `updated_at`:
+  ;; a client being used is not its registration changing
+  (t2/query-one {:update :oauth_client
+                 :set    {:last_used_at :%now}
+                 :where  [:= :client_id client-id]}))
+
 (mu/defn update-oauth-client!
   "Apply `row` to the OAuthClient with primary key `id`, returning the number updated."
   [id  :- ms/PositiveInt

@@ -8,10 +8,9 @@ import {
   ListFilterPopover,
 } from "metabase/common/components/ListFilterPopover";
 import {
-  MONITOR_TIME_PRESETS,
   type MonitorTimePreset,
-  getTimePresetLabel,
-  isTimePreset,
+  getTimePresetOptions,
+  toTimePreset,
 } from "metabase/monitor/time-presets";
 import { Select } from "metabase/ui";
 import {
@@ -74,14 +73,14 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
   const handleLastActiveChange = (value: string | null) => {
     setDraft((prev) => ({
       ...prev,
-      last_active: value !== null && isTimePreset(value) ? value : null,
+      last_active: toTimePreset(value),
     }));
   };
 
   const handleEndedChange = (value: string | null) => {
     setDraft((prev) => ({
       ...prev,
-      ended: value !== null && isTimePreset(value) ? value : null,
+      ended: toTimePreset(value),
     }));
   };
 
@@ -115,10 +114,7 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
         <FilterSection label={t`Last active`}>
           <Select
             w="100%"
-            data={MONITOR_TIME_PRESETS.map((preset) => ({
-              value: preset,
-              label: getTimePresetLabel(preset),
-            }))}
+            data={getTimePresetOptions()}
             value={draft.last_active}
             aria-label={t`Last active`}
             placeholder={t`Any time`}
@@ -133,10 +129,7 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
         <FilterSection label={t`Ended`}>
           <Select
             w="100%"
-            data={MONITOR_TIME_PRESETS.map((preset) => ({
-              value: preset,
-              label: getTimePresetLabel(preset),
-            }))}
+            data={getTimePresetOptions()}
             value={draft.ended}
             aria-label={t`Ended`}
             placeholder={t`Any time`}

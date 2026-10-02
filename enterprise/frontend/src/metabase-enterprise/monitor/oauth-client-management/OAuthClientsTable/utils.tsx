@@ -9,7 +9,7 @@ import { getOAuthClientName, getRevokerName } from "../utils";
 
 import type { OAuthClientRow } from "./types";
 
-const ACTIVE_COLUMN_WIDTHS = [0.32, 0.28, 0.12, 0.12, 0.16];
+const ACTIVE_COLUMN_WIDTHS = [0.28, 0.22, 0.1, 0.1, 0.15, 0.15];
 const REVOKED_COLUMN_WIDTHS = [0.28, 0.24, 0.16, 0.16, 0.16];
 
 const getClientColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
@@ -71,6 +71,26 @@ const getLiveTokensColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   cell: ({ row }) => row.original.live_tokens,
 });
 
+const getLastUsedColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
+  id: "last_used_at",
+  header: t`Last used`,
+  width: 170,
+  enableSorting: true,
+  sortDescFirst: true,
+  // the endpoint sorts a never-used client by its registration, so the accessor is only ever read by the cell
+  accessorFn: (client) => client.last_used_at ?? "",
+  cell: ({ row }) =>
+    row.original.last_used_at ? (
+      <MonitorDateCell value={row.original.last_used_at} />
+    ) : (
+      // the secondary text the `client_id` line in the Client column uses, so a client that has never been used
+      // reads as a note rather than as a value
+      <Text size="sm" c="text-secondary" lh="1rem">
+        {t`Never used`}
+      </Text>
+    ),
+});
+
 const getRegisteredColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   id: "created_at",
   header: t`Registered`,
@@ -109,8 +129,9 @@ const getRevokedByColumn = (): TreeTableColumnDef<OAuthClientRow> => ({
   ),
 });
 
-// Users and Live tokens count only unrevoked tokens, so they read 0 for every revoked client; the Revoked tab
-// spends their width on who revoked it and when instead.
+// Users and Live tokens count only unrevoked tokens, so they read 0 for every revoked client, and a revoked
+// client's tokens stop resolving so its last use can never move again; the Revoked tab spends their width on who
+// revoked it and when instead.
 export const getColumns = (
   isRevokedTab: boolean,
 ): TreeTableColumnDef<OAuthClientRow>[] =>
@@ -127,6 +148,7 @@ export const getColumns = (
         getRedirectUrisColumn(),
         getUsersColumn(),
         getLiveTokensColumn(),
+        getLastUsedColumn(),
         getRegisteredColumn(),
       ];
 
