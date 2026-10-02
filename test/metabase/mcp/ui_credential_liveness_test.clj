@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -52,6 +53,27 @@
     (testing "a credential naming another user's token is refused"
       (let [crowberto-token (ui.tu/access-token-id! (mt/user->id :crowberto) ui.tu/query-scopes)]
         (is (= 401 (bootstrap-status! (with-credential-for-token auth crowberto-token) 401)))))))
+
+(deftest deactivated-user-test
+  (testing "a credential is refused once its user is deactivated, though the token row is untouched"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (mt/with-model-cleanup [:model/OAuthAccessToken :model/McpQueryHandle]
+        (let [session-id (mcp.session/create! user-id)
+              auth       {:user-id    user-id
+                          :session-id session-id
+                          :credential (ui.tu/credential! session-id user-id ui.tu/query-scopes)}]
+          (is (= 200 (bootstrap-status! auth 200)) "control: the credential works while its user is active")
+          ;; Straight SQL, skipping the model hook that would also revoke the token: the user check must hold alone.
+          (t2/query-one {:update :core_user :set {:is_active false} :where [:= :id user-id]})
+          (is (= 401 (bootstrap-status! auth 401))))))))
+
+(deftest deleted-client-test
+  (testing "a credential is refused once the OAuth client its token was issued to is deleted"
+    (let [{:keys [token-id] :as auth} (ui.tu/ui-auth! :rasta)
+          client-id                   (t2/select-one-fn :client_id :model/OAuthAccessToken :id token-id)]
+      (mt/with-dynamic-fn-redefs [oauth-server.db/oauth-client-exists?
+                                  (fn [id] (not= id client-id))]
+        (is (= 401 (bootstrap-status! auth 401)))))))
 
 (deftest every-route-checks-the-token-test
   (testing "every iframe route refuses a credential whose token is revoked"
