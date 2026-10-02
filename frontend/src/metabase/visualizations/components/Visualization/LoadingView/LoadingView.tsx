@@ -1,12 +1,11 @@
 import { jt, t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Loader } from "metabase/ui";
 import { duration } from "metabase/utils/formatting";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 
 import { StateView } from "../StateView";
-
-import S from "./LoadingView.module.css";
 
 export interface LoadingViewProps {
   isSlow: CardSlownessStatus | undefined;
@@ -22,7 +21,7 @@ function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
       {isSlow === "usually-slow" ? (
         <div>
           {jt`This usually takes an average of ${(
-            <span key="duration" className={S.duration}>
+            <span key="duration" className={CS.textNoWrap}>
               {duration(expectedDuration ?? 0)}
             </span>
           )}, but is currently taking longer.`}
