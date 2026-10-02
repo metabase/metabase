@@ -288,31 +288,36 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     });
   });
 
-  it("should produce valid series results for pie charts", async () => {
-    const card = createMockCard({
-      name: "Count by name",
-      display: "pie",
-      visualization_settings: createMockVisualizationSettings({
-        "pie.dimension": "name",
-        "pie.metric": "count",
-      }),
-    });
-    const data = createMockData({ question: new Question(card) });
-    const result = await registerQueryBuilderMetabotContextFn(data);
+  // Pie charts store `pie.dimension` as an array (multi-ring pies, and the default for new
+  // pies) or, in older cards, as a single column name.
+  it.each([["name"], "name"])(
+    "should produce valid series results for pie charts (pie.dimension = %j)",
+    async (pieDimension) => {
+      const card = createMockCard({
+        name: "Count by name",
+        display: "pie",
+        visualization_settings: createMockVisualizationSettings({
+          "pie.dimension": pieDimension,
+          "pie.metric": "count",
+        }),
+      });
+      const data = createMockData({ question: new Question(card) });
+      const result = await registerQueryBuilderMetabotContextFn(data);
 
-    const chartConfig = getChartConfig(result)!;
-    expect(chartConfig.series).toEqual({
-      "Count by name": {
-        chart_type: "pie",
-        display_name: "Count by name",
-        stacked: false,
-        x: { name: "name", type: "string" },
-        x_values: ["a", "b", "c"],
-        y: { name: "count", type: "number" },
-        y_values: [1, 2, 3],
-      },
-    });
-  });
+      const chartConfig = getChartConfig(result)!;
+      expect(chartConfig.series).toEqual({
+        "Count by name": {
+          chart_type: "pie",
+          display_name: "Count by name",
+          stacked: false,
+          x: { name: "name", type: "string" },
+          x_values: ["a", "b", "c"],
+          y: { name: "count", type: "number" },
+          y_values: [1, 2, 3],
+        },
+      });
+    },
+  );
 
   it("should produce valid series results for funnel charts", async () => {
     const card = createMockCard({
