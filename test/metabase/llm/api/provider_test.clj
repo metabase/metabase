@@ -835,14 +835,43 @@
                                                               :api-key  "sk-new"}})))))))))
   (testing "while a mask is the form echoing back a stored key rather than an admin entering one"
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
-      (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
-                                                                    {:base-url "https://vllm.internal/v1"
-                                                                     :api-key  "sk-vllm"})]]
-        (mt/with-temp-env-var-value! [mb-llm-vllm-api-base-url "https://vllm.example.com/v1"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                    {:hosting  "self-hosted"
+                                                                     :base-url "http://ollama.internal:11434/v1"
+                                                                     :api-key  "sk-ollama"})]]
+        (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
           (is (=? {:name "renamed"}
-                  (mt/user-http-request :crowberto :put 200 "llm/providers/vllm"
+                  (mt/user-http-request :crowberto :put 200 "llm/providers/ollama"
                                         {:name   "renamed"
-                                         :config {:api-key (setting/obfuscate-value "sk-vllm")}}))))))))
+                                         :config {:api-key (setting/obfuscate-value "sk-ollama")}}))))))))
+
+(deftest env-gateway-base-url-with-a-key-typed-in-the-ui-keeps-working-test
+  (testing (str "A base-URL variable pointing a connection at a gateway, with the key typed in the UI: the setup "
+                "the docs give as the example. It keeps working on the types that always allowed it.")
+    (let [probed (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (swap! probed conj credentials)
+                                                             {:models [{:id "m" :display_name "m"}]})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-ui"})]]
+          (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+            (testing "the connection reads back usable, on the gateway, with its key"
+              (is (=? [{:key        "anthropic"
+                        :usable     true
+                        :env_fields ["base-url"]
+                        :config     {:api-key  (setting/obfuscate-value "sk-ant-ui")
+                                     :base-url "https://gateway.example.com"}}]
+                      (mt/user-http-request :crowberto :get 200 "llm/providers"))))
+            (testing "retyping the key in the connection form is accepted, and verified against the gateway"
+              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:config {:api-key "sk-ant-new"}})
+              (is (=? {:api-key "sk-ant-new" :base-url "https://gateway.example.com"} (last @probed)))
+              (is (= "sk-ant-new" (:api-key (stored-config "anthropic")))))
+            (testing "and so is writing it through the per-provider setting"
+              (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-other"})
+              (is (= "sk-ant-other" (:api-key (stored-config "anthropic")))))))))
+    (testing "semantic search keeps the OpenAI key under an OpenAI base-URL variable"
+      (mt/with-temporary-setting-values [llm-providers [(connection "openai" "openai" {:api-key "sk-openai-ui"})]]
+        (mt/with-temp-env-var-value! [mb-llm-openai-api-base-url "https://gateway.example.com"]
+          (is (= "sk-openai-ui" (setting/get :llm-openai-api-key))))))))
 
 (deftest generic-setting-api-cannot-write-provider-connections-test
   (let [planted [(connection "anthropic" "anthropic" {:base-url "https://attacker.example.com"})]]
@@ -956,11 +985,16 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
       (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic"))))))
-  (testing "a base URL the environment supplies takes the key from the environment too, even before anything is stored"
+  (testing "so is a base URL the environment supplies on a type whose variable shadows only the address"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (is (=? {:message #".*MB_LLM_ANTHROPIC_API_BASE_URL.*MB_LLM_ANTHROPIC_API_KEY.*"}
-                (mt/user-http-request :crowberto :put 400 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})))
+        (mt/user-http-request :crowberto :put 204 "setting/llm-anthropic-api-key" {:value "sk-ant-fresh"})
+        (is (= "sk-ant-fresh" (:api-key (stored-config "anthropic")))))))
+  (testing "while on Ollama the key has to come from the environment too, even before anything is stored"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (=? {:message #".*MB_LLM_OLLAMA_HOSTING.*MB_LLM_OLLAMA_API_KEY.*"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-key" {:value "sk-fresh"})))
         (is (empty? (llm.provider/stored-connections)))))))
 (deftest update-preserves-a-masked-service-account-key-test
   (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "

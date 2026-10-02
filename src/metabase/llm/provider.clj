@@ -909,6 +909,15 @@
   [type-name]
   (:destination-fields (provider-type type-name) [:base-url]))
 
+(def ^:private env-base-url-shadowing-types
+  "Types whose base-URL variable shadows the address alone, letting a key typed in the UI go along with it.
+
+  The exception to [[drop-captured-secrets]], held for compatibility: on these types that combination is how
+  an operator routes a connection through a gateway, and an upgrade must not drop the key it relies on.
+  Holding them to the rule needs an upgrade note of its own. A type added from now on starts with its
+  credentials and address tied together."
+  #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "zai"})
+
 (defonce ^:private warned-captured-fields
   ;; hashed, not held: a credential this decided not to use has no business outliving the read
   (atom #{}))
@@ -994,7 +1003,8 @@
                   (when-let [chosen (destination-choice descriptor config)]
                     (when (not= chosen (destination-choice descriptor env-config))
                       field))))))
-          (destination-fields type))))
+          (cond->> (destination-fields type)
+            (contains? env-base-url-shadowing-types type) (remove #{:base-url})))))
 
 (defn- drop-captured-secrets
   "Keep a credential from following a connection the environment has moved, leaving it unusable rather
@@ -1003,10 +1013,10 @@
   A secret and the address it reaches have to come from the same place. [[drop-captured-destination]]
   holds that line when the environment brings the secret; this holds it when the environment brings the
   address — `MB_LLM_OLLAMA_HOSTING=cloud` over a key an admin typed for a server of their own, or an
-  `MB_LLM_ANTHROPIC_API_BASE_URL` over a key typed for Anthropic's own API. A key is entered for the
-  address it will be sent to, so an overlay pointing elsewhere moves the connection whether the address
-  was typed or left at the vendor's default. Only an overlay naming where the connection already points
-  moves nothing.
+  `MB_LLM_OLLAMA_API_BASE_URL` pointing somewhere else. A key is entered for the address it will be sent
+  to, so an overlay pointing elsewhere moves the connection whether the address was typed or left at the
+  vendor's default. Only an overlay naming where the connection already points moves nothing, and the
+  base-URL variables of [[env-base-url-shadowing-types]] are exempt.
 
   A connection the `MB_LLM_PROVIDERS` JSON supplies is the operator's own, so nothing is taken from it."
   [{conn-key :key :keys [type source config] :as conn} env-config]
@@ -1357,7 +1367,8 @@
   connection on a custom URL takes its credentials.
 
   A base URL the environment supplies is not this check's to judge: [[assert-credentials-not-captured!]]
-  refuses a credential typed for a connection the environment points elsewhere."
+  refuses a credential typed for a connection the environment points elsewhere, and lets it through on a
+  type in [[env-base-url-shadowing-types]]."
   [type-name field {:keys [config env-fields]}]
   (when (contains? (secret-field-keys type-name) field)
     (let [filled   (with-field-defaults type-name config)
@@ -1416,8 +1427,8 @@
                                                      (:env-fields live) {:legacy-setting? true}))
             (when value
               (assert-credential-write-authorized! group-type field live)
-              ;; with nothing stored yet, the connection this write creates: a blank address is still the
-              ;; vendor's own, which a variable can move
+              ;; with nothing stored yet, the connection this write creates, which runs on the defaults of
+              ;; its destination fields until something moves it
               (assert-credentials-not-captured! (if idx
                                                   (nth stored idx)
                                                   {:key conn-key :type group-type :config {}})

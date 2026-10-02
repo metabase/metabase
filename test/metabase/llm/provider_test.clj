@@ -498,12 +498,7 @@
                  :env-vars   #{"MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY"}
                  :env-fields #{:service-account-key}
                  :source     :db}]
-               (llm.provider/connections))))))
-  (testing "a lone base-url variable reaches the stored connection's base URL, and leaves the key typed for the vendor behind"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (is (= {:base-url "https://env.example.com"}
-               (llm.provider/credentials "anthropic")))))))
+               (llm.provider/connections)))))))
 
 (deftest a-region-survives-keys-from-the-environment-test
   (testing "the region only picks an AWS endpoint, so keys from the environment do not reset it to the default"
@@ -655,31 +650,20 @@
                                   mb-llm-ollama-hosting "cloud"]
       (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
 
-(deftest env-base-url-moves-a-connection-from-the-vendors-own-address-test
-  (testing (str "a blank address is the vendor's own, so a variable replacing it moves the connection and the "
-                "key typed for the vendor does not follow")
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                  {:api-key "sk-ant-db"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
-        (is (= {:base-url "https://gateway.example.com"}
-               (llm.provider/credentials "anthropic"))))))
-  (testing "an address stored at the vendor's default moves the same way"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                  {:api-key  "sk-ant-db"
-                                                                   :base-url "https://api.anthropic.com"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
-        (is (nil? (:api-key (llm.provider/credentials "anthropic")))))))
-  (testing "a variable naming where the connection already points moves nothing"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                  {:api-key "sk-ant-db"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://api.anthropic.com/"]
-        (is (= "sk-ant-db" (:api-key (llm.provider/credentials "anthropic")))))))
-  (testing "an address the admin chose is a move like any other"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
-                                                                  {:api-key  "sk-ant-db"
-                                                                   :base-url "https://chosen.example.com"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
-        (is (nil? (:api-key (llm.provider/credentials "anthropic"))))))))
+(deftest env-base-url-keeps-the-key-on-types-it-always-shadowed-test
+  (testing (str "on a type in the compatibility exemption, a base-URL variable shadows the address alone and a "
+                "key typed in the UI goes along with it, whatever the connection stored: the gateway setup an "
+                "upgrade must not break")
+    (doseq [[label stored-url] {"left blank"            nil
+                                "stored at the default" "https://api.anthropic.com"
+                                "chosen by the admin"   "https://chosen.example.com"}]
+      (testing label
+        (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                      (cond-> {:api-key "sk-ant-db"}
+                                                                        stored-url (assoc :base-url stored-url)))]]
+          (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+            (is (= {:api-key "sk-ant-db" :base-url "https://gateway.example.com"}
+                   (llm.provider/credentials "anthropic")))))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
@@ -895,7 +879,11 @@
             "metabase"   [:base-url]}
            (into {}
                  (map (juxt :type #(#'llm.provider/destination-fields (:type %))))
-                 (llm.provider/provider-types))))))
+                 (llm.provider/provider-types)))))
+  (testing (str "The types whose base-URL variable is exempt from tying credentials to their address. A type "
+                "added from now on starts outside it, so growing this set is a decision, not an accident.")
+    (is (= #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "zai"}
+           @#'llm.provider/env-base-url-shadowing-types))))
 
 (deftest a-setting-refuses-a-field-the-connection-switches-off-test
   (testing (str "A per-provider setting writes one field at a time, so nothing about the request says where the "
