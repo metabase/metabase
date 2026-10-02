@@ -197,4 +197,9 @@
   {:name    "a trailing comma the engine would refuse still names its table"
    :dialect "clickhouse"
    :sql     "SELECT id, FROM customers"
-   :tables  [[nil nil "customers"]]}]}
+   :tables  [[nil nil "customers"]]}
+
+  {:name    "a star with an EXCLUDE list still names its table"
+   :dialect "redshift"
+   :sql     "SELECT * EXCLUDE (id) FROM products"
+   :tables  [[nil nil "products"]]}]}

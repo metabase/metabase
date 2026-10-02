@@ -167,15 +167,13 @@
             (testing "a public execution has no executor and its own context"
               (let [since (mt/latest-query-execution-id)]
                 (actions.execution/execute-action! (action/select-action :id action-id) {"id" 1 "name" "Bird"}
-                                                   {:allow-http-actions? false
-                                                    :context             :public-action-execute})
+                                                   {:context :public-action-execute})
                 (is (=? {:context :public-action-execute}
                         (first (mt/action-executions since))))))
             (testing "a public dashcard execution carries the dashboard and the public context"
               (let [since (mt/latest-query-execution-id)]
                 (actions.execution/execute-dashcard! dashboard-id dashcard-id {"id" 1 "name" "Bird"}
-                                                     {:allow-http-actions? false
-                                                      :context             :public-action-execute})
+                                                     {:context :public-action-execute})
                 (is (=? {:context :public-action-execute, :dashboard_id dashboard-id}
                         (first (mt/action-executions since))))))))))))
 
@@ -189,8 +187,7 @@
                 since  (mt/latest-query-execution-id)]
             (request/as-admin
               (actions.execution/execute-action! action {"id" 1 "name" "Bird"}
-                                                 {:allow-http-actions? false
-                                                  :context             :public-action-execute}))
+                                                 {:context :public-action-execute}))
             (is (=? {:context :public-action-execute, :executor_id nil}
                     (first (mt/action-executions since))))))))))
 
@@ -206,8 +203,7 @@
               (mt/with-log-messages-for-level [messages [metabase.actions.audit :warn]]
                 (request/as-admin
                   (actions.execution/execute-action! action {"id" 1 "name" "Bird"}
-                                                     {:allow-http-actions? false
-                                                      :context             :public-action-execute}))
+                                                     {:context :public-action-execute}))
                 (is (=? {:context :public-action-execute, :executor_id nil, :is_impersonated false}
                         (first (mt/action-executions since))))
                 (is (empty? (messages)))))))))))
@@ -232,27 +228,6 @@
                       (is (some? (:parameters row)))
                       (is (= #{1 "Bird"}
                              (into #{} (map :value) (json/decode+kw (:parameters row))))))))))))))))
-
-(deftest http-action-audit-trail-test
-  (testing "a refused HTTP action still leaves a trace, and the trace holds no template"
-    (mt/test-helpers-set-global-values!
-      (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-actions [{:keys [action-id]} {:type :http}]
-          (mt/with-test-user :crowberto
-            (let [action (action/select-action :id action-id)
-                  since  (mt/latest-query-execution-id)]
-              (is (thrown-with-msg? ExceptionInfo #"HTTP actions are disabled."
-                                    (actions.execution/execute-action! action {"id" 1})))
-              (let [row (first (mt/action-executions since))]
-                (is (=? {:context     :action-execute
-                         :action_id   action-id
-                         :database_id nil
-                         :native      false
-                         :error       "HTTP actions are disabled."}
-                        row))
-                (testing "only the internal descriptor is stored, never url/headers/body"
-                  (is (= {:type "internal", :action "http/execute", :action-id action-id}
-                         (recorded-template row))))))))))))
 
 (deftest audit-write-failure-does-not-fail-the-action-test
   (testing "an audit insert that blows up after the warehouse write is logged, not thrown"

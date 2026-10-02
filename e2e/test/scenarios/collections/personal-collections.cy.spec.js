@@ -28,6 +28,9 @@ describe("personal collections", () => {
       cy.wait("@getSessionProperties");
 
       H.navigationSidebar()
+        .findByText("Your personal collection")
+        .should("be.visible");
+      H.navigationSidebar()
         .findByLabelText("Other users' personal collections")
         .should("not.exist");
 
@@ -67,11 +70,15 @@ describe("personal collections", () => {
       });
     });
 
-    it("cannot edit details for personal collections nor change permissions for personal collections or sub-collections (metabase#8406)", () => {
+    it("cannot edit details for personal collections nor change permissions for personal collections or sub-collections, but can view other users' personal sub-collections (metabase#8406, metabase#15339)", () => {
       // Let's use the API to create a sub-collection "Foo" in admin's personal collection
       cy.request("POST", "/api/collection", {
         name: "Foo",
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
+      });
+      H.createCollection({
+        name: "Nodata sub-collection",
+        parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
       });
 
       H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
@@ -83,16 +90,6 @@ describe("personal collections", () => {
         cy.icon("info").should("exist");
         cy.icon("ellipsis").should("not.exist");
       });
-
-      // This leads to an infinite loop and a timeout in the CI
-      // Please see: https://github.com/metabase/metabase/issues/21026#issuecomment-1094114700
-
-      // Check that it's not possible to open permissions modal via URL for personal collection
-      // cy.location().then(location => {
-      //   cy.visit(`${location}/permissions`);
-      //   modal().should("not.exist");
-      //   cy.url().should("eq", String(location));
-      // });
 
       // Go to the newly created sub-collection "Foo"
       H.navigationSidebar().findByText("Foo").click();
@@ -107,13 +104,6 @@ describe("personal collections", () => {
         cy.findByText("Edit permissions").should("not.exist");
       });
 
-      // Check that it's not possible to open permissions modal via URL for personal collection child
-      // cy.location().then(location => {
-      //   cy.visit(`${location}/permissions`);
-      //   modal().should("not.exist");
-      //   cy.url().should("eq", String(location));
-      // });
-
       // Go to random user's personal collection
       H.visitCollection(NO_DATA_PERSONAL_COLLECTION_ID);
 
@@ -121,22 +111,20 @@ describe("personal collections", () => {
         cy.icon("info").should("exist");
         cy.icon("ellipsis").should("not.exist");
       });
-    });
 
-    it("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      H.createCollection({
-        name: "Foo",
-        parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
-      });
-
-      cy.visit(`/collection/${NO_DATA_PERSONAL_COLLECTION_ID}`);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Foo");
+      cy.log(
+        "Other users' personal sub-collections are visible (metabase#15339)",
+      );
+      cy.findByTestId("collection-table")
+        .findByText("Nodata sub-collection")
+        .should("be.visible");
     });
   });
 
-  describe("all users", () => {
-    Object.keys(USERS).forEach((user) => {
+  describe("admin and non-admin users", () => {
+    // The test acts only inside the user's own personal collection, where group
+    // collection permissions don't apply; nocollection has the most restricted UI
+    ["admin", "nocollection"].forEach((user) => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);
@@ -149,12 +137,28 @@ describe("personal collections", () => {
           H.navigationSidebar().as("sidebar").findByText("Foo").click();
         });
 
-        it("should be able to edit collection(s) inside personal collection", () => {
+        it("should be able to edit and trash collection(s) inside personal collection (metabase#15343)", () => {
+          cy.intercept("PUT", "/api/collection/*").as("updateCollection");
+
           // Create new collection inside previously added collection
           addNewCollection("Bar");
           cy.get("@sidebar").findByText("Bar").click();
           cy.findByPlaceholderText("Add title").type("1").blur();
+          cy.wait("@updateCollection")
+            .its("response.statusCode")
+            .should("eq", 200);
           cy.findByPlaceholderText("Add description").type("ex-bar").blur();
+          cy.wait("@updateCollection")
+            .its("response.statusCode")
+            .should("eq", 200);
+
+          cy.findByTestId("collection-name-heading").should(
+            "have.value",
+            "Bar1",
+          );
+          cy.findByTestId("collection-caption")
+            .findByText("ex-bar")
+            .should("be.visible");
 
           cy.get("@sidebar").findByText("Foo").click();
           cy.get("@sidebar").findByText("Bar1");

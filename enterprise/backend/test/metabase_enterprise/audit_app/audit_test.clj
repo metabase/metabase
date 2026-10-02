@@ -66,7 +66,7 @@
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
     (testing "Cards in the audit collection have non-empty :result_metadata after installation"
-      (let [audit-cards             (t2/select [:model/Card :id :name :result_metadata :card_schema]
+      (let [audit-cards             (t2/select [:model/Card :id :name :result_metadata :card_schema :type :database_id :dataset_query :dimensions :dimension_mappings]
                                                :database_id audit/audit-db-id)
             audit-cards-no-metadata (filter (comp empty? :result_metadata) audit-cards)]
         (is (seq audit-cards))

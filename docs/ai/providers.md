@@ -103,7 +103,7 @@ Supported models:
 | GPT-5.6 Luna           | `openai/gpt-5.6-luna`             | 922,000                 |
 | GPT-5.6 Sol            | `openai/gpt-5.6-sol`              | 922,000                 |
 | GPT-5.6 Terra          | `openai/gpt-5.6-terra`            | 922,000                 |
-| Qwen3.8 Max            | `qwen/qwen3.8-max`                | 1,000,000               |
+| Qwen3.8 Max 0902       | `qwen/qwen3.8-max-0902`           | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
 | GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
 
@@ -209,9 +209,22 @@ Credentials:
 - **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `Service account key`, `OAuth token`. Defaults to `Service account key`.
 - **Service account key file**. Only when **Authentication method** is **Service account key**. Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
 - **OAuth access token**. Only when **Authentication method** is **OAuth token**. A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
+- **Model Garden endpoint ID**. Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to.
 - **API base URL** (advanced). Derived from the location when left at the global host. Defaults to `https://aiplatform.googleapis.com`. You can also set it with the environment variable `MB_LLM_GOOGLE_API_BASE_URL`.
 
 Google Gemini Enterprise needs either **Service account key file**, or **OAuth access token** and **Project ID**.
+
+### Connect an open model from Model Garden
+
+You can also run Metabot on an open model, like GLM or Llama, that you deployed from [Model Garden](https://cloud.google.com/model-garden). Metabase talks to the endpoint the deployment created through its OpenAI-compatible Chat Completions API, with the credentials above, and finds a dedicated endpoint's own DNS name for you.
+
+To connect it, add a Google Gemini Enterprise provider in **Admin > AI**, enter the endpoint's ID in **Model Garden endpoint ID**, and set **Location** to the region you deployed to. That connection serves the endpoint instead of the models above: connecting checks the endpoint, and the model picker offers the endpoint as the connection's only model. To use the models above too, add a second Google Gemini Enterprise provider without an endpoint ID, and pick between them in the model picker.
+
+If you configure the Google connection with environment variables, it has no endpoint ID. Set `MB_LLM_METABOT_PROVIDER` to `google/endpoints/` followed by the endpoint's ID instead.
+
+The credentials need `aiplatform.endpoints.get` to look up the endpoint and `aiplatform.endpoints.predict` to run it.
+
+Metabot calls tools and sends long prompts, so deploy the model with tool calling turned on (for vLLM, `--enable-auto-tool-choice` and a `--tool-call-parser` that matches the model) and a context length of at least 16,384 tokens, the minimum Metabase also requires of a vLLM connection. Metabase doesn't check either one when you connect.
 
 ## Microsoft Azure
 
