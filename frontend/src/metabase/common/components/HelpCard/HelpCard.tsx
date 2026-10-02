@@ -25,10 +25,6 @@ export const HelpCard = ({
       component={isFullyClickable ? ExternalLink : undefined}
       href={isFullyClickable ? helpUrl : undefined}
       className={cx(S.root, { [S.clickable]: isFullyClickable }, className)}
-      display="block"
-      p="xl"
-      bd="1px solid var(--mb-color-border-neutral)"
-      bdrs="xs"
     >
       <Flex
         component={isFullyClickable ? undefined : ExternalLink}
@@ -49,9 +45,7 @@ export const HelpCard = ({
         </Box>
         <Icon name="external" flex="0 0 auto" c="core-brand" />
       </Flex>
-      <Box className={S.message} c="text-secondary" lh="1.25rem">
-        {children}
-      </Box>
+      <Box className={S.message}>{children}</Box>
     </Box>
   );
 };
