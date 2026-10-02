@@ -461,11 +461,8 @@
   [path]
   (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
         table               (serdes/load-find-local table-path)]
-    (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields)))))
-
-(defmethod serdes/deserialization-dependencies "Field" [field]
-  (let [db-path (first (serdes/path field))]
-    #{[db-path]}))
+    (when table
+      (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields))))))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
