@@ -581,6 +581,30 @@
              reports only the symbols it changes: unused :a/z gets no line, here or for the test file")
         (is (=? {:discouraged-var-counts {:a/x 1}} (kondo-ratchet/read-ratchets)))))))
 
+(deftest ^:synchronized fix-refuses-colliding-symbols-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)
+        before       (slurp budgets)]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{})
+                                  kondo-ratchet/kondo-config          (constantly '{:linters {:discouraged-var {a/x          {}
+                                                                                                                metabase.a/x {}}}})
+                                  kondo-ratchet/scan                  (constantly [])
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"share the ratchet key :a/x"
+                              (kondo-ratchet/fix! {:attribute (constantly [no-findings no-findings])}))
+            "an unseeded shrink refuses two symbols on one key rather than merging their budgets")
+        (is (= before (slurp budgets)))))))
+
 (deftest ^:synchronized fix-drops-stale-flat-discouraged-entry-test
   (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
                               "kondo-ratchet-test"

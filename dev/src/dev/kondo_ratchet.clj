@@ -1250,12 +1250,15 @@
 
 (defn- read-policies
   "Validate `ratchets`, the prod policies, against the known linters, and read the module and test ratchet files.
-  Returns `{:known _, :module-ratchets _, :test-ratchets _, :test-disabled? _}`."
+  Returns `{:known _, :configured _, :module-ratchets _, :test-ratchets _, :test-disabled? _}`, with `:configured`
+  from [[configured-count-keys]].
+  Throws when two configured symbols share a ratchet key."
   [ratchets]
   (let [known (known-linters)]
     (validate-linters! ratchets known)
     (let [test-ratchets (read-validated-test-ratchets known *ratchets-file*)]
       {:known           known
+       :configured      (configured-count-keys)
        :module-ratchets (read-module-ratchets)
        :test-ratchets   test-ratchets
        :test-disabled?  (disabled? test-ratchets)})))
@@ -1431,9 +1434,8 @@
      (let [ratchets (read-ratchets)]
        (if (disabled? ratchets)
          (println (str *ratchets-file* " is disabled -- nothing to check"))
-         (let [{:keys [module-ratchets test-ratchets test-disabled?]} (read-policies ratchets)
+         (let [{:keys [configured module-ratchets test-ratchets test-disabled?]} (read-policies ratchets)
                {:keys [prod-occ test-occ attribution test-attribution]} (scan-and-attribute attribute test-disabled?)
-               configured       (configured-count-keys)
                lines            (concat
                                  (check-report ratchets module-ratchets prod-occ attribution
                                                (config-suppressions) (module-escape-hatches)
