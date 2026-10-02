@@ -53,7 +53,7 @@ describe("scenarios > navigation > navbar", () => {
       H.navigationSidebar().findByText(/An error occurred/);
     });
 
-    it("state should preserve when clicking the mb logo", () => {
+    it("should preserve state when clicking the mb logo or a collection breadcrumb", () => {
       cy.visit("/collection/root");
       H.navigationSidebar().should("be.visible");
       cy.findByTestId("main-logo-link").click();
@@ -67,14 +67,7 @@ describe("scenarios > navigation > navbar", () => {
       cy.location("pathname").should("eq", "/");
       cy.findByTestId("home-page").should("be.visible");
       H.navigationSidebar().should("not.be.visible");
-    });
 
-    it("should close when visiting a dashboard", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.navigationSidebar().should("not.be.visible");
-    });
-
-    it("should preserve state when visiting a collection", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
       H.appBar().contains("Our analytics").parentsUntil("a").first().click();
@@ -86,7 +79,7 @@ describe("scenarios > navigation > navbar", () => {
       H.navigationSidebar().should("not.be.visible");
     });
 
-    it("should close when creating a new question", () => {
+    it("should close when creating a new question or opening a sql editor", () => {
       cy.visit("/");
       H.navigationSidebar().should("be.visible");
       H.appBar().findByText("New").click();
@@ -94,9 +87,7 @@ describe("scenarios > navigation > navbar", () => {
         .findByText(/Question/)
         .click();
       H.navigationSidebar().should("not.be.visible");
-    });
 
-    it("should close when opening a sql editor", () => {
       cy.visit("/");
       H.navigationSidebar().should("be.visible");
       H.appBar().findByText("New").click();
@@ -132,7 +123,7 @@ describe("scenarios > navigation > navbar", () => {
       H.activateToken("pro-self-hosted");
     });
 
-    it("should be open when logging in with a landing page configured", () => {
+    it("should stay open when redirecting to the landing page", () => {
       H.updateSetting("landing-page", `/question/${ORDERS_QUESTION_ID}`);
       cy.visit("/");
       cy.location("pathname").should(
@@ -141,10 +132,7 @@ describe("scenarios > navigation > navbar", () => {
       );
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
       H.navigationSidebar().should("be.visible");
-    });
 
-    it("should stay open when the mb logo redirects to the landing page", () => {
-      H.updateSetting("landing-page", `/question/${ORDERS_QUESTION_ID}`);
       cy.visit("/collection/root");
       H.navigationSidebar().should("be.visible");
       cy.findByTestId("main-logo-link").click();
