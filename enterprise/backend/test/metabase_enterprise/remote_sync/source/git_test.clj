@@ -908,6 +908,33 @@
               (is (< ms 2500) (str "the four first uses took " ms " ms"))))
           (finally (forget-clones! url)))))))
 
+(deftest interrupted-first-use-does-not-fail-waiters-test
+  (testing "when the thread of a shared first use is interrupted, a waiter that nobody interrupted makes its own attempt"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url      (remote-url (init-remote! remote-dir))
+            real     (mt/original-fn #'git/clone-repository!)
+            in-clone (promise)
+            attempts (atom 0)]
+        (try
+          (mt/with-dynamic-fn-redefs [git/clone-repository! (fn [path args]
+                                                              (when (= 1 (swap! attempts inc))
+                                                                (deliver in-clone true)
+                                                                (Thread/sleep 5000))
+                                                              (real path args))]
+            (let [use!   #(try (git/git-source url "master" nil ingest/legal-top-level-paths)
+                               (catch Throwable e (str "threw: " (.getName (class e)) " " (ex-message e))))
+                  owner  (future (use!))
+                  _      (is (true? (deref in-clone 5000 false)) "precondition: the first use is in its clone")
+                  waiter (future (use!))]
+              (Thread/sleep 200)
+              (future-cancel owner)
+              (let [result (deref waiter 15000 ::timeout)]
+                (is (instance? Git (:git result)) (str "the waiter gets a source, not: " (pr-str result))))
+              (is (= 2 @attempts) "the waiter makes its own clone attempt")
+              (is (not (contains? @@#'git/first-uses (.getPath ^File (#'git/repo-path {:remote-url url}))))
+                  "no first-use entry stays")))
+          (finally (forget-clones! url)))))))
+
 (deftest concurrent-stale-cache-recoveries-clone-once-test
   (testing "two concurrent stale-cache recoveries of one clone share one fresh clone"
     (mt/with-temp-dir [remote-dir nil]
