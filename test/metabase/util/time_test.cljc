@@ -313,28 +313,35 @@
   (testing "weeks around the year boundary"
     (are [start-of-week date week]
          (= (str week) (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year))
-      :sunday   "2018-12-30" 52
-      :sunday   "2019-01-01" 52
-      :sunday   "2019-12-28" 51
-      :sunday   "2019-12-29" 52
-      :sunday   "2020-01-04" 52
-      :sunday   "2020-01-05" 1
-      :sunday   "2020-12-31" 52
-      :sunday   "2021-01-03" 1
-      :monday   "2018-12-31" 53
-      :monday   "2019-01-01" 53
-      :monday   "2019-12-29" 51
-      :monday   "2019-12-30" 52
-      :monday   "2020-01-05" 52
-      :monday   "2020-01-06" 1
-      :monday   "2021-01-03" 52
-      :monday   "2021-01-04" 1
-      :saturday "2016-12-31" 53
-      :saturday "2019-12-28" 52
-      :saturday "2020-01-01" 52
-      :saturday "2020-01-04" 1
-      :saturday "2021-01-01" 52
-      :saturday "2021-01-02" 1)))
+      :sunday    "2018-12-30" 52
+      :sunday    "2019-01-01" 52
+      :sunday    "2019-12-28" 51
+      :sunday    "2019-12-29" 52
+      :sunday    "2020-01-04" 52
+      :sunday    "2020-01-05" 1
+      :sunday    "2020-12-31" 52
+      :sunday    "2021-01-03" 1
+      :monday    "2018-12-31" 53
+      :monday    "2019-01-01" 53
+      :monday    "2019-12-29" 51
+      :monday    "2019-12-30" 52
+      :monday    "2020-01-05" 52
+      :monday    "2020-01-06" 1
+      :monday    "2021-01-03" 52
+      :monday    "2021-01-04" 1
+      :wednesday "2018-12-26" 52
+      :wednesday "2019-01-01" 52
+      :wednesday "2019-01-02" 1
+      :thursday  "2020-01-01" 52
+      :thursday  "2020-01-02" 1
+      :friday    "2016-12-30" 53
+      :friday    "2017-01-06" 1
+      :saturday  "2016-12-31" 53
+      :saturday  "2019-12-28" 52
+      :saturday  "2020-01-01" 52
+      :saturday  "2020-01-04" 1
+      :saturday  "2021-01-01" 52
+      :saturday  "2021-01-02" 1)))
 
 (defn- consecutive-dates
   "Each date from `start` up to `end` as `[yyyy-MM-dd day-of-week]`, where Sunday is day 0."
