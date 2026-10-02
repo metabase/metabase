@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   getBrokenUpTextMatcher,
   screen,
-  settlePendingUpdates,
   waitFor,
   within,
 } from "__support__/ui";
@@ -84,9 +83,10 @@ describe("Static Embed Setup phase", () => {
           },
           activeTab: "Overview",
         });
-        await settlePendingUpdates();
 
-        expect(screen.getByText("Setting up a static embed")).toBeVisible();
+        expect(
+          await screen.findByText("Setting up a static embed"),
+        ).toBeVisible();
 
         expect(
           screen.getByText(
@@ -124,10 +124,9 @@ describe("Static Embed Setup phase", () => {
             },
             activeTab: "Overview",
           });
-          await settlePendingUpdates();
 
           expect(
-            screen.getByText(
+            await screen.findByText(
               "You can also hide or lock any of the dashboard’s parameters.",
             ),
           ).toBeVisible();
