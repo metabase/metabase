@@ -27,12 +27,10 @@ describe("scenarios > embedding-sdk > timeline events", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  (
-    [
-      ["InteractiveQuestion", InteractiveQuestion],
-      ["StaticQuestion", StaticQuestion],
-    ] as const
-  ).forEach(([name, QuestionComponent]) => {
+  [
+    { name: "InteractiveQuestion", component: InteractiveQuestion },
+    { name: "StaticQuestion", component: StaticQuestion },
+  ].forEach(({ name, component: QuestionComponent }) => {
     it(`should not show events on ${name}`, () => {
       cy.get<number>("@questionId").then((questionId) => {
         mountSdkContent(<QuestionComponent questionId={questionId} />);
@@ -42,13 +40,11 @@ describe("scenarios > embedding-sdk > timeline events", () => {
     });
   });
 
-  (
-    [
-      ["InteractiveDashboard", InteractiveDashboard],
-      ["StaticDashboard", StaticDashboard],
-      ["EditableDashboard", EditableDashboard],
-    ] as const
-  ).forEach(([name, DashboardComponent]) => {
+  [
+    { name: "InteractiveDashboard", component: InteractiveDashboard },
+    { name: "StaticDashboard", component: StaticDashboard },
+    { name: "EditableDashboard", component: EditableDashboard },
+  ].forEach(({ name, component: DashboardComponent }) => {
     it(`should show only saved events read-only on ${name}`, () => {
       cy.get<number>("@dashboardId").then((dashboardId) => {
         mountSdkContent(
@@ -59,6 +55,8 @@ describe("scenarios > embedding-sdk > timeline events", () => {
       cy.wait("@getTimelines");
       getSdkRoot().within(() => {
         expectReadOnlyDashboardEvents();
+
+        cy.log("the dashcard menu does not offer to open the events panel");
         H.getDashboardCard().realHover();
         H.getDashboardCard()
           .findByRole("button", { name: "More options" })
@@ -79,11 +77,15 @@ describe("scenarios > embedding-sdk > timeline events", () => {
       cy.findByRole("button", { name: "Add questions" }).should("be.visible");
       H.timelineEventChip("RC1").should("be.visible");
       H.timelineEventChip("Internal release notes").should("not.exist");
+
+      cy.log("edit mode offers no events panel or Events button");
       cy.findByTestId("dashboard-events-sidebar").should("not.exist");
       cy.findByRole("button", { name: "Events", exact: true }).should(
         "not.exist",
       );
     });
+
+    cy.log("editing the dashboard never changes timeline events");
     cy.get("@mutateTimelineEvents.all").should("have.length", 0);
   });
 });
