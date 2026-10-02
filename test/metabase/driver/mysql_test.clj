@@ -54,6 +54,24 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ssl-cert-path-must-be-readable-test
+  ;; the "Server SSL certificate chain" field takes inline PEM, a `classpath:` resource, or a path to a file on the
+  ;; Metabase host -- and a path has to be somewhere `readable-paths` allows
+  (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          spec    #(sql-jdbc.conn/connection-details->spec :mysql (merge details %))]
+      (testing "a certificate path outside the allowed directories is refused"
+        (doseq [cert ["/etc/server-ca.pem" "/allowed-dir/../etc/server-ca.pem"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:ssl-cert cert}))
+              cert)))
+      (testing "inline PEM, a classpath resource, an allowed path, or a certificate SSL does not use, are accepted"
+        (doseq [extra [{:ssl-cert "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"}
+                       {:ssl-cert "classpath:server-ca.pem"}
+                       {:ssl-cert "/allowed-dir/server-ca.pem"}
+                       {:ssl false :ssl-cert "/etc/server-ca.pem"}]]
+          (is (map? (spec extra)) (pr-str extra)))))))
+
 (deftest default-schema-test
   (mt/test-driver :mysql
     (is (nil? (driver.sql/default-schema :mysql (mt/db))))))

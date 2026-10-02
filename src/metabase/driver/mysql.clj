@@ -765,6 +765,14 @@
       (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
     (when (and use-iam? (not ssl?))
       (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
+    ;; mirror the client's own reading of `serverSslCert`: inline PEM only when it starts with exactly this, a
+    ;; classpath resource with `classpath:`, and otherwise a file on the Metabase host -- which has to be somewhere
+    ;; `readable-paths` allows
+    (when (and ssl-cert?
+               (string? ssl-cert)
+               (not (str/starts-with? ssl-cert "-----BEGIN CERTIFICATE-----"))
+               (not (str/starts-with? ssl-cert "classpath:")))
+      (driver-api/ensure-readable-path! ssl-cert))
     (when (and use-iam?
                (contains? addl-opts-map "sslMode")
                (not= (get addl-opts-map "sslMode") "VERIFY_CA"))
