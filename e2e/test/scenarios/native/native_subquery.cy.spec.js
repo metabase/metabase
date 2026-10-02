@@ -33,8 +33,13 @@ describe("scenarios > question > native subquery", () => {
           // placing the cursor inside an existing template tag should open the data reference
           H.NativeEditor.focus().type("{leftarrow}{leftarrow}");
           cy.findByText("A People Question");
+          // moving the cursor out of the tag should keep the data reference open
+          H.NativeEditor.type("{rightarrow}{rightarrow}", { focus: false });
+          cy.findByTestId("sidebar-right")
+            .findByText("A People Question")
+            .should("be.visible");
           // typing after the tag, outside of it, should keep the data reference open
-          H.NativeEditor.focus().type(" ");
+          H.NativeEditor.type(" ", { focus: false });
           H.NativeEditor.value().should("eq", `${queryText} `);
           cy.findByTestId("sidebar-right")
             .findByText("A People Question")

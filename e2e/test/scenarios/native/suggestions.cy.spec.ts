@@ -6,10 +6,11 @@ describe("scenarios > question > native > suggestions", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show suggestions for tables and syntax keywords", () => {
+  it("should suggest tables, keywords and locals without duplicates", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("se");
 
+    cy.log("tables and syntax keywords");
+    H.NativeEditor.type("se");
     H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("SEATS")
         .should("be.visible")
@@ -18,39 +19,30 @@ describe("scenarios > question > native > suggestions", () => {
         .should("be.visible")
         .should("contain.text", "keyword");
     });
-  });
 
-  it("should suggest locals", () => {
-    H.startNewNativeQuestion({
-      query:
-        "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY ",
-    });
-    H.NativeEditor.type("order_mo");
-
+    cy.log("locals");
+    H.NativeEditor.clear();
+    H.NativeEditor.type(
+      "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY order_mo",
+    );
     H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("order_month")
         .should("be.visible")
         .should("contain.text", "local");
     });
-  });
 
-  it("should suggest quoted locals", () => {
-    H.startNewNativeQuestion({
-      query: 'SELECT foo as "QUOTED_local" FROM ORDERS GROUP BY ',
-    });
-    H.NativeEditor.type("QU");
-
+    cy.log("quoted locals");
+    H.NativeEditor.clear();
+    H.NativeEditor.type('SELECT foo as "QUOTED_local" FROM ORDERS GROUP BY QU');
     H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("QUOTED_local")
         .should("be.visible")
         .should("contain.text", "local");
     });
-  });
 
-  it("should not show duplicate suggestions", () => {
-    H.startNewNativeQuestion();
+    cy.log("no duplicate suggestions");
+    H.NativeEditor.clear();
     H.NativeEditor.type("acc");
-
     H.NativeEditor.completions().within(() => {
       H.NativeEditor.completionLabels("ACCOUNT_ID")
         .should("have.length", 1)

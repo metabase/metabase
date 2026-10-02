@@ -19,7 +19,7 @@ describe("scenarios > question > snippets", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should let you create and use a snippet", () => {
+  it("should let you create, use and edit a snippet", () => {
     cy.log("Type a query and highlight some of the text");
     H.startNewNativeQuestion();
     H.NativeEditor.type("select 'stuff'");
@@ -60,22 +60,6 @@ describe("scenarios > question > snippets", () => {
         expect(clientWidth).to.be.gte(preWidth - BORDERS);
       });
     });
-  });
-
-  it("should let you edit snippet", () => {
-    // Re-create the above snippet via API without the need to rely on the previous test
-    cy.request("POST", "/api/native-query-snippet", {
-      name: "stuff-snippet",
-      content: "stuff",
-    });
-
-    // Populate the native editor first
-    // 1. select
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select ");
-
-    // 2. snippet
-    cy.icon("snippet").click();
 
     cy.log(
       "The add icon should be visible with existing snippets (metabase#57441)",
@@ -88,15 +72,11 @@ describe("scenarios > question > snippets", () => {
     });
     H.modal().should("not.exist");
 
-    cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("stuff-snippet").click();
+    cy.log("Edit the snippet");
+    H.rightSidebar()
+      .findByRole("button", { name: /pencil icon edit/i })
+      .click();
 
-      // Open the snippet edit modal
-      cy.icon("chevrondown").click({ force: true });
-      cy.findByRole("button", { name: /pencil icon edit/i }).click();
-    });
-
-    // Update the name and content
     H.modal().within(() => {
       cy.findByText("Editing stuff-snippet");
 

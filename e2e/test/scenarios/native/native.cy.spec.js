@@ -3,7 +3,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID, PRODUCTS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -189,7 +189,7 @@ describe("scenarios > question > native", () => {
         H.popover().findByText("Time grouping").click();
       }
 
-      it("should create entries in variables sidebar and handle the required prop", () => {
+      it("should create entries in variables sidebar, handle the required prop and reset the default value when options change", () => {
         H.startNewNativeQuestion();
         H.NativeEditor.type(
           "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
@@ -233,32 +233,17 @@ describe("scenarios > question > native", () => {
           "contain",
           "January 1, 2025",
         );
-      });
 
-      it("should reset default value when time grouping options are changed", () => {
-        const questionWithDefaultValue = {
-          name: "Saved question with time grouping",
-          native: {
-            query:
-              "SELECT count(*), {{unit}} as unit FROM ORDERS GROUP BY unit",
-            "template-tags": {
-              unit: {
-                type: "temporal-unit",
-                name: "unit",
-                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
-                "display-name": "Unit",
-                dimension: ["field", ORDERS.CREATED_AT, null],
-                required: true,
-                default: "year",
-              },
-            },
-          },
-        };
-
-        H.createNativeQuestion(questionWithDefaultValue).then(
-          ({ body: { id } }) => {
-            H.visitQuestion(id);
-          },
+        cy.log(
+          "should reset default value when time grouping options are changed",
+        );
+        H.queryBuilderHeader().button("Save").click();
+        cy.findByTestId("save-question-modal").within(() => {
+          cy.findByLabelText("Name").type("Saved question with time grouping");
+          cy.button("Save").click();
+        });
+        cy.wait("@card").then(({ response }) =>
+          H.visitQuestion(response.body.id),
         );
 
         cy.log("open editor");
