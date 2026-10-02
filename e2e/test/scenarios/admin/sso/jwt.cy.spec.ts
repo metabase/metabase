@@ -241,5 +241,9 @@ const getJwtCard = () => {
 
 // the segmented control keeps its radio inputs hidden, so the visible label takes the click
 const selectGroupMappingMode = (mode: string) => {
-  groupMappingSection().findByText(mode).click();
+  // a click during a write is ignored, so wait for the control to be free first
+  groupMappingSection()
+    .contains("label", mode)
+    .should("not.have.attr", "data-read-only")
+    .click();
 };
