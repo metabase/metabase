@@ -81,15 +81,13 @@ function leftoverProblems(
   actions: DiscoveredAction[],
   files: ResourceFile[],
 ) {
-  const namedEntityIds = new Set(
-    [
-      ...queries.map((query) => query.savedQuestionEntityId),
-      ...actions.map((action) => action.copiedActionEntityId),
-    ].filter((entityId) => entityId !== undefined),
-  );
-  const isNamed = ({ entity }: ResourceFile) =>
+  const namedEntityIds: Record<ResourceFile["model"], Set<unknown>> = {
+    Card: new Set(queries.map((query) => query.savedQuestionEntityId)),
+    Action: new Set(actions.map((action) => action.copiedActionEntityId)),
+  };
+  const isNamed = ({ model, entity }: ResourceFile) =>
     typeof entity.entity_id === "string" &&
-    namedEntityIds.has(entity.entity_id);
+    namedEntityIds[model].has(entity.entity_id);
 
   return files
     .filter(
