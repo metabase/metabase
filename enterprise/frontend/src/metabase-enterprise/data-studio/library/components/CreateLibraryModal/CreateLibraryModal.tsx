@@ -123,7 +123,10 @@ function ModalBody({ explanatorySentence, onCreate, onClose }: ModalBodyProps) {
             color="neutral"
             onClick={onClose}
           >{t`Cancel`}</Button>
-          <FormSubmitButton label={t`Create my semantic layer`} variant="filled" />
+          <FormSubmitButton
+            label={t`Create my semantic layer`}
+            variant="filled"
+          />
         </Group>
       </Form>
     </FormProvider>
