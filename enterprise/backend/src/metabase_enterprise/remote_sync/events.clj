@@ -67,28 +67,25 @@
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
-(defn track-untracked-actions!
-  "Insert a 'create' ledger row for every unarchived Action with none whose model is in the Collections with
-  `collection-ids`. Returns the number of rows inserted."
-  [collection-ids]
-  (let [action-spec (spec/spec-for-model-key :model/Action)
-        timestamp   (t/offset-date-time)
-        rows        (when (seq collection-ids)
-                      (for [action (remote-sync.db/untracked-actions-in-collections (vec collection-ids))]
-                        (merge {:model_type        "Action"
-                                :model_id          (:id action)
-                                :status            "create"
-                                :status_changed_at timestamp}
-                               (spec/build-sync-object-fields action-spec action))))]
+(defn backfill-action-tracking!
+  "Insert a 'create' ledger row for every unarchived Action in a remote-synced collection that has none, returning the
+  number of rows inserted."
+  []
+  (let [action-spec    (spec/spec-for-model-key :model/Action)
+        collection-ids (remote-sync.db/remote-synced-collection-ids)
+        tracked        (remote-sync.db/tracked-model-ids "Action")
+        timestamp      (t/offset-date-time)
+        rows           (when (seq collection-ids)
+                         (for [action (remote-sync.db/instances-in-collections :model/Action collection-ids :archived)
+                               :when  (not (contains? tracked (:id action)))]
+                           (merge {:model_type        "Action"
+                                   :model_id          (:id action)
+                                   :status            "create"
+                                   :status_changed_at timestamp}
+                                  (spec/build-sync-object-fields action-spec action))))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
-
-(defn backfill-action-tracking!
-  "Insert a 'create' ledger row for every untracked Action of a model in a remote-synced collection, so an instance
-  upgraded with synced models still pushes their actions. Returns the number of rows inserted."
-  []
-  (track-untracked-actions! (remote-sync.db/remote-synced-collection-ids)))
 
 (defn disable-library-tracking!
   "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
@@ -230,7 +227,7 @@
 (defn- cascade-to-children!
   "When a parent model becomes eligible/ineligible, cascade to its children.
    For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
-   For ineligible: find the children's active RSOs and mark them as removed."
+   For ineligible: query existing RSOs by model_table_id and mark as removed."
   [model-spec model-id status eligible?]
   (doseq [child-spec (spec/children-specs (:model-key model-spec))]
     (let [fk     (:parent-fk child-spec)
@@ -241,10 +238,7 @@
           (when (spec/check-eligibility child-spec child)
             (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
         ;; Ineligible branch: mark existing child RSOs as removed
-        (doseq [child-rso (if-let [rso-key (:parent-rso-key child-spec)]
-                            (remote-sync.db/active-child-rsos (:model-type child-spec) rso-key model-id)
-                            (remote-sync.db/active-rsos-of-children (:model-key child-spec) (:model-type child-spec)
-                                                                    fk model-id))]
+        (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
 (defn- handle-model-event-from-spec

@@ -2003,8 +2003,8 @@
         ;; `-if-supported` variant keeps the legacy-search leg running on app dbs that cannot hold an index.
         (search.tu/with-temp-index-table-if-supported
           (let [search-term (str "transform-search-" (u/generate-nano-id))
-                query-name  (str search-term "-query")
-                python-name (str search-term "-python")
+                query-name  (str search-term "_query")
+                python-name (str search-term "_python")
                 query-source {:type  "query"
                               :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                 python-source {:type            "python"
@@ -2034,7 +2034,7 @@
         ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
         (search.tu/with-temp-index-table-if-supported
           (let [search-term (str "transform-search-" (u/generate-nano-id))
-                query-name  (str search-term "-query")
+                query-name  (str search-term "_query")
                 query-source {:type  "query"
                               :query (lib/native-query (mt/metadata-provider) "SELECT 1")}]
             (mt/with-temp [:model/Transform {transform-id :id} {:name   query-name
@@ -2055,8 +2055,8 @@
         ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
         (search.tu/with-temp-index-table-if-supported
           (let [search-term (str "transform-search-" (u/generate-nano-id))
-                native-name (str search-term "-native")
-                mbql-name   (str search-term "-mbql")
+                native-name (str search-term "_native")
+                mbql-name   (str search-term "_mbql")
                 native-source {:type  "query"
                                :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                 mbql-source {:type  "query"

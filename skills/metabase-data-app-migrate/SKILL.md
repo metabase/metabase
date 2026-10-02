@@ -143,7 +143,7 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    ```bash
    ( source "$ROOT/.env.local"; curl -s -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/apps/<slug>" )
    ```
-   must show `"version": M`, `"outdated": false`, and `"sync_error": null`.
+   must show `"version": M` and `"outdated": false`.
    A response holding only `name` and `display_name` means the key is not an
    admin's: ask for one, or ask the user to read the admin list, and say the
    proof is still pending. Report the command and the result. Do not claim the

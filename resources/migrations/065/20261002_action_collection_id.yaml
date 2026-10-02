@@ -1,0 +1,114 @@
+## Actions become collection items: an action no longer needs a model, and carries its own collection_id. An action
+## attached to a model keeps the model's collection (Toucan hooks keep the two in sync).
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-02T00:00:00
+      author: ranquild
+      comment: Make action.model_id nullable
+      changes:
+        - dropNotNullConstraint:
+            tableName: action
+            columnName: model_id
+            columnDataType: int
+      rollback:
+        - sql:
+            sql: DELETE FROM action WHERE model_id IS NULL
+        - addNotNullConstraint:
+            tableName: action
+            columnName: model_id
+            columnDataType: int
+
+  - changeSet:
+      id: v65.2026-10-02T00:00:01
+      author: ranquild
+      comment: Add action.collection_id
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The Collection this Action is in; the model's Collection when the Action has a model
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: action
+            columnName: collection_id
+
+  - changeSet:
+      id: v65.2026-10-02T00:00:02
+      author: ranquild
+      comment: Index action.collection_id
+      changes:
+        - createIndex:
+            tableName: action
+            indexName: idx_action_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v65.2026-10-02T00:00:03
+      author: ranquild
+      comment: Add FK constraint on action.collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_action_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v65.2026-10-02T00:00:04
+      author: ranquild
+      comment: Backfill action.collection_id from the model's collection
+      changes:
+        - sql:
+            sql: >-
+              UPDATE action
+              SET collection_id = (SELECT report_card.collection_id FROM report_card WHERE report_card.id = action.model_id)
+              WHERE model_id IS NOT NULL;
+      rollback: # nothing to do; rolling back the preceding changesets drops the column
+
+  - changeSet:
+      id: v65.2026-10-02T00:00:05
+      author: ranquild
+      comment: Add action.archived_directly
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: Whether the Action was archived directly, rather than along with its model or collection
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-10-02T00:00:06
+      author: ranquild
+      comment: Mark already-archived actions as archived directly
+      changes:
+        - sql:
+            sql: UPDATE action SET archived_directly = TRUE WHERE archived = TRUE;
+      rollback: # nothing to do; rolling back the preceding changeset drops the column
+
+  - changeSet:
+      id: v65.2026-10-02T00:00:07
+      author: ranquild
+      comment: Archive the actions of models that are already archived, as archiving a model now does
+      changes:
+        - sql:
+            sql: >-
+              UPDATE action
+              SET archived = TRUE, archived_directly = FALSE
+              WHERE archived = FALSE
+                AND EXISTS (SELECT 1 FROM report_card WHERE report_card.id = action.model_id AND report_card.archived = TRUE);
+      rollback: # nothing to do; rolling back the preceding changesets drops the column

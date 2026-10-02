@@ -119,6 +119,17 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(deftest delete-database-deletes-query-actions-test
+  (testing "deleting a Database deletes the query Actions that run against it, including the ones without a model"
+    (mt/with-temp [:model/Database    {db-id :id}     {}
+                   :model/Action      {action-id :id} {:type :query :name "No model" :model_id nil}
+                   :model/QueryAction _               {:action_id     action-id
+                                                       :dataset_query {:database db-id
+                                                                       :type     :native
+                                                                       :native   {:query "select 1"}}}]
+      (t2/delete! :model/Database :id db-id)
+      (is (not (t2/exists? :model/Action :id action-id))))))
+
 (deftest health-check-candidates-test
   (testing "startup health checks pick one representative database per engine: the lowest id, skipping
             audit/sample/destination databases"

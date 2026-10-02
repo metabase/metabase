@@ -38,3 +38,17 @@ const invalid = decodeExplorerState('#m=unknown&focus=core,unknown&team=Unknown'
 assert.equal(invalid.selected, null);
 assert.deepEqual(invalid.focus, new Set(['core']));
 assert.deepEqual(invalid.teams, new Set());
+
+const cycleView = decodeExplorerState('#' + encodeExplorerState({
+  selected: null,
+  view: 'cycles',
+  focus: new Set(['core', 'lib']),
+  degree: 0,
+  expanded: new Set(),
+  hidden: new Set(),
+  hideRe: '',
+  teams: new Set(),
+}), validIds, validTeams);
+assert.equal(cycleView.view, 'cycles');
+assert.equal(cycleView.degree, 0);
+assert.equal(decodeExplorerState('#m=core', validIds, validTeams).degree, 1);
