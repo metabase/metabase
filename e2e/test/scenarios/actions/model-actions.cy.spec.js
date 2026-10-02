@@ -211,6 +211,7 @@ describe(
 
       openActionMenuFor(SAMPLE_QUERY_ACTION.name);
       H.popover().within(() => {
+        cy.findByText("View").should("be.visible");
         cy.findByText("Archive").should("not.exist");
         cy.findByText("View").click();
       });
