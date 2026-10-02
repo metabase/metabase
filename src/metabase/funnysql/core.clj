@@ -103,6 +103,20 @@
       (append-sql! context " AS ")
       (compile! rhs context))))
 
+(defn- -table-with-optional-as!
+  "Like [[-identifier-with-optional-as!]], but for the table positions in `:from` and `:join`, where the thing being
+  named can be a `^:allow-subquery` subquery as well as an identifier. A subquery has to be wrapped in parens."
+  [table context]
+  (let [[lhs rhs] (if (vector? table)
+                    table
+                    [table])]
+    ((if (subquery? lhs)
+       -parens!
+       compile!) lhs context)
+    (when rhs
+      (append-sql! context " AS ")
+      (compile! rhs context))))
+
 (defn- identifier-form?
   "True if `x` is something we already know how to compile as an identifier: a keyword, or an `h2x/identifier`
   tagged form."
@@ -286,19 +300,9 @@
 
 (defn- from! [from context]
   (append-sql! context "FROM ")
-  (letfn [(from-subclause! [subclause]
-            (let [[lhs rhs] (if (vector? subclause)
-                              subclause
-                              [subclause])]
-              ((if (subquery? lhs)
-                 -parens!
-                 compile!) lhs context)
-              (when rhs
-                (append-sql! context " AS ")
-                (compile! rhs context))))]
-    (if (keyword? from)
-      (from-subclause! from)
-      (interpose-fn from from-subclause! #(append-sql! context ", ")))))
+  (if (keyword? from)
+    (-table-with-optional-as! from context)
+    (interpose-fn from #(-table-with-optional-as! % context) #(append-sql! context ", "))))
 
 (defn- join!
   [join-type joins context]
@@ -309,8 +313,7 @@
                         :inner "INNER JOIN ")]
     (loop [[thing-to-join condition & more] joins]
       (append-sql! context join-type-sql)
-      ;; TODO (Cam 2026-09-29) handle subqueries?
-      (-identifier-with-optional-as! thing-to-join context)
+      (-table-with-optional-as! thing-to-join context)
       (append-sql! context " ON ")
       (compile! condition context)
       (when (seq more)

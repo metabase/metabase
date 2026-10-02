@@ -251,6 +251,18 @@
          (funnysql/format {:join [:a [:= :a.id :x.a_id]
                                   :b [:= :b.id :x.b_id]]} :postgres))))
 
+(deftest ^:parallel join-subquery-test
+  (testing "a subquery in a `:join` needs to be wrapped in parens, just like one in `:from`"
+    (is (= [(str "SELECT \"f\".\"table_id\""
+                 " FROM \"metabase_field\" AS \"f\""
+                 " JOIN (SELECT \"id\", \"db_id\" FROM \"metabase_table\") AS \"t\" ON \"t\".\"id\" = \"f\".\"table_id\"")]
+           (funnysql/format {:select [:f.table_id]
+                             :from   [[:metabase_field :f]]
+                             :join   [[^:allow-subquery {:select [:id :db_id]
+                                                         :from   [:metabase_table]} :t]
+                                      [:= :t.id :f.table_id]]}
+                            :postgres)))))
+
 (deftest ^:parallel with-test
   (is (= ["WITH \"cte\" AS (SELECT \"id\" FROM \"table\"), \"cte2\" AS (SELECT * FROM \"cte\") SELECT \"id\" FROM \"cte\""]
          (funnysql/format {:with   [[:cte  ^:allow-subquery {:select [:id] :from [:table]}]
