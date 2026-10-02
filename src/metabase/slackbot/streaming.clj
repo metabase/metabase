@@ -260,9 +260,9 @@
    into feedback button payloads."
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
-           request-prompt team-id thread-ts]}]
+           request-prompt team-id thread-ts model-selection]}]
   (let [message         (metabot.envelope/user-message prompt)
-        ai-proxy?       (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+        ai-proxy?       (llm.provider/managed-model-ref? (:model-ref model-selection))
         ;; Persist a placeholder assistant row up front so its `created_at` pins
         ;; turn ordering before any retry can sneak in earlier-timestamped rows.
         ;; `:user-id` stamps the author on both rows so participation-based
@@ -344,6 +344,7 @@
                    :conversation-id conversation-id
                    :context         context
                    :memory-atom     memory-atom
+                   :model-selection model-selection
                    :tracking-opts   {:source     "slackbot"
                                      :session-id conversation-id}}))
       (catch Throwable t
@@ -653,7 +654,8 @@
      :conversation-id conversation-id}))
 
 (defn- send-dm-response
-  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}]
+  [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id
+                                      model-selection]}]
   (let [{:keys [on-text on-tool-start on-tool-end on-data
                 request-flush! start-with-thinking! stream-state slack-writer prefetched-viz]}
         (make-streaming-callbacks client {:channel   channel
@@ -679,7 +681,8 @@
               :team-id              (:team_id auth-info)
               :thread-ts            thread-ts
               :req-slack-msg-id     (:ts event)
-              :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
+              :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))
+              :model-selection      model-selection})]
         (request-flush! true)
         (when-not (await-for slack-writer-await-timeout-ms slack-writer)
           (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
@@ -730,8 +733,9 @@
   ([client event extra-history]
    (let [message-ctx (slackbot.events/event->reply-context event)]
      (try
-       (metabot.usage/check-metabase-managed-free-limit!)
-       (let [ctx (prepare-response-context client event)]
+       (let [selection (metabot.settings/metabot-model-selection)
+             _         (metabot.usage/check-metabase-managed-free-limit! (:model-ref selection))
+             ctx       (assoc (prepare-response-context client event) :model-selection selection)]
          (if (slackbot.events/dm? event)
            (send-dm-response client event extra-history ctx)
            (slackbot.channel/send-channel-response client

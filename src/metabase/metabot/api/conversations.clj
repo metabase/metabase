@@ -162,7 +162,7 @@
   from the model currently serving requests rather than the one that served the
   turn, because the client uses it to judge whether the *next* message will fit."
   [detail]
-  (let [window (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))]
+  (let [window (metabot.self/context-window-tokens (:model-ref (metabot.settings/metabot-model-selection)))]
     (cond-> detail
       (and detail window) (assoc :context_window_tokens window))))
 

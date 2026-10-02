@@ -122,7 +122,7 @@
              ;; titles must respect the usage limit too, like metabot.self/call-llm
              (not (metabot.usage/check-usage-limits!)))
     (let [response (metabot.self/call-llm-structured
-                    (metabot.settings/llm-mini-model)
+                    (:model-ref (metabot.settings/mini-model-selection))
                     [{:role "system" :content title-system-prompt}
                      {:role "user"   :content (str "<session>\n" message "\n</session>")}]
                     title-json-schema

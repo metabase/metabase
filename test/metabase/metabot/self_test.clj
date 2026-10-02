@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -16,6 +17,7 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
@@ -156,6 +158,100 @@
   (testing "throws for an unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (registry/required "unknown" :stream)))))
+
+(deftest call-llm-records-provider-health-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(call! []
+                (into [] (self/call-llm "anthropic/claude-haiku-4-5" nil [] {}
+                                        {:tag "agent" :required-permission :permission/metabot}
+                                        nil)))]
+        (testing "a call that throws leaves the connection recorded as failing, so the next one routes around it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (throw (ex-info "invalid x-api-key" {:status 401})))]
+            (is (thrown? clojure.lang.ExceptionInfo (call!)))
+            (is (=? {:message "invalid x-api-key" :fatal? true} (llm.health/failure "anthropic")))))
+        (testing "a call that works clears it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (call!)
+            (is (nil? (llm.health/failure "anthropic")))))
+        (testing "a provider that streams an error part instead of throwing still counts as a failure"
+          (mt/with-dynamic-fn-redefs [self.claude/claude
+                                      (fn [_]
+                                        (test-util/mock-llm-response
+                                         [{:type :error :error {:message "upstream is overloaded"}}]))]
+            (mt/with-log-level [metabase.metabot.self :fatal]
+              (call!))
+            (is (=? {:message "upstream is overloaded" :fatal? false}
+                    (llm.health/failure "anthropic")))))
+        (testing "a consumer that throws while the provider is streaming is not the provider failing"
+          (llm.health/record-success! "anthropic")
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bug in a downstream xf"
+                                  (transduce (map (fn [_] (throw (ex-info "bug in a downstream xf" {}))))
+                                             conj
+                                             (self/call-llm "anthropic/claude-haiku-4-5" nil [] {}
+                                                            {:tag "agent" :required-permission :permission/metabot}
+                                                            nil))))
+            (is (true? (llm.health/healthy? "anthropic")))))))))
+
+(deftest call-llm-structured-records-only-provider-failures-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(call! []
+                (self/call-llm-structured-with-trace "anthropic/claude-haiku-4-5" [] {} 0.0 100
+                                                     {:tag "agent" :required-permission :permission/metabot}))]
+        (testing "a provider that answers without the tool call has served the request, so nothing is recorded"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call!)))
+            (is (true? (llm.health/healthy? "anthropic")))))
+        (testing "a provider that rejects the request is still recorded"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (throw (ex-info "invalid x-api-key" {:status 401})))]
+            (try
+              (is (thrown? clojure.lang.ExceptionInfo (call!)))
+              (is (=? {:message "invalid x-api-key" :fatal? true} (llm.health/failure "anthropic")))
+              (finally
+                (llm.health/record-success! "anthropic")))))
+        (testing "an error streamed after the tool call is not cleared by the tool call that preceded it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude
+                                      (fn [_]
+                                        (test-util/mock-llm-response
+                                         [{:type :tool-input :id "c1" :function "json" :arguments {:answer 42}}
+                                          {:type :error :errorText "upstream is overloaded"}]))]
+            (try
+              (mt/with-log-level [metabase.metabot.self :fatal]
+                (call!))
+              (is (=? {:message "upstream is overloaded" :fatal? false} (llm.health/failure "anthropic")))
+              (finally
+                (llm.health/record-success! "anthropic")))))))))
+
+(deftest call-llm-records-only-provider-failures-from-gemini-streams-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(stream! [events]
+                (mt/with-dynamic-fn-redefs [google/google-raw (constantly events)]
+                  (mt/with-log-level [metabase.metabot.self :fatal]
+                    (into [] (self/call-llm "google/google/gemini-3.5-flash" nil [] {}
+                                            {:tag "agent" :required-permission :permission/metabot}
+                                            nil)))))]
+        (llm.health/record-success! "google")
+        (try
+          (testing "a blocked prompt is about the prompt, so the connection stays healthy"
+            (stream! [{:responseId "r1" :promptFeedback {:blockReason "PROHIBITED_CONTENT"}}])
+            (is (true? (llm.health/healthy? "google"))))
+          (testing "a malformed function call is about the response, so the connection stays healthy"
+            (stream! [{:responseId "r2" :candidates [{:finishReason "MALFORMED_FUNCTION_CALL"}]}])
+            (is (true? (llm.health/healthy? "google"))))
+          (testing "an error envelope in the middle of the stream is the provider failing"
+            (stream! [{:responseId "r3" :candidates [{:content {:role "model" :parts [{:text "Hi"}]}}]}
+                      {:error {:code 503 :message "The model is overloaded."}}])
+            (is (=? {:message "The model is overloaded." :fatal? false} (llm.health/failure "google"))))
+          (finally
+            (llm.health/record-success! "google")))))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections
@@ -456,6 +552,18 @@
         (is (> @cnt 20) "SHOULD have stopped writing when reduction terminated early"))
       (finally
         (.stop server)))))
+
+(deftest lite-aisdk-xf-error-tagging-test
+  (testing "tags an adapter-streamed error as the provider's, so the client shows its message"
+    (is (= [{:type :error :error {:message    "Your account is not active, please check your billing details"
+                                  :error-code "provider_error"}}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :error :errorText "Your account is not active, please check your billing details"}]))))
+  (testing "an error part that already carries an :error map — a pre-flight gate, the agent loop's catch — passes
+            through with whatever code fits it"
+    (is (= [{:type :error :error {:message "limit reached" :error-code "ai_usage_limit_reached"}}]
+           (into [] (self.core/lite-aisdk-xf)
+                 [{:type :error :error {:message "limit reached" :error-code "ai_usage_limit_reached"}}])))))
 
 (deftest lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"

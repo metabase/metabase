@@ -335,7 +335,7 @@
                                (log/info "Gemini stopped early" {:finishReason reason}))
                              (let [result (close-blocks! result)]
                                (if-let [error-text (finish-reason-error reason)]
-                                 (rf result {:type :error :errorText error-text})
+                                 (rf result {:type :error :errorText error-text :request-specific? true})
                                  result)))
           emit-part        (fn [result {:keys [text functionCall thought thoughtSignature]}]
                              (cond
@@ -424,8 +424,9 @@
              (some? finishReason) (finish! finishReason)
              ;; A blocked prompt ends the stream with no candidates, only promptFeedback.
              (some? block-reason) (-> (close-blocks!)
-                                      (rf {:type      :error
-                                           :errorText (str "Prompt blocked by Google: " block-reason)}))
+                                      (rf {:type              :error
+                                           :errorText         (str "Prompt blocked by Google: " block-reason)
+                                           :request-specific? true}))
              ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
              (some? error)        (-> (close-blocks!)
                                       (rf {:type      :error

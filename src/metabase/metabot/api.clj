@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
@@ -201,7 +202,7 @@
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id user-external-id title-job]}]
+           eval-session-id assistant-msg-id external-id user-external-id title-job model-selection]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
@@ -220,7 +221,8 @@
                               (cond-> {:message-id external-id
                                        :context-window-tokens
                                        (metabot.self/context-window-tokens
-                                        (metabot.settings/llm-metabot-provider))}
+                                        (or (:model-ref model-selection)
+                                            (metabot.settings/llm-metabot-provider)))}
                                 user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
                              (inject-title-events-xf title-job conversation-id))]
         (try
@@ -236,7 +238,8 @@
                                :eval-session-id eval-session-id
                                :memory-atom     memory-atom
                                :tracking-opts   {:session-id conversation-id}}
-                        debug? (assoc :debug? true))))
+                        debug?          (assoc :debug? true)
+                        model-selection (assoc :model-selection model-selection))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
             (log/debug "Client disconnected during native agent streaming"))
@@ -303,7 +306,11 @@
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
-        _          (metabot.usage/check-metabase-managed-free-limit!)
+        ;; resolved once: provider health can change mid-request, and the usage check, the persisted `ai_proxied`
+        ;; and the agent loop have to agree on the model serving this turn
+        selection  (metabot.settings/metabot-model-selection)
+        ai-proxy?  (llm.provider/managed-model-ref? (:model-ref selection))
+        _          (metabot.usage/check-metabase-managed-free-limit! (:model-ref selection))
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; reject before `start-turn!` persists anything or the title job calls the LLM
         _          (when-not (profiles/profile-registered? (keyword profile-id))
@@ -321,9 +328,11 @@
                   turn     (try
                              (if (= action :retry)
                                (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id
+                                                                :ai-proxy? ai-proxy?
                                                                 :assistant-external-id assistant_message_id
                                                                 :delete-message-ids message-ids)
                                (metabot.persistence/start-turn! conversation_id profile-id message
+                                                                :ai-proxy? ai-proxy?
                                                                 :hostname hostname
                                                                 :pii-info pii-info
                                                                 :delete-message-ids message-ids
@@ -359,7 +368,8 @@
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id
         :user-external-id user-external-id
-        :title-job        title-job}))))
+        :title-job        title-job
+        :model-selection  selection}))))
 
 (defn- legacy->modern-query
   [query]

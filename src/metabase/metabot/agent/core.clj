@@ -469,12 +469,14 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
+  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id model-selection]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
         ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
-        profile      (or (profiles/get-profile profile-id)
+        profile      (or (if model-selection
+                           (profiles/get-profile profile-id model-selection)
+                           (profiles/get-profile profile-id))
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
         base-tools   (profiles/profile->tools profile capabilities)
@@ -521,8 +523,18 @@
   [message]
   {:type :text, :id (str (random-uuid)), :text message})
 
-(defn- error-part [^Exception e]
-  {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
+(defn- error-part
+  "The `:error` part a turn ends on when `e` escaped the LLM call.
+
+  An exception the provider adapters tagged `:api-error` carries a message written for a person
+  (see `rethrow-api-error!`) and gets an `:error-code` so the client can tell \"the provider turned
+  us down\" — worth showing, and worth retrying now that the failure is recorded and a retry would
+  resolve to the fallback — from an internal failure it can only report generically."
+  [^Exception e]
+  (let [data (ex-data e)]
+    {:type  :error
+     :error (cond-> {:message (.getMessage e), :type (str (type e)), :data data}
+              (:api-error data) (assoc :error-code "provider_error"))}))
 
 (defn- accumulate-usage-xf
   "Transducer that merges each `:usage` part into the cumulative usage atom
@@ -546,88 +558,110 @@
                                (get model)))
              part)))))
 
+(defn- model-fallback-part
+  "The part that tells the user this turn is not running on the model the instance is configured for, because that
+  provider is failing. Emitted once per turn, before the first request, so the switch is visible in the
+  conversation rather than something they have to notice in the admin settings."
+  [fallback]
+  {:type :data, :data-type "model_fallback", :version 1, :data fallback})
+
+(defn- announce-model-fallback
+  [{:keys [profile]} rf result iteration]
+  (if-let [fallback (and (= iteration 1) (:model-fallback profile))]
+    (rf result (model-fallback-part fallback))
+    result))
+
+(defn- loop-step*
+  "The body of [[loop-step]], entered with the fallback notice already written and `result` known unreduced."
+  [{:keys [agent rf iteration usage-atom] :as loop-state} result]
+  (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+        max-iter           (:max-iterations profile 15)
+        terminal-tools     (set (:terminal-tools profile))
+        tracking-opts      (assoc tracking-opts :iteration iteration)
+        memory             @memory-atom
+        parts-atom         (atom [])
+        link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+        xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
+                                 (u/tee-xf parts-atom))
+        ;; We use `reduce` instead of `transduce` because rf is the outer reducing
+        ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
+        ;; arity emits a finish message — that must only fire once, at the end of the
+        ;; entire agent loop, not after every iteration.
+        ;; `call-llm` runs inside the eval span so the request attrs it records attach here.
+        result'            (ait/with-llm-call {:ai/iteration iteration
+                                               :ai/model     (:model profile)}
+                             (let [llm-call       (call-llm memory context profile tools iteration
+                                                            tracking-opts link-registry-atom)
+                                   reduced-result (reduce (xf rf) result llm-call)]
+                               (when (ait/capture-active?)
+                                 (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
+                                               :ai/tool-io     (summarize-tool-ios @parts-atom)
+                                               ;; preserve data parts (e.g. generated_entity) emitted this iteration
+                                               :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
+                               reduced-result))
+        parts              @parts-atom]
+    ;; Sync link registry back to memory after streaming completes
+    (swap! memory-atom memory/set-link-registry @link-registry-atom)
+    ;; Capture response for debug log
+    (when *debug-log*
+      (debug-log! {:iteration iteration
+                   :phase     :response
+                   :text      (collect-text-from-parts parts)
+                   :tools     (summarize-tool-ios parts)
+                   :all-parts parts}))
+    (log/debug "Iteration" {:n iteration :parts-count (count parts)})
+    (if (empty? parts)
+      ;; LLM returned nothing this iteration — a natural stop, surfaced for the turn span.
+      (assoc loop-state :status :done :finish-reason :empty-response
+             :result (rf result (final-state-part @memory-atom)))
+      (do
+        (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
+        (swap! memory-atom update-memory parts)
+        ;; these profiles cannot answer in text, so a denial would otherwise loop to max-iterations
+        (let [terminal-error (when (:required-tool-call? profile)
+                               (terminal-error-message parts))]
+          (cond
+            (reduced? result')
+            ;; consumer signalled early termination (e.g. client disconnect / cancellation)
+            (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+
+            terminal-error
+            (let [result'' (rf result' (terminal-error-text-part terminal-error))]
+              (if (reduced? result'')
+                (assoc loop-state :status :reduced :finish-reason :reduced :result @result'')
+                (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
+                    (assoc loop-state
+                           :status :done
+                           :finish-reason :terminal-error
+                           :result (rf result'' (final-state-part @memory-atom))))))
+
+            (should-continue? iteration max-iter terminal-tools parts)
+            (assoc loop-state :result result' :iteration (inc iteration))
+
+            :else
+            (let [reason (finish-reason iteration max-iter terminal-tools parts)]
+              (if (= reason :length)
+                (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+                (log/info "Agent loop complete" {:iterations iteration :reason reason}))
+              (assoc loop-state
+                     :status :done
+                     ;; surfaced so run-agent-loop can record it on the turn span
+                     :finish-reason reason
+                     :result (rf result' (final-state-part @memory-atom))))))))))
+
 (defn- loop-step
   "Execute one iteration of the agent loop. Returns next loop state.
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom] :as loop-state}]
+  [{:keys [agent rf result iteration] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
-          max-iter           (:max-iterations profile 15)
-          terminal-tools     (set (:terminal-tools profile))
-          tracking-opts      (assoc tracking-opts :iteration iteration)
-          memory             @memory-atom
-          parts-atom         (atom [])
-          link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
-                                   (u/tee-xf parts-atom))
-          ;; We use `reduce` instead of `transduce` because rf is the outer reducing
-          ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
-          ;; arity emits a finish message — that must only fire once, at the end of the
-          ;; entire agent loop, not after every iteration.
-          ;; `call-llm` runs inside the eval span so the request attrs it records attach here.
-          result'            (ait/with-llm-call {:ai/iteration iteration
-                                                 :ai/model     (:model profile)}
-                               (let [llm-call       (call-llm memory context profile tools iteration
-                                                              tracking-opts link-registry-atom)
-                                     reduced-result (reduce (xf rf) result llm-call)]
-                                 (when (ait/capture-active?)
-                                   (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
-                                                 :ai/tool-io     (summarize-tool-ios @parts-atom)
-                                                 ;; preserve data parts (e.g. generated_entity) emitted this iteration
-                                                 :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
-                                 reduced-result))
-          parts              @parts-atom]
-      ;; Sync link registry back to memory after streaming completes
-      (swap! memory-atom memory/set-link-registry @link-registry-atom)
-      ;; Capture response for debug log
-      (when *debug-log*
-        (debug-log! {:iteration iteration
-                     :phase     :response
-                     :text      (collect-text-from-parts parts)
-                     :tools     (summarize-tool-ios parts)
-                     :all-parts parts}))
-      (log/debug "Iteration" {:n iteration :parts-count (count parts)})
-      (if (empty? parts)
-        ;; LLM returned nothing this iteration — a natural stop, surfaced for the turn span.
-        (assoc loop-state :status :done :finish-reason :empty-response
-               :result (rf result (final-state-part @memory-atom)))
-        (do
-          (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
-          (swap! memory-atom update-memory parts)
-          ;; these profiles cannot answer in text, so a denial would otherwise loop to max-iterations
-          (let [terminal-error (when (:required-tool-call? profile)
-                                 (terminal-error-message parts))]
-            (cond
-              (reduced? result')
-              ;; consumer signalled early termination (e.g. client disconnect / cancellation)
-              (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
-
-              terminal-error
-              (let [result'' (rf result' (terminal-error-text-part terminal-error))]
-                (if (reduced? result'')
-                  (assoc loop-state :status :reduced :finish-reason :reduced :result @result'')
-                  (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
-                      (assoc loop-state
-                             :status :done
-                             :finish-reason :terminal-error
-                             :result (rf result'' (final-state-part @memory-atom))))))
-
-              (should-continue? iteration max-iter terminal-tools parts)
-              (assoc loop-state :result result' :iteration (inc iteration))
-
-              :else
-              (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-                (if (= reason :length)
-                  (log/warn "Agent loop complete" {:iterations iteration :reason reason})
-                  (log/info "Agent loop complete" {:iterations iteration :reason reason}))
-                (assoc loop-state
-                       :status :done
-                       ;; surfaced so run-agent-loop can record it on the turn span
-                       :finish-reason reason
-                       :result (rf result' (final-state-part @memory-atom)))))))))))
+    (let [result (announce-model-fallback agent rf result iteration)]
+      (if (reduced? result)
+        ;; the consumer went away while the fallback notice was being written — stop before an LLM request starts
+        (assoc loop-state :status :reduced :finish-reason :reduced :result @result)
+        (loop-step* loop-state result)))))
 
 ;;; Public API
 
@@ -694,6 +728,18 @@
             [:eval-session-id {:optional true}
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
+            ;; the model the caller already resolved for this turn, so the loop runs what was checked and recorded
+            [:model-selection {:optional true}
+             [:maybe [:map {:closed true}
+                      [:model-ref :string]
+                      [:selected-model-ref {:optional true} [:maybe :string]]
+                      [:fallback {:optional true}
+                       [:maybe [:map {:closed true}
+                                [:model :string]
+                                [:model_name [:maybe :string]]
+                                [:provider_name [:maybe :string]]
+                                [:previous_model :string]
+                                [:previous_provider_name [:maybe :string]]]]]]]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities]
                                                  capabilities/enforce-permissions)

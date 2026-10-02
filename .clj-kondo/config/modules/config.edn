@@ -1580,6 +1580,7 @@
   {:team "Metabot"
    :ns-prefix "metabase.llm"
    :api #{metabase.llm.api
+          metabase.llm.health
           metabase.llm.init
           metabase.llm.provider
           metabase.llm.settings
