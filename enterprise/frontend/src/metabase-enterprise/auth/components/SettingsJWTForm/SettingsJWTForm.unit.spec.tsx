@@ -138,21 +138,24 @@ const setup = async ({
           },
         ] as const)
       : []),
-    ...(attributesConfigured
-      ? ([{ key: "jwt-attribute-email", value: "email-key" }] as const)
-      : []),
-    ...(attributesEnvConfigured
-      ? ([
-          {
-            key: "jwt-attribute-email",
-            is_env_setting: true,
-            env_name: "MB_JWT_ATTRIBUTE_EMAIL",
-          },
-        ] as const)
-      : []),
-    ...(tenantAttributeConfigured
-      ? ([{ key: "jwt-attribute-tenant", value: "tenant-key" }] as const)
-      : []),
+    // the admin list always names the backend default, next to a stored value or an env var if there is one
+    {
+      key: "jwt-attribute-email",
+      default: "email",
+      ...(attributesConfigured && { value: "email-key" }),
+      ...(attributesEnvConfigured && {
+        is_env_setting: true,
+        env_name: "MB_JWT_ATTRIBUTE_EMAIL",
+      }),
+    },
+    { key: "jwt-attribute-firstname", default: "first_name" },
+    { key: "jwt-attribute-lastname", default: "last_name" },
+    { key: "jwt-attribute-groups", default: "groups" },
+    {
+      key: "jwt-attribute-tenant",
+      default: "@tenant",
+      ...(tenantAttributeConfigured && { value: "tenant-key" }),
+    },
   ];
   // session properties carry the effective values, and the stateful store reflects live writes on refetch, admin list included
   const sessionSettings = createMockSettings({
@@ -165,6 +168,7 @@ const setup = async ({
     "jwt-user-provisioning-enabled?": userProvisioning ?? true,
     "jwt-group-sync": groupSync ?? false,
     "jwt-group-mappings": groupMappings ?? {},
+    ...(attributesEnvConfigured && { "jwt-attribute-email": "mail" }),
   });
   const settingsStore = setupStatefulSettingsEndpoints(sessionSettings);
   // the shared helper keeps the admin list static, so serve it here with whatever the store has changed since setup
@@ -356,6 +360,12 @@ describe("SettingsJWTForm", () => {
     expect(body).toEqual({
       "jwt-identity-provider-uri": ATTRS["jwt-identity-provider-uri"],
       "jwt-shared-secret": ATTRS["jwt-shared-secret"],
+      // the untouched attribute keys go along empty, which keeps the backend defaults
+      "jwt-attribute-email": null,
+      "jwt-attribute-firstname": null,
+      "jwt-attribute-lastname": null,
+      "jwt-attribute-groups": null,
+      "jwt-attribute-tenant": null,
       "jwt-enabled": true,
       "jwt-group-sync": true,
       "jwt-group-mappings": {},
@@ -492,6 +502,54 @@ describe("SettingsJWTForm", () => {
         name: /User attribute configuration/,
       }),
     ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("shows the backend defaults as placeholders in the attribute fields", async () => {
+    await setup({ configured: true, useTenants: true });
+    await expandUserAttributeSection();
+
+    const placeholders = [
+      ["Email attribute key", "email"],
+      ["First name attribute key", "first_name"],
+      ["Last name attribute key", "last_name"],
+      ["Group assignment attribute key", "groups"],
+      ["Tenant assignment attribute key", "@tenant"],
+    ];
+    placeholders.forEach(([label, placeholder]) => {
+      const input = screen.getByLabelText(label);
+      expect(input).toHaveValue("");
+      expect(input).toHaveAttribute("placeholder", placeholder);
+    });
+  });
+
+  it("shows the value an env var gives an attribute key, read-only", async () => {
+    await setup({ configured: true, attributesEnvConfigured: true });
+
+    const emailInput = screen.getByLabelText("Email attribute key");
+    expect(emailInput).toHaveValue("mail");
+    expect(emailInput).toHaveAttribute("readonly");
+    expect(
+      screen.getByText("Using MB_JWT_ATTRIBUTE_EMAIL"),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves an env-locked attribute key out of a save", async () => {
+    await setup({
+      jwtEnabled: true,
+      configured: true,
+      attributesEnvConfigured: true,
+    });
+
+    await userEvent.type(
+      screen.getByLabelText("First name attribute key"),
+      "given_name",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+    const [{ body }] = await findRequests("PUT");
+    expect(body).toHaveProperty("jwt-attribute-firstname", "given_name");
+    expect(body).not.toHaveProperty("jwt-attribute-email");
   });
 
   it("keeps the user attribute section collapsed while the server settings are missing, even with env-set attributes", async () => {

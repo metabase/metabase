@@ -2,7 +2,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
+import {
+  getDefaultPlaceholder,
+  getExtraFormFieldProps,
+  getStoredFieldValue,
+} from "metabase/admin/settings/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
@@ -40,18 +44,13 @@ import type {
 import { JWTGroupMappingSection } from "./JWTGroupMappingSection";
 
 /**
- * Attribute-key fields show only a placeholder, no helper text.
+ * Attribute-key fields show the backend default as a placeholder, no helper text.
  * Env-locked fields swap the placeholder for the readOnly "Using MB_..." notice.
  */
-const getAttributeFieldProps = (
-  setting: SettingDefinition | undefined,
-  placeholder?: string,
-) => {
-  if (setting?.is_env_setting) {
-    return getExtraFormFieldProps(setting);
-  }
-  return { placeholder };
-};
+const getAttributeFieldProps = (setting: SettingDefinition | undefined) =>
+  setting?.is_env_setting
+    ? getExtraFormFieldProps(setting)
+    : { placeholder: getDefaultPlaceholder(setting) };
 
 // the other cards unlock on a saved key, so a URI cannot be saved without one
 function getJwtFormSchema({
@@ -81,6 +80,17 @@ export type JWTFormValues = Pick<
   | "jwt-attribute-groups"
   | "jwt-attribute-tenant"
 >;
+
+type JWTTextKey = Exclude<keyof JWTFormValues, "jwt-shared-secret">;
+
+const JWT_TEXT_KEYS = [
+  "jwt-identity-provider-uri",
+  "jwt-attribute-email",
+  "jwt-attribute-firstname",
+  "jwt-attribute-lastname",
+  "jwt-attribute-groups",
+  "jwt-attribute-tenant",
+] satisfies JWTTextKey[];
 
 export const SettingsJWTForm = () => {
   const {
@@ -117,7 +127,14 @@ export const SettingsJWTForm = () => {
 
   const saveSettings = async (values: JWTFormValues) => {
     const { "jwt-shared-secret": jwtSecret, ...rest } = values;
-    const settingsToUpdate: Partial<EnterpriseSettings> = { ...rest };
+    // an env var owns these keys, so a save must not write a copy behind it
+    const envLockedKeys = JWT_TEXT_KEYS.filter(
+      (key) => settingDetails?.[key]?.is_env_setting,
+    );
+    const settingsToUpdate: Partial<EnterpriseSettings> = _.omit(
+      rest,
+      envLockedKeys,
+    );
 
     // jwt-shared-secret may be initialized with the obfuscated value from /api/setting.
     // Only send it to the backend if it's a newly generated plaintext value.
@@ -179,7 +196,7 @@ export const SettingsJWTForm = () => {
   return (
     <SettingsPageWrapper title={t`JWT`}>
       <FormProvider
-        initialValues={getFormValues(settingDetails)}
+        initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={saveSettings}
         validationSchema={validationSchema}
         enableReinitialize
@@ -230,7 +247,6 @@ export const SettingsJWTForm = () => {
                     label={t`Email attribute key`}
                     {...getAttributeFieldProps(
                       settingDetails?.["jwt-attribute-email"],
-                      "email-key",
                     )}
                   />
                   <FormTextInput
@@ -238,7 +254,6 @@ export const SettingsJWTForm = () => {
                     label={t`First name attribute key`}
                     {...getAttributeFieldProps(
                       settingDetails?.["jwt-attribute-firstname"],
-                      "first-name-key",
                     )}
                   />
                   <FormTextInput
@@ -246,7 +261,6 @@ export const SettingsJWTForm = () => {
                     label={t`Last name attribute key`}
                     {...getAttributeFieldProps(
                       settingDetails?.["jwt-attribute-lastname"],
-                      "last-name-key",
                     )}
                   />
                   <FormTextInput
@@ -254,7 +268,6 @@ export const SettingsJWTForm = () => {
                     label={t`Group assignment attribute key`}
                     {...getAttributeFieldProps(
                       settingDetails?.["jwt-attribute-groups"],
-                      "group-assignment-key",
                     )}
                   />
                   {usingTenants && (
@@ -301,18 +314,23 @@ export const SettingsJWTForm = () => {
   );
 };
 
-const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
-  const jwtSettings = _.pick(settingDetails, [
-    "jwt-identity-provider-uri",
-    "jwt-shared-secret",
-    "jwt-attribute-email",
-    "jwt-attribute-firstname",
-    "jwt-attribute-lastname",
-    "jwt-attribute-groups",
-    "jwt-attribute-tenant",
-  ]);
-  // mapObject widens the picked setting values (and casts undefined to null)
-  return _.mapObject(jwtSettings, (val) => val?.value ?? null) as JWTFormValues;
+const getFormValues = (
+  settingDetails: SettingDefinitionMap,
+  settingValues: EnterpriseSettings,
+): JWTFormValues => {
+  const storedValue = (key: JWTTextKey): string | null =>
+    getStoredFieldValue(settingDetails[key], settingValues[key]);
+
+  return {
+    "jwt-identity-provider-uri": storedValue("jwt-identity-provider-uri"),
+    // sensitive, so only the admin settings list carries it, obfuscated
+    "jwt-shared-secret": settingDetails["jwt-shared-secret"]?.value ?? null,
+    "jwt-attribute-email": storedValue("jwt-attribute-email"),
+    "jwt-attribute-firstname": storedValue("jwt-attribute-firstname"),
+    "jwt-attribute-lastname": storedValue("jwt-attribute-lastname"),
+    "jwt-attribute-groups": storedValue("jwt-attribute-groups"),
+    "jwt-attribute-tenant": storedValue("jwt-attribute-tenant"),
+  };
 };
 
 const isObfuscatedValue = (value: string | null | undefined): boolean =>
