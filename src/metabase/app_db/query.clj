@@ -24,6 +24,7 @@
    [honey.sql :as sql]
    [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
+   [metabase.app-db.value-guard :as value-guard]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -215,7 +216,8 @@
    In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   [model select-map insert-fn]
-  (let [select-kvs (mapcat identity select-map)
+  ;; Only the lookup is marked: `select-map` itself is merged into the inserted row, where a marker would be stored.
+  (let [select-kvs (value-guard/mark-condition-values (mapcat identity select-map))
         insert-fn  #(let [instance (insert-fn)]
                       ;; the inserted values must be consistent with the select query
                       (assert (not (u/conflicting-keys? select-map instance))
@@ -253,8 +255,9 @@
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   [model select-map & [update-fn]]
   (let [update-fn  (or update-fn (constantly select-map))
-        select-kvs (mapcat identity select-map)
-        pks        (mapv keyword (t2/primary-keys model))
+        ;; Only the lookup is marked: `select-map` itself is merged into the written row.
+        select-kvs (value-guard/mark-condition-values (mapcat identity select-map))
+        pks       (mapv keyword (t2/primary-keys model))
         ;; The "pk" used to address an update and as the return value: a scalar for a single-column key
         ;; (unchanged), a `[v1 v2 ...]` vector for a compound key — matching what `insert-returning-pk!`
         ;; returns and what `t2/update!` accepts for a composite key.

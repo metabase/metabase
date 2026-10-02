@@ -2,6 +2,7 @@
   "Application database queries for the API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -16,30 +17,38 @@
 (mu/defn entity-exists?
   "Whether a row of `entity` matching the key-value `conditions` exists."
   [entity :- :keyword & conditions :- [:* [:maybe ::condition-value]]]
-  (apply t2/exists? entity conditions))
+  (apply t2/exists? entity (mdb/mark-condition-values conditions)))
 
 (mu/defn entity-by-id
   "The `entity` row with `id` also matching the key-value `conditions`, or nil."
   [entity :- :keyword id :- [:maybe [:or ms/PositiveInt :string]] & conditions :- [:* [:maybe ::condition-value]]]
-  (apply t2/select-one entity :id id conditions))
+  (apply t2/select-one entity (mdb/mark-condition-values (list* :id id conditions))))
+
+(defn- shifted-position
+  "The SQL expression for `collection_position` plus or minus one."
+  [plus-or-minus]
+  ;; The operator becomes SQL syntax, so pick it from literals rather than passing it through.
+  (case plus-or-minus
+    :+ [:+ :collection_position 1]
+    :- [:- :collection_position 1]))
 
 (defn- shift-positions-after!
   [entity collection-id position plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:> position]}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+  (t2/update! entity {:collection_id       (some-> collection-id long)
+                      :collection_position [:> (long position)]}
+              {:collection_position (shifted-position plus-or-minus)}))
 
 (defn- shift-positions-from!
   [entity collection-id position plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:>= position]}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+  (t2/update! entity {:collection_id       (some-> collection-id long)
+                      :collection_position [:>= (long position)]}
+              {:collection_position (shifted-position plus-or-minus)}))
 
 (defn- shift-positions-between!
   [entity collection-id lower upper plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:between lower upper]}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+  (t2/update! entity {:collection_id       (some-> collection-id long)
+                      :collection_position [:between (long lower) (long upper)]}
+              {:collection_position (shifted-position plus-or-minus)}))
 
 (mu/defn shift-card-positions-after!
   "Add or subtract (`plus-or-minus`) one from the collection position of the Cards in the Collection with

@@ -98,10 +98,12 @@
                      (case db-type
                        (:h2 :postgres) pattern
                        [::h2x/collate pattern "utf8mb4_unicode_ci"]))
+        ;; marks the finished pattern, after `wrap` has added wildcards, so the whole pattern is one bound value
+        bound      (fn [pattern] [:auto/param pattern])
         like       (fn [field wrap]
                      [(case db-type (:h2 :postgres) :ilike :like)
                       field
-                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
+                      (h2x/like-pattern term (comp ci-pattern bound wrap glob))])
         where      (cond-> [:and (if include-transform-targets?
                                    [:or [:= :active true] [:= :transform_target true]]
                                    [:= :active true])]
@@ -110,11 +112,11 @@
                                                     (like :display_name identity)
                                                     ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
                                                     (like :display_name #(str "% " %))])
-                     visibility-type         (conj [:= :visibility_type visibility-type])
-                     data-layer              (conj [:= :data_layer      (name data-layer)])
-                     data-source             (conj [:= :data_source     (name data-source)])
-                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
-                     owner-email             (conj [:= :owner_email     owner-email])
+                     visibility-type         (conj [:= :visibility_type [:auto/param visibility-type]])
+                     data-layer              (conj [:= :data_layer      [:auto/param (name data-layer)]])
+                     data-source             (conj [:= :data_source     [:auto/param (name data-source)]])
+                     owner-user-id           (conj [:= :owner_user_id   (long owner-user-id)])
+                     owner-email             (conj [:= :owner_email     [:auto/param owner-email]])
                      orphan-only?            (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
                      published-only?         (conj [:= :is_published true])
                      check-unused?

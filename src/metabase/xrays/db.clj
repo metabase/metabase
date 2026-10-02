@@ -267,8 +267,8 @@
   [card-ids                :- [:maybe [:sequential ::lib.schema.id/card]]
    excluded-dashboard-ids  :- [:maybe [:sequential ::lib.schema.id/dashboard]]]
   (apply t2/select [:model/DashboardCard :card_id :dashboard_id]
-         (concat (when (seq card-ids) [:card_id [:in card-ids]])
-                 (when (seq excluded-dashboard-ids) [:dashboard_id [:not-in excluded-dashboard-ids]]))))
+         (concat (when (seq card-ids) [:card_id [:in (mapv long card-ids)]])
+                 (when (seq excluded-dashboard-ids) [:dashboard_id [:not-in (mapv long excluded-dashboard-ids)]]))))
 
 (mu/defn model-index
   "The ModelIndex with `model-index-id`, or nil."
