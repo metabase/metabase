@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       base:
-        description: Branch to compare against, to test only what changed. Empty runs the full suite.
+        description: Branch to compare against, to test only what changed. Ignored on master and release branches.
         type: string
         default: ""
 
@@ -31,7 +31,8 @@ jobs:
   # once it reaches the bottom of the stack.
   #
   # A run started by hand runs everything, unless it passes `base` to test only
-  # what changed against that branch.
+  # what changed against that branch. Master and release branches always run
+  # everything, so they ignore `base`.
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -42,9 +43,15 @@ jobs:
       # Every job that uses `base` needs this one, so a bad value fails the run before git sees it.
       - name: Check the base branch name
         if: inputs.base != ''
-        run: git check-ref-format --branch "$BASE" > /dev/null
+        run: |
+          git check-ref-format --branch "$BASE" > /dev/null
+          if [ "$BASE" = "$BRANCH" ]; then
+            echo "::error::base must differ from the branch being run, or nothing counts as changed."
+            exit 1
+          fi
         env:
           BASE: ${{ inputs.base }}
+          BRANCH: ${{ github.ref_name }}
       - name: Decide
         id: decide
         # Precedence matters for the conditions below.
