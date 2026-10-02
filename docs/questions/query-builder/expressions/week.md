@@ -29,11 +29,11 @@ When you group by Week of year in the query builder, Metabase finds the first we
 
 Weeks start on the first day of the week set in [localization settings](../../../configuring-metabase/localization.md), which is Sunday by default. For example, if weeks start on Sunday, week 1 begins on the first Sunday of the year. If weeks start on Monday, week 1 begins on the first Monday of the year.
 
-Filters on Week of year use the same numbering, so a filter's name matches the week that the grouping returns.
+Filters on Week of year use the same numbering, so a filter's name matches the week that the grouping returns. Druid is an exception: it numbers weeks of the year with its own rules.
 
 ### Using a different first week of the year
 
-In the `week` custom expression, the `"Instance"` mode uses the same first day of the week as the Week of year grouping, but it counts the week that contains January 1 as week 1, so the two can disagree for days near the start of the year.
+In the `week` custom expression, the `"Instance"` mode uses the same first day of the week as the Week of year grouping, but it counts the week that contains January 1 as week 1. When January 1 falls in the middle of a week, the `"Instance"` mode numbers every later week of that year one higher than the Week of year grouping.
 
 The `week` custom expression provides three alternative algorithms for computing first week of the year. To use an alternative algorithm for summarizing, you can create a custom column that extracts the week number from a date column using the `week` expression, then group by that custom column.
 
