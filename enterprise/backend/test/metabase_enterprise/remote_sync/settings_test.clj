@@ -257,6 +257,7 @@
     ;; the new token. A file:// remote checks no credentials, so the remote command seam rejects any other token.
     (mt/with-temp-dir [remote-dir nil]
       (let [url                 (test-helpers/init-local-git-remote! remote-dir)
+            ^File clone-dir     (#'git/repo-path {:remote-url url})
             good-token          "good-token"
             call-remote-command (mt/original-fn #'git/call-remote-command)]
         (mt/with-dynamic-fn-redefs [git/call-remote-command (fn [command {:keys [token] :as args}]
@@ -264,7 +265,7 @@
                                                                 (throw (ex-info "Authentication failed" {:token token})))
                                                               (call-remote-command command args))]
           (git/git-source url "master" good-token nil)
-          (is (contains? @@#'git/jgit (.getPath ^File (#'git/repo-path {:remote-url url})))
+          (is (contains? @@#'git/jgit (.getPath clone-dir))
               "Precondition: this process holds a clone of the URL")
           (mt/with-temporary-setting-values [:remote-sync-url    nil
                                              :remote-sync-token  nil
@@ -276,4 +277,7 @@
                                                                                :remote-sync-type   :read-write
                                                                                :remote-sync-branch ""})))
             (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
-            (is (nil? (settings/remote-sync-token)) "The rejected token is not saved")))))))
+            (is (nil? (settings/remote-sync-token)) "The rejected token is not saved")))
+        (testing "the test leaves no clone directory and no cached Git instance for the URL"
+          (is (not (.exists clone-dir)))
+          (is (not (contains? @@#'git/jgit (.getPath clone-dir)))))))))
