@@ -3,15 +3,16 @@
    [clj-kondo.hooks-api :as hooks]))
 
 (defn- ns-analysis
-  "Like `hooks/ns-analysis`, but nil when kondo can't read the namespace's cache entry."
+  "Like `hooks/ns-analysis`, but nil when kondo has no readable cache entry for the namespace."
   [ns-sym]
-  ;; kondo throws on the cache of a cljc namespace with `:deprecated` metadata, e.g. `metabase.legacy-mbql.util`.
+  ;; kondo returns `{}` on a cache miss, and throws on the cache of a cljc namespace with `:deprecated` metadata, e.g.
+  ;; `metabase.legacy-mbql.util`.
   (try
-    (hooks/ns-analysis ns-sym)
+    (not-empty (hooks/ns-analysis ns-sym))
     (catch Exception _ nil)))
 
 (defn- defn-arity?
-  "Look up `var-sym` in `analysis` (the result of `hooks/ns-analysis`, keyed by language)
+  "Look up `var-sym` in the `:clj` side of `analysis` (the result of `hooks/ns-analysis`, keyed by language)
    and return true iff kondo recorded a non-empty arity for it. clj-kondo only emits
    arities for `defn`-style fns — `defmulti` and plain `def` have neither `:fixed-arities`
    nor `:varargs-min-arity`, so the presence of either is a clean, dynamic signal that
@@ -23,21 +24,23 @@
    verifies the \"arities iff `defn`\" invariant against a real `clj-kondo` run — if a
    future kondo release starts emitting arities for `defmulti` it will fail there
    rather than silently producing wrong nudges."
-  [analysis var-sym]
-  (boolean
-   (or (some (fn [lang-vars]
-               (when-let [v (get lang-vars var-sym)]
-                 (or (seq (:fixed-arities v))
-                     (:varargs-min-arity v))))
-             (vals analysis))
-       ;; `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports from.
-       ;; Any of them could be the one the var was imported from, so all must be readable, and all that define
-       ;; the name must be defns.
-       (let [analyses (map ns-analysis (mapcat :proxied-namespaces (vals analysis)))
-             sources  (filter #(some (fn [lang-vars] (contains? lang-vars var-sym)) (vals %)) analyses)]
-         (and (every? some? analyses)
-              (seq sources)
-              (every? #(defn-arity? % var-sym) sources))))))
+  ([analysis var-sym]
+   (defn-arity? analysis var-sym #{}))
+  ([analysis var-sym seen]
+   (boolean
+    (or (when-let [v (get-in analysis [:clj var-sym])]
+          (or (seq (:fixed-arities v))
+              (:varargs-min-arity v)))
+        ;; `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports from.
+        ;; Any of them could be the one the var was imported from, so all must be readable, and all that define
+        ;; the name must be defns.
+        (let [proxied  (remove seen (get-in analysis [:clj :proxied-namespaces]))
+              seen     (into seen proxied)
+              analyses (map ns-analysis proxied)
+              sources  (filter #(contains? (:clj %) var-sym) analyses)]
+          (and (every? some? analyses)
+               (seq sources)
+               (every? #(defn-arity? % var-sym seen) sources)))))))
 
 (defn- safely-nudgeable-lhs?
   "Is this LHS a regular function (defn) according to kondo's analysis?
@@ -59,7 +62,7 @@
        (let [resolved (hooks/resolve {:name (hooks/sexpr lhs)})
              ns-sym   (:ns resolved)]
          (and (symbol? ns-sym) ; not :clj-kondo/unknown-namespace
-              (defn-arity? (hooks/ns-analysis ns-sym) (:name resolved))))))
+              (defn-arity? (ns-analysis ns-sym) (:name resolved))))))
 
 (defn lint-with-redefs
   "Suggest `with-dynamic-fn-redefs` when every LHS is known to be a `defn`-style var.
@@ -72,9 +75,10 @@
 
    The LHS check uses kondo's own analysis cache rather than a hand-maintained list of
    multimethod names — adding a new `defmulti` doesn't require touching this hook."
-  [{:keys [node]}]
+  [{:keys [node lang]}]
   (let [[_with-redefs bindings-vec] (:children node)]
-    (when (hooks/vector-node? bindings-vec)
+    ;; `with-dynamic-fn-redefs` is clj-only, so a var only counts as a defn by its clj definition.
+    (when (and (= :clj lang) (hooks/vector-node? bindings-vec))
       (let [pairs (partition-all 2 (:children bindings-vec))]
         (when (and (seq pairs)
                    (every? (fn [[lhs rhs]]
