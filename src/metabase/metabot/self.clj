@@ -613,8 +613,8 @@
 
               :else
               (if-let [output (structured-output-in-text parts json-schema)]
-                (do (log/debug "LLM answered in text instead of calling the structured-output tool"
-                               {:provider provider :model model :tag (:tag opts)})
+                (do (log/info "LLM answered in text instead of calling the structured-output tool"
+                              {:provider provider :model model :tag (:tag opts)})
                     {:result output :parts parts})
                 (throw (ex-info "LLM returned no tool call in structured response"
                                 {:parts parts}))))))))))
