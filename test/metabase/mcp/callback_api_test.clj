@@ -1,6 +1,8 @@
 (ns metabase.mcp.callback-api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api-routes.routes :as api-routes]
+   [metabase.api.open-api :as open-api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.session :as mcp.session]
@@ -41,6 +43,10 @@
     {:user-id    (mt/user->id :rasta)
      :session-id owner-session
      :credential (mcp.session/issue-ui-credential owner-session (mt/user->id :rasta) ui.tu/query-scopes)}))
+
+(deftest iframe-routes-do-not-break-the-api-docs-test
+  (testing "the iframe routes are plain Ring handlers, and the /api OpenAPI spec still generates around them"
+    (is (contains? (:paths (open-api/open-api-spec (var-get #'api-routes/routes) "/api")) "/api/dataset"))))
 
 (deftest drills-post-stores-handle-test
   (testing "POST returns a UUID handle"

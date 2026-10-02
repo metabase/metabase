@@ -11,6 +11,7 @@
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
+   [metabase.api.open-api :as open-api]
    [metabase.api.response :as api.response]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -381,4 +382,6 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "Iframe routes mounted at `/api/embed-mcp`. MCP-feature gated; each route authenticates the UI credential itself."
-  (mcp.validation/+mcp-enabled handler))
+  (mcp.validation/+mcp-enabled
+   ;; Iframe-only routes, so they stay out of the published API docs.
+   (open-api/handler-with-open-api-spec handler (constantly nil))))
