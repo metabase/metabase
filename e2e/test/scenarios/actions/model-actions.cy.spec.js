@@ -246,7 +246,10 @@ describe(
       cy.reload();
 
       // Check can pick between all databases
-      cy.findByRole("dialog").findByText("QA Postgres12").click();
+      cy.findByRole("dialog")
+        .findByTestId("gui-builder-data")
+        .findByText("QA Postgres12")
+        .click();
       H.popover().within(() => {
         cy.findByText("Sample Database").should("be.visible");
         cy.findByText("QA Postgres12").should("be.visible");
@@ -259,9 +262,11 @@ describe(
 
       // Check can only see the action database
       cy.findByRole("dialog").within(() => {
-        cy.findByText("QA Postgres12").click();
-
-        cy.findByText("Sample Database").should("not.exist");
+        cy.findByTestId("selected-database").should(
+          "have.text",
+          "QA Postgres12",
+        );
+        cy.findByTestId("gui-builder-data").should("not.exist");
       });
     });
   },
