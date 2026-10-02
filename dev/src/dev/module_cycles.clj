@@ -68,7 +68,7 @@
    (validate-anchors (read-form path))))
 
 ;;;; =============================================================================
-;;;; Naming clusters
+;;;; Finding problems
 ;;;; =============================================================================
 
 (defn- degree
@@ -90,14 +90,14 @@
       {:name   (symbol (first (remove (comp (set taken) symbol) names)))
        :anchor anchor})))
 
-(defn- module-list
-  "The sorted `modules` on one line, cut off after eight."
-  [modules]
-  (let [sorted (sort modules)
-        shown  (take 8 sorted)]
-    (str (str/join ", " shown)
-         (when (< (count shown) (count sorted))
-           (format " (and %d more)" (- (count sorted) (count shown)))))))
+(defn- proposals
+  "Map each of the `unnamed` clusters to its [[propose]] result, no two placeholders sharing a name."
+  [graph modules anchors unnamed]
+  (first (reduce (fn [[acc taken] cluster]
+                   (let [p (propose graph modules cluster taken)]
+                     [(assoc acc cluster p) (cond-> taken p (conj (:name p)))]))
+                 [{} (set (keys anchors))]
+                 unnamed)))
 
 (defn- shortest-path
   "The shortest chain of requires from `from` to `to` that stays inside `cluster`, as a vector of modules."
@@ -111,62 +111,12 @@
           (recur (into (pop frontier) (map #(conj path %)) nexts)
                  (into seen nexts)))))))
 
-(defn- merge-message
-  "The failure for the named clusters that merged into `cluster`, given as `[name anchor]` pairs sorted by name."
-  [graph cluster named]
-  (let [[[name-a anchor-a] & others] named
-        chain #(str/join " -> " (shortest-path graph cluster %1 %2))]
-    (str/join
-     "\n"
-     (concat
-      [(format "%s merged into one cycle of %d modules." (str/join " and " (map first named)) (count cluster))
-       (str "  This undoes the work that kept them apart, and the merged tangle is hard to cut apart again."
-            " Please find another way.")]
-      (mapcat (fn [[name-b anchor-b]]
-                [(format "  %s reaches %s through %s" name-a name-b (chain anchor-a anchor-b))
-                 (format "  %s reaches %s through %s" name-b name-a (chain anchor-b anchor-a))])
-              others)
-      [(str "  The require that joined them is most likely on one of these chains, probably one your change added."
-            " Cut it, for example by moving the code that needs it, or by inverting the dependency with an event or"
-            " a multimethod.")
-       (str "  If instead only an anchor moved, and the cluster it left is still a cycle, anchor that name on a module"
-            " still in it.")
-       (str "  Only if there is truly no way around it: remove all but one of the names from "
-            clusters-file " and explain why in the PR.")]))))
-
 (defn- requires-within
-  "The requires between members of `cluster` as `from -> to` lines, or nil for a cluster of more than ten modules."
+  "The requires between members of `cluster`, as sorted `[from to]` pairs."
   [graph cluster]
-  (when (<= (count cluster) 10)
-    (for [from (sort cluster)
-          to   (sort (filter cluster (get graph from)))]
-      (str "    " from " -> " to))))
-
-(defn- unnamed-message [graph cluster proposal]
-  (str/join
-   "\n"
-   (concat
-    [(format "A cluster without a name: %d modules, %s." (count cluster) (module-list cluster))]
-    (when-let [lines (seq (requires-within graph cluster))]
-      (cons "  It is a cycle through these requires:" lines))
-    [(str "  If your change split a cluster in two, that is a real improvement: thank you."
-          " You get to name the new one.")
-     (str "  Names follow a space theme, with some link to what the cluster does. For ideas, ask your agent to use"
-          " the name-module-cycle skill in .claude/skills/name-module-cycle.")
-     (if-let [{:keys [name anchor]} proposal]
-       (format "  Then add a line like `%s %s` to %s. Any declared member can be the anchor." name anchor
-               clusters-file)
-       (str "  None of its modules is declared in .clj-kondo/config/modules/config.edn yet. Add an entry with a :team"
-            " for each, run `./bin/mage fix-modules-config` to fill in the rest, then anchor the name on one of them."))
-     "  If this is a brand new cycle instead, break it rather than naming it."])))
-
-(defn- dissolved-message [cluster-name anchor]
-  (str/join
-   "\n"
-   [(format "%s is anchored on %s, which is no longer in any cycle." cluster-name anchor)
-    (str "  If the rest of the cluster is still a cycle, reported above without a name, keep the name and anchor it"
-         " on one of its modules instead.")
-    (format "  Otherwise the cycle is gone. Nice work. Remove its line from %s to retire the name." clusters-file)]))
+  (vec (for [from (sort cluster)
+             to   (sort (filter cluster (get graph from)))]
+         [from to])))
 
 (defn- names-in
   "A function of a cluster returning the `[name anchor]` pairs inside it, sorted by name.
@@ -181,45 +131,125 @@
                   :when cluster-name]
               [cluster-name module])))))
 
-(defn- proposals
-  "Map each of the `unnamed` clusters to its [[propose]] result, no two placeholders sharing a name."
-  [graph modules anchors unnamed]
-  (first (reduce (fn [[acc taken] cluster]
-                   (let [p (propose graph modules cluster taken)]
-                     [(assoc acc cluster p) (cond-> taken p (conj (:name p)))]))
-                 [{} (set (keys anchors))]
-                 unnamed)))
+(defn- merge-problem
+  "The `:merge` problem for `cluster`, which holds the `named` `[name anchor]` pairs."
+  [graph cluster named]
+  (let [[[name-a anchor-a] & others] named]
+    {:type    :merge
+     :cluster cluster
+     :names   (mapv first named)
+     :chains  (vec (for [[name-b anchor-b] others
+                         [from to from-anchor to-anchor] [[name-a name-b anchor-a anchor-b]
+                                                          [name-b name-a anchor-b anchor-a]]]
+                     {:from from, :to to, :path (shortest-path graph cluster from-anchor to-anchor)}))}))
 
 (defn problems
-  "Failure messages for every way the cyclic clusters of `graph` disagree with the cluster names in `anchors`.
-  Empty when each cluster holds exactly one anchor, and each anchor is among `modules` and in a cluster."
+  "Every way the cyclic clusters of `graph` disagree with the cluster names in `anchors`, as maps keyed by `:type`.
+  Empty when each cluster holds exactly one anchor, and each anchor is among `modules` and in a cluster.
+
+  - `:merge`, two or more named clusters in one cycle: `:cluster`, `:names`, and `:chains` of `{:from :to :path}`
+    linking the first name's anchor to each other's, both ways
+  - `:unnamed`, a cluster with no name: `:cluster`, its `:requires` as `[from to]` pairs, and a [[propose]]
+    `:proposal`, nil when none of its modules is among `modules`
+  - `:anchor-left`, a name whose anchor is in no cycle: `:name`, `:anchor`
+  - `:undeclared-anchor`, a name anchored on a module not among `modules`: `:name`, `:anchor`"
   [graph modules anchors]
   (let [components   (deps-graph/cyclic-components graph)
         clusters     (map (juxt identity (names-in modules anchors)) components)
         in-any       (into #{} cat components)
         undeclared   (into #{} (remove modules) (vals anchors))
-        ;; A cluster holding an undeclared anchor already has a name waiting on it, so it gets only that message.
+        ;; A cluster holding an undeclared anchor already has a name waiting on it, so it gets only that problem.
         unnamed      (keep (fn [[cluster named]]
                              (when (and (empty? named) (not-any? undeclared cluster))
                                cluster))
                            clusters)
         placeholders (proposals graph modules anchors unnamed)]
-    (concat
-     (for [[cluster named] clusters
-           :when (< 1 (count named))]
-       (merge-message graph cluster named))
-     (for [cluster unnamed]
-       (unnamed-message graph cluster (placeholders cluster)))
-     (keep (fn [[cluster-name anchor]]
-             (cond
-               (not (modules anchor))
-               (format (str "%s is anchored on %s, which is not a declared module. Declare it in"
-                            " .clj-kondo/config/modules/config.edn, or anchor the name on a declared module in %s.")
-                       cluster-name anchor clusters-file)
+    (vec (concat
+          (for [[cluster named] clusters
+                :when (< 1 (count named))]
+            (merge-problem graph cluster named))
+          (for [cluster unnamed]
+            {:type     :unnamed
+             :cluster  cluster
+             :requires (requires-within graph cluster)
+             :proposal (placeholders cluster)})
+          (keep (fn [[cluster-name anchor]]
+                  (cond
+                    (not (modules anchor))  {:type :undeclared-anchor, :name cluster-name, :anchor anchor}
+                    (not (in-any anchor))   {:type :anchor-left, :name cluster-name, :anchor anchor}))
+                (sort-by key anchors))))))
 
-               (not (in-any anchor))
-               (dissolved-message cluster-name anchor)))
-           (sort-by key anchors)))))
+;;;; =============================================================================
+;;;; Messages
+;;;; =============================================================================
+
+(defn- module-list
+  "The sorted `modules` on one line, cut off after eight."
+  [modules]
+  (let [sorted (sort modules)
+        shown  (take 8 sorted)]
+    (str (str/join ", " shown)
+         (when (< (count shown) (count sorted))
+           (format " (and %d more)" (- (count sorted) (count shown)))))))
+
+(defn- requires-lines
+  "The `requires` as indented `from -> to` lines, or nil when there are more than ten."
+  [requires]
+  (when (<= (count requires) 10)
+    (for [[from to] requires]
+      (str "    " from " -> " to))))
+
+(defn- merge-lines [{:keys [cluster names chains]}]
+  (concat
+   [(format "%s merged into one cycle of %d modules." (str/join " and " names) (count cluster))
+    (str "  This undoes the work that kept them apart, and the merged tangle is hard to cut apart again."
+         " Please find another way.")]
+   (for [{:keys [from to path]} chains]
+     (format "  %s reaches %s through %s" from to (str/join " -> " path)))
+   [(str "  The require that joined them is most likely on one of these chains, probably one your change added."
+         " Cut it, for example by moving the code that needs it, or by inverting the dependency with an event or"
+         " a multimethod.")
+    (str "  If instead only an anchor moved, and the cluster it left is still a cycle, anchor that name on a module"
+         " still in it.")
+    (str "  Only if there is truly no way around it: remove all but one of the names from "
+         clusters-file " and explain why in the PR.")]))
+
+(defn- unnamed-lines [{:keys [cluster requires proposal]}]
+  (concat
+   [(format "A cluster without a name: %d modules, %s." (count cluster) (module-list cluster))]
+   (when-let [lines (seq (requires-lines requires))]
+     (cons "  It is a cycle through these requires:" lines))
+   [(str "  If your change split a cluster in two, that is a real improvement: thank you."
+         " You get to name the new one.")
+    (str "  Names follow a space theme, with some link to what the cluster does. For ideas, ask your agent to use"
+         " the name-module-cycle skill in .claude/skills/name-module-cycle.")
+    (if-let [{:keys [name anchor]} proposal]
+      (format "  Then add a line like `%s %s` to %s. Any declared member can be the anchor." name anchor
+              clusters-file)
+      (str "  None of its modules is declared in .clj-kondo/config/modules/config.edn yet. Add an entry with a :team"
+           " for each, run `./bin/mage fix-modules-config` to fill in the rest, then anchor the name on one of them."))
+    "  If this is a brand new cycle instead, break it rather than naming it."]))
+
+(defn- anchor-left-lines [{cluster-name :name, :keys [anchor]}]
+  [(format "%s is anchored on %s, which is no longer in any cycle." cluster-name anchor)
+   (str "  If the rest of the cluster is still a cycle, reported above without a name, keep the name and anchor it"
+        " on one of its modules instead.")
+   (format "  Otherwise the cycle is gone. Nice work. Remove its line from %s to retire the name." clusters-file)])
+
+(defn- undeclared-anchor-lines [{cluster-name :name, :keys [anchor]}]
+  [(format (str "%s is anchored on %s, which is not a declared module. Declare it in"
+                " .clj-kondo/config/modules/config.edn, or anchor the name on a declared module in %s.")
+           cluster-name anchor clusters-file)])
+
+(defn message
+  "The failure message for one of the [[problems]]."
+  [problem]
+  (str/join "\n" ((case (:type problem)
+                    :merge             merge-lines
+                    :unnamed           unnamed-lines
+                    :anchor-left       anchor-left-lines
+                    :undeclared-anchor undeclared-anchor-lines)
+                  problem)))
 
 ;;;; =============================================================================
 ;;;; The repository
@@ -235,10 +265,10 @@
      :anchors (read-anchors)}))
 
 (defn report
-  "The [[problems]] between the current tree's module require graph and [[clusters-file]]."
+  "The failure messages for the [[problems]] between the current tree's module require graph and [[clusters-file]]."
   []
   (let [{:keys [graph modules anchors]} (repository)]
-    (vec (problems graph modules anchors))))
+    (mapv message (problems graph modules anchors))))
 
 (defn print-clusters
   "Print every cyclic cluster of the module require graph with its name, anchor, teams and members, unnamed first.
@@ -260,7 +290,7 @@
                        (str/join ", " (sort (distinct (keep #(get-in config [% :team]) cluster))))))
       (doseq [module (sort cluster)]
         (println (str "  " module)))
-      (when-let [lines (and (empty? named) (seq (requires-within graph cluster)))]
+      (when-let [lines (and (empty? named) (seq (requires-lines (requires-within graph cluster))))]
         (println "  requires:")
         (run! println lines))
       (println))))

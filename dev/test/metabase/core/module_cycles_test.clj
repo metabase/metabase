@@ -18,112 +18,145 @@
 (def ^:private modules
   (set (keys graph)))
 
-(defn- headlines
-  "The first line of each of the [[module-cycles/problems]]."
-  [graph modules anchors]
-  (mapv (comp first str/split-lines) (module-cycles/problems graph modules anchors)))
+(def ^:private anchors
+  '{foundation app-db, galactic-center qp})
 
-(deftest ^:parallel one-anchor-per-cluster-passes-test
-  (is (empty? (module-cycles/problems graph modules '{foundation app-db, galactic-center qp}))))
+(defn- ring
+  "A graph in which `modules` require each other in a single loop."
+  [modules]
+  (zipmap modules (map hash-set (rest (cycle modules)))))
 
-(deftest ^:parallel growing-and-shrinking-pass-test
-  (let [modules (conj modules 'lib)
-        anchors '{foundation app-db, galactic-center qp}]
-    (testing "a named cluster can gain a module"
-      (is (empty? (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{'qp}) modules anchors))))
-    (testing "a named cluster can lose a module"
-      (is (empty? (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{}) modules anchors))))))
+(defn- lines [problem]
+  (str/split-lines (module-cycles/message problem)))
 
-(deftest ^:parallel a-merge-fails-and-shows-the-joining-requires-test
-  (let [merged (assoc graph 'settings #{'app-db 'qp})
-        [msg]  (module-cycles/problems merged modules '{foundation app-db, galactic-center qp})]
-    (is (=? [#"foundation and galactic-center merged into one cycle of 4 modules\."
-             #".*Please find another way\."
-             #"  foundation reaches galactic-center through app-db -> settings -> qp"
-             #"  galactic-center reaches foundation through qp -> sync -> settings -> app-db"
-             #"  The require that joined them .*"
-             #"  If instead only an anchor moved.*"
-             #".*remove all but one of the names.*"]
-            (str/split-lines msg)))))
+(deftest ^:parallel passing-structures-test
+  (testing "each cluster holding one anchor passes"
+    (is (= [] (module-cycles/problems graph modules anchors))))
+  (testing "a named cluster can gain a module"
+    (is (= [] (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{'qp}) (conj modules 'lib) anchors))))
+  (testing "a named cluster can lose a module"
+    (is (= [] (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{}) (conj modules 'lib) anchors)))))
 
-(deftest ^:parallel a-three-way-merge-shows-requires-to-every-named-cluster-test
-  (let [graph   (assoc graph 'settings #{'app-db 'qp}, 'lib #{'qp}, 'qp #{'sync 'lib})
-        anchors '{foundation app-db, galactic-center qp, tardis lib}
-        [msg]   (module-cycles/problems graph (conj modules 'lib) anchors)
-        reaches (filter #(str/includes? % " reaches ") (str/split-lines msg))]
-    (is (=? [#"  foundation reaches galactic-center .*"
-             #"  galactic-center reaches foundation .*"
-             #"  foundation reaches tardis .*"
-             #"  tardis reaches foundation .*"]
-            reaches))))
+(deftest ^:parallel merges-fail-test
+  (testing "a merge shows the requires linking the two anchors, both ways"
+    (is (=? [{:type   :merge
+              :names  '[foundation galactic-center]
+              :chains [{:from 'foundation, :to 'galactic-center, :path '[app-db settings qp]}
+                       {:from 'galactic-center, :to 'foundation, :path '[qp sync settings app-db]}]}]
+            (module-cycles/problems (assoc graph 'settings #{'app-db 'qp}) modules anchors))))
+  (testing "a three-way merge links the first name to each of the others"
+    (let [graph   (assoc graph 'settings #{'app-db 'qp}, 'lib #{'qp}, 'qp #{'sync 'lib})
+          anchors (assoc anchors 'tardis 'lib)
+          [merge] (module-cycles/problems graph (conj modules 'lib) anchors)]
+      (is (= '[[foundation galactic-center] [galactic-center foundation] [foundation tardis] [tardis foundation]]
+             (map (juxt :from :to) (:chains merge)))))))
 
-(deftest ^:parallel an-unnamed-cluster-fails-with-a-proposed-name-test
+(deftest ^:parallel unnamed-clusters-fail-test
   (testing "a tie for the most requires inside the cluster proposes the alphabetically first member"
-    (is (=? [#"A cluster without a name: 2 modules, qp, sync\."
-             #"  It is a cycle through these requires:"
-             #"    qp -> sync"
-             #"    sync -> qp"
-             #".*thank you\. You get to name the new one\."
-             #".*name-module-cycle skill.*"
-             #"  Then add a line like `qp-knot qp` to .*"
-             #".*break it rather than naming it\."]
-            (str/split-lines (first (module-cycles/problems graph modules '{foundation app-db}))))))
-  (testing "a proposal never reuses a taken name"
-    (is (=? [#".*`qp-knot-2 qp`.*"]
-            (filter #(str/includes? % "line like") (str/split-lines (first (module-cycles/problems
-                                                                            graph modules
-                                                                            '{foundation app-db, qp-knot lib})))))))
+    (is (= [{:type     :unnamed
+             :cluster  '#{qp sync}
+             :requires '[[qp sync] [sync qp]]
+             :proposal '{:name qp-knot, :anchor qp}}]
+           (module-cycles/problems graph modules '{foundation app-db}))))
+  (testing "a proposal avoids the names already taken"
+    (is (=? [{:type :unnamed, :proposal '{:name qp-knot-2}}
+             {:type :anchor-left, :name 'qp-knot}]
+            (module-cycles/problems graph (conj modules 'lib) '{foundation app-db, qp-knot lib}))))
+  (testing "two proposals never share a name"
+    (let [graph (merge (ring '[foo.bar x]) (ring '[foo-bar y]))]
+      (is (= '#{foo-bar-knot foo-bar-knot-2}
+             (set (map (comp :name :proposal) (module-cycles/problems graph (set (keys graph)) {})))))))
   (testing "dots and slashes in a module name become dashes"
     (is (= 'enterprise-transforms-python-knot
-           (:name (module-cycles/propose '{enterprise/transforms.python #{x}, x #{enterprise/transforms.python}}
+           (:name (module-cycles/propose (ring '[enterprise/transforms.python x])
                                          '#{enterprise/transforms.python x}
                                          '#{enterprise/transforms.python x}
-                                         #{}))))))
+                                         #{})))))
+  (testing "a proposal only anchors on a declared module"
+    (is (=? [{:type :unnamed, :proposal '{:anchor sync}}]
+            (module-cycles/problems graph (disj modules 'qp) '{foundation app-db}))))
+  (testing "a cycle of undeclared modules gets no proposal"
+    (is (=? [{:type :unnamed, :proposal nil}]
+            (module-cycles/problems graph (disj modules 'qp 'sync) '{foundation app-db})))))
 
-(deftest ^:parallel a-dissolved-cluster-fails-until-its-name-is-retired-test
-  (testing "a cycle that is gone asks for its name to be retired"
-    (is (= ["galactic-center is anchored on qp, which is no longer in any cycle."]
-           (headlines (assoc graph 'sync #{'settings}) modules '{foundation app-db, galactic-center qp}))))
-  (testing "an anchor that left a surviving cycle is reported with the cycle it left"
-    (let [graph (assoc graph 'qp #{} 'sync #{'lib} 'lib #{'sync})]
-      (is (=? [#"A cluster without a name: 2 modules, lib, sync\."
-               #"galactic-center is anchored on qp, which is no longer in any cycle\."]
-              (headlines graph (conj modules 'lib) '{foundation app-db, galactic-center qp}))))))
+(deftest ^:parallel anchors-leaving-every-cycle-test
+  (testing "a cycle that is gone leaves its anchor behind"
+    (is (= [{:type :anchor-left, :name 'galactic-center, :anchor 'qp}]
+           (module-cycles/problems (assoc graph 'sync #{'settings}) modules anchors))))
+  (testing "an anchor that left a surviving cycle is reported alongside the cycle it left"
+    (is (=? [{:type :unnamed, :cluster '#{lib sync}}
+             {:type :anchor-left, :anchor 'qp}]
+            (module-cycles/problems (assoc graph 'qp #{}, 'sync #{'lib}, 'lib #{'sync}) (conj modules 'lib) anchors)))))
 
-(deftest ^:parallel an-anchor-must-be-a-module-test
-  (is (=? [#"A cluster without a name.*"
-           #"galactic-center is anchored on query-processor, which is not a declared module\..*"]
-          (headlines graph modules '{foundation app-db, galactic-center query-processor})))
-  (testing "an undeclared anchor inside a cycle gets one message, to declare it or move the name"
-    (is (=? [#"galactic-center is anchored on qp, which is not a declared module\. Declare it .*"]
-            (headlines graph (disj modules 'qp) '{foundation app-db, galactic-center qp}))))
-  (testing "a proposal only anchors on a configured module"
-    (is (=? [#".*`sync-knot sync`.*"]
-            (filter #(str/includes? % "line like")
-                    (-> (module-cycles/problems graph (disj modules 'qp) '{foundation app-db})
-                        first
-                        str/split-lines)))))
-  (testing "a cycle of undeclared modules asks for them to be declared, not for an anchor"
-    (is (=? [#".*None of its modules is declared.*fix-modules-config.*"]
-            (filter #(str/includes? % "declared")
-                    (-> (module-cycles/problems graph (disj modules 'qp 'sync) '{foundation app-db})
-                        first
-                        str/split-lines))))))
+(deftest ^:parallel undeclared-anchors-test
+  (testing "an undeclared anchor outside every cycle leaves its cluster unnamed"
+    (is (=? [{:type :unnamed, :cluster '#{qp sync}}
+             {:type :undeclared-anchor, :name 'galactic-center, :anchor 'query-processor}]
+            (module-cycles/problems graph modules '{foundation app-db, galactic-center query-processor}))))
+  (testing "an undeclared anchor inside a cycle is the only problem for that cycle"
+    (is (= [{:type :undeclared-anchor, :name 'galactic-center, :anchor 'qp}]
+           (module-cycles/problems graph (disj modules 'qp) anchors)))))
 
-(deftest ^:parallel malformed-names-throw-test
-  (are [anchors msg] (thrown-with-msg? clojure.lang.ExceptionInfo msg (module-cycles/validate-anchors anchors))
-    '[foundation app-db]                  #"must hold a map"
-    '{:foundation app-db}                 #"not a cluster name"
-    '{foundation "app-db"}                #"must be anchored by a module symbol"
-    '{foundation app-db, other app-db}    #"app-db anchors more than one cluster: foundation, other"))
+(deftest ^:parallel names-file-test
+  (testing "malformed names throw"
+    (are [anchors msg] (thrown-with-msg? clojure.lang.ExceptionInfo msg (module-cycles/validate-anchors anchors))
+      '[foundation app-db]               #"must hold a map"
+      '{:foundation app-db}              #"not a cluster name"
+      '{foundation "app-db"}             #"must be anchored by a module symbol"
+      '{foundation app-db, other app-db} #"app-db anchors more than one cluster: foundation, other"))
+  (testing "a file must hold exactly one form"
+    (let [file (io/file (System/getProperty "java.io.tmpdir") (str "cycle-clusters-" (System/nanoTime) ".edn"))]
+      (try
+        (are [contents msg] (thrown-with-msg? clojure.lang.ExceptionInfo msg
+                                              (do (spit file contents)
+                                                  (module-cycles/read-anchors (.getPath file))))
+          ";; nothing\n"            #"is empty"
+          "{a app-db}\n{b qp}\n"    #"more than one form")
+        (finally
+          (io/delete-file file true)))))
+  (testing "a missing file throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is missing"
+                          (module-cycles/read-anchors "no/such/cycle-clusters.edn")))))
 
-(deftest ^:parallel an-empty-file-is-not-an-empty-map-test
-  (let [file (io/file (System/getProperty "java.io.tmpdir") (str "cycle-clusters-" (System/nanoTime) ".edn"))]
-    (try
-      (spit file ";; nothing\n")
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is empty" (module-cycles/read-anchors (.getPath file))))
-      (finally
-        (io/delete-file file true)))))
+(deftest ^:parallel messages-test
+  (testing "a merge names the clusters, shows the chains, and keeps removing a name as the last resort"
+    (let [msg (lines {:type    :merge
+                      :cluster '#{app-db qp settings sync}
+                      :names   '[foundation galactic-center]
+                      :chains  [{:from 'foundation, :to 'galactic-center, :path '[app-db settings qp]}]})]
+      (is (= "foundation and galactic-center merged into one cycle of 4 modules." (first msg)))
+      (is (some #{"  foundation reaches galactic-center through app-db -> settings -> qp"} msg))
+      (is (re-find #"remove all but one of the names" (last msg)))))
+  (testing "an unnamed cluster lists its requires and the line to add"
+    (let [msg (lines {:type     :unnamed
+                      :cluster  '#{qp sync}
+                      :requires '[[qp sync] [sync qp]]
+                      :proposal '{:name qp-knot, :anchor qp}})]
+      (is (=? ["A cluster without a name: 2 modules, qp, sync."
+               "  It is a cycle through these requires:"
+               "    qp -> sync"
+               "    sync -> qp"]
+              (take 4 msg)))
+      (is (some #(str/includes? % "You get to name the new one") msg))
+      (is (some #(str/includes? % "add a line like `qp-knot qp`") msg))))
+  (testing "an unnamed cluster without a proposal asks for its modules to be declared"
+    (is (some #(str/includes? % "None of its modules is declared")
+              (lines {:type :unnamed, :cluster '#{qp sync}, :requires [], :proposal nil}))))
+  (testing "a large cluster is cut off after eight modules, and its requires are not listed"
+    (let [members (mapv #(symbol (format "m%02d" %)) (range 11))
+          msg     (lines {:type     :unnamed
+                          :cluster  (set members)
+                          :requires (mapv vector members (rest (cycle members)))
+                          :proposal '{:name m00-knot, :anchor m00}})]
+      (is (re-find #"11 modules, m00, .*, m07 \(and 3 more\)\.$" (first msg)))
+      (is (not-any? #(str/includes? % "It is a cycle through") msg))))
+  (testing "an anchor that left every cycle asks for the name to move or retire"
+    (let [msg (lines {:type :anchor-left, :name 'galactic-center, :anchor 'qp})]
+      (is (= "galactic-center is anchored on qp, which is no longer in any cycle." (first msg)))
+      (is (re-find #"Remove its line" (last msg)))))
+  (testing "an undeclared anchor asks for the module to be declared or the name moved"
+    (is (re-find #"^galactic-center is anchored on qp, which is not a declared module\. Declare it"
+                 (module-cycles/message {:type :undeclared-anchor, :name 'galactic-center, :anchor 'qp})))))
 
 (deftest module-cycles-test
   ;; Release branches disable the ratchets, and their structure is frozen with them.
