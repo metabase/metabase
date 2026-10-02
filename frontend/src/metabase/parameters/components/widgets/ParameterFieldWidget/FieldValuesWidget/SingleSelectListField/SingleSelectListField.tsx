@@ -6,7 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
-import { Box, Input, TextInput, rem } from "metabase/ui";
+import { Box, Ellipsified, Input, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
@@ -14,12 +14,12 @@ import {
   createOptionsFromValuesWithoutOptions,
   getOptionDisplayName,
   normalizeValuesToOptionKeys,
+  optionItemEqualsFilter,
   optionMatchesFilter,
 } from "../ListField/utils";
 
 import S from "./SingleSelectListField.module.css";
 import type { Option, SingleSelectListFieldProps } from "./types";
-import { optionItemEqualsFilter } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
@@ -31,7 +31,6 @@ export const SingleSelectListField = ({
   placeholder = t`Find...`,
   onSearchChange,
   isDashboardFilter,
-  checkedColor,
 }: SingleSelectListFieldProps) => {
   const normalizedValue = useMemo(
     () => normalizeValuesToOptionKeys(value, options),
@@ -134,10 +133,9 @@ export const SingleSelectListField = ({
     onSearchChange?.(value);
   };
 
-  const selectedBackground =
-    (checkedColor ?? isDashboardFilter)
-      ? "background_surface-selected"
-      : "core-filter";
+  const selectedBackground = isDashboardFilter
+    ? "background_surface-selected"
+    : "core-filter";
 
   const handleResetClick = () => {
     setFilter("");
@@ -148,25 +146,21 @@ export const SingleSelectListField = ({
 
   return (
     <>
-      <Box mb={isDashboardFilter ? 0 : "sm"}>
-        <TextInput
-          autoFocus
-          placeholder={placeholder}
-          value={filter}
-          onChange={handleFilterChange}
-          onKeyDown={handleKeyDown}
-          rightSectionPointerEvents="all"
-          rightSection={
-            filter.length > 0 ? (
-              <Input.ClearButton
-                c="text-secondary"
-                onClick={handleResetClick}
-              />
-            ) : null
-          }
-          data-testid="single-select-list-field"
-        />
-      </Box>
+      <TextInput
+        autoFocus
+        placeholder={placeholder}
+        value={filter}
+        onChange={handleFilterChange}
+        onKeyDown={handleKeyDown}
+        rightSectionPointerEvents="all"
+        rightSection={
+          filter.length > 0 ? (
+            <Input.ClearButton c="text-secondary" onClick={handleResetClick} />
+          ) : null
+        }
+        mb={isDashboardFilter ? 0 : "sm"}
+        data-testid="single-select-list-field"
+      />
 
       {shouldShowEmptyState && (
         <Box pt="xxl" px="xxl">
@@ -177,7 +171,7 @@ export const SingleSelectListField = ({
       <Box
         component="ul"
         className={S.optionsList}
-        mah={isDashboardFilter ? rem(300) : undefined}
+        mah={isDashboardFilter ? 300 : undefined}
         pt="sm"
       >
         {filteredOptions.map((option) => {
@@ -197,7 +191,7 @@ export const SingleSelectListField = ({
                 onClick={() => onClickOption(option[0])}
                 onMouseDown={(e) => e.preventDefault()}
               >
-                {optionRenderer(option)}
+                <Ellipsified>{optionRenderer(option)}</Ellipsified>
               </Box>
             </li>
           );

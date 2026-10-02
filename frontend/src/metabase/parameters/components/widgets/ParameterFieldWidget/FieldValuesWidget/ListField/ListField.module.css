@@ -2,3 +2,8 @@
   overflow: auto;
   list-style: none;
 }
+
+/* Lets long labels shrink so they get truncated instead of overflowing. */
+.labelWrapper {
+  min-width: 0;
+}

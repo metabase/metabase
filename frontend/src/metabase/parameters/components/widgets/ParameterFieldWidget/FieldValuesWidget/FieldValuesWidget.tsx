@@ -108,7 +108,6 @@ export interface IFieldValuesWidgetProps {
   autoFocus?: boolean;
   className?: string;
   placeholder?: string;
-  checkedColor?: string;
 
   optionRenderer?: (option: FieldValue) => JSX.Element;
 }
@@ -138,7 +137,6 @@ export const FieldValuesWidgetInner = forwardRef<
     autoFocus,
     className,
     placeholder,
-    checkedColor,
     optionRenderer,
   },
   ref,
@@ -393,7 +391,6 @@ export const FieldValuesWidgetInner = forwardRef<
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : multi ? (
           <MultiAutocompleteWithTranslation

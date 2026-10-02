@@ -46,6 +46,13 @@ export function createOptionsFromValuesWithoutOptions(
 export const getOptionDisplayName = (option: Option | RowValue[]) =>
   String(option.at(-1));
 
+export function optionItemEqualsFilter(
+  optionItem: unknown,
+  filter: string,
+): boolean {
+  return String(optionItem) === filter;
+}
+
 /**
  * Coerces selected values to match option key types via string comparison.
  * This fixes a type mismatch where URL query params are normalized to numbers

@@ -6,11 +6,16 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
-import { Box, Checkbox, Input, Text, TextInput, rem } from "metabase/ui";
+import {
+  Box,
+  Checkbox,
+  Ellipsified,
+  Input,
+  Text,
+  TextInput,
+} from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
-
-import { optionItemEqualsFilter } from "../SingleSelectListField/utils";
 
 import S from "./ListField.module.css";
 import type { ListFieldProps, Option } from "./types";
@@ -18,6 +23,7 @@ import {
   createOptionsFromValuesWithoutOptions,
   getOptionDisplayName,
   normalizeValuesToOptionKeys,
+  optionItemEqualsFilter,
   optionMatchesFilter,
 } from "./utils";
 
@@ -153,25 +159,24 @@ export const ListField = ({
 
   return (
     <>
-      <Box mb={isDashboardFilter ? 0 : "sm"}>
-        <TextInput
-          autoFocus
-          placeholder={placeholder}
-          value={filter}
-          onChange={handleFilterChange}
-          onKeyDown={handleKeyDown}
-          rightSectionPointerEvents="all"
-          rightSection={
-            filter.length > 0 ? (
-              <Input.ClearButton
-                c="text-secondary"
-                onClick={() => setFilter("")}
-              />
-            ) : null
-          }
-          data-testid="list-field"
-        />
-      </Box>
+      <TextInput
+        autoFocus
+        placeholder={placeholder}
+        value={filter}
+        onChange={handleFilterChange}
+        onKeyDown={handleKeyDown}
+        rightSectionPointerEvents="all"
+        rightSection={
+          filter.length > 0 ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setFilter("")}
+            />
+          ) : null
+        }
+        mb={isDashboardFilter ? 0 : "sm"}
+        data-testid="list-field"
+      />
 
       {shouldShowEmptyState && (
         <Box pt="xxl" px="xxl">
@@ -182,7 +187,7 @@ export const ListField = ({
       <Box
         component="ul"
         className={S.optionsList}
-        mah={isDashboardFilter ? rem(300) : undefined}
+        mah={isDashboardFilter ? 300 : undefined}
         pt={isDashboardFilter ? "sm" : undefined}
         px={isDashboardFilter ? "sm" : undefined}
       >
@@ -204,9 +209,10 @@ export const ListField = ({
         {filteredOptions.map((option, index) => (
           <Box component="li" key={index} py="sm" px="xxxs">
             <Checkbox
+              classNames={{ labelWrapper: S.labelWrapper }}
               data-testid={`${option[0]}-filter-value`}
               checked={selectedValues.has(option[0])}
-              label={optionRenderer(option)}
+              label={<Ellipsified>{optionRenderer(option)}</Ellipsified>}
               onChange={() => handleToggleOption(option[0])}
             />
           </Box>
