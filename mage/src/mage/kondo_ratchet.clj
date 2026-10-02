@@ -176,16 +176,17 @@
   [[dev.kondo-ratchet/check]] and `fix!` take."
   [groups]
   ;; One kondo run covers every group, since a JVM start and a lint pass dominate the cost.
-  (let [file-groups       (mapv #(into (sorted-set)
-                                       (comp (filter (fn [{:keys [linters]}]
-                                                       (some kondo-ratchet/discouragement-linters linters)))
-                                             (map :file))
-                                       %)
-                                groups)
+  (let [discouraged-files (fn [occurrences]
+                            (into (sorted-set)
+                                  (comp (filter #(some kondo-ratchet/discouragement-linters (:linters %)))
+                                        (map :file))
+                                  occurrences))
+        file-groups       (mapv discouraged-files groups)
         contents          (into {} (map (juxt identity slurp)) (reduce into #{} file-groups))
         config            (kondo-ratchet/kondo-config)
-        known             (into {} (map (juxt identity #(kondo-ratchet/discouraged-symbols % config)))
-                                kondo-ratchet/discouragement-linters)
+        known             (into {}
+                                (for [linter kondo-ratchet/discouragement-linters]
+                                  [linter (kondo-ratchet/discouraged-symbols linter config)]))
         [output baseline] (if (empty? contents)
                             [{} []]
                             (lint-with-ignores-disabled! contents))]
