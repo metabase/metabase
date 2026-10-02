@@ -6,6 +6,18 @@ const { H } = cy;
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 const FIRST_SCORE_ROW_ID = 11;
 const SECOND_SCORE_ROW_ID = 12;
+const FIRST_SCORE_ROW = {
+  id: "11",
+  team_name: "Kind Koalas",
+  score: "70",
+  status: "active",
+};
+const SECOND_SCORE_ROW = {
+  id: "12",
+  team_name: "Lively Lemurs",
+  score: "80",
+  status: "active",
+};
 const UPDATED_SCORE = 987654321;
 const UPDATED_SCORE_FORMATTED = "987,654,321";
 
@@ -68,6 +80,10 @@ describe(
                   `As ${name} user: verify there are no model actions to run`,
                 );
                 visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+                objectDetailModal()
+                  .should("be.visible")
+                  .and("contain.text", FIRST_SCORE_ROW.team_name);
+                cy.wait("@getModelActions");
                 objectDetailModal().within(() => {
                   assertActionsDropdownNotExists();
                 });
@@ -121,10 +137,11 @@ describe(
                 openUpdateObjectModal();
                 actionExecuteModal().within(() => {
                   cy.wait("@prefetchValues").then((request) => {
-                    const firstScoreRow = request.response.body;
-
                     actionForm().within(() => {
-                      assertScoreFormPrefilled(firstScoreRow);
+                      assertScoreFormPrefilled(
+                        FIRST_SCORE_ROW,
+                        request.response.body,
+                      );
                     });
                   });
 
@@ -163,10 +180,11 @@ describe(
                 openUpdateObjectModal();
                 actionExecuteModal().within(() => {
                   cy.wait("@prefetchValues").then((request) => {
-                    const secondScoreRow = request.response.body;
-
                     actionForm().within(() => {
-                      assertScoreFormPrefilled(secondScoreRow);
+                      assertScoreFormPrefilled(
+                        SECOND_SCORE_ROW,
+                        request.response.body,
+                      );
 
                       cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
                       cy.findByText("Update").click();
@@ -249,13 +267,13 @@ function assertActionsDropdownNotExists() {
   cy.findByTestId("actions-menu").should("not.exist");
 }
 
-function assertScoreFormPrefilled(object) {
-  assertInputValue("ID", object.id);
-  assertInputValue("Team Name", object.team_name);
-  assertInputValue("Score", object.score);
-  assertInputValue("Status", object.status);
-  assertDateInputValue("Created At", object.created_at);
-  assertDateInputValue("Updated At", object.updated_at);
+function assertScoreFormPrefilled(expected, prefetchedRow) {
+  assertInputValue("ID", expected.id);
+  assertInputValue("Team Name", expected.team_name);
+  assertInputValue("Score", expected.score);
+  assertInputValue("Status", expected.status);
+  assertDateInputValue("Created At", prefetchedRow.created_at);
+  assertDateInputValue("Updated At", prefetchedRow.updated_at);
 }
 
 function assertInputValue(labelText, value) {
