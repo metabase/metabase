@@ -291,6 +291,19 @@
                       {:deprecated-enable-env-vars-set deprecated-enable-env-var-set?
                        :current-enable-env-vars-set    supported-enable-env-vars-set})))))
 
+(defn- check-modular-enable-settings!
+  "Ensure [[enable-embedding-modular]] isn't set by env var together with any of the env vars it replaces, whose values
+  it would otherwise silently override."
+  [env]
+  (let [modular-enable-env-var-set?  (some? (:mb-enable-embedding-modular env))
+        replaced-enable-env-vars-set (select-keys env [:mb-enable-embedding :mb-enable-embedding-sdk
+                                                       :mb-enable-embedding-simple :mb-enable-embedding-static])]
+    (when (and modular-enable-env-var-set? (seq replaced-enable-env-vars-set))
+      (throw (ex-info (str "Both deprecated and new enable-embedding env vars are set, please remove MB_ENABLE_EMBEDDING, "
+                           "MB_ENABLE_EMBEDDING_SDK, MB_ENABLE_EMBEDDING_SIMPLE and MB_ENABLE_EMBEDDING_STATIC.")
+                      {:deprecated-enable-env-vars-set replaced-enable-env-vars-set
+                       :current-enable-env-vars-set    (select-keys env [:mb-enable-embedding-modular])})))))
+
 (defn- sync-enable-settings!
   "If Only the deprecated enable-embedding is set, we want to sync the new settings to the deprecated one."
   [env]
@@ -336,6 +349,7 @@
    confusion and to make sure that we're not setting the same thing twice."
   [env]
   (check-enable-settings! env)
+  (check-modular-enable-settings! env)
   (check-origins-settings! env))
 
 (defn- sync-settings!

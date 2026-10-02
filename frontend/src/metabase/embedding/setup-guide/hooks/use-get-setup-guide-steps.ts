@@ -74,13 +74,8 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
         {
           title: t`Configure data permissions and enable tenants`,
           description: t`Set granular permissions for multi-tenancy to control data access. Share dashboards, questions, and models with external users and allow them to create content, while restricting access to internal or other tenants' data.`,
-<<<<<<< 8bfda478850
-          to: "/admin/embedding/setup-guide/permissions",
-          variant: "default",
-=======
           to: SETUP_GUIDE_URLS.permissions,
-          variant: "outline",
->>>>>>> d53a909a92f^
+          variant: "default",
           stepId: "data-permissions-and-enable-tenants",
         },
       ],
@@ -93,13 +88,8 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
         {
           title: t`Configure SSO`,
           description: t`Configure JWT authentication to ensure only authorized users can access your embeds.`,
-<<<<<<< 8bfda478850
-          to: "/admin/embedding/setup-guide/sso",
-          variant: "default",
-=======
           to: SETUP_GUIDE_URLS.sso,
-          variant: "outline",
->>>>>>> d53a909a92f^
+          variant: "default",
           stepId: "sso-configured",
         },
       ],

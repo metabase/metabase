@@ -47,18 +47,12 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
         rightSection: (
           <Button
             className={S.generateButton}
-<<<<<<< 8bfda478850
-            miw={value ? undefined : "10rem"}
-            onClick={openModal}
-            variant="filled"
-            size="lg"
-=======
             miw={hasSecretKey ? undefined : "10rem"}
             onClick={() =>
               setOpenModal(hasSecretKey ? "confirm-regenerate" : "create-key")
             }
             variant={hasSecretKey ? "default" : "filled"}
->>>>>>> d53a909a92f^
+            size="lg"
           >
             {hasSecretKey ? t`Regenerate key` : t`Set up key`}
           </Button>

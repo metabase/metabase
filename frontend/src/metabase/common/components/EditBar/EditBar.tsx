@@ -1,16 +1,10 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-<<<<<<< 8bfda478850
-import { Flex, Group } from "metabase/ui";
-
-import { EditIcon, Root, Title } from "./EditBar.styled";
-=======
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Group, Icon } from "metabase/ui";
+import { Flex, Group, Icon } from "metabase/ui";
 
 import styles from "./EditBar.module.css";
->>>>>>> d53a909a92f^
 
 type Props = {
   title: string;
@@ -41,14 +35,7 @@ export function EditBar({
         <span className={styles.title}>{title}</span>
       </Group>
       {center && <div>{center}</div>}
-<<<<<<< 8bfda478850
       <Flex gap="md">{buttons}</Flex>
-    </Root>
-=======
-      <div className={cx(styles.buttonsContainer, { [styles.brand]: isBrand })}>
-        {buttons}
-      </div>
     </FullWidthContainer>
->>>>>>> d53a909a92f^
   );
 }

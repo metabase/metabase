@@ -82,6 +82,16 @@
                          :user-id (str (mt/user->id :crowberto))}]
                        (pop-events!)))))))))))
 
+(defn- legacy-setting
+  "Reads a deprecated embedding setting that `enable-embedding-modular` replaces."
+  [embedding-method]
+  ;; These tests intentionally exercise deprecated settings.
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (case embedding-method
+    :sdk    (embed.settings/enable-embedding-sdk)
+    :simple (embed.settings/enable-embedding-simple)
+    :static (embed.settings/enable-embedding-static)))
+
 (deftest enabling-embedding-generates-secret-key-test
   (testing "Enabling embedding auto-generates embedding-secret-key when blank, and preserves an existing key"
     (mt/with-test-user :crowberto
@@ -89,8 +99,7 @@
         (snowplow-test/with-fake-snowplow-collector
           (mt/with-temporary-setting-values [enable-embedding-simple false enable-embedding-static false embedding-secret-key nil]
             (embed.settings/enable-embedding-simple! true)
-            ;; asserts the deprecated setting the setter under test writes
-            (is (true? #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-simple)))
+            (is (true? (legacy-setting :simple)))
             (is (not (str/blank? (embed.settings/embedding-secret-key))))
             (let [generated-key (embed.settings/embedding-secret-key)]
               (embed.settings/enable-embedding-static! true)
@@ -118,8 +127,7 @@
       (let [origin-value (str "localhost:* " other-ip " "
                               (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        ;; reads the deprecated sdk setting on purpose; that is what this test asserts
-        (is (not (and #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-sdk)
+        (is (not (and (legacy-setting :sdk)
                       (embed.settings/embedding-app-origins-sdk))))))))
 
 (defn- depricated-setting-throws [f env & [reason]]
@@ -148,6 +156,18 @@
   (depricated-setting-throws #'embed.settings/check-enable-settings! {:mb-enable-embedding true :mb-enable-embedding-interactive false :mb-enable-embedding-static true})
   (depricated-setting-throws #'embed.settings/check-enable-settings! {:mb-enable-embedding true :mb-enable-embedding-interactive false :mb-enable-embedding-sdk true :mb-enable-embedding-static true}))
 
+(deftest deprecated-modular-enabled-embedding-settings-test
+  ;; OK:
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-static true})))
+  (is (nil? (#'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-interactive false})))
+  ;; Not OK: the modular value would silently override each of these.
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding-static true})
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-sdk false})
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular true :mb-enable-embedding-simple false})
+  (depricated-setting-throws #'embed.settings/check-modular-enable-settings! {:mb-enable-embedding-modular false :mb-enable-embedding true}))
+
 (deftest deprecated-origin-embedding-settings-test
   ;; OK:
   (is (nil? (#'embed.settings/check-origins-settings! {})))
@@ -169,33 +189,25 @@
   ;; reads the deprecated enable-embedding setting on purpose; the sync under test bridges from it
   (let [unsyncd-settings {:enable-embedding             #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
-                          ;; reads the deprecated sdk setting on purpose; the sync under test bridges from it
-                          :enable-embedding-sdk         #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-sdk)
-                          ;; reads the deprecated static setting on purpose; the sync under test bridges from it
-                          :enable-embedding-static      #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-static)}]
+                          :enable-embedding-sdk         (legacy-setting :sdk)
+                          :enable-embedding-static      (legacy-setting :static)}]
     ;; called for side effects:
     (#'embed.settings/sync-enable-settings! env)
     (cond
       (= expected-behavior :no-op)
       (do (is (= [:no-op (:enable-embedding-interactive unsyncd-settings)] [:no-op (embed.settings/enable-embedding-interactive)]))
-          ;; compares against the deprecated sdk setting the sync bridges from
-          (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-sdk)]))
-          ;; compares against the deprecated static setting the sync bridges from
-          (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-static)])))
+          (is (= [:no-op (:enable-embedding-sdk unsyncd-settings)]         [:no-op (legacy-setting :sdk)]))
+          (is (= [:no-op (:enable-embedding-static unsyncd-settings)]      [:no-op (legacy-setting :static)])))
 
       (= expected-behavior :sets-all-true)
       (do (is (= [expected-behavior true] [:sets-all-true (embed.settings/enable-embedding-interactive)]))
-          ;; compares against the deprecated sdk setting the sync bridges from
-          (is (= [expected-behavior true] [:sets-all-true #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-sdk)]))
-          ;; compares against the deprecated static setting the sync bridges from
-          (is (= [expected-behavior true] [:sets-all-true #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-static)])))
+          (is (= [expected-behavior true] [:sets-all-true (legacy-setting :sdk)]))
+          (is (= [expected-behavior true] [:sets-all-true (legacy-setting :static)])))
 
       (= expected-behavior :sets-all-false)
       (do (is (= [expected-behavior false] [:sets-all-false (embed.settings/enable-embedding-interactive)]))
-          ;; compares against the deprecated sdk setting the sync bridges from
-          (is (= [expected-behavior false] [:sets-all-false #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-sdk)]))
-          ;; compares against the deprecated static setting the sync bridges from
-          (is (= [expected-behavior false] [:sets-all-false #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding-static)])))
+          (is (= [expected-behavior false] [:sets-all-false (legacy-setting :sdk)]))
+          (is (= [expected-behavior false] [:sets-all-false (legacy-setting :static)])))
 
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
 
