@@ -295,9 +295,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
             <Loader size="xs" />
           </Box>
         )}
-        <Box component="span" ml="auto" fz="md">
-          <Icon name="chevronright" size={12} />
-        </Box>
+        <Icon name="chevronright" size={12} ml="auto" flex="0 0 auto" />
       </div>
     );
   } else if (type === "no-results") {
