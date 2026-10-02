@@ -61,7 +61,7 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
 
-Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
+The MCP endpoint honors only the literal scopes in this table. A wildcard grant such as `agent:*` grants nothing there.
 
 Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
 challenge both list only `agent:content:read agent:query:run`: a fresh connection can read,
@@ -196,7 +196,8 @@ The implementation lives in these files:
 - **[`v2/registry.clj`](v2/registry.clj)** - The v2 tool registry. Tools self-register via `deftool`; the registry
   checks scopes, validates arguments, dispatches calls, and records usage.
 
-- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches and wildcard patterns.
+- **[`scope.clj`](scope.clj)** - Scope matching logic for tools and resources.
+  Tokens reach it holding only the literal scopes in the table above.
 
 ### Request flow
 
