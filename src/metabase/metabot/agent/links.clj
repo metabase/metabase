@@ -28,21 +28,21 @@
 
 ;;; Query/Chart URL Generation
 
-;;; ---------------------------------- Orphaned aggregation refs ----------------------------------
+;;; Orphaned aggregation refs
 ;;;
 ;;; An MBQL 5 aggregation is identified by the `:lib/uuid` in its options map; an
-;;; `[:aggregation opts "<uuid>"]` ref in the same stage points at it by that uuid. Stripping
-;;; `:lib/*` keys breaks that binding on one side only: the aggregation's uuid is a key and goes, the
-;;; ref's copy is a value in slot 2 and stays. Normalizing then mints a fresh uuid for the
-;;; aggregation, leaving the ref pointing at nothing, and the query fails both `->legacy-MBQL`
-;;; conversion and QP normalization ("Invalid :aggregation reference: no aggregation with uuid ...").
+;;; `[:aggregation opts "<uuid>"]` ref in the same stage points at it by that uuid. The frontend's viewing context
+;;; (`user_is_viewing` / `chart_configs`) sends queries back with their `:lib/*` keys stripped, which breaks that
+;;; binding on one side only: the aggregation's uuid is a key and goes, the ref's copy is a value in slot 2 and stays.
+;;; Normalizing then mints a fresh uuid for the aggregation, leaving the ref pointing at nothing, and the query fails
+;;; `->legacy-MBQL` conversion ("Invalid :aggregation reference: no aggregation with uuid ...").
 ;;;
-;;; Legacy MBQL refs are positional (`[:aggregation 0]`), so this only affects queries arriving as
-;;; MBQL 5 with their internal keys stripped, e.g. via the frontend's viewing context.
+;;; The stages are walked by hand rather than with `lib.walk/walk-stages`, which validates its input against
+;;; `::lib.schema/query` and so rejects exactly the queries being repaired here.
 
 (defn- aggregation-ref?
-  "True if `x` is an `[:aggregation {opts} \"<uuid>\"]` reference clause. Callers normalize first, so
-  clause heads are keywords."
+  "True if `x` is an `[:aggregation {opts} \"<uuid>\"]` reference clause. Callers normalize first, so clause heads are
+  keywords."
   [x]
   (and (vector? x)
        (= 3 (count x))
@@ -50,59 +50,39 @@
        (map? (nth x 1))
        (string? (nth x 2))))
 
-(defn- orphan-ref-pred
-  "Predicate matching aggregation refs in `stage` whose uuid none of its own aggregations carry."
-  [stage]
-  (let [uuids (into #{} (keep #(get-in % [1 :lib/uuid])) (:aggregation stage))]
-    (every-pred aggregation-ref? #(not (uuids (nth % 2))))))
-
-(defn- sole-aggregation-uuid
-  "The `:lib/uuid` of `stage`'s only aggregation, or nil if it has zero or several. With several the
-  ref's target is unrecoverable: nothing in the query records which one it named."
-  [{aggs :aggregation}]
-  (when (= 1 (count aggs))
-    (get-in aggs [0 1 :lib/uuid])))
-
 (defn- rebind-orphaned-refs
-  "Point `stage`'s orphaned aggregation refs back at its own aggregation. Expects `:joins` already
-  removed: a join's refs resolve against the join's aggregations, not this stage's.
+  "Point `stage`'s orphaned aggregation refs back at its only aggregation. Expects `:joins` already removed: a join's
+  refs resolve against the join's aggregations, not this stage's.
 
-  Ambiguous refs are left alone rather than guessed at, since a wrong rebind would silently change
-  what the query computes."
-  [stage]
-  (let [orphan? (orphan-ref-pred stage)]
-    (if-not (some orphan? (tree-seq coll? seq stage))
-      stage
-      (if-let [target (sole-aggregation-uuid stage)]
-        (do
-          ;; The route that stripped these (agent state round-tripping through the client) was
-          ;; removed in #76939, so a repair here means a new source exists. Say so rather than
-          ;; fixing it silently.
-          (log/warn "Repaired an orphaned MBQL 5 aggregation reference; something upstream stripped this query's :lib/uuids")
-          (walk/postwalk #(cond-> % (orphan? %) (assoc 2 target)) stage))
-        (do
-          (log/warnf (str "Cannot repair orphaned MBQL 5 aggregation reference: stage has %d aggregations, "
-                          "so the intended target is ambiguous. The query will not convert to legacy MBQL.")
-                     (count (:aggregation stage)))
-          stage)))))
+  With several aggregations nothing in the query records which one a ref named, so the stage is returned unchanged
+  rather than guessed at: a wrong rebind would silently change what the query computes. A stage whose aggregation has
+  no `:lib/uuid` is likewise returned unchanged."
+  [{aggs :aggregation :as stage}]
+  (let [uuids   (into #{} (keep #(get-in % [1 :lib/uuid])) aggs)
+        orphan? (every-pred aggregation-ref? #(not (uuids (nth % 2))))
+        target  (when (= 1 (count aggs))
+                  (get-in aggs [0 1 :lib/uuid]))]
+    (if (and target (some orphan? (tree-seq coll? seq stage)))
+      (do
+        (log/debug "Rebinding orphaned MBQL 5 aggregation refs to the stage's only aggregation")
+        (walk/postwalk #(cond-> % (orphan? %) (assoc 2 target)) stage))
+      stage)))
 
 (declare ^:private repair-orphaned-aggregation-refs)
 
 (defn- repair-stage
   "Repair `stage`'s own aggregation refs, then recurse into its joins."
   [stage]
-  ;; A join's stages carry their own aggregations, so they are repaired separately: this stage's
-  ;; uuids must not reach a join's refs.
+  ;; A join's stages carry their own aggregations, so they are repaired separately: this stage's uuids must not reach a
+  ;; join's refs.
   (let [joins (some->> (:joins stage) (mapv repair-orphaned-aggregation-refs))]
     (cond-> (rebind-orphaned-refs (dissoc stage :joins))
       joins (assoc :joins joins))))
 
 (defn- repair-orphaned-aggregation-refs
-  "Rebind `[:aggregation opts \"<uuid>\"]` refs in `query` that name a uuid no aggregation in their
-  stage carries, so the query converts and runs again. See the comment block above.
-
-  `query` must already be normalized: an unnormalized one has no `:lib/uuid`s to bind to and is
-  returned unchanged, as is any query with no orphaned refs. Joins and later stages are handled."
+  "Rebind `[:aggregation opts \"<uuid>\"]` refs in normalized MBQL 5 `query` (or a join) that name a uuid no
+  aggregation in their stage carries. See the comment block above. Queries with no orphaned refs, and stages whose
+  orphaned refs are ambiguous, are returned unchanged."
   [query]
   (cond-> query
     (seq (:stages query)) (update :stages (partial mapv repair-stage))))
