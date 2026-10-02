@@ -21,6 +21,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.sensitive-fields :as qp.sensitive-fields]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
@@ -509,6 +510,7 @@
   queries they wouldn't be allowed to run!"
   [query :- ::query]
   {:pre [(map? query)]}
+  (qp.sensitive-fields/check-query-can-be-saved! query)
   (let [query    (dissoc query :query-permissions/perms)
         expanded (try
                    (preprocess-query query)

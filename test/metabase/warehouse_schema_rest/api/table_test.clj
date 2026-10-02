@@ -259,7 +259,7 @@
     (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
       (testing "Sensitive fields are included"
         (is (= (merge
-                (table-defaults)
+                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :admin_details nil, :initial_sync_error nil})
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
@@ -336,8 +336,16 @@
                                        :database_is_auto_increment false
                                        :name_field                 nil)]
                  :id           (mt/id :users)})
-               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
+               (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
             "Make sure that getting the User table *does* include info about the password field, but not actual values themselves")))))
+
+(deftest ^:parallel sensitive-fields-require-write-perms-test
+  (mt/with-premium-features #{}
+    (testing "GET api/table/:id/query_metadata?include_sensitive_fields ignores the flag for users who can't edit the table's metadata"
+      (is (= ["ID" "NAME" "LAST_LOGIN"]
+             (->> (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users)))
+                  :fields
+                  (map :name)))))))
 
 (deftest ^:parallel sensitive-fields-not-included-test
   (mt/with-premium-features #{}
