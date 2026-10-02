@@ -521,6 +521,20 @@
                        (mt/user-http-request :rasta :put 403 (str "action/" (:id created)) {:collection_id locked-id})))
                 (is (= personal-id (t2/select-one-fn :collection_id :model/Action :id (:id created))))))))))))
 
+(deftest list-actions-without-model-test
+  (testing "the action list includes actions without a model, filtered by collection permissions"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/Action]
+          (mt/with-temp [:model/Collection {locked-id :id} {}]
+            (let [personal-id (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                  visible     (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action personal-id))
+                  hidden      (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action locked-id))
+                  listed-ids  (fn [user] (set (map :id (mt/user-http-request user :get 200 "action"))))]
+              (is (set/subset? #{(:id visible) (:id hidden)} (listed-ids :crowberto)))
+              (is (contains? (listed-ids :rasta) (:id visible)))
+              (is (not (contains? (listed-ids :rasta) (:id hidden)))))))))))
+
 (deftest attached-action-keeps-model-collection-test
   (testing "an action with a model stays in the model's collection whatever collection_id an update sends"
     (mt/with-actions-test-data-and-actions-enabled

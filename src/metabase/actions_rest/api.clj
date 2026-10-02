@@ -21,22 +21,18 @@
 (set! *warn-on-reflection* true)
 
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
-  "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
-  `?model-id=<model-id>` to limit to actions on a particular model."
+  "Returns the unarchived actions in collections the current user can read. Pass optional `?model-id=<model-id>` to
+  limit to the actions of a particular model."
   {:scope api-scope/data-app}
   [_route-params
    {:keys [model-id]} :- [:map {:closed true}
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
-  (letfn [(actions-for [models]
-            (if (seq models)
-              (t2/hydrate (actions/select-actions-for-models models (map :id models)) :creator)
-              []))]
-    ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
-    (let [models (if model-id
-                   [(api/read-check :model/Card model-id)]
-                   ;; action permission keyed off of model permission
-                   (actions-rest.db/unarchived-models-visible-to-user))]
-      (actions-for models))))
+  (let [actions (if model-id
+                  (let [model (api/read-check :model/Card model-id)]
+                    (actions/select-actions-for-models [model] [model-id]))
+                  (when-let [action-ids (seq (actions-rest.db/unarchived-action-ids-visible-to-user))]
+                    (actions/select-actions-for-ids nil (vec action-ids))))]
+    (t2/hydrate (vec actions) :creator)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
