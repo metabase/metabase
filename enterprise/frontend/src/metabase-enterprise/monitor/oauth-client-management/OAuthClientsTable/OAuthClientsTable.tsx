@@ -62,7 +62,7 @@ const getNodeId = (row: OAuthClientRow) => row.id;
 const canSelectClient = (row: Row<OAuthClientRow>) =>
   !row.original.current && row.original.status === "active";
 
-const ACTIVE_COLUMN_WIDTHS = [0.32, 0.28, 0.12, 0.12, 0.16];
+const ACTIVE_COLUMN_WIDTHS = [0.28, 0.22, 0.1, 0.1, 0.15, 0.15];
 const REVOKED_COLUMN_WIDTHS = [0.28, 0.24, 0.16, 0.16, 0.16];
 
 export const OAuthClientsTable = ({
@@ -142,9 +142,30 @@ export const OAuthClientsTable = ({
       cell: ({ row }) => <MonitorDateCell value={row.original.created_at} />,
     };
 
+    const lastUsedColumn: TreeTableColumnDef<OAuthClientRow> = {
+      id: "last_used_at",
+      header: t`Last used`,
+      width: 170,
+      enableSorting: true,
+      sortDescFirst: true,
+      // the endpoint sorts a never-used client by its registration, so the accessor is only ever read by the cell
+      accessorFn: (client) => client.last_used_at ?? "",
+      cell: ({ row }) =>
+        row.original.last_used_at ? (
+          <MonitorDateCell value={row.original.last_used_at} />
+        ) : (
+          // the secondary text the `client_id` line in the Client column uses, so a client that has never been used
+          // reads as a note rather than as a value
+          <Text size="sm" c="text-secondary" lh="1rem">
+            {t`Never used`}
+          </Text>
+        ),
+    };
+
     if (isRevokedTab) {
-      // Users and Live tokens count only unrevoked tokens, so they read 0 for every revoked client; this tab
-      // spends their width on who revoked it and when instead.
+      // Users and Live tokens count only unrevoked tokens, so they read 0 for every revoked client, and a revoked
+      // client's tokens stop resolving so its last use can never move again; this tab spends their width on who
+      // revoked it and when instead.
       return [
         clientColumn,
         redirectUrisColumn,
@@ -199,6 +220,7 @@ export const OAuthClientsTable = ({
         accessorFn: (client) => client.live_tokens,
         cell: ({ row }) => row.original.live_tokens,
       },
+      lastUsedColumn,
       registeredColumn,
     ];
   }, [isRevokedTab]);

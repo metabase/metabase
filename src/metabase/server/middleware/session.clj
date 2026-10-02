@@ -329,7 +329,7 @@
       (handler request respond raise))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         session activity tracking                                              |
+;;; |                                            activity tracking                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- maybe-update-session-activity!
@@ -358,9 +358,10 @@
     response))
 
 (defn reset-session-timeout
-  "Middleware that records session activity on every session-authenticated request, and additionally resets the expiry
-   date on session cookies when the session-timeout setting is set. The cookie is left alone if that setting is nil or
-   the timeout cookie has already expired."
+  "Middleware that records activity on every authenticated request — a session's `last_active_at`, or the
+   `last_used_at` of the registered OAuth client that issued the request's bearer token — and additionally resets the
+   expiry date on session cookies when the session-timeout setting is set. The cookie is left alone if that setting is
+   nil or the timeout cookie has already expired."
   [handler]
   (fn [request respond raise]
     (let [;; The expiry time for the cookie is relative to the time the request is received, rather than the time of the
@@ -368,7 +369,13 @@
           request-time (t/zoned-date-time (t/zone-id "GMT"))]
       (handler request
                (fn [response]
+                 ;; both keys are set only by [[merge-current-user-info]], and only for the credential that actually
+                 ;; authenticated the request -- so a bearer whose token did not resolve carries neither, and a
+                 ;; revoked client can never keep its own last use moving
                  (when-let [session-key-hash (:metabase/authed-session-key-hash request)]
                    (maybe-update-session-activity! session-key-hash))
+                 (when-let [oauth-client-id (:metabase/authed-oauth-client-id request)]
+                   ;; throttled and exception-swallowing on its own side, like the session touch above
+                   (oauth-server/touch-client-if-due! oauth-client-id))
                  (respond (reset-session-timeout* request response request-time)))
                raise))))

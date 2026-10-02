@@ -5,6 +5,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.last-use]
    [metabase.oauth-server.models.oauth-client-event :as oauth-client-event]
    [metabase.oauth-server.query]
    [metabase.oauth-server.scopes :as scopes]
@@ -20,13 +21,21 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.oauth-server.query/keep-me)
+(comment metabase.oauth-server.last-use/keep-me
+         metabase.oauth-server.query/keep-me)
+
+;;; the `last_used_at` write-back, for the middleware that calls it once a bearer-authenticated response is on its way
+(p/import-vars
+ [metabase.oauth-server.last-use
+  clear-client-use-cache!
+  touch-client-if-due!])
 
 ;;; the HoneySQL fragments naming the OAuth tables, so that a module querying registered clients composes on these
 ;;; rather than joining the tables itself
 (p/import-vars
  [metabase.oauth-server.query
   client-from-and-joins
+  client-last-used-expr
   client-status-expr
   client-token-holders-query
   live-token-count-expr

@@ -32,6 +32,8 @@ export type OAuthClient = {
   status: OAuthClientStatus;
   revoked_at: string | null;
   revoked_by: OAuthClientRevoker | null;
+  /** When a bearer token this client issued last authenticated a request. Null until the client is first used. */
+  last_used_at: string | null;
   /** Unrevoked, unexpired access tokens — whether revoking the client cuts anyone off right now. */
   live_tokens: number;
   /** Distinct users among those tokens — the blast radius of revoking the client. */
@@ -64,6 +66,7 @@ export const OAUTH_CLIENT_SORT_COLUMNS = [
   "live_tokens",
   "user_count",
   "revoked_at",
+  "last_used_at",
 ] as const;
 export type OAuthClientSortColumn = (typeof OAUTH_CLIENT_SORT_COLUMNS)[number];
 
@@ -86,6 +89,12 @@ export type OAuthClientListParams = PaginationRequest &
     query?: string;
     "revoked-before"?: string;
     "revoked-after"?: string;
+    /**
+     * Half-open range on `last_used_at`. A client that has never been used matches neither bound, and the revoke
+     * endpoint rejects both: a client in use crosses them while a revoke is being issued.
+     */
+    "last-used-before"?: string;
+    "last-used-after"?: string;
     "sort-column"?: OAuthClientSortColumn;
     "sort-direction"?: SortDirection;
   };

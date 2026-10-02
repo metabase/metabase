@@ -74,6 +74,16 @@ export const ClientDetails = ({ client, detail }: ClientDetailsProps) => {
             />
           )}
           <DetailsRow
+            label={t`Last used`}
+            value={
+              client.last_used_at ? (
+                <DateValue value={client.last_used_at} />
+              ) : (
+                t`Never used`
+              )
+            }
+          />
+          <DetailsRow
             label={t`Registered`}
             value={<DateValue value={client.created_at} />}
           />

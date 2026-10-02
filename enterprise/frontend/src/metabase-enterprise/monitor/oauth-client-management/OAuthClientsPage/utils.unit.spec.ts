@@ -8,11 +8,17 @@ const DEFAULT_STATE: OAuthClientsUrlState = {
   tab: "active",
   registered: null,
   user: null,
+  last_used: null,
   sort_column: "created_at",
   sort_direction: "desc",
 };
 
 const REGISTERED_AFTER = "2026-09-25T00:00:00.000Z";
+const LAST_USED_AFTER = "2026-10-01T00:00:00.000Z";
+
+const NO_CUTOFFS = { registeredAfter: undefined, lastUsedAfter: undefined };
+const REGISTERED_CUTOFF = { ...NO_CUTOFFS, registeredAfter: REGISTERED_AFTER };
+const LAST_USED_CUTOFF = { ...NO_CUTOFFS, lastUsedAfter: LAST_USED_AFTER };
 
 describe("OAuthClientsPage/utils", () => {
   describe("urlStateConfig.parse", () => {
@@ -48,6 +54,15 @@ describe("OAuthClientsPage/utils", () => {
       );
     });
 
+    it("parses the last-used preset, dropping one the endpoint has no window for", () => {
+      expect(urlStateConfig.parse({ last_used: "hour" }).last_used).toBe(
+        "hour",
+      );
+      expect(urlStateConfig.parse({ last_used: "fortnight" }).last_used).toBe(
+        null,
+      );
+    });
+
     it("parses the user filter as an id, dropping anything that is not one", () => {
       expect(urlStateConfig.parse({ user: "42" }).user).toBe(42);
       expect(urlStateConfig.parse({ user: "rasta" }).user).toBe(null);
@@ -79,6 +94,7 @@ describe("OAuthClientsPage/utils", () => {
         tab: undefined,
         registered: undefined,
         user: undefined,
+        last_used: undefined,
         sort_column: undefined,
         sort_direction: undefined,
       });
@@ -92,6 +108,7 @@ describe("OAuthClientsPage/utils", () => {
           tab: "revoked",
           registered: "day",
           user: 7,
+          last_used: "hour",
           sort_column: "user_count",
           sort_direction: "asc",
         }),
@@ -101,6 +118,7 @@ describe("OAuthClientsPage/utils", () => {
         tab: "revoked",
         registered: "day",
         user: "7",
+        last_used: "hour",
         sort_column: "user_count",
         sort_direction: "asc",
       });
@@ -113,6 +131,7 @@ describe("OAuthClientsPage/utils", () => {
         tab: "revoked",
         registered: "month",
         user: 12,
+        last_used: "week",
         sort_column: "client_name",
         sort_direction: "asc",
       };
@@ -124,12 +143,13 @@ describe("OAuthClientsPage/utils", () => {
 
   describe("buildListParams", () => {
     it("asks for the active clients on the first page, newest first", () => {
-      expect(buildListParams(DEFAULT_STATE, PAGE_SIZE, undefined)).toEqual({
+      expect(buildListParams(DEFAULT_STATE, PAGE_SIZE, NO_CUTOFFS)).toEqual({
         limit: PAGE_SIZE,
         offset: 0,
         status: "active",
         query: undefined,
         "user-id": undefined,
+        "last-used-after": undefined,
         "registered-after": undefined,
         "sort-column": "created_at",
         "sort-direction": "desc",
@@ -141,7 +161,7 @@ describe("OAuthClientsPage/utils", () => {
         buildListParams(
           { ...DEFAULT_STATE, page: 2, tab: "revoked" },
           PAGE_SIZE,
-          undefined,
+          NO_CUTOFFS,
         ),
       ).toMatchObject({ status: "revoked", offset: 2 * PAGE_SIZE });
     });
@@ -151,7 +171,7 @@ describe("OAuthClientsPage/utils", () => {
         buildListParams(
           { ...DEFAULT_STATE, query: "claude", user: 7, registered: "week" },
           PAGE_SIZE,
-          REGISTERED_AFTER,
+          REGISTERED_CUTOFF,
         ),
       ).toMatchObject({
         query: "claude",
@@ -165,7 +185,7 @@ describe("OAuthClientsPage/utils", () => {
         buildListParams(
           { ...DEFAULT_STATE, tab: "revoked", registered: "week" },
           PAGE_SIZE,
-          REGISTERED_AFTER,
+          REGISTERED_CUTOFF,
         ),
       ).toMatchObject({
         status: "revoked",
@@ -173,19 +193,39 @@ describe("OAuthClientsPage/utils", () => {
       });
     });
 
+    it("sends the last-used window as the endpoint's filter", () => {
+      expect(
+        buildListParams(
+          { ...DEFAULT_STATE, last_used: "hour" },
+          PAGE_SIZE,
+          LAST_USED_CUTOFF,
+        ),
+      ).toMatchObject({ "last-used-after": LAST_USED_AFTER });
+    });
+
+    it("drops the last-used window on the Revoked tab, where a client's last use can never move again", () => {
+      expect(
+        buildListParams(
+          { ...DEFAULT_STATE, tab: "revoked", last_used: "hour" },
+          PAGE_SIZE,
+          LAST_USED_CUTOFF,
+        ),
+      ).toMatchObject({ status: "revoked", "last-used-after": undefined });
+    });
+
     it("drops the user filter on the Revoked tab, where an unrevoked token can never match", () => {
       expect(
         buildListParams(
           { ...DEFAULT_STATE, tab: "revoked", user: 7 },
           PAGE_SIZE,
-          undefined,
+          NO_CUTOFFS,
         ),
       ).toMatchObject({ status: "revoked", "user-id": undefined });
     });
 
     it("omits a blank search, which the endpoint rejects", () => {
       expect(
-        buildListParams({ ...DEFAULT_STATE, query: "" }, PAGE_SIZE, undefined),
+        buildListParams({ ...DEFAULT_STATE, query: "" }, PAGE_SIZE, NO_CUTOFFS),
       ).toMatchObject({ query: undefined });
     });
 
@@ -198,7 +238,7 @@ describe("OAuthClientsPage/utils", () => {
             sort_direction: "asc",
           },
           PAGE_SIZE,
-          undefined,
+          NO_CUTOFFS,
         ),
       ).toMatchObject({
         "sort-column": "live_tokens",

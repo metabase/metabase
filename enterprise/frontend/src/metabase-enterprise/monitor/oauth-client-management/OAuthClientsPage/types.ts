@@ -18,6 +18,8 @@ export type OAuthClientsUrlState = {
   registered: MonitorTimePreset | null;
   /** Clients this user still holds a token on. */
   user: UserId | null;
+  /** Used within this window. Active tab only: a revoked client cannot be in use. */
+  last_used: MonitorTimePreset | null;
   sort_column: OAuthClientSortColumn;
   sort_direction: SortDirection;
 };

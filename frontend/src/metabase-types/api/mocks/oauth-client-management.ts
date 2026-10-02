@@ -29,6 +29,7 @@ export const createMockOAuthClient = (
   status: "active",
   revoked_at: null,
   revoked_by: null,
+  last_used_at: "2026-09-28T08:30:00Z",
   live_tokens: 2,
   user_count: 1,
   current: false,

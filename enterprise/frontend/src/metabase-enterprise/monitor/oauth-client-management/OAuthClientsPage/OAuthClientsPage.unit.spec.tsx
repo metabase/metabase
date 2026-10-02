@@ -333,6 +333,7 @@ describe("OAuthClientsPage", () => {
       "Redirect URIs",
       "Users",
       "Live tokens",
+      "Last used",
       "Registered",
     ]);
   });
@@ -740,6 +741,99 @@ describe("OAuthClientsPage", () => {
     expect(lastListCallUrl()).not.toContain("user-id=");
   });
 
+  it("shows when each client was last used", async () => {
+    setup({
+      clients: [
+        createMockOAuthClient({ last_used_at: "2026-09-28T08:30:00Z" }),
+      ],
+    });
+
+    const table = await findLoadedTable();
+
+    expect(within(table).getByText(/September 28, 2026/)).toBeInTheDocument();
+  });
+
+  it("says so when a client has never been used, rather than showing its registration", async () => {
+    setup({ clients: [createMockOAuthClient({ last_used_at: null })] });
+
+    const table = await findLoadedTable();
+
+    expect(within(table).getByText("Never used")).toBeInTheDocument();
+  });
+
+  it("filters by when a client was last used, back on the first page", async () => {
+    const { router } = setup({
+      clients: [createMockOAuthClient()],
+      listOverrides: { total: PAGE_SIZE * 3, limit: PAGE_SIZE, offset: 0 },
+      initialRoute: `${PATHNAME}?page=2`,
+    });
+
+    await findLoadedTable();
+    await userEvent.click(screen.getByRole("button", { name: "Show filters" }));
+    await userEvent.click(screen.getByPlaceholderText("Any time, used or not"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Past hour" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    await waitFor(() =>
+      expect(lastListCallUrl()).toContain("last-used-after="),
+    );
+    expect(lastListCallUrl()).toContain("offset=0");
+    await waitFor(() =>
+      expect(router?.location.search).toContain("last_used=hour"),
+    );
+    expect(router?.location.search).not.toContain("page=2");
+  });
+
+  it("offers neither the last-used column nor its filter on the Revoked tab, where a client cannot be in use", async () => {
+    setup({
+      clients: [createMockOAuthClient({ status: "revoked" })],
+      initialRoute: `${PATHNAME}?tab=revoked`,
+    });
+
+    const table = await findLoadedTable();
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).not.toContain("Last used");
+
+    await userEvent.click(screen.getByRole("button", { name: "Show filters" }));
+    expect(
+      screen.queryByPlaceholderText("Any time, used or not"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not ask the endpoint to filter by last use on the Revoked tab", async () => {
+    setup({
+      clients: [createMockOAuthClient({ status: "revoked" })],
+      initialRoute: `${PATHNAME}?tab=revoked&last_used=hour`,
+    });
+
+    await findLoadedTable();
+
+    expect(lastListCallUrl()).toContain("status=revoked");
+    expect(lastListCallUrl()).not.toContain("last-used-after=");
+  });
+
+  it("sorts on last used, most recently used first", async () => {
+    const { router } = setup({ clients: [createMockOAuthClient()] });
+
+    const table = await findLoadedTable();
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Last used" }),
+    );
+
+    await waitFor(() =>
+      expect(lastListCallUrl()).toContain("sort-column=last_used_at"),
+    );
+    expect(lastListCallUrl()).toContain("sort-direction=desc");
+    await waitFor(() =>
+      expect(router?.location.search).toContain("sort_column=last_used_at"),
+    );
+  });
+
   it("sorts on a count header largest first, then smallest, keeping the sort in the URL", async () => {
     const { router } = setup({
       clients: [createMockOAuthClient()],
@@ -1027,6 +1121,48 @@ describe("OAuthClientsPage", () => {
       expect(within(sidebar()).getByText("mb:full")).toBeInTheDocument();
     });
 
+    it("shows when the client was last used, and says so when it never has", async () => {
+      setup({
+        clients: [
+          createMockOAuthClient({
+            client_id: CLIENT_ID,
+            last_used_at: "2026-09-28T08:30:00Z",
+          }),
+        ],
+        details: [
+          createMockOAuthClientDetail({
+            client_id: CLIENT_ID,
+            last_used_at: "2026-09-28T08:30:00Z",
+          }),
+        ],
+      });
+
+      await openSidebar();
+
+      expect(within(sidebar()).getByText("Last used")).toBeInTheDocument();
+      expect(
+        within(sidebar()).getByText(/September 28, 2026/),
+      ).toBeInTheDocument();
+    });
+
+    it("says the client has never been used rather than showing its registration", async () => {
+      setup({
+        clients: [
+          createMockOAuthClient({ client_id: CLIENT_ID, last_used_at: null }),
+        ],
+        details: [
+          createMockOAuthClientDetail({
+            client_id: CLIENT_ID,
+            last_used_at: null,
+          }),
+        ],
+      });
+
+      await openSidebar();
+
+      expect(within(sidebar()).getByText("Never used")).toBeInTheDocument();
+    });
+
     it("names each consenting user with how many live tokens they hold and when they last approved", async () => {
       setup({
         clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
@@ -1215,7 +1351,11 @@ describe("OAuthClientsPage", () => {
 
       await openSidebar();
 
-      expect(await within(sidebar()).findByText("Revoked")).toBeInTheDocument();
+      // re-queried on each poll rather than held across the wait: the detail landing replaces the sidebar subtree,
+      // and `within` on a node captured beforehand would be polling a detached tree
+      await waitFor(() =>
+        expect(within(sidebar()).getByText("Revoked")).toBeInTheDocument(),
+      );
       expect(within(sidebar()).getByText("Revoked by")).toBeInTheDocument();
       expect(within(sidebar()).getByText("Ada Admin")).toBeInTheDocument();
       expect(

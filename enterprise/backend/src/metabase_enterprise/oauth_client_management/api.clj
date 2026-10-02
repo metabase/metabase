@@ -34,7 +34,11 @@
    [:ids               {:optional true} [:and (ms/QueryVectorOf :string) [:vector {:max max-ids} :string]]]
    [:user-id           {:optional true} ms/PositiveInt]
    [:registered-before {:optional true} ms/TemporalString]
-   [:registered-after  {:optional true} ms/TemporalString]])
+   [:registered-after  {:optional true} ms/TemporalString]
+   ;; the revoke takes these two as well: sweeping the clients nothing has used since a date is a thing an admin
+   ;; wants, and since a never-used client matches neither bound the pair can only ever narrow
+   [:last-used-before  {:optional true} ms/TemporalString]
+   [:last-used-after   {:optional true} ms/TemporalString]])
 
 (mr/def ::SortParams
   [:map {:closed true}
@@ -106,6 +110,8 @@
    ;; both null for an active client, and `revoked_by` null for a revoked one whose admin has since been deleted
    [:revoked_at        [:maybe ms/TemporalInstant]]
    [:revoked_by        [:maybe ::Actor]]
+   ;; null until the client first presents a bearer token; registering is not using
+   [:last_used_at      [:maybe ms/TemporalInstant]]
    [:live_tokens       ms/IntGreaterThanOrEqualToZero]
    [:user_count        ms/IntGreaterThanOrEqualToZero]
    [:current           :boolean]])
@@ -150,14 +156,17 @@
 (defn- params->filters
   "Turn the request params into the filter map [[metabase-enterprise.oauth-client-management.query/client-where]]
   takes, parsing the date strings into instants."
-  [{:keys [status ids user-id query registered-before registered-after revoked-before revoked-after]}]
+  [{:keys [status ids user-id query registered-before registered-after revoked-before revoked-after
+           last-used-before last-used-after]}]
   {:status            status
    :ids               ids
    :user-id           user-id
-   ;; only the list endpoint can send these three; the revoke endpoint's schema rejects them, so they arrive nil there
+   ;; only the list endpoint can send these five; the revoke endpoint's schema rejects them, so they arrive nil there
    :query             query
    :revoked-before    (some-> revoked-before u.date/parse)
    :revoked-after     (some-> revoked-after u.date/parse)
+   :last-used-before  (some-> last-used-before u.date/parse)
+   :last-used-after   (some-> last-used-after u.date/parse)
    :registered-before (some-> registered-before u.date/parse)
    :registered-after  (some-> registered-after u.date/parse)})
 
@@ -187,7 +196,7 @@
   `current-client-id` — the client that issued the bearer this request authenticated with."
   [current-client-id
    {:keys [client_id client_name client_uri logo_uri redirect_uris application_type registration_type created_at
-           status revoked_at live_tokens user_count]
+           status revoked_at last_used_at live_tokens user_count]
     :as   row}]
   {:client_id         client_id
    :client_name       client_name
@@ -200,6 +209,7 @@
    :status            status
    :revoked_at        revoked_at
    :revoked_by        (revoked-by row)
+   :last_used_at      last_used_at
    ;; `long` because a count comes back as whatever the driver's integer type is, and the response schema asks for
    ;; a Clojure integer
    :live_tokens       (long live_tokens)
@@ -307,6 +317,9 @@
   `revoked-after` — which only match revoked clients — are rejected with a 400. So is `query`: revoking every client
   whose name happens to contain a substring is far easier to get wrong than revoking by an explicit criterion, so an
   admin lists by `query` first and then revokes the ids.
+
+  `last-used-before` and `last-used-after` are accepted, so revoking every client that nothing has used since a
+  given date is one call. A client that has never been used matches neither bound, as it does not for the list.
 
   `exclude-current` (default true) holds back the client that issued the caller's own bearer token, so a sweep run
   through the CLI does not cut the CLI off mid-command. Pass false to revoke it too. A request authenticated with a

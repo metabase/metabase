@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.last-use :as last-use]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]))
@@ -30,7 +31,9 @@
   (log/debug "Cleaning up expired/revoked OAuth tokens")
   (tracing/with-span :tasks "task.oauth-server.cleanup-expired-tokens.delete" {}
     (let [counts (cleanup-expired-tokens!)]
-      (log/infof "OAuth cleanup deleted %s" counts))))
+      (log/infof "OAuth cleanup deleted %s" counts)))
+  ;; unrelated to the deletes above; it rides along on the one daily OAuth job
+  (last-use/prune-client-use-cache!))
 
 (def ^:private job-key     (jobs/key "metabase.task.oauth-server.cleanup-expired-tokens.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.oauth-server.cleanup-expired-tokens.trigger"))

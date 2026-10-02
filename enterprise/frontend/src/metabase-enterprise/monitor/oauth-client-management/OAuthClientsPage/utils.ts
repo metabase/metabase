@@ -45,6 +45,7 @@ export const urlStateConfig: UrlStateConfig<OAuthClientsUrlState> = {
     tab: parseTab(query.tab),
     registered: parseTimePreset(query.registered),
     user: parseUserId(query.user),
+    last_used: parseTimePreset(query.last_used),
     sort_column: parseSortColumn(
       query.sort_column,
       OAUTH_CLIENT_SORT_COLUMNS,
@@ -61,6 +62,7 @@ export const urlStateConfig: UrlStateConfig<OAuthClientsUrlState> = {
     tab: state.tab === DEFAULT_TAB ? undefined : state.tab,
     registered: state.registered ?? undefined,
     user: state.user === null ? undefined : String(state.user),
+    last_used: state.last_used ?? undefined,
     sort_column:
       state.sort_column === DEFAULT_SORT_COLUMN ? undefined : state.sort_column,
     sort_direction:
@@ -70,10 +72,16 @@ export const urlStateConfig: UrlStateConfig<OAuthClientsUrlState> = {
   }),
 };
 
+/** The instants the relative presets in the URL resolve to, as the endpoint's `*-after` bounds. */
+type PresetCutoffs = {
+  registeredAfter: string | undefined;
+  lastUsedAfter: string | undefined;
+};
+
 export const buildListParams = (
   state: OAuthClientsUrlState,
   pageSize: number,
-  registeredAfter: string | undefined,
+  { registeredAfter, lastUsedAfter }: PresetCutoffs,
 ): OAuthClientListParams => ({
   limit: pageSize,
   offset: state.page * pageSize,
@@ -85,6 +93,9 @@ export const buildListParams = (
   // come back empty on the Revoked tab; each tab sends only the filters it offers, as the Sessions page does.
   // `registered-after` goes on both: a revoked client was registered at some point too.
   "user-id": state.tab === "revoked" ? undefined : (state.user ?? undefined),
+  // `last-used-after` is Active-only for the same reason the column is: a revoked client's tokens no longer
+  // resolve, so it cannot have been used since it went
+  "last-used-after": state.tab === "revoked" ? undefined : lastUsedAfter,
   "registered-after": registeredAfter,
   "sort-column": state.sort_column,
   "sort-direction": state.sort_direction,

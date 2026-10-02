@@ -25,10 +25,14 @@
    [:registered-after  {:optional true} [:maybe ms/TemporalInstant]]
    ;; these two only ever match a client that has been revoked
    [:revoked-before    {:optional true} [:maybe ms/TemporalInstant]]
-   [:revoked-after     {:optional true} [:maybe ms/TemporalInstant]]])
+   [:revoked-after     {:optional true} [:maybe ms/TemporalInstant]]
+   ;; and these two only a client that has been used
+   [:last-used-before  {:optional true} [:maybe ms/TemporalInstant]]
+   [:last-used-after   {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::client-sort-column
   "Columns the client list can be sorted by. `:client_name` sorts a client that registered without a name as the
   empty string, so it lands first ascending. `:live_tokens` and `:user_count` are aggregates over the client's
-  tokens rather than stored columns. `:revoked_at` is null for an active client, so it only orders the revoked list."
-  [:enum :created_at :client_name :live_tokens :user_count :revoked_at])
+  tokens rather than stored columns. `:revoked_at` is null for an active client, so it only orders the revoked list.
+  `:last_used_at` sorts a client that has never been used as its `created_at`."
+  [:enum :created_at :client_name :live_tokens :user_count :revoked_at :last_used_at])

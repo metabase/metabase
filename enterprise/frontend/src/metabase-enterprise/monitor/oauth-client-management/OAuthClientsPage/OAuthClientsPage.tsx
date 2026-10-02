@@ -58,14 +58,17 @@ export const OAuthClientsPage = () => {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const clearSelection = useCallback(() => setRowSelection({}), []);
 
-  const registeredAfter = useMemo(
-    () => getTimePresetCutoff(urlState.registered),
-    [urlState.registered],
+  const cutoffs = useMemo(
+    () => ({
+      registeredAfter: getTimePresetCutoff(urlState.registered),
+      lastUsedAfter: getTimePresetCutoff(urlState.last_used),
+    }),
+    [urlState.registered, urlState.last_used],
   );
 
   const { data, isLoading, isFetching, error } = useAbortableQuery(
     useLazyListOAuthClientsQuery,
-    buildListParams(urlState, PAGE_SIZE, registeredAfter),
+    buildListParams(urlState, PAGE_SIZE, cutoffs),
   );
   const clients = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
@@ -95,6 +98,7 @@ export const OAuthClientsPage = () => {
     urlState.tab,
     urlState.registered,
     urlState.user,
+    urlState.last_used,
     urlState.sort_column,
     urlState.sort_direction,
   ]);

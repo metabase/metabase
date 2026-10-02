@@ -7,6 +7,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
@@ -143,17 +144,20 @@
                      :status            "active"
                      :revoked_at        nil
                      :revoked_by        nil
+                     :last_used_at      nil
                      :current           false}
                     item))
             (testing "the registration time comes back as a timestamp"
               (is (timestamp? (:created_at item))))
+            (testing "a client that has never presented a token carries no last use, rather than its registration"
+              (is (nil? (:last_used_at item))))
             (testing "only the tokens that still work are counted, and users are counted once each"
               (is (= 3 (:live_tokens item)))
               (is (= 2 (:user_count item))))
             (testing "no hash, secret, scope or contact leaves the database"
               (is (= #{:client_id :client_name :client_uri :logo_uri :redirect_uris :application_type
-                       :registration_type :created_at :status :revoked_at :revoked_by :live_tokens
-                       :user_count :current}
+                       :registration_type :created_at :status :revoked_at :revoked_by :last_used_at
+                       :live_tokens :user_count :current}
                      (set (keys item))))
               (is (not (str/includes? (str item) "must-not-leak"))))))))))
 
@@ -366,6 +370,61 @@
                  (set (client-ids (list-clients :ids all :status "all"
                                                 :revoked-after "2026-01-01T00:00:00Z"))))))))))
 
+(defn- last-used
+  "When the client with `client-id` was last used, as the list reports it."
+  [client-id]
+  (:last_used_at (first (:data (list-clients :ids client-id :status "all")))))
+
+(defn- set-last-used!
+  "Backdate `client-id`'s last use, so a later write is visible as a change rather than needing a clock with
+  sub-millisecond resolution."
+  [client-id instant]
+  (t2/update! :model/OAuthClient {:client_id client-id} {:last_used_at instant}))
+
+(def ^:private long-ago #t "2026-01-01T00:00:00Z")
+
+(defn- same-instant?
+  "Whether two timestamps name the same moment. The app database and the test client between them decide which
+  `java.time` class a column comes back as, and `=` across two of them is false however equal the moments are."
+  [a b]
+  (and (some? a) (some? b) (= (t/instant a) (t/instant b))))
+
+(deftest last-used-range-filter-test
+  (testing "`last-used-before`/`last-used-after` is the half-open range an admin narrows to the clients in use right
+            now — or to the dormant ones"
+    (with-clean-clients
+      (let [recent (insert-client! :client_name "Busy")
+            stale  (insert-client! :client_name "Quiet")
+            never  (insert-client! :client_name "Never Used")
+            all    [recent stale never]]
+        (set-last-used! recent #t "2026-06-01T00:00:00Z")
+        (set-last-used! stale  #t "2026-04-01T00:00:00Z")
+        (testing "`after` alone"
+          (is (= [recent] (client-ids (list-clients :ids all :last-used-after "2026-05-01T00:00:00Z")))))
+        (testing "`before` alone"
+          (is (= [stale] (client-ids (list-clients :ids all :last-used-before "2026-05-01T00:00:00Z")))))
+        (testing "both, bounding a window"
+          (is (= [stale] (client-ids (list-clients :ids all
+                                                   :last-used-after  "2026-03-01T00:00:00Z"
+                                                   :last-used-before "2026-05-01T00:00:00Z")))))
+        (testing "the range is half-open, so adjacent windows neither overlap nor leave a gap"
+          (is (= [recent] (client-ids (list-clients :ids all :last-used-after "2026-06-01T00:00:00Z"))))
+          (is (= [] (client-ids (list-clients :ids all :last-used-after "2026-06-01T00:00:00Z"
+                                              :last-used-before "2026-06-01T00:00:00Z")))))
+        (testing "a client that has never been used is in neither half of the range"
+          (is (not (contains? (set (client-ids (list-clients :ids all :last-used-before "2030-01-01T00:00:00Z")))
+                              never)))
+          (is (not (contains? (set (client-ids (list-clients :ids all :last-used-after "2000-01-01T00:00:00Z")))
+                              never))))
+        (testing "`total` counts the same clients the rows do"
+          (let [response (list-clients :ids all :last-used-after "2026-01-01T00:00:00Z")]
+            (is (= 2 (:total response)))
+            (is (= 2 (count (:data response))))))
+        (testing "an unparseable date is rejected rather than ignored"
+          (is (=? {:errors {:last-used-after string?}}
+                  (mt/user-http-request :crowberto :get 400 "ee/oauth-client-management"
+                                        :last-used-after "whenever"))))))))
+
 (deftest sort-test
   (testing "every offered sort column orders the list, in both directions, so the client an admin is looking for can
             be put at the top"
@@ -428,6 +487,39 @@
                  (last (client-ids (list-clients :ids [named nameless blank]
                                                  :sort-column "client_name" :sort-direction "asc"))))))))))
 
+(deftest sort-by-last-used-test
+  (testing "the list sorts on when each client was last used, so the busiest — or the most dormant — comes to the top"
+    (with-clean-clients
+      (let [recent (insert-client! :client_name "Busy")
+            stale  (insert-client! :client_name "Quiet")
+            all    [recent stale]]
+        (set-last-used! recent #t "2026-06-01T00:00:00Z")
+        (set-last-used! stale  #t "2026-04-01T00:00:00Z")
+        (is (= [recent stale]
+               (client-ids (list-clients :ids all :sort-column "last_used_at" :sort-direction "desc"))))
+        (is (= [stale recent]
+               (client-ids (list-clients :ids all :sort-column "last_used_at" :sort-direction "asc"))))))))
+
+(deftest sort-by-last-used-falls-back-to-registration-test
+  (testing "a client that has never been used sorts by when it registered, so it lands among the clients last seen
+            around the same time rather than wherever the app database happens to put nulls"
+    (with-clean-clients
+      (let [used-recently     (insert-client! :client_name "Used Yesterday")
+            registered-today  (insert-client! :client_name "Just Registered")
+            used-long-ago     (insert-client! :client_name "Used In April")
+            all               [used-recently registered-today used-long-ago]]
+        ;; the never-used client registered between the two uses, so the fallback decides where it lands and
+        ;; nothing can pass by accident
+        (t2/update! :model/OAuthClient {:client_id used-recently}    {:created_at #t "2026-01-01T00:00:00Z"})
+        (t2/update! :model/OAuthClient {:client_id used-long-ago}   {:created_at #t "2026-01-01T00:00:00Z"})
+        (t2/update! :model/OAuthClient {:client_id registered-today} {:created_at #t "2026-05-01T00:00:00Z"})
+        (set-last-used! used-recently #t "2026-06-01T00:00:00Z")
+        (set-last-used! used-long-ago #t "2026-04-01T00:00:00Z")
+        (is (= [used-recently registered-today used-long-ago]
+               (client-ids (list-clients :ids all :sort-column "last_used_at" :sort-direction "desc"))))
+        (is (= [used-long-ago registered-today used-recently]
+               (client-ids (list-clients :ids all :sort-column "last_used_at" :sort-direction "asc"))))))))
+
 (deftest sort-by-revoked-at-test
   (testing "the Revoked tab sorts on when each client was revoked"
     (with-clean-clients
@@ -445,6 +537,65 @@
         (is (= [early mid late]
                (client-ids (list-clients :ids all :status "revoked"
                                          :sort-column "revoked_at" :sort-direction "asc"))))))))
+
+(def ^:private full-access
+  "The scope a bearer token needs to reach the general REST API, which is where these tests present one."
+  ["mb:full"])
+
+(defn- with-granted-client!
+  "Register a client through the public `/oauth/register`, drive the authorization-code flow as `user`, and call `f`
+  with its `client_id` and a live access token. Rows are cleaned up afterwards rather than rolled back: a
+  rollback-only transaction cannot be held open across the HTTP round-trips the flow makes."
+  [user f]
+  (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                     oauth-server-dynamic-registration-enabled true]
+    (with-clean-clients
+      (let [client (oauth-server.tu/register-client! full-access)
+            token  (:access_token (oauth-server.tu/grant! user client full-access))]
+        ;; the throttle is node-local and outlives any one test, so a client id another test happened to use must
+        ;; not decide whether this one writes
+        (oauth-server/clear-client-use-cache!)
+        (f (:client_id client) token)))))
+
+(deftest last-used-write-back-test
+  (testing "presenting a bearer token records when the client was last used, so an admin can tell a dormant client
+            from one in use right now"
+    (with-granted-client!
+      :rasta
+      (fn [client-id token]
+        (testing "a client that has registered but never acted carries no last use"
+          (is (nil? (last-used client-id))))
+        (oauth-server.tu/current-user-with-bearer token)
+        (testing "the first bearer request records one"
+          (is (timestamp? (last-used client-id))))))))
+
+(deftest last-used-write-back-is-throttled-test
+  (testing "the write is throttled, so a client polling an endpoint costs one UPDATE a window rather than one per
+            request. That a request after the window writes again is asserted by
+            [[metabase.oauth-server.last-use-test/last-used-is-written-again-once-the-window-has-passed-test]], which
+            can reach the window itself."
+    (with-granted-client!
+      :rasta
+      (fn [client-id token]
+        (oauth-server.tu/current-user-with-bearer token)
+        (is (timestamp? (last-used client-id)))
+        (testing "a second request inside the window does not write again"
+          ;; backdated behind the throttle's back: were the request to write, the column would move off this value
+          (set-last-used! client-id long-ago)
+          (oauth-server.tu/current-user-with-bearer token)
+          (is (same-instant? long-ago (last-used client-id))))))))
+
+(deftest revoked-client-is-never-touched-test
+  (testing "a revoked client's tokens never resolve, so nothing it holds can keep its last use moving"
+    (with-granted-client!
+      :rasta
+      (fn [client-id token]
+        (oauth-server.tu/current-user-with-bearer token)
+        (revoke! [client-id])
+        (set-last-used! client-id long-ago)
+        (oauth-server/clear-client-use-cache!)
+        (oauth-server.tu/current-user-with-bearer token :expected-status 401)
+        (is (same-instant? long-ago (last-used client-id)))))))
 
 (deftest paging-test
   (testing "the list pages, newest registration first, and `total` counts every match rather than the page"
@@ -496,6 +647,7 @@
                  :status            "active"
                  :revoked_at        nil
                  :revoked_by        nil
+                 :last_used_at      nil
                  :live_tokens       0
                  :user_count        0
                  :current           false
@@ -506,8 +658,8 @@
         (is (timestamp? (:created_at item)))
         (testing "and nothing else — no hash and no secret"
           (is (= #{:client_id :client_name :client_uri :logo_uri :redirect_uris :application_type
-                   :registration_type :created_at :status :revoked_at :revoked_by :live_tokens
-                   :user_count :current :scopes :contacts :users}
+                   :registration_type :created_at :status :revoked_at :revoked_by :last_used_at
+                   :live_tokens :user_count :current :scopes :contacts :users}
                  (set (keys item))))
           (is (not (str/includes? (str item) "must-not-leak"))))))))
 
@@ -520,6 +672,16 @@
                  :contacts    []
                  :scopes      []}
                 (get-client client-id)))))))
+
+(deftest detail-last-used-test
+  (testing "the detail reports when the client was last used, so the sidebar can show it alongside the registration"
+    (with-clean-clients
+      (let [used  (insert-client! :client_name "Busy")
+            never (insert-client! :client_name "Never Used")]
+        (set-last-used! used #t "2026-06-01T00:00:00Z")
+        (is (same-instant? #t "2026-06-01T00:00:00Z" (:last_used_at (get-client used))))
+        (testing "and nothing for one that never has, rather than its registration"
+          (is (nil? (:last_used_at (get-client never)))))))))
 
 (deftest detail-unknown-client-test
   (testing "an id nothing is registered under is a 404 rather than an empty client"
@@ -693,6 +855,29 @@
         (is (not (revoked? old))
             "outside the window, so untouched")))))
 
+(deftest revoke-by-last-used-test
+  (testing "`last-used-before` sweeps the dormant clients — \"nothing has used this since the spring, cut it off\" —
+            which is the whole reason the column is recorded"
+    (with-clean-clients
+      (let [dormant (insert-client! :client_name "Forgotten")
+            busy    (insert-client! :client_name "Still Working")
+            never   (insert-client! :client_name "Never Used")
+            all     [dormant busy never]]
+        (set-last-used! dormant #t "2026-04-01T00:00:00Z")
+        (set-last-used! busy    #t "2026-09-01T00:00:00Z")
+        (let [criteria {:last-used-before "2026-06-01T00:00:00Z" :ids all}
+              response (revoke-by! criteria)]
+          (is (= 1 (:revoked response)))
+          (testing "`remaining` recounts with the same criteria, so it reads 0 once the sweep has run"
+            (is (= 0 (:remaining response))))
+          (is (revoked? dormant))
+          (is (not (revoked? busy)) "used since the bound, so untouched")
+          (testing "and a client that has never been used is not swept either: it matches neither bound, exactly as
+                    it does not for the list"
+            (is (not (revoked? never))))
+          (testing "repeating the sweep is a no-op, the dormant client being revoked already"
+            (is (=? {:revoked 0, :remaining 0} (revoke-by! criteria)))))))))
+
 (deftest revoke-rejects-list-only-criteria-test
   (testing "a criterion that can only match a revoked client, or that searches by substring, is a 400 rather than
             something quietly narrowed — so the list always previews exactly what the same body would revoke"
@@ -782,8 +967,6 @@
             (is (str/includes? line (format "User %d revoked 1 OAuth client" (mt/user->id :crowberto)))
                 "the actor and the count, not just some digits")
             (is (str/includes? line client-id) "and the criteria")))))))
-
-(def ^:private full-access ["mb:full"])
 
 (deftest revoke-through-the-public-flow-test
   (testing "the whole path an admin takes: a client registers itself, a user approves it and it holds a bearer, then
