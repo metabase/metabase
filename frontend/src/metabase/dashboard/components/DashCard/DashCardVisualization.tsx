@@ -262,7 +262,7 @@ export function DashCardVisualization({
         name: dashcard.card.name,
         description: dashcard.card.description,
         display,
-        visualization_settings: settings,
+        visualization_settings: _.omit(settings, "click_behavior"),
       } as Card,
       _.omit(dashcard.visualization_settings, "visualization"),
     );
