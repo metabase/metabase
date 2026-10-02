@@ -156,8 +156,9 @@ describe("issue 61521", () => {
 
       H.cartesianChartCircleWithColor("#88BF4D").eq(5).realHover();
     });
+    // The value must be a percentage; the period comparison is signed
     H.assertEChartsTooltip({
-      rows: [{ name: "Question B for 61521", value: /%$/ }],
+      rows: [{ name: "Question B for 61521", value: /^\d+(\.\d+)?%$/ }],
     });
 
     H.modal().within(() => {
