@@ -12,6 +12,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
    [metabase.mcp.http-handler :as mcp.http-handler]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -218,6 +219,59 @@
                         "error_description=\"Insufficient scope for this operation.\"")
                    (get-in response [:headers "WWW-Authenticate"])))
             (is (= "unsupported_scope" (get-in response [:body :error])))))))))
+
+(def ^:private unscoped-endpoint-requests
+  "Requests to general REST endpoints whose `defendpoint` declares no `:scope`, as
+   `[description method url body-key status-with-full-access]`."
+  [["GET user/current"            :get  "user/current"          nil              200]
+   ["GET database"                :get  "database"              nil              200]
+   ["GET collection/root/items"   :get  "collection/root/items" nil              200]
+   ["GET card"                    :get  "card"                  nil              200]
+   ["POST dataset (native query)" :post "dataset"               :native-select-1 202]
+   ["POST collection (a write)"   :post "collection"            :new-collection  200]])
+
+(defn- request-body [body-key]
+  (case body-key
+    nil              nil
+    :native-select-1 {:database (mt/id) :type "native" :native {:query "SELECT 1"}}
+    :new-collection  {:name (str "oauth-scope-test-" (random-uuid))}))
+
+(defn- bearer-status
+  "The HTTP status `method url` answers when called with `token` as an OAuth bearer token."
+  [token method url body]
+  (let [options {:request-options {:headers {"authorization" (str "Bearer " token)}}}]
+    (:status (if body
+               (client/client-full-response method url options body)
+               (client/client-full-response method url options)))))
+
+(deftest mcp-scoped-token-is-refused-by-unscoped-endpoints-test
+  (testing "An OAuth token that holds only the MCP v2 scopes is refused by every endpoint that declares no `:scope`.
+            Those endpoints are wrapped in `ensure-scopes-checked`, which admits only unrestricted (`mb:full`) or
+            scope-unaware auth. So an MCP-scoped token does not reach the general REST API, and MCP scopes are
+            not a no-op."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      ;; Commit the client row rather than hold a rollback-only transaction open across HTTP round-trips; see
+      ;; `bearer-bridge-refuses-token-without-scopes-test`.
+      (mt/test-helpers-set-global-values!
+        (oauth-server.tu/with-oauth-client [client-id]
+          (mt/with-model-cleanup [:model/OAuthAccessToken :model/Collection]
+            (let [user-id    (mt/user->id :rasta)
+                  mcp-token  (str (random-uuid))
+                  full-token (str (random-uuid))]
+              (save-access-token! mcp-token user-id client-id mcp.paths/v2-surface-scopes (in-one-hour))
+              (save-access-token! full-token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
+              (doseq [[description method url body-key full-access-status] unscoped-endpoint-requests]
+                (testing description
+                  (testing "is refused for a token holding only the MCP v2 scopes"
+                    (is (= 403 (bearer-status mcp-token method url (request-body body-key)))))
+                  (testing "succeeds for an `mb:full` token for the same user, so the refusal comes from the scopes"
+                    (is (= full-access-status
+                           (bearer-status full-token method url (request-body body-key)))))))
+              (testing "Known overlap, not a desired property: an endpoint that declares an MCP v2 scope string as its
+                        `:scope` is reachable with that scope. The agent API's read-resource endpoint is the one
+                        place this happens."
+                (is (= 200 (bearer-status mcp-token :post "agent/v1/read-resource"
+                                          {:uris ["metabase://databases"]})))))))))))
 
 (deftest bearer-bridge-expired-token-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
