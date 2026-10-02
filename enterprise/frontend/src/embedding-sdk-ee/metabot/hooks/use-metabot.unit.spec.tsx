@@ -604,12 +604,12 @@ describe("useMetabot", () => {
       });
       await userEvent.click(await continueBtn());
 
-      expect((await lastReqBody(continuationSpy))?.message).toMatch(
-        /Continue working on my last request/,
+      expect((await lastReqBody(continuationSpy))?.message).toBe(
+        "Continue working on my last request.",
       );
     });
 
-    it("continueResponse resolves to undefined", async () => {
+    it("continueResponse does not expose the agent's internal result to the caller", async () => {
       mockAgentEndpoint({ events: turnEndingWith("tool-calls") });
       const onContinued = jest.fn();
       setup({ ui: <TestIncomplete onContinued={onContinued} /> });
