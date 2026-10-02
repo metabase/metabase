@@ -58,11 +58,11 @@
 (deftest provider-types-test
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
-      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-               "vllm" "metabase"}
+      (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+               "bedrock" "vllm" "metabase"}
              (set (map :type types))))
-      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-              "vllm"]
+      (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
+              "bedrock" "vllm"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -95,7 +95,8 @@
       (testing "the API-key prefixes reach the client, which uses them to recognize a pasted key"
         (is (= {"anthropic"  "sk-ant-"
                 "openai"     "sk-"
-                "openrouter" "sk-or-v1-"}
+                "openrouter" "sk-or-v1-"
+                "xai"        "xai-"}
                (into {}
                      (keep (fn [{:keys [type fields]}]
                              (when-let [prefix (some :prefix fields)]
