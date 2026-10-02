@@ -1361,7 +1361,8 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
   });
 
   it("passes values from unused columns of row visualization to click behavior (metabase#46318)", () => {
-    cy.findAllByRole("graphics-symbol").eq(0).click();
+    // One colour per sub group; bars follow the row order (group_1, group_2).
+    H.chartPathWithFillColor("#98D9D9").eq(0).click();
     cy.location("href").should(
       "eq",
       "http://localhost:4000/?q=group_1__sub_group_1",
@@ -1369,7 +1370,7 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 
     cy.go("back");
 
-    cy.findAllByRole("graphics-symbol").eq(2).click(); // intentionally eq(2), not eq(1) - that's how row viz works
+    H.chartPathWithFillColor("#F2A86F").eq(0).click();
     cy.location("href").should(
       "eq",
       "http://localhost:4000/?q=group_1__sub_group_2",
@@ -1377,14 +1378,14 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 
     cy.go("back");
 
-    cy.findAllByRole("graphics-symbol").eq(1).click(); // intentionally eq(1), not eq(2) - that's how row viz works
+    H.chartPathWithFillColor("#98D9D9").eq(1).click();
     cy.location("href").should(
       "eq",
       "http://localhost:4000/?q=group_2__sub_group_1",
     );
     cy.go("back");
 
-    cy.findAllByRole("graphics-symbol").eq(3).click();
+    H.chartPathWithFillColor("#F2A86F").eq(1).click();
     cy.location("href").should(
       "eq",
       "http://localhost:4000/?q=group_2__sub_group_2",
