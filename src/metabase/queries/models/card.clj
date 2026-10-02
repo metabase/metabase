@@ -888,6 +888,11 @@
               (filter selected-ids)
               (models.db/timeline-ids-of-events unhidden-ids))))))
 
+(defn- check-id-setting!
+  [visibility k message]
+  (when-some [ids (get visibility k)]
+    (api/check-400 (and (sequential? ids) (every? pos-int? ids)) message)))
+
 (defn- check-timeline-visibility-permissions!
   [card previous-card]
   ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
@@ -901,12 +906,10 @@
           reveals-all?        (and (draws-events? visibility (:display card))
                                    (not (draws-events? previous-visibility (:display previous-card))))]
       (when (or reveals-all? (not= visibility previous-visibility))
-        (when-some [excluded-ids (:timeline.excluded_timeline_event_ids visibility)]
-          (api/check-400 (and (sequential? excluded-ids) (every? pos-int? excluded-ids))
-                         (tru "Excluded timeline event IDs must be a sequence of positive integers.")))
-        (when-some [timeline-ids (:timeline.selected_timeline_ids visibility)]
-          (api/check-400 (and (sequential? timeline-ids) (every? pos-int? timeline-ids))
-                         (tru "Selected timeline IDs must be a sequence of positive integers."))
+        (check-id-setting! visibility :timeline.excluded_timeline_event_ids
+                           (tru "Excluded timeline event IDs must be a sequence of positive integers."))
+        (when (check-id-setting! visibility :timeline.selected_timeline_ids
+                                 (tru "Selected timeline IDs must be a sequence of positive integers."))
           ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
           ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
           (doseq [timeline (queries.db/timelines
