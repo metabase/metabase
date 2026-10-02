@@ -607,7 +607,7 @@ describe("scenarios > home > custom homepage", () => {
       );
     });
 
-    it("should not redirect when already on the dashboard homepage (metabase#43800)", () => {
+    it("should preserve navbar state and avoid redirecting from the dashboard homepage (metabase#43800)", () => {
       cy.intercept(
         "GET",
         `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
@@ -634,6 +634,13 @@ describe("scenarios > home > custom homepage", () => {
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
+
+      cy.visit("/collection/root");
+      H.navigationSidebar().should("be.visible");
+      cy.findByTestId("main-logo-link").click();
+      cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
+      H.dashboardGrid().should("be.visible");
+      H.navigationSidebar().should("be.visible");
     });
 
     it("should not load the homepage dashboard when visiting another dashboard directly (metabase#43800)", () => {

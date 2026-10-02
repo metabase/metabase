@@ -98,24 +98,6 @@ describe("scenarios > navigation > navbar", () => {
     });
   });
 
-  describe("Custom Homepage", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.updateSetting("custom-homepage", true);
-      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
-    });
-
-    it("should stay open when the mb logo redirects to the custom home page", () => {
-      cy.visit("/collection/root");
-      H.navigationSidebar().should("be.visible");
-      cy.findByTestId("main-logo-link").click();
-      cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
-      H.dashboardGrid().should("be.visible");
-      H.navigationSidebar().should("be.visible");
-    });
-  });
-
   describe("EE", () => {
     beforeEach(() => {
       H.restore();
@@ -123,7 +105,7 @@ describe("scenarios > navigation > navbar", () => {
       H.activateToken("pro-self-hosted");
     });
 
-    it("should stay open when redirecting to the landing page", () => {
+    it("should preserve sidebar state when redirecting to the landing page", () => {
       H.updateSetting("landing-page", `/question/${ORDERS_QUESTION_ID}`);
       cy.visit("/");
       cy.location("pathname").should(
@@ -142,6 +124,16 @@ describe("scenarios > navigation > navbar", () => {
       );
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
       H.navigationSidebar().should("be.visible");
+
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.navigationSidebar().should("not.be.visible");
+      cy.findByTestId("main-logo-link").click();
+      cy.location("pathname").should(
+        "match",
+        new RegExp(`^/question/${ORDERS_QUESTION_ID}\\b`),
+      );
+      H.queryBuilderHeader().findByText("Orders").should("be.visible");
+      H.navigationSidebar().should("not.be.visible");
     });
   });
 });
