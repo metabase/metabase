@@ -135,6 +135,8 @@
 
 ;; Numbers weeks the way the query processor buckets `:week-of-year`: by the day of year the week starts on.
 ;; A week that starts in late December keeps that year's number, even when it holds Jan 1.
+;; Keep in step with the copy in impl.clj and with `sql.qp/date [:sql :week-of-year]`;
+;; `week-of-year-rules-test` holds both copies to the same rules.
 (defn- week-of-year [time-config ^dayjs value]
   (-> (.dayOfYear (truncate-to-week time-config value)) (+ 6) (quot 7)))
 
