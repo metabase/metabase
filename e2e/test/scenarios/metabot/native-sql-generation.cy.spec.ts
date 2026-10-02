@@ -49,7 +49,6 @@ describe("Native SQL generation", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
       H.setupAnthropicLlmProvider({ apiKey: "sk-ant-api03-test-token" });
-      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
     it("should be able to successfully generate sql and correctly control the input", () => {
@@ -135,7 +134,6 @@ describe("Native SQL generation", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
       H.setupAnthropicLlmProvider({ apiKey: "sk-ant-api03-test-token" });
-      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
     it("should show error if no code_edit is received and manage conversation state correctly", () => {

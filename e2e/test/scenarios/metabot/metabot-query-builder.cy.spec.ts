@@ -21,7 +21,6 @@ describe("Metabot Query Builder", () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.setupAnthropicLlmProvider();
-    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
   });
 
   it("should render the agent's reply inline without leaving the page", () => {

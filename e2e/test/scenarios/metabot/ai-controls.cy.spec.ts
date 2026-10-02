@@ -368,16 +368,9 @@ describe("AI controls > AI usage limits", () => {
         max_usage: 0,
       });
 
-      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
       cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
         "xrayCandidates",
       );
-
-      llmMockServerSetup();
-    });
-
-    afterEach(() => {
-      llmMockServerTeardown();
     });
 
     it("should show the quota-reached message when the user sends a message to Metabot", () => {
@@ -588,7 +581,6 @@ describe("AI Controls > Tenant usage limits", () => {
       });
     });
 
-    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
     );

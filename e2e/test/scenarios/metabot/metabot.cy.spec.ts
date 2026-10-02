@@ -117,11 +117,7 @@ describe("Metabot UI", () => {
   describe("metabot events", () => {
     beforeEach(() => {
       H.resetSnowplow();
-      H.restore();
-      cy.signInAsAdmin();
       H.enableTracking();
-      H.activateToken("pro-self-hosted");
-      H.setupAnthropicLlmProvider();
     });
 
     afterEach(() => {
