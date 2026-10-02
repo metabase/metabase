@@ -115,9 +115,10 @@ describe("monitor route-guards", () => {
     interface SetupOpts {
       currentUser?: ReturnType<typeof createMockUser>;
       initialRoute: string;
+      tokenFeatures?: Partial<TokenFeatures>;
     }
 
-    const setup = ({ currentUser, initialRoute }: SetupOpts) => {
+    const setup = ({ currentUser, initialRoute, tokenFeatures }: SetupOpts) => {
       return renderWithProviders(
         <>
           <Route element={<CanAccessDependencyDiagnostics />}>
@@ -134,7 +135,10 @@ describe("monitor route-guards", () => {
         {
           storeInitialState: createMockState({
             currentUser,
-            settings: createMockSettingsState({ "has-user-setup": true }),
+            settings: createMockSettingsState({
+              "has-user-setup": true,
+              "token-features": createMockTokenFeatures(tokenFeatures),
+            }),
           }),
           withRouter: true,
           initialRoute,
@@ -158,9 +162,28 @@ describe("monitor route-guards", () => {
             is_data_analyst: true,
           }),
           initialRoute,
+          tokenFeatures: { advanced_permissions: true },
         });
 
         expect(await screen.findByText(pageText)).toBeInTheDocument();
+      },
+    );
+
+    it.each(BOTH_SECTIONS)(
+      "redirects an analyst whose plan lost the feature away from %s",
+      async (initialRoute) => {
+        const { router } = setup({
+          currentUser: createMockUser({
+            is_superuser: false,
+            is_data_analyst: true,
+          }),
+          initialRoute,
+          tokenFeatures: { advanced_permissions: false },
+        });
+
+        await waitFor(() => {
+          expect(router?.location.pathname).toBe("/unauthorized");
+        });
       },
     );
 

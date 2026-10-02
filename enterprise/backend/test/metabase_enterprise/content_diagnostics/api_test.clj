@@ -51,10 +51,15 @@
 
 (deftest reads-allow-data-analyst-test
   (testing "GET reads serve a non-admin data analyst"
-    ;; This arm is a plain `core_user` column, so it needs no premium feature beyond the mount's.
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-data-analyst-role! (mt/user->id :rasta)
         (check-reads :rasta 200)))))
+
+(deftest reads-analyst-arm-needs-advanced-permissions-test
+  (testing "without `:advanced-permissions` the role is not entitled, so a non-admin data analyst stays 403"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (check-reads :rasta 403)))))
 
 (deftest reads-allow-monitoring-grantee-test
   (testing "GET reads serve a non-admin holding the `:monitoring` application permission"

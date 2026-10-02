@@ -34,7 +34,7 @@
 
 (deftest duplicated-checker-flags-same-name-clusters-test
   (testing "same-type same-name pairs are flagged for all four covered types; a unique name is not"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)]
           (mt/with-temp
@@ -74,7 +74,7 @@
 
 (deftest duplicated-checker-normalization-test
   (testing "names collide under lowercase + trim + internal-whitespace collapse; commas stay meaningful"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)]
           (mt/with-temp
@@ -108,7 +108,7 @@
 
 (deftest duplicated-checker-unicode-normalization-test
   (testing "diacritics fold, Unicode whitespace collapses, and zero-width invisibles are stripped before comparison"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)]
           (mt/with-temp
@@ -137,7 +137,7 @@
 
 (deftest duplicated-checker-clusters-cards-across-sub-kinds-test
   (testing "cards cluster by normalized name regardless of sub-kind: a question and a model sharing a name are duplicates"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)]
           (mt/with-temp
@@ -156,7 +156,7 @@
 
 (deftest duplicated-checker-excludes-archived-test
   (testing "archived cards/dashboards/documents neither get findings nor count as peers"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)]
           (mt/with-temp
@@ -190,7 +190,7 @@
 
 (deftest duplicated-checker-excludes-document-internal-cards-test
   (testing "a card a document owns neither clusters nor leaves a peer behind on the card it copies"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)]
           (mt/with-temp
@@ -219,7 +219,7 @@
 
 (deftest duplicated-checker-skips-blank-names-test
   (testing "whitespace-only names - including Unicode whitespace and zero-width invisibles - never cluster; unknown is not duplicate"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [:model/Collection {coll-id :id} {}
@@ -236,7 +236,7 @@
 
 (deftest duplicated-checker-cluster-of-three-test
   (testing "every member of a cluster of 3 gets duplicate_count 2 and the other two as peers"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Nightly Sync")]
@@ -254,7 +254,7 @@
 
 (deftest duplicated-checker-same-type-only-test
   (testing "a name shared across different entity types is not a duplicate"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Shared Name")]
@@ -271,7 +271,7 @@
 
 (deftest duplicated-supersession-test
   (testing "renaming one of a pair to be unique supersedes both findings on the next scan"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Sales")]
@@ -296,7 +296,7 @@
 
 (deftest duplicated-finding-type-test
   (testing "the `duplicated` umbrella stores and serves the `duplicate_name` finding type"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Sales Model")]
@@ -316,7 +316,7 @@
 
 (deftest duplicated-api-hydration-test
   (testing "GET /duplicated serves findings with hydrated context + same-type peers"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Sales Model")]
@@ -353,7 +353,7 @@
 
 (deftest duplicated-api-subject-view-count-test
   (testing "GET /duplicated hydrates each finding's own live view_count into details; a transform omits it"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [:model/Collection {coll-id :id}  {}
@@ -393,7 +393,7 @@
 
 (deftest duplicated-api-filter-and-sort-test
   (testing "GET /duplicated filters by entity-types/min-duplicate-count and sorts by duplicate-count/name"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -441,7 +441,7 @@
 
 (deftest duplicated-api-paginates-test
   (testing "GET /duplicated honors limit/offset and reports the full valid total"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -470,7 +470,7 @@
 
 (deftest duplicated-api-hides-unreadable-peers-test
   (testing "GET /duplicated omits peers the caller can't read - the count can exceed the hydrated list"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {readable :id}   {}
@@ -500,7 +500,7 @@
 
 (deftest duplicated-api-personal-peers-follow-param-test
   (testing "GET /duplicated peer hydration honors include-personal-collections like the findings filter"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [pers-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
@@ -563,7 +563,7 @@
 
 (deftest duplicated-api-archived-folder-transform-peer-test
   (testing "GET /duplicated keeps transform findings and peers in archived folders - folder state is not a transform lifecycle state"
-    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Nightly Sync")]
@@ -583,7 +583,7 @@
 
 (deftest duplicated-api-does-not-leak-across-finding-types-test
   (testing "a duplicated finding never surfaces in /stale or /slow, and theirs never surface in /duplicated"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -618,7 +618,7 @@
   (testing "GET /duplicated is gated on the :content-diagnostics premium feature"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (testing "licensed → 200 with the paginated envelope"
-        (mt/with-premium-features #{:content-diagnostics}
+        (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
           (let [resp (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/duplicated")]
             (is (contains? resp :data))
             (is (contains? resp :total)))))
@@ -630,7 +630,7 @@
 
 (deftest duplicated-checker-flags-collection-name-clusters-test
   (testing "same-named eligible collections cluster instance-wide; archived / snippet-namespace / is_sample ones sit out"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Reports")]
@@ -658,7 +658,7 @@
     ;; Transforms stands in for every non-{snippet,analytics} namespace: `eligible-collection-where` treats
     ;; them identically, so this also covers the tenant namespace (which can't be temp-created here - it
     ;; needs `perms/use-tenants`).
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Pipeline")]
@@ -672,7 +672,7 @@
 
 (deftest duplicated-checker-item-container-scoping-test
   (testing "collection items in ineligible containers are not candidates; root-resident items still are"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix    (scope-prefix)
               ia-name   (str prefix " Audit Log")
@@ -697,7 +697,7 @@
 
 (deftest duplicated-api-transforms-collection-root-breadcrumb-test
   (testing "GET /duplicated: a top-level transforms-namespace collection subject gets the Transforms root sentinel"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
               nm     (str prefix " Pipeline")]
@@ -714,7 +714,7 @@
 
 (deftest duplicated-api-collection-peers-hydrate-test
   (testing "GET /duplicated hydrates collection peers gated on the collection's own read visibility (its own :id)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [prefix (scope-prefix)

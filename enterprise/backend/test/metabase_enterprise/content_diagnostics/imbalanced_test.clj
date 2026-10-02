@@ -44,7 +44,7 @@
 
 (deftest imbalanced-collection-disjoint-bands-test
   (testing "banding one direct-item count keeps the collection bands disjoint under in-order thresholds"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-crowded-collection-threshold-items 3
                                          content-diagnostics-sparse-collection-threshold-items  3]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -71,7 +71,7 @@
 
 (deftest imbalanced-dashboard-cooccurrence-test
   (testing "a dashboard can be crowded on tabs while independently empty or sparse on dashcards"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-crowded-dashboard-threshold-dashcards-per-tab 2
                                          content-diagnostics-crowded-dashboard-threshold-tabs              2
                                          content-diagnostics-sparse-dashboard-threshold-dashcards          2]
@@ -107,7 +107,7 @@
   (testing "GET /imbalanced is gated on the :content-diagnostics premium feature"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (testing "licensed → 200 with the paginated envelope"
-        (mt/with-premium-features #{:content-diagnostics}
+        (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
           (let [resp (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/imbalanced")]
             (is (contains? resp :data))
             (is (contains? resp :total)))))
@@ -137,7 +137,7 @@
 
 (deftest imbalanced-api-finding-types-test
   (testing "GET /imbalanced narrows by finding-types (default all three)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll :id} {}
@@ -167,7 +167,7 @@
 
 (deftest imbalanced-api-multiple-types-per-entity-test
   (testing "one entity surfaces once per finding type - there is no read-time dedup across the umbrella"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll :id} {}]
@@ -190,7 +190,7 @@
 
 (deftest imbalanced-api-entity-types-filter-test
   (testing "GET /imbalanced filters by entity-types, including the collection subject"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll :id} {}
@@ -215,7 +215,7 @@
 
 (deftest imbalanced-api-sort-test
   (testing "GET /imbalanced sorts by content-count and name, both directions"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll :id} {}
@@ -242,7 +242,7 @@
 
 (deftest imbalanced-api-paginates-test
   (testing "GET /imbalanced honors limit/offset and reports the full valid total"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll :id} {}
@@ -268,7 +268,7 @@
 
 (deftest imbalanced-api-does-not-leak-across-finding-types-test
   (testing "imbalanced rows never surface in /stale or /slow, and their rows never surface in /imbalanced"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll :id} {}
@@ -299,7 +299,7 @@
 
 (deftest imbalanced-api-collection-subject-permissions-test
   (testing "a collection finding is served only when the caller can read the collection ITSELF"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {readable :id}   {}
@@ -326,7 +326,7 @@
 
 (deftest imbalanced-api-personal-collection-subject-test
   (testing "a personal collection's own finding is excluded by default, returned with include-personal-collections=true, and hydrates owner (not creator)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [pers-id (:id (collection/user->personal-collection (mt/user->id :rasta)))
@@ -352,7 +352,7 @@
 
 (deftest imbalanced-api-collection-breadcrumb-is-parent-test
   (testing "a collection finding's breadcrumb is its PARENT collection; the root sentinel at root; content_count stays top-level"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {parent :id} {:name "Parent Coll"}
@@ -388,7 +388,7 @@
 
 (deftest imbalanced-api-unreadable-parent-breadcrumb-test
   (testing "a readable collection under an unreadable parent serves its finding with a null breadcrumb - the parent's name never leaks"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {hidden-parent :id} {:name "Hidden Parent"}
@@ -414,7 +414,7 @@
 
 (deftest api-collection-name-permission-gate-test
   (testing "unreadable parent → collection_name nil, even though the stored column holds the hidden name"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {parent-id :id} {:name "Hidden Parent"}
@@ -438,7 +438,7 @@
 
 (deftest api-collection-name-relocation-gate-test
   (testing "entity moved post-scan: the scan-time parent's name is not served when the caller cannot read it"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {hidden-id :id} {:name "Hidden Origin"}
@@ -468,7 +468,7 @@
   (testing "an evidence-dated empty serves `details.as_of` as an ISO-8601 string"
     ;; as_of round-trips through the JSON details blob, so the response schema types it ms/TemporalString -
     ;; a Temporal-typed schema rejects the decoded value
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll :id} {}
                        :model/Card {card :id} {:collection_id coll}]
@@ -494,7 +494,7 @@
 
 (deftest imbalanced-scan-shares-batch-and-supersedes-per-type-test
   (testing "one scan writes stale + imbalanced in a single scan_id batch; a rescan supersedes a resolved sparse finding while the still-stale entity stays active"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll :id} {}
                        :model/Card {stale-card :id} {:collection_id coll
@@ -521,7 +521,7 @@
 
 (deftest api-sort-by-finding-type-test
   (testing "GET /imbalanced sorts by finding_type (alphabetical: crowded < empty < sparse)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-a :id} {}

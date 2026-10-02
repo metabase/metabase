@@ -1,7 +1,6 @@
 import {
   getUser,
   getUserIsAdmin,
-  getUserIsAnalyst,
   getUserIsEntitledAnalyst,
 } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
@@ -26,7 +25,7 @@ export function canAccessContentDiagnostics(state: State) {
   }
   return (
     getUserIsAdmin(state) ||
-    getUserIsAnalyst(state) ||
+    getUserIsEntitledAnalyst(state) ||
     getUserHasMonitoringPermission(state)
   );
 }
