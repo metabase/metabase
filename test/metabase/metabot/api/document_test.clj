@@ -56,7 +56,7 @@
 
 (deftest generate-content-free-limit-body-test
   (testing "the 402 body is the message and error code alone, not a map carrying a stack trace"
-    (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]
+    (mt/with-dynamic-fn-redefs [metabot.usage/managed-model-locked? (constantly true)]
       (is (= {:message    "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
               :error-code "metabase_ai_managed_locked"}
              (mt/user-http-request :crowberto
