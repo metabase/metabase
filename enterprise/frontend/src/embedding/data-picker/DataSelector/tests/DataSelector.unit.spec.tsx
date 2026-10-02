@@ -3,8 +3,8 @@ import type { ComponentProps } from "react";
 
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, render, screen, waitFor } from "__support__/ui";
-import { delay } from "__support__/utils";
+import { getIcon, render, screen } from "__support__/ui";
+import { delay, waitForRequestsToSettle } from "__support__/utils";
 import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
@@ -450,7 +450,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
-    await waitFor(() => {});
+    await waitForRequestsToSettle();
 
     expect(
       screen.getByText("To pick some data, you'll need to add some first"),
