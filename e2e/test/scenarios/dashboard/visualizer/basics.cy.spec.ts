@@ -5,7 +5,6 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
-  PRODUCTS_AVERAGE_BY_CREATED_AT,
   PRODUCTS_COUNT_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
@@ -44,10 +43,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
-      wrapId: true,
-    });
-    H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
-      idAlias: "productsAverageByCreatedAtQuestionId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
@@ -623,38 +618,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@undoButton").should("be.disabled");
       cy.get("@redoButton").should("be.disabled");
       cy.findByTestId("chartsettings-sidebar").should("not.be.visible");
-    });
-  });
-
-  it("should replace a dataset without remembering removing the current ones (metabase#57897)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
-    H.openQuestionsSidebar();
-    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
-
-    H.modal().within(() => {
-      cy.findByLabelText("Undo").as("undoButton");
-      cy.findByLabelText("Redo").as("redoButton");
-
-      cy.get("@undoButton").should("be.disabled");
-      cy.get("@redoButton").should("be.disabled");
-
-      H.switchToAddMoreData();
-      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
-      H.assertWellItems({
-        vertical: ["Count", "Count (Products by Created At (Month))"],
-      });
-
-      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
-
-      H.assertWellItems({
-        vertical: [
-          "Count",
-          "Count (Products by Created At (Month))",
-          "Average of Price",
-        ],
-      });
     });
   });
 

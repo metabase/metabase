@@ -188,9 +188,15 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
-      H.assertWellItemsCount({ vertical: 2 });
+      H.assertWellItems({ vertical: ["Count", "Average of Price"] });
       H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
-      H.assertWellItemsCount({ vertical: 3 });
+      H.assertWellItems({
+        vertical: [
+          "Count",
+          "Average of Price",
+          "Count (Products by Created At (Month))",
+        ],
+      });
     });
 
     H.saveDashcardVisualizerModal({ mode: "create" });
