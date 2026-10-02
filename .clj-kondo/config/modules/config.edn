@@ -1690,7 +1690,7 @@
   secrets
   {:team "Drivers"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}}
+   :uses #{api driver models premium-features system util}}
 
   segments
   {:team "Querying"
@@ -1866,7 +1866,7 @@
   {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
-   :uses #{appearance settings util}}
+   :uses #{appearance premium-features settings util}}
 
   task
   {:team "UX West"
