@@ -307,7 +307,6 @@ const BRIDGES = new Set(CYCLES.flatMap(c => c['strong-bridges'].map(([a,b]) => a
 function sameCycle(a, b){ const ca = byId[a] && byId[a].cycle; return ca != null && byId[b] && ca === byId[b].cycle; }
 const STRONG_BRIDGE_HELP = 'A strong bridge is one dependency whose removal splits the cycle into smaller cycles, or none. '+
   'Cutting one is the cheapest way to start breaking a cycle up.';
-// [label, value, tooltip] triples shown wherever a cycle is summarised
 // density and cycle rank, with this cycle's numbers in the formula
 function densityHelp(c){
   return `Density = edges ÷ (modules × (modules − 1)) = ${c.edges} ÷ (${c.size} × ${c.size-1}) = ${c.density.toFixed(2)}. `+
@@ -318,6 +317,7 @@ function cycleRankHelp(c){
     'The number of independent loops in the cycle. It is also an upper bound on the dependencies to cut to break '+
     'the cycle, though the real minimum is often far lower.';
 }
+// [label, value, tooltip] triples shown wherever a cycle is summarised
 function cycleMetrics(c){
   return [['modules',c.size], ['edges',c.edges], ['density',c.density.toFixed(2),densityHelp(c)],
           ['cycle rank',c['cycle-rank'],cycleRankHelp(c)], ['strong bridges',c['strong-bridges'].length,STRONG_BRIDGE_HELP]];
@@ -627,13 +627,14 @@ function renderHotspots(){
   treeEl.scrollTop = scroll;
 }
 
-// Cycles view: each strongly connected group of modules, largest first. Density and cycle rank say how tangled it is;
-// a strong bridge is one edge whose removal splits the cycle.
+// ---- cycles view: one card per cycle, largest first --------------------------
+
 // a cycle member; with teams picked, the picked teams' members take their team colour so they are easy to find
 function moduleLink(id){
   const c = chip(id, true), team = byId[id] && byId[id].team;
   if(ownedByFocusTeam(byId[id])){ c.classList.add('teamchip'); c.style.setProperty('--team', teamColor[team]); }
   if(id===selected) c.style.borderColor = 'var(--accent)';
+  c.dataset.id = id;   // lets scrollToSelected follow arrow-key moves through the member chips
   return c;
 }
 function graphCycle(i){
@@ -650,14 +651,14 @@ function renderCycles(){
     `</span>`;
   treeEl.appendChild(bar);
   if(debtOnly) treeEl.appendChild(debtNotice());
-  const shown = CYCLES.filter(c => c.modules.some(id => matches(byId[id]) && teamOk(byId[id])));
-  if(!shown.length){
+  const shown = new Set(CYCLES.filter(c => c.modules.some(id => matches(byId[id]) && teamOk(byId[id]))));
+  if(!shown.size){
     const e=document.createElement('div'); e.className='viewbar';
     e.textContent = CYCLES.length ? 'No cycle has a module matching the current filters.' : 'No cycles.';
     treeEl.appendChild(e);
   }
   CYCLES.forEach((c,i)=>{
-    if(!shown.includes(c)) return;
+    if(!shown.has(c)) return;
     const card=document.createElement('div'); card.className='cyc-card';
     const head=document.createElement('div'); head.className='cyc-head';
     const t=document.createElement('b'); t.textContent=cycleLabel(i); head.appendChild(t);
@@ -666,8 +667,7 @@ function renderCycles(){
     g.onclick=()=>graphCycle(i); head.appendChild(g);
     card.appendChild(head);
     const box=document.createElement('div'); box.className='chips';
-    // data-id lets scrollToSelected follow arrow-key moves through the member chips
-    c.modules.forEach(id => { const ch=moduleLink(id); ch.dataset.id=id; box.appendChild(ch); visibleIds.push(id); });
+    c.modules.forEach(id => { box.appendChild(moduleLink(id)); visibleIds.push(id); });
     card.appendChild(box);
     if(c['strong-bridges'].length){
       const sub=document.createElement('div'); sub.className='sub'; sub.textContent='Strong bridges';
