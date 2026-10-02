@@ -6,11 +6,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  settlePendingUpdates,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type Question from "metabase-lib/v1/Question";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -78,12 +74,10 @@ describe("NotebookStep", () => {
     const testId = `step-${type}-${step.stageIndex}-${step.itemIndex}`;
     setup({ step });
 
-    expect(screen.getByTestId(testId)).toBeInTheDocument();
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Remove step" }),
     ).toBeInTheDocument();
-
-    await settlePendingUpdates();
   });
 
   it("doesn't render the remove button if step revert isn't implemented", () => {
