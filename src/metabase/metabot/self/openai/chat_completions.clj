@@ -50,10 +50,11 @@
                                     (= "assistant" (:role (first group))))
                              (let [tool-calls (into [] (mapcat :tool_calls) group)
                                    ;; :reasoning_content exists on a member only when the replay
-                                   ;; hook of [[parts->cc-messages]] minted it — today only
-                                   ;; Moonshot, whose dialect replays reasoning as a top-level
+                                   ;; hook of [[parts->cc-messages]] minted it — today Moonshot
+                                   ;; and Ollama, whose dialects replay reasoning as a top-level
                                    ;; sibling of :content (see
-                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]).
+                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]; Ollama
+                                   ;; renames the field on the way out).
                                    ;; Joined in part order: the wire has a single field per
                                    ;; message, so order is the only fidelity available.
                                    reasoning  (apply str (keep :reasoning_content group))
@@ -99,9 +100,10 @@
                   ;; channel passes :reasoning-part->message, a fn from a coalesced
                   ;; :reasoning part to a replayed assistant message (or nil); today
                   ;; Mistral (think chunks — see
-                  ;; [[metabase.metabot.self.mistral/think-message]]) and Moonshot
+                  ;; [[metabase.metabot.self.mistral/think-message]]), Moonshot
                   ;; (top-level reasoning_content — see
-                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) do. Z.AI and
+                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) and Ollama
+                  ;; (the same, renamed to reasoning on the way out) do. Z.AI and
                   ;; vLLM define no such channel yet; when they grow one, each gets its
                   ;; own hook fn here rather than more shared code.
                   :reasoning   (when reasoning-part->message

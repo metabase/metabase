@@ -1,7 +1,7 @@
 (ns metabase.metabot.self.ollama-test
   "Deliberately narrower than [[metabase.metabot.self.vllm-test]] — the two adapters share a
   transport, so what is covered here is what differs: the two deployments, the catalog shape Ollama
-  returns, the absence of a context-window gate, and the diagnoses."
+  returns, the context-window check, and the diagnoses."
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
@@ -77,7 +77,7 @@
 
 ;;; The shape Ollama's OpenAI-compatible `/v1/models` actually returns: no `max_model_len`, no
 ;;; `parent`, no `name`. Every field vLLM's adapter reads beyond `id` is absent here, which is why
-;;; the context-window check has nothing to stand on.
+;;; the context-window check reads the window off `/api/ps` instead.
 (def ^:private ollama-catalog
   [{:id "good-model"   :object "model" :created 1786676106 :owned_by "library"}
    {:id "chatty-model" :object "model" :created 1786676106 :owned_by "library"}])
@@ -1096,8 +1096,8 @@
         (is (nil? (:default base-url)))))))
 
 (deftest ollama-requires-an-address-or-a-key-test
-  (testing "`:required?` cannot say 'required in one mode' — validate-field! ignores :show-when — so
-           the real rule lives in :required-any, as it does for Google's two auth methods"
+  (testing "`:required?` cannot say 'required in one deployment', so :required-any carries the coarse
+           rule, as it does for Google's two auth methods, and :validate the exact one"
     (testing "either deployment configured on its own is complete"
       (is (true? (llm.provider/credentials-complete? "ollama" {:hosting "cloud" :api-key "sk-x"})))
       (is (true? (llm.provider/credentials-complete? "ollama" {:hosting  "self-hosted"

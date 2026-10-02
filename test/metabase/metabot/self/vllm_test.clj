@@ -403,8 +403,7 @@
                    tc)]
       (testing "index arrives in contiguous runs, not interleaved"
         (is (= [0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1] (mapv :index deltas))))
-      (testing "id arrives on each call's opening delta only — a provider repeating it would lose the
-                arguments, since neither the start branch nor the argument-delta branch would fire"
+      (testing "id arrives on each call's opening delta only, so each id opens exactly one block"
         (is (= [0 1] (keep #(when (:id %) (:index %)) deltas)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────

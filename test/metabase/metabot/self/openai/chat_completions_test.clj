@@ -471,10 +471,9 @@
                                                           :function {:name "t" :arguments "{}"}}]}}]}]))))))
 
 (deftest ^:parallel chunks-xf-empty-continuation-arguments-emit-nothing-test
-  (testing "merging the open-a-block and continue-a-block branches replaced a `some?` guard on
-           arguments with a blank check, so a continuation fragment carrying \"\" now emits no delta
-           where it used to emit an empty one. The joined arguments are identical either way — this
-           pins the chunk stream, which is what a consumer counting deltas would notice."
+  (testing "a continuation fragment carrying \"\" emits no delta, since an empty string adds nothing
+           to the joined arguments. This pins the chunk stream, which is what a consumer counting
+           deltas would notice."
     (is (= [{:type :start :messageId "chatcmpl-s"}
             {:type :tool-input-start :toolCallId "call-1" :toolName "t"}
             {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"a\":1}"}
