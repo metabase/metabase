@@ -141,7 +141,7 @@
   "Response item for a `slow` finding: flat identity + a top-level `duration_ms` + nested typed `details`.
   One open map covering both variants: a **leaf** (card/transform) freezes `details.threshold_ms`; a
   **container** (dashboard/document) carries `details.slow_entities` (hydrated culprit cards). Every slow
-  row stamps `duration_ms` (leaf mean / container's slowest culprit), so it is never null in this result."
+  row stamps `duration_ms` (leaf median / container's slowest culprit), so it is never null in this result."
   [:merge FindingBase
    [:map
     ;; measured magnitude (top-level, SQL-filterable/sortable); always present on slow findings
@@ -289,16 +289,16 @@
 
 (defn- findings-response
   "The shared list-endpoint pipeline: select the sorted, paginated page for `where`, hydrate it
-  (`excluded-personal-ids` gates the culprit hydration; the per-finding-type tail - hoisted columns and
+  (`exclude-personal?` gates the culprit hydration; the per-finding-type tail - hoisted columns and
   any details rewrite - is dispatched inside `api.common/hydrate-findings`), and wrap it in the
   `{:data :total :limit :offset :last_scan_at}` envelope every finding list returns."
-  [where sort-column->field sort-column sort-direction excluded-personal-ids]
+  [where sort-column->field sort-column sort-direction exclude-personal?]
   (let [page (cd.db/findings-page where
                                   [[(sort-column->field sort-column) sort-direction]
                                    [:id sort-direction]]
                                   (request/limit)
                                   (request/offset))]
-    {:data         (api.common/hydrate-findings page excluded-personal-ids)
+    {:data         (api.common/hydrate-findings page exclude-personal?)
      :total        (cd.db/finding-count where)
      :limit        (request/limit)
      :offset       (request/offset)
@@ -356,13 +356,13 @@
        [:entity-types   {:optional true} (entity-types-param api.common/covered-entity-types)]
        [:threshold-days {:optional true} ms/PositiveInt]
        [:query          {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
-    (findings-response (stale-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                            :entity-types                     entity-types
-                                            :threshold-days                   threshold-days
-                                            :query                            query})
+  (let [exclude-personal? (not include-personal-collections)]
+    (findings-response (stale-where-clause {:exclude-personal? exclude-personal?
+                                            :entity-types      entity-types
+                                            :threshold-days    threshold-days
+                                            :query             query})
                        stale-sort-column->field sort-column sort-direction
-                       excluded-personal-ids)))
+                       exclude-personal?)))
 
 (api.macros/defendpoint :get "/slow"
   :- [:map
@@ -400,13 +400,13 @@
        [:entity-types    {:optional true} (entity-types-param api.common/covered-entity-types)]
        [:min-duration-ms {:optional true} ms/PositiveInt]
        [:query           {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
-    (findings-response (slow-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                           :entity-types                     entity-types
-                                           :min-duration-ms                  min-duration-ms
-                                           :query                            query})
+  (let [exclude-personal? (not include-personal-collections)]
+    (findings-response (slow-where-clause {:exclude-personal? exclude-personal?
+                                           :entity-types      entity-types
+                                           :min-duration-ms   min-duration-ms
+                                           :query             query})
                        slow-sort-column->field sort-column sort-direction
-                       excluded-personal-ids)))
+                       exclude-personal?)))
 
 (api.macros/defendpoint :get "/imbalanced"
   :- [:map
@@ -441,13 +441,13 @@
                                              (ms/enum-decode-keyword imbalanced-finding-types)
                                              [:sequential (ms/enum-decode-keyword imbalanced-finding-types)]]]
        [:query             {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
-    (findings-response (imbalanced-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                                 :entity-types                     entity-types
-                                                 :finding-types                    finding-types
-                                                 :query                            query})
+  (let [exclude-personal? (not include-personal-collections)]
+    (findings-response (imbalanced-where-clause {:exclude-personal? exclude-personal?
+                                                 :entity-types      entity-types
+                                                 :finding-types     finding-types
+                                                 :query             query})
                        imbalanced-sort-column->field sort-column sort-direction
-                       excluded-personal-ids)))
+                       exclude-personal?)))
 (api.macros/defendpoint :get "/duplicated"
   :- [:map
       [:data         [:sequential DuplicatedFinding]]
@@ -487,13 +487,13 @@
        [:entity-types        {:optional true} (entity-types-param duplicated-entity-types)]
        [:min-duplicate-count {:optional true} ms/PositiveInt]
        [:query               {:optional true} :string]]]
-  (let [excluded-personal-ids (api.common/excluded-personal-collection-ids include-personal-collections)]
-    (findings-response (duplicated-where-clause {:excluded-personal-collection-ids excluded-personal-ids
-                                                 :entity-types                     entity-types
-                                                 :min-duplicate-count              min-duplicate-count
-                                                 :query                            query})
+  (let [exclude-personal? (not include-personal-collections)]
+    (findings-response (duplicated-where-clause {:exclude-personal?   exclude-personal?
+                                                 :entity-types        entity-types
+                                                 :min-duplicate-count min-duplicate-count
+                                                 :query               query})
                        duplicated-sort-column->field sort-column sort-direction
-                       excluded-personal-ids)))
+                       exclude-personal?)))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."

@@ -12,8 +12,10 @@
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -57,30 +59,75 @@
   transform-serving clauses - see [[visible-findings-clause]] for why."
   {:include-archived-items :all})
 
+(defn- and-not-archived-clause
+  "Narrow a collection-visibility `clause` to non-archived rows. Only for the `::common/collection-item`
+  types (card/dashboard/document): a collection subject's own archived state is already handled by the
+  visibility config, and a transform has no `archived` column at all."
+  [clause]
+  [:and clause [:= :archived false]])
+
 (defn visible-findings-clause
   "Keep only findings whose entity is in a collection the current user can read (a collection subject must
-  itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped.
+  itself be readable). Fail-closed: an entity-type with no collection model is dropped.
 
-  Transform findings also survive an archived folder - archiving a folder neither archives nor stops
-  its transforms. Only the archived exclusion is relaxed; permission filtering is unchanged."
+  Transform findings need more, because transform readability is not collection-based: they reach only a
+  data analyst, and only while the transforms feature is enabled. The rest of `mi/can-read?` - whether the
+  caller may read the transform's source tables - is checked when hydrating a peer or culprit
+  ([[read-entity-rows]] `:transform`) but not here, so a finding can name a transform whose sources the
+  caller cannot read. Transforms also survive an archived folder, since archiving a folder neither archives
+  nor stops them.
+
+  Archived cards, dashboards and documents are excluded here rather than left to the archive events: some
+  archive paths publish no per-entity event - archiving a dashboard archives its dashboard questions in one
+  bulk update - so their findings would otherwise linger until the next scan."
   []
   (into [:or]
         (common/entity-collection-clauses
-         (keys common/entity-type->model)
+         (cond->> (keys common/entity-type->model)
+           (not (and (api/is-data-analyst?) (premium-features/any-transforms-enabled?)))
+           (remove #{:transform}))
          (fn [etype coll-col]
-           (collection/visible-collection-filter-clause
-            coll-col
-            (if (= etype :transform) archived-inclusive-visibility {}))))))
+           (cond-> (collection/visible-collection-filter-clause
+                    coll-col
+                    (if (= etype :transform) archived-inclusive-visibility {}))
+             (isa? common/hierarchy etype ::common/collection-item)
+             (and-not-archived-clause))))))
 
-(defn- personal-collection-ids
-  "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
-  root plus any `location` descendant. Empty when there are none."
-  []
-  (if-let [roots (not-empty (cd.db/personal-collection-root-ids))]
-    (cd.db/collection-ids (into [:or [:in :id roots]]
-                                (map (fn [pid] [:like :location (str "/" pid "/%")]))
-                                roots))
-    #{}))
+(def ^:private personal-root-prefixes
+  "Subquery: the `location` prefix each personal-collection root imposes on its descendants - `/<id>/`.
+  Personal collections only ever live at the root, so a collection is nested under one exactly when the
+  first segment of its `location` names a personal root."
+  ^:allow-subquery {:select [[[:concat "/" :id "/"] :prefix]]
+                    :from   [(t2/table-name :model/Collection)]
+                    :where  [:not= :personal_owner_id nil]})
+
+(def ^:private first-location-segment
+  "`/<first segment>/` of a collection's `location`: `/3/` for `/3/14/`, and `/` for a root-level collection,
+  which no personal prefix can match (a personal root is caught by its own `personal_owner_id` instead).
+
+  Standard SQL, because H2, Postgres and MySQL agree on `SUBSTRING`, `POSITION` and `CONCAT` but not on
+  `SPLIT_PART`, `LOCATE`, `STRPOS` or `CAST(… AS INTEGER)`. `POSITION` needs `:raw` since Honey SQL emits the
+  comma form, which Postgres rejects; only that constant is spliced and Honey SQL still quotes the column.
+  Comparing strings rather than ints avoids a dialect-specific cast."
+  [:substring :location [:inline 1]
+   [:+ ^:allow-raw-sql [:raw ["POSITION('/' IN " [:substring :location [:inline 2]] ")"]]
+    [:inline 1]]])
+
+(defn- personal-collection-clause
+  "WHERE fragment: the collection `coll-col` points at is, or is nested under, a personal collection.
+
+  A non-correlated subquery, so its only bind parameters are the two `/` literals in
+  [[personal-root-prefixes]] however many personal collections exist, and the planner evaluates it once.
+  Matching the first `location` segment by equality keeps it a hash semi-join; a correlated
+  `location LIKE '/' || pc.id || '/%'` could not use an index, because a pattern that is not constant at
+  plan time yields no range bounds."
+  [coll-col]
+  [:in coll-col ^:allow-subquery
+   {:select [:id]
+    :from   [(t2/table-name :model/Collection)]
+    :where  [:or
+             [:not= :personal_owner_id nil]
+             [:in first-location-segment personal-root-prefixes]]}])
 
 (defn name-search-clause
   "Case-insensitive substring match on the denormalized `entity_name`. Nil for a blank/absent query.
@@ -100,36 +147,27 @@
                       types)]
       [:in :entity_kind (mapv name kinds)])))
 
-(defn excluded-personal-collection-ids
-  "The live personal-collection id set (roots + descendants) to exclude for this request - nil when
-  `include-personal-collections`, or when none exist. Endpoints resolve this once and thread it to both
-  `findings-where` and `hydrate-findings`, so the set is queried at most once per request."
-  [include-personal-collections]
-  (when-not include-personal-collections
-    (not-empty (personal-collection-ids))))
-
 (defn exclude-personal-collections-clause
-  "WHERE fragment dropping findings whose entity currently lives in one of `excluded-personal-ids`
-  (see `excluded-personal-collection-ids`) - or, for a collection subject, *is* one (the set already
-  includes descendants). Root and regular-collection entities are kept. Nil when there is nothing to
-  exclude."
-  [excluded-personal-ids]
-  (when excluded-personal-ids
+  "WHERE fragment dropping findings whose entity currently lives in a personal collection - or, for a
+  collection subject, *is* one (see [[personal-collection-clause]], which covers descendants). Root and
+  regular-collection entities are kept. Nil when `exclude-personal?` is false."
+  [exclude-personal?]
+  (when exclude-personal?
     (into [:and]
           (map (fn [clause] [:not clause]))
           (common/entity-collection-clauses
            (keys common/entity-type->model)
-           (fn [_etype coll-col] [:in coll-col excluded-personal-ids])))))
+           (fn [_etype coll-col] (personal-collection-clause coll-col))))))
 
 (defn findings-where
   "Base WHERE for one endpoint's finding list (one finding-type, or an umbrella's several): the valid +
   caller-visible base narrowed by the filters every endpoint shares - personal-collection exclusion
-  (when `:excluded-personal-collection-ids` is provided; see `excluded-personal-collection-ids`),
+  (when `:exclude-personal?`; see [[exclude-personal-collections-clause]]),
   `entity-types` (see [[entity-types-clause]]), and `query` name search - plus any finding-type-specific
   `extra-filters`. Each filter is precomputed so a nil (no-op) is skipped, not conjoined as a null
   AND-term."
-  [finding-types {:keys [excluded-personal-collection-ids entity-types query]} & extra-filters]
-  (let [personal-filter    (exclude-personal-collections-clause excluded-personal-collection-ids)
+  [finding-types {:keys [exclude-personal? entity-types query]} & extra-filters]
+  (let [personal-filter    (exclude-personal-collections-clause exclude-personal?)
         entity-type-filter (entity-types-clause entity-types)
         name-search-filter (name-search-clause query)]
     (into (cond-> [:and (valid-clause finding-types) (visible-findings-clause)]
@@ -258,21 +296,27 @@
 
 (defn- readable-entities-where
   "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
-  (the same gate as `visible-findings-clause`) always, plus the personal-collection exclusion when
-  `excluded-personal-ids` is provided. `visibility-config` tunes the collection clause (the transform
-  hydrator passes [[archived-inclusive-visibility]]). Shared by the culprit/peer hydrators so the
-  read-time gate lives in one place - a perms change lands once, not per hydrator."
-  ([ids excluded-personal-ids]
-   (readable-entities-where ids excluded-personal-ids {}))
-  ([ids excluded-personal-ids visibility-config]
+  (the same gate as `visible-findings-clause`) always, the archived exclusion for the types that have the
+  column, plus the personal-collection exclusion when `exclude-personal?`. Shared by the culprit/peer
+  hydrators so the read-time gate lives in one place - a perms change lands once, not per hydrator.
+
+  `opts` carries the two type-dependent parts: `:visibility-config` for the collection clause and
+  `:exclude-archived?` for the archived filter. Only the transform hydrator turns them off - a transform
+  outlives its folder's archiving and has no `archived` column - so for everything else a trashed peer or
+  culprit drops out of `duplicate_entities`/`slow_entities` at once instead of waiting for the next scan."
+  ([ids exclude-personal?]
+   (readable-entities-where ids exclude-personal? nil))
+  ([ids exclude-personal? {:keys [visibility-config exclude-archived?]
+                           :or   {visibility-config {} exclude-archived? true}}]
    [:and
     [:in :id ids]
     (collection/visible-collection-filter-clause :collection_id visibility-config)
-    ;; root-collection entities (nil collection_id) must survive the NOT-IN.
-    (when excluded-personal-ids
+    (when exclude-archived? [:= :archived false])
+    ;; root-collection entities (nil collection_id) must survive the personal-collection exclusion.
+    (when exclude-personal?
       [:or
        [:= :collection_id nil]
-       [:not [:in :collection_id excluded-personal-ids]]])]))
+       [:not (personal-collection-clause :collection_id)]])]))
 
 (defn- hydrate-slow-entities
   "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw> :view_count <int>}}`. The
@@ -282,45 +326,48 @@
 
   Culprit cards can live outside their container's collection, so the per-caller read-time filters are
   re-applied here via [[readable-entities-where]]: caller visibility always, and the personal-collection
-  exclusion when `excluded-personal-ids` is provided. A filtered-out culprit drops out of `slow_entities`
+  exclusion when `exclude-personal?`. A filtered-out culprit drops out of `slow_entities`
   exactly like a deleted one."
-  [card-ids excluded-personal-ids]
+  [card-ids exclude-personal?]
   (when (seq card-ids)
-    (cd.db/card-summaries-by-id (readable-entities-where (set card-ids) excluded-personal-ids))))
+    (cd.db/card-summaries-by-id (readable-entities-where (set card-ids) exclude-personal?))))
 
 (defmulti ^:private read-entity-rows
   "Permission-filtered rows for hydrating a type's duplicate ids, read-gated by [[readable-entities-where]].
   For card/dashboard/document (`::collection-item`) that collection clause IS the read permission (they derive
   `:perms/use-parent-collection-perms`), with projection cols from `common/peer-select-cols`; transform
   readability isn't collection-based, so it selects full rows and additionally filters by `mi/can-read?`."
-  {:arglists '([entity-type ids excluded-personal-ids])}
+  {:arglists '([entity-type ids exclude-personal?])}
   (fn [entity-type _ids _excluded] entity-type)
   :hierarchy #'common/hierarchy)
 
 (defmethod read-entity-rows ::common/collection-item
-  [entity-type ids excluded-personal-ids]
+  [entity-type ids exclude-personal?]
   (cd.db/name-rows (common/entity-type->model entity-type)
                    (common/peer-select-cols entity-type)
-                   (readable-entities-where ids excluded-personal-ids)))
+                   (readable-entities-where ids exclude-personal?)))
 
 (defmethod read-entity-rows :collection
-  [_ ids excluded-personal-ids]
+  [_ ids exclude-personal?]
   ;; a `:collection` subject *is* the read-permission unit, so it gates on its own `:id` rather than a
-  ;; parent `:collection_id`, and has no root row to preserve.
+  ;; parent `:collection_id`, and has no root row to preserve. The visibility clause already drops
+  ;; archived collections, so no separate archived filter here.
   (cd.db/name-rows :model/Collection nil
                    [:and
                     [:in :id ids]
                     (collection/visible-collection-filter-clause :id)
-                    (when excluded-personal-ids [:not [:in :id excluded-personal-ids]])]))
+                    (when exclude-personal? [:not (personal-collection-clause :id)])]))
 
 (defmethod read-entity-rows :transform
-  [_ ids excluded-personal-ids]
+  [_ ids exclude-personal?]
   ;; mi/can-read? on a transform = source-type feature gate + (superuser, or data-analyst with readable
   ;; source tables) - the collection clause alone would leak transform names to collection-granted
   ;; non-analysts. It reads :source, so select full rows; peer sets are page-bounded, so the per-row check
   ;; is cheap.
-  (filter mi/can-read? (cd.db/transforms (readable-entities-where ids excluded-personal-ids
-                                                                  archived-inclusive-visibility))))
+  (filter mi/can-read? (cd.db/transforms
+                        (readable-entities-where ids exclude-personal?
+                                                 {:visibility-config archived-inclusive-visibility
+                                                  :exclude-archived? false}))))
 
 (defn- hydrate-duplicate-entities
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
@@ -329,13 +376,13 @@
   finding's own entity type, so each type's ids resolve from that type's own model via [[read-entity-rows]]
   (which applies the per-type read gate); a filtered-out peer drops out of `duplicate_entities` like a
   deleted one."
-  [findings excluded-personal-ids]
+  [findings exclude-personal?]
   (into {}
         (for [[etype rows] (group-by :entity_type findings)
               :let  [model (common/entity-type->model etype)
                      ids   (into #{} (mapcat (comp :duplicate_entity_ids :details)) rows)]
               :when (and model (seq ids))
-              row   (read-entity-rows etype ids excluded-personal-ids)]
+              row   (read-entity-rows etype ids exclude-personal?)]
           [[etype (:id row)]
            (cond-> {:id (:id row) :name (:name row) :entity_type etype}
              ;; only card/dashboard/document carry view_count (transform + collection have none)
@@ -435,9 +482,9 @@
   The finding-type-specific tail - the hoisted native column(s) and any `details` rewrite (slow culprits /
   duplicated peers) - is dispatched per row on each finding's `finding_type` via [[finalize-finding]], so a
   page may mix finding types (an umbrella endpoint; the imbalanced umbrella spans three).
-  `excluded-personal-ids` (the request's resolved exclusion set) gates the culprit/peer hydration so it
-  matches the findings filter without re-querying."
-  [findings excluded-personal-ids]
+  `exclude-personal?` (the request's `include-personal-collections` param, negated) gates the culprit/peer
+  hydration so it matches the findings filter."
+  [findings exclude-personal?]
   (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
                                [etype (entity-context etype (map :entity_id rows))]))
         coll-ids    (into #{} (keep (fn [{:keys [entity_type entity_id]}]
@@ -450,8 +497,8 @@
         ;; Batch-prep runs over whatever the page carries - an absent finding type contributes no ids, so
         ;; its hydrator issues no query.
         culprits    (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
-                                           excluded-personal-ids)
-        entities    (hydrate-duplicate-entities findings excluded-personal-ids)
+                                           exclude-personal?)
+        entities    (hydrate-duplicate-entities findings exclude-personal?)
         ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
                        entity_name entity_creator_id entity_creator_name card_type entity_kind
@@ -509,12 +556,13 @@
   Entity attributes are denormalized at scan time, so sorting is a plain `ORDER BY` with no join. Each
   endpoint `assoc`s its per-finding-type magnitude column (stale `:last-active-at`, slow `:duration-ms`).
   `entity-type` sorts by the flat `entity_kind` (card sub-kinds order as peers, not clustered under
-  `card`); name-ish sorts are case-insensitive (and collation-stable) via lower().
+  `card`); every name-ish sort is case-insensitive (and collation-stable) via lower() - `created-by`
+  included, now that `entity_creator_name` carries no index for a raw sort to have used.
   collection-name orders by the scan-time stored parent name even when the caller cannot read it - the
   name itself is gated at serve time, and the ordering position is the accepted, marginal exposure."
   {:detected-at      :detected_at
    :entity-type      :entity_kind
    :name             [:lower :entity_name]
    :created-at       :entity_created_at
-   :created-by       :entity_creator_name
+   :created-by       [:lower :entity_creator_name]
    :collection-name  [:lower :entity_collection_name]})
