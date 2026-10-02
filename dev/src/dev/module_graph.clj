@@ -68,17 +68,16 @@
   [graph]
   (->> (strongly-connected-components graph)
        (filter #(> (count %) 1))
-       (sort-by (fn [component] [(- (count component)) (str (first (sort component)))]))
+       (sort-by (fn [component] [(- (count component)) (first (sort component))]))
        vec))
 
 (defn- component-edges
   "The `[from to]` edges of `graph` with both ends in `component`, sorted."
   [graph component]
-  (vec (sort-by #(mapv str %)
-                (for [from  component
-                      to    (get graph from)
-                      :when (and (not= from to) (contains? component to))]
-                  [from to]))))
+  (vec (sort (for [from  component
+                   to    (get graph from)
+                   :when (and (not= from to) (contains? component to))]
+               [from to]))))
 
 (defn- strong-bridges
   "The `edges` of a strongly connected component whose removal leaves it no longer strongly connected."
