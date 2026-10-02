@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
-import { DateTime } from "metabase/common/components/DateTime";
 import {
   DetailsRow,
   DetailsTable,
 } from "metabase/monitor/components/DetailSidebar";
-import { Text } from "metabase/ui";
+import { MonitorDateValue } from "metabase/monitor/components/MonitorDateValue";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 
 import {
@@ -16,12 +15,6 @@ import {
 } from "../utils";
 
 import type { SessionDetailsProps } from "./types";
-
-const DateValue = ({ value }: { value: string }) => (
-  <Text size="md" c="text-primary">
-    <DateTime value={value} unit="minute" />
-  </Text>
-);
 
 export const SessionDetails = ({ session }: SessionDetailsProps) => {
   const isEnded = session.status === "ended";
@@ -60,13 +53,13 @@ export const SessionDetails = ({ session }: SessionDetailsProps) => {
       />
       <DetailsRow
         label={t`Signed in`}
-        value={<DateValue value={session.created_at} />}
+        value={<MonitorDateValue value={session.created_at} />}
       />
       <DetailsRow
         label={t`Last active`}
         value={
           session.last_active_at ? (
-            <DateValue value={session.last_active_at} />
+            <MonitorDateValue value={session.last_active_at} />
           ) : (
             EMPTY_CELL_PLACEHOLDER
           )
@@ -77,7 +70,7 @@ export const SessionDetails = ({ session }: SessionDetailsProps) => {
           label={t`Ended`}
           value={
             session.ended_at ? (
-              <DateValue value={session.ended_at} />
+              <MonitorDateValue value={session.ended_at} />
             ) : (
               EMPTY_CELL_PLACEHOLDER
             )
@@ -96,7 +89,7 @@ export const SessionDetails = ({ session }: SessionDetailsProps) => {
       ) : (
         <DetailsRow
           label={t`Expires`}
-          value={<DateValue value={session.expires_at} />}
+          value={<MonitorDateValue value={session.expires_at} />}
         />
       )}
     </DetailsTable>
