@@ -7,16 +7,11 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import type { AppErrorDescriptor } from "metabase/redux/store";
+import { Box, Flex } from "metabase/ui";
 import type {
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-
-import {
-  FormContainer,
-  FormResultMessage,
-  FormTitle,
-} from "./PublicAction.styled";
 
 interface Props {
   action: WritebackAction;
@@ -49,18 +44,42 @@ function PublicAction({ action, publicId, onError }: Props) {
   );
 
   if (isSubmitted) {
-    return <FormResultMessage>{successMessage}</FormResultMessage>;
+    return (
+      <Box
+        component="h1"
+        fw={700}
+        fz="lg"
+        lh="1.375rem"
+        c="text-primary"
+        ta="center"
+      >
+        {successMessage}
+      </Box>
+    );
   }
 
   return (
-    <FormContainer>
-      <FormTitle>{action.name}</FormTitle>
+    <Flex
+      direction="column"
+      w={{ base: "100%", sm: "26.875rem" }}
+      px={{ base: "sm", sm: 0 }}
+    >
+      <Box
+        component="h1"
+        fw={700}
+        fz="lg"
+        lh="1.375rem"
+        c="text-primary"
+        mb="1.3125rem"
+      >
+        {action.name}
+      </Box>
       <ActionForm
         action={action}
         submitButtonFullWidth
         onSubmit={handleSubmit}
       />
-    </FormContainer>
+    </Flex>
   );
 }
 
