@@ -212,14 +212,16 @@ describe("scenarios > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
-      H.assertWellItems({ vertical: ["Count", "Average of Price"] });
       H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.assertWellItems({
+        vertical: ["Count", "Count (Products by Created At (Month))"],
+      });
+      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
       H.assertWellItems({
         vertical: [
           "Count",
-          "Average of Price",
           "Count (Products by Created At (Month))",
+          "Average of Price",
         ],
       });
     });
