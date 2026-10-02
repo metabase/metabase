@@ -69,8 +69,12 @@
   --input-border-color: transparent;
 
   color: var(--mb-color-text-disabled);
-  background-color: var(--mb-color-background_surface-disabled);
   opacity: 1;
+}
+
+.wrapper .input:not([data-variant="unstyled"]):disabled,
+.wrapper .input:not([data-variant="unstyled"])[data-disabled] {
+  background-color: var(--mb-color-background_surface-disabled);
 }
 
 .wrapper[data-with-left-section] .input {
