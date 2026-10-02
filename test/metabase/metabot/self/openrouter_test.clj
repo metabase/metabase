@@ -286,32 +286,6 @@
           (is (false? (openrouter/reasoning-model? model)))
           (is (not (contains? (body-for {:model model}) :reasoning))))))))
 
-(deftest ^:parallel aliased-model-keeps-resolved-entry-capabilities-test
-  (testing "an undated id saved in a setting behaves as the dated catalog entry it resolves to"
-    (let [forced {:tools       [{:tool-name "get_thing"
-                                 :doc       "Get a thing."
-                                 :schema    [:=> [:cat [:map [:id :int]]] :any]
-                                 :fn        identity}]
-                  :tool_choice "required"}]
-      (doseq [model ["qwen/qwen3.8-max" "qwen/qwen3.8-max-0902"]]
-        (testing model
-          (is (= 1000000 (openrouter/context-window-tokens model)))
-          (is (true? (openrouter/reasoning-model? model)))
-          (is (= model (:model (body-for (merge forced {:model model})))))
-          (is (= "auto" (:tool_choice (body-for (merge forced {:model model})))))
-          (is (= {:enabled true} (:reasoning (body-for (merge forced {:model model})))))
-          (is (=? {:tool_choice "auto" :max_tokens 2048}
-                  (body-for {:model model :schema {:type "object"} :max-tokens 512})))
-          (is (not (contains? (body-for {:model model :schema {:type "object"}}) :reasoning)))))))
-  (testing "aliases are exact ids, not a family prefix"
-    (is (nil? (openrouter/context-window-tokens "qwen/qwen3.8-max-1215")))
-    (is (= "required" (:tool_choice (body-for {:model "qwen/qwen3.8-max-1215" :schema {:type "object"}})))))
-  (testing "every alias resolves to a catalog entry the listing intersects against"
-    (doseq [[alias target] @#'openrouter/model-aliases]
-      (testing alias
-        (is (not (contains? @#'openrouter/supported-models alias)))
-        (is (contains? @#'openrouter/supported-models target))))))
-
 (deftest ^:parallel openrouter-reasoning-deltas-become-reasoning-parts-test
   (testing "flat delta.reasoning strings stream as a reasoning part ahead of the text"
     (is (=? [{:type :start}

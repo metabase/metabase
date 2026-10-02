@@ -91,8 +91,8 @@
    "openai/gpt-5.4"                  {:display-name "GPT-5.4"                 :context-window  922000 :reasoning :renderable}
    "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000 :reasoning :renderable}
    "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
-   ;; classified from the 2026-08-31 and 2026-09-03 probes of the undated `qwen/qwen3.8-max`;
-   ;; OpenRouter lists only this dated id (see [[model-aliases]])
+   ;; classified from the 2026-08-31 and 2026-09-03 probes of the undated `qwen/qwen3.8-max`, which OpenRouter
+   ;; has retired in favor of this dated id (see `:retired-models` in `metabase.llm.provider`)
    "qwen/qwen3.8-max-0902"           {:display-name "Qwen3.8 Max 0902"        :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
    ;; probed 2026-09-04 (post-dating the 2026-08-31 run): the enable streams reasoning, the
    ;; disable is rejected with a 400 (thinking-only upstream, as on native z.ai), and a forced
@@ -100,27 +100,15 @@
    "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
    "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576 :reasoning :renderable}})
 
-(def ^:private model-aliases
-  "Model ids OpenRouter no longer lists, mapped to the [[supported-models]] id OpenRouter resolves them to.
-  A Metabot setting saved with an aliased id keeps the capabilities of the entry it resolves to; the request
-  still carries the id as saved."
-  {"qwen/qwen3.8-max" "qwen/qwen3.8-max-0902"})
-
-(defn- canonical-model
-  "The [[supported-models]] id `model` is looked up under: its [[model-aliases]] target, else `model` itself."
-  [model]
-  (let [model (str model)]
-    (get model-aliases model model)))
-
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
   [model :- [:maybe :string]]
-  (get-in supported-models [(canonical-model model) :context-window]))
+  (get-in supported-models [model :context-window]))
 
 (defn- reasoning-class
   "The `:reasoning` class [[supported-models]] records for `model`, or nil."
   [model]
-  (get-in supported-models [(canonical-model model) :reasoning]))
+  (get-in supported-models [(str model) :reasoning]))
 
 (defn reasoning-model?
   "Whether `model` streams renderable reasoning back to us through OpenRouter.
@@ -142,7 +130,7 @@
   Probed live; the catalog's `mandatory` flag documents the same restriction:
   https://openrouter.ai/docs/use-cases/reasoning-tokens."
   [model]
-  (boolean (get-in supported-models [(canonical-model model) :reasoning-mandatory?])))
+  (boolean (get-in supported-models [(str model) :reasoning-mandatory?])))
 
 (mu/defn list-models :- adapter/ModelListing
   "List the OpenRouter models supported by this adapter (see [[supported-models]]).
@@ -214,7 +202,7 @@
 (defn- supports-required-tool-choice?
   "Whether `model` accepts `:tool_choice \"required\"`."
   [model]
-  (not (contains? required-tool-choice-unsupported-models (canonical-model model))))
+  (not (contains? required-tool-choice-unsupported-models model)))
 
 (defn- required-tool-choice->auto
   "Downgrade `:tool_choice \"required\"` to `\"auto\"`."
