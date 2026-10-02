@@ -1,11 +1,15 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { lazyLoaders } from "__support__/lazy-routes";
-import { createMockState } from "__support__/state";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { createMockUser } from "metabase-types/api/mocks";
+import type { TokenFeatures } from "metabase-types/api";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";
 
@@ -161,12 +165,14 @@ type SetupOpts = {
   user?: ReturnType<typeof createMockUser>;
   /** Guards to make deny access, so a section can be blocked in isolation. */
   deny?: MonitorGuard[];
+  tokenFeatures?: Partial<TokenFeatures>;
 };
 
 const setup = ({
   initialRoute,
   user = createMockUser({ is_superuser: true }),
   deny = [],
+  tokenFeatures,
 }: SetupOpts) => {
   deny.forEach((guard) => mockDeniedGuards.add(guard));
 
@@ -178,7 +184,12 @@ const setup = ({
     {
       withRouter: true,
       initialRoute,
-      storeInitialState: createMockState({ currentUser: user }),
+      storeInitialState: createMockState({
+        currentUser: user,
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures(tokenFeatures),
+        }),
+      }),
     },
   );
 };
@@ -304,6 +315,7 @@ describe("monitor routes", () => {
             is_superuser: false,
             is_data_analyst: true,
           }),
+          tokenFeatures: { advanced_permissions: true },
         });
 
         await waitFor(() =>

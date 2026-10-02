@@ -1123,6 +1123,24 @@
       (is (=? {chart-configs-key chart-config}
               chart-configs)))))
 
+(deftest viewing-context-item-id-persists-once-stored-test
+  (let [query  {:database 1 :type :query :query {:source-table 1}}
+        agent  (#'agent/init-agent {:profile-id :internal
+                                    :context    {:user_is_viewing [{:type "adhoc" :query query}]}})
+        memory @(:memory-atom agent)
+        id     (get-in agent [:context :user_is_viewing 0 :id])]
+    (testing "a turn that stores nothing under an ad hoc item's minted id persists no state"
+      (is (nil? (memory/turn-state memory))))
+    (testing "a chart created from the item's query persists the id with the query"
+      (is (= #{id}
+             (-> (#'agent/update-memory memory [{:type   :tool-output
+                                                 :result {:structured-output {:chart-id   "chart-1"
+                                                                              :query-id   id
+                                                                              :query      query
+                                                                              :chart-type :bar}}}])
+                 memory/turn-state
+                 :client-ids))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Profile permission checks
 ;;; ──────────────────────────────────────────────────────────────────

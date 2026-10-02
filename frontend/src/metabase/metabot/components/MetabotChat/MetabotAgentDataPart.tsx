@@ -46,6 +46,7 @@ type AgentDataPartProps = {
   readonly: boolean;
   debug: boolean;
   conversationId: string;
+  size: "md" | "lg";
 };
 
 export const AgentDataPart = ({
@@ -54,6 +55,7 @@ export const AgentDataPart = ({
   readonly,
   debug,
   conversationId,
+  size,
 }: AgentDataPartProps) =>
   match(dataPart)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
@@ -102,6 +104,7 @@ export const AgentDataPart = ({
             value={part.data}
             readonly={readonly}
             conversationId={conversationId}
+            size={size}
           />
           <GeneratedCardTablePills
             value={part.data}

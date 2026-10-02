@@ -45,7 +45,7 @@
   (m/find-first #(and (= entity-type (:entity_type %)) (= entity-id (:entity_id %))) rows))
 
 (deftest scan-detects-stale-test
-  (mt/with-premium-features #{:content-diagnostics}
+  (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      ;; stale: last activity well past the threshold
@@ -124,7 +124,7 @@
 
 (deftest scan-stale-container-scoping-test
   (testing "stale candidates in ineligible containers are dropped; root-resident ones are kept"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [;; the stale query arms filter collection type but not is_sample - the content-diagnostics
@@ -148,7 +148,7 @@
 
 (deftest scan-excludes-document-internal-card-findings-test
   (testing "a card a document owns is never a card finding - whatever the checker - while its document is"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [now       (t/offset-date-time)
@@ -201,7 +201,7 @@
 
 (deftest scan-denormalizes-card-type-test
   (testing "scan! stamps each card finding's card_type column from report_card.type; non-card rows stay NULL"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        :model/Card {question-id :id} {:collection_id coll-id :type :question
@@ -232,7 +232,7 @@
 
 (deftest scan-denormalizes-collection-name-test
   (testing "scan stamps entity_collection_name from scope_collection_id (root rows get the site-locale root label)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix    (scope-prefix)
               coll-name (str prefix " Container")]
@@ -269,7 +269,7 @@
 
 (deftest scan-soft-invalidates-superseded-findings-test
   (testing "a fresh scan supersedes prior findings it no longer produces — via soft invalidation, not delete"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        :model/Card {resolved :id} {:collection_id coll-id :last_used_at (stale-instant)}
@@ -297,13 +297,13 @@
           (#'task.scan/scan-when-enabled!)
           (is (zero? @scans))))
       (testing "the scheduled job body scans when the feature is present"
-        (mt/with-premium-features #{:content-diagnostics}
+        (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
           (#'task.scan/scan-when-enabled!)
           (is (= 1 @scans)))))))
 
 (deftest api-latest-per-entity-and-hydration-test
   (testing "GET /stale returns the latest valid finding per entity, batch-hydrated"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -429,7 +429,7 @@
 
 (deftest api-include-personal-collections-test
   (testing "GET /stale excludes personal-collection findings by default; includes them with the param"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           ;; rasta's permanent personal collection - never with-temp (a personal collection can't be deleted)
@@ -475,7 +475,7 @@
 
 (deftest api-paginates-test
   (testing "GET /stale honors limit/offset and reports the full valid total"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           ;; real cards in a real collection - the read layer permission-filters against live entities
@@ -504,7 +504,7 @@
 
 (deftest api-permission-filtered-test
   (testing "GET /stale returns only findings whose entity the current user can read"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {readable :id}   {}
@@ -534,7 +534,7 @@
 
 (deftest api-sort-test
   (testing "GET /stale honors sort-column + sort-direction (native columns only)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -569,7 +569,7 @@
 
 (deftest api-sort-by-flat-entity-type-test
   (testing "GET /stale sort-column=entity-type orders card sub-kinds as peers (dashboard < model < question)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -600,7 +600,7 @@
 
 (deftest api-sort-by-entity-attrs-test
   (testing "GET /stale sorts by denormalized entity columns (name / created-at / created-by / last-active-at)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -648,7 +648,7 @@
 
 (deftest api-sort-by-collection-name-test
   (testing "GET /stale sorts by the denormalized entity_collection_name"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -679,7 +679,7 @@
 
 (deftest api-entity-types-filter-test
   (testing "GET /stale filters by entity-types (repeatable; omitted = all)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -718,7 +718,7 @@
 
 (deftest api-card-type-test
   (testing "GET /stale serves each card finding's stored card_type as a top-level field - card findings only"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        ;; transforms only go in the :transforms collection namespace
@@ -764,7 +764,7 @@
 
 (deftest api-entity-types-card-sub-kinds-test
   (testing "GET /stale entity-types takes the card sub-kinds as peers of the other entity types"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        :model/Card {question-id :id} {:collection_id coll-id :type :question}
@@ -808,7 +808,7 @@
 
 (deftest api-transform-owner-hydration-test
   (testing "GET /stale hydrates the transform owner - a Metabase user or an external email, exclusively"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [;; transforms only go in the :transforms collection namespace
@@ -884,7 +884,7 @@
 
 (deftest api-threshold-days-filter-test
   (testing "GET /stale threshold-days drops findings less stale than the cutoff; never-used always passes"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -914,7 +914,7 @@
 
 (deftest api-query-search-test
   (testing "GET /stale ?query= case-insensitively substring-matches the denormalized entity name"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -945,7 +945,7 @@
 
 (deftest api-response-serves-entity-kind-test
   (testing "findings carry additive entity_kind; the entity_type/card_type pair is unchanged"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -973,7 +973,7 @@
 
 (deftest api-response-serves-collection-name-test
   (testing "top-level collection_name = scan-time stored name; nil for pre-migration (NULL-column) rows"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1009,7 +1009,7 @@
   (testing "GET /stale is gated on the :content-diagnostics premium feature (premium-handler)"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (testing "licensed → 200 with the paginated envelope"
-        (mt/with-premium-features #{:content-diagnostics}
+        (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
           (let [resp (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale")]
             (is (contains? resp :data))
             (is (contains? resp :total)))))
@@ -1036,7 +1036,7 @@
 
 (deftest scan-metrics-test
   ;; one registry boot for every block - boot is expensive; blocks that re-read a metric clear! it first
-  (mt/with-premium-features #{:content-diagnostics}
+  (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
     (mt/with-prometheus-system! [_ system]
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}

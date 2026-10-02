@@ -35,7 +35,7 @@
 
 (deftest slow-checker-detects-leaves-and-containers-test
   (testing "card/transform leaves and dashboard/document container roll-ups are flagged; fast/archived ones are not"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds      10
                                          content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -120,7 +120,7 @@
 
 (deftest slow-checker-container-scoping-test
   (testing "slow content in ineligible containers is not flagged; root-resident slow content still is"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [now (t/offset-date-time)]
@@ -146,7 +146,7 @@
 
 (deftest slow-checker-threshold-boundary-test
   (testing "the measured duration must strictly exceed the threshold (boundary is exclusive) for both leaf types"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds      10
                                          content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -178,7 +178,7 @@
 
 (deftest slow-container-duration-is-slowest-culprit-test
   (testing "a container's duration_ms is the slowest culprit card's median"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -199,7 +199,7 @@
 
 (deftest slow-dashboard-covers-series-not-filter-source-test
   (testing "a dashboard is flagged for a combined-series slow card (renders on load) but NOT for a filter card value-source (fetched on demand, cached, a different limited query)"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp
@@ -233,7 +233,7 @@
 
 (deftest slow-transform-uses-latest-finished-run-test
   (testing "transform slowness uses the latest FINISHED (succeeded/failed/timeout) run; never-run yields nothing"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [now      (t/offset-date-time)
@@ -291,7 +291,7 @@
 
 (deftest slow-card-uses-median-test
   (testing "card slowness is the MEDIAN running_time, so outliers don't drag a typically-fast card over"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [now (t/offset-date-time)]
@@ -332,7 +332,7 @@
 
 (deftest slow-lookback-window-test
   (testing "only activity within the lookback window counts - older executions and runs are invisible"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds      10
                                          content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -380,7 +380,7 @@
 
 (deftest slow-threshold-frozen-at-scan-time-test
   (testing "threshold_ms is frozen in details at scan time; a later setting change does not rewrite it"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
                        :model/Card {card :id} {:collection_id coll-id}
@@ -398,7 +398,7 @@
 
 (deftest slow-api-hydration-test
   (testing "GET /slow serves leaf and container findings with hydrated context + culprits"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp
@@ -447,7 +447,7 @@
 
 (deftest slow-api-transform-root-breadcrumb-test
   (testing "GET /slow: a transform's breadcrumb carries the transforms namespace, at root and nested"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-transform-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [now (t/offset-date-time)]
@@ -479,7 +479,7 @@
 
 (deftest slow-api-subject-view-count-test
   (testing "GET /slow hydrates each finding's own live view_count into details; a transform omits it"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
           [:model/Collection {coll-id :id}  {}
@@ -521,7 +521,7 @@
 
 (deftest slow-api-filter-and-sort-test
   (testing "GET /slow filters by entity-types/min-duration-ms and sorts by duration-ms/name"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -566,7 +566,7 @@
 
 (deftest slow-api-paginates-test
   (testing "GET /slow honors limit/offset and reports the full valid total"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -594,7 +594,7 @@
 
 (deftest slow-api-include-personal-collections-test
   (testing "GET /slow excludes personal-collection findings by default; includes them with the param"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [pers-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
@@ -626,7 +626,7 @@
 
 (deftest slow-api-personal-culprits-follow-param-test
   (testing "GET /slow culprit hydration honors include-personal-collections like the findings filter"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (let [pers-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
@@ -656,7 +656,7 @@
 
 (deftest slow-api-query-search-test
   (testing "GET /slow ?query= case-insensitively substring-matches the denormalized entity name"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -681,7 +681,7 @@
 
 (deftest slow-api-permission-filtered-test
   (testing "GET /slow returns only findings whose entity the current user can read"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {readable :id}   {}
@@ -708,7 +708,7 @@
 
 (deftest slow-api-hides-unreadable-culprits-test
   (testing "GET /slow omits culprit cards the caller can't read from a container's slow_entities"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {readable :id}   {}
@@ -737,7 +737,7 @@
 
 (deftest slow-api-does-not-leak-across-finding-types-test
   (testing "a stale finding never surfaces in /slow, and a slow finding never surfaces in /stale"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -768,7 +768,7 @@
   (testing "GET /slow is gated on the :content-diagnostics premium feature (premium-handler)"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (testing "licensed → 200 with the paginated envelope"
-        (mt/with-premium-features #{:content-diagnostics}
+        (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
           (let [resp (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/slow")]
             (is (contains? resp :data))
             (is (contains? resp :total)))))
@@ -778,7 +778,7 @@
 
 (deftest scan-runs-both-checkers-and-supersedes-per-type-test
   (testing "one scan writes stale + slow in a single scan_id batch; a rescan supersedes a fixed slow finding while a still-stale entity keeps an active stale finding"
-    (mt/with-premium-features #{:content-diagnostics}
+    (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}

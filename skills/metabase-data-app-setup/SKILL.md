@@ -50,10 +50,15 @@ If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the cur
 2. `src/index.tsx` default-exports a `DataAppFactory` (type from
    `@metabase/embedding-sdk-react/data-app`) returning `{ component, providerProps? }`
    (no args).
+3. `data_app.yaml` declares the same `version:` as this skill's
+   `template/data_app.yaml` (a manifest without the line is version 1). A lower
+   version is not drift but an outdated app: **Stop.** Migrating it is a
+   separate task; use the agent's normal skill-discovery flow for migrating an
+   outdated data app before extending it.
 
 **All checks pass** → template-shaped. Ask: "Extend this app, or scaffold a new one under a different slug?" If extend → skip the copy step, edit `src/`. If new → pick a different slug and restart at Step 2.
 
-**Any check fails** → not template-shaped (older scaffold or drift). **Stop.** Tell the user the structure differs from the current template, extending it risks breaking the bundle contract, and ask whether to (1) migrate it, (2) scaffold fresh under a new slug and port the code over, or (3) proceed anyway at their risk. Wait for the answer.
+**Any check fails** → not template-shaped (older scaffold or drift). **Stop.** Tell the user the structure differs from the current template, extending it risks breaking the bundle contract, and ask whether to (1) migrate it (a separate task; use skill discovery for migrating an outdated data app), (2) scaffold fresh under a new slug and port the code over, or (3) proceed anyway at their risk. Wait for the answer.
 
 Never overwrite existing files without explicit confirmation.
 
@@ -123,10 +128,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 
    > **Never ask the user to paste the API key into the chat, and never `cat` / `echo` / print `.env.local` or its variables.** It's git-ignored and may hold *other* secrets — the file's contents and the key must never enter the conversation or your context. Every command that needs the key `source`s the file (as above) so the shell uses the value directly; you only ever see the `creds present` / `MISSING` signal, never the secret itself. (`creds present` only means both vars are filled and not the default `mb_replace_me` placeholder — not that the URL or key are valid; a bad key surfaces later when a request fails.)
 5. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
-6. **Fix the app's `.gitignore` so the lockfile *and* the built bundle get committed.** Two things must end up tracked in the remote-sync repo:
-   - **Lockfile** — strip the lockfile-ignoring block (the chunk between `# Lockfiles —` and `bun.lockb`, covering `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb`) so the project commits its lockfile for reproducible installs.
-   - **The built bundle** — Metabase serves the file at the `path` declared in `data_app.yaml` (the template builds to `dist/index.js`, the default `path`) straight from the committed Git tree, so **that file must be committed**. If the template's `.gitignore` ignores `dist/` (or wherever your build outputs), remove that line.
-   **Verify with `git status`** — after `npm install` + a build, both the generated lockfile and the built bundle (the file `path` points at) must appear as untracked/committable files. If either doesn't, the relevant `.gitignore` line is still there; remove it and re-check. Do **not** skip this — agents have repeatedly shipped projects with no committed lockfile or an un-synced bundle.
+6. **The lockfile and the built bundle must both be committed.** Metabase serves the file at the `path` declared in `data_app.yaml` (the template builds to `dist/index.js`) straight from the committed Git tree, and the lockfile keeps installs reproducible. **Verify with `git status`** after `npm install` and a build: both must appear as committable files.
 7. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
 8. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
 9. **Edit `data_app.yaml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Fill in its fields for this app:
@@ -157,8 +159,8 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    change to the contract. An app on an older version is marked *Outdated* in
    the admin list, hidden from every other user, and refuses to open until it
    is migrated to the current contract, its `version` raised to match, rebuilt,
-   and synced. Migrating an app from one version to the next is a separate,
-   instructed procedure; never do it ad hoc.
+   and synced. That migration is a separate, instructed procedure, one version
+   at a time; reach it through skill discovery and never do it ad hoc.
 
    **`allowed_hosts`** — only needed if the app calls an **external** API directly
    with `fetch`/`XHR`. The sandbox blocks all network egress by default; listing an
