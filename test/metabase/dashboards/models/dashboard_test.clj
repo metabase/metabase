@@ -137,18 +137,33 @@
 
 (deftest archive-collection-keeps-dashboard-subscriptions-test
   (do-with-dashboard-subscription!
-   (fn [{:keys [coll-id pulse-id pc-id]}]
+   (fn [{:keys [coll-id dash-id pulse-id pc-id]}]
      (let [pc-ids-before (trigger-pc-ids pulse-id)]
        (mt/with-current-user (mt/user->id :crowberto)
          (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection coll-id) {:archived true})
-         (testing "archiving the parent Collection keeps the Pulse but removes its trigger"
-           (is (=? {:archived true} (t2/select-one :model/Pulse pulse-id)))
-           (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id))))
+         (testing "archiving the parent Collection leaves the subscription and its trigger as they were"
+           ;; the trashed Dashboard is what stops the trigger from sending
+           (is (=? {:archived true} (t2/select-one :model/Dashboard dash-id)))
+           (is (=? {:archived false} (t2/select-one :model/Pulse pulse-id)))
+           (is (=? {:enabled true} (t2/select-one :model/PulseChannel pc-id)))
+           (is (= pc-ids-before (trigger-pc-ids pulse-id))))
          (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection coll-id) {:archived false})
-         (testing "restoring the Collection brings the subscription and its trigger back"
+         (testing "restoring the Collection leaves the subscription and its trigger as they were"
            (is (=? {:archived false} (t2/select-one :model/Pulse pulse-id)))
            (is (=? {:enabled true} (t2/select-one :model/PulseChannel pc-id)))
            (is (= pc-ids-before (trigger-pc-ids pulse-id)))))))))
+
+(deftest archive-collection-keeps-deleted-subscription-deleted-test
+  (do-with-dashboard-subscription!
+   (fn [{:keys [coll-id pulse-id pc-id]}]
+     (testing "a subscription the user deleted before its Collection was trashed stays deleted after restore"
+       (t2/update! :model/Pulse pulse-id {:archived true})
+       (mt/with-current-user (mt/user->id :crowberto)
+         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection coll-id) {:archived true})
+         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection coll-id) {:archived false}))
+       (is (=? {:archived true} (t2/select-one :model/Pulse pulse-id)))
+       (is (=? {:enabled false} (t2/select-one :model/PulseChannel pc-id)))
+       (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 (deftest delete-dashboard-deletes-subscriptions-test
   (doseq [archived? [true false]]
