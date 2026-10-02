@@ -2,6 +2,7 @@ const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
@@ -56,11 +57,15 @@ describe("scenarios > navigation > navbar", () => {
       cy.visit("/collection/root");
       H.navigationSidebar().should("be.visible");
       cy.findByTestId("main-logo-link").click();
+      cy.location("pathname").should("eq", "/");
+      cy.findByTestId("home-page").should("be.visible");
       H.navigationSidebar().should("be.visible");
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
 
       cy.findByTestId("main-logo-link").click();
+      cy.location("pathname").should("eq", "/");
+      cy.findByTestId("home-page").should("be.visible");
       H.navigationSidebar().should("not.be.visible");
     });
 
@@ -73,6 +78,11 @@ describe("scenarios > navigation > navbar", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
       H.appBar().contains("Our analytics").parentsUntil("a").first().click();
+      cy.location("pathname").should("eq", "/collection/root");
+      cy.findByTestId("collection-name-heading").should(
+        "have.text",
+        "Our analytics",
+      );
       H.navigationSidebar().should("not.be.visible");
     });
 
@@ -105,11 +115,13 @@ describe("scenarios > navigation > navbar", () => {
       H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
-    it("should preserve state when clicking the mb logo and custom home page is configured", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.navigationSidebar().should("not.be.visible");
+    it("should stay open when the mb logo redirects to the custom home page", () => {
+      cy.visit("/collection/root");
+      H.navigationSidebar().should("be.visible");
       cy.findByTestId("main-logo-link").click();
-      H.navigationSidebar().should("not.be.visible");
+      cy.location("pathname").should("eq", `/dashboard/${ORDERS_DASHBOARD_ID}`);
+      H.dashboardGrid().should("be.visible");
+      H.navigationSidebar().should("be.visible");
     });
   });
 
@@ -127,11 +139,17 @@ describe("scenarios > navigation > navbar", () => {
       H.navigationSidebar().should("be.visible");
     });
 
-    it("should preserve state when clicking the mb logo and landing page is configured", () => {
-      H.updateSetting("landing-page", "/question/76");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
+    it("should stay open when the mb logo redirects to the landing page", () => {
+      H.updateSetting("landing-page", `/question/${ORDERS_QUESTION_ID}`);
+      cy.visit("/collection/root");
+      H.navigationSidebar().should("be.visible");
       cy.findByTestId("main-logo-link").click();
-      H.navigationSidebar().should("not.be.visible");
+      cy.location("pathname").should(
+        "match",
+        new RegExp(`^/question/${ORDERS_QUESTION_ID}\\b`),
+      );
+      H.queryBuilderHeader().findByText("Orders").should("be.visible");
+      H.navigationSidebar().should("be.visible");
     });
   });
 });
