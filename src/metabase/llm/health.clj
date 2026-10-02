@@ -6,11 +6,15 @@
   the admin provider list, which shows the failure as an error against the connection, and the fallback in
   [[metabase.llm.provider/first-model-ref]], which skips a failing connection when picking what Metabot runs on.
 
-  A failure is *fatal* when the provider answered with a 4xx that says the connection cannot work as configured — a
-  rejected key, a model the account cannot reach. Those are recorded until the connection is edited or a later
-  inference succeeds, because retrying changes nothing. Everything else — a 5xx, a rate limit, a timeout, a refused
-  connection — is transient and expires on its own after [[transient-failure-ttl-ms]], so an outage takes the
-  connection out of rotation without an admin having to put it back.
+  A failure is *fatal* when the provider answered with a status that says the connection cannot work as configured —
+  a rejected key, an account that cannot pay, a model the account cannot reach. Those are recorded until the
+  connection is edited or a later inference succeeds, because retrying changes nothing. A 5xx, a rate limit, a
+  timeout or a refused connection is transient and expires on its own after [[transient-failure-ttl-ms]], so an
+  outage takes the connection out of rotation without an admin having to put it back.
+
+  Any other 4xx is about the request rather than the connection — providers answer a prompt longer than the model's
+  context window with a 400 — and is not recorded at all: the next request may well fit, and recording it would let
+  one long conversation take the connection away from everybody else.
 
   Only inference clears a failure. Listing a provider's models can record one — a rejected key rejects the listing
   too — but a listing that works proves nothing about inference: a provider can serve its catalog to an account it
@@ -29,10 +33,14 @@
   provider outage does not have every request rediscover it, short enough that recovery needs no intervention."
   (* 5 60 1000))
 
+(def ^:private fatal-statuses
+  "Statuses that say the connection cannot work as configured: a rejected key, an account that cannot pay, a model
+  or endpoint the account cannot reach."
+  #{401 402 403 404})
+
 (def ^:private retryable-statuses
-  "4xx statuses that mean \"try again\" rather than \"this connection is misconfigured\". 413 is about the one
-  request that was too large, not the connection — the next, smaller request can succeed."
-  #{408 409 413 429})
+  "4xx statuses that mean \"try again\" rather than anything about the request or the connection."
+  #{408 409 429})
 
 (defonce ^:private failures
   (atom {}))
@@ -50,9 +58,16 @@
   "Whether an HTTP `status` from a provider says the connection cannot work as configured, rather than that this
   one request happened to fail; see the namespace docstring."
   [status]
-  (boolean (and (number? status)
-                (<= 400 status 499)
-                (not (contains? retryable-statuses status)))))
+  (contains? fatal-statuses status))
+
+(defn- request-rejected-status?
+  "Whether an HTTP `status` from a provider rejects the one request rather than saying anything about the connection;
+  see the namespace docstring."
+  [status]
+  (and (number? status)
+       (<= 400 status 499)
+       (not (fatal-status? status))
+       (not (contains? retryable-statuses status))))
 
 (defn- expired?
   [{:keys [fatal? recorded-at]}]
@@ -85,10 +100,11 @@
   nil)
 
 (defn record-exception!
-  "Record that a request to `conn-key` failed with `e`, classifying it by the HTTP status the provider answered with."
+  "Record that a request to `conn-key` failed with `e`, classifying it by the HTTP status the provider answered with.
+  A status that rejects the request itself records nothing."
   [conn-key e]
   (let [status (exception-status e)]
-    (when conn-key
+    (when (and conn-key (not (request-rejected-status? status)))
       (swap! failures assoc conn-key {:message     (or (ex-message e) "The provider could not be reached.")
                                       :fatal?      (fatal-status? status)
                                       :status      status
