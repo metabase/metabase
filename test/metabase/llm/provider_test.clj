@@ -618,6 +618,33 @@
       (is (nil? (llm.provider/resolve-model-ref "openai/gpt-5.4")))
       (is (nil? (llm.provider/resolve-model-ref nil))))))
 
+(deftest resolve-model-ref-reads-a-retired-model-as-its-successor-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "deepseek" "deepseek" {:api-key "sk-deepseek-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id resolves to the model that now serves it"
+      (is (= "deepseek-flash" (:model (llm.provider/resolve-model-ref "deepseek/deepseek-v4-flash")))))
+    (testing "the same id under another provider type is not retired there"
+      (is (= "deepseek-v4-flash" (:model (llm.provider/resolve-model-ref "anthropic/deepseek-v4-flash")))))))
+
+(deftest canonical-model-ref-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "deepseek" "deepseek" {:api-key "sk-deepseek-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id reads as the model that now serves it"
+      (is (= "deepseek/deepseek-flash" (llm.provider/canonical-model-ref "deepseek/deepseek-v4-flash"))))
+    (testing "any other reference is returned unchanged"
+      (is (= "deepseek/deepseek-flash" (llm.provider/canonical-model-ref "deepseek/deepseek-flash")))
+      (is (= "anthropic/deepseek-v4-flash" (llm.provider/canonical-model-ref "anthropic/deepseek-v4-flash")))
+      (is (= "nope/deepseek-v4-flash" (llm.provider/canonical-model-ref "nope/deepseek-v4-flash")))
+      (is (nil? (llm.provider/canonical-model-ref nil))))))
+
+(deftest ^:parallel retired-models-map-straight-to-a-current-model-test
+  (testing (str "a retired model's successor is never itself retired: a model ref resolves through a single "
+                "lookup, so a chain would leave a saved selection naming a retired id")
+    (doseq [{:keys [type retired-models]} (llm.provider/provider-types)
+            successor                     (vals retired-models)]
+      (testing type
+        (is (not (contains? retired-models successor)))))))
+
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"
     (is (= "https://api.mistral.ai/v1"
@@ -711,7 +738,7 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
-            "deepseek"   "deepseek-v4-flash"
+            "deepseek"   "deepseek-flash"
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"
