@@ -245,8 +245,7 @@ export function SettingsOIDCForm() {
 
   const handleSubmit = useCallback(
     async (values: OIDCFormValues) => {
-      // Run the connection check before saving — will throw on failure
-      await runCheck(values);
+      // No need to runCheck separately here, the backend does it before saving the provider.
 
       const providerData = formValuesToProvider(
         values,
@@ -269,7 +268,6 @@ export function SettingsOIDCForm() {
       existingProvider,
       createProvider,
       updateProvider,
-      runCheck,
       groupMappingsRef,
     ],
   );
