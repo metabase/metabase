@@ -5,6 +5,22 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest next-step-test
+  (let [pr-run {:databaseId 1, :verdict "force-skip"}]
+    (testing "a PR run that was not skipped is the answer"
+      (is (= {:step :not-skipped, :run {:databaseId 1, :verdict "defer"}}
+             (ci-run-skipped/next-step {:databaseId 1, :verdict "defer"} [{:databaseId 2}]))))
+    (testing "a skipped PR run reuses a run already started for the commit"
+      (is (= {:step :already-started, :run {:databaseId 3, :conclusion "success"}}
+             (ci-run-skipped/next-step pr-run [{:databaseId 2, :conclusion "cancelled"}
+                                               {:databaseId 3, :conclusion "success"}]))))
+    (testing "a skipped PR run starts a run when every earlier one was cancelled"
+      (is (= {:step :start}
+             (ci-run-skipped/next-step pr-run [{:databaseId 2, :conclusion "cancelled"}]))))
+    (testing "an in-progress run has no conclusion yet and is reused"
+      (is (= :already-started
+             (:step (ci-run-skipped/next-step pr-run [{:databaseId 4, :conclusion ""}])))))))
+
 (deftest parse-verdict-test
   (testing "reads the printed verdict, not the echo command above it"
     (is (= "force-skip"
@@ -30,5 +46,6 @@
     (is (= ["workflow" "run" "run-tests.yml" "-R" "metabase/metabase" "--ref" "my-branch"]
            (ci-run-skipped/dispatch-args "my-branch" "master"))))
   (testing "any other base is passed as the `base` input"
-    (is (= ["workflow" "run" "run-tests.yml" "-R" "metabase/metabase" "--ref" "my-branch" "-f" "base=release-x.60.x"]
+    (is (= ["workflow" "run" "run-tests.yml" "-R" "metabase/metabase" "--ref" "my-branch"
+            "-f" "base=release-x.60.x"]
            (ci-run-skipped/dispatch-args "my-branch" "release-x.60.x")))))

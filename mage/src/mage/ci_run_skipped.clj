@@ -25,23 +25,29 @@
   (u/exit exit-code))
 
 (defn- gh
-  "Run `gh` with `args` and return its trimmed stdout, or nil when it exits non-zero."
-  [& args]
-  (let [{:keys [exit out]} @(apply p/process {:out :string :err :string :in nil} "gh" args)]
-    (when (zero? exit)
-      (str/trim out))))
+  "Run `gh` with `args` and return its trimmed stdout.
+  Exits with `gh`'s error message, after `hint` when given, if it fails."
+  [{:keys [hint]} & args]
+  (let [{:keys [exit out err]} @(apply p/process {:out :string :err :string :in nil} "gh" args)]
+    (if (zero? exit)
+      (str/trim out)
+      (fail! 3 (str/join "\n" (remove nil? [(str "gh " (first args) " failed: " (str/trim err)) hint]))))))
 
 (defn- gh-json [& args]
-  (some-> (apply gh args) (json/read-str {:key-fn keyword})))
+  (json/read-str (apply gh {} args) {:key-fn keyword}))
 
 (defn- run-url [run-id]
   (format "https://github.com/%s/actions/runs/%s" repo run-id))
 
+(defn- short-sha [sha]
+  (subs sha 0 10))
+
 (defn- open-pr
-  "The open PR whose head is `branch`, with the base its stack targets."
+  "The open PR whose head is `branch`, with the base its stack targets, or nil."
   [branch]
   (-> (gh-json "api" "graphql"
-               "-f" (str "query=query($branch: String!) { repository(owner: \"metabase\", name: \"metabase\") {"
+               "-f" (str "query=query($branch: String!) {"
+                         " repository(owner: \"metabase\", name: \"metabase\") {"
                          " pullRequests(headRefName: $branch, states: OPEN, first: 1) {"
                          " nodes { number headRefOid baseRefName stack { baseRefName } } } } }")
                "-f" (str "branch=" branch))
@@ -70,65 +76,79 @@
     (when (= "completed" (:status job))
       (when (not= "success" (:conclusion job))
         (fail! 3 (format "%s ended %s: %s" decide-job (:conclusion job) (run-url run-id))))
-      (or (parse-verdict (gh "api" (format "repos/%s/actions/jobs/%s/logs" repo (:databaseId job))))
+      (or (parse-verdict (gh {} "api" (format "repos/%s/actions/jobs/%s/logs" repo (:databaseId job))))
           (fail! 3 (str "No verdict in the decide job's log: " (run-url run-id)))))))
 
 (defn- decided-pr-run
-  "The latest PR run for `sha` and its verdict, waiting about a minute for a fresh push to get one."
+  "The latest PR run for `sha` with its `:verdict`, waiting about a minute for a fresh push to get one."
   [branch sha]
   (loop [waits [10 20 30]]
     (let [run (first (runs branch sha "pull_request"))
           v   (some-> run :databaseId verdict)]
       (cond
-        v              [run v]
+        v              (assoc run :verdict v)
         (empty? waits) nil
         :else
         (do (info (format "Waiting %ss for the PR run to decide." (first waits)))
             (Thread/sleep (long (* 1000 (first waits))))
             (recur (rest waits)))))))
 
+(defn next-step
+  "What to do given the PR run (with its `:verdict`) and the runs started by hand for the same commit.
+  Returns one of:
+
+    {:step :not-skipped,     :run pr-run}
+    {:step :already-started, :run started-run}
+    {:step :start}"
+  [pr-run started-runs]
+  (if (not= "force-skip" (:verdict pr-run))
+    {:step :not-skipped, :run pr-run}
+    (if-let [run (first (remove #(= "cancelled" (:conclusion %)) started-runs))]
+      {:step :already-started, :run run}
+      {:step :start})))
+
 (defn dispatch-args
-  "Arguments to `gh` that start the workflow on `branch`, comparing against `base`.
-  Master is the workflow's default, so it is left out; branches without the `base` input can still be run."
+  "Arguments to `gh` that start the workflow on `branch`, comparing against `base`."
   [branch base]
   (cond-> ["workflow" "run" workflow "-R" repo "--ref" branch]
+    ;; Master is the workflow's default. Leaving it out keeps branches made before the `base` input runnable.
     (not= "master" base) (into ["-f" (str "base=" base)])))
 
-(defn- dispatch!
-  "Start the workflow and return the new run's URL."
-  [branch sha base]
-  (let [out (or (apply gh (dispatch-args branch base))
-                (fail! 3 (format "Could not start %s on %s. Comparing against %s needs the `base` input, so the branch may need a rebase."
-                                 workflow branch base)))]
+(defn- start-run!
+  "Start the workflow and return the new run's URL, or the branch's run list when `gh` prints none."
+  [branch base]
+  (let [hint (when (not= "master" base)
+               (str "Comparing against " base " needs the `base` input in " workflow
+                    ", so the branch may need a rebase."))
+        out  (apply gh {:hint hint} (dispatch-args branch base))]
     (or (re-find #"https://github\.com/\S+/actions/runs/\d+" out)
-        ;; Older `gh` prints no URL, so look the run up instead.
-        (loop [attempt 1]
-          (if-let [run (first (runs branch sha "workflow_dispatch"))]
-            (run-url (:databaseId run))
-            (when (< attempt 10)
-              (Thread/sleep 2000)
-              (recur (inc attempt)))))
-        (fail! 3 "Started a run but could not find its URL."))))
+        (format "https://github.com/%s/actions/workflows/%s?query=branch%%3A%s" repo workflow branch))))
 
 (defn ci-run-skipped!
-  "Print a \"Run tests\" run URL for the current branch, starting one only when the PR run was force-skipped."
+  "Print a \"Run tests\" run URL for the current branch.
+  Starts a run only when the PR run was force-skipped."
   []
-  (let [branch     (u/sh "git" "branch" "--show-current")
-        _          (when (str/blank? branch) (fail! 3 "Not on a branch."))
-        pr         (or (open-pr branch) (fail! 3 (str "No open PR for " branch)))
-        sha        (:headRefOid pr)
-        local      (u/sh "git" "rev-parse" "HEAD")
-        _          (when (not= sha local)
-                     (info (format "Local HEAD %s differs from the PR head %s; the run uses the PR head."
-                                   (subs local 0 10) (subs sha 0 10))))
-        [pr-run v] (or (decided-pr-run branch sha)
-                       (fail! 1 (format "The PR run for %s has not decided yet." (subs sha 0 10))))]
-    (if (not= "force-skip" v)
-      (do (info (format "Not skipped (verdict %s); here is the PR run." v))
-          (println (run-url (:databaseId pr-run))))
-      (if-let [earlier (first (remove #(= "cancelled" (:conclusion %)) (runs branch sha "workflow_dispatch")))]
-        (do (info "A dispatched run for this commit already exists.")
-            (println (run-url (:databaseId earlier))))
-        (let [base (stack-base pr)]
-          (info (format "PR #%s was force-skipped; starting a run on %s against %s." (:number pr) branch base))
-          (println (dispatch! branch sha base)))))))
+  (let [branch (u/sh "git" "branch" "--show-current")
+        _      (when (str/blank? branch) (fail! 3 "Not on a branch."))
+        pr     (or (open-pr branch) (fail! 3 (str "No open PR for " branch)))
+        sha    (:headRefOid pr)
+        local  (u/sh "git" "rev-parse" "HEAD")
+        _      (when (not= sha local)
+                 (info (format "Local HEAD %s differs from the PR head %s; the run uses the PR head."
+                               (short-sha local) (short-sha sha))))
+        pr-run (or (decided-pr-run branch sha)
+                   (fail! 1 (format "The PR run for %s has not decided yet." (short-sha sha))))
+        {:keys [step run]} (next-step pr-run (runs branch sha "workflow_dispatch"))]
+    (case step
+      :not-skipped
+      (do (info (format "Not skipped (verdict %s); here is the PR run." (:verdict run)))
+          (println (run-url (:databaseId run))))
+
+      :already-started
+      (do (info "A run was already started for this commit.")
+          (println (run-url (:databaseId run))))
+
+      :start
+      (let [base (stack-base pr)]
+        (info (format "PR #%s was force-skipped; starting a run on %s against %s." (:number pr) branch base))
+        (println (start-run! branch base))))))
