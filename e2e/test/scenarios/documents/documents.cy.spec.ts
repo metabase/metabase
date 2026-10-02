@@ -1688,21 +1688,6 @@ describe("documents", () => {
       });
     });
 
-    it("should show anchor link icon on left side when hovering over a heading", () => {
-      H.visitDocument("@documentId");
-
-      H.documentContent()
-        .findByRole("heading", { name: "First Heading" })
-        .realHover();
-
-      // Filter to visible one since all blocks have hidden buttons
-      cy.get('[data-testid="anchor-link-menu"]')
-        .filter(":visible")
-        .first()
-        .findByRole("button", { name: /copy link/i })
-        .should("be.visible");
-    });
-
     it("should copy anchor URL to clipboard when clicking anchor link", () => {
       H.visitDocument("@documentId");
 

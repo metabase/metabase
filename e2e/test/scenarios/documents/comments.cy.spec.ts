@@ -1382,18 +1382,6 @@ describe("document comments", () => {
 
         H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
       });
-
-      // explicitly disabled in CustomStarterKit to keep default browser behavior
-      it.skip("should support blockquote", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.realType("blockquote");
-        cy.realPress([META_KEY, "Shift", "k"]);
-
-        H.getBlockquote("blockquote", Comments.getSidebar()).should(
-          "be.visible",
-        );
-      });
     });
 
     it("should render saved top level blocks", () => {
