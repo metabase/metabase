@@ -26,8 +26,8 @@
              (position)))))
   (testing "if an Exception is thrown, original value should be restored"
     (u/ignore-exceptions
-      (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
-        (throw (Exception.))))
+     (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
+       (throw (Exception.))))
     (is (= 5
            (t2/select-one-fn :position :model/Field :id (data/id :venues :price))))))
 
@@ -185,6 +185,7 @@
           (is (= ::reexport (premium-features/is-hosted?)))
           (is (not= ::reexport (@src)))))
       (testing "after `with-redefs` on the source"
+        ;; The global root swap is the case under test: it rebinds the source root without going through a proxy.
         #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [premium-features.settings/is-hosted? (constantly ::global)])
         (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
