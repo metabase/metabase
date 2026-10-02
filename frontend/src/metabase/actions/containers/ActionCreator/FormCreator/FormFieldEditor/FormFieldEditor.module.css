@@ -1,0 +1,17 @@
+.border {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+}
+
+.borderTop {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+/* FormSelectWidget still renders the Emotion FormField, so its root margin and label color are reset here */
+.previewField > div {
+  margin-bottom: 0;
+}
+
+.previewField label {
+  color: var(--mb-color-text-primary);
+}
