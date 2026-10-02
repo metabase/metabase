@@ -677,23 +677,25 @@
       (with-retries
         tracking-opts
         (fn []
-          (let [parts (into []
-                            (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf tracking-opts)
-                                  (report-token-usage-xf tracking-opts))
-                            (stream-fn streaming-opts))
-                result (some (fn [{:keys [type arguments]}]
-                               (when (= type :tool-input)
-                                 arguments))
-                             parts)
-                error  (some (fn [{:keys [type error]}]
-                               (when (= type :error)
-                                 error))
-                             parts)
+          (let [parts    (into []
+                               (comp (core/aisdk-xf)
+                                     (report-aisdk-errors-xf tracking-opts)
+                                     (report-token-usage-xf tracking-opts))
+                               (stream-fn streaming-opts))
+                result   (some (fn [{:keys [type arguments]}]
+                                 (when (= type :tool-input)
+                                   arguments))
+                               parts)
+                error    (some (fn [{:keys [type error]}]
+                                 (when (= type :error)
+                                   error))
+                               parts)
+                unparsed (core/unparsed-arguments result)
                 ;; Only `length` or `content-filter` can turn up here: `"tool-calls"` needs a `:finish`
                 ;; part, which the agent loop emits and this single-shot path never runs.
                 incomplete-reason (core/parts->incomplete-finish-reason parts)
-                malformed?        (and (map? result) (contains? result :_raw_arguments))]
+                ;; Only malformed JSON can be a cut-off tool call. A non-object reply parsed in full.
+                malformed?        (contains? unparsed :raw-arguments)]
             (cond
               ;; A tool call cut off mid-JSON is not a model emitting bad JSON — the turn ran out of
               ;; room — so report why it stopped. Only `length` reroutes this branch: a content filter
@@ -701,21 +703,13 @@
               (and malformed? (= incomplete-reason "length"))
               (throw (incomplete-structured-output-error parts incomplete-reason))
 
-              ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
-              ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
-              ;; bogus map back to the caller as if it were a valid structured result.
-              malformed?
-              (throw (ex-info "LLM returned malformed JSON in its structured tool call"
-                              {:parts         parts
-                               :error-code    "structured-output-invalid"
-                               :raw-arguments (:_raw_arguments result)}))
-
-              ;; The tool call's JSON parsed but isn't an object; `parse-tool-arguments` returned the
-              ;; `{:_non_object_arguments ...}` sentinel. Reject it the same way.
-              (and (map? result) (contains? result :_non_object_arguments))
-              (throw (ex-info "LLM returned a JSON value that is not an object in its structured tool call"
-                              {:parts      parts
-                               :error-code "structured-output-invalid"}))
+              ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
+              ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
+              unparsed
+              (throw (ex-info "LLM returned arguments that are not a JSON object in its structured tool call"
+                              (merge {:parts      parts
+                                      :error-code "structured-output-invalid"}
+                                     unparsed)))
 
               result
               {:result result :parts parts}
