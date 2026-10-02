@@ -307,11 +307,12 @@
 ;;; ------------------------------------------------ endpoints ------------------------------------------
 
 (defn- check-diagnostics-access
-  "403 unless the caller is a superuser, a data analyst, or holds `:monitoring` - the same union as the
-  FE `canAccessContentDiagnostics` guard. This only gates who can call the endpoints;
-  `api.common/visible-findings-clause` still decides which findings they get back."
+  "403 unless the caller is a superuser, an entitled data analyst, or holds `:monitoring` - the same union
+  as the FE `canAccessContentDiagnostics` guard. Without `:advanced-permissions` only superusers pass.
+  This only gates who can call the endpoints; `api.common/visible-findings-clause` still decides which
+  findings they get back."
   []
-  (api/check-403 (or (api/is-data-analyst?)
+  (api/check-403 (or (api/entitled-data-analyst?)
                      (perms/current-user-has-application-permissions? :monitoring))))
 
 (def ^:private ^{:arglists '([handler])} +check-diagnostics-access

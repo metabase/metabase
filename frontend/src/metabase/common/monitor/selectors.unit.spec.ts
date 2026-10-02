@@ -165,15 +165,14 @@ describe("canAccessContentDiagnostics", () => {
     expect(canAccessContentDiagnostics(state)).toBe(true);
   });
 
-  it("returns true when user is analyst", () => {
-    const state = createMockState({
-      currentUser: createMockUser({
-        is_superuser: false,
-        is_data_analyst: true,
-      }),
-    });
+  it("returns true when user is entitled analyst", () => {
+    expect(canAccessContentDiagnostics(createAnalystState())).toBe(true);
+  });
 
-    expect(canAccessContentDiagnostics(state)).toBe(true);
+  it("returns false for an analyst whose plan lost the feature", () => {
+    const state = createAnalystState({ hasAdvancedPermissions: false });
+
+    expect(canAccessContentDiagnostics(state)).toBe(false);
   });
 
   it("returns true for a non-admin with the monitoring application permission", () => {

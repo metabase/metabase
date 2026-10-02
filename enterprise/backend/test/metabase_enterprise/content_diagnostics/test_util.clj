@@ -16,9 +16,9 @@
 
 (defn with-authorized-reader!
   "`clojure.test` fixture giving `:rasta` the data-analyst role, so suites driving the finding-list
-  endpoints as `:rasta` clear the audience gate. Analyst rather than either other arm: superuser bypasses
-  the collection filtering these suites assert on, and `:monitoring` needs `:advanced-permissions`, which
-  each test's own `with-premium-features` drops.
+  endpoints as `:rasta` clear the audience gate. A superuser would bypass the collection filtering these
+  suites assert on. The gate only accepts the role with `:advanced-permissions`, so each test's own
+  `with-premium-features` must include it.
 
   The flag is not inert:
   - `collection/visible-collection-query` grants read on every `transforms`-namespace collection, so a
