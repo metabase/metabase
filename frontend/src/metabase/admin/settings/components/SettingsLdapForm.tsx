@@ -8,6 +8,7 @@ import * as Yup from "yup";
 import { SettingsGroupMappingSection } from "metabase/admin/settings/auth/components/GroupMappings";
 import {
   getDefaultPlaceholder,
+  getEnvNoticeProps,
   getExtraFormFieldProps,
   getStoredFieldValue,
   resetFieldsToInitial,
@@ -204,8 +205,7 @@ export const SettingsLdapForm = () => {
                   <FormRadioGroup
                     name="ldap-security"
                     label={t`LDAP security`}
-                    {...getExtraFormFieldProps(settingDetails["ldap-security"])}
-                    description={null}
+                    {...getEnvNoticeProps(settingDetails["ldap-security"])}
                   >
                     <Stack mt="xxs" gap="sm">
                       <Radio value="none" label={t`None`} />

@@ -392,6 +392,35 @@ describe("SettingsLdapForm", () => {
       expect(screen.getByText("Using MB_LDAP_HOST")).toBeInTheDocument();
     });
 
+    it("says which env var locks the security setting", async () => {
+      await setup({
+        settingValues: { "ldap-security": "ssl" },
+        settingDefinitions: [
+          {
+            key: "ldap-security",
+            is_env_setting: true,
+            env_name: "MB_LDAP_SECURITY",
+          },
+        ],
+      });
+
+      expect(screen.getByRole("radio", { name: "SSL" })).toBeChecked();
+      expect(screen.getByText("Using MB_LDAP_SECURITY")).toBeInTheDocument();
+    });
+
+    it("shows no description under the security setting otherwise", async () => {
+      await setup({
+        settingDefinitions: [
+          { key: "ldap-security", description: "Use SSL, TLS or plain text." },
+        ],
+      });
+
+      expect(screen.getByRole("radio", { name: "None" })).toBeChecked();
+      expect(
+        screen.queryByText("Use SSL, TLS or plain text."),
+      ).not.toBeInTheDocument();
+    });
+
     it("keeps the attributes card disabled until LDAP is configured", async () => {
       await setup({ settingValues: { "ldap-attribute-email": "uid" } });
 
