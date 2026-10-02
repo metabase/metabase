@@ -1,9 +1,9 @@
-import { SkeletonImage } from "./PieSkeleton.styled";
+import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 
 const PieSkeleton = (): JSX.Element => {
   return (
-    <SkeletonImage
-      xmlns="http://www.w3.org/2000/svg"
+    <ChartSkeletonImage
+      my="lg"
       viewBox="0 0 306 138"
       fill="none"
       preserveAspectRatio="xMidYMid"
@@ -17,7 +17,7 @@ const PieSkeleton = (): JSX.Element => {
         stroke="currentColor"
         strokeWidth="24"
       />
-    </SkeletonImage>
+    </ChartSkeletonImage>
   );
 };
 

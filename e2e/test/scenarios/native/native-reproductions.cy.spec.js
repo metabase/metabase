@@ -766,3 +766,58 @@ describe("issue 46308", () => {
     H.cartesianChartCircle().should("have.length", 3);
   });
 });
+
+describe("issue 38176", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+  });
+
+  it("restoring a question to a previous version should preserve the variables (metabase#38176)", () => {
+    H.createNativeQuestion(
+      {
+        name: "38176",
+        native: {
+          query:
+            'SELECT "COUNTRY" from "ACCOUNTS" WHERE country = {{ country }} LIMIT 5',
+          "template-tags": {
+            country: {
+              type: "text",
+              id: "dd06cd10-596b-41d0-9d6e-94e98ceaf989",
+              name: "country",
+              "display-name": "Country",
+            },
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByPlaceholderText("Country").type("NL");
+
+    cy.findByTestId("qb-header").icon("play").click();
+
+    H.questionInfoButton().click();
+    H.sidesheet().within(() => {
+      cy.findByPlaceholderText("Add description")
+        .type("This is a question")
+        .blur();
+
+      cy.wait("@updateQuestion");
+      cy.wait("@cardQuery");
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(/added a description/i);
+      cy.findByTestId("question-revert-button").click();
+      cy.wait("@cardQuery");
+
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(/reverted to an earlier version/i, {
+        timeout: 10000,
+      }).should("be.visible");
+    });
+
+    cy.findByLabelText("Close").click();
+    H.tableInteractive().should("contain", "NL");
+  });
+});

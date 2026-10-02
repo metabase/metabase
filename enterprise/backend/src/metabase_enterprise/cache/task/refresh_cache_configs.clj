@@ -31,10 +31,12 @@
       (doto (BasicThreadFactory$Builder.)
         (.namingPattern "preemptive-caching-thread-pool-%d"))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parameterized-queries-to-rerun-per-card*
   "Number of query variations (e.g. with different parameters) to run for a single cached card."
   10)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *run-cache-refresh-async*
   "Should cache refresh jobs be run asynchronously? Defaults to true, can be set to false for testing."
   true)

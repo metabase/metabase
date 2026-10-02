@@ -12,6 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *github-output-only?* false)
 
 (def default-modules-which-trigger-drivers
@@ -182,6 +183,7 @@
      pulse
      remote-sync
      request
+     request.schema
      sample-data
      search
      warehouses.secrets
@@ -197,6 +199,7 @@
      system
      task
      task.history
+     task.secure-delegate
      tiles
      timeline
      tracing

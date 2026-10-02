@@ -49,6 +49,7 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
+      expect(matches(name, ".clj-kondo/ratchets-test.edn")).toBe(false);
       expect(matches(name, ".clj-kondo/config/modules/ratchets.edn")).toBe(
         false,
       );
@@ -95,6 +96,9 @@ describe("file-paths.yaml", () => {
       true,
     );
     expect(
+      matches("project_ratchet_checks", ".clj-kondo/ratchets-test.edn"),
+    ).toBe(true);
+    expect(
       matches(
         "project_ratchet_checks",
         ".clj-kondo/config/modules/ratchets.edn",
@@ -138,5 +142,44 @@ describe("file-paths.yaml", () => {
     "frontend/test/metabase/scenarios/Button.unit.spec.tsx",
   ])("does not run Loki stories when %s changes", (file) => {
     expect(matches("frontend_loki_all", file)).toBe(false);
+  });
+
+  it.each([
+    "e2e/support/cypress.config.js",
+    "e2e/test/scenarios/shared-helper.js",
+    "e2e/runner/read-spec-paths.js",
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/run-tests.yml",
+    ".github/actions/prepare-cypress/action.yml",
+    ".github/scripts/build-e2e-matrix.js",
+    ".github/file-paths.yaml",
+    "frontend/build/shared/esbuild/side-effect-free-modules-plugin.js",
+    "rspack.main.config.js",
+    "bun.lock",
+    "locales/fr.po",
+    "snowplow/events/event.yaml",
+    "patches/@cypress+grep+6.0.0.patch",
+  ])("runs all E2E specs when %s changes", (file) => {
+    expect(matches("e2e_all", file)).toBe(true);
+    expect(matches("e2e_infra", file)).toBe(true);
+  });
+
+  it.each(["js", "jsx", "ts", "tsx"])(
+    "allows changes to .cy.spec.%s files to narrow E2E",
+    (extension) => {
+      expect(
+        matches("e2e_infra", `e2e/test/scenarios/a.cy.spec.${extension}`),
+      ).toBe(false);
+    },
+  );
+
+  it.each([
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/e2e-tests.yml",
+    ".github/workflows/e2e-matrix-builder.yml",
+    "e2e/runner/read-spec-paths.js",
+    "e2e/support/cypress.config.js",
+  ])("runs CI-script tests when %s changes", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
   });
 });

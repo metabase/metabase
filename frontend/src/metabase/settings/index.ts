@@ -13,6 +13,7 @@ export {
   useUpdateSettingsMutation,
 } from "./api";
 export {
+  getCustomIllustrationUrl,
   getSetting,
   getSettings,
   getSettingsLoading,
