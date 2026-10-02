@@ -8,8 +8,11 @@
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,7 +26,7 @@
   []
   (into #{} (map :name) (registry/list-tools)))
 
-(deftest without-ai-controls-feature-rows-are-ignored-test
+(deftest without-ai-controls-feature-rows-are-still-enforced-test
   (mt/with-premium-features #{}
     (mcp.tu/with-group-level-mode
       (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
@@ -32,7 +35,21 @@
                      :model/McpGroupPermission         _              {:group_id    group-id
                                                                        :mcp_enabled false
                                                                        :tool_access {"test_echo" "no"}}]
-        (is (= mcp.perms/unrestricted-policy (mcp.perms/effective-policy (mt/user->id :rasta))))))))
+        (is (= no-access-policy (mcp.perms/effective-policy (mt/user->id :rasta))))))))
+
+(deftest without-ai-controls-feature-seeded-rows-keep-mcp-on-test
+  (testing "an instance that never configured MCP tool access keeps MCP, with each tool's default, after losing the
+            feature"
+    (mt/with-premium-features #{}
+      (mcp.tu/with-mcp-group-permissions-snapshot
+        (t2/delete! :model/McpGroupPermission)
+        (t2/insert! :model/McpGroupPermission {:group_id    (u/the-id (perms/all-users-group))
+                                               :mcp_enabled true
+                                               :tool_access {}})
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [names (listed-tool-names)]
+            (is (contains? names "test_echo"))
+            (is (not (contains? names "test_off_by_default")))))))))
 
 (deftest stored-entries-override-defaults-test
   (mt/with-premium-features #{:ai-controls}

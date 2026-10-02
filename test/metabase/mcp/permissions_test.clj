@@ -72,12 +72,6 @@
   (testing "an enabled group with no overrides enables the connection"
     (is (true? (mcp.perms/enabled? [{}])))))
 
-(deftest ^:parallel oss-fallback-allows-everything-test
-  (mt/with-premium-features #{}
-    (mt/with-current-user (mt/user->id :rasta)
-      (is (= mcp.perms/unrestricted-policy (mcp.perms/policy-for-current-user)))
-      (is (set/subset? #{"test_echo" "test_off_by_default"} (listed-tool-names))))))
-
 (deftest ^:parallel superuser-and-internal-callers-bypass-test
   (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
     (testing "a superuser is never narrowed by group policy"
