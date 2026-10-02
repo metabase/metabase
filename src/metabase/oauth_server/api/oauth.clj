@@ -10,6 +10,7 @@
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
@@ -249,22 +250,44 @@
          :body    ""}
         (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0)))))
 
-(defn- refresh-keeps-binding!
-  "The token request `body`, made safe for the provider. A refresh grant always keeps the refresh token's resource
-  binding, which decides where the new access token works: `resource` is dropped so the provider copies the stored
-  binding, after an `invalid_grant` error is thrown when the requested resource is not within it. Any other grant is
-  returned unchanged."
+(defn- refresh-binding
+  "Decide the resource binding of a token request `body`. Returns `{:body <body for the provider> :rebind <resource
+  or nil>}`.
+
+  A refresh grant keeps the refresh token's binding, which decides where the new access token works: `resource` is
+  dropped from the body so the provider copies the stored binding. A requested resource within the stored binding
+  changes nothing. When the stored binding is the MCP endpoint, a requested resource that is also the MCP endpoint
+  (by [[oauth-server/mcp-resource?]], under any host, as after a Site URL change) is accepted, and `:rebind` names it,
+  so the new tokens move to it. Any other requested resource throws `invalid_grant`, so a REST refresh token never
+  moves onto the MCP endpoint. Any other grant is returned unchanged."
   [provider {:keys [grant_type refresh_token resource] :as body}]
   (if (= "refresh_token" grant_type)
-    (let [stored (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))]
+    (let [stored   (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))
+          granted  (:resource stored)
+          rebind?  (and resource stored
+                        (not (oauth-server/resources-within? resource granted))
+                        (oauth-server/mcp-resource? granted)
+                        (oauth-server/mcp-resource? resource))]
       ;; `invalid_grant` (RFC 6749 section 5.2: the refresh token "does not match"), not RFC 8707 `invalid_target`:
       ;; the refresh token can never serve this resource, so the client has to authorize again rather than retry.
-      (when (and resource stored (not (oauth-server/resources-within? resource (:resource stored))))
+      (when (and resource stored (not rebind?) (not (oauth-server/resources-within? resource granted)))
         (throw (ex-info "resource is outside the refresh token's binding"
                         {:error             "invalid_grant"
                          :error-description refresh-binding-mismatch-description})))
-      (dissoc body :resource))
-    body))
+      {:body   (dissoc body :resource)
+       :rebind (when rebind? (if (string? resource) [resource] (vec resource)))})
+    {:body body}))
+
+(defn- rebind-refreshed-tokens!
+  "Move the tokens in the token `response` to the `rebind` resource, and return the response naming it. Returns
+  `response` unchanged when `rebind` is nil."
+  [response rebind]
+  (if-not rebind
+    response
+    (do (oauth-server.db/rebind-tokens! (some-> (:access_token response) oidc-util/hash-token)
+                                        (some-> (:refresh_token response) oidc-util/hash-token)
+                                        rebind)
+        (assoc response :resource rebind))))
 
 (defn- login-redirect-url
   "Build a redirect URL to the login page that will redirect back to the given path after login.
@@ -675,8 +698,9 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [response (oidc/token-request provider (refresh-keeps-binding! provider body)
-                                                   authorization-header)]
+                (let [{:keys [body rebind]} (refresh-binding provider body)
+                      response              (-> (oidc/token-request provider body authorization-header)
+                                                (rebind-refreshed-tokens! rebind))]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

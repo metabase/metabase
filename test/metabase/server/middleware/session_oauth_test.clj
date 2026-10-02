@@ -386,6 +386,61 @@
            (is (= (mt/user->id :rasta) (:metabase-user-id req)))
            (is (= #{oauth-server/full-access-scope "agent:query:run"} (:token-scopes req)))))))))
 
+(defn- user-id-at
+  "The user the bearer bridge resolves `token` to for a request to `uri`, or nil."
+  [token uri]
+  (:metabase-user-id (merge-current-user-info (assoc (bearer-request token) :uri uri))))
+
+(deftest mcp-token-survives-a-site-url-change-test
+  (testing "A token issued for the MCP endpoint still authenticates there after an admin changes the Site URL, and
+            still authenticates nothing else. The binding is decided by the path of the stored resource, not by the
+            Site URL it was issued under."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (do-with-committed-oauth-client!
+       (fn [client-id]
+         (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
+                                                           mcp.paths/v2-baseline-scopes
+                                                           :resource (oauth-server.tu/mcp-resource))]
+           (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+             (is (= (mt/user->id :rasta) (user-id-at token "/api/metabase-mcp")))
+             (testing "and is still refused off the MCP endpoint"
+               (is (nil? (user-id-at token "/api/user/current")))))))))))
+
+(deftest mcp-token-under-a-subpath-site-url-test
+  (testing "A token issued under a Site URL with a subpath is MCP-bound, and stays bound when the host or the subpath
+            changes"
+    (mt/with-temporary-setting-values [site-url "https://host.example.com/metabase"]
+      (do-with-committed-oauth-client!
+       (fn [client-id]
+         (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
+                                                           mcp.paths/v2-baseline-scopes
+                                                           :resource (oauth-server.tu/mcp-resource))]
+           (is (= ["https://host.example.com/metabase/api/metabase-mcp"] (oauth-server.tu/mcp-resource)))
+           (is (= (mt/user->id :rasta) (user-id-at token "/api/metabase-mcp")))
+           (is (nil? (user-id-at token "/api/user/current")))
+           (doseq [new-site-url ["https://other.example.com/metabase" "https://host.example.com/analytics"]]
+             (testing new-site-url
+               (mt/with-temporary-setting-values [site-url new-site-url]
+                 (is (= (mt/user->id :rasta) (user-id-at token "/api/metabase-mcp")))
+                 (is (nil? (user-id-at token "/api/user/current"))))))))))))
+
+(deftest look-alike-resource-paths-are-not-mcp-bound-test
+  (testing "A resource whose path only resembles an MCP endpoint path is not MCP-bound: the path must end with an
+            MCP endpoint path at a segment boundary"
+    (doseq [resource ["http://localhost:3000/notapi/mcp"
+                      "http://localhost:3000/api/mcp-evil"
+                      "http://localhost:3000/api/metabase-mcp/extra"
+                      "http://localhost:3000/api"
+                      "not a uri"]]
+      (testing resource
+        (is (false? (oauth-server/mcp-resource? [resource])))))
+    (testing "while the MCP endpoint paths themselves, under any host or subpath, are"
+      (doseq [resource ["http://localhost:3000/api/mcp"
+                        "https://a.example.com/x/y/api/metabase-mcp"
+                        "HTTPS://A.EXAMPLE.COM:443/api/metabase-mcp/"]]
+        (testing resource
+          (is (true? (oauth-server/mcp-resource? [resource]))))))))
+
 (deftest bearer-bridge-expired-token-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (t2/with-transaction [_conn nil {:rollback-only true}]

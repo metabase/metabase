@@ -1237,7 +1237,7 @@
                   :error_description refresh-binding-mismatch-description}
                  (token-request! {:grant_type    "refresh_token"
                                   :refresh_token (:refresh_token tokens)
-                                  :resource      "https://other.example.com/api/mcp"}
+                                  :resource      "https://other.example.com/api"}
                                  :expected-status 400
                                  :authorization (basic-auth-header client_id client_secret)))))))))
 
@@ -2478,6 +2478,38 @@
                 (is (nil? (access-token-resource (token-request! {:grant_type    "refresh_token"
                                                                   :refresh_token rest-refresh}
                                                                  :authorization basic))))))))))))
+
+(deftest refresh-after-a-site-url-change-test
+  (testing "An MCP refresh token stored under the old Site URL still refreshes after an admin changes it. A refresh that
+            names the MCP endpoint under the new URL moves the binding there; one that names no resource keeps it; one
+            that names a resource that is not the MCP endpoint is still refused."
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client      (register-app-client! "Claude" claude-redirect)
+              basic       (basic-auth-header (:client_id client) (:client_secret client))
+              old-mcp     "http://localhost:3000/api/metabase-mcp"
+              new-mcp     "https://mb.example.com/api/metabase-mcp"
+              mcp-refresh (fn []
+                            (let [token (str (random-uuid))]
+                              (oidc.store/save-refresh-token (:token-store (oauth-server/get-provider)) token
+                                                             (str (mt/user->id :crowberto)) (:client_id client)
+                                                             ["agent:content:read"] nil [old-mcp])
+                              token))
+              refresh     (fn [expected-status params]
+                            (token-request! (merge {:grant_type "refresh_token"} params)
+                                            :expected-status expected-status
+                                            :authorization basic))]
+          (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+            (testing "naming the new URL's MCP resource succeeds and binds the new token there"
+              (is (= [new-mcp] (access-token-resource
+                                (refresh 200 {:refresh_token (mcp-refresh) :resource new-mcp})))))
+            (testing "naming no resource keeps the stored binding"
+              (is (= [old-mcp] (access-token-resource (refresh 200 {:refresh_token (mcp-refresh)})))))
+            (testing "naming a resource that is not the MCP endpoint is refused"
+              (is (= "invalid_grant"
+                     (:error (refresh 400 {:refresh_token (mcp-refresh)
+                                           :resource      "https://mb.example.com/api"})))))))))))
 
 (deftest untick-leaves-other-live-tokens-alone-test
   (testing (str "GHY-4555: a consent decision governs only the token this authorization mints. Unticking a scope the "
