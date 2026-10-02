@@ -2,6 +2,7 @@ import { assocIn } from "icepick";
 
 const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { many_data_types_rows } from "e2e/support/test_tables_data";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -49,29 +50,7 @@ const MODEL_NAME = "Test Action Model";
           H.expectNoBadSnowplowEvents();
         });
 
-        it("action creation modal can be closed on click outside (WRK-67)", () => {
-          cy.get("@modelId").then((id) => {
-            cy.visit(`/model/${id}/detail`);
-            cy.wait(["@getModel", "@getModelActions"]);
-          });
-
-          const newActionBtn = () =>
-            cy.findByTestId("model-actions-header").findByText("New action");
-
-          // click outside
-          newActionBtn().click();
-          cy.findByTestId("action-creator").should("be.visible");
-          cy.get("body").click("topLeft");
-          cy.findByTestId("action-creator").should("not.exist");
-
-          // ESC button
-          newActionBtn().click();
-          cy.findByTestId("action-creator").should("be.visible");
-          cy.get("body").type("{esc}");
-          cy.findByTestId("action-creator").should("not.exist");
-        });
-
-        it("adds a custom query action to a dashboard and runs it", () => {
+        it("adds a custom query action with a hidden optional field to a dashboard and runs it", () => {
           const ACTION_NAME = "Update Score";
 
           H.queryWritableDB(
@@ -87,13 +66,26 @@ const MODEL_NAME = "Test Action Model";
             cy.wait(["@getModel", "@getModelActions"]);
           });
 
-          cy.findByTestId("model-actions-header")
-            .findByText("New action")
-            .click();
+          const newActionBtn = () =>
+            cy.findByTestId("model-actions-header").findByText("New action");
+
+          cy.log("action creation modal closes on click outside (WRK-67)");
+          newActionBtn().click();
+          cy.findByTestId("action-creator").should("be.visible");
+          cy.get("body").click("topLeft");
+          cy.findByTestId("action-creator").should("not.exist");
+
+          cy.log("action creation modal closes on Escape (WRK-67)");
+          newActionBtn().click();
+          cy.findByTestId("action-creator").should("be.visible");
+          cy.get("body").type("{esc}");
+          cy.findByTestId("action-creator").should("not.exist");
+
+          newActionBtn().click();
 
           cy.findByRole("dialog").within(() => {
             H.fillActionQuery(
-              `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }}`,
+              `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }} [[ and status = {{ current_status }}]]`,
             );
           });
 
@@ -107,6 +99,21 @@ const MODEL_NAME = "Test Action Model";
             cy.findAllByText("Number").each((el) => {
               cy.wrap(el).click();
             });
+
+            // hide optional field
+            formFieldContainer("Current Status").within(() => {
+              cy.findByText("Text").click();
+
+              toggleFieldVisibility();
+              openFieldSettings();
+            });
+          });
+
+          H.popover().within(() => {
+            cy.findByLabelText("Required").uncheck({ force: true });
+          });
+
+          H.modal().within(() => {
             cy.findByText("Save").click();
           });
 
@@ -127,7 +134,9 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("button", { name: "Update Score" }).click();
           cy.findByRole("dialog").within(() => {
-            cy.findByLabelText("New Score").type("55");
+            cy.findByLabelText("New Score").should("be.visible").type("55");
+            // it's hidden
+            cy.findByLabelText("Current Status").should("not.exist");
             cy.button(ACTION_NAME).click();
           });
 
@@ -140,9 +149,68 @@ const MODEL_NAME = "Test Action Model";
             expect(result.rows.length).to.equal(1);
             expect(result.rows[0].score).to.equal(55);
           });
+
+          cy.log("show the field and make it required from the model page");
+          cy.get("@modelId").then((id) => {
+            cy.visit(`/model/${id}/detail`);
+            cy.wait(["@getModel", "@getModelActions"]);
+          });
+
+          cy.get("[aria-label='Update Score']").within(() => {
+            cy.icon("ellipsis").click();
+          });
+
+          H.popover().within(() => {
+            cy.findByText("Edit").click();
+          });
+
+          cy.findByRole("dialog").within(() => {
+            formFieldContainer("Current Status").within(() => {
+              toggleFieldVisibility();
+
+              openFieldSettings();
+            });
+          });
+
+          H.popover().within(() => {
+            cy.findByLabelText("Required").check({ force: true });
+          });
+
+          H.modal().within(() => {
+            cy.findByText("Update").click();
+          });
+
+          cy.wait("@updateAction");
+          // The action editor closes after the update; wait until it is gone
+          // before navigating to the dashboard.
+          cy.findByTestId("action-creator").should("not.exist");
+
+          cy.get("@dashboardId").then((id) => {
+            cy.visit(`/dashboard/${id}?id=1`);
+          });
+          H.filterWidget().should("contain.text", "1");
+
+          cy.findByRole("button", { name: "Update Score" }).click();
+
+          cy.findByRole("dialog").within(() => {
+            cy.findByLabelText("New Score").type("56");
+            cy.findByLabelText("Current Status").type("active");
+
+            cy.button(ACTION_NAME).click();
+          });
+
+          cy.wait("@executeAction");
+
+          H.queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
+            dialect,
+          ).then((result) => {
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].score).to.equal(56);
+          });
         });
 
-        it("adds an implicit create action to a dashboard and runs it", () => {
+        it("adds an implicit create action with a hidden field to a dashboard and runs it", () => {
           cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "create",
@@ -152,6 +220,7 @@ const MODEL_NAME = "Test Action Model";
 
           createDashboardWithActionButton({
             actionName: "Create",
+            hideField: "Created At",
           });
 
           H.expectUnstructuredSnowplowEvent({
@@ -163,6 +232,7 @@ const MODEL_NAME = "Test Action Model";
           H.modal().within(() => {
             cy.findByPlaceholderText("Team Name").type("Zany Zebras");
             cy.findByPlaceholderText("Score").type("44");
+            cy.findByPlaceholderText("Created At").should("not.exist");
 
             cy.button("Save").click();
           });
@@ -179,7 +249,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("adds an implicit update action to a dashboard and runs it", () => {
+        it("adds implicit update and delete actions to dashboards and runs them", () => {
           const actionName = "Update";
 
           cy.get("@modelId").then((id) => {
@@ -229,9 +299,8 @@ const MODEL_NAME = "Test Action Model";
 
             expect(result.rows[0].score).to.equal(88);
           });
-        });
 
-        it("adds an implicit delete action to a dashboard and runs it", () => {
+          cy.log("delete a row via an implicit delete action");
           H.queryWritableDB(
             `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Cuddly Cats'`,
             dialect,
@@ -251,9 +320,12 @@ const MODEL_NAME = "Test Action Model";
             actionName: "Delete",
           });
 
-          H.expectUnstructuredSnowplowEvent({
-            event: "new_action_card_created",
-          });
+          H.expectUnstructuredSnowplowEvent(
+            {
+              event: "new_action_card_created",
+            },
+            2,
+          );
 
           cy.findByRole("button", { name: "Delete" }).click();
 
@@ -272,10 +344,27 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("hide actions in public dashboards (metabase#34395)", () => {
+        it("hides actions in public and static embed dashboards (metabase#34395)", () => {
           const dashboardDetails = {
-            name: "Public Dashboard",
+            name: "Actions Dashboard",
           };
+
+          const assertActionsHidden = () => {
+            cy.findByRole("heading", { name: dashboardDetails.name }).should(
+              "be.visible",
+            );
+            H.getDashboardCards().should("have.length", 1);
+            H.getDashboardCard(0).findByText("Orders").should("be.visible");
+            /**
+             * cy.button("Create") doesn't work because the label is
+             * `Actions are not enabled for this database` for disabled actions
+             */
+            cy.findByRole("main").findByText("Create").should("not.exist");
+            cy.findByRole("link", { name: "Powered by Metabase" }).should(
+              "be.visible",
+            );
+          };
+
           cy.get("@modelId")
             .then((id) => {
               H.createImplicitAction({
@@ -293,74 +382,32 @@ const MODEL_NAME = "Test Action Model";
                         action_id: action.id,
                         label: "Create",
                       }),
+                      {
+                        id: H.getNextUnsavedDashboardCardId(),
+                        card_id: ORDERS_QUESTION_ID,
+                        col: 4,
+                        row: 0,
+                        size_x: 11,
+                        size_y: 8,
+                      },
                     ],
                   });
+
+                  H.createPublicDashboardLink(dashboard.id).then(
+                    ({ body: { uuid } }) => {
+                      cy.wrap(uuid).as("publicUuid");
+                    },
+                  );
+
                   cy.visit(`/dashboard/${dashboard.id}`);
-                  cy.wrap(dashboard.id).as("dashboardId");
-                },
-              );
-            });
-
-          cy.log("The action should be visible in the dashboard");
-          cy.findByRole("button", { name: "Create" }).should("be.visible");
-
-          cy.log("Visit public dashboard");
-          cy.get("@dashboardId")
-            .then((dashboardId) => {
-              H.createPublicDashboardLink(dashboardId);
-            })
-            .then(({ body: { uuid } }) => {
-              cy.visit(`/public/dashboard/${uuid}`);
-            });
-
-          cy.log("Assert public dashboard");
-          cy.findByRole("heading", { name: dashboardDetails.name }).should(
-            "be.visible",
-          );
-          /**
-           * cy.button("Create") doesn't work because the label is
-           * `Actions are not enabled for this database` for disabled actions
-           */
-          cy.findByRole("main").findByText("Create").should("not.exist");
-          cy.findByRole("link", { name: "Powered by Metabase" }).should(
-            "be.visible",
-          );
-        });
-
-        it("hide actions in static embed dashboards (metabase#34395)", () => {
-          const dashboardDetails = {
-            name: "Public Dashboard",
-            enable_embedding: true,
-          };
-          cy.get("@modelId")
-            .then((id) => {
-              H.createImplicitAction({
-                kind: "create",
-                model_id: id,
-              });
-            })
-            .then(({ body: action }) => {
-              H.createDashboard(dashboardDetails).then(
-                ({ body: dashboard }) => {
-                  H.updateDashboardCards({
-                    dashboard_id: dashboard.id,
-                    cards: [
-                      H.getActionCardDetails({
-                        action_id: action.id,
-                        label: "Create",
-                      }),
-                    ],
-                  });
-                  cy.visit(`/dashboard/${dashboard.id}`);
-                  cy.wrap(dashboard.id).as("dashboardId");
 
                   cy.log("The action should be visible in the dashboard");
                   cy.findByRole("button", { name: "Create" }).should(
                     "be.visible",
                   );
+                  H.getDashboardCards().should("have.length", 2);
 
                   cy.log("Visit static embed dashboard");
-
                   H.openLegacyStaticEmbeddingModal({
                     resource: "dashboard",
                     resourceId: dashboard.id,
@@ -374,194 +421,13 @@ const MODEL_NAME = "Test Action Model";
           H.visitIframe();
 
           cy.log("Assert static embed dashboard");
-          cy.findByRole("heading", {
-            name: dashboardDetails.name,
-          }).should("be.visible");
-          /**
-           * cy.button("Create") doesn't work because the label is
-           * `Actions are not enabled for this database` for disabled actions
-           */
-          cy.findByRole("main").findByText("Create").should("not.exist");
-          cy.findByRole("link", { name: "Powered by Metabase" }).should(
-            "be.visible",
-          );
-        });
+          assertActionsHidden();
 
-        describe("hidden fields", () => {
-          it("adds an implicit action and runs it", () => {
-            cy.get("@modelId").then((id) => {
-              H.createImplicitAction({
-                kind: "create",
-                model_id: id,
-              });
-            });
-
-            createDashboardWithActionButton({
-              actionName: "Create",
-              hideField: "Created At",
-            });
-
-            cy.findByRole("button", { name: "Create" }).click();
-
-            H.modal().within(() => {
-              cy.findByPlaceholderText("Team Name").type("Zany Zebras");
-              cy.findByPlaceholderText("Score").type("44");
-              cy.findByPlaceholderText("Created At").should("not.exist");
-
-              cy.button("Save").click();
-            });
-
-            cy.wait("@executeAction");
-
-            H.queryWritableDB(
-              `SELECT * FROM ${TEST_TABLE} WHERE team_name = 'Zany Zebras'`,
-              dialect,
-            ).then((result) => {
-              expect(result.rows.length).to.equal(1);
-
-              expect(result.rows[0].score).to.equal(44);
-            });
+          cy.log("Assert public dashboard");
+          cy.get("@publicUuid").then((uuid) => {
+            cy.visit(`/public/dashboard/${uuid}`);
           });
-
-          it("adds a query action and runs it", () => {
-            const ACTION_NAME = "Update Score";
-
-            H.queryWritableDB(
-              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
-              dialect,
-            ).then((result) => {
-              expect(result.rows.length).to.equal(1);
-              expect(result.rows[0].score).to.equal(0);
-            });
-
-            cy.get("@modelId").then((id) => {
-              cy.visit(`/model/${id}/detail`);
-              cy.wait(["@getModel", "@getModelActions"]);
-            });
-
-            cy.findByTestId("model-actions-header")
-              .findByText("New action")
-              .click();
-
-            cy.findByRole("dialog").within(() => {
-              H.fillActionQuery(
-                `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }} [[ and status = {{ current_status }}]]`,
-              );
-            });
-
-            H.moveDnDKitListElement("drag-handle", {
-              startIndex: 1,
-              dropIndex: 0,
-            });
-
-            cy.findByRole("dialog").within(() => {
-              cy.findAllByText("Number").each((el) => {
-                cy.wrap(el).click();
-              });
-
-              // hide optional field
-              formFieldContainer("Current Status").within(() => {
-                cy.findByText("Text").click();
-
-                toggleFieldVisibility();
-                openFieldSettings();
-              });
-            });
-
-            H.popover().within(() => {
-              cy.findByLabelText("Required").uncheck({ force: true });
-            });
-
-            H.modal().within(() => {
-              cy.findByText("Save").click();
-            });
-
-            cy.findByPlaceholderText("My new fantastic action").type(
-              ACTION_NAME,
-            );
-            cy.findByTestId("create-action-form").button("Create").click();
-
-            createDashboardWithActionButton({
-              actionName: ACTION_NAME,
-            });
-
-            cy.findByRole("button", { name: "Update Score" }).click();
-
-            cy.findByRole("dialog").within(() => {
-              cy.findByLabelText("ID").type("1");
-              cy.findByLabelText("New Score").type("55");
-              // it's hidden
-              cy.findByLabelText("Current Status").should("not.exist");
-
-              cy.button(ACTION_NAME).click();
-            });
-
-            cy.wait("@executeAction");
-
-            H.queryWritableDB(
-              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
-              dialect,
-            ).then((result) => {
-              expect(result.rows.length).to.equal(1);
-              expect(result.rows[0].score).to.equal(55);
-            });
-
-            cy.get("@modelId").then((id) => {
-              cy.visit(`/model/${id}/detail`);
-              cy.wait(["@getModel", "@getModelActions"]);
-            });
-
-            cy.get("[aria-label='Update Score']").within(() => {
-              cy.icon("ellipsis").click();
-            });
-
-            H.popover().within(() => {
-              cy.findByText("Edit").click();
-            });
-
-            cy.findByRole("dialog").within(() => {
-              formFieldContainer("Current Status").within(() => {
-                toggleFieldVisibility();
-
-                openFieldSettings();
-              });
-            });
-
-            H.popover().within(() => {
-              cy.findByLabelText("Required").check({ force: true });
-            });
-
-            H.modal().within(() => {
-              cy.findByText("Update").click();
-            });
-
-            cy.wait("@updateAction");
-            // The action editor closes after the update; wait until it is gone
-            // before navigating to the dashboard.
-            cy.findByTestId("action-creator").should("not.exist");
-
-            H.visitDashboard("@dashboardId");
-
-            cy.findByRole("button", { name: "Update Score" }).click();
-
-            cy.findByRole("dialog").within(() => {
-              cy.findByLabelText("ID").type("1");
-              cy.findByLabelText("New Score").type("56");
-              cy.findByLabelText("Current Status").type("active");
-
-              cy.button(ACTION_NAME).click();
-            });
-
-            cy.wait("@executeAction");
-
-            H.queryWritableDB(
-              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
-              dialect,
-            ).then((result) => {
-              expect(result.rows.length).to.equal(1);
-              expect(result.rows[0].score).to.equal(56);
-            });
-          });
+          assertActionsHidden();
         });
       });
 
@@ -580,110 +446,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("can update various data types via implicit actions", () => {
-          cy.get("@modelId").then((id) => {
-            H.createImplicitAction({
-              kind: "update",
-              model_id: id,
-            });
-          });
-
-          createDashboardWithActionButton({
-            actionName: "Update",
-            idFilter: true,
-          });
-
-          cy.wait("@getModel");
-          cy.findByRole("button", { name: "Update" });
-
-          H.filterWidget().click();
-          addWidgetStringFilter("1");
-
-          cy.findByRole("button", { name: "Update" }).click();
-
-          cy.wait("@prefetchValues");
-
-          const oldRow = many_data_types_rows[0];
-
-          H.modal()
-            .first()
-            .within(() => {
-              changeValue({
-                fieldName: "UUID",
-                fieldType: "text",
-                oldValue: oldRow.uuid,
-                newValue: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
-              });
-
-              changeValue({
-                fieldName: "Integer",
-                fieldType: "text",
-                oldValue: oldRow.integer,
-                newValue: 123,
-              });
-
-              changeValue({
-                fieldName: "Float",
-                fieldType: "text",
-                oldValue: oldRow.float,
-                newValue: 2.2,
-              });
-
-              cy.findByLabelText("Boolean")
-                .should("be.checked")
-                .click({ force: true });
-
-              changeValue({
-                fieldName: "String",
-                fieldType: "text",
-                oldValue: oldRow.string,
-                newValue: "new string",
-              });
-
-              changeValue({
-                fieldName: "Date",
-                fieldType: "date",
-                oldValue: oldRow.date,
-                newValue: "2020-05-01",
-              });
-
-              // we can't assert on this value because mysql and postgres seem to
-              // handle timezones differently 🥴
-              cy.findByPlaceholderText("TimestampTZ")
-                .should("have.attr", "type", "datetime-local")
-                .clear()
-                .type("2020-05-01T16:45:00");
-
-              cy.button("Update").click();
-            });
-
-          cy.wait("@executeAction");
-
-          H.queryWritableDB(
-            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
-            dialect,
-          ).then((result) => {
-            expect(result.rows.length).to.equal(1);
-
-            const row = result.rows[0];
-
-            expect(row).to.have.property(
-              "uuid",
-              "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
-            );
-            expect(row).to.have.property("integer", 123);
-            expect(row).to.have.property("float", 2.2);
-            expect(row).to.have.property("string", "new string");
-            expect(row).to.have.property(
-              "boolean",
-              dialect === "mysql" ? 0 : false,
-            );
-            expect(row.date).to.include("2020-05-01"); // js converts this to a full date obj
-            expect(row.timestampTZ).to.include("2020-05-01"); // we got timezone issues here
-          });
-        });
-
-        it("can insert various data types via implicit actions", () => {
+        it("inserts and updates various data types, including date and time fields, via implicit actions, showing enum but not JSON or binary columns", () => {
           cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "create",
@@ -698,6 +461,12 @@ const MODEL_NAME = "Test Action Model";
           cy.findByRole("button", { name: "Create" }).click();
 
           H.modal().within(() => {
+            cy.findByPlaceholderText("UUID").should("be.visible");
+            cy.findByPlaceholderText("JSON").should("not.exist");
+            cy.findByPlaceholderText("JSONB").should("not.exist");
+            cy.findByPlaceholderText("Binary").should("not.exist");
+            cy.findByPlaceholderText("Enum").should("exist");
+
             cy.findByPlaceholderText("UUID").type(
               "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15",
             );
@@ -770,33 +539,8 @@ const MODEL_NAME = "Test Action Model";
             expect(row.timestamp).to.include("2020-03-01");
             expect(row.timestampTZ).to.include("2020-03-01");
           });
-        });
 
-        it("does not show json, enum, or binary columns for implicit actions", () => {
-          cy.get("@modelId").then((id) => {
-            H.createImplicitAction({
-              kind: "create",
-              model_id: id,
-            });
-          });
-
-          createDashboardWithActionButton({
-            actionName: "Create",
-            idFilter: true,
-          });
-
-          cy.findByRole("button", { name: "Create" }).click();
-
-          H.modal().within(() => {
-            cy.findByPlaceholderText("UUID").should("be.visible");
-            cy.findByPlaceholderText("JSON").should("not.exist");
-            cy.findByPlaceholderText("JSONB").should("not.exist");
-            cy.findByPlaceholderText("Binary").should("not.exist");
-            cy.findByPlaceholderText("Enum").should("exist");
-          });
-        });
-
-        it("properly loads and updates date and time fields for implicit update actions", () => {
+          cy.log("update row 1 via an implicit update action");
           cy.get("@modelId").then((id) => {
             H.createImplicitAction({
               kind: "update",
@@ -809,7 +553,6 @@ const MODEL_NAME = "Test Action Model";
             idFilter: true,
           });
 
-          cy.wait("@getModel");
           cy.findByRole("button", { name: "Update" });
 
           H.filterWidget().click();
@@ -825,6 +568,38 @@ const MODEL_NAME = "Test Action Model";
           H.modal()
             .first()
             .within(() => {
+              changeValue({
+                fieldName: "UUID",
+                fieldType: "text",
+                oldValue: oldRow.uuid,
+                newValue: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+              });
+
+              changeValue({
+                fieldName: "Integer",
+                fieldType: "text",
+                oldValue: oldRow.integer,
+                newValue: 123,
+              });
+
+              changeValue({
+                fieldName: "Float",
+                fieldType: "text",
+                oldValue: oldRow.float,
+                newValue: 2.2,
+              });
+
+              cy.findByLabelText("Boolean")
+                .should("be.checked")
+                .click({ force: true });
+
+              changeValue({
+                fieldName: "String",
+                fieldType: "text",
+                oldValue: oldRow.string,
+                newValue: "new string",
+              });
+
               changeValue({
                 fieldName: "Date",
                 fieldType: "date",
@@ -876,7 +651,21 @@ const MODEL_NAME = "Test Action Model";
             `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
             dialect,
           ).then((result) => {
+            expect(result.rows.length).to.equal(1);
+
             const row = result.rows[0];
+
+            expect(row).to.have.property(
+              "uuid",
+              "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+            );
+            expect(row).to.have.property("integer", 123);
+            expect(row).to.have.property("float", 2.2);
+            expect(row).to.have.property("string", "new string");
+            expect(row).to.have.property(
+              "boolean",
+              dialect === "mysql" ? 0 : false,
+            );
 
             // the driver adds a time to this date so we have to use .include
             expect(row.date).to.include(newTime.slice(0, 10));
@@ -893,7 +682,6 @@ const MODEL_NAME = "Test Action Model";
       });
 
       describe("editing action before executing it", () => {
-        const PG_DB_ID = 2;
         const WRITABLE_TEST_TABLE = "scoreboard_actions";
 
         const TEST_PARAMETER = createMockActionParameter({
@@ -916,7 +704,7 @@ const MODEL_NAME = "Test Action Model";
           name: "Demo Action",
           type: "query",
           parameters: [TEST_PARAMETER],
-          database_id: PG_DB_ID,
+          database_id: WRITABLE_DB_ID,
           dataset_query: {
             type: "native",
             native: {
@@ -925,7 +713,7 @@ const MODEL_NAME = "Test Action Model";
                 [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
               },
             },
-            database: PG_DB_ID,
+            database: WRITABLE_DB_ID,
           },
           visualization_settings: {
             fields: {
@@ -970,7 +758,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("allows to edit action title and field placeholder in action execute modal", () => {
+        it("allows to edit action title, field placeholder, query and parameters in action execute modal", () => {
           clickHelper(SAMPLE_QUERY_ACTION.name);
 
           getActionParametersInputModal().within(() => {
@@ -1003,13 +791,7 @@ const MODEL_NAME = "Test Action Model";
             cy.findByTestId("modal-header").findByText("New action name");
 
             cy.findAllByPlaceholderText("Test placeholder");
-          });
-        });
 
-        it("allows to edit action query and parameters in action execute modal", () => {
-          clickHelper(SAMPLE_QUERY_ACTION.name);
-
-          getActionParametersInputModal().within(() => {
             cy.icon("pencil").click();
           });
 
@@ -1047,83 +829,31 @@ const MODEL_NAME = "Test Action Model";
           cy.findByTestId("action-editor-modal").should("not.exist");
 
           getActionParametersInputModal().within(() => {
-            cy.findByLabelText("Timestamp").type("2020-01-01");
+            cy.findByLabelText("Timestamp").type("2020-02-02");
             cy.findByLabelText("ID").type("1");
 
-            cy.button(SAMPLE_QUERY_ACTION.name).click();
+            cy.button("New action name").click();
           });
 
-          cy.wait("@executeAction").then((interception) => {
-            expect(
-              Object.values(interception.request.body.parameters)
-                .sort()
-                .join(","),
-            ).to.equal("1,2020-01-01");
-          });
+          cy.wait("@executeAction");
 
           cy.findByTestId("toast-undo").within(() => {
-            cy.findByText(
-              `${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`,
-            ).should("be.visible");
+            cy.findByText("New action name ran successfully").should(
+              "be.visible",
+            );
+          });
+
+          H.queryWritableDB(
+            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+            dialect,
+          ).then((result) => {
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].timestamp).to.include("2020-02-02");
           });
         });
       });
     },
   );
-});
-
-describe("action error handling", { tags: ["@external", "@actions"] }, () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
-    cy.signInAsAdmin();
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
-    H.createModelFromTableName({
-      tableName: TEST_TABLE,
-      modelName: MODEL_NAME,
-    });
-
-    cy.intercept("GET", "/api/action").as("getActions");
-    cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute/values").as(
-      "prefetchValues",
-    );
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
-      "executeAction",
-    );
-  });
-
-  it("should show detailed form errors for constraint violations when executing model actions", () => {
-    const actionName = "Update";
-
-    cy.get("@modelId").then((modelId) => {
-      H.createImplicitAction({ kind: "update", model_id: modelId });
-    });
-
-    createDashboardWithActionButton({ actionName, idFilter: true });
-
-    cy.wait("@getModel");
-    cy.findByRole("button", { name: "Update" });
-
-    H.filterWidget().click();
-    addWidgetStringFilter("5");
-    cy.button(actionName).click();
-
-    cy.wait("@prefetchValues");
-
-    H.modal()
-      .first()
-      .within(() => {
-        cy.findByLabelText("Team Name").clear().type("Kind Koalas");
-        cy.button(actionName).click();
-        cy.wait("@executeAction");
-
-        cy.findByLabelText("Team Name").should("exist");
-        cy.findByText("This Team_name value already exists.").should("exist");
-
-        cy.findByText("Team_name already exists.").should("exist");
-      });
-  });
 });
 
 describe(
@@ -1139,6 +869,9 @@ describe(
       cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute/values").as(
         "executePrefetch",
       );
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/execute").as(
+        "executeAction",
+      );
     });
 
     describe("Inline action edit", () => {
@@ -1153,7 +886,7 @@ describe(
         });
       });
 
-      it("refetches form values when id changes (metabase#33084)", () => {
+      it("refetches form values when id changes and shows constraint violation errors (metabase#33084)", () => {
         const actionName = "Update";
 
         cy.get("@modelId").then((id) => {
@@ -1201,6 +934,19 @@ describe(
             "Jolly Jellyfish",
           );
           cy.findByPlaceholderText("Score").should("have.value", "60");
+
+          cy.log("shows constraint violation errors from the database");
+          cy.findByPlaceholderText("Team Name").clear().type("Kind Koalas");
+          cy.button(actionName).click();
+        });
+
+        cy.wait("@executeAction");
+
+        H.modal().within(() => {
+          cy.findByLabelText("Team Name").should("exist");
+          cy.findByText("This Team_name value already exists.").should("exist");
+
+          cy.findByText("Team_name already exists.").should("exist");
         });
       });
 
@@ -1288,7 +1034,6 @@ describe(
 
 function createDashboardWithActionButton({
   actionName,
-  modelName = MODEL_NAME,
   idFilter = false,
   hideField,
 }) {
@@ -1317,7 +1062,7 @@ function createDashboardWithActionButton({
   waitForValidActions();
 
   cy.findByRole("dialog").within(() => {
-    cy.findByText(modelName).click();
+    cy.findByText(MODEL_NAME).click();
     cy.findByText(actionName).click();
   });
 
@@ -1345,8 +1090,8 @@ function createDashboardWithActionButton({
 
   if (idFilter) {
     cy.findByRole("dialog").within(() => {
+      cy.findByText(/Where should the values/i).should("be.visible");
       cy.findByText(/has no parameters to map/i).should("not.exist");
-      cy.findByText(/Where should the values/i);
       cy.findAllByDisplayValue(/ask the user/i)
         .first()
         .click();
