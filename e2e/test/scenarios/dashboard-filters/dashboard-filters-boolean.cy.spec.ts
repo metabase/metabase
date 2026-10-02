@@ -20,7 +20,7 @@ const PARAMETER_NAME = "Boolean parameter";
 const COLUMN_NAME = "Boolean";
 const FIELD_NAME = "boolean";
 
-describe("scenarios > dashboard > filters > number", () => {
+describe("scenarios > dashboard > filters > boolean", () => {
   describe("mbql queries", () => {
     beforeEach(() => {
       H.restore();
