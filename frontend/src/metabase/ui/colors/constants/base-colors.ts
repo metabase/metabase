@@ -8,6 +8,11 @@
 const baseColors = {
   white: "hsla(0, 0%, 100%, 1.00)",
   black: "hsla(0, 0%, 0%, 1.00)",
+  // Neutral black overlays, keyed by opacity. Used for the modal backdrop.
+  blackAlpha: {
+    10: "hsla(0, 0%, 0%, 0.10)",
+    35: "hsla(0, 0%, 0%, 0.35)",
+  },
   transparent: "hsla(0, 0%, 100%, 0)",
   gold: "hsla(50.6, 100%, 50%, 1)",
   upsellGem: "hsla(190, 100%, 50%, 1)",

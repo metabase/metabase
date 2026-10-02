@@ -240,7 +240,7 @@ const getActualColors = (brand: BrandRamp) => ({
   "illustration-tertiary-brand": brand[90],
   "input-background": baseColors.orionAlphaInverse[10],
   "input-focus": baseColors.blue[70],
-  "modal-overlay": baseColors.orionAlpha[70],
+  "modal-overlay": baseColors.blackAlpha[35],
   "navbar-admin": baseColors.octopus[80],
   "navbar-admin-inverse": baseColors.octopus[60],
   "navbar-admin-secondary": baseColors.octopus[60],

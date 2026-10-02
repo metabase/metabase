@@ -10,7 +10,7 @@ module.exports = {
     "^design system",
     "^Components/Overlays/Menu Hover state",
     "^Components/Overlays/Popover (Opened|Overview)",
-    "^Components/Overlays/Modal Opened",
+    "^Components/Overlays/Modal (Opened|Overview)",
     "^Components/Sidesheet (Default|Offset)$",
     "^Components/Overlays/HoverCard Opened",
     "^Components/Utils/Paper Shadow matrix",
