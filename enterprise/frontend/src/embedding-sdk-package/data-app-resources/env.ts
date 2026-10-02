@@ -14,7 +14,7 @@ function readEnvFile(filePath: string) {
     : {};
 }
 
-/** The Metabase instance and API key the dev preview uses: the repo's `.env.local`, overridden by the environment. */
+/** The Metabase instance and API key the dev preview uses: the repo-root `.env.local`, overridden by the environment. */
 export function getMetabaseCredentials(appRoot: string) {
   const values = {
     ...readEnvFile(path.join(findEnvRoot(appRoot), ".env.local")),
@@ -25,7 +25,7 @@ export function getMetabaseCredentials(appRoot: string) {
 
   if (!metabaseUrl || !apiKey) {
     throw new Error(
-      `${DATA_APP_MB_URL_ENV} and ${DATA_APP_MB_API_KEY_ENV} must be set in .env.local.`,
+      `${DATA_APP_MB_URL_ENV} and ${DATA_APP_MB_API_KEY_ENV} must be set, in the repo-root .env.local or the environment.`,
     );
   }
 

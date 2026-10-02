@@ -71,8 +71,8 @@ Rules:
   question in `resources/cards/`. After adding or changing a definition, update
   that card (`npm run print-resources` shows what it must hold). A metric it
   aggregates is copied into `resources/cards/` too, written from what the same
-  command prints. Then run `npm run check-resources`, and
-  commit the definitions and `resources/` together. `npm run build` fails until
-  they match.
+  command prints. Then run `npm run check-resources`, and commit the
+  definitions and `resources/` together. `npm run build` fails until they
+  match.
 - Never copy a `savedQuestionEntityId` to another definition, or remove it while
   its card exists.

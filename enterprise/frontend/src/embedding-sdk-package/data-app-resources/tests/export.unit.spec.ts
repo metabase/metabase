@@ -129,7 +129,7 @@ describe("exporting what resources are written from", () => {
 
     try {
       await expect(exportResources(appRoot)).rejects.toThrow(
-        "DATA_APP_MB_URL and DATA_APP_MB_API_KEY must be set in .env.local.",
+        "DATA_APP_MB_URL and DATA_APP_MB_API_KEY must be set, in the repo-root .env.local or the environment.",
       );
     } finally {
       if (shell.url !== undefined) {
