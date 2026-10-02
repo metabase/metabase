@@ -159,7 +159,7 @@
   [client-store]
   ;; This is the whole enforcement of a client revocation on the OAuth endpoints. The library has no notion of a
   ;; revoked client, but it refuses one it cannot read, so hiding the row here is what makes `/oauth/authorize`, the
-  ;; token exchange, a refresh, and the RFC 7592 registration read all fail with no guard of their own (ADR 0002).
+  ;; token exchange, a refresh, and the RFC 7592 registration read all fail with no guard of their own.
   ;; Applied on read, so a revocation takes effect on the next request rather than on a provider rebuild.
   (wrap-client-reads client-store #(when-not (:revoked-at %) %)))
 
@@ -329,7 +329,7 @@
         (let [expiry (:expiry token-data)]
           (when (and (or (nil? expiry)
                          (t/after? (t/instant expiry) (t/instant)))
-                     ;; Fail closed if the issuing client is gone (SEC-863) or revoked (OAuth ADR 0002).
+                     ;; Fail closed if the issuing client is gone (SEC-863) or revoked.
                      (oauth-server.db/active-oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               (when (oauth-server.db/active-user-exists? user-id)
