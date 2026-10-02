@@ -103,7 +103,7 @@ Supported models:
 | GPT-5.6 Luna           | `openai/gpt-5.6-luna`             | 922,000                 |
 | GPT-5.6 Sol            | `openai/gpt-5.6-sol`              | 922,000                 |
 | GPT-5.6 Terra          | `openai/gpt-5.6-terra`            | 922,000                 |
-| Qwen3.8 Max            | `qwen/qwen3.8-max`                | 1,000,000               |
+| Qwen3.8 Max 0902       | `qwen/qwen3.8-max-0902`           | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
 | GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
 

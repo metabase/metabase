@@ -7,7 +7,7 @@ description: Scaffold a new Metabase data-app into the connected remote-sync rep
 
 A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server that previews the app against a real Metabase **through the same Near Membrane sandbox + distortion rules Metabase uses in production** — so `npm run dev` behaves like production, including for third-party libraries the app bundles — and `npm run build` producing a single `dist/index.js`. (Because the sandbox runs a built bundle, a change rebuilds it and does a *soft reload* — re-evaluates the bundle in the sandbox and remounts the app, keeping auth/SDK loaded — rather than hot-swapping modules; component state resets, but there's no full browser refresh.) The dev preview also shows a corner **⚠ Diagnostics** toolbar that captures runtime errors — including the sandbox's otherwise-opaque blocked-API messages — so failures surface instead of being swallowed. The same data is served as JSON at `http://localhost:5174/__data-app/diagnostics`, which is how *you* read it (see "Reading the diagnostics feed" below) — you have a shell, not a browser, and these failures are invisible from the terminal otherwise.
 
-**Data apps are served from Git, not uploaded.** A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<app>/` inside that repo — its source, a `data_app.yaml` (name/path), and the committed built bundle at the `path` its `data_app.yaml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes one app per directory and serves it at `/apps/<slug>` url, where the slug **is** the directory's name. So this skill always scaffolds **into the connected repo's `data_apps/<app>/` directory**, never as a standalone project.
+**Data apps are served from Git** (they can also be created and updated through `/api/apps`). A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<slug>/` inside that repo — its source, a `data_app.yaml` (slug/name/path), and the committed built bundle at the `path` its `data_app.yaml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes each app and serves it at `/apps/<slug>`, where the slug is the `slug` its `data_app.yaml` declares. So this skill always scaffolds **into the connected repo's `data_apps/<slug>/` directory**, never as a standalone project.
 
 **The scaffold ships inside this skill at `./template/`** — a Vite + React + TypeScript project that was installed alongside the skill. Step 3 just copies it into the app directory; the skill then guides you through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, or `src/index.tsx` by hand, stop — copy the template instead.
 
@@ -33,7 +33,7 @@ Data apps live inside the Git repository connected to Metabase via remote-sync. 
 
 ## Step 2 — Name the app and create its directory
 
-1. Settle on the app's **directory name** before scaffolding — it is used verbatim as the slug (the `/apps/<slug>` URL), so it **must be dash-cased**: lowercase letters, numbers, and single dashes (`[a-z0-9]+(?:-[a-z0-9]+)*`), e.g. `sales-overview`. Anything else (uppercase, spaces, underscores) is rejected on sync. If the purpose isn't clear yet, ask a one-line "what's this app for?" and propose a name; confirm it.
+1. Settle on the app's **slug** before scaffolding — the `/apps/<slug>` URL — so it **must be dash-cased**: lowercase letters, numbers, and single dashes (`[a-z0-9]+(?:-[a-z0-9]+)*`), e.g. `sales-overview`. Anything else (uppercase, spaces, underscores) is rejected on sync. If the purpose isn't clear yet, ask a one-line "what's this app for?" and propose a slug; confirm it.
 2. Ensure `<repo>/data_apps/` exists; create it if missing.
 3. Create `<repo>/data_apps/<slug>/`. **If it already exists**, treat it as an existing project (see below) — never overwrite without confirmation.
 
@@ -131,16 +131,22 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 6. **The lockfile and the built bundle must both be committed.** Metabase serves the file at the `path` declared in `data_app.yaml` (the template builds to `dist/index.js`) straight from the committed Git tree, and the lockfile keeps installs reproducible. **Verify with `git status`** after `npm install` and a build: both must appear as committable files.
 7. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
 8. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
-9. **Edit `data_app.yaml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Fill in its fields for this app:
+9. **Edit `data_app.yaml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Generate a new entity id with `node -e "console.log(require('crypto').randomBytes(16).toString('base64url').slice(0, 21))"` and fill in its fields for this app:
 
    ```yaml
-   name: Sales App        # display name shown in the admin UI
-   description: Pipeline health and quota attainment by region  # optional — see below
    version: 1             # data app contract version — leave as-is (see below)
+   name: Sales App        # display name shown in the admin UI
+   slug: sales-app        # the /apps/<slug> URL
+   description: Pipeline health and quota attainment by region  # optional — see below
    path: ./dist/index.js  # bundle path, relative to this app's directory — leave as-is unless you change the build output
    # allowed_hosts:       # optional — external origins the app may fetch/XHR (see below)
    #   - https://api.example.com
    #   - https://*.internal.acme.com
+   entity_id: Xq2v9LbN0mTz4wRk7YsJd  # the generated entity id
+   serdes/meta:
+   - model: DataApp
+     id: Xq2v9LbN0mTz4wRk7YsJd
+     label: sales-app
    ```
 
    Commit it alongside the built bundle (the file `path` points at).
@@ -524,7 +530,7 @@ Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or
 
 ## Sync to Metabase
 
-Data apps are delivered by Git, not uploaded — you commit the app directory and Metabase pulls it on its next remote-sync import.
+Data apps are delivered by Git — you commit the app directory and Metabase pulls it on its next remote-sync import.
 
 1. `npm run build` → produces the bundle at your `data_app.yaml` `path` (the template builds to `dist/index.js`).
 2. From the **repo root**, commit the app directory — its `data_app.yaml`, the built bundle (the file `path` points at), the source, and the lockfile — and **push**:
@@ -538,7 +544,7 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 > **Don't offer to "deploy" the app or ask how the bundle reaches a staging environment** — there is no separate deploy step, and the question only confuses users: Metabase imports the committed bundle straight from the connected repo on its next sync. Once the change is on the branch Metabase syncs from — however the user gets it there (a merged PR, or a push straight to that branch) — just tell them to pull it in and open the app in Metabase at `/apps/<slug>`.
 
 - **To update:** commit a new build and pull again.
-- **To remove:** delete the app's directory from the repo and push — the next sync removes it. You can't delete a repo-managed app from the UI; the *Remove* action on the Data apps admin page appears only after the repo is disconnected, to clear out apps left behind.
+- **To remove:** delete the app's directory from the repo and push — the next sync removes it.
 
 ## Common pitfalls
 

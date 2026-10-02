@@ -499,6 +499,46 @@
         (mt/with-temporary-setting-values [llm-mini-model nil]
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
 
+(deftest retired-model-reads-as-its-successor-test
+  (testing "a saved retired OpenRouter id reads as the model now serving it, so the admin picker shows it selected"
+    (with-connections [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+      (with-selected-model "openrouter/qwen/qwen3.8-max"
+        (mt/with-temp-env-var-value! [mb-llm-mini-model nil]
+          (mt/with-temporary-raw-setting-values [llm-mini-model "openrouter/qwen/qwen3.8-max"]
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-metabot-provider)))
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/explicit-mini-model)))
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-mini-model)))
+            (is (true? (metabot.settings/llm-metabot-supports-reasoning?)))
+            (testing "including through the settings API the picker loads"
+              (let [values (into {}
+                                 (map (juxt :key :value))
+                                 (mt/user-http-request :crowberto :get 200 "setting"))]
+                (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-metabot-provider")))
+                (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-mini-model")))))))))))
+
+(deftest retired-model-is-stored-as-its-successor-test
+  (testing "writing a retired OpenRouter id stores the model now serving it, so saved values converge"
+    (with-connections [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+      (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil
+                                    mb-llm-mini-model       nil]
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (metabot.settings/llm-metabot-provider! "openrouter/qwen/qwen3.8-max")
+          (metabot.settings/llm-mini-model! "openrouter/qwen/qwen3.8-max")
+          (is (= "openrouter/qwen/qwen3.8-max-0902" (setting/get-value-of-type :string :llm-metabot-provider)))
+          (is (= "openrouter/qwen/qwen3.8-max-0902" (setting/get-value-of-type :string :llm-mini-model))))))))
+
+(deftest retired-model-written-before-its-connection-test
+  (testing (str "a retired id written before its connection exists is stored as given, and reads as its successor "
+                "once the connection appears")
+    (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil]
+      (mt/discard-setting-changes [llm-metabot-provider]
+        ;; `my-openrouter` rather than `openrouter`: no environment variable can synthesize a connection under this key
+        (with-connections []
+          (metabot.settings/llm-metabot-provider! "my-openrouter/qwen/qwen3.8-max")
+          (is (= "my-openrouter/qwen/qwen3.8-max" (setting/get-value-of-type :string :llm-metabot-provider))))
+        (with-connections [(connection "my-openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+          (is (= "my-openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-metabot-provider))))))))
+
 (deftest explicit-mini-model-reports-only-what-was-set-test
   (testing "the explicit reading is nil while the model is derived, so callers can tell a choice from a fallback"
     (with-connections [configured-anthropic]

@@ -1,0 +1,11 @@
+;; Named cyclic clusters of the module require graph: cluster name => anchor module.
+;; The cluster holding the anchor carries the name; its members are computed, so it can grow and shrink freely.
+;; The test metabase.core.module-cycles-test fails until every cluster holds exactly one anchor.
+;; When a cluster splits, whoever split it names the new half.
+;; Names follow a space theme with some link to what the cluster does; the name-module-cycle skill helps pick one.
+{deep-thought    metabot
+ first-contact   mcp
+ foundation      app-db
+ galactic-center query-processor
+ stargate        api-routes
+ tardis          lib}

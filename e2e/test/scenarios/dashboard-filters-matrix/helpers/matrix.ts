@@ -125,7 +125,7 @@ export const matrix: TestCase[] = [
     operator: "Is",
     source: "connected",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -179,7 +179,7 @@ export const matrix: TestCase[] = [
     operator: "Contains",
     source: "connected",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -368,7 +368,7 @@ export const matrix: TestCase[] = [
     operator: "Is",
     source: "custom",
     results: "large",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -377,7 +377,7 @@ export const matrix: TestCase[] = [
     operator: "Is",
     source: "custom",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -422,7 +422,7 @@ export const matrix: TestCase[] = [
     operator: "Contains",
     source: "custom",
     results: "large",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -431,7 +431,7 @@ export const matrix: TestCase[] = [
     operator: "Contains",
     source: "custom",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -449,7 +449,7 @@ export const matrix: TestCase[] = [
     operator: "Is",
     source: "connected",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -476,7 +476,7 @@ export const matrix: TestCase[] = [
     operator: "Is",
     source: "custom",
     results: "large",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -485,7 +485,7 @@ export const matrix: TestCase[] = [
     operator: "Is",
     source: "custom",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -503,7 +503,7 @@ export const matrix: TestCase[] = [
     operator: "Contains",
     source: "connected",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -530,7 +530,7 @@ export const matrix: TestCase[] = [
     operator: "Contains",
     source: "custom",
     results: "large",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -539,7 +539,7 @@ export const matrix: TestCase[] = [
     operator: "Contains",
     source: "custom",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -584,7 +584,7 @@ export const matrix: TestCase[] = [
     operator: "Is",
     source: "custom",
     results: "large",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -593,7 +593,7 @@ export const matrix: TestCase[] = [
     operator: "Is",
     source: "custom",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -638,7 +638,7 @@ export const matrix: TestCase[] = [
     operator: "Contains",
     source: "custom",
     results: "large",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
@@ -647,7 +647,7 @@ export const matrix: TestCase[] = [
     operator: "Contains",
     source: "custom",
     results: "small",
-    component: "list-field",
+    component: "single-select-list-field",
   },
   {
     arity: "single",
