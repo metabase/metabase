@@ -90,7 +90,8 @@
                            [:type [:= "date-filter/clear"]]]]
    ["temporal-bucket/set" [:map {:closed true}
                            [:type [:= "temporal-bucket/set"]]
-                           [:unit [:string {:min 1}]]]]
+                           ;; nil removes the bucket
+                           [:unit [:maybe [:string {:min 1}]]]]]
    [:malli.core/default  ::drill-operation]])
 
 ;;; ------------------------------------------------ Operations --------------------------------------------------
@@ -150,9 +151,10 @@
 
 (defn- set-temporal-bucket [query {:keys [unit]}]
   (let [[breakout column] (temporal-breakout query)
-        bucket            (or (some #(when (= (keyword unit) (:unit %)) %)
-                                    (lib/available-temporal-buckets query -1 column))
-                              (throw (bad-request (tru "This breakout cannot be bucketed by {0}." unit))))]
+        bucket            (when unit
+                            (or (some #(when (= (keyword unit) (:unit %)) %)
+                                      (lib/available-temporal-buckets query -1 column))
+                                (throw (bad-request (tru "This breakout cannot be bucketed by {0}." unit)))))]
     (lib/replace-clause query -1 breakout (lib/with-temporal-bucket column bucket))))
 
 (defn- click-context
