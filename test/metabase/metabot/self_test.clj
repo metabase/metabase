@@ -1418,6 +1418,10 @@
         (are [text] (= answer (call! (reply text)))
           (json/encode answer)
           (fenced (json/encode answer))))
+      (testing "the last fenced code block that matches the schema is used"
+        (are [text] (= answer (call! (reply text)))
+          (str (fenced (json/encode {:title "Draft"})) "\n" (fenced (json/encode answer)))
+          (str (fenced (json/encode answer)) "\n" (fenced (json/encode {:title 42})))))
       (testing "a line break the model left unescaped inside a string doesn't stop the JSON from being used"
         (are [text] (= {:title "Q2 revenue\nby region"} (call! (reply text)))
           "{\"title\": \"Q2 revenue\nby region\"}"

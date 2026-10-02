@@ -514,7 +514,7 @@
 
 (defn- structured-output-in-text
   "JSON matching `json-schema` in the text reply of a model that didn't call the structured-output tool.
-  Tries the whole reply, then each fenced code block in it. Nil when none of them matches."
+  Tries the whole reply, then each fenced code block in it from the last one back. Nil when none of them matches."
   [parts json-schema]
   (let [text   (str/join (keep #(when (= :text (:type %)) (:text %)) parts))
         schema (json-schema->malli json-schema)]
@@ -522,7 +522,7 @@
             (let [value (try (json/decode-document+kw candidate) (catch Exception _ nil))]
               (when (mr/validate schema value)
                 value)))
-          (cons text (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text))))))
+          (cons text (reverse (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text)))))))
 
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
