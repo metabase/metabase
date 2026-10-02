@@ -1,11 +1,10 @@
 ## Revoking a registered OAuth client is a soft-disable: the row is stamped rather than deleted, so the
 ## admin surface and the client event log keep the name and redirect URIs of what was revoked.
-## See OAuth ADR 0002.
 
 databaseChangeLog:
   - changeSet:
       id: v65.2026-10-02T14:40:00
-      author: jswanson
+      author: johnswanson
       comment: Add revoked_at to oauth_client
       changes:
         - addColumn:
@@ -24,7 +23,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v65.2026-10-02T14:40:01
-      author: jswanson
+      author: johnswanson
       comment: Add revoked_by_user_id to oauth_client
       changes:
         - addColumn:
@@ -43,7 +42,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v65.2026-10-02T14:40:02
-      author: jswanson
+      author: johnswanson
       comment: Add FK on oauth_client.revoked_by_user_id
       changes:
         - addForeignKeyConstraint:

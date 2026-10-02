@@ -3,7 +3,7 @@
   users, and the kill switch for one.
 
   Only the endpoints are premium. Revocation itself is enforced by the OSS OAuth server module on every instance,
-  licensed or not (OAuth ADR 0002)."
+  licensed or not."
   (:require
    [metabase-enterprise.oauth-client-management.db :as ocm.db]
    [metabase-enterprise.oauth-client-management.schema :as ocm.schema]
@@ -22,8 +22,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private max-ids
-  "How many `client_id`s one request may name; more is a 400."
-  ;; every id becomes a bind parameter, and a database driver has a ceiling on those
+  "How many `client_id`s one request may name."
   1000)
 
 (mr/def ::ListParams
@@ -142,8 +141,6 @@
   "Write the audit trail for the `revocation` that `criteria` produced: one `:event/oauth-clients-revoked` summary row
   for the whole call, plus one `:event/oauth-client-revoked` row per client revoked. Never throws."
   [criteria {:keys [revoked tokens-revoked clients]} remaining]
-  ;; published outside the transaction, and failures are swallowed after logging: the clients are already revoked by
-  ;; the time this runs, and an audit problem must not report otherwise to the caller
   (try
     (events/publish-event! :event/oauth-clients-revoked
                            {:user-id api/*current-user-id*
