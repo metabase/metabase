@@ -260,7 +260,7 @@ export function SettingsOIDCForm() {
 
   const handleSubmit = useCallback(
     async (values: OIDCFormValues, helpers: FormikHelpers<OIDCFormValues>) => {
-      await runCheck(values);
+      // No need to runCheck separately here, the backend does it before saving the provider.
 
       // the card and the save button hold each other, so no card write can be in flight here
       const providerData = formValuesToProvider(
@@ -281,7 +281,7 @@ export function SettingsOIDCForm() {
       // the saved values become the baseline, so the form is clean before the refetch lands
       helpers.resetForm({ values });
     },
-    [existingProvider, createProvider, updateProvider, runCheck],
+    [existingProvider, createProvider, updateProvider],
   );
 
   if (isLoadingDetails || isLoadingValues || isLoadingProviders) {

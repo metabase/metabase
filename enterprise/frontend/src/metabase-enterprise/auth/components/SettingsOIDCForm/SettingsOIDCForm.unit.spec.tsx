@@ -441,7 +441,7 @@ describe("SettingsOIDCForm", () => {
       );
 
       await waitFor(async () => {
-        expect(await findRequests("POST")).toHaveLength(2);
+        expect(await findRequests("POST")).toHaveLength(1);
       });
       const [{ body }] = (await findRequests("POST")).filter(({ url }) =>
         url.endsWith("/api/ee/sso/oidc"),
@@ -471,12 +471,47 @@ describe("SettingsOIDCForm", () => {
       );
 
       await waitFor(async () => {
-        expect(await findRequests("POST")).toHaveLength(2);
+        expect(await findRequests("POST")).toHaveLength(1);
       });
       const [{ body }] = (await findRequests("POST")).filter(({ url }) =>
         url.endsWith("/api/ee/sso/oidc"),
       );
       expect(body["attribute-map"]).toEqual({ first_name: "givenName" });
+    });
+  });
+
+  describe("saving", () => {
+    it("does not run a separate connection check when saving a new provider", async () => {
+      await setup();
+      await fillRequiredFields();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save and enable" }),
+      );
+
+      await waitFor(async () => {
+        expect(await findRequests("POST")).toHaveLength(1);
+      });
+      const [{ url }] = await findRequests("POST");
+      expect(url).toMatch(/\/api\/ee\/sso\/oidc$/);
+    });
+
+    it("does not run a separate connection check when saving an existing provider", async () => {
+      await setup({ providers: [EXISTING_PROVIDER] });
+
+      await expandAttributes();
+      await userEvent.type(
+        screen.getByLabelText("Last name attribute key"),
+        "surname",
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save changes" }),
+      );
+
+      await waitFor(async () =>
+        expect(await getOidcPutCalls()).toHaveLength(1),
+      );
+      expect(await findRequests("POST")).toHaveLength(0);
     });
   });
 
