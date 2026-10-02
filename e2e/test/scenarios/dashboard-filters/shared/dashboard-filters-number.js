@@ -22,11 +22,6 @@ export const DASHBOARD_NUMBER_FILTERS = [
     single: true,
   },
   {
-    operator: "Between",
-    value: ["3", "5"],
-    representativeResult: "68.23",
-  },
-  {
     operator: "Greater than or equal to",
     value: "6.01",
     representativeResult: "110.93",
