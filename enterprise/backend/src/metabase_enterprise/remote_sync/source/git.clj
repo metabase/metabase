@@ -105,7 +105,7 @@
 (defn- repo-path
   "The local bare clone directory for `remote-url`. Keyed on the URL alone: credentials are passed to each remote
   command, so rotating the token reuses the existing clone instead of cloning into (and leaking) a new directory."
-  [{:keys [^String remote-url]}]
+  ^File [{:keys [^String remote-url]}]
   (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> remote-url buddy-hash/sha1 codecs/bytes->hex)))
 
 (defn- clone-repository!
@@ -605,25 +605,47 @@
   URL lives in a fresh sibling directory instead: see [[replace-stale-clone!]]."
   (atom {}))
 
-(defonce ^:private ^{:doc "Clone directories that a running operation may still hold, so they are not deleted until
-  the process exits. See [[replace-stale-clone!]]."}
+(defonce ^:private ^{:doc "Stale clone directories that a running operation may still hold, so they are not deleted
+  until the process exits. See [[replace-stale-clone!]]."}
   retired-clones
   (atom #{}))
-
-(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook deleting the [[retired-clones]]."}
-  retired-clones-reaper
-  (delay (.addShutdownHook (Runtime/getRuntime)
-                           (Thread. ^Runnable (fn [] (run! #(FileUtils/deleteQuietly ^File %) @retired-clones))))))
-
-(defn- stale-cache-error?
-  "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
-  [^Exception e]
-  (some-> (ex-message e) (str/includes? "Missing commit")))
 
 (defn- git-dir
   "The directory of `git`'s repository (the clone directory: clones are bare)."
   ^File [^Git git]
   (.getDirectory (.getRepository git)))
+
+(defn- cached-sibling-clones
+  "The directories of the cached Git instances that live in a fresh sibling of their [[repo-path]], not at it."
+  []
+  (for [[k git] @jgit
+        :let [dir (git-dir git)]
+        :when (not= k (.getPath dir))]
+    dir))
+
+(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook deleting the [[retired-clones]] and the cached
+  fresh siblings. The next process clones afresh at [[repo-path]]."}
+  retired-clones-reaper
+  (delay (.addShutdownHook (Runtime/getRuntime)
+                           (Thread. ^Runnable (fn []
+                                                (run! #(FileUtils/deleteQuietly ^File %)
+                                                      (concat @retired-clones (cached-sibling-clones))))))))
+
+(defonce ^:private ^{:doc "One lock object for each clone path, so that only one thread at a time clones for a URL."}
+  clone-locks
+  (atom {}))
+
+(defn- clone-lock
+  "The lock that guards cloning for the [[repo-path]] `path`."
+  ^Object [^File path]
+  (let [k (.getPath path)]
+    (or (get @clone-locks k)
+        (get (swap! clone-locks update k #(or % (Object.))) k))))
+
+(defn- stale-cache-error?
+  "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
+  [^Exception e]
+  (some-> (ex-message e) (str/includes? "Missing commit")))
 
 (defn- open-checked!
   "Opens (cloning if absent) the repository at `path` and checks that it has data; if it has none, deletes `path` and
@@ -634,28 +656,97 @@
       (FileUtils/deleteDirectory path)
       (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
 
-(defn- get-jgit [^File path args]
-  (let [k (.getPath path)]
-    (if-let [git (when-let [cached (get @jgit k)]
-                   (when (.exists (git-dir cached)) cached))]
-      git
-      (get (swap! jgit assoc k (open-checked! path args)) k))))
+(defn- usable-cached-jgit
+  "The cached Git instance for the [[repo-path]] key `k`, if its directory still exists."
+  [k]
+  (when-let [cached (get @jgit k)]
+    (when (.exists (git-dir cached))
+      cached)))
+
+(defn- canonical-path ^String [^File f]
+  (.getCanonicalPath f))
+
+(defn- retired? [^File dir]
+  (contains? (into #{} (map canonical-path) @retired-clones) (canonical-path dir)))
+
+(defn- delete-leftover-siblings!
+  "Deletes the fresh siblings of `path` on disk that this process does not use, and returns true if there were any.
+
+  In a running process, each fresh sibling is cached or retired. So any other sibling comes from an earlier process
+  that stopped without its shutdown hook, after a stale-cache recovery. The clone at `path` is then the one that
+  recovery found stale. Call this with the [[clone-lock]] of `path` held."
+  [^File path]
+  (let [prefix    (str (.getName path) "-")
+        in-use    (into #{} (map canonical-path) (concat @retired-clones (cached-sibling-clones)))
+        leftovers (->> (.listFiles (.getParentFile path))
+                       (filter #(str/starts-with? (.getName ^File %) prefix))
+                       (remove #(contains? in-use (canonical-path %))))]
+    (doseq [^File dir leftovers]
+      (log/info "Deleting a git clone that an earlier process left" {:path (str dir)})
+      (FileUtils/deleteQuietly dir))
+    (boolean (seq leftovers))))
+
+(defn- clone-into-fresh-sibling!
+  "Clones into a new fresh sibling of the [[repo-path]] `path`, and returns the Git instance. The sibling is deleted
+  when the process exits."
+  [^File path args]
+  (let [fresh (io/file (.getParentFile path) (str (.getName path) "-" (random-uuid)))]
+    (log/info "Cloning into a fresh sibling directory" {:path (str fresh)})
+    @retired-clones-reaper
+    (open-checked! fresh args)))
+
+(defn- get-jgit
+  "The Git instance for the [[repo-path]] `path`. It opens or clones the repository on first use. Concurrent first
+  uses wait for one clone.
+
+  If this process retired the clone at `path` (see [[replace-stale-clone!]]), it clones into a fresh sibling, because
+  an operation may still hold the retired clone. If an earlier process left fresh siblings, the clone at `path` is
+  stale, so it deletes both and clones again."
+  [^File path args]
+  (let [k    (.getPath path)
+        lock (clone-lock path)]
+    (or (usable-cached-jgit k)
+        (locking lock
+          (or (usable-cached-jgit k)
+              (let [leftovers? (delete-leftover-siblings! path)
+                    git        (cond
+                                 (retired? path)
+                                 (clone-into-fresh-sibling! path args)
+
+                                 leftovers?
+                                 (do (log/info "Deleting a stale git clone that an earlier process left" {:path (str path)})
+                                     (FileUtils/deleteQuietly path)
+                                     (open-checked! path args))
+
+                                 :else
+                                 (open-checked! path args))]
+                (swap! jgit assoc k git)
+                git))))))
 
 (defn- replace-stale-clone!
   "Recovers from a stale clone (see [[stale-cache-error?]]) of `source`'s URL: clones into a fresh sibling of its
   [[repo-path]] and caches that, so later operations use it. Returns the fresh Git instance.
 
+  If a concurrent recovery already replaced `source`'s Git instance, this returns the cached instance and does not
+  clone again.
+
   The stale clone is not deleted, because another operation (an import on another thread, a branch listing) may still
-  be using it. Both clones are deleted when the process exits, and the next process clones afresh at [[repo-path]]."
+  be using it. The stale clone and the fresh sibling are deleted when the process exits, and the next process clones
+  afresh at [[repo-path]]."
   [{:keys [^Git git remote-url token]}]
-  (let [path  (repo-path {:remote-url remote-url})
-        fresh (io/file (.getParentFile path) (str (.getName path) "-" (random-uuid)))
-        _     (log/info "Re-cloning stale git cache" {:stale-path (str (git-dir git)) :fresh-path (str fresh)})
-        fresh-git (open-checked! fresh {:remote-url remote-url :token token})]
-    @retired-clones-reaper
-    (swap! retired-clones conj (git-dir git) fresh)
-    (swap! jgit assoc (.getPath path) fresh-git)
-    fresh-git))
+  (let [path (repo-path {:remote-url remote-url})
+        k    (.getPath path)
+        lock (clone-lock path)]
+    (locking lock
+      (let [cached (usable-cached-jgit k)]
+        (if (and cached (not (identical? cached git)))
+          (do (log/info "Using the git clone of a concurrent stale-cache recovery" {:path (str (git-dir cached))})
+              cached)
+          (let [_         (log/info "Re-cloning stale git cache" {:stale-path (str (git-dir git))})
+                fresh-git (clone-into-fresh-sibling! path {:remote-url remote-url :token token})]
+            (swap! retired-clones conj (git-dir git))
+            (swap! jgit assoc k fresh-git)
+            fresh-git))))))
 
 (defn- snapshot*
   "Internal snapshot implementation. Returns a GitSnapshot or throws."
