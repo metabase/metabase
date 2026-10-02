@@ -5,7 +5,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createMockActionParameter,
   createMockParameter,
@@ -20,30 +20,40 @@ const viewports = [
 ];
 
 describe("metabase#31587", () => {
-  viewports.forEach(([width, height]) => {
-    describe(`Testing on resolution ${width} x ${height}`, () => {
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        H.setActionsEnabledForDB(SAMPLE_DB_ID);
-        cy.viewport(width, height);
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+  });
+
+  it("should not allow action buttons to overflow when editing dashboard or viewing info sidebar (metabase#31587)", () => {
+    viewports.forEach(([width, height]) => {
+      cy.log(`Resolution ${width} x ${height}`);
+      cy.viewport(width, height);
+
+      H.createDashboard({ name: `Orders ${width} x ${height}` }).then(
+        ({ body: { id: dashboardId } }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: ORDERS_QUESTION_ID,
+            dashboard_id: dashboardId,
+            card: { size_x: 16, size_y: 8 },
+          });
+          H.visitDashboard(dashboardId);
+        },
+      );
+
+      H.editDashboard();
+      cy.findByLabelText("Add action").click();
+
+      cy.findByTestId("dashboard-parameters-and-cards").within(() => {
+        assertActionButtonFitsDashcard();
       });
 
-      it("should not allow action buttons to overflow when editing dashboard or viewing info sidebar (metabase#31587)", () => {
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.editDashboard();
-        cy.findByLabelText("Add action").click();
+      H.saveDashboard();
+      cy.icon("info").click();
 
-        cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          assertActionButtonFitsDashcard();
-        });
-
-        H.saveDashboard();
-        cy.icon("info").click();
-
-        cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          assertActionButtonFitsDashcard();
-        });
+      cy.findByTestId("dashboard-parameters-and-cards").within(() => {
+        assertActionButtonFitsDashcard();
       });
     });
   });
