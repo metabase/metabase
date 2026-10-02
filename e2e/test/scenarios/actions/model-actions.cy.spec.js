@@ -62,7 +62,7 @@ const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
 );
 
 describe(
-  "scenarios > models > actions",
+  "scenarios > actions > model actions",
   { tags: ["@external", "@actions"] },
   () => {
     beforeEach(() => {
@@ -78,18 +78,9 @@ describe(
 
       cy.intercept("GET", "/api/card/*").as("getModel");
       cy.intercept("GET", "/api/action/*").as("getAction");
-      cy.intercept("GET", "/api/action?model-id=*").as("getModelAction");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("POST", "/api/action").as("createAction");
-      cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/search",
-        query: { archived: "true" },
-      }).as("getArchived");
-      cy.intercept("GET", "/api/search?*").as("getSearchResults");
-      cy.intercept("GET", "/api/database?*").as("getDatabase");
     });
 
     it("should allow CRUD operations on model actions", () => {
@@ -626,7 +617,6 @@ describe(
           .findByText("Successfully saved")
           .should("be.visible");
 
-        // show toast
         H.queryWritableDB(
           `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE team_name = 'Zebras'`,
           dialect,
@@ -740,11 +730,9 @@ function openActionMenuFor(actionName) {
   });
 }
 
-function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
+function openActionEditorFor(actionName) {
   openActionMenuFor(actionName);
-  H.popover()
-    .findByText(isReadOnly ? "View" : "Edit")
-    .click();
+  H.popover().findByText("Edit").click();
 }
 
 function assertQueryEditorDisabled() {
