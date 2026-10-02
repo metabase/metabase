@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.core :as typed-schemas]
@@ -56,9 +57,8 @@
     (testing "a database id and name select the same generated schema"
       (is (= (without-generated-at schema-by-id)
              (without-generated-at schema-by-name))))
-    (testing "a matching database includes its real tables"
-      (is (str/includes? schema-by-id "  venues: {"))
-      (is (str/includes? schema-by-id "name: \"Venues\"")))
+    (testing "database scope does not expose uncurated tables"
+      (is (not (str/includes? schema-by-id "  venues: {"))))
     (testing "a non-matching database name returns an empty semantic schema"
       (is (str/includes? missing-schema "schemaVersion: 2"))
       (is (not (str/includes? missing-schema "const questions = { }")))
@@ -66,27 +66,30 @@
       (is (str/includes? missing-schema "const metrics = { }")))))
 
 (deftest database-scope-includes-models-only-when-requested-test
-  (mt/with-actions-enabled
-    (mt/with-temp [:model/Database other-db {}
-                   :model/Card model {:name "Order model", :database_id (mt/id), :table_id (mt/id :orders)
-                                      :type :model
-                                      :dataset_query (let [mp (mt/metadata-provider)]
-                                                       (lib/query mp (lib.metadata/table mp (mt/id :orders))))
-                                      :result_metadata [{:name "total", :display_name "Total"
-                                                         :base_type :type/Float
-                                                         :field_ref [:field (mt/id :orders :total) nil]
-                                                         :id (mt/id :orders :total)}]}
-                   :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
-                   :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}]
-      (let [schema (fn [& query-params]
-                     (:body (apply mt/user-http-request-full-response
-                                   :crowberto :get 200 "typed-schemas/v1/typescript" query-params)))]
-        (testing "a database scope leaves models out unless asked for"
-          (is (not (str/includes? (schema :database (mt/id)) "orderModel"))))
-        (testing "include-models adds the scoped database's models"
-          (is (str/includes? (schema :database (mt/id) :include-models true) "orderModel")))
-        (testing "include-models keeps models of other databases out"
-          (is (not (str/includes? (schema :database (:id other-db) :include-models true) "orderModel"))))))))
+  (mt/with-dynamic-fn-redefs [remote-sync/previously-synced-ids (fn [_ ids] ids)]
+    (mt/with-actions-enabled
+      (mt/with-temp [:model/Database other-db {}
+                     :model/Collection synced {:is_remote_synced true}
+                     :model/Card model {:name "Order model", :database_id (mt/id), :table_id (mt/id :orders)
+                                        :collection_id (:id synced)
+                                        :type :model
+                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                         (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+                                        :result_metadata [{:name "total", :display_name "Total"
+                                                           :base_type :type/Float
+                                                           :field_ref [:field (mt/id :orders :total) nil]
+                                                           :id (mt/id :orders :total)}]}
+                     :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
+                     :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}]
+        (let [schema (fn [& query-params]
+                       (:body (apply mt/user-http-request-full-response
+                                     :crowberto :get 200 "typed-schemas/v1/typescript" query-params)))]
+          (testing "a database scope leaves models out unless asked for"
+            (is (not (str/includes? (schema :database (mt/id)) "orderModel"))))
+          (testing "include-models adds the scoped database's models"
+            (is (str/includes? (schema :database (mt/id) :include-models true) "orderModel")))
+          (testing "include-models keeps models of other databases out"
+            (is (not (str/includes? (schema :database (:id other-db) :include-models true) "orderModel")))))))))
 
 (deftest collection-and-database-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response

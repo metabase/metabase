@@ -7,7 +7,6 @@
   [[create-schema]] into its public functions. See the core namespace
   docstring for the pipeline shape and the separation rules."
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
    [metabase.system.core :as system]
    [metabase.typed-schemas.common :as common]
@@ -80,14 +79,10 @@
        "Collection-scoped query parameters and database query parameters are mutually exclusive."))))
 
 (defn- library-items
-  "Returns tables and metrics for a library scope.
-
-  Tables mapped by in-scope metrics are included even when they live outside
-  the library, so rendered metric dimensions can reference their fields."
+  "Returns standalone library tables and independently eligible metrics for a library scope."
   [source library-scope]
   (let [metrics   (source/metrics source nil (:metric-collection-ids library-scope))
-        table-ids (set/union (into #{} (map :id) (source/library-tables source library-scope))
-                             (into #{} (mapcat :mappedTableIds) metrics))]
+        table-ids (into #{} (map :id) (source/library-tables source library-scope))]
     {:tables  (source/tables source nil table-ids)
      :metrics metrics}))
 

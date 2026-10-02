@@ -179,17 +179,22 @@
 
 (defn- resolved-action-details-for-models
   "Returns resolved action details for selected models."
-  [models]
-  (let [model-ids (set (map :id models))]
-    (try
-      (actions/select-actions-non-http-for-models models model-ids)
-      (catch Exception exception
-        (throw (ex-info (format "Failed to build action schemas for selected models: %s" (ex-message exception))
-                        (error-data-with-cause-message
-                         {:model-ids   model-ids
-                          :status-code (:status-code (ex-data exception))}
-                         exception)
-                        exception))))))
+  ([models]
+   (resolved-action-details-for-models models nil))
+  ([models selected-action-rows]
+   (let [model-ids (set (map :id models))]
+     (try
+       (if (some? selected-action-rows)
+         (when (seq selected-action-rows)
+           (actions/select-actions-for-ids models (mapv :id selected-action-rows)))
+         (actions/select-actions-non-http-for-models models model-ids))
+       (catch Exception exception
+         (throw (ex-info (format "Failed to build action schemas for selected models: %s" (ex-message exception))
+                         (error-data-with-cause-message
+                          {:model-ids   model-ids
+                           :status-code (:status-code (ex-data exception))}
+                          exception)
+                         exception)))))))
 
 (defn- model-action-schema
   "Returns an action schema, preserving which model/action failed to render."
@@ -276,6 +281,27 @@
     (cond-> acc
       schema (update :models conj schema)
       error  (update :errors conj error))))
+
+(defn model-schemas-for-actions
+  "Builds schemas from selected models and executable action rows, excluding all other actions."
+  [models selected-action-rows]
+  (let [selected-action-rows (vec selected-action-rows)
+        rows-by-model-id    (group-by :model_id selected-action-rows)
+        models           (filter #(seq (get rows-by-model-id (:id %))) models)
+        details-by-model (try
+                           (group-by :model_id (resolved-action-details-for-models models selected-action-rows))
+                           (catch Exception exception
+                             (rethrow-if-interrupted! exception)
+                             nil))
+        build-actions    (fn [model]
+                           (let [rows (get rows-by-model-id (:id model))
+                                 details (if details-by-model
+                                           (get details-by-model (:id model))
+                                           (resolved-action-details-for-models [model] rows))]
+                             (model-action-schemas model rows details)))]
+    (reduce #(collect-model-schema %1 build-actions %2)
+            {:models [] :errors []}
+            models)))
 
 (defn model-schemas
   "Returns `{:models [...] :errors [...]}`, with optional database and collection scopes.

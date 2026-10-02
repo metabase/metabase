@@ -10,6 +10,21 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(defn previously-synced-ids
+  "Returns tracked ids with evidence of a successful synchronization."
+  [model-type ids]
+  (t2/select-fn-set :model_id :model/RemoteSyncObject
+                    {:where [:and
+                             [:= :model_type model-type]
+                             [:in :model_id ids]
+                             [:or
+                              [:= :status "synced"]
+                              [:and [:= :status "update"]
+                               [:not= :file_path nil]
+                               [:not= :file_path ""]
+                               [:not= :content_hash nil]
+                               [:not= :content_hash ""]]]]}))
+
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
