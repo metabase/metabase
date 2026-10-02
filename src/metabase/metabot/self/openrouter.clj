@@ -50,8 +50,9 @@
   the direct openai adapter.
 
   `:reasoning` classifies what each model streams back, probed live against OpenRouter on
-  2026-08-31 (all 26 models) and cross-checked with the `reasoning` metadata in
-  `GET /v1/models` (https://openrouter.ai/docs/use-cases/reasoning-tokens):
+  2026-08-31 (the 26 models listed then; later rows carry their own probe note) and
+  cross-checked with the `reasoning` metadata in `GET /v1/models`
+  (https://openrouter.ai/docs/use-cases/reasoning-tokens):
   `:renderable` streams reasoning text under an explicit `reasoning {:enabled true}`;
   `:renderable-default` streams reasoning summaries under the server default but must receive
   NO directive — an explicit enable verifiably suppresses gpt-5.6's reasoning entirely;
@@ -72,6 +73,14 @@
    "deepseek/deepseek-v4-pro"        {:display-name "DeepSeek V4 Pro 0423"    :context-window 1048576 :reasoning :renderable}
    "deepseek/deepseek-v4-pro-0813"   {:display-name "DeepSeek V4 Pro 0813"    :context-window 1048575 :reasoning :renderable}
    "deepseek/deepseek-v4-flash-0731" {:display-name "DeepSeek V4 Flash 0731"  :context-window 1048576 :reasoning :renderable}
+   ;; probed 2026-10-02 on every backing host OpenRouter lists, and through default routing: the
+   ;; enable streams `delta.reasoning` with no thinking tags in `content` and a tool call under it
+   ;; completes; the disable is accepted (0 reasoning_tokens) and a forced tool call completes.
+   ;; `supported_efforts` is nil because Gemma 4's thinking is an on/off switch, yet unlike the
+   ;; :budget-only Claudes it honors the unified enable. OpenRouter's routing skips hosts lacking
+   ;; tool or `tool_choice "required"` support
+   "google/gemma-4-31b-it"           {:display-name "Gemma 4 31B"             :context-window  262144 :reasoning :renderable}
+   "google/gemma-4-26b-a4b-it"       {:display-name "Gemma 4 26B A4B"         :context-window  262144 :reasoning :renderable}
    "mistralai/mistral-medium-3-5"    {:display-name "Mistral Medium 3.5"      :context-window  262144 :reasoning :renderable}
    ;; probed 2026-09-08: OpenRouter honors `reasoning {:enabled false}` for kimi-k3 even though the
    ;; native Moonshot API cannot turn k3's thinking off — a title-shaped forced tool call under the
