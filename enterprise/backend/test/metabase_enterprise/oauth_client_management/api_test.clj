@@ -7,6 +7,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -151,10 +152,20 @@
                      (set (keys item))))
               (is (not (str/includes? (str item) "must-not-leak"))))))))))
 
+(defn- revoke-by!
+  "`POST /api/ee/oauth-client-management/revoke` as crowberto with `criteria` as the body."
+  [criteria & {:keys [expected-status] :or {expected-status 200}}]
+  (mt/user-http-request :crowberto :post expected-status "ee/oauth-client-management/revoke" criteria))
+
 (defn- revoke!
   "`POST /api/ee/oauth-client-management/revoke` as crowberto for `ids`."
-  [ids & {:keys [expected-status] :or {expected-status 200}}]
-  (mt/user-http-request :crowberto :post expected-status "ee/oauth-client-management/revoke" {:ids (vec ids)}))
+  [ids & {:as opts}]
+  (revoke-by! {:ids (vec ids)} opts))
+
+(defn- revoked?
+  "Whether the client with `client-id` reads as revoked through the list."
+  [client-id]
+  (= "revoked" (:status (first (:data (list-clients :ids client-id :status "all"))))))
 
 (deftest status-filter-test
   (testing "the list shows active clients by default, and reaches the revoked ones on request"
@@ -199,6 +210,236 @@
           (let [response (list-clients :ids (str (random-uuid)))]
             (is (= 0 (:total response)))
             (is (= [] (client-ids response)))))))))
+
+(deftest query-filter-test
+  (testing "`query` is the free-text search an admin runs against an incident report: it looks at the name, the
+            `client_id` and the redirect URIs, and every term has to match one of them"
+    (with-clean-clients
+      (let [reporting (insert-client! :client_name   "Reporting Bot"
+                                      :redirect_uris ["https://reports.example.com/cb"])
+            invoicing (insert-client! :client_name   "Invoicing Helper"
+                                      :redirect_uris ["https://invoices.example.net/callback"
+                                                      "http://127.0.0.1:9999/cb"])
+            nameless  (insert-client! :client_name   nil
+                                      :redirect_uris ["https://anonymous.example.org/cb"])
+            all       [reporting invoicing nameless]]
+        (testing "a name, case-insensitively and as a substring"
+          (is (= [reporting] (client-ids (list-clients :ids all :query "reporting"))))
+          (is (= [invoicing] (client-ids (list-clients :ids all :query "VOICING")))))
+        (testing "a client id, which is all a dynamically registered client may have"
+          (is (= [nameless] (client-ids (list-clients :ids all :query (subs nameless 0 8))))))
+        (testing "a redirect URI, by any substring of it"
+          (is (= [invoicing] (client-ids (list-clients :ids all :query "127.0.0.1"))))
+          (is (= [reporting] (client-ids (list-clients :ids all :query "reports.example.com")))))
+        (testing "a term matching none of the three narrows the whole search away, rather than any term matching"
+          (let [response (list-clients :ids all :query "invoicing reports.example.com")]
+            (is (= 0 (:total response)))
+            (is (= [] (client-ids response)))))
+        (testing "while terms that match different columns of the same client still match it"
+          (is (= [invoicing] (client-ids (list-clients :ids all :query "invoicing 127.0.0.1")))))
+        (testing "a match in common to several clients lists them all, and `total` agrees with the rows"
+          (let [response (list-clients :ids all :query "example")]
+            (is (= 3 (:total response)))
+            (is (= 3 (count (:data response))))))
+        (testing "a blank query is rejected rather than quietly matching everything"
+          (is (=? {:errors {:query string?}}
+                  (mt/user-http-request :crowberto :get 400 "ee/oauth-client-management" :query "  "))))))))
+
+(deftest user-id-filter-test
+  (testing "`user-id` answers \"what did this person connect?\": the clients they hold an unrevoked token for"
+    (mt/with-temp [:model/User {user-a :id} {}
+                   :model/User {user-b :id} {}]
+      (with-clean-clients
+        (let [live-bearer  (insert-client! :client_name "Live Bearer")
+              expired-only (insert-client! :client_name "Expired Bearer")
+              refresh-only (insert-client! :client_name "Refresh Only")
+              revoked-only (insert-client! :client_name "Revoked Grant")
+              other-user   (insert-client! :client_name "Someone Else's")
+              never-used   (insert-client! :client_name "Never Approved")
+              all          [live-bearer expired-only refresh-only revoked-only other-user never-used]]
+          (insert-access-token! live-bearer user-a)
+          (insert-access-token! expired-only user-a :expiry (- (now-ms) 1000))
+          (insert-refresh-token! refresh-only user-a)
+          (insert-access-token! revoked-only user-a :revoked_at :%now)
+          (insert-access-token! other-user user-b)
+          (testing "every client the user still holds a token on, whichever table it is in"
+            (is (= #{live-bearer expired-only refresh-only}
+                   (set (client-ids (list-clients :ids all :user-id user-a))))))
+          (testing "deliberately wider than the Users column, which counts only tokens that still work: an expired
+                    bearer is swept nightly but its thirty-day refresh token is what keeps the grant alive, so a
+                    client the user connected an hour ago must not vanish from their list"
+            (is (=? {:live_tokens 0, :user_count 0}
+                    (first (:data (list-clients :ids expired-only))))))
+          (testing "a grant that has already been revoked is not one the user holds"
+            (is (not (contains? (set (client-ids (list-clients :ids all :user-id user-a))) revoked-only))))
+          (testing "and another user sees only their own"
+            (is (= [other-user] (client-ids (list-clients :ids all :user-id user-b)))))
+          (testing "a user who connected nothing matches nothing"
+            (is (= 0 (:total (list-clients :ids all :user-id (mt/user->id :lucky))))))
+          (testing "the filter is about what a user holds now, so revoking a client — which stamps every token it
+                    held — takes it out of their list rather than keeping it there as history"
+            (revoke! [live-bearer])
+            (is (= #{expired-only refresh-only}
+                   (set (client-ids (list-clients :ids all :user-id user-a :status "all")))))))))))
+
+(deftest combined-filters-test
+  (testing "the filters are ANDed, so narrowing by two criteria at once lists only what satisfies both — which is
+            how an admin works from an incident report naming a user and a time"
+    (mt/with-temp [:model/User {user-a :id} {}
+                   :model/User {user-b :id} {}]
+      (with-clean-clients
+        (let [wanted    (insert-client! :client_name "Reporting Bot")
+              wrong-user (insert-client! :client_name "Reporting Bot")
+              wrong-name (insert-client! :client_name "Invoicing Helper")
+              too-old    (insert-client! :client_name "Reporting Bot")
+              all        [wanted wrong-user wrong-name too-old]]
+          (doseq [client all]
+            (insert-access-token! client (if (= client wrong-user) user-b user-a)))
+          (t2/update! :model/OAuthClient {:client_id too-old} {:created_at #t "2026-01-01T00:00:00Z"})
+          (testing "`query` and `user-id` together"
+            (is (= #{wanted too-old}
+                   (set (client-ids (list-clients :ids all :query "reporting" :user-id user-a))))))
+          (testing "`query`, `user-id` and `registered-after` together"
+            (let [response (list-clients :ids all :query "reporting" :user-id user-a
+                                         :registered-after "2026-06-01T00:00:00Z")]
+              (is (= [wanted] (client-ids response)))
+              (is (= 1 (:total response)) "`total` counts the same intersection the rows do")))
+          (testing "a criterion that nothing satisfies narrows the whole list away, even when each one alone matches"
+            (is (= 0 (:total (list-clients :ids all :query "invoicing" :user-id user-b)))))
+          (testing "and `status` ANDs with the rest rather than replacing them"
+            (revoke! [wanted wrong-name])
+            (is (= [wanted]
+                   (client-ids (list-clients :ids all :query "reporting" :status "revoked"))))))))))
+
+(deftest registered-range-filter-test
+  (testing "`registered-before`/`registered-after` is the half-open range an admin reviews recent registrations with"
+    (with-clean-clients
+      (let [january (insert-client! :client_name "January")
+            march   (insert-client! :client_name "March")
+            may     (insert-client! :client_name "May")
+            all     [january march may]]
+        (t2/update! :model/OAuthClient {:client_id january} {:created_at #t "2026-01-15T00:00:00Z"})
+        (t2/update! :model/OAuthClient {:client_id march}   {:created_at #t "2026-03-15T00:00:00Z"})
+        (t2/update! :model/OAuthClient {:client_id may}     {:created_at #t "2026-05-15T00:00:00Z"})
+        (testing "`after` alone"
+          (is (= #{march may} (set (client-ids (list-clients :ids all :registered-after "2026-02-01T00:00:00Z"))))))
+        (testing "`before` alone"
+          (is (= #{january} (set (client-ids (list-clients :ids all :registered-before "2026-02-01T00:00:00Z"))))))
+        (testing "both, bounding a window"
+          (is (= [march] (client-ids (list-clients :ids all
+                                                   :registered-after  "2026-02-01T00:00:00Z"
+                                                   :registered-before "2026-04-01T00:00:00Z")))))
+        (testing "the range is half-open, so adjacent windows neither overlap nor leave a gap"
+          (is (= [march] (client-ids (list-clients :ids all :registered-after "2026-03-15T00:00:00Z"
+                                                   :registered-before "2026-05-15T00:00:00Z"))))
+          (is (= [] (client-ids (list-clients :ids all :registered-after "2026-03-15T00:00:00Z"
+                                              :registered-before "2026-03-15T00:00:00Z")))))
+        (testing "an unparseable date is rejected rather than ignored"
+          (is (=? {:errors {:registered-after string?}}
+                  (mt/user-http-request :crowberto :get 400 "ee/oauth-client-management"
+                                        :registered-after "last tuesday"))))))))
+
+(deftest revoked-range-filter-test
+  (testing "`revoked-before`/`revoked-after` narrows the record of what was revoked, and only ever matches a revoked
+            client — an active one has no `revoked_at` to compare"
+    (with-clean-clients
+      (let [early  (insert-client! :client_name "Early")
+            late   (insert-client! :client_name "Late")
+            active (insert-client! :client_name "Still Here")
+            all    [early late active]]
+        (revoke! [early late])
+        (t2/update! :model/OAuthClient {:client_id early} {:revoked_at #t "2026-04-01T00:00:00Z"})
+        (t2/update! :model/OAuthClient {:client_id late}  {:revoked_at #t "2026-06-01T00:00:00Z"})
+        (testing "a window over the revocations, with the active client never in it"
+          (is (= [late] (client-ids (list-clients :ids all :status "all"
+                                                  :revoked-after "2026-05-01T00:00:00Z")))))
+        (testing "and `before`"
+          (is (= [early] (client-ids (list-clients :ids all :status "all"
+                                                   :revoked-before "2026-05-01T00:00:00Z")))))
+        (testing "the active client is excluded even with no other narrowing, since it carries no revocation time"
+          (is (= #{early late}
+                 (set (client-ids (list-clients :ids all :status "all"
+                                                :revoked-after "2026-01-01T00:00:00Z"))))))))))
+
+(deftest sort-test
+  (testing "every offered sort column orders the list, in both directions, so the client an admin is looking for can
+            be put at the top"
+    (mt/with-temp [:model/User {user-a :id} {}
+                   :model/User {user-b :id} {}]
+      (with-clean-clients
+        (let [alpha (insert-client! :client_name "Alpha")
+              beta  (insert-client! :client_name "Beta")
+              cedar (insert-client! :client_name "Cedar")
+              all   [alpha beta cedar]]
+          (t2/update! :model/OAuthClient {:client_id alpha} {:created_at #t "2026-01-01T00:00:00Z"})
+          (t2/update! :model/OAuthClient {:client_id beta}  {:created_at #t "2026-02-01T00:00:00Z"})
+          (t2/update! :model/OAuthClient {:client_id cedar} {:created_at #t "2026-03-01T00:00:00Z"})
+          ;; three live tokens but only one user, against two tokens for two users: whichever column is being sorted
+          ;; on, the other one would give a different order, so neither can pass by accident
+          (insert-access-token! alpha user-a)
+          (insert-access-token! alpha user-a)
+          (insert-access-token! alpha user-a)
+          (insert-access-token! beta user-a)
+          (insert-access-token! beta user-b)
+          (testing "`live_tokens 3 2 0` and `user_count 1 2 0`, so the two columns cannot agree by accident"
+            (is (=? [{:live_tokens 3, :user_count 1}
+                     {:live_tokens 2, :user_count 2}
+                     {:live_tokens 0, :user_count 0}]
+                    (:data (list-clients :ids all :sort-column "live_tokens" :sort-direction "desc")))))
+          (doseq [[column descending] [["created_at"  [cedar beta alpha]]
+                                       ["client_name" [cedar beta alpha]]
+                                       ["live_tokens" [alpha beta cedar]]
+                                       ["user_count"  [beta alpha cedar]]]]
+            (testing (str "sorting on " column)
+              (is (= descending
+                     (client-ids (list-clients :ids all :sort-column column :sort-direction "desc"))))
+              (is (= (reverse descending)
+                     (client-ids (list-clients :ids all :sort-column column :sort-direction "asc"))))))
+          (testing "the default is newest registration first, as before any sort was offered"
+            (is (= [cedar beta alpha] (client-ids (list-clients :ids all)))))
+          (testing "a column the list cannot sort on is rejected rather than ignored"
+            (is (=? {:errors {:sort-column string?}}
+                    (mt/user-http-request :crowberto :get 400 "ee/oauth-client-management"
+                                          :sort-column "client_secret_hash"))))
+          (testing "as is a direction that is neither"
+            (is (=? {:errors {:sort-direction string?}}
+                    (mt/user-http-request :crowberto :get 400 "ee/oauth-client-management"
+                                          :sort-direction "sideways")))))))))
+
+(deftest sort-by-name-puts-a-nameless-client-first-test
+  (testing "sorting by name treats a client that registered without one as the empty string, so it leads the
+            ascending list rather than landing wherever the app database happens to put nulls"
+    (with-clean-clients
+      (let [named    (insert-client! :client_name "Aardvark")
+            nameless (insert-client! :client_name nil)
+            blank    (insert-client! :client_name "")
+            pair     [named nameless]]
+        (is (= [nameless named]
+               (client-ids (list-clients :ids pair :sort-column "client_name" :sort-direction "asc"))))
+        (is (= [named nameless]
+               (client-ids (list-clients :ids pair :sort-column "client_name" :sort-direction "desc"))))
+        (testing "and a client whose name is the empty string sorts with it, the two being indistinguishable"
+          (is (= named
+                 (last (client-ids (list-clients :ids [named nameless blank]
+                                                 :sort-column "client_name" :sort-direction "asc"))))))))))
+
+(deftest sort-by-revoked-at-test
+  (testing "the Revoked tab sorts on when each client was revoked"
+    (with-clean-clients
+      (let [early (insert-client! :client_name "Early")
+            mid   (insert-client! :client_name "Mid")
+            late  (insert-client! :client_name "Late")
+            all   [early mid late]]
+        (revoke! all)
+        (t2/update! :model/OAuthClient {:client_id early} {:revoked_at #t "2026-04-01T00:00:00Z"})
+        (t2/update! :model/OAuthClient {:client_id mid}   {:revoked_at #t "2026-05-01T00:00:00Z"})
+        (t2/update! :model/OAuthClient {:client_id late}  {:revoked_at #t "2026-06-01T00:00:00Z"})
+        (is (= [late mid early]
+               (client-ids (list-clients :ids all :status "revoked"
+                                         :sort-column "revoked_at" :sort-direction "desc"))))
+        (is (= [early mid late]
+               (client-ids (list-clients :ids all :status "revoked"
+                                         :sort-column "revoked_at" :sort-direction "asc"))))))))
 
 (deftest paging-test
   (testing "the list pages, newest registration first, and `total` counts every match rather than the page"
@@ -264,10 +505,100 @@
         (testing "and an empty list revokes nothing"
           (is (= 0 (:revoked (revoke! [])))))))))
 
-(deftest revoke-requires-ids-test
-  (testing "`ids` is required: an omitted one must be a 400 rather than a sweep nobody asked for"
-    (is (=? {:errors {:ids string?}}
-            (mt/user-http-request :crowberto :post 400 "ee/oauth-client-management/revoke" {})))))
+(deftest revoke-everything-test
+  (testing "an empty body means every active client: the one action for an admin who does not yet know which client
+            is the problem"
+    (with-clean-clients
+      (let [a            (insert-client! :client_name "A")
+            b            (insert-client! :client_name "B")
+            c            (insert-client! :client_name "C")
+            already-gone (insert-client! :client_name "Already Gone")]
+        (revoke! [already-gone])
+        (let [response (revoke-by! {})]
+          (is (<= 3 (:revoked response))
+              "at least the three active clients this test registered, and whatever else the instance had")
+          (is (= 0 (:remaining response))
+              "nothing active still matches, which is the whole point of the sweep"))
+        (is (every? revoked? [a b c already-gone]))
+        (testing "and a second sweep is a harmless no-op, since nothing active is left to match"
+          (is (=? {:revoked 0, :tokens_revoked 0, :user_ids [], :remaining 0} (revoke-by! {}))))))))
+
+(deftest revoke-by-user-id-test
+  (testing "`user-id` revokes what one person connected and nothing else — the answer to \"undo what they approved\""
+    (mt/with-temp [:model/User {user-a :id} {}
+                   :model/User {user-b :id} {}]
+      (with-clean-clients
+        (let [theirs    (insert-client! :client_name "Theirs")
+              also      (insert-client! :client_name "Also Theirs")
+              untouched (insert-client! :client_name "Someone Else's")]
+          (insert-access-token! theirs user-a)
+          (insert-refresh-token! also user-a)
+          (insert-access-token! untouched user-b)
+          (let [response (revoke-by! {:user-id user-a})]
+            (is (= 2 (:revoked response)))
+            (is (= 2 (:tokens_revoked response)))
+            (is (= [user-a] (:user_ids response)))
+            (is (= 0 (:remaining response))))
+          (is (revoked? theirs))
+          (is (revoked? also))
+          (is (not (revoked? untouched))
+              "the other user's client keeps working"))))))
+
+(deftest revoke-by-registered-after-test
+  (testing "`registered-after` revokes a batch of recent registrations, the shape of cleaning up after an incident"
+    (with-clean-clients
+      (let [old   (insert-client! :client_name "Long Standing")
+            fresh (insert-client! :client_name "Just Appeared")]
+        (t2/update! :model/OAuthClient {:client_id old} {:created_at #t "2026-01-01T00:00:00Z"})
+        (let [response (revoke-by! {:registered-after "2026-06-01T00:00:00Z"
+                                    :ids              [old fresh]})]
+          (is (= 1 (:revoked response)))
+          (is (= 0 (:remaining response))))
+        (is (revoked? fresh))
+        (is (not (revoked? old))
+            "outside the window, so untouched")))))
+
+(deftest revoke-rejects-list-only-criteria-test
+  (testing "a criterion that can only match a revoked client, or that searches by substring, is a 400 rather than
+            something quietly narrowed — so the list always previews exactly what the same body would revoke"
+    (with-clean-clients
+      (let [client-id (insert-client!)]
+        (doseq [[k v] {:status         "revoked"
+                       :revoked-before "2026-06-01T00:00:00Z"
+                       :revoked-after  "2026-06-01T00:00:00Z"
+                       :query          "anything"}]
+          (testing (str k " in the body")
+            (is (=? {:errors {k string?}}
+                    (revoke-by! {k v} :expected-status 400)))))
+        (testing "and sending one of them as null is a 400 too, rather than a sweep of every active client"
+          (doseq [k [:status :revoked-before :revoked-after :query]]
+            (testing (str k " null in the body")
+              (is (=? {:errors {k string?}}
+                      (revoke-by! {k nil} :expected-status 400))))))
+        (is (not (revoked? client-id))
+            "a rejected request revokes nothing")
+        (testing "`status active` is accepted, since it is what a revoke means anyway"
+          (is (= 1 (:revoked (revoke-by! {:ids [client-id] :status "active"})))))
+        (is (revoked? client-id))))))
+
+(deftest revoke-race-test
+  (testing "a client that registers between the select and the update is reported as `remaining` rather than
+            silently left active — an admin sweeping after an incident has to know the sweep missed something"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (with-clean-clients
+        (let [matched (insert-client! :client_name "Matched")
+              revoke  (mt/original-fn #'oauth-server/revoke-clients!)]
+          (insert-access-token! matched user-id)
+          (mt/with-dynamic-fn-redefs [oauth-server/revoke-clients!
+                                      (fn [client-ids actor-id]
+                                        ;; a second client this user holds a token on, so it matches the same
+                                        ;; criteria but was not among the ids the select had found
+                                        (insert-access-token! (insert-client! :client_name "Raced In") user-id)
+                                        (revoke client-ids actor-id))]
+            (let [response (revoke-by! {:user-id user-id})]
+              (is (= 1 (:revoked response)))
+              (is (= 1 (:remaining response))
+                  "the client that arrived mid-revoke is still active and still matches"))))))))
 
 (deftest revoke-audit-test
   (testing "a revoke writes one summary row plus one row per client, naming what was revoked and whose grants went"
@@ -290,7 +621,9 @@
                   (is (= 1 (:count details)))
                   (is (= 2 (:tokens_revoked details)))
                   (is (= 0 (:remaining details)))
-                  (is (= [client-id] (get-in details [:criteria :ids])))))
+                  (is (= [client-id] (get-in details [:criteria :ids])))
+                  (is (true? (get-in details [:criteria :exclude-current]))
+                      "`remaining` is counted with it, so the row has to say whether the current client was spared")))
               (testing "the per-client row names the client, so the record survives even if the row is read later"
                 (let [{:keys [topic user_id model model_id details]}
                       (mt/latest-audit-log-entry "oauth-client-revoked" pk)]
@@ -358,6 +691,81 @@
                        :revoked_by  {:id (mt/user->id :crowberto)}}
                       item))
               (is (timestamp? (:revoked_at item))))))))))
+
+(defn- as-bearer
+  "`method path` against the admin API authenticated with `access-token` rather than a session cookie, so the request
+  has a current client the way a call from the Metabase CLI does."
+  [access-token method expected-status path & args]
+  (apply mt/client method expected-status path
+         {:request-options {:headers {"authorization" (str "Bearer " access-token)}}}
+         args))
+
+(defmacro ^:private with-public-flow-enabled
+  "Run `body` with the settings the public `/oauth` flow needs: a site URL to build the endpoints from, and dynamic
+  registration on."
+  [& body]
+  `(mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                      oauth-server-dynamic-registration-enabled true]
+     ~@body))
+
+(defn- bearer-for-admin!
+  "Register a client through the public flow and have crowberto approve it. Returns its `:client-id` and the
+  `:access-token` it issued, so a test can reach the admin API through a bearer the way the Metabase CLI does."
+  []
+  (let [client (oauth-server.tu/register-client! full-access)]
+    {:client-id    (:client_id client)
+     :access-token (:access_token (oauth-server.tu/grant! :crowberto client full-access))}))
+
+(deftest current-client-test
+  (testing "the list marks the client the caller is acting through, so an admin can see which one to leave alone"
+    (with-clean-clients
+      (with-public-flow-enabled
+        (let [{bearer :access-token, current :client-id} (bearer-for-admin!)
+              other                                      (insert-client! :client_name "Some Other Client")]
+          (testing "through that client's own bearer token"
+            (is (=? [{:client_id current, :current true}]
+                    (:data (as-bearer bearer :get 200 "ee/oauth-client-management" :ids current))))
+            (is (=? [{:client_id other, :current false}]
+                    (:data (as-bearer bearer :get 200 "ee/oauth-client-management" :ids other)))))
+          (testing "while a request that came with a session cookie has no current client at all"
+            (is (=? [{:client_id current, :current false}]
+                    (:data (list-clients :ids current))))))))))
+
+(deftest exclude-current-test
+  (testing "`exclude-current` is what stops an admin sweeping every client from cutting off the client they are
+            sweeping with"
+    (with-clean-clients
+      (with-public-flow-enabled
+        (let [{bearer :access-token, current :client-id} (bearer-for-admin!)
+              other                                      (insert-client! :client_name "Collateral")]
+          (testing "a sweep through the bearer leaves its own client alone and reports nothing left over"
+            (let [response (as-bearer bearer :post 200 "ee/oauth-client-management/revoke" {})]
+              (is (<= 1 (:revoked response)))
+              (is (= 0 (:remaining response))
+                  "the current client is held back from the recount too, or a sweep could never report 0"))
+            (is (revoked? other))
+            (is (not (revoked? current)))
+            (testing "and the bearer still works, which is the point"
+              (is (= (mt/user->id :crowberto)
+                     (:id (as-bearer bearer :get 200 "user/current"))))))
+          (testing "`exclude-current false` revokes it too, and then the bearer stops authenticating"
+            (is (= 1 (:revoked (as-bearer bearer :post 200 "ee/oauth-client-management/revoke"
+                                          {:exclude-current false}))))
+            (is (revoked? current))
+            (as-bearer bearer :get 401 "user/current")))))))
+
+(deftest exclude-current-is-a-no-op-with-a-cookie-test
+  (testing "a session cookie means there is no current client, so asking to hold one back holds back nothing and the
+            sweep takes every active client"
+    (with-clean-clients
+      (let [a (insert-client! :client_name "A")
+            b (insert-client! :client_name "B")
+            ;; sent explicitly, since it is the flag under test rather than the default
+            response (revoke-by! {:exclude-current true})]
+        (is (<= 2 (:revoked response)))
+        (is (= 0 (:remaining response))
+            "nothing was spared, so nothing active still matches")
+        (is (every? revoked? [a b]))))))
 
 (deftest revoke-stamps-expired-tokens-too-test
   (testing "a revoke stamps every token that was not already revoked, so `tokens_revoked` and `user_ids` can be

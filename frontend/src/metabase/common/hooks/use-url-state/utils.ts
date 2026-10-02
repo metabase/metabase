@@ -20,6 +20,12 @@ export function parsePage(param: QueryParam): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
+/** A free-text search term from the URL, trimmed. An absent one reads as searching for nothing. */
+export function parseQuery(param: QueryParam): string {
+  const value = getFirstParamValue(param);
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export function parseSortColumn<TColumn extends string>(
   param: QueryParam,
   columns: readonly TColumn[],

@@ -29,7 +29,8 @@
   client-from-and-joins
   client-status-expr
   live-token-count-expr
-  live-token-user-count-expr])
+  live-token-user-count-expr
+  user-holds-token-expr])
 
 (def full-access-scope
   "The OAuth scope string that grants a bearer token full, user-equivalent access to the
@@ -307,9 +308,13 @@
 
 (defn resolve-access-token
   "Validate an OAuth bearer access token string against the token store. Returns
-   `{:user-id <int> :scopes <set-of-strings>}` on success, or nil on failure (unknown,
+   `{:user-id <int> :scopes <set-of-strings> :client-id <string>}` on success, or nil on failure (unknown,
    expired, or revoked token, a token whose issuing client is gone or revoked, a token with no
    associated user, or a token whose user has since been deactivated).
+
+   `:client-id` is the registered client that issued the token -- the request's *current client*. It is what
+   `exclude-current` holds back, so that an admin revoking every client through a bearer does not cut off the
+   client they are revoking with.
 
    The `is_active` gate here is defense in depth, not the primary control: deactivating a user through
    the model fires `:event/user-credentials-revoked`, and `metabase.oauth-server.events.revoke-on-deactivation`
@@ -333,5 +338,6 @@
                      (oauth-server.db/active-oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               (when (oauth-server.db/active-user-exists? user-id)
-                {:user-id user-id
-                 :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+                {:user-id   user-id
+                 :scopes    (or (some->> (:scope token-data) (into #{})) #{})
+                 :client-id (:client-id token-data)}))))))))

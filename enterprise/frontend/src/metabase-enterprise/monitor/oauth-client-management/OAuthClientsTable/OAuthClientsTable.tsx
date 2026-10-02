@@ -1,4 +1,10 @@
-import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
+import type {
+  OnChangeFn,
+  Row,
+  RowSelectionState,
+  SortingState,
+  Updater,
+} from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -9,8 +15,10 @@ import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
+  Badge,
   Card,
   Ellipsified,
+  Flex,
   LoadingOverlay,
   Stack,
   Text,
@@ -31,7 +39,9 @@ type OAuthClientsTableProps = {
   isRevokedTab: boolean;
   page: number;
   rowSelection: RowSelectionState;
+  sorting: SortingState;
   emptyLabel: string;
+  onSortingChange: (sorting: SortingState) => void;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
 };
 
@@ -61,19 +71,38 @@ export const OAuthClientsTable = ({
   isRevokedTab,
   page,
   rowSelection,
+  sorting,
   emptyLabel,
+  onSortingChange,
   onRowSelectionChange,
 }: OAuthClientsTableProps) => {
+  const handleSortingChange = useCallback(
+    (updater: Updater<SortingState>) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      onSortingChange(next);
+    },
+    [sorting, onSortingChange],
+  );
+
   const columns = useMemo<TreeTableColumnDef<OAuthClientRow>[]>(() => {
     const clientColumn: TreeTableColumnDef<OAuthClientRow> = {
       id: "client_name",
       header: t`Client`,
       minWidth: 220,
-      enableSorting: false,
+      enableSorting: true,
+      // a name sorts A-Z on the first click; only the dates and counts below read better largest-first
+      sortDescFirst: false,
       accessorFn: (client) => getOAuthClientName(client),
       cell: ({ row }) => (
         <Stack gap={0} miw={0}>
-          <Ellipsified>{getOAuthClientName(row.original)}</Ellipsified>
+          <Flex gap="sm" align="center" miw={0}>
+            <Ellipsified>{getOAuthClientName(row.original)}</Ellipsified>
+            {row.original.current && (
+              <Badge variant="light" color="brand" size="xs" flex="0 0 auto">
+                {t`This client`}
+              </Badge>
+            )}
+          </Flex>
           <Text size="sm" c="text-secondary" lh="1rem" truncate>
             {row.original.client_id}
           </Text>
@@ -101,8 +130,8 @@ export const OAuthClientsTable = ({
       id: "created_at",
       header: t`Registered`,
       width: 170,
-      // the endpoint sorts by registration already, and this slice offers no sort control
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: true,
       accessorFn: (client) => client.created_at,
       cell: ({ row }) => <MonitorDateCell value={row.original.created_at} />,
     };
@@ -118,7 +147,8 @@ export const OAuthClientsTable = ({
           id: "revoked_at",
           header: t`Revoked`,
           width: 170,
-          enableSorting: false,
+          enableSorting: true,
+          sortDescFirst: true,
           accessorFn: (client) => client.revoked_at ?? "",
           cell: ({ row }) =>
             row.original.revoked_at ? (
@@ -149,7 +179,8 @@ export const OAuthClientsTable = ({
         id: "user_count",
         header: t`Users`,
         width: 100,
-        enableSorting: false,
+        enableSorting: true,
+        sortDescFirst: true,
         accessorFn: (client) => client.user_count,
         cell: ({ row }) => row.original.user_count,
       },
@@ -157,7 +188,8 @@ export const OAuthClientsTable = ({
         id: "live_tokens",
         header: t`Live tokens`,
         width: 120,
-        enableSorting: false,
+        enableSorting: true,
+        sortDescFirst: true,
         accessorFn: (client) => client.live_tokens,
         cell: ({ row }) => row.original.live_tokens,
       },
@@ -171,14 +203,17 @@ export const OAuthClientsTable = ({
     data: rows,
     columns,
     getNodeId,
+    sorting,
+    manualSorting: true,
     enableRowSelection: canSelectClient,
     rowSelection,
     onRowSelectionChange,
+    onSortingChange: handleSortingChange,
   });
 
   useScrollToTop({
     ref: instance.containerRef,
-    keys: [page],
+    keys: [page, sorting],
     skip: isFetching,
   });
 

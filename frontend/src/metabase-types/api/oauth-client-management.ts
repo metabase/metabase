@@ -1,4 +1,5 @@
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type { SortDirection } from "./sorting";
 import type { UserId } from "./user";
 
 /** A registered client's `client_id` — the UUID it was issued at registration. */
@@ -39,17 +40,49 @@ export type OAuthClient = {
   current: boolean;
 };
 
-export type OAuthClientListParams = PaginationRequest & {
-  status?: OAuthClientStatusFilter;
+export const OAUTH_CLIENT_SORT_COLUMNS = [
+  "created_at",
+  "client_name",
+  "live_tokens",
+  "user_count",
+  "revoked_at",
+] as const;
+export type OAuthClientSortColumn = (typeof OAUTH_CLIENT_SORT_COLUMNS)[number];
+
+/**
+ * The criteria the list and the revoke share. Every one of them can match an active client, so a revoke by these
+ * ends exactly the clients a list with the same criteria would have shown.
+ */
+export type OAuthClientFilterParams = {
   ids?: OAuthClientId[];
+  /** Clients this user still holds an unrevoked access or refresh token on. */
+  "user-id"?: UserId;
+  "registered-before"?: string;
+  "registered-after"?: string;
 };
+
+export type OAuthClientListParams = PaginationRequest &
+  OAuthClientFilterParams & {
+    status?: OAuthClientStatusFilter;
+    /** Free text over the name, the `client_id` and the redirect URIs; every term must match one of them. */
+    query?: string;
+    "revoked-before"?: string;
+    "revoked-after"?: string;
+    "sort-column"?: OAuthClientSortColumn;
+    "sort-direction"?: SortDirection;
+  };
 
 export type OAuthClientListResponse = PaginationResponse & {
   data: OAuthClient[];
 };
 
-export type RevokeOAuthClientsRequest = {
-  ids: OAuthClientId[];
+/**
+ * An empty request revokes every active client. `status`, `revoked-*` and `query` are rejected rather than narrowed,
+ * so the list always previews exactly what the same criteria would revoke.
+ */
+export type RevokeOAuthClientsRequest = OAuthClientFilterParams & {
+  /** Hold back the client that issued the caller's own bearer token. Defaults to true; a no-op without one. */
+  "exclude-current"?: boolean;
 };
 
 export type RevokeOAuthClientsResponse = {

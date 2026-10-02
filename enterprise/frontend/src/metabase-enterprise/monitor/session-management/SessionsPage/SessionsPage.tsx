@@ -16,6 +16,7 @@ import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import { getTimePresetCutoff } from "metabase/monitor/time-presets";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Button, Flex, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -35,7 +36,7 @@ import {
 } from "./constants";
 import type { RouteParams } from "./types";
 import { useSessionRevocation } from "./use-session-revocation";
-import { buildListParams, getTimePresetCutoff, urlStateConfig } from "./utils";
+import { buildListParams, urlStateConfig } from "./utils";
 
 export const SessionsPage = () => {
   usePageTitle(t`Session management`);

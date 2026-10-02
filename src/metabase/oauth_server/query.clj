@@ -42,3 +42,24 @@
   radius of revoking it."
   [now-ms]
   (live-token-aggregate-expr [:count [:distinct :t.user_id]] now-ms))
+
+(defn- unrevoked-token-exists-expr
+  "Whether `user-id` holds an unrevoked row in `table` — an OAuth token table — for the `c` client row being selected."
+  [table user-id]
+  ;; a correlated EXISTS, deliberately: see [[metabase.app-db.honeysql-guard]]
+  [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                             :from   [[table :ut]]
+                             :where  [:and
+                                      [:= :ut.client_id :c.client_id]
+                                      [:= :ut.user_id user-id]
+                                      [:= :ut.revoked_at nil]]}])
+
+(defn user-holds-token-expr
+  "Whether `user-id` still holds an unrevoked token on the `c` client row — access or refresh, so a grant counts while
+  either survives. Wider than [[live-token-count-expr]], which counts only what would authenticate a request now."
+  [user-id]
+  ;; both tables, because an access token lives an hour and the nightly cleanup deletes it once expired, while the
+  ;; thirty-day refresh token is what keeps the grant alive. It is the same span a revoke reports its `user-ids` over.
+  [:or
+   (unrevoked-token-exists-expr :oauth_access_token user-id)
+   (unrevoked-token-exists-expr :oauth_refresh_token user-id)])

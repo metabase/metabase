@@ -196,17 +196,21 @@
    shape returned by the session/api-key resolvers and additionally attaches `:token-scopes`, so the
    merged request carries both the user identity and the access the token was granted, and marks it
    `:authenticated-via-oauth?`. A token with no scopes does not authenticate. This is the only place an
-   OAuth access token authenticates a request to the general (`/api/*`) API."
+   OAuth access token authenticates a request to the general (`/api/*`) API.
+
+   `:oauth-client-id` is the registered client that issued the token, which [[merge-current-user-info]]
+   carries onto the request as `:metabase/authed-oauth-client-id`."
   [request :- ::request.schema/request]
   (when (init-status/complete?)
     (when-let [token (oauth-server/extract-bearer-token request)]
-      (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
+      (when-let [{:keys [user-id scopes client-id]} (oauth-server/resolve-access-token token)]
         ;; Downstream, nil `:token-scopes` passes as scope-unaware auth, so a scope-less token is refused here.
         (when (seq scopes)
           (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
                   (m/update-existing :is-group-manager? boolean)
                   (assoc :token-scopes             (oauth-token->token-scopes scopes)
-                         :authenticated-via-oauth? true)))))))
+                         :authenticated-via-oauth? true
+                         :oauth-client-id          client-id)))))))
 
 (defn- current-user-info-for-mcp-ui-credential
   "Resolve the short-lived credential from an MCP App tool result.
@@ -266,7 +270,8 @@
      request
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
      ;; merging it whole both authenticates the request and records the granted scopes.
-     (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider :session-key-hash)
+     (dissoc (or session-info api-key-info oauth-info mcp-ui-info)
+             :auth-provider :session-key-hash :oauth-client-id)
      ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so its
      ;; presence says nothing about whether the session is the credential that authenticated this request.
      ;; `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced it cannot arrive
@@ -274,6 +279,11 @@
      ;; `key_hashed` value rather than the key itself, since that is all anything downstream needs and the key is
      ;; the credential.
      (when session-info {:metabase/authed-session-key-hash (:session-key-hash session-info)})
+     ;; `:metabase/authed-oauth-client-id` is the request's *current client*: the registered OAuth client that issued
+     ;; the bearer token, set only when that bearer is what authenticated the request. Namespaced for the same reason
+     ;; as the session key hash above -- Ring keys are unqualified, so only this function can set it, and an endpoint
+     ;; reading it knows a caller cannot have claimed to be some other client.
+     (when oauth-info {:metabase/authed-oauth-client-id (:oauth-client-id oauth-info)})
      (when auth-method {:embedding/auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
@@ -284,7 +294,8 @@
   token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
   `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
   `:metabase/authed-session-key-hash` is set only when it was the session that authenticated the request, and carries
-  the `key_hashed` value of the one that did."
+  the `key_hashed` value of the one that did; `:metabase/authed-oauth-client-id` likewise only when it was a bearer,
+  and carries the `client_id` of the registered client that issued it."
   [handler]
   (fn [request respond raise]
     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}

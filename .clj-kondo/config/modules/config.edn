@@ -3982,6 +3982,7 @@
    :api  #{metabase-enterprise.oauth-client-management.api}
    :uses #{api
            events
+           lib.schema
            mcp.oauth-server
            request
            users
