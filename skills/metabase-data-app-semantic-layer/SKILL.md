@@ -58,14 +58,14 @@ Scope parameters:
 - `include-data-library=true` for the whole `Library / Data` tree.
 - `include-metric-library=true` for the whole `Library / metrics` tree.
 - `library-collections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
-- `include-models=true` for readable models that have actions. When combined with `database=<name-or-id>`, it includes models with actions for that database only.
+- `include-actions=true` for readable executable actions, nested under the models they belong to. When combined with `database=<name-or-id>`, it includes that database's actions only.
 - `database=<name-or-id>` when the app should use tables from one database. Use it separately from library scopes; the API rejects that combination.
 
 Combine library scopes when the app needs both tables and curated metrics.
 
-Use `include-models=true` when the app needs any saved action under `schema.models.<model>.actions`; it includes all readable models with executable actions, unless `database` scopes them to one database. Models without executable actions are omitted to keep generated schemas compact. It can be combined with `library-collections`, `include-data-library`, or `include-metric-library` so one schema can include selected tables/metrics plus all readable actions.
+Use `include-actions=true` when the app needs any saved action under `schema.models.<model>.actions`; it includes all readable models with executable actions, unless `database` scopes them to one database. Models without executable actions are omitted to keep generated schemas compact. It can be combined with `library-collections`, `include-data-library`, or `include-metric-library` so one schema can include selected tables/metrics plus all readable actions.
 
-If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-models=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through generated model entries.
+If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-actions=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through the generated schema.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up

@@ -1,6 +1,7 @@
 (ns metabase.typed-schemas.schema.model-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -15,6 +16,8 @@
                               (constantly [{:kind "action", :key "create", :id 5}])]
     (is (= {:key              "ordersModel"
             :keyDisambiguator 42
+            :id               42
+            :name             "Orders model"
             :actions          {"create" {:kind "action", :key "create", :id 5}}}
            (schema.model/model-schema
             {:id   42
@@ -93,9 +96,20 @@
                               :name       "Create"
                               :type       :query
                               :parameters []}])]
-    ;; only model 42 has an action, so model 43 is omitted
-    (is (= ["model42"]
-           (map :key (:models (schema.model/model-schemas #{1} nil)))))))
+    (testing "actions alone keep only the models that have one"
+      (is (= ["model42"]
+             (map :key (:models (schema.model/model-schemas #{1} nil {:include-actions? true}))))))
+    (testing "models keep every model, with its actions only when they are asked for"
+      (is (= [{:key "model42", :id 42, :name "Model 42", :actions {"create" {:id 5}}}
+              {:key "model43", :id 43, :name "Model 43"}]
+             (->> (schema.model/model-schemas #{1} nil {:include-models? true, :include-actions? true})
+                  :models
+                  (map #(-> (select-keys % [:key :id :name :actions])
+                            (m/update-existing :actions update-vals (fn [action] (select-keys action [:id]))))))))
+      (is (= [{:key "model42", :id 42, :name "Model 42"}
+              {:key "model43", :id 43, :name "Model 43"}]
+             (map #(select-keys % [:key :id :name :actions])
+                  (:models (schema.model/model-schemas #{1} nil {:include-models? true}))))))))
 
 ; Ensures we are not doing N+1 queries for action rows and details
 (deftest model-schemas-bulk-loads-actions-test
@@ -110,7 +124,7 @@
                   actions/select-actions-for-models (fn [known-models model-ids]
                                                       (swap! action-details-calls conj [known-models model-ids])
                                                       [])]
-      (is (= {:models [] :errors []} (schema.model/model-schemas #{1} nil)))
+      (is (= {:models [] :errors []} (schema.model/model-schemas #{1} nil {:include-actions? true})))
       (is (= [#{42 43}] @action-rows-calls))
       (is (= [[models #{42 43}]]
              (map (fn [[known-models model-ids]] [known-models (set model-ids)]) @action-details-calls))))))
@@ -130,7 +144,7 @@
                                 :name       "Create"
                                 :type       :query
                                 :parameters []}])]
-      (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil)]
+      (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil {:include-actions? true})]
         (is (= ["model42"] (map :key models)))
         (is (=? [{:type      "modelError"
                   :modelId   43
@@ -161,7 +175,7 @@
                     (if (contains? model-ids 42)
                       [{:id 5 :model_id 42 :name "Create" :type :query}]
                       []))]
-      (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil)]
+      (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil {:include-actions? true})]
         (is (= ["model42"] (map :key models)))
         (is (=? [{:type      "modelError"
                   :modelId   43
@@ -177,7 +191,7 @@
                   actions/select-actions-for-models
                   (fn [& _] (throw (InterruptedException. "cancelled")))]
       (let [thrown (is (thrown? clojure.lang.ExceptionInfo
-                                (schema.model/model-schemas #{1} nil)))]
+                                (schema.model/model-schemas #{1} nil {:include-actions? true})))]
         (is (instance? InterruptedException (ex-cause thrown))))))
   (testing "an interruption wrapped in the structured error propagates instead of collecting an error"
     (with-redefs [schema.common/select-schema-cards
@@ -187,7 +201,7 @@
                   schema.model/model-action-schemas
                   (fn [& _] (throw (ex-info "cancelled" {} (InterruptedException. "cancelled"))))]
       (let [thrown (is (thrown? clojure.lang.ExceptionInfo
-                                (schema.model/model-schemas #{1} nil)))]
+                                (schema.model/model-schemas #{1} nil {:include-actions? true})))]
         (is (instance? InterruptedException (ex-cause thrown)))))))
 
 (deftest model-schemas-propagates-unexpected-errors-test
@@ -199,7 +213,7 @@
                   schema.model/model-action-schemas
                   (fn [& _] (throw (NullPointerException. "boom")))]
       (is (thrown? NullPointerException
-                   (schema.model/model-schemas #{1} nil))))))
+                   (schema.model/model-schemas #{1} nil {:include-actions? true}))))))
 
 (deftest model-schema-surfaces-action-selection-errors-test
   (with-redefs [schema.model/action-rows (constantly [])

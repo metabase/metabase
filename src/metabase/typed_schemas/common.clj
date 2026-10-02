@@ -105,9 +105,9 @@
           (map vector entities candidate-keys))))
 
 (defn keyed-model-map
-  "Returns a sorted model map keyed by model key, exposing only action namespaces."
+  "Returns a sorted model map keyed by model key, exposing each model's id, name and actions."
   [models]
   (reduce-kv (fn [model-map model-key model]
-               (assoc model-map model-key (select-keys model [:actions])))
+               (assoc model-map model-key (select-keys model [:id :name :actions])))
              (sorted-map)
              (keyed-map models)))

@@ -55,8 +55,8 @@ Rules:
   (`npm run sync-resources`, run by `npm run build`) scans only `queries/` and
   `actions/`, so a definition anywhere else is never synchronized, and the
   authored action is refused for the app's viewers in production.
-- Actions exist only when the generated schema includes models
-  (`include-models=true`). Synchronization copies actions; it never creates
+- Actions exist only when the generated schema includes actions
+  (`include-actions=true`). Synchronization copies actions; it never creates
   them.
 - Pass the export itself to `useAction`. Never pass
   `schema.models.<model>.actions.<action>` or its `.id`.

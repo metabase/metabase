@@ -26,6 +26,7 @@
   the module's data-access surface enumerable and every downstream stage
   testable with literal values."
   (:require
+   [metabase.typed-schemas.schema.action :as schema.action]
    [metabase.typed-schemas.schema.metric :as schema.metric]
    [metabase.typed-schemas.schema.model :as schema.model]
    [metabase.typed-schemas.schema.question :as schema.question]
@@ -49,9 +50,11 @@
     collection refs and include flags, or nil when none are requested.")
   (questions [source database-ids collection-ids]
     "Question schema entities.")
-  (models [source database-ids]
-    "Model schemas as `{:models [...] :errors [...]}`: entities for models with
-    executable actions, plus errors for models that could not be built.")
+  (models [source database-ids options]
+    "Model schemas as `{:models [...] :errors [...]}`, plus errors for models that could not be built.
+    `options` holds `:include-models?` (every model) and `:include-actions?` (their actions).")
+  (actions [source database-ids]
+    "Schema entities for query actions that belong to no model.")
   (metrics [source database-ids collection-ids]
     "Metric schema entities.")
   (tables [source database-ids table-ids]
@@ -70,8 +73,10 @@
       (scope/library-scope scope-options))
     (questions [_ database-ids collection-ids]
       (vec (schema.question/question-schemas database-ids collection-ids)))
-    (models [_ database-ids]
-      (schema.model/model-schemas database-ids nil))
+    (models [_ database-ids options]
+      (schema.model/model-schemas database-ids nil options))
+    (actions [_ database-ids]
+      (schema.action/action-schemas database-ids))
     (metrics [_ database-ids collection-ids]
       (vec (schema.metric/metric-schemas database-ids collection-ids)))
     (tables [_ database-ids table-ids]

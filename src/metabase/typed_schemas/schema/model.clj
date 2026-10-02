@@ -149,7 +149,7 @@
       :jsType resolved-type}
      :required (when required true))))
 
-(defn- action-detail-schema
+(defn action-detail-schema
   "Returns the typed schema entry for resolved action details."
   [{:keys [id name description type kind parameters entity_id] :as action}]
   (let [tag-types (query-action-template-tag-types action)
@@ -215,14 +215,17 @@
     (mapv #(model-action-schema model %) action-details))))
 
 (defn model-schema
-  "Returns the model schema with actions, or nil when the model has no executable actions."
+  "Returns the model schema with its actions, or nil when it has none and `include-empty?` is false."
   ([model]
-   (model-schema model (model-action-schemas model)))
-  ([{:keys [id name]} action-schemas]
-   (when (seq action-schemas)
-     {:key              (common/generated-key name id)
-      :keyDisambiguator id
-      :actions          (common/keyed-map action-schemas)})))
+   (model-schema model (model-action-schemas model) false))
+  ([{:keys [id name]} action-schemas include-empty?]
+   (when (or include-empty? (seq action-schemas))
+     (m/assoc-some
+      {:key              (common/generated-key name id)
+       :keyDisambiguator id
+       :id               id
+       :name             name}
+      :actions (some-> (not-empty action-schemas) common/keyed-map)))))
 
 (defn- interrupted-exception?
   "Returns true when `exception`, or one of its causes, is an InterruptedException."
@@ -266,10 +269,10 @@
 
   Only the structured `ExceptionInfo` a bad model raises becomes an error entry;
   anything else is an unexpected bug and propagates instead of masking it."
-  [acc build-action-schemas model]
+  [acc build-action-schemas include-empty? model]
   (let [{:keys [schema error]}
         (try
-          {:schema (model-schema model (build-action-schemas model))}
+          {:schema (model-schema model (build-action-schemas model) include-empty?)}
           (catch clojure.lang.ExceptionInfo exception
             (rethrow-if-interrupted! exception)
             {:error (model-error-entry model exception)}))]
@@ -280,17 +283,21 @@
 (defn model-schemas
   "Returns `{:models [...] :errors [...]}`, with optional database and collection scopes.
 
-  A model that cannot be built becomes an `:errors` entry instead of failing the rest."
-  [database-ids collection-ids]
+  `include-models?` keeps every model, and `include-actions?` nests each model's actions; with only
+  `include-actions?`, models without actions are left out. A model that cannot be built becomes an `:errors`
+  entry instead of failing the rest."
+  [database-ids collection-ids {:keys [include-models? include-actions?]}]
   (let [models (schema.common/select-schema-cards :model database-ids collection-ids)]
     (if (seq models)
       (let [model-ids            (set (map :id models))
             ;; The bulk lookup avoids N+1s; when a broken model makes it throw we
             ;; fall back to resolving each model's actions on its own.
-            build-action-schemas (or (bulk-action-schema-builder models model-ids)
-                                     model-action-schemas)]
+            build-action-schemas (if include-actions?
+                                   (or (bulk-action-schema-builder models model-ids)
+                                       model-action-schemas)
+                                   (constantly nil))]
         (reduce (fn [acc model]
-                  (collect-model-schema acc build-action-schemas model))
+                  (collect-model-schema acc build-action-schemas (boolean include-models?) model))
                 {:models [] :errors []}
                 models))
       {:models [] :errors []})))

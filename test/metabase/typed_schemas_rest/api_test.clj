@@ -38,9 +38,10 @@
                         :crowberto
                         :get
                         200
-                        "typed-schemas/v1/typescript?include-models=true&library-collections=1,2")
+                        "typed-schemas/v1/typescript?include-actions=true&include-models=true&library-collections=1,2")
                        :body
                        read-string)]
+      (is (true? (:include-actions? response)))
       (is (true? (:include-models? response)))
       (is (= [{:id 1} {:id 2}] (:library-collection-refs response))))))
 
@@ -65,7 +66,7 @@
       (is (str/includes? missing-schema "const tables = { }"))
       (is (str/includes? missing-schema "const metrics = { }")))))
 
-(deftest database-scope-includes-models-only-when-requested-test
+(deftest database-scope-includes-actions-only-when-requested-test
   (mt/with-actions-enabled
     (mt/with-temp [:model/Database other-db {}
                    :model/Card model {:name "Order model", :database_id (mt/id), :table_id (mt/id :orders)
@@ -77,16 +78,27 @@
                                                          :field_ref [:field (mt/id :orders :total) nil]
                                                          :id (mt/id :orders :total)}]}
                    :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
-                   :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}]
+                   :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}
+                   :model/Action standalone {:name "Discount order", :type :query}
+                   :model/QueryAction _ {:action_id     (:id standalone)
+                                         :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                          "UPDATE orders SET discount = 0")}]
       (let [schema (fn [& query-params]
                      (:body (apply mt/user-http-request-full-response
                                    :crowberto :get 200 "typed-schemas/v1/typescript" query-params)))]
-        (testing "a database scope leaves models out unless asked for"
-          (is (not (str/includes? (schema :database (mt/id)) "orderModel"))))
-        (testing "include-models adds the scoped database's models"
-          (is (str/includes? (schema :database (mt/id) :include-models true) "orderModel")))
-        (testing "include-models keeps models of other databases out"
-          (is (not (str/includes? (schema :database (:id other-db) :include-models true) "orderModel"))))))))
+        (testing "a database scope leaves actions out unless asked for"
+          (is (not (str/includes? (schema :database (mt/id)) "orderModel")))
+          (is (not (str/includes? (schema :database (mt/id)) "discountOrder"))))
+        (testing "include-actions adds the scoped database's model actions and actions without a model"
+          (is (str/includes? (schema :database (mt/id) :include-actions true) "orderModel"))
+          (is (str/includes? (schema :database (mt/id) :include-actions true) "discountOrder")))
+        (testing "include-models adds the models without their actions"
+          (is (str/includes? (schema :database (mt/id) :include-models true) "orderModel"))
+          (is (not (str/includes? (schema :database (mt/id) :include-models true) "updateOrder")))
+          (is (not (str/includes? (schema :database (mt/id) :include-models true) "discountOrder"))))
+        (testing "include-actions keeps actions of other databases out"
+          (is (not (str/includes? (schema :database (:id other-db) :include-actions true) "orderModel")))
+          (is (not (str/includes? (schema :database (:id other-db) :include-actions true) "discountOrder"))))))))
 
 (deftest collection-and-database-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response
