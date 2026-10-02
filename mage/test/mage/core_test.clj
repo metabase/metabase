@@ -61,6 +61,12 @@
       (let [out (u/sh cmd)]
         (is (str/includes? out "The following tasks are available:"))))))
 
+(deftest public-task-has-group-test
+  (doseq [[task {:keys [group]}] (:tasks (edn/read-string (slurp (str u/project-root-directory "/bb.edn"))))
+          :when (and (symbol? task) (not (str/starts-with? (name task) "-")))]
+    (testing (str task " has a :group listed in mage.util/task-groups, so `./bin/mage` shows it in a section")
+      (is (some #{group} u/task-groups)))))
+
 (deftest bb-task-has-example-test
   (doseq [task-name (u/public-bb-tasks-list)
           cmd [(str "./bin/mage " task-name " -h")

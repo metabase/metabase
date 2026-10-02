@@ -8,6 +8,7 @@
    [babashka.tasks :as bt]
    [bling.banner :refer [banner]]
    [bling.fonts.ansi-shadow :as ansi-shadow]
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [mage.color :as c]
    [mage.util :as u]))
@@ -44,7 +45,10 @@
   (flush)
   (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
   (println "")
-  (println (u/sh (str u/project-root-directory "/bin/bb tasks")))
+  (println "The following tasks are available:\n")
+  (println (u/grouped-tasks-help (:tasks (edn/read-string (slurp (str u/project-root-directory "/bb.edn"))))
+                                 (u/terminal-width)))
+  (println "")
   (println (tip-o-day)))
 
 (defn- summarize-exception [^Exception e]

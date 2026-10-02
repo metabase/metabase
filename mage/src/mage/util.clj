@@ -174,13 +174,51 @@
   [& xs]
   (doseq [x xs] (puget/cprint x {:width 10e30})))
 
-(defn print-tasks [& _]
+(def task-groups
+  "Display order for the `:group` of public tasks in bb.edn."
+  ["Format & lint" "Tests & checks" "Modules" "Ratchets" "Migrations" "Local dev" "CI" "Analytics" "Mage"])
+
+(defn- one-line
+  "First sentence of `doc`, cut to `width` chars."
+  [doc width]
+  (let [s (first (str/split (str doc) #"(?<=\.)\s"))]
+    (if (> (count s) width)
+      (str (subs s 0 (max 0 (dec width))) "…")
+      s)))
+
+(defn grouped-tasks-help
+  "Public tasks in `tasks` (the bb.edn :tasks map) as one section per `:group`, with one-line descriptions
+  fitted to `width` columns."
+  [tasks width]
+  (let [public (for [[task {:keys [group doc]}] tasks
+                     :when (and (symbol? task) (not (str/starts-with? (name task) "-")))]
+                 {:task (name task) :group group :doc doc})
+        name-w (apply max (map (comp count :task) public))
+        by-grp (group-by :group public)]
+    (str/join
+     "\n\n"
+     (for [group (concat task-groups (remove (set task-groups) (keys by-grp)))
+           :let  [ts (sort-by :task (by-grp group))]
+           :when (seq ts)]
+       (str/join "\n"
+                 (cons (c/bold (or group "Other"))
+                       (for [{:keys [task doc]} ts]
+                         (str "  " (format (str "%-" name-w "s") task) "  "
+                              (one-line doc (- width name-w 4))))))))))
+
+(defn terminal-width
+  "Columns in the terminal, or 100 if `tput` can't tell."
+  []
+  (or (try (parse-long (sh "tput cols")) (catch Exception _ nil)) 100))
+
+(defn print-tasks [& [{[pattern] :arguments}]]
   (let [task+descriptions (->> "bb.edn"
                                (str project-root-directory "/")
                                slurp
                                edn/read-string
                                :tasks
-                               (filter (fn [[task _v]] (symbol? task)))
+                               (filter (fn [[task _v]] (and (symbol? task)
+                                                            (str/includes? (name task) (or pattern "")))))
                                (sort-by (fn [[task _task-data]]
                                           (let [task-name (name task)]
                                             (if (str/starts-with? task-name "-")

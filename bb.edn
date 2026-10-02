@@ -26,7 +26,8 @@
                     (cons 'do body))))
 
   alias
-  {:doc "Installs 'mage' alias and autocomplete"
+  {:group "Mage"
+   :doc "Installs 'mage' alias and autocomplete"
    :examples [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
               ["./bin/mage alias install fish" "Installs mage alias for fish shell"]
               ["./bin/mage alias print zsh" "Prints shell script to put into .zshrc for zsh users"]]
@@ -38,7 +39,8 @@
    :task (task! (alias/instructions parsed))}
 
   cljfmt-staged
-  {:doc "Runs cljfmt on staged files"
+  {:group "Format & lint"
+   :doc "Runs cljfmt on staged files"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-staged" "Format staged files"]
               ["./bin/mage cljfmt-staged -c" "Check staged files"]]
@@ -46,7 +48,8 @@
    :task (task! (format/staged parsed))}
 
   cljfmt-files
-  {:doc "Runs cljfmt on the given files/directories"
+  {:group "Format & lint"
+   :doc "Runs cljfmt on the given files/directories"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-files src/metabase/events.clj" "Format events.clj"]
               ["./bin/mage cljfmt-files src" "Format all files in src"]
@@ -57,14 +60,16 @@
    :task (task! (format/files parsed))}
 
   cljfmt-all
-  {:doc "Runs cljfmt on all (clojure) files"
+  {:group "Format & lint"
+   :doc "Runs cljfmt on all (clojure) files"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-all" "Format all files"]]
    :options [["-c" "--force-check" "Check staged files"]]
    :task (task! (format/all parsed))}
 
   cljfmt-updated
-  {:doc "Runs cljfmt on all (Clojure) files relative to a git ref (default HEAD)"
+  {:group "Format & lint"
+   :doc "Runs cljfmt on all (Clojure) files relative to a git ref (default HEAD)"
    :requires [[mage.format :as format]]
    :examples [["./bin/mage cljfmt-updated" "Format updated files relative to HEAD"]
               ["./bin/mage cljfmt-updated master" "Format updated files relative to master"]]
@@ -73,7 +78,8 @@
    :task (task! (format/updated parsed))}
 
   kondo
-  {:doc "Runs Kondo against a file, directory, or everything we usually lint"
+  {:group "Format & lint"
+   :doc "Runs Kondo against a file, directory, or everything we usually lint"
    :examples [["./bin/mage kondo" "run Kondo against everything we usually lint"]
               ["./bin/mage kondo src/metabase/db.clj" "run Kondo against a file"]
               ["./bin/mage kondo src/metabase/db.clj src/metabase/config.clj" "run Kondo against 2 files"]
@@ -82,14 +88,16 @@
    :task (task! (kondo/kondo (:arguments parsed)))}
 
   kondo-updated
-  {:doc "Runs kondo against files changed compared to a git ref"
+  {:group "Format & lint"
+   :doc "Runs kondo against files changed compared to a git ref"
    :examples [["./bin/mage kondo-updated" "run Kondo on files with changes relative to HEAD"]
               ["./bin/mage kondo-updated master" "run Kondo on files with changes relative to master"]]
    :requires [[mage.kondo :as kondo]]
    :task (task! (kondo/kondo-updated (:arguments parsed)))}
 
   fix-unused-requires
-  {:doc "Removes unused requires flagged by clj-kondo"
+  {:group "Format & lint"
+   :doc "Removes unused requires flagged by clj-kondo"
    :examples [["./bin/mage fix-unused-requires src/metabase/utils/validate.cljc" "Fix unused requires in a specific file"]
               ["./bin/mage fix-unused-requires src" "Fix unused requires in all files in src"]]
    :requires [[mage.fix-unused-requires :as fix]]
@@ -98,44 +106,51 @@
    :task (task! (fix/fix-files parsed))}
 
   load-namespaces
-  {:doc "Checks that every shipped namespace loads without :dev dependencies (and finds circular dependencies)"
+  {:group "Tests & checks"
+   :doc "Checks that every shipped namespace loads without :dev dependencies (and finds circular dependencies)"
    :examples [["./bin/mage load-namespaces"]]
    :requires [[mage.load-namespaces]]
    :arg-schema [:tuple]
    :task (task! (mage.load-namespaces/load-namespaces))}
 
   codespell
-  {:doc "Check for misspellings in the source code."
+  {:group "Format & lint"
+   :doc "Check for misspellings in the source code."
    :examples [["./bin/mage codespell"]]
    :requires [[mage.codespell]]
    :task (task! (mage.codespell/codespell (:arguments parsed)))}
 
   codespell-interactive
-  {:doc "Check for misspellings in the source code, and interactively prompt to fix them."
+  {:group "Format & lint"
+   :doc "Check for misspellings in the source code, and interactively prompt to fix them."
    :examples [["./bin/mage codespell-interactive"]]
    :requires [[mage.codespell]]
    :task (task! (mage.codespell/codespell-interactive (:arguments parsed)))}
 
   start-maildev
-  {:doc "Start Maildev"
+  {:group "Local dev"
+   :doc "Start Maildev"
    :examples [["./bin/mage start-maildev -h" "print help for start-maildev"]]
    :requires [[mage.start-maildev :as start-maildev]]
    :task (task! (start-maildev/start-maildev!))}
 
   tail-d
-  {:doc     "Tail the #d debug log in real time (see dev.debug). Asks the running REPL for the exact path; falls back to DEV_DEBUG_LOG or /tmp/<dir>_debug.log."
+  {:group "Local dev"
+   :doc     "Tail the #d debug log in real time (see dev.debug). Asks the running REPL for the exact path; falls back to DEV_DEBUG_LOG or /tmp/<dir>_debug.log."
    :examples [["./bin/mage tail-d" "tail the #d log, with bat syntax highlighting if available"]]
    :requires [[mage.tail-d :as tail-d]]
    :task (task! (tail-d/tail-d! parsed))}
 
   start-python-runner
-  {:doc      "Start python-runner container with internal Moto S3 server for Python transforms"
+  {:group "Local dev"
+   :doc      "Start python-runner container with internal Moto S3 server for Python transforms"
    :examples [["./bin/mage start-python-runner" "start python-runner with internal S3"]]
    :requires [[mage.start-python-runner :as start-python-runner]]
    :task     (task! (start-python-runner/start-python-runner!))}
 
   start-db
-  {:doc "Start a db on a default port in docker"
+  {:group "Local dev"
+   :doc "Start a db on a default port in docker"
    :examples [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
               ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]
               ["./bin/mage start-db postgres latest --port 5555" "start postgres on a custom port"]]
@@ -158,7 +173,8 @@
             (start-db/start-db (-> (current-task) :db-info db) db version (:options parsed))))}
 
   nrepl
-  {:doc "Starts the babashka nrepl: helpful for mage development"
+  {:group "Mage"
+   :doc "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
    :examples [["./bin/mage nrepl" "Starts the nrepl server"]
@@ -172,7 +188,8 @@
             (deref (promise))))}
 
   lint-migrations
-  {:doc "Lint migrations files"
+  {:group "Migrations"
+   :doc "Lint migrations files"
    :requires [[lint-migrations-file]
               [babashka.process :as p]]
    :examples [["./bin/mage lint-migrations" "Lint all migrations and print report"]]
@@ -181,7 +198,8 @@
              (lint-migrations-file/-main))}
 
   new-migration
-  {:doc "Create a new directory-based migration file (v60+)"
+  {:group "Migrations"
+   :doc "Create a new directory-based migration file (v60+)"
    :requires [[mage.new-migration :as new-migration]]
    :examples [["./bin/mage new-migration 60 mq_indexes" "Create resources/migrations/060/20260905_mq_indexes.yaml"]]
    :arg-schema [:tuple
@@ -190,7 +208,8 @@
    :task (task! (new-migration/new-migration parsed))}
 
   jar-download
-  {:doc "Download (and optionally run) jar for a metabase version or branch"
+  {:group "Local dev"
+   :doc "Download (and optionally run) jar for a metabase version or branch"
    :examples [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
               ["./bin/mage jar-download 1.45.2 -r" "Download and run metabase_1.45.2.jar"]
               ["./bin/mage jar-download 1.45.2 -d ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars, deleting if it exists"]
@@ -216,13 +235,15 @@
    :task (task! (jar-download/jar-download parsed))}
 
   setup-stats-repl
-  {:doc "Connect to the stats repl"
+  {:group "Local dev"
+   :doc "Connect to the stats repl"
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
    :requires [[mage.stats-repl :as stats-repl]]
    :task (stats-repl/connect (cli/parse! (current-task)))}
 
   notify
-  {:doc "Send notification for a comment (that already exists)"
+  {:group "CI"
+   :doc "Send notification for a comment (that already exists)"
    :requires [[mage.be-dev :refer [nrepl-eval]]]
    :options [["-c" "--comment-id ID" "Notify about this comment id"]
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
@@ -236,7 +257,8 @@
              (nrepl-eval "metabase.comments.core" code)))}
 
   run-tests
-  {:doc "Quickly run tests locally. Pass dirs, files, namespaces, or single tests as arguments."
+  {:group "Tests & checks"
+   :doc "Quickly run tests locally. Pass dirs, files, namespaces, or single tests as arguments."
    :examples [["./bin/mage run-tests" "launch interactive test picker"]
               ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
               ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and test/metabase/api_keys"]
@@ -254,7 +276,8 @@
    :task (task! (qtr/go parsed))}
 
   affected-modules
-  {:doc "Which backend modules have changes?"
+  {:group "Modules"
+   :doc "Which backend modules have changes?"
    :examples [["./bin/mage affected-modules master" "prints changes compared to `master`"]
               ["./bin/mage affected-modules"]]
    :arg-schema [:or [:tuple] [:tuple [:string {:name "git-ref"}]]]
@@ -262,7 +285,8 @@
    :task (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
   modules-tree
-  {:doc "Print the module hierarchy, nesting enterprise extensions under their OSS module"
+  {:group "Modules"
+   :doc "Print the module hierarchy, nesting enterprise extensions under their OSS module"
    :examples [["./bin/mage modules-tree" "Print the full tree; * marks a custom :ns-prefix"]
               ["./bin/mage modules-tree --nested-only" "Print only roots with nested modules"]
               ["./bin/mage modules-tree --prefixes" "Show custom prefixes instead of *"]
@@ -276,14 +300,16 @@
    :task (task! (mage.modules/cli-print-module-tree parsed))}
 
   can-skip-driver-tests
-  {:doc "Can we skip driver tests for this branch?"
+  {:group "Tests & checks"
+   :doc "Can we skip driver tests for this branch?"
    :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]
               ["./bin/mage can-skip-driver-tests" "Returns zero (success) if we can skip driver tests based on changes? (defaults to master)"]]
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
   fix-modules-config
-  {:doc "Regenerate .clj-kondo/config/modules/config.edn so it passes metabase.core.modules-test."
+  {:group "Modules"
+   :doc "Regenerate .clj-kondo/config/modules/config.edn so it passes metabase.core.modules-test."
    :examples [["./bin/mage fix-modules-config" "Fix the modules config (uses the running dev REPL if available, else a JVM)"]
               ["./bin/mage fix-modules-config --port 59498" "Use the dev REPL on a specific nREPL port"]]
    ;; Cold-JVM fallback invokes `clojure -X:dev dev.modules-config/fix-config!`.
@@ -292,7 +318,8 @@
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
   project-tests
-  {:doc "Run project-level checks."
+  {:group "Tests & checks"
+   :doc "Run project-level checks."
    :examples [["./bin/mage project-tests" "Run every suite"]
               ["./bin/mage project-tests backend" "Run backend checks"]
               ["./bin/mage project-tests migrations" "Run migration checks"]
@@ -311,13 +338,15 @@
                   (project-tests/run!)))}
 
   kondo-ratchets
-  {:doc "Validate the kondo and module ratchet files against the source tree (Babashka; seconds, not a test run)."
+  {:group "Ratchets"
+   :doc "Validate the kondo and module ratchet files against the source tree (Babashka; seconds, not a test run)."
    :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
    :requires [[dev.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/check))}
 
   kondo-ratchets-shrink
-  {:doc "Lower kondo and module budgets to match the source tree. This is the only Mage task that writes the ratchet files."
+  {:group "Ratchets"
+   :doc "Lower kondo and module budgets to match the source tree. This is the only Mage task that writes the ratchet files."
    :examples [["./bin/mage kondo-ratchets-shrink" "Lower budgets to current counts without raising over-budget entries"]
               ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]]
    :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
@@ -325,7 +354,8 @@
    :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
 
   kondo-redundant-ignores
-  {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
+  {:group "Ratchets"
+   :doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
    :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]
               ["./bin/mage kondo-redundant-ignores --fix" "Also remove them from source (restores + marks [kondo-keep] any that re-trigger)"]
               ["./bin/mage kondo-redundant-ignores --fix --audit" "Recheck [kondo-keep] sites too, unmarking any now truly redundant"]]
@@ -335,7 +365,8 @@
    :task (task! (mage.kondo-ratchet/redundant-ignores parsed))}
 
   kondo-insert-ignores
-  {:doc "Insert inline ignores at every site a linter flags -- for landing a new linter without a big-bang fix."
+  {:group "Ratchets"
+   :doc "Insert inline ignores at every site a linter flags -- for landing a new linter without a big-bang fix."
    :examples [["./bin/mage kondo-insert-ignores :metabase/new-linter" "Insert ignores everywhere the linter fires, then seed its budget"]
               ["./bin/mage kondo-insert-ignores :equals-true test/metabase/pulse" "Only under the given paths"]]
    :arg-schema [:sequential [:string {:name "linter-then-paths"}]]
@@ -343,13 +374,17 @@
    :task (task! (mage.kondo-ratchet/insert-ignores (:arguments parsed)))}
 
   ls
-  {:doc "List all mage public and private tasks"
-   :examples [["./bin/mage ls" "List all tasks"]]
+  {:group "Mage"
+   :doc "List all mage public and private tasks"
+   :examples [["./bin/mage ls" "List all tasks"]
+              ["./bin/mage ls kondo" "List tasks whose name contains 'kondo'"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "pattern" :description "Only list tasks whose name contains this"}]]]
    :requires [[mage.util :as u]]
    :task (task! (u/print-tasks parsed))}
 
   generate-cursive-resolve-as
-  {:doc "Generate XML configuration for Cursive's symbol resolution based on the current clj-kondo lint-as configuration."
+  {:group "Local dev"
+   :doc "Generate XML configuration for Cursive's symbol resolution based on the current clj-kondo lint-as configuration."
    :examples [["./bin/mage generate-cursive-resolve-as" "Generate resolve-as XML configuration"]
               ["./bin/mage generate-cursive-resolve-as > /Users/bgrabow/Library/Application\\ Support/JetBrains/IntelliJIdea2025.3/options/ClojureResolveSettings.xml"
                "Generate resolve-as XML configuration and install it in your global editor configuration"]]
@@ -357,13 +392,15 @@
    :task (task! (cursive-resolve-as/do-it))}
 
   analytics:setup
-  {:doc "Set up usage analytics development mode"
+  {:group "Analytics"
+   :doc "Set up usage analytics development mode"
    :examples [["./bin/mage analytics:setup" "Enable usage analytics dev mode and import content"]]
    :requires [[mage.analytics :as analytics]]
    :task (task! (analytics/setup!))}
 
   analytics:export
-  {:doc "Export usage analytics content to YAML files"
+  {:group "Analytics"
+   :doc "Export usage analytics content to YAML files"
    :examples [["./bin/mage analytics:export" "Export to default location (resources/instance_analytics)"]
               ["./bin/mage analytics:export my-custom-dir" "Export to custom directory"]]
    :arg-schema [:or
@@ -375,13 +412,15 @@
                   (analytics/export!)))}
 
   analytics:teardown
-  {:doc "Tear down usage analytics development mode"
+  {:group "Analytics"
+   :doc "Tear down usage analytics development mode"
    :examples [["./bin/mage analytics:teardown" "Remove usage analytics dev database and disable dev mode"]]
    :requires [[mage.analytics :as analytics]]
    :task (task! (analytics/teardown!))}
 
   analytics:finalize
-  {:doc "Export usage analytics content and tear down development mode"
+  {:group "Analytics"
+   :doc "Export usage analytics content and tear down development mode"
    :examples [["./bin/mage analytics:finalize" "Export to default location and tear down"]]
    :requires [[mage.analytics :as analytics]]
    :task (task! (do
@@ -389,13 +428,15 @@
                   (analytics/teardown!)))}
 
   doctor
-  {:doc "Check your development environment for issues"
+  {:group "Tests & checks"
+   :doc "Check your development environment for issues"
    :examples [["./bin/mage doctor" "Run all health checks"]]
    :requires [[mage.doctor :as doctor]]
    :task (task! (doctor/doctor!))}
 
   ci-report
-  {:doc "Generate a CI failure report for a PR, branch, or commit"
+  {:group "CI"
+   :doc "Generate a CI failure report for a PR, branch, or commit"
    :examples [["./bin/mage ci-report" "Check current branch (PR or branch CI)"]
               ["./bin/mage ci-report 68292" "Generate report for PR #68292"]
               ["./bin/mage ci-report source-replacement" "Report for a branch by name"]
