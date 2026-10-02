@@ -34,6 +34,7 @@
   breakout-bin-width
   breakout-bins-num
   enable-nested-queries
-  start-of-week]
+  start-of-week
+  time-config]
  [metabase.lib-be.query
   bulk-load-query-metadata!])

@@ -16,16 +16,15 @@ const {
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
-  INVOICES,
 } = SAMPLE_DATABASE;
 
-describe("issue 9339", () => {
+describe("issue 9339 + 27123", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("should not paste non-numeric values into single-value numeric filters (metabase#9339)", () => {
+  it("should not paste non-numeric values into single-value numeric filters and should open the chosen exclude granularity (metabase#9339, metabase#27123)", () => {
     H.openOrdersTable();
 
     H.tableHeaderClick("Total");
@@ -37,17 +36,34 @@ describe("issue 9339", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1,234").should("not.exist");
     cy.button("Add filter").should("be.enabled");
+
+    cy.log(
+      "exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity (metabase#27123)",
+    );
+    cy.findByDisplayValue("9339").type("{esc}");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    H.tableHeaderClick("Created At");
+    H.popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Months of the year…").click();
+    });
+
+    H.popover()
+      .should("contain", "Months of the year…")
+      .and("contain", "January");
   });
 });
 
-describe("issue 16621", () => {
+describe("issue 16621 + 24664", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.openProductsTable({ limit: 3 });
   });
 
-  it("should be possible to create multiple filter that start with the same value (metabase#16621)", () => {
+  it("should add values to a filter and edit a second filter without replacing the first (metabase#16621, metabase#24664)", () => {
     H.tableHeaderClick("Category");
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
@@ -65,7 +81,57 @@ describe("issue 16621", () => {
     cy.findByTestId("qb-filters-panel")
       .findByText("Category is 2 selections")
       .should("be.visible");
+
+    cy.log(
+      "editing a second filter should not replace the first (metabase#24664)",
+    );
+    H.tableHeaderClick("Category");
+    H.popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Doohickey").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Category is Doohickey")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Widget").click();
+      cy.button("Update filter").click();
+    });
+
+    cy.findByTestId("qb-filters-panel")
+      .findAllByTestId("filter-pill")
+      .should("have.length", 2)
+      .and("contain", "Category is 2 selections");
+
+    assertPillValues({
+      index: 0,
+      checked: ["Gadget", "Gizmo"],
+      unchecked: ["Doohickey", "Widget"],
+    });
+    assertPillValues({
+      index: 1,
+      checked: ["Doohickey", "Widget"],
+      unchecked: ["Gadget", "Gizmo"],
+    });
   });
+
+  function assertPillValues({ index, checked, unchecked }) {
+    cy.findByTestId("qb-filters-panel")
+      .findAllByTestId("filter-pill")
+      .should("have.length", 2)
+      .eq(index)
+      .click();
+    H.popover().within(() => {
+      checked.forEach((value) => assertFilterValueIsSelected(value));
+      unchecked.forEach((value) =>
+        cy.findByRole("checkbox", { name: value }).should("not.be.checked"),
+      );
+    });
+    cy.realPress("Escape");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+  }
 });
 
 describe("issue 18770", () => {
@@ -124,24 +190,53 @@ describe("issue 18770", () => {
   });
 });
 
-describe("issue 20551", () => {
+describe("issue 20551 + 49321", () => {
   beforeEach(() => {
     H.restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
-  it("should allow filtering with includes, rather than starts with (metabase#20551)", () => {
+  it("should search values by includes and keep the popover width while typing (metabase#20551, metabase#49321)", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
 
     H.popover().within(() => {
       cy.findByText("Category").click();
+      cy.findByText("Gadget").should("be.visible");
       cy.findByPlaceholderText("Search the list").type("i");
 
       cy.findByText("Doohickey").should("be.visible");
       cy.findByText("Gizmo").should("be.visible");
       cy.findByText("Widget").should("be.visible");
       cy.findByText("Gadget").should("not.exist");
+
+      cy.icon("chevronleft").click();
+    });
+
+    cy.log(
+      "should not require multiple clicks to apply a filter (metabase#49321)",
+    );
+    H.popover().within(() => {
+      cy.findByText("Title").click();
+      cy.findByText("Is").click();
+    });
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.popover().last().findByText("Contains").click();
+
+    H.popover().then(($popover) => {
+      const { width } = $popover[0].getBoundingClientRect();
+      cy.wrap(width).as("initialWidth");
+    });
+
+    H.popover()
+      .findByPlaceholderText("Enter some text")
+      .type("aaaaaaaaaa, bbbbbbbbbbb,");
+
+    cy.get("@initialWidth").then((initialWidth) => {
+      H.popover().should(($popover) => {
+        const { width } = $popover[0].getBoundingClientRect();
+        expect(width).to.eq(initialWidth);
+      });
     });
   });
 });
@@ -170,10 +265,10 @@ describe("issue 21979", () => {
 
     H.visualize();
 
-    // Make sure the query is correct
-    // (a product called "Enormous Marble Wallet" is created on Monday)
+    // "Practical Bronze Computer" is created on a Monday
+    H.assertQueryBuilderRowCount(170);
     H.queryBuilderMain()
-      .findByText("Enormous Marble Wallet")
+      .findByText("Practical Bronze Computer")
       .should("not.exist");
 
     cy.findByTestId("qb-filters-panel")
@@ -187,8 +282,9 @@ describe("issue 21979", () => {
     });
     cy.wait("@dataset");
 
+    H.assertQueryBuilderRowCount(180);
     H.queryBuilderMain()
-      .findByText("Enormous Marble Wallet")
+      .findByText("Practical Bronze Computer")
       .should("be.visible");
 
     cy.findByTestId("qb-filters-panel")
@@ -227,44 +323,13 @@ describe("issue 22730", () => {
       cy.findByDisplayValue("00:00").clear().type("14:03");
       cy.button("Add filter").click();
     });
+    cy.wait("@dataset");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("before-row");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("after-row").should("not.exist");
-  });
-});
-
-describe("issue 24664", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.openProductsTable({ limit: 3 });
-  });
-
-  it("should be possible to create multiple filter that start with the same value (metabase#24664)", () => {
-    H.tableHeaderClick("Category");
-    H.popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+    H.assertQueryBuilderRowCount(1);
+    H.tableInteractiveBody().within(() => {
+      cy.findByText("before-row").should("be.visible");
+      cy.findByText("after-row").should("not.exist");
     });
-
-    H.tableHeaderClick("Category");
-    H.popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByText("Gizmo").click();
-      cy.button("Add filter").click();
-    });
-
-    cy.findByTestId("qb-filters-panel").findByText("Category is Gizmo").click();
-    H.popover().within(() => {
-      cy.findByText("Widget").click();
-      cy.button("Update filter").click();
-    });
-
-    // First filter is still there
-    cy.findByTestId("qb-filters-panel").findByText("Category is Doohickey");
   });
 });
 
@@ -358,63 +423,6 @@ describe("issue 45410", () => {
   });
 });
 
-describe("issue 27123", () => {
-  const questionDetails = {
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 100,
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-  });
-
-  it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
-    H.tableHeaderClick("Created At");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclude…").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Months of the year…").click();
-
-    H.popover()
-      .should("contain", "Months of the year…")
-      .and("contain", "January");
-  });
-});
-
-describe("issue 29094", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("disallows adding a filter using non-boolean custom expression (metabase#29094)", () => {
-    H.startNewQuestion();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
-    });
-
-    H.getNotebookStep("filter")
-      .findByText("Add filters to narrow your answer")
-      .click();
-
-    H.popover().within(() => {
-      cy.findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({ formula: "[Tax] * 22" });
-      cy.realPress("Tab");
-      cy.button("Done").should("be.disabled");
-      cy.findByText("Types are incompatible.").should("exist");
-    });
-  });
-});
-
 describe("issue 30312", () => {
   const CREATED_AT_BREAKOUT = [
     "field",
@@ -461,7 +469,7 @@ describe("issue 30312", () => {
   });
 });
 
-describe("issue 31340", () => {
+describe("issue 31340 + 32985", () => {
   const LONG_COLUMN_NAME =
     "Some very very very very long column name that should have a line break";
 
@@ -470,7 +478,7 @@ describe("issue 31340", () => {
     cy.signInAsAdmin();
 
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
-    cy.intercept("GET", "/api/field/*/search/*").as("search");
+    cy.intercept("GET", `/api/field/${PEOPLE.PASSWORD}/search/*`).as("search");
 
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
@@ -486,69 +494,6 @@ describe("issue 31340", () => {
       .blur();
     cy.wait("@fieldUpdate");
 
-    H.createQuestion(
-      {
-        query: {
-          "source-table": PEOPLE_ID,
-          limit: 2,
-        },
-      },
-      { visitQuestion: true },
-    );
-  });
-
-  it("should properly display long column names in filter options search results (metabase#31340)", () => {
-    H.tableHeaderClick(LONG_COLUMN_NAME);
-
-    H.popover().findByText("Filter by this column").click();
-    H.selectFilterOperator("Is");
-    H.popover().within(() => {
-      cy.findByPlaceholderText(`Search by ${LONG_COLUMN_NAME}`).type(
-        "nonexistingvalue",
-      );
-      cy.wait("@search");
-    });
-  });
-});
-
-describe("issue 34794", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not crash when navigating to filter popover's custom expression section (metabase#34794)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("Created At").click();
-      cy.icon("chevronleft").click(); // go back to the main filter popover
-      cy.findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("[Total] > 10").format();
-      cy.button("Done").click();
-    });
-
-    H.getNotebookStep("filter")
-      .findByText("Total is greater than 10")
-      .should("be.visible");
-  });
-});
-describe("metabase#32985", () => {
-  const questionDetails = {
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-    type: "query",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not crash when searching large field values sets in filters popover (metabase#32985)", () => {
     // we need to mess with the field metadata to make the field values crazy
     cy.request("PUT", `/api/field/${REVIEWS.REVIEWER}`, {
       semantic_type: "type/PK",
@@ -560,8 +505,16 @@ describe("metabase#32985", () => {
       fk_target_field_id: REVIEWS.REVIEWER,
     });
 
-    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(
+      { query: { "source-table": PEOPLE_ID, limit: 2 } },
+      { wrapId: true, visitQuestion: true },
+    );
+  });
 
+  it("should search field values without crashing and display long column names (metabase#32985, metabase#31340)", () => {
+    cy.log(
+      "should not crash when searching large field values sets (metabase#32985)",
+    );
     H.tableHeaderClick("Email");
 
     H.popover().within(() => {
@@ -572,6 +525,62 @@ describe("metabase#32985", () => {
       .should("have.length", 2)
       .last()
       .findByText("No matching Email found.")
+      .should("be.visible");
+
+    cy.log(
+      "should display long column names in search results (metabase#31340)",
+    );
+    H.visitQuestion("@questionId");
+    H.tableHeaderClick(LONG_COLUMN_NAME);
+
+    H.popover().findByText("Filter by this column").click();
+    H.selectFilterOperator("Is");
+    H.popover().within(() => {
+      cy.findByPlaceholderText(`Search by ${LONG_COLUMN_NAME}`).type(
+        "nonexistingvalue",
+      );
+      cy.wait("@search");
+    });
+
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText(`No matching ${LONG_COLUMN_NAME} found.`)
+      .should("be.visible")
+      .and(([message]) => {
+        expect(message.scrollWidth).to.be.lte(message.clientWidth);
+      });
+  });
+});
+
+describe("issue 29094 + 34794", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should reach the custom expression section after going back and reject non-boolean expressions (metabase#29094, metabase#34794)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.icon("chevronleft").click(); // go back to the main filter popover
+      cy.findByText("Custom Expression").click();
+
+      H.enterCustomColumnDetails({ formula: "[Tax] * 22" });
+      cy.realPress("Tab");
+      cy.button("Done").should("be.disabled");
+      cy.findByText("Types are incompatible.").should("exist");
+
+      H.CustomExpressionEditor.clear();
+      H.CustomExpressionEditor.type("[Total] > 10").format();
+      cy.findByText("Types are incompatible.").should("not.exist");
+      cy.button("Done").click();
+    });
+
+    H.getNotebookStep("filter")
+      .findByText("Total is greater than 10")
       .should("be.visible");
   });
 });
@@ -737,59 +746,6 @@ describe("issue 44435", () => {
   });
 });
 
-// This reproduction can possibly be replaced with the unit test for the `ListField` component in the future
-describe("issue 45877", () => {
-  beforeEach(() => {
-    H.restore("setup");
-    cy.signInAsAdmin();
-  });
-
-  it("should not render selected boolean option twice in a filter dropdown (metabase#45877)", () => {
-    const questionDetails = {
-      name: "45877",
-      native: {
-        query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
-        "template-tags": {
-          expected_invoice: {
-            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
-            dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
-            name: "expected_invoice",
-            "display-name": "Expected Invoice",
-            type: "dimension",
-            "widget-type": "string/=",
-          },
-        },
-      },
-    };
-
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    H.filterWidget().should("contain", "Expected Invoice").click();
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Search the list").should("exist");
-
-      cy.findAllByLabelText("true")
-        .should("have.length", 1)
-        .and("not.be.checked");
-      cy.findAllByLabelText("false")
-        .should("have.length", 1)
-        .and("not.be.checked")
-        .click();
-
-      cy.button("Add filter").click();
-    });
-
-    // We don't even have to run the query to reproduce this issue
-    // so let's not waste time and resources doing so.
-    cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    H.filterWidget().should("contain", "false").click();
-    H.popover().within(() => {
-      cy.findAllByLabelText("true").should("have.length", 1);
-      cy.findAllByLabelText("false")
-        .should("have.length", 1)
-        .should("be.checked");
-    });
-  });
-});
 describe("Issue 48851", () => {
   beforeEach(() => {
     H.restore();
@@ -818,151 +774,6 @@ describe("Issue 48851", () => {
       .type(manyValues, { force: true, timeout: 0 });
 
     H.popover().button("Add filter").should("be.visible");
-  });
-});
-
-describe("issue 49321", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not require multiple clicks to apply a filter (metabase#49321)", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("Title").click();
-      cy.findByText("Is").click();
-    });
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover().last().findByText("Contains").click();
-
-    H.popover().then(($popover) => {
-      const { width } = $popover[0].getBoundingClientRect();
-      cy.wrap(width).as("initialWidth");
-    });
-
-    H.popover()
-      .findByPlaceholderText("Enter some text")
-      .type("aaaaaaaaaa, bbbbbbbbbbb,");
-
-    cy.get("@initialWidth").then((initialWidth) => {
-      H.popover().should(($popover) => {
-        const { width } = $popover[0].getBoundingClientRect();
-        expect(width).to.eq(initialWidth);
-      });
-    });
-  });
-});
-
-describe("issue 49642", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  const QUESTION = {
-    name: "Issue 49642",
-    query: {
-      "source-table": PEOPLE_ID, // people has >1000 rows
-    },
-  };
-
-  it("should allow searching for more values when the filter contains more than 1000 values (metabase#49642)", () => {
-    H.createDashboard().then(({ body: dashboard }) => {
-      H.visitDashboard(dashboard.id);
-    });
-    H.editDashboard();
-
-    H.createQuestion(QUESTION);
-    addQuestion(QUESTION.name);
-
-    H.setFilter("Text or Category", "Is");
-    mapFilterToQuestion("Name");
-    H.sidebar().findByText("A single value").click();
-
-    H.saveDashboard();
-
-    H.filterWidget().click();
-    H.dashboardParametersPopover().within(() => {
-      cy.findByText("Zackery Bailey").should("not.exist");
-      cy.findByPlaceholderText("Search the list").type("Zackery");
-      cy.findByText("Zackery Bailey").should("be.visible");
-      cy.findByText("Zackery Kuhn").should("be.visible").click();
-
-      cy.findByPlaceholderText("Search the list").should(
-        "have.value",
-        "Zackery Kuhn",
-      );
-
-      cy.findByText("Zackery Bailey").should("not.exist");
-    });
-  });
-
-  function addQuestion(name) {
-    H.openQuestionsSidebar();
-    cy.findByTestId("add-card-sidebar").findByText(name).click();
-  }
-
-  const mapFilterToQuestion = (column = "Category") => {
-    cy.findByText("Select…").click();
-    H.popover().within(() => cy.findByText(column).click());
-  };
-});
-
-describe("issue 44665", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should use the correct widget for the default value picker (metabase#44665)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from {{param");
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar()
-      .last()
-      .within(() => {
-        cy.findByText("Search box").click();
-        cy.findByText("Edit").click();
-      });
-
-    H.modal().within(() => {
-      cy.findByText("Custom list").click();
-      cy.findByRole("textbox").type("foo\nbar\nbaz\nfoobar");
-      cy.button("Done").click();
-    });
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar().last().findByText("Enter a default value…").click();
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Enter a default value…")
-        .should("be.visible")
-        .type("foo");
-      cy.findByText("foo").should("be.visible");
-      cy.findByText("foobar").should("be.visible");
-
-      cy.findByText("bar").should("not.exist");
-      cy.findByText("baz").should("not.exist");
-    });
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar()
-      .last()
-      .within(() => {
-        cy.findByText("Enter a default value…").click();
-        cy.findByText("Dropdown list").click();
-        cy.findByText("Enter a default value…").click();
-      });
-
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Enter a default value…").should("be.visible");
-
-      cy.findByText("foo").should("be.visible");
-      cy.findByText("bar").should("be.visible");
-      cy.findByText("baz").should("be.visible");
-      cy.findByText("foobar").should("be.visible");
-    });
   });
 });
 
@@ -1053,6 +864,11 @@ describe("issue QUE-1359", () => {
 describe("issue QUE-2567", () => {
   beforeEach(() => {
     H.restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+      coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+      semantic_type: null,
+    });
     cy.signInAsNormalUser();
 
     H.createQuestion(
@@ -1093,7 +909,7 @@ describe("issue QUE-2567", () => {
     });
   });
 
-  it("should be possible to edit a datetime filter that is based on a custom expression (QUE-2567)", () => {
+  it("should be possible to edit a datetime filter that is based on a custom expression or a coerced column (QUE-2567)", () => {
     cy.log("Editing the filter should show the date picker");
     cy.findAllByTestId("filter-pill").should("have.length", 2).eq(0).click();
     H.popover().within(() => {
@@ -1111,17 +927,10 @@ describe("issue QUE-2567", () => {
       cy.findByText("Current").should("be.visible");
       cy.findByText("Next").should("be.visible");
     });
-  });
-});
 
-describe("issue QUE-2567 (bis)", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
-      coercion_strategy: "Coercion/UNIXSeconds->DateTime",
-      semantic_type: null,
-    });
+    cy.log(
+      "Editing the filter should show the date picker for coerced columns",
+    );
     H.openOrdersTable();
 
     H.filter();
@@ -1129,10 +938,7 @@ describe("issue QUE-2567 (bis)", () => {
       cy.findByText("Quantity").click();
       cy.findByText("Previous 12 months").click();
     });
-  });
 
-  it("should open the datetime filter for coerced columns", () => {
-    cy.log("Editing the filter should show the date picker");
     cy.findByTestId("filter-pill").click();
     H.popover().within(() => {
       cy.findByText("Previous").should("be.visible");

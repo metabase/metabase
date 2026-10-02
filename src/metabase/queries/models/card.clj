@@ -2,6 +2,7 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
+   [better-cond.core :as b]
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -32,6 +33,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.pulse.core :as pulse]
+   [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
@@ -111,7 +113,7 @@
 
 (defmethod metrics/dimensions-initialized? :metadata/metric
   [metric]
-  (some? (:dimensions (queries.db/card-dimensions (:id metric)))))
+  (some? (:dimensions (queries.db/raw-card-dimensions (:id metric)))))
 
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
@@ -406,20 +408,27 @@
              (not (contains? #{"question" :question} (:type changes))))
         (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
+(defn- other-dashboard-id->name
+  "Map of id to name for the dashboards `card` appears on, excluding its current dashboard and the one `changes`
+  targets."
+  [card changes]
+  (->> (t2/hydrate card :in_dashboards)
+       :in_dashboards
+       (remove #(contains? #{(:dashboard_id changes) (:dashboard_id card)} (:id %)))
+       (map (juxt :id :name))
+       (into {})))
+
 (defn- assert-is-valid-dashboard-internal-update [changes card]
-  (let [dashboard-id->name (->> (t2/hydrate card :in_dashboards)
-                                :in_dashboards
-                                (remove #(or (= (:id %)
-                                                (:dashboard_id changes))
-                                             (= (:id %)
-                                                (:dashboard_id card))))
-                                (map (juxt :id :name))
-                                (into {}))]
-    (when (and (:dashboard_id changes) (seq dashboard-id->name))
-      (throw (ex-info
-              (tru "Can''t move question into dashboard. Questions saved in dashboards can''t appear in other dashboards.")
-              {:status-code 400
-               :other-dashboards dashboard-id->name}))))
+  ;; Clients re-send the current `dashboard_id` on every save, so only a genuine move into a dashboard is checked
+  ;; (#82237).
+  (when (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
+             (:dashboard_id changes))
+    (let [dashboard-id->name (other-dashboard-id->name card changes)]
+      (when (seq dashboard-id->name)
+        (throw (ex-info
+                (tru "Can''t move question into dashboard. Questions saved in dashboards can''t appear in other dashboards.")
+                {:status-code 400
+                 :other-dashboards dashboard-id->name})))))
   (when-let [reason (invalid-dashboard-internal-card-update-reason? card changes)]
     (throw (ex-info reason {:status-code 400
                             :changes changes
@@ -546,6 +555,13 @@
   (when-let [action-ids (queries.db/implicit-action-ids-for-model model-id)]
     (queries.db/delete-actions! action-ids)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *update-baseline-select?*
+  "True when the select is being for the purposes of fetching the current baseline before diffing it in
+  [[t2/update!]]. This can be checked during [[t2/define-after-select]] to restrict certain logic to run only for
+  true, top-level `t2/select*` calls and not for the internal reads during an update."
+  false)
+
 ;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
 ;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
 ;;; function. We should move it all here or move it all there. Weird to split it up between two places.
@@ -614,9 +630,15 @@
   Metadata-provider fetches must be skipped: nothing consumes `:query_description` on lib metadata, and computing it
   resolves the metric's own `:metric` refs through the metadata provider, whose card fetches re-enter this
   after-select — with a cycle in the metric reference graph the recursion is unbounded and overflows the stack
-  (#74954)."
+  (#74954).
+
+  Column-restricted SELECTs are skipped too. `:query_description` is derived, not a column, so a caller that named
+  its columns cannot have been asking for it — and building the Lib query to compute it is expensive. This matters
+  because [[card-schema/schema-upgrade-triggers]] forces `:type` into every projection that reads a schema-governed column,
+  which would otherwise opt all of them in to a field none of them read."
   [card]
   (if-not (and (map? card)
+               (empty? (:columns t2.pipeline/*parsed-args*))
                (= :metric (:type card))
                (not (metadata-provider-fetch? card))
                (-> card :dataset_query not-empty)
@@ -676,33 +698,90 @@
       (assoc card :dimensions dimensions :dimension_mappings dimension-mappings))
     card))
 
-(defn- plausible-card-select?
-  "Whether `card` looks like it was SELECTed as a real Card row (as opposed to some sort of odd query, like an
-  aggregation over cards, that happens to run through the same after-select hook)."
+(defn- schema-governed-select?
+  "Whether `card` is a Card row SELECTed with any [[card-schema/schema-governed-columns]], and therefore holds a
+  stored representation an upgrade could rewrite.
+
+  A projection naming none of them — `[:id :name]`, `[:id :type :display]`, a `COUNT(*)` over `report_card` that
+  happens to run through this same after-select hook — has nothing to upgrade, so it is left alone and may SELECT
+  as narrow a set of columns as it likes. Anything that does name one must bring the rest of
+  [[card-schema/schema-upgrade-triggers]] along.
+
+  `:id` is required as well, and not as a formality: Card *revisions* are Card-shaped maps that go through this
+  same after-select, and `metabase.revisions.impl.card` deliberately drops `:id`, `:dimensions`, and
+  `:dimension_mappings` from the snapshot it stores. Those are historical records rather than live rows, so they
+  are left alone here; upgrading one would mean recomputing a dimension set for a card as it looked in the past."
   [card]
   (boolean (and (:id card)
-                (or (:dataset_query card)
-                    (:result_metadata card)
-                    (:database_id card)
-                    (:type card)))))
+                (some #(contains? card %) card-schema/schema-governed-columns))))
 
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
-  "Run the schema upgrades over a plausible Card row and normalize it. Only call this
-  when [[plausible-card-select?]] is true; other queries against `:report_card` should be returned as-is."
-  [card :- ::queries.schema/card]
-  (-> (if-not (:card_schema card)
-        ;; Plausible but no :card_schema - error.
-        (throw (ex-info "Cannot SELECT a Card without including :card_schema"
-                        {:card-id (:id card)}))
-        ;; Plausible and has the schema, so run the upgrades over it.
-        (loop [card card]
-          ;; Use >= to allow for downgrades.
-          (if (>= (:card_schema card) current-schema-version)
-            card
-            (let [new-version (inc (:card_schema card))]
-              (recur (assoc (upgrade-card-schema-to card new-version)
-                            :card_schema new-version))))))
-      (->> (lib/normalize ::queries.schema/card))))
+  "Run the schema upgrades over a Card row and normalize it."
+  ([card :- ::queries.schema/card]
+   (upgrade-card-schema-to-latest card *update-baseline-select?*))
+  ([card                    :- ::queries.schema/card
+    update-baseline-select? :- :boolean]
+   (->> (b/cond
+          ;; Nothing an upgrade could rewrite was SELECTed, so there is nothing to do and nothing to demand.
+          ;; `after-select` checks this too, to keep odd `report_card` queries out of here entirely.
+          (not (schema-governed-select? card))
+          card
+
+          ;; Fetching some of the "hot" parts of a card but not all of them - error!
+          :let [missing (remove #(contains? card %) card-schema/schema-upgrade-triggers)]
+          (seq missing)
+          (throw (ex-info "Cannot SELECT a Card with card_schema columns without all columns needed for an upgrade"
+                          {:card-id (:id card)
+                           :missing missing}))
+
+          ;; Skip the schema updates when the select is being done as the baseline for an UPDATE.
+          update-baseline-select?
+          card
+
+          ;; All gates passed, so run the schema upgrades.
+          :else
+          (loop [card card]
+            ;; Use >= to allow for downgrades.
+            (if (>= (:card_schema card) current-schema-version)
+              card
+              (let [new-version (inc (:card_schema card))]
+                (recur (assoc (upgrade-card-schema-to card new-version)
+                              :card_schema new-version))))))
+        (lib/normalize ::queries.schema/card))))
+
+(defn- migrate-schema-governed-columns
+  "Cards are upgraded to the current schema on read, in memory only.
+
+  The vital invariant is that `:card_schema`, `:dataset_query`, `:dimensions`, and the other
+  [[card-schema/schema-governed-columns]] are all upgraded together.
+
+  The superset [[card-schema/schema-upgrade-triggers]] includes other fields which are *read* during schema upgrades, without
+  themselves being updated in lockstep. If any of these change, then all the [[card-schema/schema-upgrade-triggers]] should be
+  updated too. Of course any incoming writes to e.g. `:dataset_query` will win over upgrading the old value.
+
+  Unrelated writes, e.g. to `:name` or `:collection_id`, don't cause the [[card-schema/schema-governed-columns]] to be updated."
+  [card original changes]
+  (let [stored-schema (:card_schema original)]
+    (if-not (and stored-schema
+                 ;; Use < to leave downgraded rows alone, matching [[upgrade-card-schema-to-latest]].
+                 (< stored-schema current-schema-version)
+                 (some #(contains? changes %) card-schema/schema-upgrade-triggers))
+      card
+      ;; Force the `update-baseline-select?` flag to false, since this runs inside the `t2/before-update` process.
+      ;; The schema upgrades are suppressed during `t2/update!` so that when it reads the baseline it sees the
+      ;; [[card-schema/schema-governed-columns]] as they are really stored, not post-upgrade. That's important for the `t2/update!`
+      ;; diff process.
+      ;; However, here we really do want to run the upgrades, so we can write back a card which is fully updated in
+      ;; lockstep.
+      (let [upgraded (upgrade-card-schema-to-latest
+                      (merge original changes {:card_schema (:card_schema original)})
+                      false)
+            ;; Keep the `upgraded` version of any [[card-schema/schema-governed-columns]], but prefer those in `changes`.
+            columns  (remove (set (keys changes)) card-schema/schema-governed-columns)
+            relevant (when (seq columns)
+                       (select-keys upgraded columns))]
+        (-> (merge card relevant)
+            (assoc :card_schema current-schema-version))))))
 
 (defonce ^:private unique-cards-with-blank-dataset-query
   (atom #{}))
@@ -735,7 +814,8 @@
 ;; changes, which likely indicates a bug.
 (methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Card]
   [query-type model]
-  (let [xform (next-method query-type model)]
+  (let [xform     (next-method query-type model)
+        baseline? (isa? query-type :toucan.query-type/select.instances.from-update)]
     (fn xform' [rf]
       (let [rf' (xform rf)]
         (fn rf''
@@ -743,8 +823,9 @@
           ([acc]
            (rf' acc))
           ([acc card]
-           (lib/with-card-clean-hook (partial mbql5-conversion-clean-callback card)
-             (rf' acc card))))))))
+           (binding [*update-baseline-select?* baseline?]
+             (lib/with-card-clean-hook (partial mbql5-conversion-clean-callback card)
+               (rf' acc card)))))))))
 
 (t2/define-after-select :model/Card
   [card]
@@ -759,7 +840,7 @@
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ;; At this point, the card should be at schema version 20 or higher.
-      (cond-> (plausible-card-select? card) upgrade-card-schema-to-latest)
+      (cond-> (schema-governed-select? card) upgrade-card-schema-to-latest)
       monitor-blank-dataset-query))
 
 (defn- normalize-card
@@ -829,12 +910,15 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (some-> card t2/changes normalize-card)
-        card    (normalize-card card)]
+  (let [changes  (some-> card t2/changes normalize-card)
+        ;; Captured before `normalize-card` rebinds `card`, so the migration below never depends on
+        ;; normalization preserving the instance's original.
+        original (t2/original card)
+        card     (normalize-card card)]
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
-        (assoc :card_schema current-schema-version)
+        (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
         (populate-result-metadata changes verified-result-metadata?)
@@ -1191,7 +1275,7 @@
   A card's `database_id` comes from its source card, so updating a dependent first preserves the old ID."
   [root-card-id old-db-id]
   (when-let [all-dep-ids (seq (graph/transitive (->SourceCardDependentsGraph) [root-card-id]))]
-    (let [id->card (m/index-by :id (queries.db/card-queries all-dep-ids))]
+    (let [id->card (m/index-by :id (queries.db/cards-queries-info all-dep-ids))]
       (into []
             (comp (map id->card)
                   (filter #(= (get-in % [:dataset_query :database]) old-db-id)))
@@ -1210,10 +1294,9 @@
         (doseq [{dep-id :id, dep-query :dataset_query} cards-to-update]
           (queries.db/update-card! dep-id {:dataset_query (assoc dep-query :database new-db-id)}))))))
 
-(defn update-card!
-  "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
-  included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
+(defn- update-card-in-db!
+  "Write `card-updates` to the Card and the rows that depend on it, in one transaction."
+  [card-before-update card-updates actor delete-old-dashcards?]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! (select-keys card-before-update [:collection_id :collection_position]) (select-keys card-updates [:collection_id :collection_position]))
@@ -1241,7 +1324,33 @@
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
-    (collection/check-for-remote-sync-update card-before-update))
+    (collection/check-for-remote-sync-update card-before-update)))
+
+(defn- retired-action-events
+  "The `[topic action]` pairs that announce how an update to a model retired its actions: `:event/action-delete` with
+  the old action for each of `actions-before` absent from `actions-after`, and `:event/action-update` with the new
+  action for each one that became archived."
+  [actions-before actions-after]
+  (let [id->after (m/index-by :id actions-after)]
+    (for [before actions-before
+          :let   [after (id->after (:id before))]
+          :when  (or (nil? after) (and (:archived after) (not (:archived before))))]
+      (if after
+        [:event/action-update after]
+        [:event/action-delete before]))))
+
+(defn update-card!
+  "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
+  included, otherwise the metadata will be saved to the database asynchronously. Publishes `:event/card-update`, plus
+  an action event for each action of a model that the update deletes or archives."
+  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
+  ;; The card hooks delete or archive a model's actions without events, so compare the actions before and after.
+  (let [actions-before (when (= :model (keyword (:type card-before-update)))
+                         (queries.db/actions-for-model (:id card-before-update)))]
+    (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
+    (when (seq actions-before)
+      (doseq [[topic action] (retired-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
+        (events/publish-event! topic {:object action :user-id api/*current-user-id*}))))
   ;; Fetch the updated Card from the DB
   (let [card (queries.db/card (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`
@@ -1432,7 +1541,7 @@
 (defmethod serdes/deserialization-dependencies "Card" [card]
   (card-deps false card))
 
-(defmethod serdes/descendants "Card" [_model-name id _opts]
+(defmethod serdes/descendants "Card" [_model-name id {:keys [skip-archived]}]
   (let [card               (queries.db/card id)
         query              (not-empty (:dataset_query card))
         source-cards       (some-> query lib/all-source-card-ids)
@@ -1448,7 +1557,11 @@
               (for [card-id parameters-card-id]
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
-                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+                {["NativeQuerySnippet" snippet-id] {"Card" id}})
+              ;; An Action points at its model, but the model doesn't reference its actions, so list them here.
+              (when (= :model (:type card))
+                (for [action-id (queries.db/action-ids-for-model id skip-archived)]
+                  {["Action" action-id] {"Card" id}}))))))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

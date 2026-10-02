@@ -521,6 +521,10 @@ export type TestOperatorSpec = {
   type: "operator";
   operator: string;
   args?: readonly TestExpressionSpec[];
+
+  // For an aggregation: the name of its result column, which a later stage
+  // refers to.
+  name?: string;
 };
 
 export type TestTemporalBucketSpec = {
