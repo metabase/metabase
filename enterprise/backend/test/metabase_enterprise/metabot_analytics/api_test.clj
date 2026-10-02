@@ -22,7 +22,7 @@
 
 (defn- insert-message!
   [{:keys [conversation-id created-at role profile-id total-tokens data data-version
-           deleted-at external-id finished]
+           deleted-at external-id finished finish-reason]
     :as   options
     :or   {data-version 2}}]
   (first (t2/insert-returning-pks!
@@ -36,6 +36,7 @@
                    :external_id     (or external-id (str (random-uuid)))}
             created-at       (assoc :created_at created-at)
             deleted-at       (assoc :deleted_at deleted-at)
+            finish-reason    (assoc :finish_reason finish-reason)
             (contains? options :finished) (assoc :finished finished)))))
 
 (defn- insert-usage!
@@ -602,6 +603,20 @@
           (is (= {:type "in_progress"} (:status (second messages))))
           (is (= [] (:parts (second messages))))
           (is (= 2 message_count)))))))
+
+(deftest get-conversation-detail-incomplete-status-test
+  (testing "a reply the provider cut off surfaces as an incomplete message"
+    (with-detail-conversation!
+      (fn [{:keys [insert! fetch]}]
+        (insert! {:role "user" :profile-id "p" :total-tokens 3
+                  :data [{:type "text" :text "a long question"}]})
+        (insert! {:role "assistant" :profile-id "internal" :total-tokens 9 :finished true
+                  :finish-reason "length" :data [{:type "text" :text "cut o"}]})
+        (let [messages (:messages (fetch))
+              status   (:status (second messages))]
+          (is (= {:type "incomplete" :finishReason "length"} status))
+          (is (not (contains? status :contextWindowFull))
+              "the backend does not derive whether the context window was full"))))))
 
 (deftest get-conversation-detail-feedback-on-discarded-attempt-test
   (testing "feedback on a regenerated-away attempt still resolves to that attempt's message"
