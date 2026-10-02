@@ -390,8 +390,9 @@
     ;; and whatever `:error-code` fits; pass those through unchanged.
     :error                 (if (:error chunk)
                              chunk
-                             {:type :error :error {:message    (:errorText chunk)
-                                                   :error-code "provider_error"}})
+                             (cond-> {:type :error :error {:message    (:errorText chunk)
+                                                           :error-code "provider_error"}}
+                               (:request-specific? chunk) (assoc :request-specific? true)))
     :text-start            {:type :text
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)

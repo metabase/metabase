@@ -108,18 +108,16 @@
   `errored?` covers the provider that fails without throwing: it streams an `:error` part and then ends the
   response normally, which [[report-aisdk-errors-xf]] has already recorded. Returning true keeps that from being
   overwritten by a success the stream did not earn."
-  ([conn-key provider-error thunk]
-   (with-health-recorded conn-key provider-error (constantly false) thunk))
-  ([conn-key provider-error errored? thunk]
-   (try
-     (let [result (thunk)]
-       (when-not (errored?)
-         (llm.health/record-success! conn-key))
-       result)
-     (catch Exception e
-       (when-let [failure @provider-error]
-         (llm.health/record-exception! conn-key failure))
-       (throw e)))))
+  [conn-key provider-error errored? thunk]
+  (try
+    (let [result (thunk)]
+      (when-not (errored?)
+        (llm.health/record-success! conn-key))
+      result)
+    (catch Exception e
+      (when-let [failure @provider-error]
+        (llm.health/record-exception! conn-key failure))
+      (throw e))))
 
 (defn context-window-tokens
   "Input context window (tokens) for a `connection-key/model` string, or nil when the
@@ -256,9 +254,10 @@
                       {:model  (:model tracking-opts "unknown")
                        :source (:tag tracking-opts "none")
                        :error  (:error part)})
-           (llm.health/record-failure! (:connection-key tracking-opts)
-                                       (:message (:error part))
-                                       false)
+           (when-not (:request-specific? part)
+             (llm.health/record-failure! (:connection-key tracking-opts)
+                                         (:message (:error part))
+                                         false))
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
@@ -610,13 +609,15 @@
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))
                          (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
-        provider-error (volatile! nil)]
+        provider-error (volatile! nil)
+        errored?       (volatile! false)]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count input)}
       (with-health-recorded
         connection-key
         provider-error
+        #(deref errored?)
         #(with-retries
            tracking-opts
            (fn []
@@ -633,6 +634,7 @@
                                   (when (= type :error)
                                     error))
                                 parts)]
+               (vreset! errored? (some? error))
                (cond
                  ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
                  ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
