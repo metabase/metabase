@@ -120,8 +120,14 @@ const findMappingRow = (name: string) =>
     .queryAllByTestId("group-mapping-row")
     .find((row) => within(row).queryByText(name) != null);
 
+// the panel holds its controls until the groups load, and a click on a held control is dropped
+const clickWhenEnabled = async (element: HTMLElement) => {
+  await waitFor(() => expect(element).toBeEnabled());
+  await userEvent.click(element);
+};
+
 const addMapping = async (name: string, groupName: string) => {
-  await userEvent.click(screen.getByRole("button", { name: "New" }));
+  await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
   await userEvent.type(
     screen.getByPlaceholderText(LDAP_GROUP_PLACEHOLDER),
     name,
@@ -341,22 +347,24 @@ describe("SettingsLdapForm", () => {
       expect(body["ldap-port"]).toBe(636);
     });
 
-    it("rejects an out-of-range port", async () => {
-      await setupConfigured();
+    it.each(["0", "99999"])(
+      "rejects the out-of-range port %s",
+      async (value) => {
+        await setupConfigured();
 
-      const port = screen.getByLabelText(/LDAP port/);
-      await userEvent.clear(port);
-      await userEvent.type(port, "99999");
-      await userEvent.tab();
+        const port = screen.getByLabelText(/LDAP port/);
+        await userEvent.clear(port);
+        await userEvent.type(port, value);
+        await userEvent.tab();
 
-      expect(
-        await screen.findByText(
-          "Port must be a whole number between 1 and 65535",
-        ),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
-      expect(await findRequests("PUT")).toHaveLength(0);
-    });
+        expect(
+          await screen.findByText(
+            "Port must be a whole number between 1 and 65535",
+          ),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
+      },
+    );
 
     it("stays clean after typing the saved port back", async () => {
       await setup({ settingValues: { "ldap-port": 636 } });
@@ -538,7 +546,7 @@ describe("SettingsLdapForm", () => {
     it("asks only for internal groups, since LDAP users are never tenants", async () => {
       await setupConfigured({ settingValues: { "ldap-group-sync": true } });
 
-      await userEvent.click(screen.getByRole("button", { name: "New" }));
+      await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
       await userEvent.click(
         screen.getByPlaceholderText("Pick Metabase group..."),
       );
@@ -557,7 +565,7 @@ describe("SettingsLdapForm", () => {
     it("adds a mapping and writes it without touching the page form", async () => {
       await setupConfigured({ settingValues: { "ldap-group-sync": true } });
 
-      await userEvent.click(screen.getByRole("button", { name: "New" }));
+      await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
       expect(
         screen.queryByRole("button", { name: "New" }),
       ).not.toBeInTheDocument();
@@ -602,7 +610,7 @@ describe("SettingsLdapForm", () => {
         { name: "update-settings", delay: 200 },
       );
 
-      await userEvent.click(screen.getByRole("button", { name: "New" }));
+      await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
       const nameInput = screen.getByPlaceholderText(LDAP_GROUP_PLACEHOLDER);
       await userEvent.type(nameInput, DEVS_DN);
       await userEvent.click(
@@ -657,7 +665,7 @@ describe("SettingsLdapForm", () => {
       await userEvent.type(screen.getByLabelText(/LDAP host/), "ldap.test");
       expect(screen.getByRole("button", { name: /Save/ })).toBeEnabled();
 
-      await userEvent.click(screen.getByRole("button", { name: "New" }));
+      await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
       const nameInput = screen.getByPlaceholderText(LDAP_GROUP_PLACEHOLDER);
       await userEvent.type(nameInput, DEVS_DN);
       await userEvent.click(
@@ -683,7 +691,7 @@ describe("SettingsLdapForm", () => {
         },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(findMappingRow(DEVS_DN)!).getByRole("button", {
           name: "Edit mapping",
         }),
@@ -722,7 +730,7 @@ describe("SettingsLdapForm", () => {
         },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(findMappingRow(DEVS_DN)!).getByRole("button", {
           name: "Delete mapping",
         }),

@@ -1,8 +1,11 @@
 const { H } = cy;
 
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import type { GroupListQuery } from "metabase-types/api";
 
 import { groupMappingCardHelpers } from "./shared/group-mapping-card";
+
+const { ADMIN_GROUP, NOSQL_GROUP, READONLY_GROUP } = USER_GROUPS;
 
 const {
   groupMappingSection,
@@ -91,24 +94,6 @@ describe(
       getLdapCard().findByText("Set up").should("exist");
     });
 
-    it("should block an out-of-range port without resetting the other fields", () => {
-      cy.visit("/admin/settings/authentication/ldap");
-
-      cy.findByLabelText(/LDAP Port/i)
-        .parent()
-        .parent()
-        .as("portSection");
-
-      enterLdapSettings();
-      enterLdapPort("0");
-
-      cy.get("@portSection")
-        .findByText("Port must be a whole number between 1 and 65535")
-        .should("be.visible");
-      cy.button("Save and enable").should("be.disabled");
-      cy.findByDisplayValue("localhost").should("exist");
-    });
-
     it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
@@ -188,6 +173,13 @@ describe(
           "Remove mapping and delete groups",
         );
         cy.wait(["@deleteGroup", "@deleteGroup"]);
+        // once the groups are gone, the surviving mappings are written again without them
+        cy.wait("@updateSettings")
+          .its("request.body.ldap-group-mappings")
+          .should("deep.equal", {
+            "cn=People1": [ADMIN_GROUP, NOSQL_GROUP],
+            "cn=People3": [READONLY_GROUP],
+          });
         mappingRow("cn=People1").should("contain", "Administrators, nosql");
         mappingRow("cn=People3")
           .should("contain", "readonly")

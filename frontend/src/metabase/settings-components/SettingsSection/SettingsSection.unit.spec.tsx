@@ -204,7 +204,6 @@ describe("SwitchSettingsSection", () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
-  // a caller building its note with `cond && <Note/>` passes `false` when the condition is off
   it("keeps Enter from submitting the form the card sits in", async () => {
     const onSubmit = jest.fn((event: React.FormEvent) =>
       event.preventDefault(),

@@ -1,8 +1,11 @@
 const { H } = cy;
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 import type { GroupListQuery } from "metabase-types/api";
 
 import { groupMappingCardHelpers } from "./shared/group-mapping-card";
+
+const { ADMIN_GROUP, NOSQL_GROUP, READONLY_GROUP } = USER_GROUPS;
 
 const {
   groupMappingSection,
@@ -189,7 +192,10 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
       // once the groups are gone, the surviving mappings are written again without them
       cy.wait("@updateSettings")
         .its("request.body.jwt-group-mappings")
-        .should("have.all.keys", "cn=People1", "cn=People3");
+        .should("deep.equal", {
+          "cn=People1": [ADMIN_GROUP, NOSQL_GROUP],
+          "cn=People3": [READONLY_GROUP],
+        });
       mappingRow("cn=People1").should("contain", "Administrators, nosql");
       mappingRow("cn=People3")
         .should("contain", "readonly")

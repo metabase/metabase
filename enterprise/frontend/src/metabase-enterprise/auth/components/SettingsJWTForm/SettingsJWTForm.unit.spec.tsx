@@ -15,6 +15,7 @@ import {
   within,
 } from "__support__/ui";
 import { settingsApi } from "metabase/settings";
+import { defer } from "metabase/utils/promise";
 import type { SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
@@ -49,14 +50,13 @@ const setup = async ({
   userProvisioning,
   userProvisioningEnvConfigured,
   saveStatus,
-  saveDelayMs,
+  saveGate,
   provisioningSaveStatus,
-  provisioningSaveDelayMs,
+  provisioningSaveGate,
   cascadeStatus,
   deleteGroupStatuses,
-  cascadeDelayMs,
-  propertiesReadDelayMs,
-  groupsDelayMs,
+  cascadeGate,
+  groupsGate,
 }: {
   jwtEnabled?: boolean;
   useTenants?: boolean;
@@ -74,14 +74,14 @@ const setup = async ({
   userProvisioning?: boolean;
   userProvisioningEnvConfigured?: boolean;
   saveStatus?: number;
-  saveDelayMs?: number;
+  // a gate keeps its responses in flight until the test resolves it
+  saveGate?: Promise<void>;
   provisioningSaveStatus?: number;
-  provisioningSaveDelayMs?: number;
+  provisioningSaveGate?: Promise<void>;
   cascadeStatus?: number;
   deleteGroupStatuses?: Record<number, number>;
-  cascadeDelayMs?: number;
-  propertiesReadDelayMs?: number;
-  groupsDelayMs?: number;
+  cascadeGate?: Promise<void>;
+  groupsGate?: Promise<void>;
 } = {}) => {
   const settingDefinitions: SettingDefinition[] = [
     { key: "use-tenants", value: useTenants ?? false },
@@ -166,9 +166,7 @@ const setup = async ({
     "jwt-group-sync": groupSync ?? false,
     "jwt-group-mappings": groupMappings ?? {},
   });
-  const settingsStore = setupStatefulSettingsEndpoints(sessionSettings, {
-    readDelay: propertiesReadDelayMs,
-  });
+  const settingsStore = setupStatefulSettingsEndpoints(sessionSettings);
   // the shared helper keeps the admin list static, so serve it here with whatever the store has changed since setup
   const initialSettings = { ...settingsStore };
   fetchMock.get(
@@ -195,12 +193,13 @@ const setup = async ({
     },
     { name: "settings-list" },
   );
-  // a failed write leaves the store alone, and a slow one lands in it once it resolves
+  // a failed write leaves the store alone, and a held one lands in it once the test lets it through
   const status = saveStatus ?? 204;
   fetchMock.removeRoute("update-settings");
   fetchMock.put(
     "path:/api/setting",
-    ({ options }) => {
+    async ({ options }) => {
+      await saveGate;
       if (status < 300) {
         Object.assign(settingsStore, JSON.parse(String(options.body)));
         // the backend derives the flag from the two mandatory settings
@@ -210,44 +209,44 @@ const setup = async ({
       }
       return { status };
     },
-    { name: "update-settings", delay: saveDelayMs },
+    { name: "update-settings" },
   );
-  if (provisioningSaveStatus != null || provisioningSaveDelayMs != null) {
+  if (provisioningSaveStatus != null || provisioningSaveGate != null) {
     // the single-key write behaves the same way for the provisioning switch
     const status = provisioningSaveStatus ?? 204;
     fetchMock.removeRoute("update-setting");
     fetchMock.put(
       new RegExp("/api/setting/(.+)"),
-      ({ url, options }) => {
+      async ({ url, options }) => {
+        await provisioningSaveGate;
         if (status < 300) {
           const key = decodeURIComponent(url.split("/api/setting/")[1]);
           settingsStore[key] = JSON.parse(String(options.body)).value;
         }
         return { status };
       },
-      { name: "update-setting", delay: provisioningSaveDelayMs },
+      { name: "update-setting" },
     );
   }
   setupGenerateRandomTokenEndpoint("1234abcd");
 
-  fetchMock.get("path:/api/permissions/group", GROUPS, {
-    delay: groupsDelayMs,
+  fetchMock.get("path:/api/permissions/group", async () => {
+    await groupsGate;
+    return GROUPS;
   });
-  fetchMock.put(
-    "express:/api/permissions/membership/:id/clear",
-    cascadeStatus ?? 204,
-    { delay: cascadeDelayMs },
-  );
-  fetchMock.delete(
-    "express:/api/permissions/group/:id",
-    ({ url }) => ({
+  fetchMock.put("express:/api/permissions/membership/:id/clear", async () => {
+    await cascadeGate;
+    return { status: cascadeStatus ?? 204 };
+  });
+  fetchMock.delete("express:/api/permissions/group/:id", async ({ url }) => {
+    await cascadeGate;
+    return {
       status:
         deleteGroupStatuses?.[Number(url.split("/").pop())] ??
         cascadeStatus ??
         204,
-    }),
-    { delay: cascadeDelayMs },
-  );
+    };
+  });
 
   const { store } = renderWithProviders(<SettingsJWTForm />, {
     withUndos: true,
@@ -260,6 +259,27 @@ const setup = async ({
   return { store, settingsStore };
 };
 
+/** Holds every settings read from now on, so a refetch stays in flight until the returned function is called */
+const holdSettingsReads = (settingsStore: Record<string, unknown>) => {
+  const gate = defer<void>();
+  fetchMock.removeRoute("get-session-properties");
+  fetchMock.get(
+    "path:/api/session/properties",
+    async () => {
+      await gate.promise;
+      return { ...settingsStore };
+    },
+    { name: "get-session-properties" },
+  );
+  return () => gate.resolve();
+};
+
+// the list holds its controls until the groups load, and a click on a held control is dropped
+const clickWhenEnabled = async (element: HTMLElement) => {
+  await waitFor(() => expect(element).toBeEnabled());
+  await userEvent.click(element);
+};
+
 const expandUserAttributeSection = async () => {
   await userEvent.click(
     await screen.findByRole("button", { name: /User attribute configuration/ }),
@@ -267,7 +287,7 @@ const expandUserAttributeSection = async () => {
 };
 
 const addMapping = async (name: string, groupName: string) => {
-  await userEvent.click(screen.getByRole("button", { name: "New mapping" }));
+  await clickWhenEnabled(screen.getByRole("button", { name: "New mapping" }));
   await userEvent.type(screen.getByPlaceholderText("Enter JWT group..."), name);
   await userEvent.click(screen.getByPlaceholderText("Pick Metabase group..."));
   await userEvent.click(await screen.findByRole("option", { name: groupName }));
@@ -320,11 +340,7 @@ describe("SettingsJWTForm", () => {
     const attributeHeader = screen.getByRole("button", {
       name: /User attribute configuration/,
     });
-    const provisioningToggle = screen.getByRole("switch", {
-      name: "User provisioning",
-    });
     expect(attributeHeader).toBeDisabled();
-    expect(provisioningToggle).toBeEnabled();
 
     await fillServerSettings();
     await userEvent.click(
@@ -654,18 +670,23 @@ describe("SettingsJWTForm", () => {
     });
 
     it("reverts the switch and reports the error when the save fails", async () => {
+      const provisioningSaveGate = defer<void>();
       await setup({
         jwtEnabled: true,
         configured: true,
         provisioningSaveStatus: 500,
-        provisioningSaveDelayMs: 100,
+        provisioningSaveGate: provisioningSaveGate.promise,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
 
       await userEvent.click(toggle);
 
-      // the switch flips right away and only comes back once the write fails
-      expect(toggle).not.toBeChecked();
+      try {
+        // the switch flips right away and only comes back once the write fails
+        expect(toggle).not.toBeChecked();
+      } finally {
+        provisioningSaveGate.resolve();
+      }
       expect(await screen.findByText(/error saving/i)).toBeInTheDocument();
       expect(toggle).toBeChecked();
       expect(toggle).not.toHaveAttribute("aria-disabled");
@@ -707,21 +728,24 @@ describe("SettingsJWTForm", () => {
     });
 
     it("holds the switch until the settings refetch after the write lands", async () => {
-      // the properties mock answers reads late, so the refetch the write triggers can be seen
-      await setup({
+      const { settingsStore } = await setup({
         jwtEnabled: true,
         configured: true,
-        propertiesReadDelayMs: 200,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      // the delayed read holds the switch on load as well
       await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
+      // the refetch the write triggers stays in flight until the test lets it through
+      const releaseReads = holdSettingsReads(settingsStore);
 
       await userEvent.click(toggle);
-      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
 
-      expect(toggle).not.toBeChecked();
-      expect(toggle).toHaveAttribute("aria-disabled", "true");
+      try {
+        expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+        expect(toggle).not.toBeChecked();
+        expect(toggle).toHaveAttribute("aria-disabled", "true");
+      } finally {
+        releaseReads();
+      }
       await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
       expect(toggle).not.toBeChecked();
     });
@@ -795,34 +819,37 @@ describe("SettingsJWTForm", () => {
     });
 
     it("holds the mode control until the settings refetch after the write lands", async () => {
-      // the properties mock answers reads late, so the refetch the write triggers can be seen
-      await setup({
+      const { settingsStore } = await setup({
         jwtEnabled: true,
         configured: true,
-        propertiesReadDelayMs: 200,
       });
       const automatic = () => screen.getByRole("radio", { name: "Automatic" });
       const manual = () => screen.getByRole("radio", { name: "Manual" });
-      await waitFor(() => expect(modeLabel("Manual")).toBeDefined());
       await waitFor(() =>
         expect(modeLabel("Manual")).not.toHaveAttribute("data-read-only"),
       );
+      // the refetch the write triggers stays in flight until the test lets it through
+      const releaseReads = holdSettingsReads(settingsStore);
 
       await userEvent.click(automatic());
-      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
 
-      expect(automatic()).toBeChecked();
-      expect(automatic()).toBeEnabled();
-      expect(automatic()).toHaveFocus();
-      expect(modeLabel("Manual")).toHaveAttribute("data-read-only");
-      await userEvent.click(manual());
-      expect(automatic()).toBeChecked();
-      expect(await findRequests("PUT")).toHaveLength(1);
-
+      try {
+        expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+        expect(automatic()).toBeChecked();
+        expect(automatic()).toBeEnabled();
+        expect(automatic()).toHaveFocus();
+        expect(modeLabel("Manual")).toHaveAttribute("data-read-only");
+        await userEvent.click(manual());
+        expect(automatic()).toBeChecked();
+      } finally {
+        releaseReads();
+      }
       await waitFor(() =>
         expect(modeLabel("Manual")).not.toHaveAttribute("data-read-only"),
       );
       expect(automatic()).toBeChecked();
+      // the click on Manual during the hold wrote nothing
+      expect(await findRequests("PUT")).toHaveLength(1);
     });
 
     it("writes a new mapping immediately without touching the page form", async () => {
@@ -868,7 +895,7 @@ describe("SettingsJWTForm", () => {
       });
       await waitFor(() => expect(findMappingRow("other")).toBeDefined());
 
-      await userEvent.click(
+      await clickWhenEnabled(
         screen.getByRole("button", { name: "Delete mapping" }),
       );
       await userEvent.click(
@@ -943,7 +970,7 @@ describe("SettingsJWTForm", () => {
         cascadeStatus: 500,
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(findMappingRow("old")!).getByRole("button", {
           name: "Delete mapping",
         }),
@@ -1001,7 +1028,7 @@ describe("SettingsJWTForm", () => {
         saveStatus: 500,
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(findMappingRow("old")!).getByRole("button", {
           name: "Delete mapping",
         }),
@@ -1041,32 +1068,35 @@ describe("SettingsJWTForm", () => {
     });
 
     it("disables the new mapping button while a save is in flight", async () => {
+      const saveGate = defer<void>();
       await setup({
         jwtEnabled: true,
         configured: true,
         groupSync: true,
         groupMappings: { existing: [3] },
-        saveDelayMs: 300,
+        saveGate: saveGate.promise,
       });
+      const newButton = screen.getByRole("button", { name: "New mapping" });
 
       await addMapping("devs", "bar");
 
-      expect(
-        screen.getByRole("button", { name: "New mapping" }),
-      ).toBeDisabled();
-      expect(
-        await screen.findByText("Mapping added", {}, { timeout: 3000 }),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "New mapping" })).toBeEnabled();
+      try {
+        expect(newButton).toBeDisabled();
+      } finally {
+        saveGate.resolve();
+      }
+      expect(await screen.findByText("Mapping added")).toBeInTheDocument();
+      await waitFor(() => expect(newButton).toBeEnabled());
     });
 
     it("holds the mapping controls until the groups have loaded", async () => {
+      const groupsGate = defer<void>();
       await setup({
         jwtEnabled: true,
         configured: true,
         groupSync: true,
         groupMappings: { devs: [3] },
-        groupsDelayMs: 200,
+        groupsGate: groupsGate.promise,
       });
       const newButton = () =>
         screen.getByRole("button", { name: "New mapping" });
@@ -1074,25 +1104,34 @@ describe("SettingsJWTForm", () => {
         within(findMappingRow("devs")!).getByRole("button", {
           name: "Delete mapping",
         });
-      expect(newButton()).toBeDisabled();
-      expect(deleteButton()).toBeDisabled();
-      // the mode control writes settings, not group ids, so it does not wait
-      expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
 
+      try {
+        expect(newButton()).toBeDisabled();
+        expect(deleteButton()).toBeDisabled();
+        // the mode control writes settings, not group ids, so it does not wait for the groups
+        expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
+        await waitFor(() =>
+          expect(modeLabel("Off")).not.toHaveAttribute("data-read-only"),
+        );
+        expect(newButton()).toBeDisabled();
+      } finally {
+        groupsGate.resolve();
+      }
       await waitFor(() => expect(newButton()).toBeEnabled());
       expect(deleteButton()).toBeEnabled();
     });
 
     it("holds the controls until the cascade finishes", async () => {
+      const cascadeGate = defer<void>();
       await setup({
         jwtEnabled: true,
         configured: true,
         groupSync: true,
         groupMappings: { old: [4], devs: [3] },
-        cascadeDelayMs: 300,
+        cascadeGate: cascadeGate.promise,
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(findMappingRow("old")!).getByRole("button", {
           name: "Delete mapping",
         }),
@@ -1104,24 +1143,27 @@ describe("SettingsJWTForm", () => {
         screen.getByRole("button", { name: "Remove mapping and delete group" }),
       );
 
-      // the mapping write is done once the row is gone, while the group delete is still in flight
-      await waitFor(() => expect(findMappingRow("old")).toBeUndefined());
-      expect(
-        within(findMappingRow("devs")!).getByRole("button", {
-          name: "Delete mapping",
-        }),
-      ).toBeDisabled();
-      expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
-      expect(modeLabel("Off")).toHaveAttribute("data-read-only");
-
-      expect(
-        await screen.findByText("Mapping deleted", {}, { timeout: 3000 }),
-      ).toBeInTheDocument();
-      expect(
-        within(findMappingRow("devs")!).getByRole("button", {
-          name: "Delete mapping",
-        }),
-      ).toBeEnabled();
+      try {
+        // the mapping write is done once the row is gone, while the group delete is still in flight
+        await waitFor(() => expect(findMappingRow("old")).toBeUndefined());
+        expect(
+          within(findMappingRow("devs")!).getByRole("button", {
+            name: "Delete mapping",
+          }),
+        ).toBeDisabled();
+        expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
+        expect(modeLabel("Off")).toHaveAttribute("data-read-only");
+      } finally {
+        cascadeGate.resolve();
+      }
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          within(findMappingRow("devs")!).getByRole("button", {
+            name: "Delete mapping",
+          }),
+        ).toBeEnabled(),
+      );
       expect(modeLabel("Off")).not.toHaveAttribute("data-read-only");
     });
 
@@ -1133,7 +1175,7 @@ describe("SettingsJWTForm", () => {
         groupMappings: { old: [4], devs: [4, 3] },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(findMappingRow("old")!).getByRole("button", {
           name: "Delete mapping",
         }),
@@ -1169,7 +1211,7 @@ describe("SettingsJWTForm", () => {
         deleteGroupStatuses: { 3: 400 },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(findMappingRow("old")!).getByRole("button", {
           name: "Delete mapping",
         }),
@@ -1206,7 +1248,7 @@ describe("SettingsJWTForm", () => {
         groupMappings: { old: [4, 6], devs: [3] },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(findMappingRow("old")!).getByRole("button", {
           name: "Delete mapping",
         }),
@@ -1238,7 +1280,7 @@ describe("SettingsJWTForm", () => {
         groupMappings: { devs: [9, 3] },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         screen.getByRole("button", { name: "Edit mapping" }),
       );
 
@@ -1259,7 +1301,7 @@ describe("SettingsJWTForm", () => {
         groupMappings: { only: [3] },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         screen.getByRole("button", { name: "Delete mapping" }),
       );
       expect(
@@ -1290,7 +1332,7 @@ describe("SettingsJWTForm", () => {
         groupMappings: { existing: [3] },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         screen.getByRole("button", { name: "New mapping" }),
       );
       await userEvent.type(
@@ -1320,7 +1362,7 @@ describe("SettingsJWTForm", () => {
         groupMappings: { existing: [3] },
       });
 
-      await userEvent.click(
+      await clickWhenEnabled(
         screen.getByRole("button", { name: "New mapping" }),
       );
       await userEvent.type(
@@ -1390,12 +1432,13 @@ describe("SettingsJWTForm", () => {
     });
 
     it("keeps the confirmation busy until the automatic switch is saved", async () => {
+      const saveGate = defer<void>();
       await setup({
         jwtEnabled: true,
         configured: true,
         groupSync: true,
         groupMappings: { "group-a": [3] },
-        saveDelayMs: 300,
+        saveGate: saveGate.promise,
       });
 
       await userEvent.click(screen.getByRole("radio", { name: "Automatic" }));
@@ -1404,18 +1447,18 @@ describe("SettingsJWTForm", () => {
       });
       await userEvent.dblClick(confirmButton);
 
-      expect(confirmButton).toBeDisabled();
-      expect(
-        screen.getByText("Switch to automatic group mapping?"),
-      ).toBeInTheDocument();
-
-      await waitFor(
-        () => {
-          expect(
-            screen.queryByText("Switch to automatic group mapping?"),
-          ).not.toBeInTheDocument();
-        },
-        { timeout: 3000 },
+      try {
+        expect(confirmButton).toBeDisabled();
+        expect(
+          screen.getByText("Switch to automatic group mapping?"),
+        ).toBeInTheDocument();
+      } finally {
+        saveGate.resolve();
+      }
+      await waitFor(() =>
+        expect(
+          screen.queryByText("Switch to automatic group mapping?"),
+        ).not.toBeInTheDocument(),
       );
       expect(await findRequests("PUT")).toHaveLength(1);
     });

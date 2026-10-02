@@ -91,7 +91,8 @@ describe("SettingsLdapForm (EE)", () => {
         "ldap-user-provisioning-enabled?": true,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      await waitFor(() => expect(toggle).toBeEnabled());
+      // the switch is held with aria-disabled while the settings load, which toBeEnabled cannot see
+      await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
       expect(toggle).toBeChecked();
 
       await userEvent.click(toggle);

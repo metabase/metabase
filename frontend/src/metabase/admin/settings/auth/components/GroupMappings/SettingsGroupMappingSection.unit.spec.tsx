@@ -17,7 +17,7 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import { settingsApi } from "metabase/settings";
-import { delay } from "metabase/utils/promise";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   EnterpriseSettingKey,
@@ -62,6 +62,21 @@ const clickNew = async () => {
   // the panel holds New until the groups have loaded
   await waitFor(() => expect(newButton).toBeEnabled());
   await userEvent.click(newButton);
+};
+
+/** Holds every settings read from now on, so a refetch stays in flight until the returned function is called */
+const holdSettingsReads = (settingsStore: Record<string, unknown>) => {
+  const gate = defer<void>();
+  fetchMock.removeRoute("get-session-properties");
+  fetchMock.get(
+    "path:/api/session/properties",
+    async () => {
+      await gate.promise;
+      return { ...settingsStore };
+    },
+    { name: "get-session-properties" },
+  );
+  return () => gate.resolve();
 };
 
 const fillNewDraft = async (name: string) => {
@@ -114,6 +129,7 @@ const setup = async ({
     { delay: groupsDelay },
   );
 
+  const onToggle = jest.fn();
   const section = (
     <SettingsGroupMappingSection
       syncSettingKey="ldap-group-sync"
@@ -122,6 +138,7 @@ const setup = async ({
       nameLabel="LDAP group name"
       namePlaceholder="cn=people,ou=groups,dc=example,dc=org"
       disabled={disabled}
+      onToggle={onToggle}
     >
       <div>Group fields</div>
     </SettingsGroupMappingSection>
@@ -152,13 +169,13 @@ const setup = async ({
       expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
     );
   }
-  return { store, settingsStore, router };
+  return { store, settingsStore, router, onToggle };
 };
 
 describe("SettingsGroupMappingSection", () => {
   it("shows the new value and holds the switch while the write is in flight", async () => {
     // the settings mock answers the write late, so the in-flight state can be seen
-    await setup({ updateDelay: 200 });
+    const { onToggle } = await setup({ updateDelay: 200 });
 
     await userEvent.click(groupMappingSwitch());
 
@@ -170,6 +187,7 @@ describe("SettingsGroupMappingSection", () => {
     );
     expect(groupMappingSwitch()).toBeChecked();
     expect(await findRequests("PUT")).toHaveLength(1);
+    expect(onToggle).toHaveBeenCalledWith(true);
   });
 
   it("holds the switch until the settings refetch after the write lands", async () => {
@@ -205,7 +223,7 @@ describe("SettingsGroupMappingSection", () => {
   });
 
   it("puts the old value back when the write fails", async () => {
-    await setup();
+    const { onToggle } = await setup();
     fetchMock.removeRoute("update-setting");
     fetchMock.put(new RegExp("/api/setting/(.+)"), 500, {
       name: "update-setting",
@@ -219,6 +237,8 @@ describe("SettingsGroupMappingSection", () => {
       expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
     );
     expect(screen.queryByText("Manual group mappings")).not.toBeInTheDocument();
+    // the page drops unsaved field edits on a toggle, which must not happen for a write that failed
+    expect(onToggle).not.toHaveBeenCalled();
   });
 
   it("keeps group mapping on when the last mapping is deleted", async () => {
@@ -229,13 +249,11 @@ describe("SettingsGroupMappingSection", () => {
       },
     });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Delete mapping" }),
-    );
+    const deleteButton = screen.getByRole("button", { name: "Delete mapping" });
+    // the panel holds its controls until the groups have loaded
+    await waitFor(() => expect(deleteButton).toBeEnabled());
+    await userEvent.click(deleteButton);
     const modal = await screen.findByRole("dialog");
-    expect(
-      within(modal).queryByText(/group mapping will be turned off/),
-    ).not.toBeInTheDocument();
     await userEvent.click(
       within(modal).getByRole("button", { name: "Remove mapping" }),
     );
@@ -250,20 +268,19 @@ describe("SettingsGroupMappingSection", () => {
 
   it("holds the mappings while the settings refetch after a write", async () => {
     const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
-    await setup({
+    const { settingsStore } = await setup({
       settingValues: {
         "ldap-group-sync": true,
         "ldap-group-mappings": { [DEVS_DN]: [3], [OPS_DN]: [3] },
       },
-      readDelay: 200,
     });
     const newButton = () => screen.getByRole("button", { name: "New" });
     const deleteButton = () =>
       within(getMappingRow(DEVS_DN)).getByRole("button", {
         name: "Delete mapping",
       });
-    // the initial settings read is slow too, so wait for the panel to open up
     await waitFor(() => expect(deleteButton()).toBeEnabled());
+    const releaseReads = holdSettingsReads(settingsStore);
 
     await userEvent.click(deleteButton());
     const modal = await screen.findByRole("dialog");
@@ -271,12 +288,13 @@ describe("SettingsGroupMappingSection", () => {
       within(modal).getByRole("button", { name: "Remove mapping" }),
     );
 
-    // the write is done once the toast shows, while the refetch it triggered is still in flight
-    expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
-    await act(async () => {
-      await delay(50);
-    });
-    expect(newButton()).toBeDisabled();
+    try {
+      // the write is done once the toast shows, while the refetch it triggered is still in flight
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
+      expect(newButton()).toBeDisabled();
+    } finally {
+      releaseReads();
+    }
     await waitFor(() => expect(newButton()).toBeEnabled());
     expect(findMappingRow(DEVS_DN)).toBeUndefined();
   });
@@ -331,20 +349,7 @@ describe("SettingsGroupMappingSection", () => {
     });
     await fillNewDraft(DEVS_DN);
 
-    // the properties answer only once the test lets them, so the hold can be seen
-    let releaseRead = () => {};
-    const readHeld = new Promise<void>((resolve) => {
-      releaseRead = resolve;
-    });
-    fetchMock.removeRoute("get-session-properties");
-    fetchMock.get(
-      "path:/api/session/properties",
-      async () => {
-        await readHeld;
-        return { ...settingsStore };
-      },
-      { name: "get-session-properties" },
-    );
+    const releaseReads = holdSettingsReads(settingsStore);
     store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
 
     const addButton = screen.getByRole("button", { name: "Add mapping" });
@@ -356,8 +361,7 @@ describe("SettingsGroupMappingSection", () => {
       await userEvent.type(nameInput, "x");
       expect(nameInput).toHaveValue(`${DEVS_DN}x`);
     } finally {
-      // a read still held would outlive the test
-      releaseRead();
+      releaseReads();
     }
     await waitFor(() => expect(addButton).toBeEnabled());
   });

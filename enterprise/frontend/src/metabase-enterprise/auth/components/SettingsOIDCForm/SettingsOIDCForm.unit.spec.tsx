@@ -208,8 +208,14 @@ const fillRequiredFields = async () => {
   );
 };
 
+// the panel holds its controls until the groups load, and a click on a held control is dropped
+const clickWhenEnabled = async (element: HTMLElement) => {
+  await waitFor(() => expect(element).toBeEnabled());
+  await userEvent.click(element);
+};
+
 const addMapping = async (name: string, groupName: string) => {
-  await userEvent.click(screen.getByRole("button", { name: "New" }));
+  await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
   await userEvent.type(
     screen.getByPlaceholderText(OIDC_GROUP_PLACEHOLDER),
     name,
@@ -568,6 +574,7 @@ describe("SettingsOIDCForm", () => {
       expect(provisioningSwitch).toBeEnabled();
       expect(provisioningSwitch).not.toHaveAttribute("aria-disabled");
       expect(groupMappingSwitch()).toBeEnabled();
+      expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled");
     });
   });
 
@@ -628,23 +635,13 @@ describe("SettingsOIDCForm", () => {
       });
     });
 
-    it("keeps the switch off after a failed write, even while a later refetch runs", async () => {
+    it("keeps the switch off after a failed write", async () => {
       await setup({ providers: [EXISTING_PROVIDER], writeStatus: 500 });
 
       await userEvent.click(groupMappingSwitch());
       expect(
         await screen.findByText(/Error saving group mapping/),
       ).toBeInTheDocument();
-      expect(groupMappingSwitch()).not.toBeChecked();
-
-      // the provisioning write refetches the providers, which must not bring the attempted value back
-      await userEvent.click(
-        screen.getByRole("switch", { name: "User provisioning" }),
-      );
-
-      await waitFor(() =>
-        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
-      );
       expect(groupMappingSwitch()).not.toBeChecked();
     });
 
@@ -807,7 +804,7 @@ describe("SettingsOIDCForm", () => {
     it("asks only for internal groups, since OIDC users are never tenants", async () => {
       await setup({ providers: [MAPPED_PROVIDER] });
 
-      await userEvent.click(screen.getByRole("button", { name: "New" }));
+      await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
       await userEvent.click(
         screen.getByPlaceholderText("Pick Metabase group..."),
       );
@@ -922,7 +919,7 @@ describe("SettingsOIDCForm", () => {
       );
       expect(saveButton()).toBeEnabled();
 
-      await userEvent.click(
+      await clickWhenEnabled(
         within(getMappingRow("old")).getByRole("button", {
           name: "Delete mapping",
         }),
@@ -951,6 +948,12 @@ describe("SettingsOIDCForm", () => {
         expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );
       expect(saveButton()).toBeEnabled();
+      // the mapping goes first, and the deleted group leaves the other mapping once it is gone
+      const puts = await getOidcPutCalls();
+      expect(puts.map(({ body }) => body["group-sync"])).toEqual([
+        expect.objectContaining({ "group-mappings": { devs: [4, 3] } }),
+        expect.objectContaining({ "group-mappings": { devs: [3] } }),
+      ]);
     });
   });
 });

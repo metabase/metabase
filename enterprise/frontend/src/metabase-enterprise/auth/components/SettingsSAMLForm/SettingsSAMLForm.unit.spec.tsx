@@ -15,37 +15,54 @@ import { SettingsSAMLForm } from "./SettingsSAMLForm";
 const GROUPS = [
   createMockGroup(),
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
-  createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
-  createMockGroup({ id: 4, name: "bar", magic_group_type: null }),
-  createMockGroup({ id: 5, name: "flamingos", magic_group_type: null }),
+  createMockGroup({ id: 3, name: "Engineering", magic_group_type: null }),
+  createMockGroup({ id: 4, name: "Marketing", magic_group_type: null }),
+  createMockGroup({ id: 5, name: "Sales", magic_group_type: null }),
 ];
 
 const SAML_GROUP_PLACEHOLDER = "Enter SAML group...";
 const ISSUER_EXAMPLE = "http://www.example.com/141xkex604w0Q5PN724v";
 
-type SetupOptions = { updateDelay?: number; readDelay?: number };
+const fields: { label: RegExp; value: string }[] = [
+  { label: /SAML Identity Provider URL/i, value: "https://example.test" },
+  {
+    label: /SAML Identity Provider Certificate/i,
+    value: "MIIDdDCCAlygAwIBAgIGAZKb9aJvMA0GCSqGSIb3DQEBCwUAMHsx",
+  },
+  { label: /SAML Identity Provider Issuer/i, value: "example.test.sso" },
+];
+
+const IDP_SETTINGS = {
+  "saml-enabled": true,
+  "saml-identity-provider-uri": "https://example.test",
+  "saml-identity-provider-certificate": fields[1].value,
+  "saml-identity-provider-issuer": fields[2].value,
+};
+
+// the backend reports SAML as configured once the URL and the certificate are saved
+const isSamlConfigured = (settings: Record<string, unknown>) =>
+  Boolean(
+    settings["saml-identity-provider-uri"] &&
+    settings["saml-identity-provider-certificate"],
+  );
 
 const setup = async (
-  settingValues?: Partial<EnterpriseSettings>,
+  settingValues: Partial<EnterpriseSettings> = {},
   settingDefinitions: SettingDefinition[] = [],
-  { updateDelay, readDelay }: SetupOptions = {},
 ) => {
-  const settings = createMockSettings(settingValues ?? {});
+  const settings = createMockSettings({
+    ...settingValues,
+    "saml-configured": isSamlConfigured(settingValues),
+  });
   setupSettingsEndpoints(settingDefinitions);
   // the switches and the mappings read their values back after saving, so the properties mock has to remember writes
-  const settingsStore = setupStatefulSettingsEndpoints(settings, {
-    updateDelay,
-    readDelay,
-  });
+  const settingsStore = setupStatefulSettingsEndpoints(settings);
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
-  // the page save lands in the same store, and the backend reports SAML as configured once the URL and certificate are saved
+  // the page save lands in the same store, and the configured flag follows it
   fetchMock.put("path:/api/saml/settings", ({ options }) => {
     Object.assign(settingsStore, JSON.parse(String(options.body)));
-    settingsStore["saml-configured"] = Boolean(
-      settingsStore["saml-identity-provider-uri"] &&
-      settingsStore["saml-identity-provider-certificate"],
-    );
+    settingsStore["saml-configured"] = isSamlConfigured(settingsStore);
     return { status: 204 };
   });
 
@@ -57,27 +74,7 @@ const setup = async (
 const setupConfigured = (
   settingValues?: Partial<EnterpriseSettings>,
   settingDefinitions?: SettingDefinition[],
-  options?: SetupOptions,
-) =>
-  setup(
-    { "saml-configured": true, ...settingValues },
-    settingDefinitions,
-    options,
-  );
-
-// Unjustified type cast. FIXME
-const fields = [
-  { label: /SAML Identity Provider URL/i, value: "https://example.test" },
-  { label: /SAML Identity Provider Certificate/i, value: "abc-123" },
-  { label: /SAML Identity Provider Issuer/i, value: "example.test.sso" },
-] as { label: RegExp; value: string }[];
-
-const IDP_SETTINGS = {
-  "saml-enabled": true,
-  "saml-identity-provider-uri": "https://example.test",
-  "saml-identity-provider-certificate": fields[1].value,
-  "saml-identity-provider-issuer": fields[2].value,
-};
+) => setup({ ...IDP_SETTINGS, ...settingValues }, settingDefinitions);
 
 const groupMappingSwitch = () =>
   screen.getByRole("switch", { name: "Group mapping" });
@@ -149,7 +146,7 @@ describe("SettingsSAMLForm", () => {
   });
 
   it("keeps the saved URL when the settings refetch after a save fails", async () => {
-    await setupConfigured(IDP_SETTINGS);
+    await setupConfigured();
     // a failed refetch leaves the pre-save settings in the cache
     fetchMock.removeRoute("get-session-properties");
     fetchMock.get("path:/api/session/properties", 500, {
@@ -309,10 +306,7 @@ describe("SettingsSAMLForm", () => {
 
   describe("user provisioning", () => {
     it("saves right away without touching the page form", async () => {
-      await setupConfigured({
-        ...IDP_SETTINGS,
-        "saml-user-provisioning-enabled?": true,
-      });
+      await setupConfigured({ "saml-user-provisioning-enabled?": true });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       expect(toggle).toBeChecked();
 
@@ -372,7 +366,7 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("stays editable while SAML is paused but configured", async () => {
-      await setupConfigured({ ...IDP_SETTINGS, "saml-enabled": false });
+      await setupConfigured({ "saml-enabled": false });
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
       expect(toggle).toBeEnabled();
@@ -452,7 +446,9 @@ describe("SettingsSAMLForm", () => {
       await userEvent.click(
         screen.getByPlaceholderText("Pick Metabase group..."),
       );
-      await userEvent.click(await screen.findByRole("option", { name: "bar" }));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Engineering" }),
+      );
       await userEvent.click(
         screen.getByRole("button", { name: "Add mapping" }),
       );
@@ -462,7 +458,7 @@ describe("SettingsSAMLForm", () => {
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(/\/api\/setting$/);
       expect(puts[0].body).toEqual({
-        "saml-group-mappings": { engineering: [4] },
+        "saml-group-mappings": { engineering: [3] },
       });
     });
 
@@ -502,7 +498,7 @@ describe("SettingsSAMLForm", () => {
     });
 
     it("saves the group attribute with the page form", async () => {
-      await setupConfigured({ ...IDP_SETTINGS, "saml-group-sync": true });
+      await setupConfigured({ "saml-group-sync": true });
 
       await userEvent.type(
         screen.getByRole("textbox", { name: /Group attribute name/ }),
@@ -522,7 +518,6 @@ describe("SettingsSAMLForm", () => {
 
     it("drops an unsaved group attribute edit when group mapping is turned off", async () => {
       await setupConfigured({
-        ...IDP_SETTINGS,
         "saml-group-sync": true,
         "saml-attribute-group": "groups",
       });
