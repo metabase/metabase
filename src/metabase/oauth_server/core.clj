@@ -28,6 +28,7 @@
  [metabase.oauth-server.query
   client-from-and-joins
   client-status-expr
+  client-token-holders-query
   live-token-count-expr
   live-token-user-count-expr
   user-holds-token-expr])

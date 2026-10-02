@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
@@ -13,14 +14,25 @@ import type { UserOption } from "metabase/common/components/UserPicker";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import {
+  SIDEBAR_WIDTH,
+  useDetailSidebarRouting,
+} from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { getTimePresetCutoff } from "metabase/monitor/time-presets";
-import { useLocation } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { Button, Flex, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useLazyListOAuthClientsQuery } from "metabase-enterprise/api";
-import { OAUTH_CLIENT_SORT_COLUMNS } from "metabase-types/api";
+import {
+  OAUTH_CLIENT_SORT_COLUMNS,
+  type OAuthClient,
+  type RevokeOAuthClientsRequest,
+} from "metabase-types/api";
 
+import { OAuthClientDetailSidebar } from "../OAuthClientDetailSidebar";
 import { OAuthClientsFilters } from "../OAuthClientsFilters";
 import { OAuthClientsTable } from "../OAuthClientsTable";
 import { OAuthClientsTabs } from "../OAuthClientsTabs";
@@ -30,13 +42,18 @@ import {
   DEFAULT_SORT_DIRECTION,
   PAGE_SIZE,
 } from "./constants";
+import type { RouteParams } from "./types";
 import { useClientRevocation } from "./use-client-revocation";
 import { buildListParams, urlStateConfig } from "./utils";
+
+const getClientId = (client: OAuthClient) => client.client_id;
 
 export const OAuthClientsPage = () => {
   usePageTitle(t`OAuth clients`);
 
   const location = useLocation();
+  const { clientId } = useParams<RouteParams>();
+  const { ref: containerRef, width: containerWidth } = useElementSize();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const clearSelection = useCallback(() => setRowSelection({}), []);
@@ -120,82 +137,138 @@ export const OAuthClientsPage = () => {
     [patchUrlState],
   );
 
-  const { isRevoking, confirmModal, revokeSelected, revokeAll } =
-    useClientRevocation({ onRevoked: clearSelection });
+  const {
+    navigateToItem: navigateToClient,
+    closeSidebar,
+    prevId: prevClientId,
+    nextId: nextClientId,
+    selectedItem: clientFromPage,
+  } = useDetailSidebarRouting({
+    items: clients,
+    getItemId: getClientId,
+    selectedId: clientId,
+    listPath: Urls.monitorOAuthClients(),
+    getDetailPath: Urls.monitorOAuthClientDetail,
+  });
+
+  const handleRevoked = useCallback(
+    (request: RevokeOAuthClientsRequest) => {
+      clearSelection();
+      // The current client survives every revoke, and an id list only ends the clients it names; a revoke by any
+      // other criteria may well have ended the one on screen, so the sidebar closes
+      const isShownClientKept =
+        clientFromPage?.current === true ||
+        (request.ids !== undefined &&
+          clientId !== undefined &&
+          !request.ids.includes(clientId));
+      if (clientId !== undefined && !isShownClientKept) {
+        navigateToClient(undefined);
+      }
+    },
+    [clearSelection, clientFromPage, clientId, navigateToClient],
+  );
+
+  const { isRevoking, confirmModal, revokeSelected, revokeAll, revokeClient } =
+    useClientRevocation({ onRevoked: handleRevoked });
 
   return (
     <>
-      <MonitorMain>
-        <MonitorHeaderTitle mb="sm">{t`OAuth clients`}</MonitorHeaderTitle>
+      <Flex ref={containerRef} h="100%" wrap="nowrap">
+        <MonitorMain>
+          <MonitorHeaderTitle mb="sm">{t`OAuth clients`}</MonitorHeaderTitle>
 
-        <OAuthClientsTabs
-          tab={urlState.tab}
-          onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
-        />
-
-        {isRevokedTab && (
-          <Text size="sm" c="text-secondary">
-            {t`Revoked clients are kept on record.`}
-          </Text>
-        )}
-
-        <Flex gap="md" align="center">
-          <DebouncedSearchInput
-            value={urlState.query}
-            placeholder={t`Search by name, client ID or redirect URI…`}
-            aria-label={t`Search OAuth clients`}
-            onChange={handleSearchChange}
+          <OAuthClientsTabs
+            tab={urlState.tab}
+            onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
           />
-          <OAuthClientsFilters
-            state={urlState}
-            selectedUser={selectedUser}
-            onChange={patchUrlState}
-          />
-          {!isRevokedTab && (
-            // Not disabled on an empty list: the action ignores the filters, so its enablement must not depend on
-            // them either, or a search matching nothing would disable a button that would revoke hundreds
-            <Button disabled={isRevoking} onClick={revokeAll}>
-              {t`Revoke all clients`}
-            </Button>
+
+          {isRevokedTab && (
+            <Text size="sm" c="text-secondary">
+              {t`Revoked clients are kept on record.`}
+            </Text>
           )}
-        </Flex>
 
-        <OAuthClientsTable
-          clients={clients}
-          error={error}
-          isFetching={isFetching}
-          isLoading={isLoading}
-          isRevokedTab={isRevokedTab}
-          page={urlState.page}
-          rowSelection={rowSelection}
-          sorting={sorting}
-          emptyLabel={
-            isRevokedTab
-              ? t`Clients you revoke will appear here.`
-              : t`No active clients`
-          }
-          onSortingChange={handleSortingChange}
-          onRowSelectionChange={setRowSelection}
-        />
-
-        {!isLoading && error === undefined && (
-          <Flex justify="end">
-            <PaginationControls
-              page={urlState.page}
-              pageSize={PAGE_SIZE}
-              itemsLength={clients.length}
-              total={total}
-              showTotal
-              onPreviousPage={() =>
-                patchUrlState({ page: urlState.page - 1 }, { immediate: true })
-              }
-              onNextPage={() =>
-                patchUrlState({ page: urlState.page + 1 }, { immediate: true })
-              }
+          <Flex gap="md" align="center">
+            <DebouncedSearchInput
+              value={urlState.query}
+              placeholder={t`Search by name, client ID or redirect URI…`}
+              aria-label={t`Search OAuth clients`}
+              onChange={handleSearchChange}
             />
+            <OAuthClientsFilters
+              state={urlState}
+              selectedUser={selectedUser}
+              onChange={patchUrlState}
+            />
+            {!isRevokedTab && (
+              // Not disabled on an empty list: the action ignores the filters, so its enablement must not depend on
+              // them either, or a search matching nothing would disable a button that would revoke hundreds
+              <Button disabled={isRevoking} onClick={revokeAll}>
+                {t`Revoke all clients`}
+              </Button>
+            )}
           </Flex>
+
+          <OAuthClientsTable
+            clients={clients}
+            error={error}
+            isFetching={isFetching}
+            isLoading={isLoading}
+            isRevokedTab={isRevokedTab}
+            page={urlState.page}
+            rowSelection={rowSelection}
+            sorting={sorting}
+            emptyLabel={
+              isRevokedTab
+                ? t`Clients you revoke will appear here.`
+                : t`No active clients`
+            }
+            onSortingChange={handleSortingChange}
+            onRowSelectionChange={setRowSelection}
+            onRowClick={navigateToClient}
+            selectedClientId={clientId}
+          />
+
+          {!isLoading && error === undefined && (
+            <Flex justify="end">
+              <PaginationControls
+                page={urlState.page}
+                pageSize={PAGE_SIZE}
+                itemsLength={clients.length}
+                total={total}
+                showTotal
+                onPreviousPage={() =>
+                  patchUrlState(
+                    { page: urlState.page - 1 },
+                    { immediate: true },
+                  )
+                }
+                onNextPage={() =>
+                  patchUrlState(
+                    { page: urlState.page + 1 },
+                    { immediate: true },
+                  )
+                }
+              />
+            </Flex>
+          )}
+        </MonitorMain>
+
+        {clientId !== undefined && (
+          <Sidebar containerWidth={containerWidth} defaultWidth={SIDEBAR_WIDTH}>
+            <OAuthClientDetailSidebar
+              clientId={clientId}
+              clientFromPage={clientFromPage}
+              prevClientId={prevClientId}
+              nextClientId={nextClientId}
+              isRevoking={isRevoking}
+              onNavigate={navigateToClient}
+              onRevokeClient={revokeClient}
+              onClose={closeSidebar}
+            />
+          </Sidebar>
         )}
-      </MonitorMain>
+      </Flex>
 
       <BulkActionBar
         opened={selectedCount > 0}

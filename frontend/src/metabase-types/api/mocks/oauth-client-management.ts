@@ -1,6 +1,8 @@
 import type {
   OAuthClient,
+  OAuthClientDetail,
   OAuthClientRevoker,
+  OAuthClientUser,
   RevokeOAuthClientsResponse,
 } from "metabase-types/api";
 
@@ -30,6 +32,27 @@ export const createMockOAuthClient = (
   live_tokens: 2,
   user_count: 1,
   current: false,
+  ...opts,
+});
+
+export const createMockOAuthClientUser = (
+  opts: Partial<OAuthClientUser> = {},
+): OAuthClientUser => ({
+  id: 3,
+  email: "user@example.com",
+  common_name: "Test User",
+  live_tokens: 1,
+  last_approved_at: "2026-09-01T12:00:00Z",
+  ...opts,
+});
+
+export const createMockOAuthClientDetail = (
+  opts: Partial<OAuthClientDetail> = {},
+): OAuthClientDetail => ({
+  ...createMockOAuthClient(),
+  scopes: ["mb:full"],
+  contacts: ["ops@claude.ai"],
+  users: [createMockOAuthClientUser()],
   ...opts,
 });
 

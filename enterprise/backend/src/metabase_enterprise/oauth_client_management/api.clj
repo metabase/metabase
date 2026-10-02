@@ -92,10 +92,9 @@
    [:email       :string]
    [:common_name [:maybe :string]]])
 
-(mr/def ::Client
-  "One registered client as the admin list shows it. Carries no hash and no secret."
-  [:map {:closed true}
-   [:client_id         :string]
+(def ^:private client-entries
+  "The entries of one registered client as the admin list shows it. Carries no hash and no secret."
+  [[:client_id         :string]
    [:client_name       [:maybe :string]]
    [:client_uri        [:maybe :string]]
    [:logo_uri          [:maybe :string]]
@@ -110,6 +109,29 @@
    [:live_tokens       ms/IntGreaterThanOrEqualToZero]
    [:user_count        ms/IntGreaterThanOrEqualToZero]
    [:current           :boolean]])
+
+(mr/def ::Client
+  "One registered client as the admin list shows it."
+  (into [:map {:closed true}] client-entries))
+
+(mr/def ::ClientUser
+  "One user a client holds a live token for. `last_approved_at` is null when the client holds a token of theirs with
+  no approval on record."
+  [:map {:closed true}
+   [:id               ms/PositiveInt]
+   [:email            :string]
+   [:common_name      [:maybe :string]]
+   [:live_tokens      ms/IntGreaterThanOrEqualToZero]
+   [:last_approved_at [:maybe ms/TemporalInstant]]])
+
+(mr/def ::ClientDetail
+  "One registered client as the detail view shows it: the list item plus what it registered — its scopes and
+  contacts — and who is holding its live tokens."
+  (into [:map {:closed true}]
+        (concat client-entries
+                [[:scopes   [:sequential :string]]
+                 [:contacts [:sequential :string]]
+                 [:users    [:sequential ::ClientUser]]])))
 
 (mr/def ::ClientsResponse
   [:map {:closed true}
@@ -139,17 +161,26 @@
    :registered-before (some-> registered-before u.date/parse)
    :registered-after  (some-> registered-after u.date/parse)})
 
+(defn- json-array
+  "The vector in `encoded`, a JSON array column, or `[]` for a null one."
+  ;; these columns are selected via raw SQL rather than through the model, so its JSON transforms don't apply
+  [encoded]
+  (or (some-> encoded json/decode) []))
+
+(defn- ->actor
+  "How this API names a person: `id`, `email` and the common name derived from `first-name`/`last-name`. Nil for a
+  nil `id`, which is how a left-joined row says it has nobody to name."
+  [id email first-name last-name]
+  (when id
+    (-> {:id id, :email email, :first_name first-name, :last_name last-name}
+        user/add-common-name
+        (select-keys [:id :email :common_name]))))
+
 (defn- revoked-by
   "The admin who revoked the client in `row`, or nil for an active client — or a revoked one whose admin has since
   been deleted, which nulls the FK."
   [{:keys [revoked_by_user_id revoked_by_email revoked_by_first_name revoked_by_last_name]}]
-  (when revoked_by_user_id
-    (-> {:id         revoked_by_user_id
-         :email      revoked_by_email
-         :first_name revoked_by_first_name
-         :last_name  revoked_by_last_name}
-        user/add-common-name
-        (select-keys [:id :email :common_name]))))
+  (->actor revoked_by_user_id revoked_by_email revoked_by_first_name revoked_by_last_name))
 
 (defn- ->response-item
   "One `::Client` from a [[metabase-enterprise.oauth-client-management.db/clients]] row, marked `current` when it is
@@ -162,19 +193,27 @@
    :client_name       client_name
    :client_uri        client_uri
    :logo_uri          logo_uri
-   ;; stored as a JSON array but selected via raw SQL, so the model's JSON transform doesn't apply
-   :redirect_uris     (or (some-> redirect_uris json/decode) [])
+   :redirect_uris     (json-array redirect_uris)
    :application_type  application_type
    :registration_type registration_type
    :created_at        created_at
    :status            status
    :revoked_at        revoked_at
    :revoked_by        (revoked-by row)
+   ;; `long` because a count comes back as whatever the driver's integer type is, and the response schema asks for
+   ;; a Clojure integer
    :live_tokens       (long live_tokens)
    :user_count        (long user_count)
    ;; compared in Clojure rather than as a SQL `CASE`, unlike the sessions list's `current`: that one compares a
    ;; hashed session key, which must never leave the database, while a `client_id` is already in every row
    :current           (= client_id current-client-id)})
+
+(defn- ->response-user
+  "One `::ClientUser` from a [[metabase-enterprise.oauth-client-management.db/client-token-holders]] row."
+  [{:keys [id email first_name last_name live_tokens last_approved_at]}]
+  (assoc (->actor id email first_name last_name)
+         :live_tokens      (long live_tokens)
+         :last_approved_at last_approved_at))
 
 (api.macros/defendpoint :get "/" :- ::ClientsResponse
   "List the OAuth clients registered against this instance, newest registration first. By default the active ones —
@@ -211,6 +250,26 @@
                                    (or sort-direction :desc)
                                    (System/currentTimeMillis)
                                    limit offset))}))
+
+(api.macros/defendpoint :get "/:client-id" :- ::ClientDetail
+  "One registered client: everything the list shows plus the `scopes` and `contacts` it registered with, and the
+  `users` it holds a live token for — each with how many they hold and when they last consented.
+
+  `scopes` is what the client registered, not what the OAuth endpoints will let it request. A revoked client is
+  returned, carrying when it was revoked and by whom. `current` marks it the same way the list does. Unknown is a
+  404. Superuser only."
+  [{:keys [client-id]} :- [:map {:closed true}
+                           [:client-id :string]]
+   _query-params
+   _body
+   {current-client-id :metabase/authed-oauth-client-id, :as _request}]
+  (api/check-superuser)
+  (let [now-ms (System/currentTimeMillis)
+        client (api/check-404 (ocm.db/client client-id now-ms))]
+    (assoc (->response-item current-client-id client)
+           :scopes   (json-array (:scopes client))
+           :contacts (json-array (:contacts client))
+           :users    (mapv ->response-user (ocm.db/client-token-holders client-id now-ms)))))
 
 (defn- record-revocation!
   "Write the audit trail for the `revocation` that `criteria` produced: one `:event/oauth-clients-revoked` summary row

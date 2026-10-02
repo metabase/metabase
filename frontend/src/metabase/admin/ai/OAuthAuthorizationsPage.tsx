@@ -15,6 +15,10 @@ import {
   useUrlState,
 } from "metabase/common/hooks/use-url-state";
 import { trackMonitorSectionClicked } from "metabase/common/monitor/analytics";
+import {
+  getOAuthEventTypeLabel,
+  isOAuthEventType,
+} from "metabase/common/utils/oauth";
 import CS from "metabase/css/core/index.css";
 import { useLocation } from "metabase/router";
 import { SettingsPageWrapper } from "metabase/settings-components";
@@ -40,11 +44,7 @@ import {
 import { useListOAuthAuthorizationsQuery } from "../settings/api/oauth";
 
 import S from "./OAuthAuthorizationsPage.module.css";
-import {
-  OAUTH_PAGE_SIZE,
-  getOAuthEventTypeLabel,
-  isOAuthEventType,
-} from "./oauth-utils";
+import { OAUTH_PAGE_SIZE } from "./oauth-utils";
 
 const ALL_EVENT_TYPES = "all";
 

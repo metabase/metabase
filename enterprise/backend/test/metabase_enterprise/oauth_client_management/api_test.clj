@@ -89,6 +89,9 @@
       (let [message (str "Session management is a paid feature not currently available to your instance. "
                          "Please upgrade to use it. Learn more at metabase.com/upgrade/")]
         (doseq [[method path body] [[:get "ee/oauth-client-management"]
+                                    ;; the premium gate is the route table's, so it answers before the lookup and
+                                    ;; any id will do
+                                    [:get (str "ee/oauth-client-management/" (random-uuid))]
                                     [:post "ee/oauth-client-management/revoke" {:ids []}]]
                 user               [:crowberto :rasta]]
           (testing (str method " " path " as " user)
@@ -99,9 +102,11 @@
                   (mt/client :get 402 "ee/oauth-client-management"))))))))
 
 (deftest permissions-test
-  (testing "both endpoints are superuser-only"
+  (testing "every endpoint is superuser-only"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "ee/oauth-client-management")))
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 (str "ee/oauth-client-management/" (random-uuid)))))
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "ee/oauth-client-management/revoke" {:ids []})))
     (is (map? (mt/user-http-request :crowberto :get 200 "ee/oauth-client-management")))))
@@ -463,6 +468,136 @@
         (testing "and the next page is the rest, with nothing shown twice or skipped"
           (is (= [oldest] (client-ids (list-clients :ids all :limit 2 :offset 2)))))))))
 
+(defn- get-client
+  "`GET /api/ee/oauth-client-management/:client-id` as crowberto."
+  [client-id & {:keys [expected-status] :or {expected-status 200}}]
+  (mt/user-http-request :crowberto :get expected-status (str "ee/oauth-client-management/" client-id)))
+
+(deftest detail-shape-test
+  (testing "the detail endpoint answers with the list item plus what the client registered: its scopes and contacts"
+    (with-clean-clients
+      (let [client-id (insert-client! :client_name                    "Reporting Bot"
+                                      :client_uri                     "https://bot.example.com"
+                                      :logo_uri                       "https://bot.example.com/logo.png"
+                                      :redirect_uris                  ["https://bot.example.com/cb"]
+                                      :application_type               "native"
+                                      :scopes                         ["mb:full" "agent:question:create"]
+                                      :contacts                       ["ops@bot.example.com" "security@bot.example.com"]
+                                      :client_secret_hash             "secret-hash-must-not-leak"
+                                      :registration_access_token_hash "rat-hash-must-not-leak")
+            item      (get-client client-id)]
+        (is (=? {:client_id         client-id
+                 :client_name       "Reporting Bot"
+                 :client_uri        "https://bot.example.com"
+                 :logo_uri          "https://bot.example.com/logo.png"
+                 :redirect_uris     ["https://bot.example.com/cb"]
+                 :application_type  "native"
+                 :registration_type "dynamic"
+                 :status            "active"
+                 :revoked_at        nil
+                 :revoked_by        nil
+                 :live_tokens       0
+                 :user_count        0
+                 :current           false
+                 :scopes            ["mb:full" "agent:question:create"]
+                 :contacts          ["ops@bot.example.com" "security@bot.example.com"]
+                 :users             []}
+                item))
+        (is (timestamp? (:created_at item)))
+        (testing "and nothing else — no hash and no secret"
+          (is (= #{:client_id :client_name :client_uri :logo_uri :redirect_uris :application_type
+                   :registration_type :created_at :status :revoked_at :revoked_by :live_tokens
+                   :user_count :current :scopes :contacts :users}
+                 (set (keys item))))
+          (is (not (str/includes? (str item) "must-not-leak"))))))))
+
+(deftest detail-empty-registration-test
+  (testing "a client that sent no contacts and registered no scopes reads as empty lists rather than null"
+    (with-clean-clients
+      (let [client-id (insert-client! :client_name nil, :client_uri nil, :contacts nil, :scopes [])]
+        (is (=? {:client_name nil
+                 :client_uri  nil
+                 :contacts    []
+                 :scopes      []}
+                (get-client client-id)))))))
+
+(deftest detail-unknown-client-test
+  (testing "an id nothing is registered under is a 404 rather than an empty client"
+    (is (= "Not found."
+           (get-client (str (random-uuid)) :expected-status 404)))))
+
+(defn- insert-approval!
+  "Record an `approved` event for `client-id` by `user-id` at `at` — the consent the detail view reports as that
+  user's last."
+  [client-id user-id at]
+  (t2/insert! :model/OAuthClientEvent {:oauth_client_id (t2/select-one-pk :model/OAuthClient :client_id client-id)
+                                       :user_id         user-id
+                                       :event_type      "approved"
+                                       :created_at      at}))
+
+(deftest detail-users-test
+  (testing "the detail names every user holding a live token, how many each holds, and when they last consented"
+    (mt/with-temp [:model/User {ada :id} {:email "ada@example.com", :first_name "Ada", :last_name "Admin"}
+                   :model/User {bo :id}  {:email "bo@example.com",  :first_name "Bo",  :last_name "Byte"}
+                   :model/User {cy :id}  {:email "cy@example.com"}
+                   :model/User {dee :id} {:email "dee@example.com", :first_name "Dee", :last_name "Dash"}]
+      (with-clean-clients
+        (let [client-id (insert-client!)
+              other     (insert-client!)]
+          (insert-access-token! client-id ada)
+          (insert-access-token! client-id ada)
+          (insert-access-token! client-id bo)
+          (insert-access-token! client-id dee)
+          ;; cy consented once but holds nothing that still works, so a revoke would cut nobody off on their behalf
+          (insert-access-token! client-id cy :revoked_at :%now)
+          (insert-access-token! client-id cy :expiry (- (now-ms) 1000))
+          (insert-approval! client-id cy  #t "2026-08-01T12:00:00Z")
+          ;; ada approved twice; the later one is this client's answer for her
+          (insert-approval! client-id ada #t "2026-09-01T12:00:00Z")
+          (insert-approval! client-id ada #t "2026-09-20T12:00:00Z")
+          (insert-approval! client-id bo  #t "2026-09-10T12:00:00Z")
+          ;; a different client bo approved later, which must not be read as bo's consent to this one
+          (insert-approval! other     bo  #t "2026-09-30T12:00:00Z")
+          (let [{:keys [users user_count live_tokens]} (get-client client-id)
+                by-email                               (into {} (map (juxt :email identity)) users)]
+            (testing "the users are the holders of live tokens, so they are the same ones the counts are over"
+              (is (= ["ada@example.com" "bo@example.com" "dee@example.com"] (mapv :email users)))
+              (is (= 3 user_count))
+              (is (= 4 live_tokens)))
+            (testing "each carries who they are and how many tokens of this client's they hold"
+              (is (=? [{:id ada, :email "ada@example.com", :common_name "Ada Admin", :live_tokens 2}
+                       {:id bo,  :email "bo@example.com",  :common_name "Bo Byte",   :live_tokens 1}
+                       {:id dee, :email "dee@example.com", :common_name "Dee Dash",  :live_tokens 1}]
+                      users)))
+            (testing "the last approval is the client's latest by that user, not their first nor another client's"
+              (is (timestamp? (:last_approved_at (by-email "ada@example.com"))))
+              (is (pos? (compare (:last_approved_at (by-email "ada@example.com"))
+                                 (:last_approved_at (by-email "bo@example.com"))))))
+            (testing "and nothing is invented for a user whose token predates any approval on record"
+              (is (nil? (:last_approved_at (by-email "dee@example.com")))))))))))
+
+(deftest detail-revoked-client-test
+  (testing "a revoked client is still returned, carrying when it went and who revoked it"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (with-clean-clients
+        (let [client-id (insert-client! :client_name "Gone")]
+          (insert-access-token! client-id user-id)
+          (insert-approval! client-id user-id #t "2026-09-01T12:00:00Z")
+          (revoke! [client-id])
+          (let [item (get-client client-id)]
+            (is (=? {:client_id   client-id
+                     :client_name "Gone"
+                     :status      "revoked"
+                     :live_tokens 0
+                     :user_count  0
+                     :revoked_by  {:id          (mt/user->id :crowberto)
+                                   :email       "crowberto@metabase.com"
+                                   :common_name "Crowberto Corv"}}
+                    item))
+            (is (timestamp? (:revoked_at item)))
+            (testing "and nobody is listed as holding a live token, because the revoke stamped them all"
+              (is (= [] (:users item))))))))))
+
 (deftest revoke-counts-test
   (testing "a revoke reports the clients it ended, the tokens that went with them, and whose grants those were"
     (mt/with-temp [:model/User {user-a :id} {}
@@ -730,6 +865,20 @@
           (testing "while a request that came with a session cookie has no current client at all"
             (is (=? [{:client_id current, :current false}]
                     (:data (list-clients :ids current))))))))))
+
+(deftest detail-marks-the-current-client-test
+  (testing "the detail marks `current` the same way the list does: both build their item from one presenter, so the
+            sidebar cannot disagree with the row it opened on"
+    (with-clean-clients
+      (with-public-flow-enabled
+        (let [{bearer :access-token, current :client-id} (bearer-for-admin!)
+              other                                     (insert-client! :client_name "Some Other Client")]
+          (is (=? {:client_id current, :current true}
+                  (as-bearer bearer :get 200 (str "ee/oauth-client-management/" current))))
+          (is (=? {:client_id other, :current false}
+                  (as-bearer bearer :get 200 (str "ee/oauth-client-management/" other))))
+          (testing "and a request that came with a session cookie has no current client at all"
+            (is (=? {:client_id current, :current false} (get-client current)))))))))
 
 (deftest exclude-current-test
   (testing "`exclude-current` is what stops an admin sweeping every client from cutting off the client they are

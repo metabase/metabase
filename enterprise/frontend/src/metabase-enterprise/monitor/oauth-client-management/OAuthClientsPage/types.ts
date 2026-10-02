@@ -1,5 +1,6 @@
 import type { MonitorTimePreset } from "metabase/monitor/time-presets";
 import type {
+  OAuthClientId,
   OAuthClientSortColumn,
   OAuthClientStatus,
   SortDirection,
@@ -19,4 +20,9 @@ export type OAuthClientsUrlState = {
   user: UserId | null;
   sort_column: OAuthClientSortColumn;
   sort_direction: SortDirection;
+};
+
+/** The sidebar is routed by the client it is open on, so page, tab and search stay in the query string. */
+export type RouteParams = {
+  clientId?: OAuthClientId;
 };

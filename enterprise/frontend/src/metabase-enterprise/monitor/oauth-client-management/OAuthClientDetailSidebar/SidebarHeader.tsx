@@ -7,20 +7,20 @@ import {
 import { ActionIcon, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { getSessionUserName } from "../utils";
+import { getOAuthClientName } from "../utils";
 
 import type { SidebarHeaderProps } from "./types";
 
 export const SidebarHeader = ({
-  sessionId,
-  session,
-  prevSessionId,
-  nextSessionId,
+  clientId,
+  client,
+  prevClientId,
+  nextClientId,
   onNavigate,
   onClose,
 }: SidebarHeaderProps) => {
   const handleCopyLink = useCopyDetailLink(
-    Urls.monitorSessionDetail(sessionId),
+    Urls.monitorOAuthClientDetail(clientId),
   );
 
   return (
@@ -29,15 +29,15 @@ export const SidebarHeader = ({
         <Group gap="sm">
           <SidebarNavButton
             direction="previous"
-            label={t`Previous session`}
-            disabled={prevSessionId === undefined}
-            onClick={() => prevSessionId && onNavigate(prevSessionId)}
+            label={t`Previous client`}
+            disabled={prevClientId === undefined}
+            onClick={() => prevClientId && onNavigate(prevClientId)}
           />
           <SidebarNavButton
             direction="next"
-            label={t`Next session`}
-            disabled={nextSessionId === undefined}
-            onClick={() => nextSessionId && onNavigate(nextSessionId)}
+            label={t`Next client`}
+            disabled={nextClientId === undefined}
+            onClick={() => nextClientId && onNavigate(nextClientId)}
           />
         </Group>
         <Group gap="sm">
@@ -60,13 +60,13 @@ export const SidebarHeader = ({
         </Group>
       </Flex>
 
-      {session && (
+      {client && (
         <Stack gap={0}>
           <Text size="sm" c="text-secondary">
-            {t`Session`}
+            {t`OAuth client`}
           </Text>
           <Title order={3} c="text-primary">
-            {getSessionUserName(session.user)}
+            {getOAuthClientName(client)}
           </Title>
         </Stack>
       )}

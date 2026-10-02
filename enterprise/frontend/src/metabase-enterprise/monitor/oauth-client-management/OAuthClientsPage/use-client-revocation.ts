@@ -11,7 +11,7 @@ import type {
 import { getOAuthClientName } from "../utils";
 
 type UseClientRevocationOptions = {
-  onRevoked: () => void;
+  onRevoked: (request: RevokeOAuthClientsRequest) => void;
 };
 
 export function useClientRevocation({ onRevoked }: UseClientRevocationOptions) {
@@ -78,5 +78,12 @@ export function useClientRevocation({ onRevoked }: UseClientRevocationOptions) {
     });
   }, [confirmRevoke]);
 
-  return { isRevoking, confirmModal, revokeSelected, revokeAll };
+  // One client from its detail sidebar is the selected-clients flow with a selection of one, so the confirmation is
+  // the same single-client copy the list shows
+  const revokeClient = useCallback(
+    (client: OAuthClient) => revokeSelected([client]),
+    [revokeSelected],
+  );
+
+  return { isRevoking, confirmModal, revokeSelected, revokeAll, revokeClient };
 }

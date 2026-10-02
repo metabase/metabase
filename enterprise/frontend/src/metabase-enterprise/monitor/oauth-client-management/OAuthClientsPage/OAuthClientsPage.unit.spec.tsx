@@ -3,8 +3,11 @@ import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
 
 import {
+  setupGetOAuthClientEndpoint,
+  setupGetOAuthClientNotFoundEndpoint,
   setupListOAuthClientsEndpoint,
   setupListOAuthClientsErrorEndpoint,
+  setupOAuthAuthorizationsEndpoint,
   setupPropertiesEndpoints,
   setupRevokeOAuthClientsEndpoint,
   setupRevokeOAuthClientsErrorEndpoint,
@@ -16,6 +19,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { getMonitorRoutes } from "metabase/monitor/routes";
 import { PLUGIN_MONITOR } from "metabase/plugins";
 import { resetPluginSlots } from "metabase/plugins/slot";
@@ -23,14 +27,20 @@ import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { getOAuthClientManagementRoutes } from "metabase-enterprise/monitor/oauth-client-management/routes";
 import type {
+  ListOAuthAuthorizationsResponse,
   OAuthClient,
+  OAuthClientDetail,
   OAuthClientListResponse,
   RevokeOAuthClientsResponse,
   UserListResult,
 } from "metabase-types/api";
 import {
+  createMockListOAuthAuthorizationsResponse,
+  createMockOAuthAuthorization,
   createMockOAuthClient,
+  createMockOAuthClientDetail,
   createMockOAuthClientRevoker,
+  createMockOAuthClientUser,
   createMockRevokeOAuthClientsResponse,
   createMockSettings,
   createMockTokenFeatures,
@@ -84,6 +94,7 @@ jest.mock("metabase/ui/components/data-display/TreeTable/TreeTable", () => {
       showCheckboxes,
       headerCheckboxAriaLabel,
       onHeaderCheckboxClick,
+      onRowClick,
       getRowProps,
     }: {
       instance: MockTreeTableInstance;
@@ -91,6 +102,7 @@ jest.mock("metabase/ui/components/data-display/TreeTable/TreeTable", () => {
       showCheckboxes?: boolean;
       headerCheckboxAriaLabel?: string;
       onHeaderCheckboxClick?: () => void;
+      onRowClick?: (row: MockTreeTableRow) => void;
       getRowProps?: (row: MockTreeTableRow) => Record<string, unknown>;
     }) => {
       const rows = instance.table.getRowModel().rows;
@@ -128,13 +140,22 @@ jest.mock("metabase/ui/components/data-display/TreeTable/TreeTable", () => {
             </div>
           ))}
           {rows.map((row) => (
-            <div key={row.id} role="row" {...getRowProps?.(row)}>
+            <div
+              key={row.id}
+              role="row"
+              onClick={() => onRowClick?.(row)}
+              {...getRowProps?.(row)}
+            >
               {showCheckboxes && row.getCanSelect() && (
                 <button
                   aria-label={
                     row.getIsSelected() ? "Deselect row" : "Select row"
                   }
-                  onClick={() => row.toggleSelected()}
+                  // the real table's checkbox does not also activate the row
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    row.toggleSelected();
+                  }}
                 />
               )}
               {row.getVisibleCells().map((cell) => (
@@ -150,12 +171,26 @@ jest.mock("metabase/ui/components/data-display/TreeTable/TreeTable", () => {
   };
 });
 
+// MonitorContent is here for the sidebar's portal; AppSwitcher and the resize handle are not what is under test.
+jest.mock("metabase/nav/components/AppSwitcher", () => ({
+  AppSwitcher: () => null,
+}));
+
+jest.mock("react-resizable", () => ({
+  ResizableBox: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
 const PATHNAME = Urls.monitorOAuthClients();
 
 type SetupOpts = {
   clients?: OAuthClient[];
   listOverrides?: Partial<OAuthClientListResponse>;
   listError?: boolean;
+  details?: OAuthClientDetail[];
+  detailNotFoundFor?: string;
+  activity?: ListOAuthAuthorizationsResponse;
   revokeResponse?: RevokeOAuthClientsResponse;
   revokeError?: boolean;
   initialRoute?: string;
@@ -171,6 +206,9 @@ const setup = ({
   clients = [createMockOAuthClient()],
   listOverrides = {},
   listError = false,
+  details = [],
+  detailNotFoundFor,
+  activity = createMockListOAuthAuthorizationsResponse({ data: [] }),
   revokeResponse,
   revokeError = false,
   initialRoute = PATHNAME,
@@ -182,6 +220,12 @@ const setup = ({
     setupListOAuthClientsEndpoint(clients, listOverrides);
   }
 
+  details.forEach(setupGetOAuthClientEndpoint);
+  if (detailNotFoundFor) {
+    setupGetOAuthClientNotFoundEndpoint(detailNotFoundFor);
+  }
+  setupOAuthAuthorizationsEndpoint(activity);
+
   if (revokeError) {
     setupRevokeOAuthClientsErrorEndpoint();
   } else {
@@ -190,16 +234,18 @@ const setup = ({
 
   setupUsersEndpoints(users);
 
+  const page = (
+    <MonitorContent>
+      <OAuthClientsPage />
+      <UndoListing />
+    </MonitorContent>
+  );
+
   return renderWithProviders(
-    <Route
-      path={PATHNAME}
-      element={
-        <>
-          <OAuthClientsPage />
-          <UndoListing />
-        </>
-      }
-    />,
+    <Route path={PATHNAME}>
+      <Route index element={page} />
+      <Route path=":clientId" element={page} />
+    </Route>,
     { withRouter: true, initialRoute },
   );
 };
@@ -217,6 +263,11 @@ const findLoadedTable = async () => {
   const table = await screen.findByTestId("oauth-clients-table");
   await waitFor(() => expect(table).toHaveAttribute("aria-busy", "false"));
   return table;
+};
+
+const lastActivityCallUrl = () => {
+  const calls = fetchMock.callHistory.calls("path:/api/oauth/authorizations");
+  return calls[calls.length - 1]?.url ?? "";
 };
 
 const lastRevokeBody = () => {
@@ -886,6 +937,466 @@ describe("OAuthClientsPage", () => {
     );
     expect(screen.queryByRole("row")).not.toBeInTheDocument();
     expect(screen.queryByText("No active clients")).not.toBeInTheDocument();
+  });
+
+  describe("the client detail sidebar", () => {
+    const CLIENT_ID = "client-abc";
+
+    /**
+     * Re-queried on every use rather than held: the sidebar is portalled, and a list refetch can replace the node a
+     * held reference points at, which leaves the assertion querying a detached subtree.
+     */
+    const sidebar = () => screen.getByTestId("oauth-client-detail-sidebar");
+
+    const openSidebar = async () => {
+      await findLoadedTable();
+      await userEvent.click(
+        screen.getByTestId(`oauth-client-row-${CLIENT_ID}`),
+      );
+      await screen.findByTestId("oauth-client-detail-sidebar");
+      // The sidebar opens on the row and the detail lands on top of it, so until a section is rendered it is still
+      // the loading state. Waiting here, with room for a loaded machine, is what keeps every assertion below
+      // reading a settled sidebar rather than racing those two requests.
+      await screen.findByTestId("oauth-client-details", undefined, {
+        timeout: 10000,
+      });
+    };
+
+    it("opens on the clicked client at its own URL, keeping the list's URL state", async () => {
+      const { router } = setup({
+        clients: [
+          createMockOAuthClient({
+            client_id: CLIENT_ID,
+            client_name: "Claude Code",
+          }),
+        ],
+        details: [
+          createMockOAuthClientDetail({
+            client_id: CLIENT_ID,
+            client_name: "Claude Code",
+          }),
+        ],
+        listOverrides: { total: PAGE_SIZE * 2 },
+        initialRoute: `${PATHNAME}?page=1`,
+      });
+
+      await openSidebar();
+
+      expect(within(sidebar()).getByText("Claude Code")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(`${PATHNAME}/${CLIENT_ID}`),
+      );
+      expect(router?.location.search).toContain("page=1");
+    });
+
+    it("shows what the client registered, including the scopes and contacts only the detail carries", async () => {
+      setup({
+        clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
+        details: [
+          createMockOAuthClientDetail({
+            client_id: CLIENT_ID,
+            client_uri: "https://bot.example.com",
+            contacts: ["ops@bot.example.com"],
+            application_type: "native",
+            registration_type: "dynamic",
+            redirect_uris: ["https://bot.example.com/cb"],
+            scopes: ["mb:full", "agent:question:create"],
+          }),
+        ],
+      });
+
+      await openSidebar();
+
+      // the row the list already had is shown first, so the detail's own fields are what settles last
+      expect(
+        await within(sidebar()).findByText("agent:question:create"),
+      ).toBeInTheDocument();
+      expect(within(sidebar()).getByText("Details")).toBeInTheDocument();
+      expect(within(sidebar()).getByText(CLIENT_ID)).toBeInTheDocument();
+      expect(
+        within(sidebar()).getByText("https://bot.example.com"),
+      ).toBeInTheDocument();
+      expect(
+        within(sidebar()).getByText("ops@bot.example.com"),
+      ).toBeInTheDocument();
+      expect(within(sidebar()).getByText("native")).toBeInTheDocument();
+      expect(within(sidebar()).getByText("Dynamic")).toBeInTheDocument();
+      expect(
+        within(sidebar()).getByText("https://bot.example.com/cb"),
+      ).toBeInTheDocument();
+      expect(within(sidebar()).getByText("mb:full")).toBeInTheDocument();
+    });
+
+    it("names each consenting user with how many live tokens they hold and when they last approved", async () => {
+      setup({
+        clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
+        details: [
+          createMockOAuthClientDetail({
+            client_id: CLIENT_ID,
+            users: [
+              createMockOAuthClientUser({
+                id: 1,
+                common_name: "Ada Admin",
+                live_tokens: 2,
+                last_approved_at: "2026-09-20T12:00:00Z",
+              }),
+              createMockOAuthClientUser({
+                id: 2,
+                common_name: null,
+                email: "bo@example.com",
+                live_tokens: 1,
+                last_approved_at: null,
+              }),
+            ],
+          }),
+        ],
+      });
+
+      await openSidebar();
+
+      expect(await within(sidebar()).findByText("Users")).toBeInTheDocument();
+      expect(
+        await within(sidebar()).findByText("Ada Admin"),
+      ).toBeInTheDocument();
+      expect(within(sidebar()).getByText("2 live tokens")).toBeInTheDocument();
+      expect(within(sidebar()).getByText("Last approved")).toBeInTheDocument();
+      // no name on record, so the user is named by the address a warning would go to
+      expect(within(sidebar()).getByText("bo@example.com")).toBeInTheDocument();
+      expect(within(sidebar()).getByText("1 live token")).toBeInTheDocument();
+      expect(
+        within(sidebar()).getByText("No approval on record"),
+      ).toBeInTheDocument();
+    });
+
+    it("says so when nobody is connected through the client", async () => {
+      setup({
+        clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
+        details: [
+          createMockOAuthClientDetail({ client_id: CLIENT_ID, users: [] }),
+        ],
+      });
+
+      await openSidebar();
+
+      expect(
+        await within(sidebar()).findByText(
+          "Nobody is connected through this client right now.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("says nobody is connected only once the detail has landed", async () => {
+      const detail = createMockOAuthClientDetail({
+        client_id: CLIENT_ID,
+        users: [],
+      });
+      // The detail is held until this test releases it, rather than delayed by a timer: what is under test is the
+      // order of two states, and a timer would make that a race with the renderer.
+      let landDetail: () => void = () => undefined;
+      const pendingDetail = new Promise<OAuthClientDetail>((resolve) => {
+        landDetail = () => resolve(detail);
+      });
+      // registered before setup, which leaves this path alone when it is given no details
+      fetchMock.get(
+        `path:/api/ee/oauth-client-management/${CLIENT_ID}`,
+        pendingDetail,
+      );
+      setup({
+        clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
+        initialRoute: `${PATHNAME}/${CLIENT_ID}`,
+      });
+
+      const users = await screen.findByTestId("oauth-client-users");
+
+      // the row the list handed over carries a count, not users, so there is nothing to say yet
+      expect(
+        within(users).queryByText(
+          "Nobody is connected through this client right now.",
+        ),
+      ).not.toBeInTheDocument();
+
+      landDetail();
+
+      expect(
+        await within(users).findByText(
+          "Nobody is connected through this client right now.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the client's own history, asking the authorization log for just this client", async () => {
+      setup({
+        clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
+        details: [createMockOAuthClientDetail({ client_id: CLIENT_ID })],
+        activity: createMockListOAuthAuthorizationsResponse({
+          data: [
+            createMockOAuthAuthorization({
+              id: 2,
+              event_type: "approved",
+              user_email: "ada@example.com",
+              created_at: "2026-09-20T12:00:00Z",
+            }),
+            createMockOAuthAuthorization({
+              id: 1,
+              event_type: "registered",
+              user_email: null,
+              created_at: "2026-09-01T12:00:00Z",
+            }),
+          ],
+          total: 2,
+        }),
+      });
+
+      await openSidebar();
+
+      // scoped to the section: "Registered" is also a Details label, for when the client registered
+      const activity = await within(sidebar()).findByTestId(
+        "oauth-client-activity",
+      );
+      expect(await within(activity).findByText("Approved")).toBeInTheDocument();
+      expect(within(activity).getByText("ada@example.com")).toBeInTheDocument();
+      expect(lastActivityCallUrl()).toContain(`client-id=${CLIENT_ID}`);
+      // newest first, as the endpoint returns them: the approval is above the registration it followed
+      expect(
+        within(activity)
+          .getAllByText(/^(Approved|Registered)$/)
+          .map((label) => label.textContent),
+      ).toEqual(["Approved", "Registered"]);
+    });
+
+    it("says so when the client has no history", async () => {
+      setup({
+        clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
+        details: [createMockOAuthClientDetail({ client_id: CLIENT_ID })],
+        activity: createMockListOAuthAuthorizationsResponse({
+          data: [],
+          total: 0,
+        }),
+      });
+
+      await openSidebar();
+
+      expect(
+        await within(sidebar()).findByText(
+          "No activity on record for this client.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows when a revoked client went and who revoked it, and offers no revoke", async () => {
+      setup({
+        clients: [
+          createMockOAuthClient({
+            client_id: CLIENT_ID,
+            status: "revoked",
+            revoked_at: "2026-09-20T09:00:00Z",
+            revoked_by: createMockOAuthClientRevoker({
+              common_name: "Ada Admin",
+            }),
+            live_tokens: 0,
+            user_count: 0,
+          }),
+        ],
+        details: [
+          createMockOAuthClientDetail({
+            client_id: CLIENT_ID,
+            status: "revoked",
+            revoked_at: "2026-09-20T09:00:00Z",
+            revoked_by: createMockOAuthClientRevoker({
+              common_name: "Ada Admin",
+            }),
+            live_tokens: 0,
+            user_count: 0,
+            users: [],
+          }),
+        ],
+        initialRoute: `${PATHNAME}?tab=revoked`,
+      });
+
+      await openSidebar();
+
+      expect(await within(sidebar()).findByText("Revoked")).toBeInTheDocument();
+      expect(within(sidebar()).getByText("Revoked by")).toBeInTheDocument();
+      expect(within(sidebar()).getByText("Ada Admin")).toBeInTheDocument();
+      expect(
+        within(sidebar()).queryByRole("button", { name: "Revoke client" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers no revoke on the client the caller is acting through", async () => {
+      setup({
+        clients: [
+          createMockOAuthClient({ client_id: CLIENT_ID, current: true }),
+        ],
+        details: [
+          createMockOAuthClientDetail({ client_id: CLIENT_ID, current: true }),
+        ],
+      });
+
+      await openSidebar();
+
+      expect(await within(sidebar()).findByText("Details")).toBeInTheDocument();
+      expect(
+        within(sidebar()).queryByRole("button", { name: "Revoke client" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("steps through the clients on the page with previous and next", async () => {
+      const { router } = setup({
+        clients: [
+          createMockOAuthClient({ client_id: "client-1" }),
+          createMockOAuthClient({ client_id: CLIENT_ID }),
+          createMockOAuthClient({ client_id: "client-3" }),
+        ],
+        details: [
+          createMockOAuthClientDetail({ client_id: "client-1" }),
+          createMockOAuthClientDetail({ client_id: CLIENT_ID }),
+          createMockOAuthClientDetail({ client_id: "client-3" }),
+        ],
+      });
+
+      await openSidebar();
+
+      await userEvent.click(
+        within(sidebar()).getByRole("button", { name: "Next client" }),
+      );
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(`${PATHNAME}/client-3`),
+      );
+
+      await userEvent.click(
+        within(sidebar()).getByRole("button", { name: "Previous client" }),
+      );
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(`${PATHNAME}/${CLIENT_ID}`),
+      );
+    });
+
+    it("stops stepping at the ends of the page", async () => {
+      setup({
+        clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
+        details: [createMockOAuthClientDetail({ client_id: CLIENT_ID })],
+      });
+
+      await openSidebar();
+
+      expect(
+        within(sidebar()).getByRole("button", { name: "Previous client" }),
+      ).toBeDisabled();
+      expect(
+        within(sidebar()).getByRole("button", { name: "Next client" }),
+      ).toBeDisabled();
+    });
+
+    it("closes back to the list with the page and tab intact", async () => {
+      const { router } = setup({
+        clients: [createMockOAuthClient({ client_id: CLIENT_ID })],
+        details: [createMockOAuthClientDetail({ client_id: CLIENT_ID })],
+        listOverrides: { total: PAGE_SIZE * 2 },
+        initialRoute: `${PATHNAME}?page=1`,
+      });
+
+      await openSidebar();
+      await userEvent.click(
+        within(sidebar()).getByRole("button", { name: "Close" }),
+      );
+
+      await waitFor(() => expect(router?.location.pathname).toBe(PATHNAME));
+      expect(router?.location.search).toContain("page=1");
+      expect(
+        screen.queryByTestId("oauth-client-detail-sidebar"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("revokes the client from its footer with the single-client copy, then closes", async () => {
+      const { router } = setup({
+        clients: [
+          createMockOAuthClient({
+            client_id: CLIENT_ID,
+            client_name: "Claude Code",
+          }),
+        ],
+        details: [
+          createMockOAuthClientDetail({
+            client_id: CLIENT_ID,
+            client_name: "Claude Code",
+          }),
+        ],
+        revokeResponse: createMockRevokeOAuthClientsResponse({ revoked: 1 }),
+      });
+
+      await openSidebar();
+      await userEvent.click(
+        await within(sidebar()).findByRole("button", { name: "Revoke client" }),
+      );
+
+      const modal = await screen.findByTestId("confirm-modal");
+      expect(
+        within(modal).getByText("Revoke this client?"),
+      ).toBeInTheDocument();
+      expect(
+        within(modal).getByText(
+          "Claude Code will lose access for everyone who connected it, and will need to be approved again. This can't be undone.",
+        ),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Revoke" }),
+      );
+
+      expect(await screen.findByText("Revoked 1 client")).toBeInTheDocument();
+      expect(lastRevokeBody()).toEqual({ ids: [CLIENT_ID] });
+      await waitFor(() => expect(router?.location.pathname).toBe(PATHNAME));
+      expect(
+        screen.queryByTestId("oauth-client-detail-sidebar"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("reports a client that is no longer registered", async () => {
+      setup({
+        clients: [],
+        detailNotFoundFor: CLIENT_ID,
+        initialRoute: `${PATHNAME}/${CLIENT_ID}`,
+      });
+
+      await screen.findByTestId("oauth-client-detail-sidebar");
+
+      expect(
+        await within(sidebar()).findByText(
+          "This client is no longer registered.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("says so even while the list still has the row, because the server has contradicted it", async () => {
+      setup({
+        clients: [
+          createMockOAuthClient({
+            client_id: CLIENT_ID,
+            client_name: "Claude Code",
+          }),
+        ],
+        detailNotFoundFor: CLIENT_ID,
+        initialRoute: `${PATHNAME}/${CLIENT_ID}`,
+      });
+
+      await screen.findByTestId("oauth-client-detail-sidebar");
+
+      expect(
+        await within(sidebar()).findByText(
+          "This client is no longer registered.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(sidebar()).queryByTestId("oauth-client-details"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(sidebar()).queryByTestId("oauth-client-users"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(sidebar()).queryByRole("button", { name: "Revoke client" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   /**
