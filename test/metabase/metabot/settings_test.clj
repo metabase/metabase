@@ -200,7 +200,8 @@
                        (connection "zai" "zai")
                        (connection "openrouter" "openrouter")
                        (connection "mistral" "mistral")
-                       (connection "moonshot" "moonshot")]
+                       (connection "moonshot" "moonshot")
+                       (connection "xai" "xai")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -239,7 +240,9 @@
                "moonshot/kimi-k3"                           true
                "moonshot/kimi-k2.6"                         true
                ;; thinking-capable but excluded from supported-models — see moonshot/reasoning-model?
-               "moonshot/kimi-k2.7-code"                    false}]
+               "moonshot/kimi-k2.7-code"                    false
+               "xai/grok-4.7"                               true
+               "xai/grok-4.3"                               true}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))

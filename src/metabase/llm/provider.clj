@@ -178,6 +178,24 @@
                      :advanced? true
                      :default   "https://api.deepseek.com"
                      :help      (deferred-tru "The root both surfaces hang off; leave off any /anthropic or /v1 path.")}]}
+   {:type          "xai"
+    :label         (deferred-tru "xAI")
+    :default-model "grok-4.7"
+    :mini-model    "grok-4.3"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder "xai-..."
+                     :prefix      "xai-"
+                     :docs-url    "https://console.x.ai/team/default/api-keys"}
+                    {:key       :base-url
+                     :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.x.ai/v1"}]}
    {:type          "google"
     ;; "Google Gemini Enterprise" (nearly the official "Gemini Enterprise Agent Platform" name), not "Google
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
@@ -619,6 +637,9 @@
    "deepseek"   {:type     "deepseek"
                  :settings {:api-key  {:setting :llm-deepseek-api-key :credential? true}
                             :base-url {:setting :llm-deepseek-api-base-url}}}
+   "xai"        {:type     "xai"
+                 :settings {:api-key  {:setting :llm-xai-api-key :credential? true}
+                            :base-url {:setting :llm-xai-api-base-url}}}
    "google"     {:type     "google"
                  :settings {:service-account-key {:setting :llm-google-service-account-key :credential? true}
                             :oauth-access-token  {:setting :llm-google-oauth-access-token :credential? true}
