@@ -34,13 +34,14 @@
         ;; `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports from.
         ;; Any of them could be the one the var was imported from, so all must be readable, and all that define
         ;; the name must be defns.
-        (let [proxied  (remove seen (get-in analysis [:clj :proxied-namespaces]))
-              seen     (into seen proxied)
-              analyses (map ns-analysis proxied)
-              sources  (filter #(contains? (:clj %) var-sym) analyses)]
-          (and (every? some? analyses)
+        ;; `seen` holds only the namespaces on the current path, so a source reached by two routes is still followed.
+        (let [proxied (for [ns-sym (get-in analysis [:clj :proxied-namespaces])
+                            :when  (not (seen ns-sym))]
+                        [ns-sym (:clj (ns-analysis ns-sym))])
+              sources (filter (fn [[_ vars]] (contains? vars var-sym)) proxied)]
+          (and (every? (comp some? second) proxied)
                (seq sources)
-               (every? #(defn-arity? % var-sym seen) sources)))))))
+               (every? (fn [[ns-sym vars]] (defn-arity? {:clj vars} var-sym (conj seen ns-sym))) sources)))))))
 
 (defn- safely-nudgeable-lhs?
   "Is this LHS a regular function (defn) according to kondo's analysis?
