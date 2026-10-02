@@ -534,44 +534,73 @@
   (append-sql! context "NOT ")
   (-parens! x context))
 
+(defn- param-value
+  "The value `context`'s options bind to `k`, for a `[:param k]` form."
+  [k context]
+  {:pre [(keyword? k)]}
+  (or (get-in (options context) [:params k])
+      (throw (ex-info "Missing value for :param" {:param k}))))
+
+(defn- in-values
+  "The values side of an `:in`/`:not-in` form, with a `[:param k]` naming a collection resolved to
+  that collection.
+
+  `IN` takes a list of values rather than one value, so a collection bound to a param has to expand
+  into `(?, ?)`. Compiled as an ordinary param it emits a single `?` and binds the whole collection,
+  which no database accepts -- and an empty one would slip past the rewrite below and emit `IN ()`.
+  Honey SQL expands a collection-valued param in this position the same way.
+
+  A param naming anything else is left alone, and compiles to a single `?` as it would in any other
+  value slot. A scalar is not a list of values, and a map must stay one bound value rather than
+  become a list of its entries -- `metabase.app-db.honeysql-guard` is what refuses an unmarked one."
+  [vs context]
+  (if-not (and (fn-call? vs)
+               (= :param (first vs)))
+    vs
+    (let [v (param-value (second vs) context)]
+      (if (or (sequential? v) (set? v))
+        v
+        vs))))
+
 (defn- -in! [f [lhs vs] context]
-  (when-not (or (empty? vs)
-                (sequential? vs)
-                (set? vs)
-                (subquery? vs))
-    (throw (ex-info "Invalid sequence of values (maps must be marked with ^:allow-subquery)" {:vs vs})))
-  (if (empty? vs)
-    (compile! (case f
-                :in     false
-                :not-in true)
-              context)
-    ;; non-empty values
-    (do
-      (compile! lhs context)
-      (append-sql! context (case f
-                             :in     " IN "
-                             :not-in " NOT IN "))
-      (cond
-        (subquery? vs)
-        (-parens! vs context)
+  (let [vs (in-values vs context)]
+    (when-not (or (empty? vs)
+                  (sequential? vs)
+                  (set? vs)
+                  (subquery? vs))
+      (throw (ex-info "Invalid sequence of values (maps must be marked with ^:allow-subquery)" {:vs vs})))
+    (if (empty? vs)
+      (compile! (case f
+                  :in     false
+                  :not-in true)
+                context)
+      ;; non-empty values
+      (do
+        (compile! lhs context)
+        (append-sql! context (case f
+                               :in     " IN "
+                               :not-in " NOT IN "))
+        (cond
+          (subquery? vs)
+          (-parens! vs context)
 
-        ;; sequence of sequences
-        (and (sequential? (first vs))
-             (not (fn-call? (first vs))))
-        (do
-          (append-sql! context "(")
-          (interpose-fn
-           vs
-           #(-list! % context)
-           #(append-sql! context ", "))
-          (append-sql! context ")"))
+          ;; sequence of sequences
+          (and (sequential? (first vs))
+               (not (fn-call? (first vs))))
+          (do
+            (append-sql! context "(")
+            (interpose-fn
+             vs
+             #(-list! % context)
+             #(append-sql! context ", "))
+            (append-sql! context ")"))
 
-        ;; Handle nonsense like`[:in :field [:inline [3]]]`
-        (fn-call? vs)
-        (compile! vs context)
+          ;; Handle nonsense like`[:in :field [:inline [3]]]`
+          (fn-call? vs)
+          (compile! vs context)
 
-        :else
-        (-list! vs context)))))
+          :else
+          (-list! vs context))))))
 
 (defn- between! [[x y z] context]
   (compile! x context)
@@ -651,10 +680,7 @@
   (append-sql! context ")"))
 
 (defn- param! [k context]
-  {:pre [(keyword? k)]}
-  (let [v (or (get-in (options context) [:params k])
-              (throw (ex-info "Missing value for :param" {:param k})))]
-    (object! v context)))
+  (object! (param-value k context) context))
 
 (defn- -binary-operator! [f args context]
   (let [f-str (case f

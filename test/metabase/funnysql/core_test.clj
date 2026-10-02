@@ -723,6 +723,37 @@
       "\"id\" IN (1)" [:in :id #{1}]
       "\"id\" IN (1)" [:in :id (lazy-seq [1])])))
 
+(deftest ^:parallel in-param-collection-test
+  (testing "a `:param` naming a collection expands into a list, the way a literal collection does"
+    ;; `IN` takes a list of values rather than one value, so compiling the param as a single `?`
+    ;; would bind the whole collection and emit `IN ?`, which no database accepts.
+    (are [expected clause params] (= expected
+                                     (funnysql/format clause :postgres {:params params}))
+      ["\"id\" IN (1, 2)"]         [:in     :id [:param :p]] {:p [1 2]}
+      ["\"id\" NOT IN (1, 2)"]     [:not-in :id [:param :p]] {:p [1 2]}
+      ["\"id\" IN (1)"]            [:in     :id [:param :p]] {:p #{1}}
+      ["\"id\" IN (1)"]            [:in     :id [:param :p]] {:p (lazy-seq [1])}
+      ;; a non-numeric element still binds, one `?` per element
+      ["\"id\" IN (?, ?)" "a" "b"] [:in     :id [:param :p]] {:p ["a" "b"]}))
+  (testing "an empty one is rewritten like an empty literal collection, rather than emitting `IN ()`"
+    (are [expected clause params] (= expected
+                                     (funnysql/format clause :postgres {:params params}))
+      ["false"] [:in     :id [:param :p]] {:p []}
+      ["true"]  [:not-in :id [:param :p]] {:p []}))
+  (testing "a `:param` naming something that is not a sequence or set is left alone"
+    ;; One value is not a list of them, so there is nothing to expand. A map stays one opaque bound
+    ;; value here, as it would in any other value slot -- an unmarked one is refused upstream by
+    ;; `metabase.app-db.honeysql-guard`.
+    (are [expected clause params] (= expected
+                                     (funnysql/format clause :postgres {:params params}))
+      ["\"id\" IN ?" 1]               [:in :id [:param :p]] {:p 1}
+      ["\"id\" IN ?" {:select [:id]}] [:in :id [:param :p]] {:p {:select [:id]}}))
+  (testing "error on missing parameter"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Missing value for :param"
+         (funnysql/format [:in :id [:param :p]] :postgres)))))
+
 (deftest ^:parallel in-subquery-test
   (is (= ["WHERE \"dp\".\"group_id\" IN (SELECT \"group_id\" FROM \"permissions_group_membership\" WHERE \"user_id\" = 1)"]
          (funnysql/format {:where [:in :dp.group_id ^:allow-subquery {:select [:group_id]
