@@ -2,9 +2,13 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
@@ -18,17 +22,24 @@
   (t2/insert-returning-instance! :model/DataApp {:name slug :display_name slug :bundle_path "dist/index.js"
                                                  :draft true}))
 
-(defn- insert-app! [& {:as extra}]
-  (t2/insert-returning-instance! :model/DataApp
-                                 (merge {:name          "sales-ops"
-                                         :display_name  "Sales Ops"
-                                         :bundle_path   "dist/index.js"
-                                         :bundle        (.getBytes "console.log(1)" "UTF-8")
-                                         :allowed_hosts ["https://api.example.com"]}
-                                        extra)))
+(defn- insert-app!
+  "An app as the API creates it: with its permission group and resource collection."
+  [& {:as extra}]
+  (let [app (t2/insert-returning-instance! :model/DataApp
+                                           (merge {:name          "sales-ops"
+                                                   :display_name  "Sales Ops"
+                                                   :bundle_path   "dist/index.js"
+                                                   :bundle        (.getBytes "console.log(1)" "UTF-8")
+                                                   :allowed_hosts ["https://api.example.com"]}
+                                                  extra))]
+    (merge app (data-app.resources/ensure-resources! app))))
 
-(defn- export! [dir]
-  (serialization/store! (serdes/extract-all "DataApp" {}) (serialization/file-writer dir)))
+(defn- export!
+  "Export every data app with what travels with it: its resource collection and what that holds."
+  [dir]
+  (serialization/store! (serialization/extract {:targets (for [id (t2/select-pks-vec :model/DataApp :draft false)]
+                                                           ["DataApp" id])})
+                        (serialization/file-writer dir)))
 
 (defn- import! [dir]
   (serialization/load-metabase! (serialization/ingest-yaml dir)))
@@ -67,7 +78,8 @@
                   :name          "Sales Ops"
                   :description   "Pipeline health"
                   :path          "dist/index.js"
-                  :allowed_hosts ["https://api.example.com"]}
+                  :allowed_hosts ["https://api.example.com"]
+                  :collection    (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))}
                  (dissoc (yaml/from-file (io/file dump-dir "data_apps" "sales-ops" "data_app.yaml"))
                          :created_at))))
         (testing "the bundle is a plain file at its path next to the manifest"
@@ -181,3 +193,33 @@
     (let [app (insert-app!)]
       (is (some #(= [{:model "DataApp" :id (:entity_id app)}] (map (fn [m] (dissoc m :label)) (:serdes/meta %)))
                 (into [] (extract/extract {:no-collections true :no-data-model true :no-settings true})))))))
+
+(deftest round-trip-with-resources-test
+  (testing "an app travels with its collection and what that holds, written beside it under resources/"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
+        (ts/with-random-dump-dir [dump-dir "data-app-resources-"]
+          (let [app           (insert-app!)
+                collection-id (:resource_collection_id app)
+                mp            (mt/metadata-provider)
+                query         (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+            (mt/with-temp [:model/Card {model-id :id, model-eid :entity_id} {:name "Venues model" :type :model
+                                                                             :collection_id collection-id :dataset_query query}
+                           :model/Card {question-eid :entity_id} {:name "Venues list" :type :question
+                                                                  :collection_id collection-id :dataset_query query}]
+              (let [action-id  (actions/insert! {:name "Create venue" :type :implicit :kind :row/create :model_id model-id})
+                    action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
+                (export! dump-dir)
+                (testing "the files sit beside the app"
+                  (doseq [path ["resources/collection.yaml" "resources/cards/venues_model.yaml"
+                                "resources/cards/venues_list.yaml" "resources/actions/create_venue.yaml"]]
+                    (is (.exists (io/file dump-dir "data_apps" "sales-ops" path)) path)))
+                (t2/delete! :model/DataApp (:id app))
+                (is (not (t2/exists? :model/Card :entity_id question-eid)) "deleting the app deletes its collection's cards")
+                (import! dump-dir)
+                (let [imported      (t2/select-one :model/DataApp :entity_id (:entity_id app))
+                      collection-id (:resource_collection_id imported)]
+                  (is (pos-int? collection-id))
+                  (is (= collection-id (t2/select-one-fn :collection_id :model/Card :entity_id question-eid)))
+                  (is (= (t2/select-one-pk :model/Card :entity_id model-eid)
+                         (t2/select-one-fn :model_id :model/Action :entity_id action-eid))))))))))))

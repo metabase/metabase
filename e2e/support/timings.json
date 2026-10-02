@@ -573,11 +573,11 @@
       "duration": 28200
     },
     {
-      "spec": "../test/scenarios/data-apps/sync-resources-production-actions.cy.spec.ts",
+      "spec": "../test/scenarios/data-apps/resources-production-actions.cy.spec.ts",
       "duration": 16355
     },
     {
-      "spec": "../test/scenarios/data-apps/sync-resources-production.cy.spec.ts",
+      "spec": "../test/scenarios/data-apps/resources-production.cy.spec.ts",
       "duration": 16315
     },
     {

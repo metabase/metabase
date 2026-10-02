@@ -37,11 +37,13 @@
       (t2/update! :model/DataApp id {:bundle nil})
       (is (nil? (hash))))))
 
-(deftest insert-creates-the-resources-the-app-owns-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [{:keys [resource_collection_id permission_group_id]} (t2/select-one :model/DataApp (insert-app!))]
-      (is (t2/exists? :model/Collection :id resource_collection_id))
-      (is (t2/exists? :model/PermissionsGroup :id permission_group_id :is_data_app_group true)))))
+(deftest insert-creates-the-permission-group-the-app-owns-test
+  (testing "the resource collection comes from the repository with the app, or is created for an app made through
+            the API, so an inserted row gets its group alone"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [{:keys [resource_collection_id permission_group_id]} (t2/select-one :model/DataApp (insert-app!))]
+        (is (nil? resource_collection_id))
+        (is (t2/exists? :model/PermissionsGroup :id permission_group_id :is_data_app_group true))))))
 
 (deftest writes-are-normalized-and-validated-against-the-schema-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
