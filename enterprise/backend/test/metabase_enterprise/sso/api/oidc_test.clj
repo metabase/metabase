@@ -139,3 +139,57 @@
       (mt/with-temporary-setting-values [oidc-providers [(assoc test-provider :enabled false)]]
         (testing "oidc-enabled is false when no provider is enabled"
           (is (false? (sso-settings/oidc-enabled))))))))
+
+(defn- check-scopes
+  "POST to the OIDC check endpoint with `body` and return the scopes it passed to the configuration check."
+  [body]
+  (let [scopes (atom nil)]
+    (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (fn [_issuer-uri _client-id _client-secret s]
+                                                                      (reset! scopes s)
+                                                                      successful-check-result)]
+      (mt/user-http-request :crowberto :post 200 "ee/sso/oidc/check" body))
+    @scopes))
+
+(deftest check-uses-request-scopes-test
+  (testing "OIDC check uses the scopes sent in the request over the stored provider's scopes"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values [oidc-providers [test-provider]]
+        (is (= ["openid" "groups"]
+               (check-scopes {:issuer-uri "https://test.okta.com"
+                              :client-id  "test-client-id"
+                              :key        "test-okta"
+                              :scopes     ["openid" "groups"]})))))))
+
+(deftest check-falls-back-to-stored-scopes-test
+  (testing "OIDC check uses the stored provider's scopes when the request has none"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values [oidc-providers [test-provider]]
+        (is (= ["openid" "email" "profile"]
+               (check-scopes {:issuer-uri "https://test.okta.com"
+                              :client-id  "test-client-id"
+                              :key        "test-okta"})))))))
+
+(deftest check-falls-back-to-openid-scope-test
+  (testing "OIDC check uses the openid scope when neither the request nor a stored provider has scopes"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values [oidc-providers []]
+        (is (= ["openid"]
+               (check-scopes {:issuer-uri    "https://test.okta.com"
+                              :client-id     "test-client-id"
+                              :client-secret "test-client-secret"})))))))
+
+(deftest check-requires-superuser-test
+  (testing "OIDC check endpoint requires superuser and does not probe the provider"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values [oidc-providers [test-provider]]
+        (let [called? (atom false)]
+          (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (fn [& _]
+                                                                            (reset! called? true)
+                                                                            successful-check-result)]
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "ee/sso/oidc/check"
+                                         {:issuer-uri "https://test.okta.com"
+                                          :client-id  "test-client-id"
+                                          :key        "test-okta"
+                                          :scopes     ["openid"]})))
+            (is (false? @called?))))))))
