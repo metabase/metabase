@@ -5,7 +5,6 @@ import path from "node:path";
 import { build } from "esbuild";
 
 import { isEntityId, isObject } from "./guards";
-import { getRelativeDefinitionLocation } from "./messages";
 import type { DiscoveredAction, DiscoveredQuery } from "./types";
 
 /** A source-controlled definition kind, and where the CLI looks for it. */
@@ -34,6 +33,14 @@ const DEFINITION_FILE_EXTENSIONS = [
   ".mjs",
   ".mts",
 ];
+
+/** Where a definition is, as messages name it: `queries/orders.query.ts:Orders`. */
+export function getRelativeDefinitionLocation(
+  appRoot: string,
+  { filePath, exportName }: { filePath: string; exportName: string },
+) {
+  return `${path.relative(appRoot, filePath)}:${exportName}`;
+}
 
 interface EvaluatedDefinition {
   exportName: string;
