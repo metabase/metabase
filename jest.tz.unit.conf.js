@@ -16,7 +16,7 @@ module.exports = {
   },
   transformIgnorePatterns: [
     // Combined pattern for both flat and bun isolated node_modules structures
-    `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
+    `/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
   ],
   testMatch: ["<rootDir>/frontend/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
   modulePaths: [

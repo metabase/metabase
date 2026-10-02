@@ -88,9 +88,9 @@ const baseConfig = {
     // Combined pattern for both flat and bun isolated node_modules structures
     // - Flat: node_modules/<pkg>/ where <pkg> is NOT in esmPackages
     // - Bun:  node_modules/.bun/<pkg>@<ver>/ where <pkg> is NOT in esmPackages
-    `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
+    `/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
     // CLJS files are already compiled CJS — skip transform entirely
-    "<rootDir>/target/cljs_dev/",
+    "/target/cljs_dev/",
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
