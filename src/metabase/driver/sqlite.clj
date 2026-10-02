@@ -87,7 +87,9 @@
 (defn- file-url->path
   "The local path a `file:` URL names: `file:/a`, `file:///a` and `file://localhost/a` are `/a`; `file:a` is `a`."
   [url]
-  (let [s (str/replace url #"(?i)^file:" "")
+  (let [s (-> url
+              (str/replace #"(?i)^file:" "")
+              (str/replace #"[?#].*$" ""))
         s (if (str/starts-with? s "//")
             (let [after-authority (str/index-of s "/" 2)]
               (if after-authority (subs s after-authority) ""))
@@ -96,22 +98,27 @@
 
 (defn- db-local-file
   "The file on the Metabase host that SQLite opens for the `:db` detail, or nil when it opens none: an in-memory
-  database, or a `:resource:` fetched over the network (which the network policy covers) or from the classpath."
+  database, or a `:resource:` fetched over the network (which the network policy covers) or from the classpath.
+
+  Parsed the way SQLite and sqlite-jdbc parse it: the `:resource:` and `file:` prefixes are case-sensitive, a `file:`
+  URI ends at `#` and has its parameters after `?`, and in a plain path both are part of the file name."
   [db]
   (when (string? db)
-    (let [[path query] (str/split (str/trim db) #"\?" 2)]
-      (when-not (or (str/blank? path)
-                    (contains? #{":memory:" "file::memory:"} path)
-                    (some->> query (re-find #"(?i)(^|&)mode=memory(&|$)")))
-        (if-let [resource (second (re-find #"(?i)^:resource:(.*)$" path))]
-          (cond
-            (re-find #"(?i)^jar:file:" resource) (file-url->path (-> resource
-                                                                     (str/replace #"(?i)^jar:" "")
-                                                                     (str/replace #"!/.*$" "")))
-            (re-find #"(?i)^file:" resource)     (file-url->path resource))
-          (if (re-find #"(?i)^file:" path)
-            (file-url->path path)
-            path))))))
+    (let [db (str/trim db)]
+      (if-let [resource (second (re-find #"^:resource:(.*)$" db))]
+        ;; a Java URL, whose scheme is case-insensitive
+        (cond
+          (re-find #"(?i)^jar:file:" resource) (file-url->path (-> resource
+                                                                   (str/replace #"(?i)^jar:" "")
+                                                                   (str/replace #"!/.*$" "")))
+          (re-find #"(?i)^file:" resource)     (file-url->path resource))
+        (if (str/starts-with? db "file:")
+          (let [[path query] (str/split (str/replace db #"#.*$" "") #"\?" 2)]
+            (when-not (or (= path "file::memory:")
+                          (some->> query (re-find #"(?i)(^|&)mode=memory(&|$)")))
+              (file-url->path path)))
+          (when-not (or (str/blank? db) (= db ":memory:"))
+            db))))))
 
 (defmethod driver/validate-db-details! :sqlite
   [_driver {:keys [db] :as _details}]
