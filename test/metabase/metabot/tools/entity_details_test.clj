@@ -608,7 +608,7 @@
               (is (true? (:source_unavailable output))))))))))
 
 (deftest tool-arguments-cannot-carry-a-card-read-verdict-test
-  (testing (str "The `can-read?` skip on a metric's source card lives in a dynamic var bound only by trusted\n"
+  (testing (str "The `can-read?` skip on a metric's source card is a separate argument passed only by trusted\n"
                 "callers, and is not part of the options map at all -- which is what makes it unreachable, since\n"
                 "the tool entry points forward their `arguments` into those options verbatim. Asserted at the\n"
                 "entry point rather than against a key name, so it pins the mechanism and not the spelling.")
@@ -685,7 +685,7 @@
 
 (deftest cards-details-metric-branch-reports-each-source-kind-test
   (testing (str "`cards-details` is the `answer-sources` / suggested-prompts path: it batches the source-card\n"
-                "read-checks itself and hands the result to `metric-details` through the trusted binding. It fans\n"
+                "read-checks itself and hands the result to `metric-details` as a trusted argument. It fans\n"
                 "out over every metric in a Metabot's scope, and had no test at all.")
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
                    {:name          "Orders question"
