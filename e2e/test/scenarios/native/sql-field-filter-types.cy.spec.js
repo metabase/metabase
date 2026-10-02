@@ -27,7 +27,7 @@ describe(
       cy.log("setup a boolean field filter");
       H.startNewNativeQuestion({ database: WRITABLE_DB_ID });
       SQLFilter.enterParameterizedQuery(
-        `SELECT count(*) FROM ${tableName} WHERE {{f}}`,
+        `SELECT sum(id) FROM ${tableName} WHERE {{f}}`,
       );
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
@@ -41,14 +41,14 @@ describe(
 
       cy.log("field filter with true");
       H.runNativeQuery({ wait: false });
-      assertScalarValue("2");
+      assertScalarValue("3");
       H.filterWidget().click();
       H.popover().button("Add filter").click();
       H.runNativeQuery({ wait: false });
       assertScalarValue("1");
       H.filterWidget().icon("close").click();
       H.runNativeQuery({ wait: false });
-      assertScalarValue("2");
+      assertScalarValue("3");
 
       cy.log("field filter with false");
       H.filterWidget().click();
@@ -57,10 +57,10 @@ describe(
         cy.button("Add filter").click();
       });
       H.runNativeQuery({ wait: false });
-      assertScalarValue("1");
+      assertScalarValue("2");
       H.filterWidget().icon("close").click();
       H.runNativeQuery({ wait: false });
-      assertScalarValue("2");
+      assertScalarValue("3");
     });
   },
 );
