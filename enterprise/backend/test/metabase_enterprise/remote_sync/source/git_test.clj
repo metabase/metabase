@@ -811,7 +811,14 @@
             (is (= [token] @clone-tokens) "the recovery clones once, with the source's token")
             (is (identical? recovered-git (:git later))
                 "a new source for the same URL and token uses the clone that the recovery made")
-            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))))))))
+            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))
+            (testing "the recovery retires the stale clone and the fresh clone, and installs the hook that deletes them"
+              (is (contains? @@#'git/retired-clones (#'git/git-dir (:git source)))
+                  "the stale clone is retired")
+              (is (contains? @@#'git/retired-clones (#'git/git-dir recovered-git))
+                  "the fresh clone is retired")
+              (is (realized? @#'git/retired-clones-reaper)
+                  "the shutdown hook that deletes the retired clones is installed"))))))))
 
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
