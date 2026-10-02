@@ -1157,24 +1157,25 @@ describe("SettingsJWTForm", () => {
       );
     });
 
-    it("disables the new mapping button while a draft is open", async () => {
+    it("hides the new mapping button while a draft is open", async () => {
       await setup({
         jwtEnabled: true,
         configured: true,
         groupSync: true,
         groupMappings: { devs: [3] },
       });
-      const newButton = screen.getByRole("button", { name: "New mapping" });
+      const newButton = () =>
+        screen.queryByRole("button", { name: "New mapping" });
 
       await clickWhenEnabled(
         within(findMappingRow("devs")!).getByRole("button", {
           name: "Edit mapping",
         }),
       );
-      expect(newButton).toBeDisabled();
+      expect(newButton()).not.toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(newButton).toBeEnabled();
+      expect(newButton()).toBeInTheDocument();
     });
 
     it("holds the mapping rows while a save is in flight", async () => {

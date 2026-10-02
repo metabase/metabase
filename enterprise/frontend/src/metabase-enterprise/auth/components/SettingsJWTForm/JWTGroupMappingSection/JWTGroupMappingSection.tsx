@@ -67,7 +67,8 @@ export function JWTGroupMappingSection({
   const isReadOnly = isLocked || !isServerConfigured;
   const isLockedUntilSave = !isServerConfigured && !isLocked;
   const isLastMapping = Object.keys(groupMapping.mappings).length === 1;
-  const hasOpenDraft = editor.draft != null;
+  const isNewMappingShown =
+    modeSwitch.mode === "manual" && !isReadOnly && editor.draft == null;
 
   return (
     <Stack gap="lg">
@@ -96,14 +97,13 @@ export function JWTGroupMappingSection({
             { label: t`Off`, value: "off" },
           ]}
         />
-        {modeSwitch.mode === "manual" && !isReadOnly && (
+        {isNewMappingShown && (
           <Button
             variant="subtle"
             // the heading wraps before the button does, so the button keeps its whole label
             flex="0 0 auto"
             leftSection={<Icon name="add" aria-hidden />}
-            // a new mapping would replace the open draft
-            disabled={isListHeld || hasOpenDraft}
+            disabled={isListHeld}
             onClick={editor.startNew}
           >{t`New mapping`}</Button>
         )}

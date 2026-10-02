@@ -343,6 +343,35 @@ describe("SettingsGroupMappingSection", () => {
     });
   });
 
+  it("opens another row's editor in place of an open draft", async () => {
+    const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
+    await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [DEVS_DN]: [3], [OPS_DN]: [4] },
+      },
+    });
+    const devsEditButton = within(getMappingRow(DEVS_DN)).getByRole("button", {
+      name: "Edit mapping",
+    });
+    await waitFor(() => expect(devsEditButton).toBeEnabled());
+    await userEvent.click(devsEditButton);
+    await userEvent.type(screen.getByLabelText("LDAP group name"), "-team");
+
+    await userEvent.click(
+      within(getMappingRow(OPS_DN)).getByRole("button", {
+        name: "Edit mapping",
+      }),
+    );
+
+    // the first draft is discarded, and its row is back as it was stored
+    expect(screen.getByLabelText("LDAP group name")).toHaveValue(OPS_DN);
+    expect(findMappingRow(DEVS_DN)).toBeDefined();
+    expect(
+      screen.queryByDisplayValue(`${DEVS_DN}-team`),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps an open draft editable while the panel waits for a settings refetch", async () => {
     const { store, settingsStore } = await setup({
       settingValues: { "ldap-group-sync": true },
