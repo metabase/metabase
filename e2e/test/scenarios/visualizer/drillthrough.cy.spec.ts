@@ -206,6 +206,8 @@ describe("scenarios > visualizer > drillthrough", () => {
 
     // 4. Funnel
     H.getDashboardCard(4).find("polygon").first().click();
+    H.clickActionsPopover().should("be.visible");
+    H.tooltip().should("not.exist");
     H.clickActionsPopover().button("=").click();
     cy.wait("@dataset");
 
