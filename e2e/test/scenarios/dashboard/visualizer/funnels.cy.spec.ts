@@ -165,7 +165,7 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     });
   });
 
-  it("should build a funnel of several scalar cards", () => {
+  it("should build a funnel of several scalar cards (VIZ-678)", () => {
     const { LANDING_PAGE_VIEWS, CHECKOUT_PAGE_VIEWS, PAYMENT_DONE_PAGE_VIEWS } =
       SCALAR_CARD;
 
@@ -179,11 +179,6 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
       H.switchToAddMoreData();
       H.selectDataset(CHECKOUT_PAGE_VIEWS.name);
       H.selectDataset(PAYMENT_DONE_PAGE_VIEWS.name);
-      H.switchToColumnsList();
-
-      H.assertDataSourceColumnSelected(LANDING_PAGE_VIEWS.name, "views");
-      H.assertDataSourceColumnSelected(CHECKOUT_PAGE_VIEWS.name, "views");
-      H.assertDataSourceColumnSelected(PAYMENT_DONE_PAGE_VIEWS.name, "views");
 
       H.verticalWell().within(() => {
         cy.findByText("METRIC").should("not.exist");
@@ -195,6 +190,12 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
         cy.findByText(PAYMENT_DONE_PAGE_VIEWS.name).should("exist");
         cy.findAllByTestId("well-item").should("have.length", 3);
       });
+
+      H.switchToColumnsList();
+
+      H.assertDataSourceColumnSelected(LANDING_PAGE_VIEWS.name, "views");
+      H.assertDataSourceColumnSelected(CHECKOUT_PAGE_VIEWS.name, "views");
+      H.assertDataSourceColumnSelected(PAYMENT_DONE_PAGE_VIEWS.name, "views");
 
       // Remove a column from the data manager
       H.deselectColumnFromColumnsList(CHECKOUT_PAGE_VIEWS.name, "views");
@@ -248,31 +249,86 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     });
   });
 
-  it("should initialize a scalar funnel when opening a scalar card (VIZ-678)", () => {
-    const { LANDING_PAGE_VIEWS, CHECKOUT_PAGE_VIEWS, PAYMENT_DONE_PAGE_VIEWS } =
-      SCALAR_CARD;
+  it("should open the underlying question when clicking the title of a single-question visualizer funnel (metabase#67980)", () => {
+    const visualizerTitle = "UXW-2692 Visualizer Funnel";
 
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
+    H.createNativeQuestion({
+      name: "UXW-2692 Funnel Base",
+      display: "funnel",
+      native: {
+        query: `
+          SELECT 73 AS "Val", 'Downloads' AS "Step"
+          UNION ALL
+          SELECT 52 AS "Val", 'Followers' AS "Step"
+        `,
+      },
+      visualization_settings: {
+        "funnel.metric": "Val",
+        "funnel.dimension": "Step",
+      },
+    }).then(({ body: { id: questionId } }) => {
+      H.createDashboard({ name: "UXW-2692 Dashboard" }).then(
+        ({ body: { id: dashboardId } }) => {
+          cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+            dashcards: [
+              {
+                id: -1,
+                card_id: questionId,
+                dashboard_tab_id: null,
+                row: 0,
+                col: 0,
+                size_x: 12,
+                size_y: 8,
+                visualization_settings: {
+                  visualization: {
+                    display: "funnel",
+                    columnValuesMapping: {
+                      COLUMN_1: [
+                        {
+                          name: "COLUMN_1",
+                          originalName: "Step",
+                          sourceId: `card:${questionId}`,
+                        },
+                      ],
+                      COLUMN_2: [
+                        {
+                          name: "COLUMN_2",
+                          originalName: "Val",
+                          sourceId: `card:${questionId}`,
+                        },
+                      ],
+                    },
+                    settings: {
+                      "card.title": visualizerTitle,
+                      "funnel.metric": "COLUMN_2",
+                      "funnel.dimension": "COLUMN_1",
+                      "funnel.rows": [
+                        {
+                          key: "Followers",
+                          name: "Followers",
+                          enabled: true,
+                        },
+                        {
+                          key: "Downloads",
+                          name: "Downloads",
+                          enabled: true,
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          });
 
-    H.openQuestionsSidebar();
-    H.clickVisualizeAnotherWay(LANDING_PAGE_VIEWS.name);
+          H.visitDashboard(dashboardId);
+          H.getDashboardCard(0).findByTestId("funnel-chart").should("exist");
 
-    H.modal().within(() => {
-      H.switchToAddMoreData();
-      H.selectDataset(CHECKOUT_PAGE_VIEWS.name);
-      H.selectDataset(PAYMENT_DONE_PAGE_VIEWS.name);
+          H.clickOnCardTitle(0);
 
-      H.verticalWell().within(() => {
-        cy.findByText("METRIC").should("not.exist");
-      });
-      H.horizontalWell().within(() => {
-        cy.findByText("DIMENSION").should("not.exist");
-        cy.findByText(LANDING_PAGE_VIEWS.name).should("exist");
-        cy.findByText(CHECKOUT_PAGE_VIEWS.name).should("exist");
-        cy.findByText(PAYMENT_DONE_PAGE_VIEWS.name).should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 3);
-      });
+          cy.location("pathname").should("contain", `/question/${questionId}`);
+        },
+      );
     });
   });
 });

@@ -66,8 +66,41 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     });
   });
 
-  it("should work", () => {
+  it("should drill through visualizer dashcards (VIZ-979)", () => {
     createDashboardWithVisualizerDashcards();
+
+    // Brush filtering is disabled for multi-series timeseries charts
+    H.getDashboardCard(0).within(() => {
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2,
+      );
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2,
+      );
+      H.applyBrush(200, 300);
+    });
+
+    // ...but works for single-series ones
+    H.getDashboardCard(3).within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+      H.applyBrush(200, 300);
+      cy.wait("@dataset");
+    });
+    cy.get("@dataset.all").should("have.length", 1);
+
+    H.queryBuilderFiltersPanel()
+      .findByText(/Created At: Month is May 1/)
+      .should("exist");
+    H.assertQueryBuilderRowCount(10);
+    H.queryBuilderMain().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
+      cy.findByText("May 2026").should("exist");
+    });
+
+    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     const ORDERS_SERIES_COLOR = "#509EE3";
     const PRODUCTS_SERIES_COLOR = "#88BF4D";
@@ -202,39 +235,5 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderFiltersPanel().findByText("Views is equal to 600");
     H.tableInteractiveHeader().findByText("Views").should("exist");
     H.assertQueryBuilderRowCount(1);
-  });
-
-  it("should allow brush filtering single-series timeseries charts (VIZ-979)", () => {
-    createDashboardWithVisualizerDashcards();
-
-    // Ensure the brush is disabled for multi-series charts
-    H.getDashboardCard(0).within(() => {
-      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
-        "have.length",
-        2,
-      );
-      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
-        "have.length",
-        2,
-      );
-      H.applyBrush(200, 300);
-      cy.get("@dataset.all").should("have.length", 0);
-    });
-
-    H.getDashboardCard(3).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      H.applyBrush(200, 300);
-      cy.wait("@dataset");
-    });
-
-    H.queryBuilderFiltersPanel()
-      .findByText(/Created At: Month is May 1/)
-      .should("exist");
-    H.assertQueryBuilderRowCount(10);
-    H.queryBuilderMain().within(() => {
-      cy.findByText("Count").should("exist"); // y-axis
-      cy.findByText("Created At: Month").should("exist"); // x-axis
-      cy.findByText("May 2026").should("exist");
-    });
   });
 });
