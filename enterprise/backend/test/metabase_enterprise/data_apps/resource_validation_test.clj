@@ -141,6 +141,11 @@
                                                                          :lib/type "mbql/query"
                                                                          :stages [{:lib/type "mbql.stage/native"
                                                                                    :native "DELETE FROM venues"}]}}]))))))
+       (testing "a card or action has to name its creator, since a load can't save one without"
+         (is (some #(str/includes? % "must name its creator in creator_id")
+                   (messages (edit-file (shop resources) action-path #(dissoc % :creator_id)))))
+         (is (some #(str/includes? % "must name its creator in creator_id")
+                   (messages (edit-file (shop resources) question-path #(dissoc % :creator_id))))))
        (testing "an action is in the app's collection, like a card"
          (is (some #(str/includes? % (str "must be in the collection " collection-eid))
                    (messages (edit-file (shop resources) action-path #(assoc % :collection_id "elsewhere0000000000a"))))))

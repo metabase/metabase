@@ -41,6 +41,12 @@
                    (= meta-id (:entity_id entity)))
       [(problem path (tru "{0} must hold a single {1} whose serdes/meta ID is its entity_id." path model))])))
 
+(defn- creator-problems
+  "A load creates the user a `creator_id` names when it has to, but can't save a card or action without one."
+  [{:keys [path entity]}]
+  (when (nil? (:creator_id entity))
+    [(problem path (tru "{0} must name its creator in creator_id." path))]))
+
 (defn- public-problems [{:keys [path entity]}]
   (when (or (some entity [:public_uuid :made_public_by_id :embedding_params :embedding_type])
             (:enable_embedding entity))
@@ -93,6 +99,7 @@
        [(problem path (tru "{0} must not be archived." path))])
      (when (some entity [:dashboard_id :document_id])
        [(problem path (tru "{0} must not belong to a dashboard or document." path))])
+     (creator-problems file)
      (public-problems file))
 
     "Action"
@@ -109,6 +116,7 @@
        [(problem path (tru "{0} must not be archived." path))])
      (action-children-problems file)
      (parameter-source-problems file)
+     (creator-problems file)
      (public-problems file))))
 
 (defn- dependencies
