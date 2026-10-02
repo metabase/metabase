@@ -9,6 +9,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -52,7 +53,7 @@
 (deftest create-dashboard-test
   (testing "GHY-4147: method create makes a dashboard and returns it in concise projection form"
     (mt/with-model-cleanup [:model/Dashboard]
-      (let [result (tool-result (call-tool! :crowberto nil "dashboard_write"
+      (let [result (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                             (wire {:method "create" :name "Sales"
                                                    :description "Quarterly numbers"})))]
         (is (pos-int? (:id result)))
@@ -64,7 +65,7 @@
 (deftest create-collection-target-test
   (mt/with-model-cleanup [:model/Dashboard]
     (let [create! (fn [args]
-                    (tool-result (call-tool! :crowberto nil "dashboard_write"
+                    (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                              (wire (merge {:method "create"} args)))))]
       (testing "GHY-4218: an omitted collection_id saves to the caller's personal collection"
         (is (= (:id (collection/user->personal-collection (mt/user->id :crowberto)))
@@ -83,19 +84,19 @@
 (deftest create-requires-name-test
   (testing "GHY-4147: create without a name is a teaching error, not a schema dump"
     (is (re-find #"\"name\" is required"
-                 (tool-error (call-tool! :crowberto nil "dashboard_write" (wire {:method "create"})))))))
+                 (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write" (wire {:method "create"})))))))
 
 (deftest update-requires-id-test
   (testing "GHY-4147: update without an id is a teaching error"
     (is (re-find #"\"id\" is required"
-                 (tool-error (call-tool! :crowberto nil "dashboard_write" (wire {:method "update"})))))))
+                 (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write" (wire {:method "update"})))))))
 
 (deftest create-with-ops-in-one-call-test
   (testing "GHY-4147: create accepts ops, so a dashboard and its cards land in a single call"
     (mt/with-model-cleanup [:model/Dashboard]
       (mt/with-temp [:model/Card card {:name "Revenue"}]
         (let [result (tool-result
-                      (call-tool! :crowberto nil "dashboard_write"
+                      (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                   (wire {:method "create" :name "Sales"
                                          :ops [{:op "add_card" :id -1 :card_id (:id card)}]})))]
           (is (= 1 (count (:dashcards result))))
@@ -109,7 +110,7 @@
     (mt/with-model-cleanup [:model/Dashboard]
       (mt/with-temp [:model/Card card {}]
         (let [before (t2/count :model/Dashboard)
-              err    (tool-error (call-tool! :crowberto nil "dashboard_write"
+              err    (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                              (wire {:method "create" :name "Sales"
                                                     :ops [{:op "add_card" :id -1 :card_id (:id card)}
                                                           {:op "remove" :dashcard_id 999999}]})))]
@@ -128,7 +129,7 @@
           ;; Fail only the real save: the pre-compile runs validate-only and never gets here.
           (mt/with-dynamic-fn-redefs [dashboards.write/update-dashboard!
                                       (fn [& _] (throw (ex-info "boom" {})))]
-            (is (some? (tool-error (call-tool! :crowberto nil "dashboard_write"
+            (is (some? (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                                (wire {:method "create" :name "Sales"
                                                       :ops [{:op "add_card" :id -1 :card_id (:id card)}]}))))
                 "the call reports an error"))
@@ -139,7 +140,7 @@
   (testing "GHY-4147: a batch with a bad op writes nothing — the error names the op index"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}
                    :model/Card      card {}]
-      (let [err (tool-error (call-tool! :crowberto nil "dashboard_write"
+      (let [err (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                         (wire {:method "update" :id (:id dash)
                                                :ops [{:op "add_card" :id -1 :card_id (:id card)}
                                                      {:op "remove" :dashcard_id 999999}]})))]
@@ -152,12 +153,12 @@
                    :model/Card      card {:name "Revenue"}]
       (let [args      {:method "update" :id (:id dash)
                        :ops [{:op "add_card" :id -1 :card_id (:id card)}]}
-            dry       (tool-result (call-tool! :crowberto nil "dashboard_write"
+            dry       (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                                (wire (assoc args :validate_only true))))]
         (is (= 1 (count (:dashcards dry))))
         (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id dash))))
         (testing "the dry run's shape matches a real response, so a caller can read it the same way"
-          (let [real (tool-result (call-tool! :crowberto nil "dashboard_write" (wire args)))]
+          (let [real (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write" (wire args)))]
             (is (= (into #{} (keys real)) (into #{} (keys dry))))
             (is (= (into #{} (keys (first (:dashcards real))))
                    (into #{} (keys (first (:dashcards dry))))))))))))
@@ -172,9 +173,9 @@
                    :model/DashboardCard dc    {:dashboard_id (:id dash) :card_id (:id old)}]
       (let [args {:method "update" :id (:id dash)
                   :ops    [{:op "replace_card" :dashcard_id (:id dc) :card_id (:id new-c)}]}
-            dry  (tool-result (call-tool! :crowberto nil "dashboard_write"
+            dry  (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                           (wire (assoc args :validate_only true))))
-            real (tool-result (call-tool! :crowberto nil "dashboard_write" (wire args)))]
+            real (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write" (wire args)))]
         (is (= {:id (:id new-c) :name "New revenue"}
                (-> dry :dashcards first :card)))
         (is (= (-> real :dashcards first :card)
@@ -188,7 +189,7 @@
     (mt/with-temp [:model/Dashboard     dash {:name "Sales"}
                    :model/Card          card {:name "Revenue"}
                    :model/DashboardCard dc   {:dashboard_id (:id dash) :card_id (:id card)}]
-      (let [result (call-tool! :crowberto nil "dashboard_write"
+      (let [result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                (wire {:method "update" :id (:id dash)
                                       :ops [{:op "patch_dashcard" :dashcard_id (:id dc)
                                              :patch {:parameter_mappings
@@ -203,7 +204,7 @@
 (deftest entity-id-is-accepted-test
   (testing "GHY-4147: `id` accepts a 21-character entity_id as well as a numeric id"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
-      (let [result (tool-result (call-tool! :crowberto nil "dashboard_write"
+      (let [result (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                             (wire {:method "update" :id (:entity_id dash)
                                                    :description "Updated"})))]
         (is (= (:id dash) (:id result)))
@@ -212,9 +213,9 @@
 (deftest archived-round-trip-test
   (testing "GHY-4147: archived true trashes and false restores — the only removal path"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
-      (call-tool! :crowberto nil "dashboard_write" (wire {:method "update" :id (:id dash) :archived true}))
+      (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write" (wire {:method "update" :id (:id dash) :archived true}))
       (is (true? (t2/select-one-fn :archived :model/Dashboard :id (:id dash))))
-      (call-tool! :crowberto nil "dashboard_write" (wire {:method "update" :id (:id dash) :archived false}))
+      (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write" (wire {:method "update" :id (:id dash) :archived false}))
       (is (false? (t2/select-one-fn :archived :model/Dashboard :id (:id dash)))))))
 
 (deftest write-permission-is-inherited-test
@@ -222,7 +223,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection coll {}
                      :model/Dashboard  dash {:name "Sales" :collection_id (:id coll)}]
-        (is (some? (tool-error (call-tool! :rasta nil "dashboard_write"
+        (is (some? (tool-error (call-tool! :rasta mcp.tu/all-scopes "dashboard_write"
                                            (wire {:method "update" :id (:id dash) :name "Hacked"})))))
         (is (= "Sales" (t2/select-one-fn :name :model/Dashboard :id (:id dash))))))))
 
@@ -238,7 +239,7 @@
                                                            :card_id      hidden-card
                                                            :row          0 :col 0}]
       (mt/with-non-admin-groups-no-collection-perms locked-id
-        (let [result (tool-result (call-tool! :rasta nil "dashboard_write"
+        (let [result (tool-result (call-tool! :rasta mcp.tu/all-scopes "dashboard_write"
                                               (wire {:method "update" :id dash-id
                                                      :name   "Renamed"})))
               [dc]   (:dashcards result)]
@@ -252,7 +253,7 @@
   (testing "GHY-4147: a parameter's JSON-shaped properties are coerced to the shape the REST save stores"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
       (let [result (tool-result
-                    (call-tool! :crowberto nil "dashboard_write"
+                    (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                 (wire {:method "update" :id (:id dash)
                                        :ops [{:op "add_parameter" :parameter_id "p1" :name "Category"
                                               :type "string/=" :sectionId "string"
@@ -270,7 +271,7 @@
             `dashboard->resolved-params` requires a non-blank name — so the failure would otherwise
             land on read-back, after the write had already committed."
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
-      (let [err (tool-error (call-tool! :crowberto nil "dashboard_write"
+      (let [err (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                         (wire {:method "update" :id (:id dash)
                                                :ops [{:op "add_parameter" :parameter_id "p1"
                                                       :type "string/="}]})))]
@@ -285,7 +286,7 @@
             than storing an explicit null, which is not the same thing to the REST shape."
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
       (let [param #(first (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))
-            run!  (fn [ops] (tool-result (call-tool! :crowberto nil "dashboard_write"
+            run!  (fn [ops] (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                                      (wire {:method "update" :id (:id dash) :ops ops}))))]
         (run! [{:op "add_parameter" :parameter_id "p1" :name "Category" :type "string/="
                 :default ["Widget"] :sectionId "string"}])
@@ -305,7 +306,7 @@
           (is (not (contains? (param) :sectionId))))
         (testing "setting and clearing the same property in one op is a contradiction"
           (is (re-find #"both set and cleared"
-                       (tool-error (call-tool! :crowberto nil "dashboard_write"
+                       (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                                (wire {:method "update" :id (:id dash)
                                                       :ops [{:op "update_parameter" :parameter_id "p1"
                                                              :default ["X"] :clear ["default"]}]})))))
@@ -316,7 +317,7 @@
   (testing "GHY-4147: add_card referencing a card the user cannot read fails before any write"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
       (is (re-find #"op 0"
-                   (tool-error (call-tool! :crowberto nil "dashboard_write"
+                   (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
 
@@ -324,14 +325,14 @@
   (testing "GHY-4544: the unknown-card refusal names the op as the caller sent it, quoted, and the card id as sent"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
       (is (= "op 0 (\"add_card\"): no card with id 9999999 that you can read."
-             (tool-error (call-tool! :crowberto nil "dashboard_write"
+             (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                      (wire {:method "update" :id (:id dash)
                                             :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
 
 (deftest archived-on-create-error-text-test
   (testing "GHY-4544: `archived` on a create is a teaching error"
     (is (= "\"archived\" applies to method \"update\" only — remove it from this create call."
-           (tool-error (call-tool! :crowberto nil "dashboard_write"
+           (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                    (wire {:method "create" :name "Sales" :archived true})))))))
 
 ;; not ^:parallel: the `!` in validate-payload! trips the kondo deftest lint
@@ -356,7 +357,7 @@
       (doseq [[label ops] [["card_id" [{:op "add_card" :id -1 :card_id hidden-id}]]
                            ["series"  [{:op "add_card" :id -1 :card_id hidden-id :series [hidden-id]}]]]]
         (testing label
-          (let [error (tool-error (call-tool! :rasta nil "dashboard_write"
+          (let [error (tool-error (call-tool! :rasta mcp.tu/all-scopes "dashboard_write"
                                               (wire {:method "update" :id (:id dash) :ops ops})))]
             (is (re-find #"you can read" error))
             (is (not (re-find #"CONFIDENTIAL" error))
@@ -367,7 +368,7 @@
 (deftest create-applies-display-attributes-test
   (testing "GHY-4147: width and auto_apply_filters are honored on create, not silently dropped"
     (mt/with-model-cleanup [:model/Dashboard]
-      (let [result (tool-result (call-tool! :crowberto nil "dashboard_write"
+      (let [result (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                             (wire {:method "create" :name "Sales"
                                                    :width "full" :auto_apply_filters false})))]
         (is (= {:width "full" :auto_apply_filters false}
@@ -378,7 +379,7 @@
             the registry strips those before the handler — so a null attribute leaves
             the stored value alone rather than reaching a NOT NULL column like `width`."
     (mt/with-temp [:model/Dashboard dash {:name "Sales" :width "full" :auto_apply_filters false}]
-      (let [result (tool-result (call-tool! :crowberto nil "dashboard_write"
+      (let [result (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                             (wire {:method "update" :id (:id dash)
                                                    :name nil :width nil
                                                    :auto_apply_filters nil :archived nil})))]
@@ -395,14 +396,14 @@
                                           :collection_position 1
                                           :cache_ttl           10}]
       (testing "the named properties are unset, and unnamed ones are untouched"
-        (tool-result (call-tool! :crowberto nil "dashboard_write"
+        (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                  (wire {:method "update" :id (:id dash)
                                         :clear ["description" "cache_ttl"]})))
         (is (= {:name "Sales" :description nil :collection_position 1 :cache_ttl nil}
                (t2/select-one [:model/Dashboard :name :description :collection_position :cache_ttl]
                               :id (:id dash)))))
       (testing "clearing alongside an ordinary set in the same call"
-        (tool-result (call-tool! :crowberto nil "dashboard_write"
+        (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                  (wire {:method "update" :id (:id dash)
                                         :name "Renamed" :clear ["collection_position"]})))
         (is (= {:name "Renamed" :collection_position nil}
@@ -411,7 +412,7 @@
                 schema enum rejects it at the boundary and names the ones that are clearable, so
                 the handler's own check (see common-test) is only a backstop against the enum and
                 the tool's `:clearable` set drifting apart"
-        (let [err (tool-error (call-tool! :crowberto nil "dashboard_write"
+        (let [err (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                           (wire {:method "update" :id (:id dash)
                                                  :clear ["name"]})))]
           (is (re-find #"clear" err))
@@ -429,7 +430,7 @@
                                            :collection_id       (:id coll)
                                            :collection_position 1
                                            :cache_ttl           10}]
-      (tool-result (call-tool! :crowberto nil "dashboard_write"
+      (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                (wire {:method "update" :id (:id dash)
                                       :description nil :collection_id nil
                                       :collection_position nil :cache_ttl nil})))
@@ -442,7 +443,7 @@
             \"root\" sentinel resolves to nil, so a dashboard can be moved back to the top level"
     (mt/with-temp [:model/Collection coll {}
                    :model/Dashboard  dash {:name "Sales" :collection_id (:id coll)}]
-      (tool-result (call-tool! :crowberto nil "dashboard_write"
+      (tool-result (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                (wire {:method "update" :id (:id dash) :collection_id "root"})))
       (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id (:id dash)))))))
 
@@ -453,7 +454,7 @@
       (mt/with-temp [:model/Card base   {:name "Revenue"}
                      :model/Card overlay {:name "Forecast"}]
         (let [result (tool-result
-                      (call-tool! :crowberto nil "dashboard_write"
+                      (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                   (wire {:method "create" :name "Sales"
                                          :ops [{:op "add_card" :id -1 :card_id (:id base)
                                                 :series [(:id overlay)]}]})))]
@@ -466,7 +467,7 @@
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}
                    :model/Card      card {:name "Revenue"}]
       (is (re-find #"op 0"
-                   (tool-error (call-tool! :crowberto nil "dashboard_write"
+                   (tool-error (call-tool! :crowberto mcp.tu/all-scopes "dashboard_write"
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id (:id card)
                                                          :series [9999999]}]}))))))))

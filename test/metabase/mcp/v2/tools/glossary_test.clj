@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.glossary :as glossary]
@@ -15,7 +16,7 @@
 
 (defn- call
   [args]
-  (:result (registry/call-tool nil (str (random-uuid)) "glossary" args)))
+  (:result (registry/call-tool mcp.tu/all-scopes (str (random-uuid)) "glossary" args)))
 
 (defn- text-of
   [result]

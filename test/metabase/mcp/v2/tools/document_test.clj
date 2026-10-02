@@ -6,6 +6,7 @@
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -24,7 +25,7 @@
    payload map. Teaching errors surface as thrown ex-infos, matching how the registry treats
    handler exceptions."
   [args]
-  (-> (v2.document/document-write-tool args {:token-scopes nil})
+  (-> (v2.document/document-write-tool args {:token-scopes mcp.tu/all-scopes})
       (get-in [:content 0 :text])
       v2.tu/strip-data-boundary
       json/decode+kw))
@@ -343,7 +344,7 @@
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
    arguments the schema is meant to reject."
   [args]
-  (error-text (registry/call-tool nil "test-session" "document_write" args)))
+  (error-text (registry/call-tool mcp.tu/all-scopes "test-session" "document_write" args)))
 
 (deftest markdown-tables-are-rejected-test
   (mt/with-current-user (mt/user->id :crowberto)

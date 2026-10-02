@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as api.scope]
+   [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.v2.write :as v2.write]))
 
 (set! *warn-on-reflection* true)
@@ -32,9 +33,11 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at least one read scope"
                               (v2.write/readback #{"agent:content:write"} empty-scopes row [:bookmarked])))))))
 
-(deftest ^:parallel readback-internal-callers-get-the-row-test
-  (testing "nil token-scopes (internal callers) read back in full"
-    (is (= row (v2.write/readback nil ["agent:content:read"] row [:bookmarked])))))
+(deftest ^:parallel readback-nil-scopes-get-the-ack-test
+  (testing "nil token-scopes hold no scope, so they get the minimal ack, not the row"
+    (is (not= row (v2.write/readback nil ["agent:content:read"] row [:bookmarked]))))
+  (testing "every MCP scope reads back in full"
+    (is (= row (v2.write/readback (set mcp.paths/v2-surface-scopes) ["agent:content:read"] row [:bookmarked])))))
 
 (deftest ^:parallel readback-unrestricted-sentinel-is-not-a-scope-test
   (testing "the unrestricted sentinel holds no MCP scope, so it gets the minimal ack, not the row"

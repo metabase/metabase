@@ -10,6 +10,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -26,7 +27,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- call-run-saved-question
-  ([args] (call-run-saved-question nil args))
+  ([args] (call-run-saved-question mcp.tu/all-scopes args))
   ([token-scopes args]
    (registry/call-tool token-scopes (str (random-uuid)) "run_saved_question" args)))
 

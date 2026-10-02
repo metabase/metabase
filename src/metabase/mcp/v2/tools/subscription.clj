@@ -445,7 +445,7 @@
    so establishing one — or redirecting where one delivers — needs the same scope that seeing those
    results in-session would. The send itself happens later, tokenlessly, under the creator's
    permissions; this check at write time is the only place the token's scopes can bound that
-   deferred execution. No-op for internal callers, which pass nil scopes. Mirrors alert_write's check of the same scope."
+   deferred execution. Mirrors alert_write's check of the same scope."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     (common/throw-insufficient-scope!
