@@ -40,7 +40,6 @@ export function JobListMoreMenu({ jobs }: JobListMoreMenuProps) {
       <Menu>
         <Menu.Target>
           <Button
-            size="lg"
             aria-label={t`More job options`}
             leftSection={<Icon name="ellipsis" />}
           />

@@ -2,11 +2,9 @@ import { useField, useFormikContext } from "formik";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import { CopyButton } from "metabase/common/components/CopyButton";
+import { getCopyButtonSectionProps } from "metabase/common/components/CopyTextField/copy-text-field-props";
 import type { TextInputProps } from "metabase/ui";
 import { TextInput } from "metabase/ui";
-
-import S from "./FormTextInput.module.css";
 
 export interface FormTextInputProps extends Omit<
   TextInputProps,
@@ -54,12 +52,9 @@ export const FormTextInput = forwardRef(function FormTextInput(
     [setTouched, onBlur],
   );
 
-  const rightSection = hasCopyButton ? (
-    <CopyButton className={S.copyButton} value={value} />
-  ) : (
-    props.rightSection
-  );
-  const rightSectionWidth = hasCopyButton ? 40 : (props.rightSectionWidth ?? 0);
+  const copySectionProps = hasCopyButton
+    ? getCopyButtonSectionProps({ value: value ?? "" })
+    : {};
 
   return (
     <TextInput
@@ -70,8 +65,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
       error={(validateOnMount || touched) && error ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
-      rightSection={rightSection}
-      rightSectionWidth={rightSectionWidth}
+      {...copySectionProps}
       errorProps={{
         role: "alert",
       }}

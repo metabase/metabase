@@ -41,6 +41,18 @@ export function getCopyTextFieldProps<E extends CopyableElement>({
       }
       onClick?.(event);
     },
+    ...getCopyButtonSectionProps({ value, onCopied }),
+  };
+}
+
+export function getCopyButtonSectionProps({
+  value,
+  onCopied,
+}: {
+  value: string;
+  onCopied?: () => void;
+}) {
+  return {
     rightSectionPointerEvents: "all" as const,
     rightSection: value ? (
       <CopyButton value={value} timeout={2000}>

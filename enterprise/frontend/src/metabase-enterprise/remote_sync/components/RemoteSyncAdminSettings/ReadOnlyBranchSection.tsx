@@ -25,7 +25,6 @@ export const ReadOnlyBranchSection = () => {
             name={BRANCH_KEY}
             placeholder="main"
             label={t`Sync branch`}
-            labelProps={{ mb: "0.75rem" }}
             {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
           />
         </Box>
