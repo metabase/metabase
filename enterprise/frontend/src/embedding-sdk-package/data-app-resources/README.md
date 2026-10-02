@@ -8,9 +8,9 @@ fail on permissions.
 The app's `resources/` directory makes that true. It holds serdes YAML for the app's collection, a
 saved question per query, and copies of the models, actions, and metrics those use. The author (in
 practice, an agent following the data-app skills) writes that YAML from the app's definitions. Nothing
-changes in Metabase until the repository is pulled: the pull loads the files (see
-`metabase_enterprise/data_apps/resource_load.clj`), so a local experiment can't break the running app,
-and the saved questions never get ahead of the app code that is deployed.
+changes in Metabase until the repository is pulled: the pull loads the files as serialized content, like
+everything else the repository holds, so a local experiment can't break the running app, and the saved
+questions never get ahead of the app code that is deployed.
 
 `check-resources` reads nothing from Metabase; `print-resources` asks it for the export.
 
