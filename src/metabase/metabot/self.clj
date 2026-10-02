@@ -496,18 +496,21 @@
 (defn- json-schema->malli
   "Malli equivalent of `json-schema`, for the JSON Schema subset [[core/LLMRequestOpts]] accepts as `:schema`."
   [{:keys [type properties required additionalProperties items minimum maximum]}]
-  (cond-> [:and (case type
-                  "object"  (into [:map {:closed (false? additionalProperties)}]
-                                  (for [[k v] properties]
-                                    [(keyword k) {:optional (not-any? #{(name k)} required)} (json-schema->malli v)]))
-                  "array"   [:sequential (if items (json-schema->malli items) :any)]
-                  "string"  :string
-                  "integer" :int
-                  "number"  number?
-                  "boolean" :boolean
-                  :any)]
-    minimum (conj [:>= minimum])
-    maximum (conj [:<= maximum])))
+  (let [schema (case type
+                 "object"  (into [:map {:closed (false? additionalProperties)}]
+                                 (for [[k v] properties]
+                                   [(keyword k) {:optional (not-any? #{(name k)} required)} (json-schema->malli v)]))
+                 "array"   [:sequential (if items (json-schema->malli items) :any)]
+                 "string"  :string
+                 "integer" :int
+                 "number"  number?
+                 "boolean" :boolean
+                 :any)]
+    (if (or minimum maximum)
+      (cond-> [:and schema]
+        minimum (conj [:>= minimum])
+        maximum (conj [:<= maximum]))
+      schema)))
 
 (defn- structured-output-in-text
   "JSON matching `json-schema` in the text reply of a model that didn't call the structured-output tool.
