@@ -67,13 +67,7 @@ export const SaveQuestionForm = ({
         <FormRadioGroup
           name="saveType"
           label={title}
-          styles={{
-            label: {
-              fontWeight: 900,
-              fontSize: "0.77rem",
-              color: "var(--mb-color-text-secondary)",
-            },
-          }}
+          styles={{ label: labelStyles }}
         >
           <Stack gap="sm" mb="lg">
             <Radio

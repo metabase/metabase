@@ -57,8 +57,6 @@
 .input,
 .inputError {
   border: none;
-  box-shadow: none !important;
-  background-color: transparent !important;
   padding-inline: 0 !important;
 }
 

@@ -40,34 +40,39 @@
   --input-ring: 0 0 0 0 transparent;
 
   display: block;
-  border: var(--input-border-width) solid var(--input-border-color);
   border-radius: var(--input-radius);
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-input-background);
   font-size: var(--mantine-font-size-md);
-  box-shadow: var(--input-ring);
 
   &::placeholder {
     color: var(--mb-color-text-disabled);
   }
 
-  /*
-   * `:focus-within` rather than `:focus` so it also covers components whose
-   * `.input` is a wrapper around the real field (PasswordInput, PillsInput).
-   */
-  &:focus-within {
-    --input-border-color: var(--mb-color-border-highlight);
-    --input-ring: inset 0 0 0 var(--input-ring-width) var(--input-border-color);
+  &:not([data-variant="unstyled"]) {
+    border: var(--input-border-width) solid var(--input-border-color);
+    background-color: var(--mb-color-input-background);
+    box-shadow: var(--input-ring);
 
-    background-color: var(--mb-color-background_surface-primary);
-  }
-
-  &[data-error] {
-    --input-border-color: var(--mb-color-feedback-negative-strong);
-    --input-ring: inset 0 0 0 var(--input-ring-width) var(--input-border-color);
-
+    /*
+     * `:focus-within` rather than `:focus` so it also covers components whose
+     * `.input` is a wrapper around the real field (PasswordInput, PillsInput).
+     */
     &:focus-within {
       --input-border-color: var(--mb-color-border-highlight);
+      --input-ring: inset 0 0 0 var(--input-ring-width)
+        var(--input-border-color);
+
+      background-color: var(--mb-color-background_surface-primary);
+    }
+
+    &[data-error] {
+      --input-border-color: var(--mb-color-feedback-negative-strong);
+      --input-ring: inset 0 0 0 var(--input-ring-width)
+        var(--input-border-color);
+
+      &:focus-within {
+        --input-border-color: var(--mb-color-border-highlight);
+      }
     }
   }
 }
@@ -77,8 +82,12 @@
   --input-border-color: transparent;
 
   color: var(--mb-color-text-disabled);
-  background-color: var(--mb-color-background_surface-disabled);
   opacity: 1;
+}
+
+.wrapper .input:not([data-variant="unstyled"]):disabled,
+.wrapper .input:not([data-variant="unstyled"])[data-disabled] {
+  background-color: var(--mb-color-background_surface-disabled);
 }
 
 .wrapper[data-with-left-section] .input {
