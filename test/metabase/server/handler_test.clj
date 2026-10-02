@@ -36,7 +36,7 @@
 
 (deftest handler-options-require-credential-fns-test
   ;; `make-handler` checks this explicitly, since its `mu/defn` schema is not checked in prod.
-  (doseq [k [:oauth-bearer :mcp-ui-credentials]]
+  (doseq [k [:oauth-bearer]]
     (testing k
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
                             (#'server.handler/current-options (dissoc mcp.http-handler/options k)))))))

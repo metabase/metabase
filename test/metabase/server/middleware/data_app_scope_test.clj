@@ -47,11 +47,7 @@
     (doseq [[what request] {"no client header at all"    {:headers {}}
                             "a non-data-app SDK client"  {:headers {"x-metabase-client" "embedding-sdk-react"}}
                             ;; Narrowing an already-scoped OAuth/agent token would broaden it.
-                            "a marked but scoped token"  (assoc marker :token-scopes #{"agent:search"})
-                            ;; An MCP-UI credential's route allowlist, not its scope set, confines it.
-                            "a marked MCP-UI credential" (assoc marker
-                                                                :token-scopes      #{::scope/unrestricted}
-                                                                :mcp-ui-credential {:uid 1})}]
+                            "a marked but scoped token"  (assoc marker :token-scopes #{"agent:search"})}]
       (is (identical? request (run-middleware request)) what))))
 
 (deftest ^:parallel data-app-scope-registered-test

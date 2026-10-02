@@ -180,7 +180,7 @@
   "The normalized query stored under the route's handle, after the native-SQL gate for the credential `claims`."
   [{:keys [claims session-id] [handle] :route-params}]
   (let [{:keys [query]} (resolve-handle! session-id handle)]
-    (query-guards/check-mcp-ui-native-query! {:mcp-ui-credential claims} query)
+    (query-guards/check-mcp-ui-native-query! claims query)
     query))
 
 (defn- run-handle

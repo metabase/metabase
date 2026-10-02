@@ -82,23 +82,14 @@
       (invoke-handler (middleware spy-handler) {:token-scopes #{"agent:reports"}})
       (is (true? (:token-scopes-checked (deref seen-request 1000 ::timeout)))))))
 
-(deftest ^:parallel enforce-scope-defers-to-the-mcp-ui-gate-test
+(deftest ^:parallel enforce-scope-ignores-a-forged-stamp-test
   (let [ok-handler (fn [_request respond _raise]
                      (respond {:status 200 :body "ok"}))
         middleware (scope/enforce-scope "agent:reports")
         invoke     #(invoke-handler (middleware ok-handler) %)]
-    (testing "an MCP Apps UI credential already cleared by its own route gate passes a declared scope it
-              does not hold — `metabase.mcp.ui-surface/request-surface` is what confines that credential,
-              and it is strictly narrower than any endpoint scope"
-      (is (= {:status 200 :body "ok"}
-             (invoke {:token-scopes #{::scope/mcp-ui} :token-scopes-checked true}))))
-    (testing "without the stamp it is refused — the carve-out defers to the gate's decision, it does not
-              exempt the credential from having one"
-      (is (= 403 (:status (invoke {:token-scopes #{::scope/mcp-ui}}))))
-      (is (= 403 (:status (invoke {:token-scopes #{::scope/mcp-ui} :token-scopes-checked false})))))
-    (testing "and the carve-out does not leak to ordinary scoped tokens. `enforce-scope` stamps
-              `:token-scopes-checked` itself on success, so trusting the stamp alone would make every
-              per-endpoint `:scope` a no-op underneath a namespace-level `enforce-scope`"
+    (testing "`enforce-scope` stamps `:token-scopes-checked` itself on success, so a request arriving with the stamp
+              must still hold the declared scope; otherwise every per-endpoint `:scope` would be a no-op underneath
+              a namespace-level `enforce-scope`"
       (is (= 403 (:status (invoke {:token-scopes #{"agent:queries"} :token-scopes-checked true}))))
       (is (= 403 (:status (invoke {:token-scopes #{} :token-scopes-checked true})))))))
 

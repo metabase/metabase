@@ -137,13 +137,8 @@
 
 (deftest ^:parallel native-query?-sees-a-json-encoded-query-test
   (testing "`POST /api/dataset/:export-format` accepts `query` as a JSON STRING for `<form>`-submit
-            back-compat, decoding it in Malli (`:decode/api`). `+refuse-unscoped-native-sql` runs ahead of that
-            decoding, so the guard is handed the raw string — and a string edge fell through to `deep-scan`,
-            which finds no marker inside text. The guard therefore could not see native SQL in that shape.
-
-            Unreachable today only because that route is absent from the MCP UI credential's allowlist, which
-            is exactly the coupling the middleware's docstring promises does NOT matter: \"a route later added
-            to the allowlist is covered the day it is added\"."
+            back-compat, so a query edge can arrive as a string. A string edge used to fall through to
+            `deep-scan`, which finds no marker inside text, so the guard could not see native SQL in that shape."
     (testing "a JSON-encoded query is decoded and scanned, not skipped"
       (are [q] (true? (query-guards/native-query? q))
         {:query (json/encode {:type "native" :native {:query "select 1"}})}
@@ -221,18 +216,9 @@
                                     {:stages [{:source-table (mt/id :orders)}]}))))))))
 
 (defn- ui-request
-  "A request map shaped like one the MCP Apps iframe credential authenticated."
+  "Verified MCP Apps UI credential claims carrying `token-scopes`."
   [token-scopes]
-  {:mcp-ui-credential {:uid 1 :sid "session" :token-scopes token-scopes}})
-
-(def ^:private sql-allowed
-  "A `check-execute-sql-allowed!` for a user whose groups allow `execute_sql`."
-  (constantly nil))
-
-(defn- sql-denied
-  "A `check-execute-sql-allowed!` for a user whose groups deny `execute_sql`."
-  []
-  (throw (ex-info "execute_sql is not enabled for your groups" {:status-code 403})))
+  {:uid 1 :sid "session" :token-scopes token-scopes})
 
 (def ^:private legacy-native {:database 1 :type "native" :native {:query "SELECT 1"}})
 (def ^:private mbql-5-native {:lib/type "mbql/query" :database 1
@@ -245,54 +231,49 @@
             agent:sql:run — a hand-rolled payload would most naturally use the legacy shape, while execute_sql
             mints MBQL 5"
     (are [query] (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                         sql-allowed (ui-request #{"agent:content:read" "agent:query:run"})
+                                         (ui-request #{"agent:content:read" "agent:query:run"})
                                          query)))
       legacy-native
       mbql-5-native))
   (testing "the refusal names the scope the client would need"
     (is (re-find #"agent:sql:run"
                  (try (query-guards/check-mcp-ui-native-query!
-                       sql-allowed (ui-request #{"agent:query:run"}) legacy-native)
+                       (ui-request #{"agent:query:run"}) legacy-native)
                       ""
                       (catch clojure.lang.ExceptionInfo e (ex-message e))))))
-  (testing "grants that cover agent:sql:run pass"
-    (are [scopes] (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                                 sql-allowed (ui-request scopes) legacy-native)))
-      #{"agent:sql:run"}
-      #{"agent:sql:execute"}                        ; v1's concrete scope keeps working
-      #{"agent:sql:*"}                              ; metabot permissions grant wildcards
-      #{:metabase.api.macros.scope/unrestricted}))  ; browser-session MCP clients
-  (testing "non-native queries are never gated, whatever the grant"
+  (testing "the literal agent:sql:run grant passes"
     (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                       sql-allowed (ui-request #{}) mbql-query)))))
-  (testing "requests not authenticated by a UI credential pass through untouched"
-    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query! sql-allowed {} legacy-native)))))
-  (testing "a credential carrying no scopes claim fails closed — a rolling deploy can mint one"
+                                       (ui-request #{"agent:sql:run"}) legacy-native)))))
+  (testing "a wildcard grant does not: MCP honors literal scopes only"
+    (are [scopes] (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                          (ui-request scopes) legacy-native)))
+      #{"agent:sql:*"}
+      #{"agent:*"}
+      #{"*"}))
+  (testing "v1's concrete agent:sql:execute does not grant raw SQL: an OAuth MCP session holds only literal v2
+            scopes, so no credential minted today can carry it"
     (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                sql-allowed {:mcp-ui-credential {:uid 1 :sid "session"}} legacy-native)))))
+                                (ui-request #{"agent:sql:execute"}) legacy-native)))))
+  (testing "the unrestricted sentinel does not grant raw SQL: only OAuth MCP sessions mint credentials, and their
+            claims hold literal MCP scopes"
+    (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                (ui-request #{:metabase.api.macros.scope/unrestricted}) legacy-native)))))
+  (testing "non-native queries are never gated, whatever the grant"
+    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query! (ui-request #{}) mbql-query)))))
+  (testing "a credential carrying no scopes claim fails closed — a rolling deploy can mint one"
+    (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query! {} legacy-native))))
+    (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                {:uid 1 :sid "session"} legacy-native)))))
   (testing "the kill switch outranks the grant"
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
       (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                  sql-allowed (ui-request #{"agent:sql:run"}) legacy-native))))))
-  (testing "a user whose groups deny execute_sql is refused native queries, whatever the grant"
-    (are [query] (= "execute_sql is not enabled for your groups"
-                    (try (query-guards/check-mcp-ui-native-query!
-                          sql-denied (ui-request #{:metabase.api.macros.scope/unrestricted}) query)
-                         ""
-                         (catch clojure.lang.ExceptionInfo e (ex-message e))))
-      legacy-native
-      mbql-5-native))
-  (testing "the group policy is consulted only for a native query on a UI credential"
-    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                       sql-denied (ui-request #{"agent:query:run"}) mbql-query))))
-    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query! sql-denied {} legacy-native)))))
+                                  (ui-request #{"agent:sql:run"}) legacy-native))))))
   (testing "M2: the scope check runs before the kill switch, so an unauthorized caller cannot tell the
             mcp-execute-sql-enabled state apart from the 403 it gets — the message names the missing scope,
             not the kill switch, whether the switch is on or off"
     (doseq [enabled? [true false]]
       (mt/with-temporary-setting-values [mcp-execute-sql-enabled enabled?]
-        (let [msg (try (query-guards/check-mcp-ui-native-query!
-                        sql-allowed (ui-request #{"agent:query:run"}) legacy-native)
+        (let [msg (try (query-guards/check-mcp-ui-native-query! (ui-request #{"agent:query:run"}) legacy-native)
                        ""
                        (catch clojure.lang.ExceptionInfo e (ex-message e)))]
           (is (re-find #"agent:sql:run" msg))
