@@ -245,7 +245,8 @@
 
            :fixture
            (fn [_ thunk]
-             (mt/with-dynamic-fn-redefs [body/attached-results-text (pulse.test-util/wrap-function (mt/original-fn #'body/attached-results-text))]
+             (mt/with-dynamic-fn-redefs [body/attached-results-text
+                                         (pulse.test-util/wrap-function (mt/original-fn #'body/attached-results-text))]
                (thunk)))
 
            :assert

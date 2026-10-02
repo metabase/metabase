@@ -328,7 +328,8 @@
 
     :fixture
     (fn [_ thunk]
-      (mt/with-dynamic-fn-redefs [body/attached-results-text (pulse.test-util/wrap-function (mt/original-fn #'body/attached-results-text))]
+      (mt/with-dynamic-fn-redefs [body/attached-results-text
+                                  (pulse.test-util/wrap-function (mt/original-fn #'body/attached-results-text))]
         (thunk)))
 
     :assert
@@ -1232,7 +1233,8 @@
       ;; Slack rasterizes the rendered hiccup; wrap the rasterizer to see what it was given
       :fixture (fn [_ thunk]
                  (mt/with-dynamic-fn-redefs [channel.render/png-from-render-info
-                                             (pulse.test-util/wrap-function (mt/original-fn #'channel.render/png-from-render-info))]
+                                             (pulse.test-util/wrap-function
+                                              (mt/original-fn #'channel.render/png-from-render-info))]
                    (thunk)))
       :assert
       {:email
