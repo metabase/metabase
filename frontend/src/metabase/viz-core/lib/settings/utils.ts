@@ -112,3 +112,62 @@ export function getDeduplicatedTableColumnSettings(
 ): TableColumnOrderSetting[] {
   return _.uniq(tableColumnsSettings, false, (item) => item.name);
 }
+
+type InsertNewColumnSettingsOpts<TSetting, TColumn extends { name: string }> = {
+  getColumnName: (setting: TSetting) => string | undefined;
+  isNewColumn: (column: TColumn, columnIndex: number) => boolean | undefined;
+  createSetting: (column: TColumn) => TSetting;
+};
+
+/**
+ * Keeps the user's order of existing settings and places each new column right
+ * after the nearest preceding column that has a setting, so new columns follow
+ * the query's column order.
+ */
+export function insertNewColumnSettings<
+  TSetting,
+  TColumn extends { name: string },
+>(
+  settings: TSetting[],
+  columns: TColumn[],
+  {
+    getColumnName,
+    isNewColumn,
+    createSetting,
+  }: InsertNewColumnSettingsOpts<TSetting, TColumn>,
+): TSetting[] {
+  if (settings.length === 0) {
+    return columns.filter(isNewColumn).map(createSetting);
+  }
+
+  const nextSettings = [...settings];
+  const settingNames = new Set(settings.map(getColumnName));
+  columns.forEach((column, columnIndex) => {
+    if (!isNewColumn(column, columnIndex)) {
+      return;
+    }
+    const anchorName = findAnchorName(columns, columnIndex, settingNames);
+    const insertIndex =
+      anchorName == null
+        ? 0
+        : nextSettings.findIndex(
+            (setting) => getColumnName(setting) === anchorName,
+          ) + 1;
+    nextSettings.splice(insertIndex, 0, createSetting(column));
+    settingNames.add(column.name);
+  });
+  return nextSettings;
+}
+
+function findAnchorName(
+  columns: { name: string }[],
+  columnIndex: number,
+  settingNames: Set<string | undefined>,
+) {
+  for (let index = columnIndex - 1; index >= 0; index--) {
+    if (settingNames.has(columns[index].name)) {
+      return columns[index].name;
+    }
+  }
+  return null;
+}

@@ -193,9 +193,14 @@ export type TrendLinesModel = {
   seriesModels: TrendLineSeriesModel[];
 };
 
+export type YAxisSide = "left" | "right";
+
+/** Series names on each y-axis, `null` for a side with no axis. */
+export type YAxisSeriesNames = Record<YAxisSide, string[] | null>;
+
 export type StackDisplay = "bar" | "area";
 export type StackModel = {
-  axis: "left" | "right";
+  axis: YAxisSide;
   display: StackDisplay;
   seriesKeys: DataKey[];
 };

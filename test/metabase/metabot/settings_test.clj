@@ -402,11 +402,13 @@
 
 (deftest validate-metabot-provider-google-model-format-test
   (with-connections [configured-anthropic configured-google]
-    (testing "accepts a publisher-qualified model"
+    (testing "accepts a publisher-qualified model, or a Model Garden endpoint"
       (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
         (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5@20251001"]
-        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider)))))))
+        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/endpoints/1234567890123456789"]
+        (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider)))))))
 
 (deftest validate-metabot-provider-google-rejects-an-unqualified-model-test
   (with-connections [configured-anthropic configured-google]
@@ -470,6 +472,12 @@
                                                       :base-url "https://my-resource.services.ai.azure.com/openai"})]
         (with-selected-model "azure/openai/my-gpt-deployment"
           (is (= "azure/openai/my-gpt-deployment" (metabot.settings/llm-mini-model))))))
+    (testing "so does a Google connection that serves a Model Garden endpoint"
+      (with-connections [(connection "google" "google" {:oauth-access-token "ya29.test"
+                                                        :project-id         "my-project"
+                                                        :endpoint-id        "1234567890123456789"})]
+        (with-selected-model "google/endpoints/1234567890123456789"
+          (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-mini-model))))))
     (testing "so does a model reference naming a connection that does not exist"
       (with-connections []
         (with-selected-model "gone/some-model"
@@ -483,6 +491,46 @@
       (testing "and clearing it returns to the derived mini model"
         (mt/with-temporary-setting-values [llm-mini-model nil]
           (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
+
+(deftest retired-model-reads-as-its-successor-test
+  (testing "a saved retired OpenRouter id reads as the model now serving it, so the admin picker shows it selected"
+    (with-connections [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+      (with-selected-model "openrouter/qwen/qwen3.8-max"
+        (mt/with-temp-env-var-value! [mb-llm-mini-model nil]
+          (mt/with-temporary-raw-setting-values [llm-mini-model "openrouter/qwen/qwen3.8-max"]
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-metabot-provider)))
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/explicit-mini-model)))
+            (is (= "openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-mini-model)))
+            (is (true? (metabot.settings/llm-metabot-supports-reasoning?)))
+            (testing "including through the settings API the picker loads"
+              (let [values (into {}
+                                 (map (juxt :key :value))
+                                 (mt/user-http-request :crowberto :get 200 "setting"))]
+                (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-metabot-provider")))
+                (is (= "openrouter/qwen/qwen3.8-max-0902" (get values "llm-mini-model")))))))))))
+
+(deftest retired-model-is-stored-as-its-successor-test
+  (testing "writing a retired OpenRouter id stores the model now serving it, so saved values converge"
+    (with-connections [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+      (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil
+                                    mb-llm-mini-model       nil]
+        (mt/discard-setting-changes [llm-metabot-provider llm-mini-model]
+          (metabot.settings/llm-metabot-provider! "openrouter/qwen/qwen3.8-max")
+          (metabot.settings/llm-mini-model! "openrouter/qwen/qwen3.8-max")
+          (is (= "openrouter/qwen/qwen3.8-max-0902" (setting/get-value-of-type :string :llm-metabot-provider)))
+          (is (= "openrouter/qwen/qwen3.8-max-0902" (setting/get-value-of-type :string :llm-mini-model))))))))
+
+(deftest retired-model-written-before-its-connection-test
+  (testing (str "a retired id written before its connection exists is stored as given, and reads as its successor "
+                "once the connection appears")
+    (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil]
+      (mt/discard-setting-changes [llm-metabot-provider]
+        ;; `my-openrouter` rather than `openrouter`: no environment variable can synthesize a connection under this key
+        (with-connections []
+          (metabot.settings/llm-metabot-provider! "my-openrouter/qwen/qwen3.8-max")
+          (is (= "my-openrouter/qwen/qwen3.8-max" (setting/get-value-of-type :string :llm-metabot-provider))))
+        (with-connections [(connection "my-openrouter" "openrouter" {:api-key "sk-or-v1-test"})]
+          (is (= "my-openrouter/qwen/qwen3.8-max-0902" (metabot.settings/llm-metabot-provider))))))))
 
 (deftest explicit-mini-model-reports-only-what-was-set-test
   (testing "the explicit reading is nil while the model is derived, so callers can tell a choice from a fallback"

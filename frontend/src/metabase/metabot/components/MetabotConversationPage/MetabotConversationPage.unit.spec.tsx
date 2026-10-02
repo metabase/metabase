@@ -20,7 +20,7 @@ import { createMockUser } from "metabase-types/api/mocks";
 
 import { FIXED_METABOT_IDS } from "../../constants";
 import { MetabotProvider } from "../../context";
-import { metabotReducer } from "../../state";
+import { getMetabotState, metabotReducer } from "../../state";
 import {
   createConversation,
   getMetabotInitialState,
@@ -156,7 +156,7 @@ describe("MetabotConversationPage", () => {
     ).not.toBeInTheDocument();
     await waitFor(() => {
       expect(
-        store.getState().metabot.conversations[CONVERSATION_ID],
+        getMetabotState(store.getState()).conversations[CONVERSATION_ID],
       ).toBeDefined();
     });
   });
@@ -210,9 +210,7 @@ describe("MetabotConversationPage", () => {
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
     expect(await screen.findByText("Thinking")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("metabot-response-loader"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("metabot-response-loader")).toBeInTheDocument();
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),

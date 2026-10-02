@@ -127,3 +127,17 @@
                   :query_executions_public_link       2
                   :query_executions_internal          1}
                  (sut/query-execution-last-utc-day))))))))
+
+(deftest query-execution-last-utc-day-boundaries-test
+  (testing "GHY-4651: the previous UTC day is [yesterday 00:00Z, today 00:00Z), filtered as a range on started_at"
+    (t/with-clock (t/mock-clock 1583351015000)
+      (let [today-start (t/truncate-to (t/offset-date-time (t/zone-offset "+00")) :days)
+            sdk-at      (fn [started-at]
+                          (assoc query-execution-defaults
+                                 :embedding_client "embedding-sdk-react"
+                                 :started_at started-at))]
+        (mt/with-temp [:model/QueryExecution _ (sdk-at (t/minus today-start (t/days 1) (t/millis 1)))
+                       :model/QueryExecution _ (sdk-at (t/minus today-start (t/days 1)))
+                       :model/QueryExecution _ (sdk-at (t/minus today-start (t/millis 1)))
+                       :model/QueryExecution _ (sdk-at today-start)]
+          (is (= 2 (:query_executions_sdk_embed (sut/query-execution-last-utc-day)))))))))

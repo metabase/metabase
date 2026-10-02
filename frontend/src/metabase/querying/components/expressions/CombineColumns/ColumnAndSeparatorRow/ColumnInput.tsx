@@ -4,9 +4,15 @@ import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
-import { Button, FocusTrap, Icon, Input, Popover } from "metabase/ui";
+import {
+  Button,
+  FocusTrap,
+  Icon,
+  Input,
+  Popover,
+  useMantineTheme,
+} from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { getThemeOverrides } from "metabase/ui/theme";
 import * as Lib from "metabase-lib";
 
 import styles from "./ColumnInput.module.css";
@@ -20,8 +26,6 @@ type ColumnInputProps = {
   onChange: (column: Lib.ColumnMetadata | null) => void;
 };
 
-const theme = getThemeOverrides();
-
 export function ColumnInput({
   query,
   stageIndex,
@@ -30,6 +34,7 @@ export function ColumnInput({
   value,
   onChange,
 }: ColumnInputProps) {
+  const theme = useMantineTheme();
   const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
 
   const [open, setOpen] = useState(false);
@@ -98,8 +103,8 @@ export function ColumnInput({
       styles={{
         root: { width: "100%" },
         label: {
-          marginBottom: theme.spacing?.xxs,
-          fontSize: theme.fontSizes?.md,
+          marginBottom: theme.spacing.xxs,
+          fontSize: theme.fontSizes.md,
           color: color("text-secondary"),
         },
       }}

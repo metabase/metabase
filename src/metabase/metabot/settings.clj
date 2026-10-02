@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.registry :as registry]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -186,10 +186,12 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
+  :getter           #(llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-metabot-provider))
   :setter           (fn [new-value]
                       (when new-value
                         (validate-model-ref! new-value))
-                      (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+                      (setting/set-value-of-type! :string :llm-metabot-provider
+                                                  (llm.provider/canonical-model-ref new-value))))
 
 (defn- mini-model-ref
   "The model reference for the fastest model of the connection `model-ref` names, or nil when that connection's
@@ -200,11 +202,13 @@
       (str conn-key "/" model))))
 
 (defn explicit-mini-model
-  "The model reference [[llm-mini-model]] was explicitly set to, or nil while it is being derived
-  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model quick tasks happen
-  to run on want this: [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked."
+  "The model reference [[llm-mini-model]] was explicitly set to, or nil when derived from [[llm-metabot-provider]].
+
+  Callers that act on the admin's choice rather than on the model quick tasks happen to run on want this:
+  [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked.
+  A retired model id reads as the model that now serves it (see [[llm.provider/canonical-model-ref]])."
   []
-  (setting/get-value-of-type :string :llm-mini-model))
+  (llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-mini-model)))
 
 (defn- -llm-mini-model
   "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the
@@ -227,7 +231,7 @@
   :setter     (fn [new-value]
                 (when new-value
                   (validate-model-ref! new-value))
-                (setting/set-value-of-type! :string :llm-mini-model new-value)))
+                (setting/set-value-of-type! :string :llm-mini-model (llm.provider/canonical-model-ref new-value))))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."
@@ -245,7 +249,7 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(catalog/streams-reasoning? (llm-metabot-provider))
+  :getter     #(registry/streams-reasoning? (llm-metabot-provider))
   :doc        false)
 
 (defsetting llm-metabot-supports-fast-mode?
@@ -256,7 +260,7 @@
   :visibility :settings-manager
   :setter     :none
   :export?    false
-  :getter     #(catalog/supports-fast-mode? (llm-metabot-provider))
+  :getter     #(registry/supports-fast-mode? (llm-metabot-provider))
   :doc        false)
 
 (defsetting llm-fast-mode

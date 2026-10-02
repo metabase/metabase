@@ -68,6 +68,7 @@
   [f]
   (reset! doc-content-visibility-fn f))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *content-gate-pending*
   "Document ids whose content gate is currently being evaluated on this thread.
 
@@ -77,6 +78,7 @@
   has no answer, so deny rather than recur into a stack overflow inside an authorization check."
   #{})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache*
   "Cache atom bound by [[with-content-gate-cache]], or nil to adjudicate on every call."
   nil)
@@ -384,18 +386,22 @@
        [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
        [:archived {:optional true} [:maybe :boolean]]]]
   (let [document-id (:id existing-document)
-        document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
+        document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)
+        ;; The frontend omits `:collection_id` when saving an existing document, so fall back to the document's
+        ;; current collection rather than root.
+        target-collection-id (if (contains? body :collection_id)
+                               collection_id
+                               (:collection_id existing-document))]
     (t2/with-transaction [_conn]
       (when collection_position
-        (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position]) {:collection_id (if (contains? body :collection_id)
-                                                                                                                                          collection_id
-                                                                                                                                          (:collection_id existing-document))
-                                                                                                                         :collection_position collection_position}))
+        (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
+                                                  {:collection_id       target-collection-id
+                                                   :collection_position collection_position}))
       (let [card-id-map (when document
                           (merge
                            (clone-cards-in-document! (assoc existing-document :document document))
                            (when-not (empty? cards)
-                             (create-cards-for-document! cards document-id collection_id @api/*current-user*))))
+                             (create-cards-for-document! cards document-id target-collection-id @api/*current-user*))))
             draft-card-id-map (into {} (filter (comp neg? key) card-id-map))
             pairings (draft-stored-result-pairings document
                                                    (:content_type existing-document)

@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type FocusEvent,
   Fragment,
   type ReactNode,
   useEffect,
@@ -71,16 +72,45 @@ function UndoToast({
   style: CSSProperties;
 }) {
   const dispatch = useDispatch();
+  const interaction = useRef({ isHovered: false, isFocused: false });
+  const hasTimer = Boolean(undo.timeout);
 
-  const handleMouseEnter = () => {
-    if (undo.showProgress) {
+  const updateInteraction = (
+    change: Partial<{ isHovered: boolean; isFocused: boolean }>,
+  ) => {
+    const wasInteracting =
+      interaction.current.isHovered || interaction.current.isFocused;
+    interaction.current = { ...interaction.current, ...change };
+    const isInteracting =
+      interaction.current.isHovered || interaction.current.isFocused;
+
+    if (!hasTimer || wasInteracting === isInteracting) {
+      return;
+    }
+    dispatch(isInteracting ? pauseUndo(undo) : resumeUndo(undo.id));
+  };
+
+  // handle the case where a hovered toast with no timer changes
+  // to one with a timer - pause it.
+  useEffect(() => {
+    const { isHovered, isFocused } = interaction.current;
+    if ((isHovered || isFocused) && hasTimer && undo.pausedAt == null) {
       dispatch(pauseUndo(undo));
+    }
+  }, [undo, hasTimer, dispatch]);
+
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const isFocusStillInside =
+      event.relatedTarget instanceof Node &&
+      event.currentTarget.contains(event.relatedTarget);
+    if (!isFocusStillInside) {
+      updateInteraction({ isFocused: false });
     }
   };
 
-  const handleMouseLeave = () => {
-    if (undo.showProgress) {
-      dispatch(resumeUndo(undo));
+  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.target.matches(":focus-visible")) {
+      updateInteraction({ isFocused: true });
     }
   };
 
@@ -94,10 +124,13 @@ function UndoToast({
       color={undo.toastColor}
       role="status"
       className={S.toast}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
-      c={dark ? "text-secondary-inverse" : "text-primary"}
+      data-paused={undo.pausedAt != null || undefined}
+      onMouseEnter={() => updateInteraction({ isHovered: true })}
+      onMouseLeave={() => updateInteraction({ isHovered: false })}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      bg={dark ? "tooltip-background" : "background_page-primary"}
+      c={dark ? "tooltip-text" : "text-primary"}
       withBorder={!noBorder}
       radius="sm"
       p="lg"
@@ -134,7 +167,7 @@ function UndoToast({
             <Icon
               className={S.messageIcon}
               name={undo.icon}
-              c={undo.iconColor ?? "text-secondary-inverse"}
+              c={undo.iconColor ?? "tooltip-text"}
               mr="sm"
               flex="0 0 auto"
             />
@@ -151,7 +184,7 @@ function UndoToast({
           {undo.actions && undo.actions.length > 0 && (
             <Button
               className={S.actionButton}
-              variant="default"
+              variant={dark ? "on-dark-primary" : "default"}
               size="sm"
               onClick={onUndo}
             >
@@ -161,7 +194,7 @@ function UndoToast({
           {undo.extraAction && (
             <Button
               className={S.actionButton}
-              variant="default"
+              variant={dark ? "on-dark-secondary" : "default"}
               size="sm"
               onClick={() => {
                 undo.extraAction?.action();
@@ -176,7 +209,7 @@ function UndoToast({
           {undo.canDismiss && (
             <Icon
               className={S.dismissIcon}
-              color={undo.dismissIconColor || "text-secondary-inverse"}
+              color={undo.dismissIconColor || "tooltip-text"}
               name="close"
               onClick={onDismiss}
               ml="lg"

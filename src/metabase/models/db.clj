@@ -60,6 +60,7 @@
    :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.update
    :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.update
    :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.update
+   :model/DataApp                  :metabase-enterprise.data-apps.schema/data-app.update
    :model/Database                 :metabase.warehouses.schema/database.update
    :model/Dimension                :metabase.warehouse-schema.schema/dimension.update
    :model/Document                 :metabase.documents.schema/document.update
@@ -69,7 +70,6 @@
    :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.update
    :model/FieldValues              :metabase.warehouse-schema.schema/field-values.update
    :model/Glossary                 :metabase.glossary.schema/glossary.update
-   :model/HTTPAction               :metabase.actions.schema/httpaction.update
    :model/ImplicitAction           :metabase.actions.schema/implicit-action.update
    :model/Measure                  :metabase.measures.schema/measure.update
    :model/Metabot                  :metabase.metabot.schema/metabot.update
@@ -340,9 +340,9 @@
   (t2/select :metadata/table :db_id database-id :schema schema :name table-name))
 
 (mu/defn card-serdes-columns
-  "The id, entity id, Collection id, Database id, and schema of the Card with `card-id`, or nil."
+  "The id, entity id, Collection id, and Database id of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :id :entity_id :collection_id :database_id :card_schema] :id card-id))
+  (t2/select-one [:model/Card :id :entity_id :collection_id :database_id] :id card-id))
 
 (mu/defn measure-serdes-columns
   "The id, entity id, and Table id of the Measure with `measure-id`, or nil."

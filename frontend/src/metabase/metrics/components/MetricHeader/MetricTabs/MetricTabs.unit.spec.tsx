@@ -31,13 +31,15 @@ const urls: MetricUrls = {
 };
 
 describe("MetricTabs", () => {
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures({
+      advanced_permissions: true,
+      cache_granular_controls: true,
+      dependencies: true,
+    }),
+  });
+
   beforeAll(() => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({
-        cache_granular_controls: true,
-        dependencies: true,
-      }),
-    });
     setupEnterprisePlugins();
   });
 
@@ -72,6 +74,7 @@ describe("MetricTabs", () => {
         is_superuser: role === "admin",
         is_data_analyst: role === "analyst",
       }),
+      settings,
       entities: createMockEntitiesState({
         databases: hasDataPermissions ? [createSampleDatabase()] : [],
         questions: [card],
