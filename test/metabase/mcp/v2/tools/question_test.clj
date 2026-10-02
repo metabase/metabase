@@ -1090,7 +1090,7 @@
             (is (zero? (t2/count :model/Card :name "Killed Native Q")))))))))
 
 (deftest write-response-respects-read-scope-test
-  (testing "GHY-4217: without agent:resource:read the response is a minimal ack — the write scope
+  (testing "GHY-4217: without agent:content:read the response is a minimal ack — the write scope
             must not double as a read scope"
     (mt/with-model-cleanup [:model/Card]
       (mt/with-current-user (mt/user->id :crowberto)

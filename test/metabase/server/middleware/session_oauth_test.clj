@@ -267,10 +267,10 @@
                   (testing "succeeds for an `mb:full` token for the same user, so the refusal comes from the scopes"
                     (is (= full-access-status
                            (bearer-status full-token method url (request-body body-key)))))))
-              (testing "Known overlap, not a desired property: an endpoint that declares an MCP v2 scope string as its
-                        `:scope` is reachable with that scope. The agent API's read-resource endpoint is the one
-                        place this happens."
-                (is (= 200 (bearer-status mcp-token :post "agent/v1/read-resource"
+              (testing "Regression guard: the agent API's read-resource endpoint declares `agent:resource:read`, which
+                        used to be an MCP v2 scope too, so an MCP-scoped token reached it. No MCP scope is an
+                        endpoint scope any more, so it is refused like the rest."
+                (is (= 403 (bearer-status mcp-token :post "agent/v1/read-resource"
                                           {:uris ["metabase://databases"]})))))))))))
 
 (deftest bearer-bridge-expired-token-test

@@ -117,9 +117,8 @@
   ;; scope still needs the user's consent. The rest of the ceiling -- the agent-API extras -- is added only while
   ;; registration is enabled, so an admin who turned it off leaves existing clients without those.
   ;;
-  ;; The MCP kill switch is the one thing that stops the widening entirely. Some MCP surface scopes also gate the agent
-  ;; API (`agent:resource:read` is the declared scope of `POST /api/agent/v1/read-resource`), which has its own lever,
-  ;; so widening with MCP off would hand a client a scope its registration never included for a surface still serving.
+  ;; The MCP kill switch is the one thing that stops the widening entirely: with MCP off, no surface serves the MCP
+  ;; scopes, so there is no reason to hand a client a scope its registration never included.
   (reify oidc.proto/ClientStore
     (get-client [_ client-id]
       (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
