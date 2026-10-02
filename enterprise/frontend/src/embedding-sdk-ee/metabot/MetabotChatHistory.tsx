@@ -60,6 +60,7 @@ export function MetabotChatHistory() {
       {hasMessages ? (
         <Messages
           messages={chatMessages}
+          size="md"
           onRetryMessage={metabot.retryMessage}
           onContinueMessage={metabot.submitInput}
           isDoingScience={metabot.isDoingScience}

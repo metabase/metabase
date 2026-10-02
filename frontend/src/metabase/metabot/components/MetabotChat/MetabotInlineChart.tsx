@@ -1,4 +1,5 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -51,10 +52,12 @@ export function MetabotInlineChart({
   value,
   readonly = false,
   conversationId,
+  size,
 }: {
   value: GeneratedCard;
   readonly?: boolean;
   conversationId: string;
+  size: "md" | "lg";
 }) {
   const { id: chartId, title, description, display, query } = value;
   const datasetQuery = query.query;
@@ -128,7 +131,10 @@ export function MetabotInlineChart({
   const chartError = datasetError ?? requestError;
 
   return (
-    <Box className={S.container} data-testid="metabot-inline-chart">
+    <Box
+      className={cx(S.container, size === "lg" && S.large)}
+      data-testid="metabot-inline-chart"
+    >
       <Flex className={S.header} align="center" gap="sm">
         <Anchor
           className={S.title}
@@ -136,6 +142,8 @@ export function MetabotInlineChart({
           to={link}
           target="_blank"
           fw="bold"
+          size="md"
+          lh="1rem"
           flex={1}
           miw={0}
           truncate

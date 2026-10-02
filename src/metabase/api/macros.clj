@@ -192,6 +192,25 @@
 
 (mr/def ::request ::request.schema/request)
 
+;; `StreamingResponse` lives in `server`, which depends on this module, so match it by the interface behind its own
+;; [[metabase.api.common.internal/EndpointResponse]] impl rather than by its class.
+(mr/def ::response
+  "What an endpoint handler can return: JSON-shaped data, a full Ring response map, or a file/stream for downloads."
+  [:or
+   ms/RingResponseBody
+   [:map {:closed true} [:id :string]]
+   [:map {:closed true} [:success :boolean] [:session_id :string]]
+   [:map {:closed true}
+    [:status  {:optional true} :int]
+    [:headers {:optional true} [:map-of :string :string]]
+    [:cookies {:optional true} [:map-of :string ::request.schema/cookie-attrs]]
+    [:body    {:optional true} [:maybe [:or ms/RingResponseBody
+                                        (ms/InstanceOfClass java.io.File)
+                                        (ms/InstanceOfClass java.io.InputStream)]]]]
+   (ms/InstanceOfClass java.io.File)
+   (ms/InstanceOfClass java.io.InputStream)
+   (ms/InstanceOfClass metabase.api.common.internal.EndpointResponse)])
+
 (mr/def ::respond-fn
   [:=> [:cat any?] any?])
 
@@ -435,7 +454,7 @@
 (mu/defn validate-and-encode-response :- any?
   "Impl for [[endpoint-core-fn]]; validate the endpoint response against `schema` "
   [schema   :- ::schema-form-or-instance
-   response :- ::request.schema/response]
+   response :- ::response]
   (when *enable-response-validation*
     (when-not (mr/validate schema response)
       (throw (ex-info "Invalid response" ; TODO -- better error message?
