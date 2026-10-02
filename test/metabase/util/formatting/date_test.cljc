@@ -198,6 +198,13 @@
         "341"                      "day-of-year"
         "49"                       "week-of-year"))))
 
+(deftest ^:parallel format-datetime-with-unit-week-number-test
+  (testing "a week number formats as itself, including week 53"
+    (are [week] (= (str week) (format-datetime-with-unit week {:unit "week-of-year"}))
+      1
+      52
+      53)))
+
 (deftest ^:parallel format-datetime-with-unit-test-2b
   (testing "general dates"
     (testing "default formats for each date style"
