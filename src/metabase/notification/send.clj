@@ -1,5 +1,6 @@
 (ns metabase.notification.send
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
@@ -23,10 +24,15 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- handler-channel-id
+  "The Channel id of a handler: its `:channel_id`, else the id of the Channel row under `:channel`."
+  [handler]
+  (or (:channel_id handler) (-> handler :channel :id)))
+
 (defn- handler->channel-name
-  [{:keys [channel_type channel_id]}]
-  (if channel_id
-    (str (u/qualified-name channel_type) " " channel_id)
+  [{:keys [channel_type] :as handler}]
+  (if-let [channel-id (handler-channel-id handler)]
+    (str (u/qualified-name channel_type) " " channel-id)
     (u/qualified-name channel_type)))
 
 (def ^:private default-blocking-queue-size 1000)
@@ -51,7 +57,30 @@
     (and (= :channel/slack channel-type)
          (unretriable-error? error))))
 
+(defn- failure-message
+  "The message of a failure entry: the exception message, else the name of the exception class."
+  [^Throwable e]
+  ;; not `(str e)`: for an `ex-info` that includes the ex-data
+  (or (ex-message e) (.getName (class e))))
+
+(defn- failure-error-type
+  "The type of a failure: the `:error-type` of the exception when it has one, for example `slack/invalid-token`,
+  else the name of the exception class."
+  [^Throwable e]
+  (if-let [error-type (:error-type (ex-data e))]
+    (u/qualified-name error-type)
+    (.getName (class e))))
+
+(defn- failure-error
+  "The error of a failure entry: `:message`, the raw reason, and `:error_type`."
+  [e]
+  {:message    (failure-message e)
+   ;; holds no host name and no URL, so the caller gets it in place of the reason
+   :error_type (failure-error-type e)})
+
 (defn- channel-send-retrying!
+  "Send `message` to the handler's channel, retrying per [[default-retry-config]]. Returns nil when the message was
+  delivered, else the [[failure-error]] of the last attempt."
   [notification-id payload-type handler message]
   (let [channel      (or (:channel handler)
                          {:type (:channel_type handler)})
@@ -97,10 +126,51 @@
           (log/info "Sent successfully")))
       (analytics/inc! :metabase-notification/channel-send-ok {:payload-type payload-type
                                                               :channel-type channel-type})
+      nil
       (catch Throwable e
         (analytics/inc! :metabase-notification/channel-send-error {:payload-type payload-type
                                                                    :channel-type channel-type})
-        (log/warnf "Failed to send: %s" (ex-message e))))))
+        (log/warnf "Failed to send: %s" (failure-message e))
+        (failure-error e)))))
+
+(defn- handler-failure
+  "One entry of `:failed-handlers`: the handler and its [[failure-error]]. A handler can render several messages, for
+  example one email for all users and one per external address; each message that did not go out gets its own entry.
+  The entry has no recipients. Its `:message` is the raw reason, which can still quote an email address."
+  [handler error]
+  (merge {:handler_id   (:id handler)
+          :channel_type (:channel_type handler)
+          :channel_id   (handler-channel-id handler)}
+         error))
+
+(defn- throw-when-handlers-failed
+  "Throws when at least one handler did not deliver. The exception has `:error-code :notification/delivery-failed`,
+  `:status-code 502` and the entries under `:failed-handlers`; its message names each failure once, with its reason.
+  The send replaces it with [[delivery-failure-for-caller]] before it leaves."
+  [notification-id failures]
+  (when (seq failures)
+    (throw (ex-info (tru "Failed to deliver to {0}"
+                         (str/join ", " (distinct (for [{:keys [message] :as failure} failures]
+                                                    (str (handler->channel-name failure) ": " message)))))
+                    {:status-code     502
+                     :error-code      :notification/delivery-failed
+                     :notification-id notification-id
+                     :failed-handlers (vec failures)}))))
+
+(defn- delivery-failure?
+  "Whether `e` is the exception that [[throw-when-handlers-failed]] throws."
+  [e]
+  (= :notification/delivery-failed (:error-code (ex-data e))))
+
+(defn- delivery-failure-for-caller
+  "The exception that leaves the send in place of the delivery failure `e`: its message names the channels, its
+  entries have no `:message`, and `e` is its cause."
+  [e]
+  ;; the API returns the message and the ex-data to the user, and a raw reason can name the mail host or a webhook URL
+  (let [failures (:failed-handlers (ex-data e))]
+    (ex-info (tru "Failed to deliver to {0}" (str/join ", " (distinct (map handler->channel-name failures))))
+             (assoc (ex-data e) :failed-handlers (mapv #(dissoc % :message) failures))
+             e)))
 
 (defn- hydrate-notification
   [notification-info]
@@ -158,7 +228,8 @@
             (throw (ex-info "Card no longer exists, notification deleted"
                             {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)
-              handlers              (:handlers hydrated-notification)]
+              handlers              (:handlers hydrated-notification)
+              failures              (volatile! [])]
           (try
             (models.notification/validate-email-handlers! handlers)
             (catch clojure.lang.ExceptionInfo _e
@@ -192,23 +263,32 @@
                                       (handler->channel-name handler)
                                       (-> handler :template :id))
                           (doseq [message messages]
-                            (channel-send-retrying! id payload_type handler message)))
+                            (when-let [error (channel-send-retrying! id payload_type handler message)]
+                              (vswap! failures conj (handler-failure handler error)))))
                         (catch Exception e
-                          (log/errorf "Error sending to channel %s: %s" (handler->channel-name handler) (ex-message e))))))
+                          (log/errorf "Error sending to channel %s: %s" (handler->channel-name handler) (failure-message e))
+                          (vswap! failures conj (handler-failure handler (failure-error e)))))))
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
+              (throw-when-handlers-failed id @failures)
               (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
-          (log/errorf "Failed to send: %s" (ex-message e))
-          (analytics/inc! :metabase-notification/send-error {:payload-type payload_type})
-          (throw e))
+          (let [undelivered? (delivery-failure? e)]
+            ;; a delivery failure is already logged per channel, and the caller or the notification worker logs it
+            (when-not undelivered?
+              (log/errorf "Failed to send: %s" (ex-message e)))
+            (analytics/inc! :metabase-notification/send-error {:payload-type payload_type})
+            (throw (if undelivered?
+                     (delivery-failure-for-caller e)
+                     e))))
         (finally
           (analytics/dec-gauge! :metabase-notification/concurrent-tasks)
+          ;; observed here so a send that throws is counted too
+          (analytics/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
+          (when-let [total-time (since-trigger-ms notification-info)]
+            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
           (when-let [run-id (task-history/current-run-id)]
             (task-history/complete-task-run! run-id))))
-      (analytics/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
-      (when-let [total-time (since-trigger-ms notification-info)]
-        (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
       nil)))
 
 (defn- cron->next-execution-times

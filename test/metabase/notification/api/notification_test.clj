@@ -4,11 +4,13 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.channel.core :as channel]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -543,6 +545,28 @@
                     (set (keys (notification.tu/with-captured-channel-send!
                                  (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))
                                                        {:handler_ids handler-ids}))))))))))))
+
+(deftest send-unsaved-notification-delivery-failure-test
+  (testing "POST /api/notification/send answers 502 with the handlers that did not deliver (GDGT-3144)"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)]
+          (with-redefs [channel/send! (fn [& _] (throw (ex-info "SMTP is down" {})))]
+            (let [response (mt/user-http-request :crowberto :post 502 "notification/send"
+                                                 {:handlers      [{:channel_type :channel/email
+                                                                   :recipients   [{:type    :notification-recipient/user
+                                                                                   :user_id (mt/user->id :crowberto)}]}]
+                                                  :payload_type  :notification/card
+                                                  :payload       {:card_id        card-id
+                                                                  :send_condition :has_result
+                                                                  :send_once      false}
+                                                  :subscriptions [{:type          :notification-subscription/cron
+                                                                   :cron_schedule "0 0 0 * * ?"}]})]
+              (is (=? {:message         "Failed to deliver to channel/email"
+                       :error-code      "notification/delivery-failed"
+                       :failed-handlers [{:channel_type "channel/email"
+                                          :error_type   "clojure.lang.ExceptionInfo"}]} response))
+              (is (not-any? :message (:failed-handlers response))))))))))
 
 (deftest send-unsaved-notification-api-test
   (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
