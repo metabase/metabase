@@ -50,7 +50,7 @@ const MODEL_NAME = "Test Action Model";
           H.expectNoBadSnowplowEvents();
         });
 
-        it("adds a custom query action to a dashboard and runs it", () => {
+        it("adds a custom query action with a hidden optional field to a dashboard and runs it", () => {
           const ACTION_NAME = "Update Score";
 
           H.queryWritableDB(
@@ -85,7 +85,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("dialog").within(() => {
             H.fillActionQuery(
-              `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }}`,
+              `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }} [[ and status = {{ current_status }}]]`,
             );
           });
 
@@ -99,6 +99,21 @@ const MODEL_NAME = "Test Action Model";
             cy.findAllByText("Number").each((el) => {
               cy.wrap(el).click();
             });
+
+            // hide optional field
+            formFieldContainer("Current Status").within(() => {
+              cy.findByText("Text").click();
+
+              toggleFieldVisibility();
+              openFieldSettings();
+            });
+          });
+
+          H.popover().within(() => {
+            cy.findByLabelText("Required").uncheck({ force: true });
+          });
+
+          H.modal().within(() => {
             cy.findByText("Save").click();
           });
 
@@ -119,7 +134,9 @@ const MODEL_NAME = "Test Action Model";
 
           cy.findByRole("button", { name: "Update Score" }).click();
           cy.findByRole("dialog").within(() => {
-            cy.findByLabelText("New Score").type("55");
+            cy.findByLabelText("New Score").should("be.visible").type("55");
+            // it's hidden
+            cy.findByLabelText("Current Status").should("not.exist");
             cy.button(ACTION_NAME).click();
           });
 
@@ -131,6 +148,65 @@ const MODEL_NAME = "Test Action Model";
           ).then((result) => {
             expect(result.rows.length).to.equal(1);
             expect(result.rows[0].score).to.equal(55);
+          });
+
+          cy.log("show the field and make it required from the model page");
+          cy.get("@modelId").then((id) => {
+            cy.visit(`/model/${id}/detail`);
+            cy.wait(["@getModel", "@getModelActions"]);
+          });
+
+          cy.get("[aria-label='Update Score']").within(() => {
+            cy.icon("ellipsis").click();
+          });
+
+          H.popover().within(() => {
+            cy.findByText("Edit").click();
+          });
+
+          cy.findByRole("dialog").within(() => {
+            formFieldContainer("Current Status").within(() => {
+              toggleFieldVisibility();
+
+              openFieldSettings();
+            });
+          });
+
+          H.popover().within(() => {
+            cy.findByLabelText("Required").check({ force: true });
+          });
+
+          H.modal().within(() => {
+            cy.findByText("Update").click();
+          });
+
+          cy.wait("@updateAction");
+          // The action editor closes after the update; wait until it is gone
+          // before navigating to the dashboard.
+          cy.findByTestId("action-creator").should("not.exist");
+
+          cy.get("@dashboardId").then((id) => {
+            cy.visit(`/dashboard/${id}?id=1`);
+          });
+          H.filterWidget().should("contain.text", "1");
+
+          cy.findByRole("button", { name: "Update Score" }).click();
+
+          cy.findByRole("dialog").within(() => {
+            cy.findByLabelText("New Score").type("56");
+            cy.findByLabelText("Current Status").type("active");
+
+            cy.button(ACTION_NAME).click();
+          });
+
+          cy.wait("@executeAction");
+
+          H.queryWritableDB(
+            `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
+            dialect,
+          ).then((result) => {
+            expect(result.rows.length).to.equal(1);
+            expect(result.rows[0].score).to.equal(56);
           });
         });
 
@@ -350,148 +426,6 @@ const MODEL_NAME = "Test Action Model";
             cy.visit(`/public/dashboard/${uuid}`);
           });
           assertActionsHidden();
-        });
-
-        describe("hidden fields", () => {
-          it("adds a query action and runs it", () => {
-            const ACTION_NAME = "Update Score";
-
-            H.queryWritableDB(
-              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
-              dialect,
-            ).then((result) => {
-              expect(result.rows.length).to.equal(1);
-              expect(result.rows[0].score).to.equal(0);
-            });
-
-            cy.get("@modelId").then((id) => {
-              cy.visit(`/model/${id}/detail`);
-              cy.wait(["@getModel", "@getModelActions"]);
-            });
-
-            cy.findByTestId("model-actions-header")
-              .findByText("New action")
-              .click();
-
-            cy.findByRole("dialog").within(() => {
-              H.fillActionQuery(
-                `UPDATE ${TEST_TABLE} SET score = {{ new_score }} WHERE id = {{ id }} [[ and status = {{ current_status }}]]`,
-              );
-            });
-
-            H.moveDnDKitListElement("drag-handle", {
-              startIndex: 1,
-              dropIndex: 0,
-            });
-
-            cy.findByRole("dialog").within(() => {
-              cy.findAllByText("Number").each((el) => {
-                cy.wrap(el).click();
-              });
-
-              // hide optional field
-              formFieldContainer("Current Status").within(() => {
-                cy.findByText("Text").click();
-
-                toggleFieldVisibility();
-                openFieldSettings();
-              });
-            });
-
-            H.popover().within(() => {
-              cy.findByLabelText("Required").uncheck({ force: true });
-            });
-
-            H.modal().within(() => {
-              cy.findByText("Save").click();
-            });
-
-            cy.findByPlaceholderText("My new fantastic action").type(
-              ACTION_NAME,
-            );
-            cy.findByTestId("create-action-form").button("Create").click();
-
-            createDashboardWithActionButton({
-              actionName: ACTION_NAME,
-            });
-
-            cy.findByRole("button", { name: "Update Score" }).click();
-
-            cy.findByRole("dialog").within(() => {
-              cy.findByLabelText("ID").type("1");
-              cy.findByLabelText("New Score").type("55");
-              // it's hidden
-              cy.findByLabelText("Current Status").should("not.exist");
-
-              cy.button(ACTION_NAME).click();
-            });
-
-            cy.wait("@executeAction");
-
-            H.queryWritableDB(
-              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
-              dialect,
-            ).then((result) => {
-              expect(result.rows.length).to.equal(1);
-              expect(result.rows[0].score).to.equal(55);
-            });
-
-            cy.get("@modelId").then((id) => {
-              cy.visit(`/model/${id}/detail`);
-              cy.wait(["@getModel", "@getModelActions"]);
-            });
-
-            cy.get("[aria-label='Update Score']").within(() => {
-              cy.icon("ellipsis").click();
-            });
-
-            H.popover().within(() => {
-              cy.findByText("Edit").click();
-            });
-
-            cy.findByRole("dialog").within(() => {
-              formFieldContainer("Current Status").within(() => {
-                toggleFieldVisibility();
-
-                openFieldSettings();
-              });
-            });
-
-            H.popover().within(() => {
-              cy.findByLabelText("Required").check({ force: true });
-            });
-
-            H.modal().within(() => {
-              cy.findByText("Update").click();
-            });
-
-            cy.wait("@updateAction");
-            // The action editor closes after the update; wait until it is gone
-            // before navigating to the dashboard.
-            cy.findByTestId("action-creator").should("not.exist");
-
-            H.visitDashboard("@dashboardId");
-
-            cy.findByRole("button", { name: "Update Score" }).click();
-
-            cy.findByRole("dialog").within(() => {
-              cy.findByLabelText("ID").type("1");
-              cy.findByLabelText("New Score").type("56");
-              cy.findByLabelText("Current Status").type("active");
-
-              cy.button(ACTION_NAME).click();
-            });
-
-            cy.wait("@executeAction");
-
-            H.queryWritableDB(
-              `SELECT * FROM ${TEST_TABLE} WHERE id = 1`,
-              dialect,
-            ).then((result) => {
-              expect(result.rows.length).to.equal(1);
-              expect(result.rows[0].score).to.equal(56);
-            });
-          });
         });
       });
 
