@@ -1391,7 +1391,7 @@
     (&recur (assoc &match "fields" [single-clause]))))
 
 ;;; ============================================================
-;;; Pass 1.95 -- split top-level `and` filters into separate `filters:` entries.
+;;; Pass 1.56 -- split top-level `and` filters into separate `filters:` entries.
 ;;;
 ;;; A stage's `filters:` entries are already implicitly ANDed, so
 ;;; `filters: [["and", {}, A, B]]` means the same as `filters: [A, B]`. The two differ in the
@@ -1403,6 +1403,19 @@
 ;;; We flatten a top-level `and` (and any `and` directly nested inside it) into its operands.
 ;;; `and` nested under `or` / `not` is left alone - that's real boolean logic. Idempotent: after
 ;;; flattening, no top-level entry is an `and`.
+;;;
+;;; The pass can't tell an LLM-introduced `and` from one the user authored as a custom expression
+;;; in the query being edited, so the latter is split too. That is deliberate: the result set is
+;;; the same, and the notebook shows each condition as its own editable filter. The `and`'s own
+;;; options map is dropped; in the portable form it carries nothing an operand needs.
+;;;
+;;; Must run before Pass 2.9 (`split-post-agg-filters*`), which moves whole `filters:` entries:
+;;; splitting first lets a pre-aggregation conjunct stay in stage 0 while only the conjunct that
+;;; references an aggregation moves to the new stage.
+;;;
+;;; Same flattening as `metabase.lib.filter/flatten-and-clause` (used by `lib/atomic-filters`),
+;;; which can't be reused here: it works on keyword-keyed MBQL, this pass on the string-keyed
+;;; portable form before resolution.
 ;;; ============================================================
 
 (defn- and-filter-clause?
@@ -2988,6 +3001,8 @@
     1.5. normalise `expressions:` shape - accept map form `{Name: clause, …}` or the
        canonical sequential form, always output sequential with `lib/expression-name`
        stamped into each clause's options from the map key when missing;
+    1.56. split a top-level `and` in `filters:` into separate entries, so the notebook editor
+       shows them as individual filters rather than one merged custom expression;
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
@@ -2997,8 +3012,6 @@
        join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
-    1.95. split a top-level `and` in `filters:` into separate entries, so the notebook editor
-       shows them as individual filters rather than one merged custom expression;
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
     2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
        `absolute-datetime` literal and onto the ref it is compared to, for the same reason

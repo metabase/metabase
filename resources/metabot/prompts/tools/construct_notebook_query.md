@@ -71,7 +71,7 @@ Filters — one entry per condition; entries are ANDed together:
             ["=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "STATUS"]], "paid"]]
 ```
 
-Use `and` / `or` only inside a single entry when the condition needs OR logic, e.g. "paid, or over 100":
+Combine conditions inside a single entry only when they need OR logic — use `or` (with `and` nested inside it if needed), e.g. "paid, or over 100":
 
 ```json
 "filters": [["or", {},

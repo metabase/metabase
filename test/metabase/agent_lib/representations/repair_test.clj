@@ -992,9 +992,9 @@
 
 (deftest ^:parallel hoist-temporal-bucket-nested-in-filter-test
   (testing "hoisting reaches comparisons nested under boolean combinators"
-    (is (= ["and" {} ["=" {} (created-at-bucketed "month") "2025-01-01"]
+    (is (= ["or" {} ["=" {} (created-at-bucketed "month") "2025-01-01"]
             ["not" {} ["=" {} (created-at-bucketed "year") "2024-01-01"]]]
-           (repair-filter ["and" {}
+           (repair-filter ["or" {}
                            ["=" {} created-at (abs-dt "2025-01-01" "month")]
                            ["not" {} ["=" {} created-at (abs-dt "2024-01-01" "year")]]])))))
 
@@ -1371,7 +1371,7 @@
       (is (= once twice)))))
 
 ;;; ============================================================
-;;; Pass 1.95 - split top-level `and` filters
+;;; Pass 1.56 - split top-level `and` filters
 ;;; ============================================================
 
 (def ^:private status-filter
@@ -1409,6 +1409,44 @@
     (let [filters [["or" {} ["and" {} status-filter total-filter] id-filter]
                    ["not" {} ["and" {} status-filter total-filter]]]]
       (is (= filters (repaired-filters filters))))))
+
+(deftest ^:parallel split-top-level-and-filters-nested-stages-test
+  (testing "a top-level `and` is split in a later stage and in a join's stage, not just stage 0"
+    (let [q   {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "joins"        [{"lib/type"   "mbql/join"
+                                             "alias"      "Products"
+                                             "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                            "source-table" ["Sample" "PUBLIC" "PRODUCTS"]
+                                                            "filters"      [["and" {} status-filter total-filter]]}]
+                                             "conditions" [["=" {}
+                                                            ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                                            ["field" {"join-alias" "Products"}
+                                                             ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}]}
+                           {"lib/type" "mbql.stage/mbql"
+                            "filters"  [["and" {} total-filter id-filter]]}]}
+          out (repair/repair trivial-mp q)]
+      (is (= [status-filter total-filter]
+             (get-in out ["stages" 0 "joins" 0 "stages" 0 "filters"])))
+      (is (= [total-filter id-filter]
+             (get-in out ["stages" 1 "filters"]))))))
+
+(deftest ^:parallel split-top-level-and-filters-before-post-agg-split-test
+  (testing (str "an `and` mixing a pre-aggregation condition with a post-aggregation one is split\n"
+                "before Pass 2.9, so only the post-aggregation condition moves to the new stage")
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [["and" {} status-filter [">" {} ["aggregation" {} 0] 10]]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (=? [{"filters" [status-filter]}
+               {"filters" [[">" {} ["field" {} "count"] 10]]}]
+              stages)))))
 
 (deftest ^:parallel split-top-level-and-filters-idempotent-test
   (let [once  (repair/repair trivial-mp (filters-query [["and" {} status-filter ["and" {} total-filter id-filter]]]))
@@ -3517,7 +3555,7 @@
                                               "@gmail.com" {"case-sensitive" false}]]]}]}
           out (repair/repair trivial-mp q)
           ;; or-clause is ["or" {} <=-cond> <contains-cond>]; the contains is at index 3 (an `and`
-          ;; would be split into separate filters by Pass 1.95)
+          ;; would be split into separate filters by Pass 1.56)
           c   (get-in out ["stages" 0 "filters" 0 3])]
       (is (= ["contains" {"case-sensitive" false}
               ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "@gmail.com"]

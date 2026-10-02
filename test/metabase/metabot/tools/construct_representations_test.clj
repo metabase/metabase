@@ -198,8 +198,9 @@
                                                          [">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 100]
                                                          ["between" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]] 1 10]]]}]}))
                         [:structured-output :query])]
-          (is (= [:> :between]
-                 (map first (lib/filters q 0)))))))))
+          (is (=? [[:> {} [:field {} pos-int?] 100]
+                   [:between {} [:field {} pos-int?] 1 10]]
+                  (lib/filters q 0))))))))
 
 (deftest unknown-table-surfaces-agent-error-test
   (with-mp-and-stubs!
