@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { fetchMcpBootstrap } from "./api";
+import { deriveMcpQuery, fetchMcpBootstrap, storeDrillQuery } from "./api";
 
 const INSTANCE_URL = "http://localhost:3000";
 const BOOTSTRAP_URL = `${INSTANCE_URL}/api/embed-mcp/bootstrap`;
@@ -33,5 +33,64 @@ describe("fetchMcpBootstrap", () => {
     await expect(fetchMcpBootstrap(OPTIONS)).rejects.toMatchObject({
       status: 401,
     });
+  });
+});
+
+const sentBody = () => {
+  const [call] = fetchMock.callHistory.calls();
+  return JSON.parse(String(call.options.body));
+};
+
+describe("deriveMcpQuery", () => {
+  const DERIVE_URL = `${INSTANCE_URL}/api/embed-mcp/queries/handle-1/derive`;
+
+  it("sends the operations against the handle, never a query", async () => {
+    fetchMock.post(DERIVE_URL, { handle: "handle-2", query: "ZW5jb2RlZA==" });
+
+    await expect(
+      deriveMcpQuery({
+        ...OPTIONS,
+        queryHandle: "handle-1",
+        operations: [{ type: "temporal-bucket/set", unit: "month" }],
+      }),
+    ).resolves.toEqual({ handle: "handle-2", query: "ZW5jb2RlZA==" });
+
+    expect(sentBody()).toEqual({
+      operations: [{ type: "temporal-bucket/set", unit: "month" }],
+    });
+    expect(sentHeader("x-metabase-mcp-ui-auth")).toBe("credential-1");
+    expect(sentHeader("mcp-session-id")).toBe("session-1");
+  });
+
+  it("carries the status on the error", async () => {
+    fetchMock.post(DERIVE_URL, 400);
+
+    await expect(
+      deriveMcpQuery({
+        ...OPTIONS,
+        queryHandle: "handle-1",
+        operations: [{ type: "date-filter/clear" }],
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe("storeDrillQuery", () => {
+  it("sends the handle and the drill, never a query", async () => {
+    fetchMock.post(`${INSTANCE_URL}/api/embed-mcp/drills`, {
+      handle: "drill-handle",
+    });
+
+    const operation = {
+      type: "drill-thru",
+      drill: "underlying-records",
+      context: { column: "count", value: 8 },
+    } as const;
+
+    await expect(
+      storeDrillQuery({ ...OPTIONS, queryHandle: "handle-1", operation }),
+    ).resolves.toEqual({ handle: "drill-handle" });
+
+    expect(sentBody()).toEqual({ handle: "handle-1", operation });
   });
 });

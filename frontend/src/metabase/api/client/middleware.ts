@@ -33,6 +33,7 @@ function getOnBeforeRequestHandlers(): OnBeforeRequestHandler[] {
     PLUGIN_API.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler,
     PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds,
     PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForMcpApps,
     PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl,
     PLUGIN_API.onBeforeRequestHandlers.reactSdkEmbedReferrer,
     PLUGIN_API.onBeforeRequestHandlers.embedReferrer,

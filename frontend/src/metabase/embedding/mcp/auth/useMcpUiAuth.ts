@@ -86,7 +86,7 @@ export function useMcpUiAuth({
           abortController,
         );
 
-        installMcpUiCredential(auth.credential);
+        installMcpUiCredential(auth);
 
         setUiCredential(auth.credential);
         setMcpSessionId(auth.sessionId);

@@ -8,6 +8,7 @@ import { createRoot } from "react-dom/client";
 import "metabase/embedding-sdk/vendors-side-effects";
 
 import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
+import { installMcpAppsRequestOverride } from "metabase/embedding/mcp/requests";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { setBasename } from "metabase/utils/basename";
 
@@ -18,6 +19,10 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 EMBEDDING_SDK_CONFIG.isMcpApp = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "mcp-apps";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
+
+// The iframe runs only stored query handles: the SDK's ad-hoc query requests
+// go to the handle-keyed iframe routes instead.
+installMcpAppsRequestOverride();
 
 const { instanceUrl } = window.metabaseConfig ?? {};
 

@@ -66,6 +66,9 @@ const getDefaultPluginApi = () => ({
     // Rewrite requests to their guest-embed equivalents. Installed by the
     // guest-embed init flow.
     overrideRequestsForGuestEmbeds: noop,
+    // Rewrite ad-hoc query requests to the MCP Apps iframe's handle-keyed
+    // routes. Installed by the MCP Apps entry point.
+    overrideRequestsForMcpApps: noop,
     // Send the host page URL as the embed referrer header. Installed by the
     // React SDK's init flow.
     reactSdkEmbedReferrer: noop,
