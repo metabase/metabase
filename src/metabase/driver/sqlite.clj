@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -25,6 +26,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]])
   (:import
+   (java.net URLDecoder)
    (java.sql Connection ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.temporal Temporal)))
@@ -82,15 +84,50 @@
         (or (str/includes? line "SQLite format 3")
             (str/includes? line "This file contains an SQLite"))))))
 
+(defn- file-url->path
+  "The local path a `file:` URL names: `file:/a`, `file:///a` and `file://localhost/a` are `/a`; `file:a` is `a`."
+  [url]
+  (let [s (str/replace url #"(?i)^file:" "")
+        s (if (str/starts-with? s "//")
+            (let [after-authority (str/index-of s "/" 2)]
+              (if after-authority (subs s after-authority) ""))
+            s)]
+    (URLDecoder/decode ^String s "UTF-8")))
+
+(defn- db-local-file
+  "The file on the Metabase host that SQLite opens for the `:db` detail, or nil when it opens none: an in-memory
+  database, or a `:resource:` fetched over the network (which the network policy covers) or from the classpath."
+  [db]
+  (when (string? db)
+    (let [[path query] (str/split (str/trim db) #"\?" 2)]
+      (when-not (or (str/blank? path)
+                    (contains? #{":memory:" "file::memory:"} path)
+                    (some->> query (re-find #"(?i)(^|&)mode=memory(&|$)")))
+        (if-let [resource (second (re-find #"(?i)^:resource:(.*)$" path))]
+          (cond
+            (re-find #"(?i)^jar:file:" resource) (file-url->path (-> resource
+                                                                     (str/replace #"(?i)^jar:" "")
+                                                                     (str/replace #"!/.*$" "")))
+            (re-find #"(?i)^file:" resource)     (file-url->path resource))
+          (if (re-find #"(?i)^file:" path)
+            (file-url->path path)
+            path))))))
+
 (defmethod driver/validate-db-details! :sqlite
-  [_driver _details]
+  [_driver {:keys [db] :as _details}]
   ;; On hosted Metabase, SQLite is only valid for the bundled Sample Database. The internal flows that need to test
   ;; connections to that DB (sync, schema refresh, fingerprinting, etc.) wrap their calls in
   ;; `(binding [driver.settings/*allow-testing-sqlite-connections* true] ...)`. Mirrors the H2 pattern.
   (when (and (driver-api/is-hosted?)
              (not driver.settings/*allow-testing-sqlite-connections*))
     (throw (ex-info (tru "SQLite is not available as a data warehouse on Metabase Cloud.")
-                    {:status-code 400}))))
+                    {:status-code 400})))
+  ;; the database file is a path on the Metabase host that an admin typed in, so it has to be one `readable-paths`
+  ;; allows. Metabase's own flows (the bundled Sample Database, which lives in the plugins directory) bind
+  ;; `*allow-testing-sqlite-connections*` and are exempt.
+  (when-not driver.settings/*allow-testing-sqlite-connections*
+    (some-> (db-local-file db) system/ensure-readable-path!))
+  nil)
 
 (defmethod driver/can-connect? :sqlite
   [driver details]
