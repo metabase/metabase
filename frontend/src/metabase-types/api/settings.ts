@@ -782,6 +782,8 @@ export interface EnterpriseSettings extends Settings {
   "no-data-illustration-custom"?: string;
   "no-object-illustration"?: IllustrationSettingValue;
   "no-object-illustration-custom"?: string;
+  "pdf-export-logo"?: IllustrationSettingValue;
+  "pdf-export-logo-custom"?: string | null;
   "landing-page"?: string;
   "llm-openai-api-key"?: string;
   "llm-openai-model"?: string;

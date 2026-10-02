@@ -48,6 +48,10 @@ export interface ResetPasswordData {
   password: string;
 }
 
+export interface PdfExportLogoResponse {
+  logo: string | null;
+}
+
 export interface SsoLogoutResponse {
   "saml-logout-url"?: string;
 }
@@ -105,6 +109,12 @@ export const sessionApi = Api.injectEndpoints({
         method: "POST",
         url: "/api/session/forgot_password",
         body: { email },
+      }),
+    }),
+    getPdfExportLogo: builder.query<PdfExportLogoResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/session/pdf-export-logo",
       }),
     }),
     checkPassword: builder.mutation<void, { password: string }>({
