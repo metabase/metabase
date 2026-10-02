@@ -400,6 +400,33 @@
                            :set    {:result_metadata original-metadata}
                            :where  [:= :id card-id]})))))))))
 
+(deftest api-stale-card-write-permissions-are-batched-test
+  (testing "GET /stale does not fetch each Card to resolve its parent Document for write permissions"
+    (mt/with-premium-features #{:content-diagnostics}
+      (let [prefix      (scope-prefix)
+            finding     (fn [card-id]
+                          {:scan_id      "batched-card-permissions"
+                           :entity_type  :card
+                           :entity_id    card-id
+                           :entity_name  prefix
+                           :finding_type :stale
+                           :details      {}})
+            fetch       #(mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/stale" :query prefix)
+            count-fetch (fn []
+                          (t2/with-call-count [call-count]
+                            (fetch)
+                            (call-count)))]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {first-card-id :id} {:collection_id coll-id}
+                       :model/ContentDiagnosticsFinding {first-finding-id :id} (finding first-card-id)]
+          (fetch) ; warm one-time request setup outside the measured window
+          (let [one-card-calls (count-fetch)]
+            (mt/with-temp [:model/Card {second-card-id :id} {:collection_id coll-id}
+                           :model/ContentDiagnosticsFinding {second-finding-id :id} (finding second-card-id)]
+              (is (= #{first-finding-id second-finding-id}
+                     (set (map :id (:data (fetch))))))
+              (is (= one-card-calls (count-fetch))))))))))
+
 (deftest api-include-personal-collections-test
   (testing "GET /stale excludes personal-collection findings by default; includes them with the param"
     (mt/with-premium-features #{:content-diagnostics}
