@@ -179,6 +179,9 @@ describe(
       });
 
       cy.findByRole("main").within(() => {
+        cy.findByText("No actions have been created yet.").should(
+          "be.visible",
+        );
         cy.findByLabelText("Action list").should("not.exist");
         cy.findByText("Create").should("not.exist");
         cy.findByText("Update").should("not.exist");
@@ -229,12 +232,14 @@ describe(
         cy.findByText("Sample Database").should("not.exist");
         cy.findByText("QA Postgres12").should("not.exist");
 
+        cy.button("Cancel").should("be.visible");
         cy.button("Save").should("not.exist");
         cy.button("Update").should("not.exist");
 
         assertQueryEditorDisabled();
 
         cy.findByRole("form").within(() => {
+          cy.findByLabelText("Total").should("be.visible");
           cy.icon("gear").should("not.exist");
         });
 
@@ -591,11 +596,9 @@ describe(
 
         openActionEditorFor("Create");
 
-        cy.wait("@getAction").then(({ response }) => {
-          const { parameters, visualization_settings } = response.body;
-          expect(parameters).to.have.length(5);
-          expect(visualization_settings).to.have.property("fields");
-        });
+        cy.findByRole("dialog")
+          .findAllByTestId("form-field-container")
+          .should("have.length", 5);
 
         cy.findAllByTestId("form-field-container")
           .filter(":contains('Created At')")
@@ -636,89 +639,90 @@ describe(
         });
       });
 
-      it("should respect impersonated permission", () => {
-        cy.onlyOn(dialect === "postgres");
-        const role = "readonly_role";
-        const sql = getCreatePostgresRoleIfNotExistSql(
-          role,
-          `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
-        );
-        H.activateToken("pro-self-hosted");
-        H.queryWritableDB(sql);
-
-        cy.request("PUT", `/api/user/${IMPERSONATED_USER_ID}`, {
-          login_attributes: { role },
-        });
-
-        cy.updatePermissionsGraph(
-          {
-            [USER_GROUPS.ALL_USERS_GROUP]: {
-              [WRITABLE_DB_ID]: {
-                "view-data": "impersonated",
-                "create-queries": "query-builder-and-native",
-              },
-            },
-            // By default, all groups get `unrestricted` access that will override the impersonation.
-            [USER_GROUPS.COLLECTION_GROUP]: {
-              [WRITABLE_DB_ID]: {
-                "view-data": "blocked",
-              },
-            },
-          },
-          [
-            {
-              db_id: WRITABLE_DB_ID,
-              group_id: USER_GROUPS.ALL_USERS_GROUP,
-              attribute: "role",
-            },
-          ],
-        );
-
-        H.queryWritableDB(
-          `SELECT *
-         FROM ${WRITABLE_TEST_TABLE}
-         WHERE id = 1`,
-          dialect,
-        ).then((result) => {
-          const row = result.rows[0];
-          expect(row.score).to.equal(0);
-        });
-
-        cy.get("@writableModelId").then((modelId) => {
-          H.createAction({
-            ...SAMPLE_WRITABLE_QUERY_ACTION,
-            model_id: modelId,
-          });
-          cy.signInAsImpersonatedUser();
-          cy.visit(`/model/${modelId}/detail/actions`);
-          cy.wait("@getModel");
-        });
-
-        cy.intercept("POST", "/api/action/*/execute").as(
-          "executeImpersonatedAction",
-        );
-        runActionFor(SAMPLE_QUERY_ACTION.name);
-
-        H.modal().within(() => {
-          cy.findByLabelText(TEST_PARAMETER.name).type("1");
-          cy.button(SAMPLE_QUERY_ACTION.name).click();
-
-          cy.wait("@executeImpersonatedAction", { responseTimeout: 60_000 });
-          cy.findByText(
-            "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+      if (dialect === "postgres") {
+        it("should respect impersonated permission", () => {
+          const role = "readonly_role";
+          const sql = getCreatePostgresRoleIfNotExistSql(
+            role,
+            `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
           );
-        });
+          H.activateToken("pro-self-hosted");
+          H.queryWritableDB(sql);
 
-        H.queryWritableDB(
-          `SELECT *
-         FROM ${WRITABLE_TEST_TABLE}
-         WHERE id = 1`,
-          dialect,
-        ).then((result) => {
-          const row = result.rows[0];
-          expect(row.score).to.equal(0);
+          cy.request("PUT", `/api/user/${IMPERSONATED_USER_ID}`, {
+            login_attributes: { role },
+          });
+
+          cy.updatePermissionsGraph(
+            {
+              [USER_GROUPS.ALL_USERS_GROUP]: {
+                [WRITABLE_DB_ID]: {
+                  "view-data": "impersonated",
+                  "create-queries": "query-builder-and-native",
+                },
+              },
+              // By default, all groups get `unrestricted` access that will override the impersonation.
+              [USER_GROUPS.COLLECTION_GROUP]: {
+                [WRITABLE_DB_ID]: {
+                  "view-data": "blocked",
+                },
+              },
+            },
+            [
+              {
+                db_id: WRITABLE_DB_ID,
+                group_id: USER_GROUPS.ALL_USERS_GROUP,
+                attribute: "role",
+              },
+            ],
+          );
+
+          H.queryWritableDB(
+            `SELECT *
+           FROM ${WRITABLE_TEST_TABLE}
+           WHERE id = 1`,
+            dialect,
+          ).then((result) => {
+            const row = result.rows[0];
+            expect(row.score).to.equal(0);
+          });
+
+          cy.get("@writableModelId").then((modelId) => {
+            H.createAction({
+              ...SAMPLE_WRITABLE_QUERY_ACTION,
+              model_id: modelId,
+            });
+            cy.signInAsImpersonatedUser();
+            cy.visit(`/model/${modelId}/detail/actions`);
+            cy.wait("@getModel");
+          });
+
+          cy.intercept("POST", "/api/action/*/execute").as(
+            "executeImpersonatedAction",
+          );
+          runActionFor(SAMPLE_QUERY_ACTION.name);
+
+          H.modal().within(() => {
+            cy.findByLabelText(TEST_PARAMETER.name).type("1");
+            cy.button(SAMPLE_QUERY_ACTION.name).click();
+
+            cy.wait("@executeImpersonatedAction", { responseTimeout: 60_000 });
+            cy.findByText(
+              "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+            );
+          });
+
+          H.queryWritableDB(
+            `SELECT *
+           FROM ${WRITABLE_TEST_TABLE}
+           WHERE id = 1`,
+            dialect,
+          ).then((result) => {
+            const row = result.rows[0];
+            expect(row.score).to.equal(0);
+          });
         });
-      });
+      }
     },
   );
 });
