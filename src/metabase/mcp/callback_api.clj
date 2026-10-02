@@ -22,6 +22,7 @@
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as metabot.scope]
+   [metabase.oauth-server.core :as oauth-server]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.api :as qp.api]
    [metabase.request.core :as request]
@@ -345,12 +346,13 @@
     (compojure.response/send response request respond raise)))
 
 (defn- handle-route
-  "Authenticate the UI credential on `request` and serve `route` as the credential's user.
-
-   The response is sent while the user is still bound: a body may hold lazy values that realize as it is encoded."
+  "Authenticate the UI credential on `request` and serve `route` as the credential's user. The credential
+   authenticates only while the OAuth access token it was minted from still authenticates its user at the MCP
+   endpoint."
   [{:keys [scope handler route-params]} request respond raise]
   (let [claims (mcp.session/resolve-ui-credential (get-in request [:headers ui-credential-header]))
-        user   (some-> (:uid claims) mw.session/user-info-for-id)]
+        user   (when (oauth-server/live-mcp-access-token? (:tid claims) (:uid claims))
+                 (mw.session/user-info-for-id (:uid claims)))]
     (cond
       (not user)
       (respond api.response/response-unauthentic)
@@ -360,6 +362,7 @@
                       {:status-code 403}))
 
       :else
+      ;; The response is sent inside the binding: a body may hold lazy values that realize as it is encoded.
       (request/do-with-current-user
        user
        (fn []

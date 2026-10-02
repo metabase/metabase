@@ -18,7 +18,8 @@
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked {:optional true} :boolean]
    [:data-app-scoped?     {:optional true} :boolean]
-   [:authenticated-via-oauth? {:optional true} :boolean]])
+   [:authenticated-via-oauth? {:optional true} :boolean]
+   [:oauth-token-id          {:optional true} [:maybe :int]]])
 
 (mr/def ::multipart-file
   "One `:multipart-params` entry for an uploaded file, as `ring.middleware.multipart-params` builds it."
@@ -94,4 +95,5 @@
    [:token-scopes            {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked    {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]
+   [:oauth-token-id          {:optional true} [:maybe :int]]
    [:data-app-scoped?        {:optional true} :boolean]])
