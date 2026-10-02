@@ -46,6 +46,7 @@ export * from "./e2e-models-metadata-helpers";
 export * from "./e2e-native-editor-helpers";
 export * from "./e2e-notebook-helpers";
 export * from "./e2e-notification-helpers";
+export * from "./e2e-oauth-helpers";
 export * from "./e2e-permissions-helpers";
 export * from "./e2e-python-helpers";
 export * from "./e2e-qa-databases-helpers";

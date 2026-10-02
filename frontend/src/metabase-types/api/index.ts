@@ -48,6 +48,7 @@ export * from "./multi-factor-auth";
 export * from "./notification";
 export * from "./notification-channels";
 export * from "./oauth";
+export * from "./oauth-client-management";
 export * from "./pagination";
 export * from "./parameters";
 export * from "./performance";

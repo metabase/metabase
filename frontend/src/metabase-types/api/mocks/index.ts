@@ -28,6 +28,7 @@ export * from "./models";
 export * from "./multi-factor-auth";
 export * from "./notification";
 export * from "./oauth";
+export * from "./oauth-client-management";
 export * from "./parameters";
 export * from "./performance";
 export * from "./permissions";

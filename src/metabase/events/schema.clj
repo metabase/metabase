@@ -147,6 +147,35 @@
               [:count     ms/IntGreaterThanOrEqualToZero]
               [:remaining ms/IntGreaterThanOrEqualToZero]]]])
 
+;; OAuth client events
+
+(mr/def :event/oauth-client-revoked
+  [:map {:closed true}
+   ;; the admin who revoked, and the client they revoked. `:model` is passed explicitly because the object is a plain
+   ;; map rather than a Toucan instance, so the audit log cannot derive it.
+   [:user-id  pos-int?]
+   [:model    [:= :model/OAuthClient]]
+   [:model-id pos-int?]
+   ;; one per-client row of a revoke: what was revoked and whose grants went with it. The name and `client_id` are
+   ;; recorded here because that is what an admin needs months later to say what they revoked.
+   [:details
+    [:map {:closed true}
+     [:client_id      :string]
+     [:client_name    [:maybe :string]]
+     [:tokens_revoked ms/IntGreaterThanOrEqualToZero]
+     [:user_ids       [:sequential pos-int?]]]]])
+
+(mr/def :event/oauth-clients-revoked
+  ;; the one summary row a revoke writes. No `:model`: the call is about a set of clients picked out by criteria, not
+  ;; about any one object.
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:details [:map {:closed true}
+              [:criteria       :map]
+              [:count          ms/IntGreaterThanOrEqualToZero]
+              [:tokens_revoked ms/IntGreaterThanOrEqualToZero]
+              [:remaining      ms/IntGreaterThanOrEqualToZero]]]])
+
 ;; segment events
 
 (mr/def ::segment

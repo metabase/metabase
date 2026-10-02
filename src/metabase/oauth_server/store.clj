@@ -48,12 +48,15 @@
   (update-keys m u/->snake_case_en))
 
 (defn- db-row->client-config
-  "Convert a DB row from :model/OAuthClient to the protocol's ClientConfig shape.
-   Aliases :registration-access-token-hash as :registration-access-token so that
-   the oidc-provider library can find the hash where it expects it."
+  "Convert a DB row from :model/OAuthClient to the protocol's ClientConfig shape, plus `:revoked-at` for
+   [[metabase.oauth-server.core]]'s own use. Aliases :registration-access-token-hash as
+   :registration-access-token so that the oidc-provider library can find the hash where it expects it."
   [row]
   (when row
-    (let [m          (select-and-kebab-keys row client-db-columns)
+    ;; `revoked_at` is read but never written: [[client-config->db-row]] projects onto `client-db-columns` alone, so
+    ;; a revocation cannot be set or cleared through the store. It is nil for an active client, and
+    ;; `select-and-kebab-keys` drops nils, so the key only ever appears on a client the core wrapper discards.
+    (let [m          (select-and-kebab-keys row (conj client-db-columns :revoked_at))
           token-hash (:registration-access-token-hash m)]
       (cond-> m
         token-hash (assoc :registration-access-token token-hash)))))

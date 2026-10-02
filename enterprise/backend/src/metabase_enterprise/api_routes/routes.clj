@@ -32,6 +32,7 @@
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
    [metabase-enterprise.mfa.routes]
+   [metabase-enterprise.oauth-client-management.api]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]
    [metabase-enterprise.replacement.api]
@@ -153,6 +154,7 @@
    ;; a lapsed-license user still needs to manage their enrolled second factor. The :multi-factor-auth
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
+   "/oauth-client-management"      (premium-handler metabase-enterprise.oauth-client-management.api/routes :session-management)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    "/transform-test"               (premium-handler metabase-enterprise.transform-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists

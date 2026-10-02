@@ -12,15 +12,19 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
+import {
+  SIDEBAR_WIDTH,
+  useDetailSidebarRouting,
+} from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import { useLocation, useNavigate, useParams } from "metabase/router";
+import { getTimePresetCutoff } from "metabase/monitor/time-presets";
+import { useLocation, useParams } from "metabase/router";
 import { Button, Flex, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
-import type { RevokeSessionsRequest, SessionId } from "metabase-types/api";
+import type { RevokeSessionsRequest, Session } from "metabase-types/api";
 
 import { SessionDetailSidebar } from "../SessionDetailSidebar";
 import { SessionsFilters } from "../SessionsFilters";
@@ -35,13 +39,14 @@ import {
 } from "./constants";
 import type { RouteParams } from "./types";
 import { useSessionRevocation } from "./use-session-revocation";
-import { buildListParams, getTimePresetCutoff, urlStateConfig } from "./utils";
+import { buildListParams, urlStateConfig } from "./utils";
+
+const getSessionId = (session: Session) => session.id;
 
 export const SessionsPage = () => {
   usePageTitle(t`Session management`);
 
   const location = useLocation();
-  const navigate = useNavigate();
   const { sessionId } = useParams<RouteParams>();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
@@ -121,44 +126,19 @@ export const SessionsPage = () => {
     [patchUrlState],
   );
 
-  // Keep page, search and sort in the URL while the sidebar opens, closes, and steps between sessions
-  const navigateToSession = useCallback(
-    (id: SessionId | undefined) => {
-      navigate({
-        pathname:
-          id === undefined
-            ? Urls.monitorSessions()
-            : Urls.monitorSessionDetail(id),
-        search: location.search,
-      });
-    },
-    [navigate, location.search],
-  );
-
-  const handleSidebarClose = useCallback(
-    () => navigateToSession(undefined),
-    [navigateToSession],
-  );
-
-  const { prevSessionId, nextSessionId, sessionFromPage } = useMemo(() => {
-    const index =
-      sessionId === undefined
-        ? -1
-        : sessions.findIndex((session) => session.id === sessionId);
-    if (index === -1) {
-      return {
-        prevSessionId: undefined,
-        nextSessionId: undefined,
-        sessionFromPage: undefined,
-      };
-    }
-    return {
-      prevSessionId: index > 0 ? sessions[index - 1].id : undefined,
-      nextSessionId:
-        index < sessions.length - 1 ? sessions[index + 1].id : undefined,
-      sessionFromPage: sessions[index],
-    };
-  }, [sessionId, sessions]);
+  const {
+    navigateToItem: navigateToSession,
+    closeSidebar,
+    prevId: prevSessionId,
+    nextId: nextSessionId,
+    selectedItem: sessionFromPage,
+  } = useDetailSidebarRouting({
+    items: sessions,
+    getItemId: getSessionId,
+    selectedId: sessionId,
+    listPath: Urls.monitorSessions(),
+    getDetailPath: Urls.monitorSessionDetail,
+  });
 
   const handleRevoked = useCallback(
     (request: RevokeSessionsRequest) => {
@@ -273,7 +253,7 @@ export const SessionsPage = () => {
               onNavigate={navigateToSession}
               onRevokeSession={revokeSession}
               onRevokeUserSessions={revokeUserSessions}
-              onClose={handleSidebarClose}
+              onClose={closeSidebar}
             />
           </Sidebar>
         )}

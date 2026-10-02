@@ -1,9 +1,12 @@
 (ns metabase.oauth-server.db
   "Application database queries for the OAuth server module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use
+  `toucan2.core`). The one exception is [[revoke-clients!]], which spans four tables in one transaction."
   (:require
+   [better-cond.core :as b]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.oauth-server.schema :as oauth-server.schema]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -59,10 +62,10 @@
   [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id :is_active true))
 
-(mu/defn oauth-client-exists?
-  "Whether an OAuthClient with `client-id` exists."
+(mu/defn active-oauth-client-exists?
+  "Whether an OAuthClient with `client-id` exists and has not been revoked."
   [client-id :- :string]
-  (t2/exists? :model/OAuthClient :client_id client-id))
+  (t2/exists? :model/OAuthClient :client_id client-id :revoked_at nil))
 
 (mu/defn revoke-access-tokens-for-user!
   "Revoke the unrevoked OAuthAccessTokens of the User with `user-id`, returning the number revoked."
@@ -103,6 +106,16 @@
   "Insert the OAuthClient `row`, returning the number inserted."
   [row :- ::oauth-server.schema/oauth-client.update]
   (t2/insert! :model/OAuthClient row))
+
+(mu/defn touch-client!
+  "Set `last_used_at` of the OAuthClient with `client-id` to now, returning the number updated. Leaves `updated_at`
+  alone."
+  [client-id :- :string]
+  ;; raw HoneySQL rather than `t2/update!`, which would fire the model's `:hook/timestamped?` and bump `updated_at`:
+  ;; a client being used is not its registration changing
+  (t2/query-one {:update :oauth_client
+                 :set    {:last_used_at :%now}
+                 :where  [:= :client_id client-id]}))
 
 (mu/defn update-oauth-client!
   "Apply `row` to the OAuthClient with primary key `id`, returning the number updated."
@@ -184,3 +197,82 @@
   "Delete the revoked OAuthRefreshTokens, returning the number deleted."
   []
   (t2/delete! :model/OAuthRefreshToken :revoked_at [:not= nil]))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Revoking clients                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private empty-revocation
+  "What [[revoke-clients!]] reports when it matched no client."
+  {:revoked 0, :tokens-revoked 0, :user-ids [], :clients []})
+
+(defn- token-holders
+  "The `client_id` and `user_id` of every unrevoked `model` token held by one of `client-ids`, one row per token."
+  [model client-ids]
+  (t2/select [model :client_id :user_id] :client_id [:in client-ids] :revoked_at nil))
+
+(defn- revoke-tokens-for-clients!
+  "Stamp `revoked_at` on the unrevoked access and refresh tokens of `client-ids`, returning how many rows that was."
+  [client-ids]
+  ;; both tables in one call: a half-revoked grant is not a state any caller should be able to produce
+  (+ (t2/update! :model/OAuthAccessToken {:client_id [:in client-ids], :revoked_at nil} {:revoked_at :%now})
+     (t2/update! :model/OAuthRefreshToken {:client_id [:in client-ids], :revoked_at nil} {:revoked_at :%now})))
+
+(defn- revocation-report
+  "What [[revoke-clients!]] reports for the `clients` it matched, the `tokens` they held, and the `revoked` and
+  `stamped` row counts the updates returned."
+  [clients tokens revoked stamped]
+  (let [by-client (group-by :client_id tokens)]
+    {:revoked        revoked
+     :tokens-revoked stamped
+     :user-ids       (vec (distinct (keep :user_id tokens)))
+     :clients        (mapv (fn [{:keys [id client_id client_name]}]
+                             (let [held (get by-client client_id)]
+                               {:id             id
+                                :client-id      client_id
+                                :client-name    client_name
+                                :tokens-revoked (count held)
+                                :user-ids       (vec (distinct (keep :user_id held)))}))
+                           clients)}))
+
+(mu/defn revoke-clients! :- ::oauth-server.schema/client-revocation
+  "Revoke the active OAuthClients among `client-ids`, recording `actor-id` as the admin who did it: stamp
+  `revoked_at` and `revoked_by_user_id` on each client, delete their pending authorization codes, and stamp
+  `revoked_at` on their unrevoked access and refresh tokens. One transaction, so a client is never left
+  half-revoked.
+
+  Nothing is hard-deleted; the client row stays on record. A client that is already revoked is not matched, nor is an
+  unknown `client_id`, so repeating a revoke is a harmless no-op.
+
+  Returns what it did (see `::oauth-server.schema/client-revocation`). The per-client breakdown is the rows read
+  inside the transaction; the totals are what the updates changed. Every id becomes a bind parameter in one `IN`, so
+  a caller must not pass more than its database driver allows."
+  [client-ids :- [:sequential :string]
+   actor-id   :- ::lib.schema.id/user]
+  ;; the empty case short-circuits outside the transaction, so a call that matches nothing opens none
+  (if (empty? client-ids)
+    empty-revocation
+    (t2/with-transaction [_conn]
+      (b/cond
+        :let [clients (t2/select [:model/OAuthClient :id :client_id :client_name]
+                                 :client_id [:in client-ids] :revoked_at nil)]
+        (empty? clients) empty-revocation
+
+        ;; the token rows are read before they are stamped: they are what tells us whose grants went, for the
+        ;; response and the audit trail
+        :let [ids     (mapv :client_id clients)
+              tokens  (into (token-holders :model/OAuthAccessToken ids)
+                            (token-holders :model/OAuthRefreshToken ids))
+              revoked (t2/update! :model/OAuthClient {:client_id [:in ids], :revoked_at nil}
+                                  {:revoked_at         :%now
+                                   :revoked_by_user_id actor-id})]
+        :do (t2/delete! :model/OAuthAuthorizationCode :client_id [:in ids])
+
+        :let [stamped (revoke-tokens-for-clients! ids)]
+        ;; benign, and only ever fewer: the update names the clients just read, so the gap can only be one another
+        ;; caller revoked in between
+        :do (when (not= revoked (count clients))
+              (log/infof "Revoke matched %d OAuth client(s) but revoked %d; the rest were revoked in between"
+                         (count clients) revoked))
+
+        :else (revocation-report clients tokens revoked stamped)))))

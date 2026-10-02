@@ -226,6 +226,66 @@ describe("MonitorLayout", () => {
     },
   );
 
+  describe("OAuth clients", () => {
+    const navLinkLabels = () =>
+      within(screen.getByTestId("monitor-nav"))
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("aria-label"));
+
+    it("sits directly under Session management", async () => {
+      setup({ tokenFeatures: { "session-management": true } });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      const labels = navLinkLabels();
+      expect(labels).toContain("OAuth clients");
+      expect(labels.indexOf("OAuth clients")).toBe(
+        labels.indexOf("Session management") + 1,
+      );
+      expect(
+        screen.getByRole("link", { name: "OAuth clients" }),
+      ).toHaveAttribute("href", Urls.monitorOAuthClients());
+    });
+
+    it("is gated without the session-management feature", async () => {
+      setup({ tokenFeatures: { "session-management": false } });
+
+      const tab = await screen.findByRole("link", { name: "OAuth clients" });
+      expect(within(tab).getByTestId("upsell-gem")).toBeInTheDocument();
+    });
+
+    it("is ungated once the feature is present", async () => {
+      setup({ tokenFeatures: { "session-management": true } });
+
+      const tab = await screen.findByRole("link", { name: "OAuth clients" });
+      expect(within(tab).queryByTestId("upsell-gem")).not.toBeInTheDocument();
+    });
+
+    it("tracks opening the section", async () => {
+      trackMonitorSectionClicked.mockClear();
+      setup({ tokenFeatures: { "session-management": true } });
+
+      await userEvent.click(
+        await screen.findByRole("link", { name: "OAuth clients" }),
+      );
+
+      expect(trackMonitorSectionClicked).toHaveBeenCalledWith("oauth-clients");
+    });
+
+    it("marks itself the current page on its own route", async () => {
+      setup({
+        tokenFeatures: { "session-management": true },
+        initialRoute: Urls.monitorOAuthClients(),
+      });
+
+      const tab = await screen.findByRole("link", { name: "OAuth clients" });
+      expect(tab).toHaveAttribute("aria-current", "page");
+      expect(screen.getAllByRole("link", { current: "page" })).toEqual([tab]);
+    });
+  });
+
   const AI_AUDITING_SECTION_CASES = [
     {
       label: "Usage stats",

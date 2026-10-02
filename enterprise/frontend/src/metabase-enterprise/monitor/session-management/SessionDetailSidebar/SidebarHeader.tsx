@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import { SidebarNavButton } from "metabase/monitor/components/DetailSidebar";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
+import {
+  SidebarNavButton,
+  useCopyDetailLink,
+} from "metabase/monitor/components/DetailSidebar";
 import { ActionIcon, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -18,13 +19,9 @@ export const SidebarHeader = ({
   onNavigate,
   onClose,
 }: SidebarHeaderProps) => {
-  const dispatch = useDispatch();
-
-  const handleCopyLink = async () => {
-    const url = `${window.location.origin}${Urls.monitorSessionDetail(sessionId)}`;
-    await navigator.clipboard.writeText(url);
-    dispatch(addUndo({ message: t`Link copied to clipboard` }));
-  };
+  const handleCopyLink = useCopyDetailLink(
+    Urls.monitorSessionDetail(sessionId),
+  );
 
   return (
     <Stack gap="xl">

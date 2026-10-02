@@ -26,12 +26,13 @@
       [:limit  ms/PositiveInt]
       [:offset ms/IntGreaterThanOrEqualToZero]
       [:data   [:sequential :map]]]
-  "List OAuth dynamic client registration events (registered, approved, or denied), newest first.
-   Joins client info and, for decision events, the deciding user. Superuser only."
+  "List OAuth client lifecycle events (registered, approved, denied, or revoked), newest first.
+   Joins client info and, for decision and revocation events, the user who acted. Superuser only."
   [_route-params
    {:keys [client-id event-type]} :- [:map {:closed true}
                                       [:client-id  {:optional true} [:maybe ms/NonBlankString]]
-                                      [:event-type {:optional true} [:maybe [:enum "registered" "approved" "denied"]]]]]
+                                      [:event-type {:optional true}
+                                       [:maybe [:enum "registered" "approved" "denied" "revoked"]]]]]
   (api/check-superuser)
   (let [limit  (or (request/limit) 50)
         offset (or (request/offset) 0)

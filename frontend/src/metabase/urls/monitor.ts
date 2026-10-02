@@ -1,5 +1,6 @@
 import type {
   GroupId,
+  OAuthClientId,
   TaskRunDateFilterOption,
   TaskRunEntityType,
   TaskRunType,
@@ -96,6 +97,14 @@ export function monitorSessions() {
 
 export function monitorSessionDetail(sessionId: string) {
   return `${monitorSessions()}/${sessionId}`;
+}
+
+export function monitorOAuthClients() {
+  return `${ROOT_URL}/oauth-clients`;
+}
+
+export function monitorOAuthClientDetail(clientId: OAuthClientId) {
+  return `${monitorOAuthClients()}/${clientId}`;
 }
 
 export function monitorAiAuditing() {

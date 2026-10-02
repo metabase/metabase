@@ -14,6 +14,16 @@ import {
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
+/**
+ * `comboboxProps` for a Select rendered inside the popover. Picking an option in a portalled dropdown counts as a
+ * click outside the popover and closes it before Apply can be reached.
+ */
+export const FILTER_POPOVER_COMBOBOX = {
+  withinPortal: false,
+  floatingStrategy: "fixed" as const,
+  position: "bottom-start" as const,
+};
+
 type ListFilterPopoverProps = {
   hasActiveFilters: boolean;
   /** Called when the popover opens; sync the draft with the applied filters here */

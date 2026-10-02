@@ -4,14 +4,21 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   type QueryParam,
   type UrlStateConfig,
   getFirstParamValue,
   useUrlState,
 } from "metabase/common/hooks/use-url-state";
+import { trackMonitorSectionClicked } from "metabase/common/monitor/analytics";
+import {
+  getOAuthEventTypeLabel,
+  isOAuthEventType,
+} from "metabase/common/utils/oauth";
 import CS from "metabase/css/core/index.css";
 import { useLocation } from "metabase/router";
 import { SettingsPageWrapper } from "metabase/settings-components";
@@ -27,20 +34,17 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import type {
-  OAuthAuthorization,
-  OAuthClientEventType,
+import * as Urls from "metabase/urls";
+import {
+  OAUTH_CLIENT_EVENT_TYPES,
+  type OAuthAuthorization,
+  type OAuthClientEventType,
 } from "metabase-types/api";
 
 import { useListOAuthAuthorizationsQuery } from "../settings/api/oauth";
 
 import S from "./OAuthAuthorizationsPage.module.css";
-import {
-  OAUTH_EVENT_TYPES,
-  OAUTH_PAGE_SIZE,
-  getOAuthEventTypeLabel,
-  isOAuthEventType,
-} from "./oauth-utils";
+import { OAUTH_PAGE_SIZE } from "./oauth-utils";
 
 const ALL_EVENT_TYPES = "all";
 
@@ -50,6 +54,7 @@ const EVENT_COLORS: Record<OAuthClientEventType, BadgeColor> = {
   registered: "neutral",
   approved: "positive",
   denied: "negative",
+  revoked: "warning",
 };
 
 type UrlState = {
@@ -85,6 +90,8 @@ export const OAuthAuthorizationsPage = () => {
     urlStateConfig,
   );
 
+  const hasSessionManagementFeature = useHasTokenFeature("session-management");
+
   const { data, isLoading, error } = useListOAuthAuthorizationsQuery(
     {
       limit: OAUTH_PAGE_SIZE,
@@ -108,24 +115,34 @@ export const OAuthAuthorizationsPage = () => {
       mx="auto"
       p="xxl"
     >
-      <Select
-        data={[
-          { value: ALL_EVENT_TYPES, label: t`All events` },
-          ...OAUTH_EVENT_TYPES.map((value) => ({
-            value,
-            label: getOAuthEventTypeLabel(value),
-          })),
-        ]}
-        value={eventType}
-        onChange={(value) =>
-          patchUrlState({
-            eventType: value ?? ALL_EVENT_TYPES,
-            page: 0,
-          })
-        }
-        aria-label={t`Filter by event`}
-        style={{ alignSelf: "start" }}
-      />
+      <Group justify="space-between">
+        <Select
+          data={[
+            { value: ALL_EVENT_TYPES, label: t`All events` },
+            ...OAUTH_CLIENT_EVENT_TYPES.map((value) => ({
+              value,
+              label: getOAuthEventTypeLabel(value),
+            })),
+          ]}
+          value={eventType}
+          onChange={(value) =>
+            patchUrlState({
+              eventType: value ?? ALL_EVENT_TYPES,
+              page: 0,
+            })
+          }
+          aria-label={t`Filter by event`}
+        />
+        {hasSessionManagementFeature && (
+          <Link
+            to={Urls.monitorOAuthClients()}
+            variant="brand"
+            onClick={() => trackMonitorSectionClicked("oauth-clients")}
+          >
+            {t`Manage clients`}
+          </Link>
+        )}
+      </Group>
 
       <AuthorizationsTable
         authorizations={authorizations}
@@ -184,7 +201,11 @@ function getAuthorizationColumns(): TreeTableColumnDef<OAuthAuthorization>[] {
       cell: ({ row }) => {
         const { event_type } = row.original;
         return (
-          <Badge color={EVENT_COLORS[event_type]} variant="light">
+          <Badge
+            color={EVENT_COLORS[event_type]}
+            variant="light"
+            data-testid={`oauth-event-badge-${event_type}`}
+          >
             {getOAuthEventTypeLabel(event_type)}
           </Badge>
         );

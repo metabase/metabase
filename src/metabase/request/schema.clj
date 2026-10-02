@@ -23,7 +23,9 @@
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked {:optional true} :boolean]
    [:data-app-scoped?     {:optional true} :boolean]
-   [:authenticated-via-oauth? {:optional true} :boolean]])
+   [:authenticated-via-oauth? {:optional true} :boolean]
+   ;; the registered OAuth client that issued the bearer token, when a bearer is what authenticated the request
+   [:oauth-client-id   {:optional true} [:maybe :string]]])
 
 (mr/def ::json-value
   "A JSON-shaped value: a scalar, a sequence of JSON values, or a string-keyed JSON object."
@@ -99,6 +101,7 @@
    [:user-locale             {:optional true} [:maybe :string]]
    [:embedding/auth-method   {:optional true} [:maybe :string]]
    [:metabase/authed-session-key-hash {:optional true} [:maybe :string]]
+   [:metabase/authed-oauth-client-id  {:optional true} [:maybe :string]]
    [:token-exchange?         {:optional true} :boolean]
    [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]
    [:metabase.server.middleware.offset-paging/offset {:optional true} [:maybe :int]]

@@ -5,6 +5,9 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.last-use]
+   [metabase.oauth-server.models.oauth-client-event :as oauth-client-event]
+   [metabase.oauth-server.query]
    [metabase.oauth-server.scopes :as scopes]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
@@ -12,9 +15,32 @@
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as oidc.proto]
-   [oidc-provider.store :as oidc.store]))
+   [oidc-provider.store :as oidc.store]
+   [potemkin :as p]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.oauth-server.last-use/keep-me
+         metabase.oauth-server.query/keep-me)
+
+;;; the `last_used_at` write-back, for the middleware that calls it once a bearer-authenticated response is on its way
+(p/import-vars
+ [metabase.oauth-server.last-use
+  clear-client-use-cache!
+  touch-client-if-due!])
+
+;;; the HoneySQL fragments naming the OAuth tables, so that a module querying registered clients composes on these
+;;; rather than joining the tables itself
+(p/import-vars
+ [metabase.oauth-server.query
+  client-from-and-joins
+  client-last-used-expr
+  client-status-expr
+  client-token-holders-query
+  live-token-count-expr
+  live-token-user-count-expr
+  user-holds-token-expr])
 
 (def full-access-scope
   "The OAuth scope string that grants a bearer token full, user-equivalent access to the
@@ -103,9 +129,21 @@
                             (comp (remove (set scopes)) (distinct))
                             (cond-> mcp-scopes registration-enabled? (concat ceiling)))))))
 
+(defn- wrap-client-reads
+  "`client-store` with every client it reads passed through `f`, which may return nil to hide it. Writes pass through
+  unchanged."
+  [client-store f]
+  (reify oidc.proto/ClientStore
+    (get-client [_ client-id]
+      (f (oidc.proto/get-client client-store client-id)))
+    (register-client [_ client-config]
+      (oidc.proto/register-client client-store client-config))
+    (update-client [_ client-id updated-config]
+      (oidc.proto/update-client client-store client-id updated-config))))
+
 (defn- with-default-grant-ceiling
-  "Wrap `client-store` so that reading a client applies [[widen-to-grant-ceiling]] with the MCP surface's scopes,
-   [[default-grant-scopes]], and the dynamic-registration setting. Writes pass through unchanged."
+  "`client-store` with [[widen-to-grant-ceiling]] applied to every client it reads, using the MCP surface's scopes,
+   [[default-grant-scopes]], and the dynamic-registration setting."
   [client-store]
   ;; A registration `scope` can only widen what a client may later request, never narrow it: MCP clients register with
   ;; the narrow scope they start from and then step up on the same `client_id`, which a per-client snapshot would
@@ -120,16 +158,21 @@
   ;; The MCP kill switch is the one thing that stops the widening entirely. Some MCP surface scopes also gate the agent
   ;; API (`agent:resource:read` is the declared scope of `POST /api/agent/v1/read-resource`), which has its own lever,
   ;; so widening with MCP off would hand a client a scope its registration never included for a surface still serving.
-  (reify oidc.proto/ClientStore
-    (get-client [_ client-id]
-      (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
-                              (oauth-settings/oauth-server-dynamic-registration-enabled)
-                              (when (mcp/mcp-enabled?) (mcp/v2-scopes))
-                              (default-grant-scopes)))
-    (register-client [_ client-config]
-      (oidc.proto/register-client client-store client-config))
-    (update-client [_ client-id updated-config]
-      (oidc.proto/update-client client-store client-id updated-config))))
+  (wrap-client-reads client-store
+                     (fn [client]
+                       (widen-to-grant-ceiling client
+                                               (oauth-settings/oauth-server-dynamic-registration-enabled)
+                                               (when (mcp/mcp-enabled?) (mcp/v2-scopes))
+                                               (default-grant-scopes)))))
+
+(defn- without-revoked-clients
+  "`client-store` with a revoked client hidden: reading one returns nothing."
+  [client-store]
+  ;; This is the whole enforcement of a client revocation on the OAuth endpoints. The library has no notion of a
+  ;; revoked client, but it refuses one it cannot read, so hiding the row here is what makes `/oauth/authorize`, the
+  ;; token exchange, a refresh, and the RFC 7592 registration read all fail with no guard of their own.
+  ;; Applied on read, so a revocation takes effect on the next request rather than on a provider rebuild.
+  (wrap-client-reads client-store #(when-not (:revoked-at %) %)))
 
 (def ^:private scheme-default-port
   {"http" 80, "https" 443})
@@ -221,7 +264,7 @@
      :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
      :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
      :refresh-token-ttl-seconds      (oauth-settings/oauth-server-refresh-token-ttl)
-     :client-store                   (with-default-grant-ceiling (store/create-client-store))
+     :client-store                   (with-default-grant-ceiling (without-revoked-clients (store/create-client-store)))
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
      ;; OIDC provider requires a vector.
@@ -249,6 +292,23 @@
   []
   (reset! provider nil))
 
+(defn revoke-clients!
+  "The module's single revocation entry point: [[metabase.oauth-server.db/revoke-clients!]] for `client-ids` and
+  `actor-id`, plus a `revoked` client event per client revoked, in the same transaction. Returns what the primitive
+  returned.
+
+  A revoked client keeps nothing: it is hidden from the OAuth library, so it can neither obtain consent, exchange or
+  refresh a token, nor read its own registration, and its live bearer tokens stop resolving. Not reversible, and no
+  bar to the same operator registering again under a new `client_id`."
+  [client-ids actor-id]
+  ;; the `revoked` event shares the transaction because it is part of the record rather than a report of it: a client
+  ;; that reads as revoked always has a history saying who revoked it
+  (t2/with-transaction [_conn]
+    (let [{:keys [clients] :as revocation} (oauth-server.db/revoke-clients! client-ids actor-id)]
+      (doseq [{:keys [id]} clients]
+        (oauth-client-event/record-revocation! id actor-id))
+      revocation)))
+
 (defn extract-bearer-token
   "Extract the bearer token from the Authorization header of a Ring request."
   [request]
@@ -258,9 +318,13 @@
 
 (defn resolve-access-token
   "Validate an OAuth bearer access token string against the token store. Returns
-   `{:user-id <int> :scopes <set-of-strings>}` on success, or nil on failure (unknown,
-   expired, or revoked token, a token with no associated user, or a token whose user has since
-   been deactivated).
+   `{:user-id <int> :scopes <set-of-strings> :client-id <string>}` on success, or nil on failure (unknown,
+   expired, or revoked token, a token whose issuing client is gone or revoked, a token with no
+   associated user, or a token whose user has since been deactivated).
+
+   `:client-id` is the registered client that issued the token -- the request's *current client*. It is what
+   `exclude-current` holds back, so that an admin revoking every client through a bearer does not cut off the
+   client they are revoking with.
 
    The `is_active` gate here is defense in depth, not the primary control: deactivating a user through
    the model fires `:event/user-credentials-revoked`, and `metabase.oauth-server.events.revoke-on-deactivation`
@@ -280,9 +344,10 @@
         (let [expiry (:expiry token-data)]
           (when (and (or (nil? expiry)
                          (t/after? (t/instant expiry) (t/instant)))
-                     ;; Fail closed if the issuing client is gone (SEC-863).
-                     (oauth-server.db/oauth-client-exists? (:client-id token-data)))
+                     ;; Fail closed if the issuing client is gone (SEC-863) or revoked.
+                     (oauth-server.db/active-oauth-client-exists? (:client-id token-data)))
             (when-let [user-id (some-> (:user-id token-data) parse-long)]
               (when (oauth-server.db/active-user-exists? user-id)
-                {:user-id user-id
-                 :scopes  (or (some->> (:scope token-data) (into #{})) #{})}))))))))
+                {:user-id   user-id
+                 :scopes    (or (some->> (:scope token-data) (into #{})) #{})
+                 :client-id (:client-id token-data)}))))))))
