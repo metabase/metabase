@@ -6,13 +6,22 @@ import type {
   RequireAggregationsForBreakouts,
 } from "./types";
 
-/** Defines a source-controlled data app query. */
+type SavedQuestionBinding = {
+  savedQuestionEntityId?: string;
+};
+
+/**
+ * Defines a source-controlled data app query. `savedQuestionEntityId` is the
+ * entity ID of its saved question in the app's `resources/cards/`, which a
+ * production build runs.
+ */
 export function defineQuery<
   TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
   const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
 >(
   query: TQuery &
+    (TQuery extends SavedQuestionBinding ? unknown : SavedQuestionBinding) &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
         ? RequireAggregationsForBreakouts<TQuery>

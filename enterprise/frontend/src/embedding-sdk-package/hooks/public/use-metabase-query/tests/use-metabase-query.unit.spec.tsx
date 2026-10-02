@@ -1,6 +1,7 @@
 // Register mocks before loading the modules under test.
 // oxfmt-ignore
 import {
+  PUBLISHED_QUESTION_ENTITY_ID,
   TEST_DATASET_QUERY,
   createDeferred,
   createMockDatasetQuery,
@@ -430,6 +431,7 @@ describe("dynamic query clauses", () => {
       useMetabaseQuery(
         defineQuery({
           source: TEST_SCHEMA.tables.orders,
+          savedQuestionEntityId: PUBLISHED_QUESTION_ENTITY_ID,
         }),
         {
           filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "x")],
