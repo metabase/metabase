@@ -19,7 +19,7 @@ describe("AI Controls > Metabot access and customization", () => {
   });
 
   describe("Feature Access page", () => {
-    it("should display the AI feature access table with groups and save a permission change", () => {
+    it("should display the AI feature access table with groups, save a permission change, and hide the Metabot chat icon for users in a group without Metabot access", () => {
       cy.intercept("GET", "/api/ee/ai-controls/permissions").as(
         "getPermissions",
       );
@@ -74,11 +74,21 @@ describe("AI Controls > Metabot access and customization", () => {
           cy.wrap($checkbox).should("be.checked");
         });
       });
-    });
-  });
 
-  describe("Group access controls", () => {
-    it("should not show the Metabot chat icon for users in a group without Metabot access", () => {
+      cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
+        "getUserPermissions",
+      );
+
+      cy.log(
+        "a user in a group with Metabot access sees the Metabot chat icon",
+      );
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.wait("@getUserPermissions");
+      H.appBar().find('[aria-label*="Chat with"]').should("be.visible");
+
+      cy.signInAsAdmin();
+
       // First, get the current permissions so we can update only the All Users group
       cy.request("GET", "/api/ee/ai-controls/permissions").then((response) => {
         const currentPermissions: Array<{
@@ -106,6 +116,9 @@ describe("AI Controls > Metabot access and customization", () => {
       // Sign in as a normal user (who is only in the All Users group)
       cy.signInAsNormalUser();
       cy.visit("/");
+      cy.wait("@getUserPermissions")
+        .its("response.body.permissions.metabot")
+        .should("eq", "no");
 
       // Wait for the navigation bar to be present
       cy.findByLabelText("Navigation bar").should("be.visible");
@@ -116,8 +129,16 @@ describe("AI Controls > Metabot access and customization", () => {
   });
 
   describe("Customization", () => {
-    it("should save a custom Metabot name", () => {
+    it("should save a custom Metabot name, icon and illustrations setting and use them in the app", () => {
+      H.updateEnterpriseSettings({
+        "metabot-show-illustrations": true,
+      });
+
       cy.intercept("PUT", "/api/setting/metabot-name").as("saveName");
+      cy.intercept("PUT", "/api/setting/metabot-icon").as("saveIcon");
+      cy.intercept("PUT", "/api/setting/metabot-show-illustrations").as(
+        "saveIllustrations",
+      );
 
       cy.visit("/admin/metabot/customization");
 
@@ -132,16 +153,6 @@ describe("AI Controls > Metabot access and customization", () => {
       // Wait for debounced save
       cy.wait("@saveName").its("response.statusCode").should("eq", 204);
 
-      // Reload and verify persistence
-      cy.reload();
-      cy.findByLabelText("AI agent's name").should("have.value", "HAL 9000");
-    });
-
-    it("should upload a custom Metabot icon", () => {
-      cy.intercept("PUT", "/api/setting/metabot-icon").as("saveIcon");
-
-      cy.visit("/admin/metabot/customization");
-
       H.main().findByText("AI agent's icon").should("be.visible");
       cy.findByRole("button", { name: "Upload a custom icon" }).should(
         "be.visible",
@@ -150,10 +161,7 @@ describe("AI Controls > Metabot access and customization", () => {
       // Upload a tiny PNG via the hidden file input
       cy.get('input[type="file"]').selectFile(
         {
-          contents: Cypress.Buffer.from(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-            "base64",
-          ),
+          contents: Cypress.Buffer.from(TINY_PNG_BASE64, "base64"),
           fileName: "metabot-icon.png",
           mimeType: "image/png",
         },
@@ -164,19 +172,6 @@ describe("AI Controls > Metabot access and customization", () => {
 
       // The "Remove custom icon" button should be visible
       cy.findByLabelText("Remove custom icon").should("be.visible");
-    });
-
-    it("should hide Metabot illustrations when the toggle is switched off", () => {
-      H.updateEnterpriseSettings({
-        "metabot-show-illustrations": true,
-      });
-      H.updateSetting("metabot-enabled?", true);
-
-      cy.intercept("PUT", "/api/setting/metabot-show-illustrations").as(
-        "saveIllustrations",
-      );
-
-      cy.visit("/admin/metabot/customization");
 
       H.main().findByText("Metabot illustrations").should("be.visible");
 
@@ -196,9 +191,27 @@ describe("AI Controls > Metabot access and customization", () => {
         .its("response.statusCode")
         .should("eq", 204);
 
-      // Navigate to the home page and open Metabot chat to verify illustrations are hidden
+      // Reload and verify persistence
+      cy.reload();
+      cy.findByLabelText("AI agent's name").should("have.value", "HAL 9000");
+
       cy.visit("/");
-      H.openMetabotViaSearchButton();
+      cy.findByLabelText("Navigation bar").should("be.visible");
+
+      // The app bar button tooltip/aria-label should reflect the custom name
+      H.appBar()
+        .findByRole("button", { name: /Chat with HAL 9000/ })
+        .should("be.visible")
+        .within(() => {
+          // When a custom icon is set, MetabotIcon renders an <img> with alt = metabotName
+          cy.get("img").should("be.visible");
+        });
+
+      // Open Metabot chat to verify illustrations are hidden
+      H.appBar()
+        .findByRole("button", { name: /Chat with HAL 9000/ })
+        .click();
+      H.assertChatVisibility("visible");
 
       cy.findByTestId("metabot-empty-chat-info").should("be.visible");
       // The SVG illustration should NOT be rendered when showIllustrations=false
@@ -210,39 +223,15 @@ describe("AI Controls > Metabot access and customization", () => {
         .findByText(/Explore your metrics and models with AI/)
         .should("be.visible");
     });
-
-    it("should show the custom Metabot name in the app bar button tooltip", () => {
-      H.updateSetting("metabot-name", "Aria");
-
-      cy.visit("/");
-      cy.findByLabelText("Navigation bar").should("be.visible");
-
-      // The app bar button tooltip/aria-label should reflect the custom name
-      H.appBar()
-        .findByRole("button", { name: /Chat with Aria/ })
-        .should("be.visible");
-    });
-
-    it("should show a custom Metabot icon in the app bar when metabot-icon is set", () => {
-      H.updateEnterpriseSettings({ "metabot-icon": TINY_PNG_DATA_URI });
-
-      cy.visit("/");
-      cy.findByLabelText("Navigation bar").should("be.visible");
-
-      // The custom icon img should be rendered (alt = metabot name)
-      H.appBar()
-        .findByRole("button", { name: /Chat with/ })
-        .within(() => {
-          // When a custom icon is set, MetabotIcon renders an <img> with alt = metabotName
-          cy.get("img").should("be.visible");
-        });
-    });
   });
 
   describe("System Prompts pages", () => {
-    it("should save a custom Metabot chat system prompt", () => {
+    it("should save custom Metabot chat and SQL generation system prompts", () => {
       cy.intercept("PUT", "/api/setting/metabot-chat-system-prompt").as(
         "savePrompt",
+      );
+      cy.intercept("PUT", "/api/setting/metabot-sql-system-prompt").as(
+        "saveSqlPrompt",
       );
 
       cy.visit("/admin/metabot/system-prompts/metabot-chat");
@@ -259,18 +248,6 @@ describe("AI Controls > Metabot access and customization", () => {
         .blur();
 
       cy.wait("@savePrompt").its("response.statusCode").should("eq", 204);
-
-      // Reload and verify persistence
-      cy.reload();
-      cy.findByRole("textbox", {
-        name: /AI chat prompt instructions/,
-      }).should("contain.value", "Be concise and helpful.");
-    });
-
-    it("should save a custom SQL generation system prompt", () => {
-      cy.intercept("PUT", "/api/setting/metabot-sql-system-prompt").as(
-        "saveSqlPrompt",
-      );
 
       cy.visit("/admin/metabot/system-prompts/sql-generation");
 
@@ -289,10 +266,16 @@ describe("AI Controls > Metabot access and customization", () => {
 
       cy.wait("@saveSqlPrompt").its("response.statusCode").should("eq", 204);
 
+      // Reload and verify persistence
       cy.reload();
       cy.findByRole("textbox", {
         name: /SQL generation prompt instructions/,
       }).should("contain.value", "Always use uppercase SQL keywords.");
+
+      cy.visit("/admin/metabot/system-prompts/metabot-chat");
+      cy.findByRole("textbox", {
+        name: /AI chat prompt instructions/,
+      }).should("contain.value", "Be concise and helpful.");
     });
   });
 });
@@ -333,9 +316,21 @@ describe("AI controls > AI usage limits", () => {
       );
     });
 
-    it("should save limit type, reset period, instance limit, and quota-reached message when changed", () => {
+    it("should save instance limit as null when the field is cleared, then save limit type, reset period, instance limit, and quota-reached message when changed", () => {
+      // Pre-set a limit so there's something to clear
+      cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
+        max_usage: 100,
+      });
+
       cy.visit(AI_USAGE_LIMITS_URL);
       cy.wait("@getInstanceLimit");
+
+      cy.findByRole("textbox", {
+        name: "Total monthly instance token limit",
+      }).clear();
+      cy.wait("@updateInstanceLimit").then(({ request }) => {
+        expect(request.body).to.deep.equal({ max_usage: null });
+      });
 
       // Change limit type to messages
       cy.findByRole("radio", { name: "By message count" }).click({
@@ -367,23 +362,6 @@ describe("AI controls > AI usage limits", () => {
         });
       });
     });
-
-    it("should save instance limit as null when the field is cleared", () => {
-      // Pre-set a limit so there's something to clear
-      cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
-        max_usage: 100,
-      });
-
-      cy.visit(AI_USAGE_LIMITS_URL);
-      cy.wait("@getInstanceLimit");
-
-      cy.findByRole("textbox", {
-        name: "Total monthly instance token limit",
-      }).clear();
-      cy.wait("@updateInstanceLimit").then(({ request }) => {
-        expect(request.body).to.deep.equal({ max_usage: null });
-      });
-    });
   });
 
   describe("When instance limit is set to 0", () => {
@@ -407,16 +385,9 @@ describe("AI controls > AI usage limits", () => {
         max_usage: 0,
       });
 
-      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
       cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
         "xrayCandidates",
       );
-
-      llmMockServerSetup();
-    });
-
-    afterEach(() => {
-      llmMockServerTeardown();
     });
 
     it("should show the quota-reached message when the user sends a message to Metabot", () => {
@@ -526,7 +497,7 @@ describe("AI controls > AI usage limits", () => {
       });
     });
 
-    it("should display both groups with their configured limits and note that users get the highest limit", () => {
+    it("should display both groups with their configured limits and respect the effective user limit (max across their groups)", () => {
       cy.visit(AI_USAGE_LIMITS_URL);
 
       // Both groups should appear in the group limits table with correct values
@@ -546,9 +517,7 @@ describe("AI controls > AI usage limits", () => {
           .scrollIntoView()
           .should("be.visible");
       });
-    });
 
-    it("should respect the effective user limit (max across their groups)", () => {
       // Normal user is in group A (limit 5) and group B (limit 100).
       // Effective limit = max(1, 1, 1, 5, 100) = 100.
       // (pre-existing groups are set to 1 in beforeEach)
@@ -629,7 +598,6 @@ describe("AI Controls > Tenant usage limits", () => {
       });
     });
 
-    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
     );
@@ -643,7 +611,7 @@ describe("AI Controls > Tenant usage limits", () => {
     llmMockServerTeardown();
   });
 
-  it("should allow updating tenant limits when tenants are enabled", () => {
+  it("should update tenant limits and apply them to tenant users", () => {
     cy.visit("/admin/metabot/usage-controls/ai-usage-limits");
 
     cy.findByRole("tab", { name: "Specific tenants" }).click();
@@ -653,10 +621,36 @@ describe("AI Controls > Tenant usage limits", () => {
       .findByText("Test Corp")
       .should("be.visible");
     cy.findByLabelText("Max total monthly tokens for Test Corp").type("10");
-    cy.wait("@updateTenantLimit").its("response.statusCode").should("eq", 200);
-  });
+    cy.wait("@updateTenantLimit").then(({ request, response }) => {
+      expect(request.url).to.match(
+        new RegExp(`/api/ee/ai-controls/usage/tenant/${tenantId}$`),
+      );
+      expect(request.body).to.deep.equal({ max_usage: 10 });
+      expect(response?.statusCode).to.eq(200);
+    });
 
-  it("should show the quota-reached message when the tenant limit is set to 0 and the user sends a message", () => {
+    cy.log("no tenant limit: the user gets an LLM response");
+    cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {
+      max_usage: null,
+    });
+    // Clear the backend limit-check cache so the new null limit is seen immediately,
+    cy.request("DELETE", "/api/testing/metabot/seed-ai-usage", {
+      user_id: tenantUserId,
+    });
+
+    signInAsTenantUser();
+
+    cy.visit("/");
+    cy.wait("@xrayCandidates");
+
+    H.openMetabotViaSearchButton();
+    H.sendMetabotMessage("hello");
+
+    H.lastChatMessage().should("contain.text", MOCK_LLM_RESPONSE);
+    H.lastChatMessage().should("not.contain.text", DEFAULT_QUOTA_MESSAGE);
+
+    cy.log("tenant limit set to 0: the user gets the quota-reached message");
+    cy.signInAsAdmin();
     // Set tenant limit to 0 — any usage will immediately exceed it
     cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {
       max_usage: 0,
@@ -666,11 +660,7 @@ describe("AI Controls > Tenant usage limits", () => {
       user_id: tenantUserId,
     });
 
-    // Sign in as the tenant user
-    cy.request("POST", "/api/session", {
-      username: TENANT_USER_EMAIL,
-      password: TENANT_USER_PASSWORD,
-    });
+    signInAsTenantUser();
 
     cy.visit("/");
     cy.wait("@xrayCandidates");
@@ -682,36 +672,17 @@ describe("AI Controls > Tenant usage limits", () => {
     H.lastChatMessage().should("contain.text", DEFAULT_QUOTA_MESSAGE);
   });
 
-  it("should not show the quota-reached message when no tenant limit is set", () => {
-    // No tenant limit is set — the chat input should be available without a quota message
-    cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {
-      max_usage: null,
-    });
-    // Clear the backend limit-check cache so the new null limit is seen immediately,
-    cy.request("DELETE", "/api/testing/metabot/seed-ai-usage", {
-      user_id: tenantUserId,
-    });
-
-    // Sign in as the tenant user
+  function signInAsTenantUser() {
     cy.request("POST", "/api/session", {
       username: TENANT_USER_EMAIL,
       password: TENANT_USER_PASSWORD,
     });
-
-    cy.visit("/");
-    cy.wait("@xrayCandidates");
-
-    H.openMetabotViaSearchButton();
-    H.sendMetabotMessage("hello");
-
-    H.lastChatMessage().should("contain.text", MOCK_LLM_RESPONSE);
-    H.lastChatMessage().should("not.contain.text", DEFAULT_QUOTA_MESSAGE);
-  });
+  }
 });
 
-// A tiny valid PNG (1×1 transparent pixel) as a data URI, used for icon upload tests
-const TINY_PNG_DATA_URI =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+// A tiny valid PNG (1×1 transparent pixel), used for the icon upload test
+const TINY_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 const MOCK_LLM_PORT = 6123;
 const MOCK_LLM_RESPONSE = "Hello from mock LLM!";
 const DEFAULT_QUOTA_MESSAGE =
