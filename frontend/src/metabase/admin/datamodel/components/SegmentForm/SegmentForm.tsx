@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -73,14 +74,7 @@ export const SegmentForm = ({
   }, [dirty, onIsDirtyChange]);
 
   return (
-    <Box
-      component="form"
-      className={S.form}
-      w="100%"
-      h="100%"
-      bg="background_page-primary"
-      onSubmit={handleSubmit}
-    >
+    <Box component="form" className={S.form} onSubmit={handleSubmit}>
       <Box px={SECTION_PADDING_X} py="xxl">
         {isReadOnly && (
           <Alert
@@ -159,7 +153,7 @@ export const SegmentForm = ({
         </Box>
       </Box>
       {isNew && !isReadOnly && (
-        <Box className={S.footer} px={SECTION_PADDING_X} py="xxl">
+        <Box className={CS.borderTop} px={SECTION_PADDING_X} py="xxl">
           <SegmentFormActions isValid={isValid} />
         </Box>
       )}
