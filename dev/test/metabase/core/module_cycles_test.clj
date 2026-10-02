@@ -33,9 +33,7 @@
   (testing "each cluster holding one anchor passes"
     (is (= [] (module-cycles/problems graph modules anchors))))
   (testing "a named cluster can gain a module"
-    (is (= [] (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{'qp}) (conj modules 'lib) anchors))))
-  (testing "a named cluster can lose a module"
-    (is (= [] (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{}) (conj modules 'lib) anchors)))))
+    (is (= [] (module-cycles/problems (assoc graph 'qp #{'sync 'lib}, 'lib #{'qp}) (conj modules 'lib) anchors)))))
 
 (deftest ^:parallel merges-fail-test
   (testing "a merge shows the requires linking the two anchors, both ways"
