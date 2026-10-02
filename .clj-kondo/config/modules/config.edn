@@ -1496,7 +1496,6 @@
               query-permissions
               query-processor
               request
-              request.schema
               search
               search.entity-retrieval
               server
