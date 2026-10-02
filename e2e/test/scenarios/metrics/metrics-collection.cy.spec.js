@@ -67,6 +67,15 @@ describe("scenarios > metrics > collection", () => {
     H.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
+
+    cy.log("unpinning the last pinned metric removes the pinned section");
+    H.openPinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    H.popover().findByText("Unpin").click();
+    H.getPinnedSection().should("not.exist");
+    H.getUnpinnedSection()
+      .findByText(ORDERS_TIMESERIES_METRIC.name)
+      .should("be.visible");
+
     H.openUnpinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Pin this").click();
     H.getPinnedSection()

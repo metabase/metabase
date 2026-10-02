@@ -161,7 +161,7 @@ describe("scenarios > metrics > editing", () => {
   });
 
   describe("organization", () => {
-    it("should be able to change the query definition of a metric", () => {
+    it("should be able to change the query definition of a metric and rename it", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
         H.setMetricDefaultDimension(card.id, "Created At");
         cy.visit(`/metric/${card.id}/query`);
@@ -186,6 +186,19 @@ describe("scenarios > metrics > editing", () => {
       H.MetricPage.saveButton().should("not.exist");
       H.MetricPage.aboutTab().click();
       verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
+
+      cy.log("rename the metric");
+      cy.intercept("PUT", "/api/card/*").as("updateCard");
+      H.MetricPage.aboutPage()
+        .findByDisplayValue(ORDERS_SCALAR_METRIC.name)
+        .clear()
+        .type("New metric name{enter}");
+      cy.wait("@updateCard")
+        .its("response.body.name")
+        .should("eq", "New metric name");
+      H.MetricPage.aboutPage()
+        .findByDisplayValue("New metric name")
+        .should("be.visible");
     });
   });
 

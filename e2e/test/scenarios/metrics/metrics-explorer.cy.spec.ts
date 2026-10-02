@@ -1186,11 +1186,19 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.getMetricVisualization().should("be.visible");
       });
 
-      it("should show all curated dimensions for a standalone metric and replace the selected one", () => {
+      it("should render column labels as static text, show all curated dimensions for a standalone metric, and replace the selected one", () => {
         H.MetricsViewer.getMetricVisualization().should("be.visible");
         H.MetricsViewer.getColumnPickerButton()
           .should("contain.text", "Time")
           .and("not.contain.text", "Created At");
+
+        cy.log("column labels render as static text");
+        showColumnLabels();
+        H.MetricsViewer.getDimensionPillBarContainer().within(() => {
+          cy.findByText("Created At").should("be.visible").click();
+          cy.findByRole("button").should("not.exist");
+        });
+        H.MetricsViewer.dimensionPickerSidebar().should("not.exist");
 
         H.MetricsViewer.openDimensionPickerSidebar().within(() => {
           cy.findByRole("heading", { name: "Break out" }).should("be.visible");
@@ -1355,16 +1363,6 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.dimensionPickerSidebar()
           .findByLabelText("Select dimension for Count of products")
           .should("have.value", "Created At");
-      });
-
-      it("should render column labels as static text", () => {
-        showColumnLabels();
-
-        H.MetricsViewer.getDimensionPillBarContainer().within(() => {
-          cy.findByText("Created At").should("be.visible").click();
-          cy.findByRole("button").should("not.exist");
-        });
-        H.MetricsViewer.dimensionPickerSidebar().should("not.exist");
       });
 
       it("should preserve a selected dimension after page reload", () => {

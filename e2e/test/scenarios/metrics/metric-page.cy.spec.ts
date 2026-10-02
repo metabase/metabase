@@ -434,10 +434,27 @@ describe("scenarios > metrics > metric page", () => {
       });
     });
 
-    it("should navigate to usage analytics dashboard from more menu", () => {
+    it("should show the Dependencies tab with dependency graph and navigate to usage analytics from more menu", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+        H.waitForBackfillComplete();
         H.visitMetric(metric.id);
 
+        H.MetricPage.aboutPageDescriptionSidebar().within(() => {
+          cy.findByText("Relationships").should("be.visible");
+          cy.findByText("No dependencies").should("be.visible");
+          cy.findByText("No charts use this metric").should("be.visible");
+        });
+
+        H.MetricPage.dependenciesTab().click();
+        H.DependencyGraph.graph().within(() => {
+          cy.findByText("Table");
+          cy.findByText("Orders").should("be.visible");
+          cy.findByText("Orders count").should("be.visible");
+        });
+
+        cy.log("usage analytics from more menu");
+        H.MetricPage.aboutTab().click();
+        H.MetricPage.aboutPage().should("be.visible");
         H.MetricPage.moreMenu().click();
         H.popover()
           .findByText("Metric usage analytics")
@@ -453,26 +470,6 @@ describe("scenarios > metrics > metric page", () => {
 
         cy.location("search").should("include", `question_id=${metric.id}`);
         H.main().findByText("Question overview").should("be.visible");
-      });
-    });
-
-    it("should show the Dependencies tab with dependency graph in EE", () => {
-      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
-        H.waitForBackfillComplete();
-        H.visitMetric(metric.id);
-      });
-
-      H.MetricPage.aboutPageDescriptionSidebar().within(() => {
-        cy.findByText("Relationships").should("be.visible");
-        cy.findByText("No dependencies").should("be.visible");
-        cy.findByText("No charts use this metric").should("be.visible");
-      });
-
-      H.MetricPage.dependenciesTab().click();
-      H.DependencyGraph.graph().within(() => {
-        cy.findByText("Table");
-        cy.findByText("Orders").should("be.visible");
-        cy.findByText("Orders count").should("be.visible");
       });
     });
   });
