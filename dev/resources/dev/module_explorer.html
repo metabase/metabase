@@ -534,6 +534,7 @@ function render(){
   if(view==='cycles') return renderCycles();
   const scroll = treeEl.scrollTop;   // full rebuild resets scroll; restore it so selecting a node doesn't jump
   const keep = visibleKeys();
+  const forceOpen = !!(query || debtOnly);
   treeEl.innerHTML='';
   if(debtOnly) treeEl.appendChild(debtNotice());
   const frag = document.createDocumentFragment();
@@ -545,7 +546,8 @@ function render(){
       const m = kid.module;
       const hasKids = kid.children.size>0;
       const {row, caret} = buildRow(m, kid.seg, hasKids);
-      const isOpen = open.has(key) || (keep && keep.has(key));
+      // search results open up to show their matches; a team filter only hides rows, so folding still works
+      const isOpen = open.has(key) || (forceOpen && keep.has(key));
       if(hasKids && isOpen) row.classList.add('open');
       if(hasKids){ const sc=document.createElement('span'); sc.className='submini'; sc.textContent=kid.sub; sc.title=kid.sub+' modules below'; row.appendChild(sc); }
       if(m && visible) visibleIds.push(m.id);   // only rows whose ancestors are all open are keyboard-reachable
