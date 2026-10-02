@@ -328,10 +328,7 @@
 
     :fixture
     (fn [_ thunk]
-      ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
-      ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
-      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
+      (mt/with-dynamic-fn-redefs [body/attached-results-text (pulse.test-util/wrap-function (mt/original-fn #'body/attached-results-text))]
         (thunk)))
 
     :assert
@@ -377,10 +374,10 @@
                   pulse-results)))
          (testing "attached-results-text should be invoked exactly once"
            (is (= 1
-                  (count (pulse.test-util/input @#'body/attached-results-text)))))
+                  (count (pulse.test-util/input (mt/dynamic-value #'body/attached-results-text))))))
          (testing "attached-results-text should return nil since it's a slack message"
            (is (= [nil]
-                  (pulse.test-util/output @#'body/attached-results-text))))))}}))
+                  (pulse.test-util/output (mt/dynamic-value #'body/attached-results-text)))))))}}))
 
 (deftest virtual-card-test
   (tests!
@@ -1234,11 +1231,8 @@
                                          :table.cell_column  "count"}}
       ;; Slack rasterizes the rendered hiccup; wrap the rasterizer to see what it was given
       :fixture (fn [_ thunk]
-                 ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
-                 ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
-                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-                 (with-redefs [channel.render/png-from-render-info
-                               (pulse.test-util/wrap-function @#'channel.render/png-from-render-info)]
+                 (mt/with-dynamic-fn-redefs [channel.render/png-from-render-info
+                                             (pulse.test-util/wrap-function (mt/original-fn #'channel.render/png-from-render-info))]
                    (thunk)))
       :assert
       {:email
@@ -1251,7 +1245,7 @@
                                                      #">Product → Category</th>"))))
        :slack
        (fn [_ _]
-         (let [[[rendered-info]] (pulse.test-util/input @#'channel.render/png-from-render-info)
+         (let [[[rendered-info]] (pulse.test-util/input (mt/dynamic-value #'channel.render/png-from-render-info))
                h                 (html (:content rendered-info))]
            (testing "the hiccup handed to the rasterizer is the pivoted grid"
              (is (str/includes? h ">Facebook</th>"))
