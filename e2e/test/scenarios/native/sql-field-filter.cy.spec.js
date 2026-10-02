@@ -44,23 +44,34 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
     }
 
-    it("does not need a default value to run and save the query", () => {
+    it("should handle a required tag", () => {
+      cy.log("does not need a default value to run and save the query");
       SQLFilter.toggleRequired();
       SQLFilter.getRunQueryButton().should("not.be.disabled");
       SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
-    });
+      SQLFilter.toggleRequired();
 
-    it("when there's a default value, enabling required sets it as a parameter value", () => {
-      setDefaultFieldValue(5);
-      H.filterWidget().click();
+      cy.log(
+        "when there's a default value, enabling required sets it as a parameter value",
+      );
+      setDefaultFieldValue(8);
+      H.filterWidget().should("contain.text", "8").click();
       H.clearFilterWidget();
+      H.filterWidget().should("not.contain.text", "8");
       SQLFilter.toggleRequired();
-      H.filterWidget().should("contain.text", "5");
-    });
+      H.filterWidget().should("contain.text", "8");
 
-    it("when there's a default value and value is unset, updating filter sets the default back", () => {
-      setDefaultFieldValue(10);
-      SQLFilter.toggleRequired();
+      cy.log(
+        "when there's a default value and value is unset, updating filter sets the default back",
+      );
+      H.filterWidget().click();
+      H.popover().within(() => {
+        H.removeFieldValuesValue(0);
+        H.fieldValuesCombobox().type("10,");
+        cy.findByText("Update filter").click();
+      });
+      H.filterWidget().should("contain.text", "10");
+
       H.filterWidget().click();
       H.popover().within(() => {
         H.removeFieldValuesValue(0);
@@ -70,19 +81,21 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.log("make sure the dialog is gone");
       cy.findByRole("dialog").should("not.exist");
 
-      H.filterWidget().should("contain.text", "10");
-    });
+      H.filterWidget()
+        .should("contain.text", "8")
+        .and("not.contain.text", "10");
 
-    it("when there's a default value and template tag is required, can reset it back", () => {
-      setDefaultFieldValue(8);
-      SQLFilter.toggleRequired();
+      cy.log(
+        "when there's a default value and template tag is required, can reset it back",
+      );
       H.filterWidget().click();
       H.popover().within(() => {
         H.fieldValuesCombobox().type("10,");
         cy.findByText("Update filter").click();
       });
-      H.filterWidget().icon("revert").click();
+      H.filterWidget().icon("revert").should("be.visible").click();
       H.filterWidget().should("contain.text", "8");
+      H.filterWidget().icon("revert").should("not.exist");
     });
   });
   // Deprecated field filter types
@@ -133,6 +146,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.findByText("Filter widget type")
         .parent()
         .findByTestId("filter-widget-type-select")
+        .should("have.value", "String")
         .click();
 
       H.popover().contains("String");
@@ -158,7 +172,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.button("Add filter").click();
       });
       SQLFilter.runQuery();
-      H.tableInteractive().should("contain", "10").and("contain", "20");
+      H.assertQueryBuilderRowCount(2);
+      H.assertTableData({ columns: ["ALIAS"], firstRows: [["10"], ["20"]] });
     });
 
     it("should be able to use a field alias with a time grouping", () => {

@@ -327,6 +327,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
+    filterInput(DEFAULT_REQUIRED).should("have.value", defaultValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "none");
 
     cy.log("has default value, required, current value different than default");
@@ -382,6 +383,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     filter(NO_DEFAULT_REQUIRED).click();
     updateValue(otherValue);
     filter(NO_DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
+    checkStatusIcon(NO_DEFAULT_REQUIRED, "clear");
 
     cy.log("has default value, non-required, current value same as default");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
@@ -407,6 +409,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
+    filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "none");
 
     cy.log("has default value, required, current value different than default");
@@ -517,6 +520,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       checkStatusIcon("Default filter widget value", "clear");
 
       clearButton("Default filter widget value").click();
+      filterInput("Default filter widget value (required)").should(
+        "have.value",
+        "",
+      );
       checkStatusIcon("Default filter widget value (required)", "none");
     });
   }
