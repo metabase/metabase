@@ -75,6 +75,7 @@ export function ArchivedSnippetsPage() {
       <PaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>
+            <Link to={Urls.dataStudioLibrary()}>{t`Semantic layer`}</Link>
             <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
             {t`Archived snippets`}
           </DataStudioBreadcrumbs>

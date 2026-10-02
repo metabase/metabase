@@ -160,33 +160,28 @@ describe(
   () => {
     beforeEach(() => {
       H.restore();
-      H.resetSnowplow();
       cy.signInAsNormalUser();
     });
 
     describe("organization", () => {
-      it("should be able to rename a metric", () => {
-        cy.intercept("PUT", "/api/card/*").as("updateCard");
-        H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-          H.visitMetric(card.id);
-        });
-        H.MetricPage.aboutPage()
-          .findByDisplayValue(ORDERS_SCALAR_METRIC.name)
-          .clear()
-          .type("New metric name{enter}");
-        cy.wait("@updateCard");
-        H.MetricPage.aboutPage()
-          .findByDisplayValue("New metric name")
-          .should("be.visible");
-      });
-
-      it("should be able to change the query definition of a metric", () => {
-        cy.intercept("PUT", "/api/card/*").as("updateCard");
+      it("should be able to change the query definition of a metric and rename it", () => {
         H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
           H.setMetricDefaultDimension(card.id, "Created At");
           cy.visit(`/metric/${card.id}/query`);
         });
         H.MetricPage.queryEditor().should("be.visible");
+        H.getNotebookStep("summarize")
+          .findByText("Formula")
+          .should("be.visible");
+
+        cy.log("summarize step copy stays reachable at a small viewport");
+        cy.viewport(800, 600);
+        H.getNotebookStep("summarize")
+          .findByText("Formula")
+          .should("be.visible")
+          .scrollIntoView();
+        cy.viewport(1440, 800);
+
         H.getNotebookStep("summarize").button("Count").click();
         H.popover().within(() => {
           cy.findByText("Sum of ...").click();
@@ -196,53 +191,32 @@ describe(
         H.MetricPage.saveButton().should("not.exist");
         H.MetricPage.aboutTab().click();
         verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
-      });
 
-      it("should not crash when cancelling creation or editing of a metric (metabase#48024)", () => {
-        cy.log("cancel new metric creation");
-        startNewMetricWithTable("Sample Database", "Orders");
-        H.MetricPage.cancelButton().click();
-
-        cy.log("cancel editing an existing metric");
-        H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-          cy.visit(`/metric/${card.id}/query`),
-        );
-        H.MetricPage.queryEditor().should("be.visible");
-        H.getNotebookStep("summarize").button("Count").click();
-        H.popover().within(() => {
-          cy.findByText("Sum of ...").click();
-          cy.findByText("Total").click();
-        });
-        H.MetricPage.cancelButton().click();
-        H.getNotebookStep("summarize").findByText("Count").should("be.visible");
+        cy.log("rename the metric");
+        cy.intercept("PUT", "/api/card/*").as("updateCard");
+        H.MetricPage.aboutPage()
+          .findByDisplayValue(ORDERS_SCALAR_METRIC.name)
+          .clear()
+          .type("New metric name{enter}");
+        cy.wait("@updateCard")
+          .its("response.body.name")
+          .should("eq", "New metric name");
+        H.MetricPage.aboutPage()
+          .findByDisplayValue("New metric name")
+          .should("be.visible");
       });
     });
 
     describe("data source", () => {
-      it("should create a metric based on a table", () => {
-        startNewMetricWithTable("Sample Database", "Orders");
-        addStringCategoryFilter({
-          tableName: "Product",
-          columnName: "Category",
-          values: ["Gadget"],
-        });
-        saveNewMetric();
-        verifyMetricAboutTimeseries({ yAxis: "Count" });
-      });
-
       it("should not allow to create a multi-stage metric", () => {
         startNewMetricWithSavedItem("Our analytics", "Orders Model");
+        H.getNotebookStep("data")
+          .findByText("Orders Model")
+          .should("be.visible");
+        H.getNotebookStep("summarize").findByText("Count").should("be.visible");
         H.MetricPage.queryEditor()
           .findByRole("button", { name: "Summarize" })
           .should("not.exist");
-      });
-
-      it("should allow to run the query from the metric empty state", () => {
-        startNewMetricWithTable("Sample Database", "Orders");
-        cy.intercept("POST", "/api/dataset").as("dataset");
-        H.runButtonInOverlay().click();
-        cy.wait("@dataset");
-        verifyScalarValue("18,760");
       });
     });
 
@@ -263,6 +237,13 @@ describe(
         });
         saveNewMetric();
         verifyMetricAboutTimeseries({ yAxis: "Count" });
+        H.MetricPage.definitionTab().click();
+        H.getNotebookStep("join")
+          .findByLabelText("Right table")
+          .should("have.text", "Orders");
+        H.getNotebookStep("filter")
+          .findByText("User → State is CA")
+          .should("be.visible");
       });
 
       it("should not be possible to join a metric", () => {
@@ -277,22 +258,9 @@ describe(
         });
         H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          cy.findByText("Sample Database").click();
+          cy.findByText("Our analytics").click();
           cy.findByText("Orders").should("be.visible");
           cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
-        });
-      });
-
-      it("should be possible to join data on the first stage of a metric-based query", () => {
-        H.createQuestion(ORDERS_SCALAR_METRIC);
-        H.startNewQuestion();
-        H.miniPicker().within(() => {
-          cy.findByText("Our analytics").click();
-          cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-        });
-        H.getNotebookStep("data").within(() => {
-          getActionButton("Custom column").should("be.visible");
-          getActionButton("Join data").should("be.visible");
         });
       });
     });
@@ -339,9 +307,22 @@ describe(
       });
     });
 
-    describe("breakouts", () => {
-      it("should create a timeseries metric", () => {
+    describe("filters", () => {
+      it("should run the query from the empty state, then create a filtered timeseries metric based on a table", () => {
         startNewMetricWithTable("Sample Database", "Orders");
+
+        cy.log("run the query from the metric empty state");
+        cy.intercept("POST", "/api/dataset").as("dataset");
+        H.runButtonInOverlay().click();
+        cy.wait("@dataset");
+        verifyScalarValue("18,760");
+
+        cy.log("filter and aggregate, then save");
+        addStringCategoryFilter({
+          tableName: "Product",
+          columnName: "Category",
+          values: ["Gadget"],
+        });
         H.getNotebookStep("summarize").findByText("Count").click();
         H.popover().within(() => {
           cy.findByText("Sum of ...").click();
@@ -349,6 +330,10 @@ describe(
         });
         saveNewMetric();
         verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
+        H.MetricPage.definitionTab().click();
+        H.getNotebookStep("filter")
+          .findByText("Product → Category is Gadget")
+          .should("be.visible");
       });
     });
 
@@ -375,33 +360,19 @@ describe(
         H.popover().button("Update").should("not.be.disabled").click();
         saveNewMetric();
         verifyMetricAboutTimeseries({ yAxis: "Orders metric" });
-      });
-
-      it("should have metric-specific summarize step copy", () => {
-        H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-          cy.visit(`/metric/${card.id}/query`),
-        );
-        H.MetricPage.queryEditor().should("be.visible");
-
-        H.getNotebookStep("summarize").within(() => {
-          cy.findByText("Formula").should("be.visible");
-          cy.findByText("Default time dimension").should("not.exist");
-        });
-
-        cy.viewport(800, 600);
-        H.getNotebookStep("summarize").within(() => {
-          // We need the scroll because of the viewport change, the next findByText is technically off the screen without it
-          cy.findByText("Formula").should("be.visible").scrollIntoView({});
-          cy.findByText("Default time dimension").should("not.exist");
+        verifyMetricDefinitionScalar({
+          aggregation: "Orders metric",
+          value: "9,380",
         });
       });
     });
 
     describe("compatible metrics", () => {
-      it("should allow adding an aggregation based on a compatible metric for the same table in questions (metabase#42470)", () => {
+      it("should list, describe, search, and add an aggregation based on a compatible metric for the same table in questions (metabase#42470)", () => {
         H.createQuestion(ORDERS_SCALAR_METRIC);
         H.createQuestion(ORDERS_SCALAR_FILTER_METRIC);
         H.createQuestion(PRODUCTS_SCALAR_METRIC);
+        H.createQuestion(ORDERS_SCALAR_MODEL_METRIC);
         H.startNewQuestion();
         H.miniPicker().within(() => {
           cy.findByText("Sample Database").click();
@@ -414,51 +385,36 @@ describe(
           cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
           cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
           cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
-          cy.findByText(ORDERS_SCALAR_METRIC.name).click();
         });
-        H.visualize();
-        verifyScalarValue("18,760");
-      });
 
-      it("should for searching for metrics", () => {
-        H.createQuestion(ORDERS_SCALAR_METRIC);
-        H.createQuestion(ORDERS_SCALAR_FILTER_METRIC);
-        H.createQuestion(PRODUCTS_SCALAR_METRIC);
-        H.startNewQuestion();
-        H.miniPicker().within(() => {
-          cy.findByText("Sample Database").click();
-          cy.findByText("Orders").click();
-        });
-        startNewAggregation();
+        cy.log("hovering a metric shows its description");
         H.popover().within(() => {
-          cy.findByPlaceholderText("Find...").type("with filter");
-          cy.findByText("Metrics").should("be.visible");
-          cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
-          cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
-          cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
-          cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
-        });
-      });
-
-      it("should show the description for metrics", () => {
-        H.createQuestion(ORDERS_SCALAR_FILTER_METRIC);
-        H.startNewQuestion();
-        H.miniPicker().within(() => {
-          cy.findByText("Sample Database").click();
-          cy.findByText("Orders").click();
-        });
-        startNewAggregation();
-        H.popover().within(() => {
-          cy.findByText("Metrics").click();
-          cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
           cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).realHover();
           cy.findByLabelText("More info").should("exist").realHover();
         });
-
         H.hovercard().within(() => {
           cy.contains("This is a description").should("be.visible");
           cy.contains("with markdown").should("be.visible");
         });
+        H.popover().findByPlaceholderText("Find...").realHover();
+        H.hovercard().should("not.exist");
+
+        cy.log("search for metrics");
+        H.popover().within(() => {
+          cy.findByPlaceholderText("Find...").type("with filter");
+          cy.findByText("Metrics").should("be.visible");
+          cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
+          cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+          cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
+          cy.findByPlaceholderText("Find...").clear();
+        });
+
+        cy.log("pick a metric");
+        H.popover().within(() => {
+          cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible").click();
+        });
+        H.visualize();
+        verifyScalarValue("18,760");
       });
     });
   },

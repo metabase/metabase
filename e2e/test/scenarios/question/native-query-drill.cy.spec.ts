@@ -96,6 +96,7 @@ describe("scenarios > question > native query drill", () => {
 
       H.tableInteractive().findByText("October 7, 2026, 1:34 AM").click();
       H.popover().within(() => {
+        cy.button("Save").should("be.visible");
         cy.findByText("Filter by this date and time").should("not.exist");
         cy.button("Save").click();
       });
@@ -115,9 +116,9 @@ describe("scenarios > question > native query drill", () => {
     });
   });
 
-  describe("query builder drills", () => {
-    it("column-extract drill", () => {
-      cy.log("from column header");
+  describe("query builder drills and brush filters", () => {
+    it("column-extract, column-filter, distribution, sort, summarize, and summarize-column-by-time drills", () => {
+      cy.log("column-extract drill: from column header");
       H.createNativeQuestion(ordersTableQuestionDetails, {
         visitQuestion: true,
         wrapId: true,
@@ -136,7 +137,7 @@ describe("scenarios > question > native query drill", () => {
         ],
       });
 
-      cy.log("from plus button");
+      cy.log("column-extract drill: from plus button");
       H.visitQuestion("@questionId");
       H.tableInteractive().button("Add column").click();
       H.popover().within(() => {
@@ -150,6 +151,94 @@ describe("scenarios > question > native query drill", () => {
         firstRows: [
           ["1", "February 11, 2028, 9:40 PM", "2", "Q1"],
           ["2", "May 15, 2027, 8:04 AM", "3", "Q2"],
+        ],
+      });
+
+      cy.log("column-filter drill");
+      H.visitQuestion("@questionId");
+      H.assertQueryBuilderRowCount(10);
+      H.tableHeaderClick("QUANTITY");
+      H.popover().findByText("Filter by this column").click();
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Min").type("2");
+        cy.findByPlaceholderText("Max").type("5");
+        cy.button("Add filter").click();
+        cy.wait("@dataset");
+      });
+      H.assertQueryBuilderRowCount(8);
+
+      cy.log("distribution drill");
+      H.visitQuestion("@questionId");
+      H.tableHeaderClick("QUANTITY");
+      H.popover().findByText("Distribution").click();
+      cy.wait("@dataset");
+      H.echartsContainer().within(() => {
+        cy.findByText("Count").should("be.visible");
+        cy.findByText("QUANTITY: 8 bins").should("be.visible");
+      });
+      H.assertQueryBuilderRowCount(5);
+
+      cy.log("sort drill: ascending");
+      H.visitQuestion("@questionId");
+      H.tableHeaderClick("QUANTITY");
+      H.popover().icon("arrow_up").click();
+      cy.wait("@dataset");
+      H.assertTableData({
+        columns: ["ID", "CREATED_AT", "QUANTITY"],
+        firstRows: [["1", "February 11, 2028, 9:40 PM", "2"]],
+      });
+
+      cy.log("sort drill: descending");
+      H.visitQuestion("@questionId");
+      H.tableHeaderClick("QUANTITY");
+      H.popover().icon("arrow_down").click();
+      cy.wait("@dataset");
+      H.assertTableData({
+        columns: ["ID", "CREATED_AT", "QUANTITY"],
+        firstRows: [["8", "June 17, 2028, 2:37 AM", "7"]],
+      });
+
+      cy.log("summarize drill: distinct values");
+      H.visitQuestion("@questionId");
+      H.tableHeaderClick("QUANTITY");
+      H.popover().findByText("Distinct values").click();
+      cy.wait("@dataset");
+      H.assertTableData({
+        columns: ["Distinct values of QUANTITY"],
+        firstRows: [["5"]],
+      });
+
+      cy.log("summarize drill: sum");
+      H.visitQuestion("@questionId");
+      H.tableHeaderClick("QUANTITY");
+      H.popover().findByText("Sum").click();
+      cy.wait("@dataset");
+      H.assertTableData({
+        columns: ["Sum of QUANTITY"],
+        firstRows: [["38"]],
+      });
+
+      cy.log("summarize drill: avg");
+      H.visitQuestion("@questionId");
+      H.tableHeaderClick("QUANTITY");
+      H.popover().findByText("Avg").click();
+      cy.wait("@dataset");
+      H.assertTableData({
+        columns: ["Average of QUANTITY"],
+        firstRows: [["3.8"]],
+      });
+
+      cy.log("summarize-column-by-time drill");
+      H.visitQuestion("@questionId");
+      H.tableHeaderClick("QUANTITY");
+      H.popover().findByText("Sum over time").click();
+      cy.wait("@dataset");
+      H.assertTableData({
+        columns: ["CREATED_AT: Month", "Sum of QUANTITY"],
+        firstRows: [
+          ["May 2026", "3"],
+          ["May 2027", "3"],
+          ["September 2027", "5"],
         ],
       });
     });
@@ -195,161 +284,42 @@ describe("scenarios > question > native query drill", () => {
       });
     });
 
-    it("column-filter drill", () => {
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-      });
-      H.assertQueryBuilderRowCount(10);
-      H.tableHeaderClick("QUANTITY");
-      H.popover().findByText("Filter by this column").click();
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Min").type("2");
-        cy.findByPlaceholderText("Max").type("5");
-        cy.button("Add filter").click();
-        cy.wait("@dataset");
-      });
-      H.assertQueryBuilderRowCount(8);
-    });
-
-    it("distribution drill", () => {
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-      });
-      H.tableHeaderClick("QUANTITY");
-      H.popover().findByText("Distribution").click();
-      cy.wait("@dataset");
-      H.echartsContainer().within(() => {
-        cy.findByText("Count").should("be.visible");
-        cy.findByText("QUANTITY: 8 bins").should("be.visible");
-      });
-      H.assertQueryBuilderRowCount(5);
-    });
-
-    it("quick-filter drill", () => {
+    it("quick-filter drill, unsupported aggregated cell drills, and timeseries brush filter", () => {
       H.createNativeQuestion(timeseriesLineQuestionDetails, {
         visitQuestion: true,
+        wrapId: true,
       });
       H.assertQueryBuilderRowCount(10);
       H.cartesianChartCircle().eq(0).click();
       H.popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");
+        cy.findByText(/See these/).should("not.exist");
+        cy.findByText(/Breakout by/).should("not.exist");
+        cy.findByText(/Automatic insights/).should("not.exist");
         cy.findByText("=").click();
         cy.wait("@dataset");
       });
       H.assertQueryBuilderRowCount(3);
-    });
 
-    it("sort drill", () => {
-      cy.log("ascending");
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-        wrapId: true,
-      });
-      H.tableHeaderClick("QUANTITY");
-      H.popover().icon("arrow_up").click();
-      cy.wait("@dataset");
-      H.assertTableData({
-        columns: ["ID", "CREATED_AT", "QUANTITY"],
-        firstRows: [["1", "February 11, 2028, 9:40 PM", "2"]],
-      });
-
-      cy.log("descending");
       H.visitQuestion("@questionId");
-      H.tableHeaderClick("QUANTITY");
-      H.popover().icon("arrow_down").click();
-      cy.wait("@dataset");
-      H.assertTableData({
-        columns: ["ID", "CREATED_AT", "QUANTITY"],
-        firstRows: [["8", "June 17, 2028, 2:37 AM", "7"]],
-      });
-    });
-
-    it("summarize drill", () => {
-      cy.log("distinct values");
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-        wrapId: true,
-      });
-      H.tableHeaderClick("QUANTITY");
-      H.popover().findByText("Distinct values").click();
-      cy.wait("@dataset");
-      H.assertTableData({
-        columns: ["Distinct values of QUANTITY"],
-        firstRows: [["5"]],
-      });
-
-      cy.log("sum");
-      H.visitQuestion("@questionId");
-      H.tableHeaderClick("QUANTITY");
-      H.popover().findByText("Sum").click();
-      cy.wait("@dataset");
-      H.assertTableData({
-        columns: ["Sum of QUANTITY"],
-        firstRows: [["38"]],
-      });
-
-      cy.log("avg");
-      H.visitQuestion("@questionId");
-      H.tableHeaderClick("QUANTITY");
-      H.popover().findByText("Avg").click();
-      cy.wait("@dataset");
-      H.assertTableData({
-        columns: ["Average of QUANTITY"],
-        firstRows: [["3.8"]],
-      });
-    });
-
-    it("summarize-column-by-time drill", () => {
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-      });
-      H.tableHeaderClick("QUANTITY");
-      H.popover().findByText("Sum over time").click();
-      cy.wait("@dataset");
-      H.assertTableData({
-        columns: ["CREATED_AT: Month", "Sum of QUANTITY"],
-        firstRows: [
-          ["May 2026", "3"],
-          ["May 2027", "3"],
-          ["September 2027", "5"],
-        ],
-      });
-    });
-
-    it("unsupported drills", () => {
-      cy.log("aggregated cell click");
-      H.createNativeQuestion(timeseriesLineQuestionDetails, {
-        visitQuestion: true,
-      });
-      H.assertQueryBuilderRowCount(10);
-      H.cartesianChartCircle().eq(0).click();
-      H.popover().within(() => {
-        cy.findByText(/See these/).should("not.exist");
-        cy.findByText(/Breakout by/).should("not.exist");
-        cy.findByText(/Automatic insights/).should("not.exist");
-      });
-
-      cy.log("legend item click");
-      H.createNativeQuestion(timeseriesWithCategoryLineQuestionDetails, {
-        visitQuestion: true,
-      });
-      cy.findByTestId("visualization-root").findByText("Gadget").click();
-      cy.findByRole("tooltip").should("not.exist");
-    });
-  });
-
-  describe("query builder brush filters", () => {
-    it("timeseries filter", () => {
-      H.createNativeQuestion(timeseriesLineQuestionDetails, {
-        visitQuestion: true,
-      });
       H.assertQueryBuilderRowCount(10);
       applyBrushFilter({ left: 200, right: 800 });
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
     });
 
-    it("numeric filter", () => {
+    it("legend item click has no drills", () => {
+      H.createNativeQuestion(timeseriesWithCategoryLineQuestionDetails, {
+        visitQuestion: true,
+      });
+      cy.findByTestId("visualization-root")
+        .findByText("Gadget")
+        .should("be.visible")
+        .click();
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+    });
+
+    it("numeric brush filter", () => {
       H.createNativeQuestion(numericLineQuestionDetails, {
         visitQuestion: true,
       });
@@ -359,7 +329,7 @@ describe("scenarios > question > native query drill", () => {
       H.assertQueryBuilderRowCount(5);
     });
 
-    it("coordinates filter", () => {
+    it("coordinates brush filter", () => {
       cy.log("pin map");
       H.createNativeQuestion(pinMapQuestionDetails, { visitQuestion: true });
       cy.findByTestId("visualization-root").realHover();

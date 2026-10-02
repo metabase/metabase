@@ -28,6 +28,10 @@ const swcJestTransform = [
     },
     module: {
       type: "commonjs",
+      // A test file loads only the modules its tests touch, not its full import
+      // graph. Modules that must run before the tests start are listed in
+      // frontend/test/jest-setup-eager.js.
+      lazy: true,
     },
     sourceMaps: "inline",
     minify: false,
@@ -110,7 +114,10 @@ const baseConfig = {
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js",
   ],
-  setupFilesAfterEnv: ["<rootDir>/frontend/test/jest-setup-env.js"],
+  setupFilesAfterEnv: [
+    "<rootDir>/frontend/test/jest-setup-eager.js",
+    "<rootDir>/frontend/test/jest-setup-env.js",
+  ],
   globals: {
     ga: {},
   },
@@ -130,6 +137,7 @@ const baseConfig = {
     "/frontend/test/",
   ],
   testEnvironment: "jest-environment-jsdom",
+  testRunner: "<rootDir>/frontend/test/jest-test-runner.js",
 };
 
 // eslint-disable-next-line import/no-commonjs

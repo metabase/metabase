@@ -7,7 +7,7 @@ redirect_from:
 
 # Table metadata editing
 
-> Prefer using [Data Studio > Tables](./managing-tables.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
+> Prefer using [Data Studio > Connected data](./managing-tables.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
 
 _Admin > Table metadata_
 

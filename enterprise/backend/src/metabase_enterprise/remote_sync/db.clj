@@ -13,7 +13,7 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at])
+  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at :draft])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
@@ -288,9 +288,9 @@
              :where  (path-expr paths true)}))
 
 (mu/defn card-types
-  "The `:id`, `:type`, :display, and `:card_schema` of the Cards with `card-ids`."
+  "The `:id`, `:type`, and `:display` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :type :display :card_schema] :id [:in card-ids]))
+  (t2/select [:model/Card :id :type :display] :id [:in card-ids]))
 
 (mu/defn user-settings-exist-for-table?
   "Whether the Table with `table-id`, or any of its Fields, has a user-settings row."

@@ -3,7 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { addWidgetStringFilter } from "../native/helpers/e2e-field-filter-helpers";
 
 import {
   dashboardDetails,
