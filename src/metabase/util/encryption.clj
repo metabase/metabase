@@ -20,12 +20,14 @@
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.util :as u]
+   [metabase.util.encryption.dek :as dek]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import (java.io ByteArrayInputStream InputStream SequenceInputStream)
+           (java.util Arrays)
            (javax.crypto Cipher CipherInputStream)
-           (javax.crypto.spec SecretKeySpec IvParameterSpec)))
+           (javax.crypto.spec GCMParameterSpec SecretKeySpec IvParameterSpec)))
 
 (set! *warn-on-reflection* true)
 
@@ -63,6 +65,12 @@
   "Is the `MB_ENCRYPTION_SECRET_KEY` set, enabling encryption?"
   []
   (boolean default-secret-key))
+
+(defn current-secret-key
+  "The current KEK: the 64-byte hash of `MB_ENCRYPTION_SECRET_KEY`, or nil when encryption is disabled. Reads through
+  the same var the encrypt/decrypt paths default to, so tests that rebind [[default-secret-key]] see the rebound key."
+  ^bytes []
+  default-secret-key)
 
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*
@@ -112,17 +120,14 @@
        (encrypt-bytes opts)
        codec/base64-encode)))
 
-(defn decrypt-bytes
-  "Decrypt bytes `b`."
-  {:added "0.41.0"}
-  (^bytes [^bytes b]
-   (decrypt-bytes b nil))
-  (^bytes [^bytes b opts]
-   (let [[initialization-vector message] (split-at 16 b)]
-     (crypto/decrypt (byte-array message)
-                     (opts->secret-key opts)
-                     (byte-array initialization-vector)
-                     (cipher-opts opts)))))
+(defn- decrypt-legacy-bytes
+  "Decrypt legacy (KEK-direct, AES-256-CBC + HMAC-SHA512) ciphertext `b`."
+  ^bytes [^bytes b opts]
+  (let [[initialization-vector message] (split-at 16 b)]
+    (crypto/decrypt (byte-array message)
+                    (opts->secret-key opts)
+                    (byte-array initialization-vector)
+                    (cipher-opts opts))))
 
 (defn encrypt-stream
   "Wraps a plaintext input stream into an input stream that encrypts it using AES256 CBC.
@@ -174,8 +179,133 @@
         (ByteArrayInputStream. (bytes/slice spec-array 0 spec-array-length))
         input-stream)))))
 
+;;; ---------------------------------------- v2 envelope ciphertext format ----------------------------------------
+
+;; New writes use a *versioned envelope* format. Layout of the raw v2 blob:
+;;
+;;   magic "MB" (2 bytes) ‖ version 0x02 (1 byte) ‖ DEK generation id (4 bytes, big-endian int)
+;;                        ‖ nonce (12 bytes) ‖ AES-256-GCM ciphertext+tag
+;;
+;; String values base64-encode this blob (exactly where the legacy string format is base64); byte values keep it raw.
+;; Reads dispatch on the magic+version prefix; the legacy CBC+HMAC heuristic is tried only when the prefix is absent,
+;; so legacy values stay readable forever. GCM authentication is what makes tampering detectable and makes a wrong DEK
+;; (wrong KEK) a deterministic failure rather than garbage output. The `:aad` in `opts`, if any, is fed to GCM as
+;; additional authenticated data, so a v2 value is bound to its row exactly as a legacy value is.
+
+(def ^:private ^{:tag 'bytes} v2-magic (byte-array [(byte \M) (byte \B)]))
+(def ^:private ^:const v2-version (byte 2))
+(def ^:private ^:const v2-header-length 7) ; 2 magic + 1 version + 4 generation-id
+(def ^:private ^:const v2-nonce-length 12)
+(def ^:private ^:const v2-gcm-tag-bits 128)
+
+(defn- dek->aes-key
+  ^SecretKeySpec [^bytes dek]
+  (SecretKeySpec. dek "AES"))
+
+(defn v2-bytes?
+  "Does raw byte array `b` carry the v2 magic + version prefix? Cheap, exact, and never throws. Returns false for any
+  non-byte-array input (e.g. a String), so it is safe to call from the shared detection predicates."
+  [b]
+  (boolean
+   (and (bytes? b)
+        (let [^bytes b b]
+          (and (>= (alength b) v2-header-length)
+               (= (aget b 0) (aget v2-magic 0))
+               (= (aget b 1) (aget v2-magic 1))
+               (= (aget b 2) v2-version))))))
+
+(defn v2-string?
+  "Is string `s` a base64-encoded v2 blob? Returns false for plaintext, legacy ciphertext, and non-base64 input."
+  [^String s]
+  (boolean
+   (u/ignore-exceptions
+     (and (not (str/blank? s))
+          (u/base64-string? s)
+          (v2-bytes? (codec/base64-decode s))))))
+
+(defn- gcm-cipher
+  "An AES-256-GCM cipher initialized in `mode` with `dek` and `nonce`, with the `:aad` from `opts` (if any) applied."
+  ^Cipher [mode ^bytes dek ^bytes nonce {:keys [^bytes aad]}]
+  (let [cipher (Cipher/getInstance "AES/GCM/NoPadding")]
+    (.init cipher (int mode) (dek->aes-key dek) (GCMParameterSpec. v2-gcm-tag-bits nonce))
+    (when aad
+      (.updateAAD cipher aad))
+    cipher))
+
+(defn- encrypt-v2-bytes
+  "Encrypt bytes `b` under the DEK-store's active generation, returning the raw v2 blob."
+  ^bytes [store ^bytes kek ^bytes b opts]
+  (let [{:keys [generation-id ^bytes dek]} (dek/active-generation store kek)
+        nonce  (nonce/random-bytes v2-nonce-length)
+        cipher (gcm-cipher Cipher/ENCRYPT_MODE dek nonce opts)
+        ct     (.doFinal cipher b)
+        out    (byte-array (+ v2-header-length v2-nonce-length (alength ct)))]
+    (System/arraycopy v2-magic 0 out 0 2)
+    (aset out 2 v2-version)
+    ;; `unchecked-byte` (not `byte`) because `clojure.core/byte` throws for values 128-255, so any generation-id
+    ;; byte >= 0x80 (first hit: id 128) would make every encrypted write throw. `unchecked-byte` wraps to a signed
+    ;; byte; `v2-generation-id-of-bytes` masks with 0xFF on the way back out, so the round-trip is exact.
+    (aset out 3 (unchecked-byte (bit-and (bit-shift-right generation-id 24) 0xFF)))
+    (aset out 4 (unchecked-byte (bit-and (bit-shift-right generation-id 16) 0xFF)))
+    (aset out 5 (unchecked-byte (bit-and (bit-shift-right generation-id 8) 0xFF)))
+    (aset out 6 (unchecked-byte (bit-and generation-id 0xFF)))
+    (System/arraycopy nonce 0 out v2-header-length v2-nonce-length)
+    (System/arraycopy ct 0 out (+ v2-header-length v2-nonce-length) (alength ct))
+    out))
+
+(defn v2-generation-id-of-bytes
+  "The DEK generation id encoded in a raw v2 blob `b`."
+  ^long [^bytes b]
+  (bit-or (bit-shift-left (bit-and (aget b 3) 0xFF) 24)
+          (bit-shift-left (bit-and (aget b 4) 0xFF) 16)
+          (bit-shift-left (bit-and (aget b 5) 0xFF) 8)
+          (bit-and (aget b 6) 0xFF)))
+
+(defn v2-generation-id-of-string
+  "The DEK generation id encoded in a base64-encoded v2 string `s`."
+  ^long [^String s]
+  (v2-generation-id-of-bytes (codec/base64-decode s)))
+
+(defn- decrypt-v2-bytes
+  "Decrypt a raw v2 blob `b` using `store` to fetch the DEK named by its generation id, unwrapping with `kek`.
+  Returns the plaintext bytes. Throws on a wrong KEK (GCM auth failure), a wrong AAD, or an unknown generation."
+  ^bytes [store ^bytes kek ^bytes b opts]
+  (when-not store
+    (throw (ex-info "Cannot decrypt a v2 envelope value: no DEK store is initialized" {})))
+  (let [generation-id (v2-generation-id-of-bytes b)
+        dek           (dek/dek-by-id store kek generation-id)
+        nonce         (Arrays/copyOfRange b v2-header-length (+ v2-header-length v2-nonce-length))
+        ct            (Arrays/copyOfRange b (+ v2-header-length v2-nonce-length) (alength b))
+        cipher        (gcm-cipher Cipher/DECRYPT_MODE dek nonce opts)]
+    (.doFinal cipher ct)))
+
+(defn decrypt-bytes
+  "Decrypt bytes `b`, in either format.
+
+  A value carrying the v2 magic prefix is decrypted through the envelope path. If that path fails because there is a
+  *store* but the DEK generation is unknown or GCM authentication fails, the legacy CBC+HMAC path is tried before
+  giving up: a legacy value's random bytes can (rarely, ~2^-24) begin with the v2 magic, and it must still decrypt.
+  If there is *no* store at all, a well-formed v2 value cannot be legacy (its magic is exact), so this throws rather
+  than letting a caller (a pre-init custom migration, say) treat ciphertext as plaintext and persist it."
+  {:added "0.41.0"}
+  (^bytes [^bytes b]
+   (decrypt-bytes b nil))
+  (^bytes [^bytes b opts]
+   (if (v2-bytes? b)
+     (let [store (dek/store)]
+       (when-not store
+         (throw (ex-info "Cannot decrypt a v2 envelope value: no DEK store is initialized" {})))
+       (try
+         (decrypt-v2-bytes store (opts->secret-key opts) b opts)
+         (catch Throwable e
+           (try
+             (decrypt-legacy-bytes b opts)
+             (catch Throwable _
+               (throw e))))))
+     (decrypt-legacy-bytes b opts))))
+
 (defn decrypt
-  "Decrypt base64 ciphertext `s` back to the string it was made from."
+  "Decrypt base64 ciphertext `s` (in either format, see [[decrypt-bytes]]) back to the string it was made from."
   (^String [^String s]
    (decrypt s nil))
   (^String [^String s opts]
@@ -183,24 +313,31 @@
 
 (defn maybe-encrypt
   "If there is a key (MB_ENCRYPTION_SECRET_KEY, or `:secret-key` in `opts`), return an encrypted version of `s`;
-  otherwise return `s` as-is."
+  otherwise return `s` as-is. When a DEK store is initialized (see [[metabase.util.encryption.dek/store]]), writes use
+  the v2 envelope format; before initialization they fall back to the legacy KEK-direct format."
   (^String [^String s]
    (maybe-encrypt s nil))
   (^String [^String s opts]
-   (if (opts->secret-key opts)
+   (if-let [secret-key (opts->secret-key opts)]
      (when (seq s)
-       (encrypt s opts))
+       (if-let [store (dek/store)]
+         (codec/base64-encode (encrypt-v2-bytes store secret-key (codecs/to-bytes s) opts))
+         (encrypt s opts)))
      s)))
 
 (defn maybe-encrypt-bytes
-  "If there is a key, return an encrypted version of the given bytes `b`; otherwise return `b` as-is."
+  "If there is a key, return an encrypted version of the given bytes `b`; otherwise return `b` as-is. When a DEK store
+  is initialized, writes use the v2 envelope format; before initialization they fall back to the legacy KEK-direct
+  format."
   {:added "0.41.0"}
   (^bytes [^bytes b]
    (maybe-encrypt-bytes b nil))
   (^bytes [^bytes b opts]
-   (if (opts->secret-key opts)
+   (if-let [secret-key (opts->secret-key opts)]
      (when (seq b)
-       (encrypt-bytes b opts))
+       (if-let [store (dek/store)]
+         (encrypt-v2-bytes store secret-key b opts)
+         (encrypt-bytes b opts)))
      b)))
 
 (defn maybe-encrypt-for-stream
@@ -217,8 +354,9 @@
 (def ^:private ^:const aes256-block-size 16)
 
 (defn possibly-encrypted-bytes?
-  "Whether `b` has the shape of an encrypted byte array: at least the length of the shortest ciphertext, and a length
-  that leaves a multiple of the cipher block size (`aes256-block-size`) once the tag (`aes256-tag-length`) is taken off.
+  "Whether `b` has the shape of an encrypted byte array. A v2 envelope blob is recognized exactly by its version prefix.
+  Otherwise `b` must have the legacy shape: at least the length of the shortest ciphertext, and a length that leaves a
+  multiple of the cipher block size (`aes256-block-size`) once the tag (`aes256-tag-length`) is taken off.
 
   This is a shape check, and its only guarantee is one-sided:
 
@@ -230,19 +368,21 @@
   [^bytes b]
   (boolean
    (when b
-     (u/ignore-exceptions
-       (let [byte-length (alength b)]
-         ;; IV + at least one cipher block + tag: anything shorter cannot be ciphertext, and `mod` alone would accept
-         ;; 16- and 32-byte plaintext too
-         (and (>= byte-length (+ (* 2 aes256-block-size) aes256-tag-length))
-              (zero? (mod (- byte-length aes256-tag-length)
-                          aes256-block-size))))))))
+     (or (v2-bytes? b)
+         (u/ignore-exceptions
+           (let [byte-length (alength b)]
+             ;; IV + at least one cipher block + tag: anything shorter cannot be ciphertext, and `mod` alone would
+             ;; accept 16- and 32-byte plaintext too
+             (and (>= byte-length (+ (* 2 aes256-block-size) aes256-tag-length))
+                  (zero? (mod (- byte-length aes256-tag-length)
+                              aes256-block-size)))))))))
 
 (defn possibly-encrypted-string?
   "Whether `s` has the shape of an encrypted string: non-blank base64 that decodes to something
-  [[possibly-encrypted-bytes?]]. The same one-sided guarantee applies: `false` means definitely not encrypted, `true`
-  means encrypted or plaintext that merely matches the pattern (a 64-character hex digest, for one). Use
-  [[decryptable-string?]] wherever the answer decides what happens to the value."
+  [[possibly-encrypted-bytes?]] (a v2 envelope, recognized exactly by its version prefix, or a legacy value of the
+  right length). The same one-sided guarantee applies: `false` means definitely not encrypted, `true` means encrypted
+  or plaintext that merely matches the pattern (a 64-character hex digest, for one). Use [[decryptable-string?]]
+  wherever the answer decides what happens to the value."
   [^String s]
   (boolean
    (u/ignore-exceptions
