@@ -417,7 +417,8 @@ for(const t of TEAMS){
   const el = document.createElement('span');
   el.className='tchip'; el.dataset.team=t; el.title='Show only this team';
   el.innerHTML=`<span class=dot style='background:${teamColor[t]}'></span>${t}<span class=ct>${teamCount[t]}</span>`;
-  el.onclick=()=>{ focusTeams.has(t)?focusTeams.delete(t):focusTeams.add(t); refreshTeamChips(); render(); syncHash(true); };
+  // the detail panel redraws too: its strong bridges dim the ends no picked team owns
+  el.onclick=()=>{ focusTeams.has(t)?focusTeams.delete(t):focusTeams.add(t); refreshTeamChips(); render(); renderDetail(); syncHash(true); };
   legend.insertBefore(el, legendEnd);
 }
 
