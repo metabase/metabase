@@ -13,6 +13,10 @@ on:
         description: Branch to detect changes against. Empty means the default branch; pull request runs always use the PR base.
         type: string
         default: ""
+      labels:
+        description: Comma-separated ci:run-* labels to act on, as a pull request run reads them from the PR.
+        type: string
+        default: ""
 
 permissions:
   id-token: write
@@ -97,6 +101,11 @@ jobs:
       backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
     steps:
       - uses: actions/checkout@v7
+      - name: Check the base branch name
+        if: inputs.base != ''
+        run: git check-ref-format --branch "$BASE" > /dev/null
+        env:
+          BASE: ${{ inputs.base }}
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
@@ -274,7 +283,8 @@ jobs:
         needs.files-changed.outputs.backend_all != 'true' }}
       smoke-only: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
-         !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')
+         !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests') &&
+         !contains(format(',{0},', inputs.labels), ',ci:run-semantic-search-tests,')
         }}
 
   app-db-tests:
@@ -308,6 +318,7 @@ jobs:
       base-ref: >-
         ${{ github.event_name == 'workflow_dispatch' &&
         (inputs.base || github.event.repository.default_branch) || '' }}
+      pr-labels: ${{ inputs.labels }}
 
   frontend-tests:
     needs: [should-run, files-changed, create-test-plan]

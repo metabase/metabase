@@ -44,25 +44,44 @@
 (defn- short-sha [sha]
   (subs sha 0 10))
 
+(defn own-pr
+  "The first of `prs` whose head branch is in `repo`."
+  [prs]
+  ;; A fork can have an open PR from a branch with the same name.
+  (first (filter #(= repo (get-in % [:headRepository :nameWithOwner])) prs)))
+
 (defn- open-pr
-  "The open PR whose head is `branch`, with the base its stack targets, or nil."
+  "The open PR from `branch` in `repo`, with its labels and the base its stack targets, or nil."
   [branch]
-  (-> (gh-json "api" "graphql"
-               "-f" (str "query=query($branch: String!) {"
-                         " repository(owner: \"metabase\", name: \"metabase\") {"
-                         " pullRequests(headRefName: $branch, states: OPEN, first: 1) {"
-                         " nodes { number headRefOid baseRefName stack { baseRefName } } } } }")
-               "-f" (str "branch=" branch))
-      (get-in [:data :repository :pullRequests :nodes 0])))
+  (let [[owner name] (str/split repo #"/")]
+    (->> (gh-json "api" "graphql"
+                  "-f" (str "query=query($owner: String!, $name: String!, $branch: String!) {"
+                            " repository(owner: $owner, name: $name) {"
+                            " pullRequests(headRefName: $branch, states: OPEN, first: 10) {"
+                            " nodes { number headRefOid baseRefName headRepository { nameWithOwner }"
+                            " stack { baseRefName } labels(first: 100) { nodes { name } } } } } }")
+                  "-f" (str "owner=" owner) "-f" (str "name=" name) "-f" (str "branch=" branch))
+         :data :repository :pullRequests :nodes
+         own-pr)))
 
 (defn stack-base
   "The branch `pr`'s changes should be compared against: the stack's base when `pr` is in one."
   [pr]
   (or (get-in pr [:stack :baseRefName]) (:baseRefName pr)))
 
+(defn run-labels
+  "The `ci:run-*` labels on `pr` that a run started by hand should act on, comma-separated."
+  [pr]
+  (->> (get-in pr [:labels :nodes])
+       (map :name)
+       ;; `ci:run-all` would turn the run into the full suite, which is what this task avoids.
+       (filter #(and (str/starts-with? % "ci:run-") (not= "ci:run-all" %)))
+       sort
+       (str/join ",")))
+
 (defn- runs [branch sha event]
   (gh-json "run" "list" "-R" repo "--workflow" workflow "--branch" branch "--commit" sha
-           "--event" event "--json" "databaseId,conclusion" "--limit" "20"))
+           "--event" event "--json" "databaseId,status,conclusion" "--limit" "20"))
 
 (defn parse-verdict
   "The verdict the decide job printed in `log`, or nil."
@@ -105,6 +124,7 @@
 
 (defn next-step
   "What to do given the PR run (with its `:verdict`) and the runs started by hand for the same commit.
+  Only a run that is still going or that finished its tests is reused.
   Returns one of:
 
     {:step :not-skipped,     :run pr-run}
@@ -113,24 +133,26 @@
   [pr-run started-runs]
   (if (not= "force-skip" (:verdict pr-run))
     {:step :not-skipped, :run pr-run}
-    (if-let [run (first (remove #(= "cancelled" (:conclusion %)) started-runs))]
+    (if-let [run (first (filter #(or (not= "completed" (:status %))
+                                     (#{"failure" "success"} (:conclusion %)))
+                                started-runs))]
       {:step :already-started, :run run}
       {:step :start})))
 
 (defn dispatch-args
-  "Arguments to `gh` that start the workflow on `branch`, comparing against `base`."
-  [branch base]
-  (cond-> ["workflow" "run" workflow "-R" repo "--ref" branch]
-    ;; Master is the workflow's default. Leaving it out keeps branches made before the `base` input runnable.
-    (not= "master" base) (into ["-f" (str "base=" base)])))
+  "Arguments to `gh` that start the workflow on `branch`, comparing against `base` and acting on `labels`."
+  [branch base labels]
+  ;; Always passing `base` makes a branch from before these inputs fail to start instead of comparing against
+  ;; itself.
+  (cond-> ["workflow" "run" workflow "-R" repo "--ref" branch "-f" (str "base=" base)]
+    (seq labels) (into ["-f" (str "labels=" labels)])))
 
 (defn- start-run!
   "Start the workflow and return the new run's URL, or the branch's run list when `gh` prints none."
-  [branch base]
-  (let [hint (when (not= "master" base)
-               (str "Comparing against " base " needs the `base` input in " workflow
-                    ", so the branch may need a rebase."))
-        out  (apply gh {:hint hint} (dispatch-args branch base))]
+  [branch base labels]
+  (let [hint (str "The branch's " workflow " may predate the `base` and `labels` inputs;"
+                  " rebase it to get them.")
+        out  (apply gh {:hint hint} (dispatch-args branch base labels))]
     (or (re-find #"https://github\.com/\S+/actions/runs/\d+" out)
         (format "https://github.com/%s/actions/workflows/%s?query=%s" repo workflow
                 (URLEncoder/encode (str "branch:" branch) "UTF-8")))))
@@ -162,9 +184,11 @@
 
       :start
       (let [base        (stack-base pr)
-            _           (info (format "PR #%s was force-skipped; starting a run on %s against %s."
-                                      (:number pr) branch base))
-            url         (start-run! branch base)
+            labels      (run-labels pr)
+            _           (info (format "PR #%s was force-skipped; starting a run on %s against %s%s."
+                                      (:number pr) branch base
+                                      (if (seq labels) (str " with " labels) "")))
+            url         (start-run! branch base labels)
             run-id      (second (re-find #"/actions/runs/(\d+)$" url))
             new-verdict (when run-id (poll "the new run" waits-s #(verdict run-id)))]
         ;; `should-run` never skips a run started by hand, but a later skip rule could break that.
