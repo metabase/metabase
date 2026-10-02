@@ -448,11 +448,23 @@
 
 (defn mini-model
   "The fastest and cheapest model `type-name` serves — what short utility calls such as conversation titles run on
-  when no model has been picked for them. Returns nil for the types that have no cheaper tier to fall back to: the
-  ones whose connection names the single model it serves rather than picking from a catalog, and the managed
-  provider, which serves one benchmarked model."
+  when no model has been picked for them and the connection's listing includes it. Returns nil for the types that
+  have no cheaper tier to fall back to: the ones whose connection names the single model it serves rather than
+  picking from a catalog, and the managed provider, which serves one benchmarked model."
   [type-name]
   (:mini-model (provider-type type-name)))
+
+(defn served-mini-model
+  "The `:config` entry recording `type-name`'s [[mini-model]] when `listed-models` includes it, and nil when it does
+  not."
+  [type-name listed-models]
+  (let [model (mini-model type-name)]
+    {:mini-model (when (some #(= model (:id %)) listed-models) model)}))
+
+(defn connection-mini-model
+  "The [[mini-model]] `conn`'s listing included when it was last saved, or nil."
+  [conn]
+  (get-in conn [:config :mini-model]))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
