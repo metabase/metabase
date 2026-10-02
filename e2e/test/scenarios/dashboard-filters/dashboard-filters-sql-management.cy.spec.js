@@ -59,7 +59,11 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
       H.sidebar().findByText("Filter operator").next().click();
       H.popover().findByText("Equal to").click();
 
-      H.getDashboardCard().should("not.contain", "Tax GTE");
+      H.getDashboardCard()
+        .should("contain", "Column to filter on")
+        .findByRole("button")
+        .should("contain", "Select…")
+        .and("not.contain", "Tax GTE");
 
       H.saveDashboard();
 
