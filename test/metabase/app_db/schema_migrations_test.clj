@@ -3672,7 +3672,7 @@
                                  (t2/select :timeline_event {:order-by [:id]})))
             before        (portable-data)]
         (migrate!)
-        (migrate! :down 63)
+        (migrate! :down 64)
         (testing "events written before the upgrade are still there, unchanged"
           (is (= before (portable-data))))
         (testing "and an event can be written without an entity ID again"

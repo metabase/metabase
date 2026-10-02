@@ -1785,8 +1785,8 @@
   (binding [resolve/*import-resolver* resolve.default/lenient-import-resolver]
     (import-visualizer-settings settings)))
 
-(defn- timeline-event-ref? [ref]
-  (and (vector? ref) (= 2 (count ref)) (every? entity-id? ref)))
+(defn- timeline-event-ref? [event-ref]
+  (and (vector? event-ref) (= 2 (count event-ref)) (every? entity-id? event-ref)))
 
 (defn- import-fks [refs ref? model]
   (u/keepv #(when (ref? %) (fk-elide (*import-fk* % model))) (timeline-setting-ids refs)))
