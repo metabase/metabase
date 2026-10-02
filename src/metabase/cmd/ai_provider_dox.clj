@@ -26,9 +26,15 @@
    "bedrock"  "metabase/cmd/resources/ai-provider-bedrock.md"
    "google"   "metabase/cmd/resources/ai-provider-google.md"})
 
+(def ^:private required-any-sentences
+  "What is enough to connect, for the types whose rule depends on another field and so cannot be generated
+  from `:required-any` — those groups read as though any one of them served any configuration."
+  {"ollama" (str "A self-hosted Ollama needs the **API base URL**. "
+                 "Ollama Cloud needs the **API key**.")})
+
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."
-  #{"vllm"})
+  #{"vllm" "ollama"})
 
 (def ^:private max-enumerated-options
   "Above this many `:options`, a field's choices are pointed at rather than listed. Bedrock's dozens of regions are
@@ -80,9 +86,14 @@
   "The condition that reveals a field, or nil when it is always shown."
   [{:keys [show-when]} {:keys [fields]}]
   (when-let [{:keys [field value]} show-when]
-    (let [controlling (field-at fields field)]
+    (let [controlling  (field-at fields field)
+          value-label  (option-label controlling value)]
+      ;; the stored value, in code, ties the label to the value [[field-options-sentence]] lists
       (str "Only when " (md/bold (label controlling))
-           " is " (md/bold (option-label controlling value)) "."))))
+           " is " (md/bold value-label)
+           (when (not= (str value-label) (str value))
+             (str " (" (md/code value) ")"))
+           "."))))
 
 (defn- field-requires-sentence
   "The siblings a field cannot be set without, or nil when it stands on its own. The registry keys `:requires` by
@@ -108,16 +119,17 @@
   [{:keys [options]}]
   (when (seq options)
     (if (<= (count options) max-enumerated-options)
-      (str "One of: " (str/join ", " (map #(md/code (label %)) options)) ".")
+      (str "One of: " (str/join ", " (map #(md/code (:value %)) options)) ".")
       ;; deliberately not a count: the long lists come from bundled SDKs, and would churn this page on every bump
       (str "Pick one from the dropdown in " (md/bold "Admin > AI") "."))))
 
 (defn- field-default-sentence
   "The value a field starts at, or nil when it has no `:default`."
-  [{:keys [default] :as field}]
+  [{:keys [default]}]
   (when default
-    ;; a field with `:options` stores one value but displays another, so show what the form shows
-    (str "Defaults to " (md/code (option-label field default)) ".")))
+    ;; the stored value, not the form's label — an environment variable or an `MB_LLM_PROVIDERS`
+    ;; config map has to carry the value, and the form's own dropdown is where labels are read
+    (str "Defaults to " (md/code default) ".")))
 
 (defn- field-env-var-sentence
   "The environment variable that can stand in for filling the field in, or nil when none configures it. Phrased as an
@@ -189,8 +201,8 @@
            "works out the model from " (field-labels fields model-fields) " instead.")
 
       (contains? dynamic-catalog-types type)
-      (str "Metabase lists whichever models your " provider-label " server is serving, so what you can "
-           "pick depends on how you started it.")
+      (str "Metabase lists whichever models your " provider-label " server has available, so what you "
+           "can pick depends on how you set it up.")
 
       :else
       (throw (ex-info (str "No model source for provider type " (pr-str type)
@@ -216,13 +228,14 @@
       (when singleton? "You can only connect one.")])]))
 
 (defn- required-any-sentence
-  "The `:required-any` credential groups spelled out, or nil for a type that has none."
-  [{:keys [required-any fields] :as provider}]
+  "Which combinations of credentials are enough, or nil for a type that needs no such sentence."
+  [{:keys [type required-any fields] :as provider}]
   ;; the per-field `(optional)` markers on their own would read as though none of the credentials were needed
-  (when (seq required-any)
-    (str (label provider) " needs either "
-         (str/join ", or " (map #(field-labels fields %) required-any))
-         ".")))
+  (or (get required-any-sentences type)
+      (when (seq required-any)
+        (str (label provider) " needs either "
+             (str/join ", or " (map #(field-labels fields %) required-any))
+             "."))))
 
 (defn- credentials-section
   "What an admin has to enter to connect, and which combinations of it are enough."

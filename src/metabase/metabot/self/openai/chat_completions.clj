@@ -50,10 +50,11 @@
                                     (= "assistant" (:role (first group))))
                              (let [tool-calls (into [] (mapcat :tool_calls) group)
                                    ;; :reasoning_content exists on a member only when the replay
-                                   ;; hook of [[parts->cc-messages]] minted it — today only
-                                   ;; Moonshot, whose dialect replays reasoning as a top-level
+                                   ;; hook of [[parts->cc-messages]] minted it — today Moonshot
+                                   ;; and Ollama, whose dialects replay reasoning as a top-level
                                    ;; sibling of :content (see
-                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]).
+                                   ;; [[metabase.metabot.self.moonshot/reasoning-message]]; Ollama
+                                   ;; renames the field on the way out).
                                    ;; Joined in part order: the wire has a single field per
                                    ;; message, so order is the only fidelity available.
                                    reasoning  (apply str (keep :reasoning_content group))
@@ -99,9 +100,10 @@
                   ;; channel passes :reasoning-part->message, a fn from a coalesced
                   ;; :reasoning part to a replayed assistant message (or nil); today
                   ;; Mistral (think chunks — see
-                  ;; [[metabase.metabot.self.mistral/think-message]]) and Moonshot
+                  ;; [[metabase.metabot.self.mistral/think-message]]), Moonshot
                   ;; (top-level reasoning_content — see
-                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) do. Z.AI and
+                  ;; [[metabase.metabot.self.moonshot/reasoning-message]]) and Ollama
+                  ;; (the same, renamed to reasoning on the way out) do. Z.AI and
                   ;; vLLM define no such channel yet; when they grow one, each gets its
                   ;; own hook fn here rather than more shared code.
                   :reasoning   (when reasoning-part->message
@@ -126,6 +128,10 @@
                   {:role    (name (or (:role part) "user"))
                    :content (or (:content part) "")})))
         merge-consecutive-assistant-messages)))
+
+(def structured-output-tool-name
+  "The tool a `:schema` request is expressed as."
+  "structured_output")
 
 ;;; Tool definition format
 
@@ -176,12 +182,12 @@
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
 
-  Parallel tool calls are tracked by tool-call `id`, not by `index`, which is
-  never read: a tool-call delta whose `id` differs from the open one closes the
-  previous block and opens a new one. That relies on providers sending `id` only
-  on a tool call's opening chunk — one that repeated it on continuation chunks
-  would lose their arguments, since neither the start branch (needs `:name`) nor
-  the argument-delta branch (needs no `:id`) would fire.
+  A delta's `tool_calls` is an array and every entry is translated, in order: a
+  server may put a whole turn's worth of calls in one delta rather than streaming
+  them one per delta. Identity comes from the tool-call `id` where there is one,
+  and from the open block otherwise, so an entry naming a different `id` closes
+  the previous block and opens a new one, while an entry with no `id` — or with
+  the open one repeated but no `:name` — carries more arguments for it.
 
   Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]]. A reason the table maps to
   \"error\" (Mistral's `error`, Z.AI's `network_error`) fails the response the same way an error object does.
@@ -213,7 +219,32 @@
                                                               :reasoning     :reasoning-end
                                                               :function_call :tool-input-available)}
                                                      @payload))
-                            (clear!)))]
+                            (clear!)))
+           ;; One entry from a delta's `tool_calls`. `@current-type` is `:function_call` or nil on
+           ;; entry — the outer clause closes any text or reasoning block first — and the nil case has
+           ;; to be excluded explicitly: `close!`'s `case` has no default and would throw on it.
+           emit-tool-call!
+           (fn [result {:keys [id] {tool-name :name :keys [arguments]} :function}]
+             (cond-> result
+               (and id
+                    (= :function_call @current-type)
+                    (not= id @current-id))     (close!)
+               (and id tool-name)              (-> (u/prog1
+                                                     (vreset! current-type :function_call)
+                                                     (vreset! current-id id)
+                                                     (vreset! payload {:toolCallId id
+                                                                       :toolName   tool-name}))
+                                                   (rf (merge {:type :tool-input-start} @payload)))
+               ;; `not-empty`, not `str/blank?`: the fragments are joined verbatim, so dropping a
+               ;; whitespace-only one deletes those characters from the JSON string. Inside a string
+               ;; they are content, not formatting — indentation in streamed SQL, and syntax in
+               ;; streamed Python.
+               ;; arguments with no open call to belong to — a new `id` without a `:name`, or no call
+               ;; started yet — are dropped: a delta without a `toolCallId` has no block to join
+               (and (not-empty arguments)
+                    (:toolCallId @payload))    (rf {:type           :tool-input-delta
+                                                    :toolCallId     (:toolCallId @payload)
+                                                    :inputTextDelta arguments})))]
        (fn
          ([result]
           (cond-> result
@@ -229,7 +260,7 @@
                                 (or (:message error)
                                     (some-> error pr-str)
                                     (tru "The model provider failed to complete the response")))
-                tool-call     (first (:tool_calls delta))
+                tool-calls    (:tool_calls delta)
                 reasoning-md  (:reasoning_metadata delta)
                 ;; Determine what kind of content this chunk carries.
                 ;; Empty-string content (common between tool calls) is ignored
@@ -243,26 +274,22 @@
                                 ;; loses its reasoning fragment instead: display text,
                                 ;; recoverable. No probed provider combines the two in one
                                 ;; delta today.
-                                (some? tool-call)             :function_call
+                                (seq tool-calls)              :function_call
                                 (and forward-reasoning?
                                      (delta-reasoning delta)) :reasoning
-                                :else                         nil)
-                ;; For new tool calls, the id comes from the chunk; for deltas
-                ;; on the same tool, we keep current-id.
-                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
+                                :else                         nil)]
             (cond-> result
               ;; Emit :start on first chunk
               (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
                                                                    (u/prog1
                                                                      (vreset! message-id id)
                                                                      (vreset! model-name model)))
-              ;; Close previous block when type changes, or when a new tool
-              ;; call arrives (different id = different tool in parallel)
+              ;; Close the previous block when the kind of content changes. A change of tool
+              ;; *within* a run of tool calls is `emit-tool-call!`'s to notice, since only it
+              ;; sees each call's id.
               (and @current-type
-                   (or (and chunk-type
-                            (not= chunk-type @current-type))
-                       (and (= chunk-type :function_call)
-                            (not= chunk-id @current-id))))     (close!)
+                   chunk-type
+                   (not= chunk-type @current-type))            (close!)
               ;; Start a new text block
               (and (= chunk-type :text)
                    (not= @current-type :text))                 (-> (u/prog1
@@ -300,26 +327,8 @@
                    (= @current-type :reasoning))               (u/prog1
                                                                  (vswap! payload assoc
                                                                          :providerMetadata reasoning-md))
-              ;; Start a new tool call block
-              (and (= chunk-type :function_call)
-                   (:id tool-call)
-                   (:name (:function tool-call)))              (-> (u/prog1
-                                                                     (vreset! current-type :function_call)
-                                                                     (vreset! current-id (:id tool-call))
-                                                                     (vreset! payload {:toolCallId (:id tool-call)
-                                                                                       :toolName   (:name (:function tool-call))}))
-                                                                   (rf (merge {:type :tool-input-start} @payload))
-                                                                   ;; Emit initial arguments if present
-                                                                   (cond-> (not (str/blank? (:arguments (:function tool-call))))
-                                                                     (rf {:type           :tool-input-delta
-                                                                          :toolCallId     (:id tool-call)
-                                                                          :inputTextDelta (:arguments (:function tool-call))})))
-              ;; Tool argument delta (continuation of existing tool call)
-              (and (= chunk-type :function_call)
-                   (not (:id tool-call))
-                   (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
-                                                                    :toolCallId     (:toolCallId @payload)
-                                                                    :inputTextDelta (:arguments (:function tool-call))})
+              ;; Tool calls — every entry in the delta, in order
+              (= chunk-type :function_call)                    (as-> r (u/reduce-preserving-reduced emit-tool-call! r tool-calls))
               ;; Closing a tool call runs it, so drop one that an error cuts off
               (and error-text
                    (= @current-type :function_call))           (u/prog1 (clear!))
@@ -361,7 +370,7 @@
          all-tools (or (when schema
                          ;; Structured output: force a tool call with the given JSON schema
                          [{:type     "function"
-                           :function {:name        "structured_output"
+                           :function {:name        structured-output-tool-name
                                       :description "Output structured data"
                                       :parameters  schema}}])
                        (seq (mapv tool->cc-tool tools)))]
@@ -379,13 +388,8 @@
 
 ;;; Model catalog
 
-(defn models-catalog
-  "Extract the model list from an OpenAI-compatible `GET /models` response, failing closed.
-
-  `(get-in res [:body :data])` yields nil for any body shape we don't recognize — a base URL pointing at
-  something that isn't a model endpoint, an HTML error page, a provider that renamed the key. Returning nil
-  leaves the caller's whitelist intersection empty, so the admin Connect flow succeeds against a provider we
-  never actually reached and leaves an empty model picker with no diagnostic. Throw instead.
+(defn malformed-catalog-ex
+  "The failure for a `GET /models` that answered with something other than a catalog.
 
   `provider-name` is the display name, used in the message. The exception is tagged `:api-error` so the
   adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and
@@ -394,6 +398,27 @@
   the admin still sees the sentence, but it bumps the unhandled-error counter and collapses to \"Something
   went wrong\" under `MB_HIDE_STACKTRACES=true`, losing the diagnostic for the operators who enabled that.
 
+  `detail` is a sentence appended to the message, for a provider that has something more specific to say, and
+  `cause` the error that made the body unreadable, kept so a log shows whether it was HTML, empty or cut off."
+  ([provider-name] (malformed-catalog-ex provider-name nil))
+  ([provider-name detail] (malformed-catalog-ex provider-name detail nil))
+  ([provider-name detail cause]
+   (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
+              detail (str ". " detail))
+            {:api-error   true
+             :status-code 400
+             :error-code  :malformed-model-catalog}
+            cause)))
+
+(defn models-catalog
+  "Extract the model list from an OpenAI-compatible `GET /models` response, failing closed.
+
+  `(get-in res [:body :data])` yields nil for any body shape we don't recognize — a base URL pointing at
+  something that isn't a model endpoint, an HTML error page, a provider that renamed the key. Returning nil
+  leaves the caller's whitelist intersection empty, so the admin Connect flow succeeds against a provider we
+  never actually reached and leaves an empty model picker with no diagnostic. Throw
+  [[malformed-catalog-ex]] instead.
+
   A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
 
   `:detail` is a sentence appended to the message, for a provider that has something more specific to say."
@@ -401,9 +426,5 @@
   ([provider-name res {:keys [detail]}]
    (let [data (get-in res [:body :data])]
      (when-not (sequential? data)
-       (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
-                         detail (str ". " detail))
-                       {:api-error   true
-                        :status-code 400
-                        :error-code  :malformed-model-catalog})))
+       (throw (malformed-catalog-ex provider-name detail)))
      data)))

@@ -1,11 +1,12 @@
 (ns metabase.llm.provider-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.current :as request.current]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -497,12 +498,45 @@
                  :env-vars   #{"MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY"}
                  :env-fields #{:service-account-key}
                  :source     :db}]
-               (llm.provider/connections))))))
-  (testing "a lone base-url variable reaches the stored connection's base URL"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
-      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (is (= {:api-key "sk-ant-db" :base-url "https://env.example.com"}
-               (llm.provider/credentials "anthropic")))))))
+               (llm.provider/connections)))))))
+
+(deftest a-region-survives-keys-from-the-environment-test
+  (testing "the region only picks an AWS endpoint, so keys from the environment do not reset it to the default"
+    (mt/with-temporary-setting-values [llm-providers [(connection "bedrock" "bedrock" {:region "eu-central-1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id     "AKIAENV"
+                                    mb-llm-bedrock-secret-access-key "env-secret"]
+        (is (=? [{:key "bedrock" :config {:region "eu-central-1"}}]
+                (llm.provider/connections)))))))
+
+(deftest moving-a-connection-to-cloud-drops-the-address-it-leaves-behind-test
+  (testing (str "the connection form clears a field it hides before saving; every other writer has to "
+                "as well, or a deployment can be turned over without touching the address it no "
+                "longer uses — which then reads as a destination the caller chose")
+    (mt/with-temporary-setting-values
+      [llm-providers [(connection "ollama" "ollama" {:hosting  "self-hosted"
+                                                     :base-url "http://internal.example.com:11434/v1"})]]
+      (binding [request.current/*request* {}]
+        (llm.provider/set-single-provider-setting! :llm-ollama-hosting "cloud")
+        (is (= {:hosting "cloud"}
+               (:config (first (llm.provider/stored-connections))))
+            "the base URL Cloud never reads does not linger in storage")
+        (testing "so the key Cloud does need can still be entered one field at a time"
+          (llm.provider/set-single-provider-setting! :llm-ollama-api-key "sk-cloud")
+          (is (= {:hosting "cloud" :api-key "sk-cloud"}
+                 (:config (first (llm.provider/stored-connections)))))))))
+  (testing "only an explicit switch counts — a default is no grounds to throw a credential away"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (llm.provider/set-connections! [(connection "google" "google" {:oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})])
+      (is (= {:oauth-access-token "ya29.token" :project-id "my-project"}
+             (:config (first (llm.provider/stored-connections))))
+          "Google's auth method defaults to the service account key, but a token stored without one stays")
+      (llm.provider/set-connections! [(connection "google" "google" {:auth-method        "service-account-key"
+                                                                     :oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})])
+      (is (= {:auth-method "service-account-key" :project-id "my-project"}
+             (:config (first (llm.provider/stored-connections))))
+          "naming the other method is a choice, and the credential it replaces goes"))))
 
 (deftest connections-drop-a-stored-base-url-an-env-credential-would-reach-test
   (testing (str "A base URL saved through the API is not where an environment-supplied credential gets sent: the "
@@ -536,7 +570,100 @@
                                                                   {:base-url "https://planted.example.com/v1"})]]
       (mt/with-temp-env-var-value! [mb-llm-vllm-api-key "vllm-env-key"]
         (is (= {:api-key "vllm-env-key"} (llm.provider/credentials "vllm")))
-        (is (false? (llm.provider/connection-usable? "vllm")))))))
+        (is (false? (llm.provider/connection-usable? "vllm"))))))
+  (testing (str "every destination field, not only the base URL: Ollama's `:hosting` moves a connection to "
+                "Cloud's fixed address without the URL changing at all, so guarding the URL alone would carry "
+                "an environment-supplied key to ollama.com")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:hosting "cloud"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-operator-key"]
+        (is (nil? (:hosting (llm.provider/credentials "ollama")))
+            "the stored `cloud` is dropped, so nothing resolves the key's destination to ollama.com")
+        (testing "and the stored list still holds it, so removing the variable brings it back"
+          (is (= "cloud"
+                 (get-in (first (llm.provider/stored-connections)) [:config :hosting])))))))
+  (testing (str "a stored value that is just the registry default is not a destination anyone chose: "
+                "dropping it would change nothing and warn the operator to set a variable to the "
+                "value they already have")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting  "self-hosted"
+                                                                   :base-url "http://planted.example.com:11434/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-operator-key"]
+        (is (= "self-hosted" (:hosting (llm.provider/credentials "ollama")))
+            "the default-valued deployment is left alone")
+        (is (nil? (:base-url (llm.provider/credentials "ollama")))
+            "while the address the caller really did choose is still dropped")))))
+
+(def ^:private self-hosted-ollama
+  "A self-hosted Ollama an admin gave a key to — a server of their own behind an authenticating proxy."
+  {:hosting  "self-hosted"
+   :base-url "http://ollama.internal:11434/v1"
+   :api-key  "sk-entered-for-our-own-server"})
+
+(deftest connections-drop-a-stored-secret-an-env-destination-would-move-test
+  (testing (str "The other order: a destination arriving from the environment over a credential already stored. "
+                "MB_LLM_OLLAMA_HOSTING moves a connection to ollama.com's fixed address without the stored key, "
+                "or the stored URL, changing at all.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (nil? (:api-key (llm.provider/credentials "ollama")))
+            "the key an admin entered for a server of their own does not go to ollama.com")
+        (is (false? (llm.provider/connection-usable? "ollama"))
+            "leaving the connection incomplete, the way a destination with no default is")
+        (testing "and the stored list still holds it, so removing the variable brings it back"
+          (is (= "sk-entered-for-our-own-server"
+                 (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
+  (testing "a deployment the environment restates is not a move, so the key it was entered with stands"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting "cloud"
+                                                                   :api-key "sk-cloud-key"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (= "sk-cloud-key" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing (str "one destination field moving is enough, where a type has several: the address moves while the "
+                "deployment beside it is untouched")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+        (is (nil? (:api-key (llm.provider/credentials "ollama")))))))
+  (testing (str "a deployment the connection never wrote is still the one it runs on, since the field the form "
+                "requires has no unset state")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  (dissoc self-hosted-ollama :hosting))]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (nil? (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "an env address selects the self-hosted deployment, so a stored Cloud connection moves with it"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:hosting "cloud"
+                                                                                     :api-key "sk-cloud-key"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+        (is (= {:hosting "self-hosted" :base-url "http://elsewhere.example.com:11434/v1"}
+               (llm.provider/credentials "ollama"))
+            "and the Cloud key does not follow it to the operator's server"))))
+  (testing "the environment supplying both halves moves nothing it does not also credential"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"
+                                    mb-llm-ollama-api-key "sk-operator-key"]
+        (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "a connection the llm-providers variable supplies is the operator's own, so its key stands"
+    (mt/with-temp-env-var-value! [mb-llm-providers (str "[{\"key\":\"ollama\",\"type\":\"ollama\","
+                                                        "\"name\":\"Ollama\","
+                                                        "\"config\":{\"hosting\":\"self-hosted\","
+                                                        "\"base-url\":\"http://ollama.internal:11434/v1\","
+                                                        "\"api-key\":\"sk-operator-key\"}}]")
+                                  mb-llm-ollama-hosting "cloud"]
+      (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
+
+(deftest env-base-url-keeps-the-key-on-types-it-always-shadowed-test
+  (testing (str "on a type in the compatibility exemption, a base-URL variable shadows the address alone and a "
+                "key typed in the UI goes along with it, whatever the connection stored: the gateway setup an "
+                "upgrade must not break")
+    (doseq [[label stored-url] {"left blank"            nil
+                                "stored at the default" "https://api.anthropic.com"
+                                "chosen by the admin"   "https://chosen.example.com"}]
+      (testing label
+        (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                      (cond-> {:api-key "sk-ant-db"}
+                                                                        stored-url (assoc :base-url stored-url)))]]
+          (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+            (is (= {:api-key "sk-ant-db" :base-url "https://gateway.example.com"}
+                   (llm.provider/credentials "anthropic")))))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
@@ -663,7 +790,7 @@
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
     (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-             "vllm" "metabase"}
+             "vllm" "ollama" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -696,9 +823,10 @@
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
             "bedrock"    "anthropic.claude-opus-4-8"
-            ;; nor is there for vLLM, which serves whatever the operator loaded: connecting adopts the model
-            ;; its probe exercised
+            ;; nor is there for the self-hosted types, which serve whatever the operator loaded or pulled:
+            ;; connecting adopts the model its probe exercised
             "vllm"       nil
+            "ollama"     nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
@@ -715,11 +843,90 @@
             "google"     nil
             "azure"      nil
             "bedrock"    "anthropic.claude-haiku-4-5"
-            ;; a vLLM server serves the one model the operator loaded, so there is no cheaper tier to fall back to
+            ;; a self-hosted server serves the models the operator chose to host, so there is no cheaper tier
+            ;; to fall back to
             "vllm"       nil
+            "ollama"     nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/mini-model "evilai"))))
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
     (is (false? (llm.provider/type-available? "evilai")))))
+
+(deftest destination-fields-are-declared-for-every-type-test
+  (testing (str "Which config fields decide which server a connection's credentials go to. The registry has to "
+                "carry this because the adapters that resolve addresses live downstream of it, so nothing can "
+                "derive the truth — this table is the only thing that makes an omission loud. A type whose adapter "
+                "can reach a server outside the vendor's own endpoints through anything but `:base-url` has to say "
+                "so, or "
+                "`assert-destination-change-authorized!` cannot tell that the connection moved and will let a "
+                "stored credential follow it to the new address.")
+    (is (= {"anthropic"  [:base-url]
+            "openai"     [:base-url]
+            "openrouter" [:base-url]
+            "mistral"    [:base-url]
+            "zai"        [:base-url]
+            "moonshot"   [:base-url]
+            "deepseek"   [:base-url]
+            ;; google's :location and bedrock's :region only pick among the vendor's own endpoints, so a key
+            ;; cannot follow them anywhere else, and dropping them would move requests out of the chosen region
+            "google"     [:base-url]
+            "azure"      [:base-url]
+            "bedrock"    []
+            "vllm"       [:base-url]
+            "ollama"     [:base-url :hosting]
+            "metabase"   [:base-url]}
+           (into {}
+                 (map (juxt :type #(#'llm.provider/destination-fields (:type %))))
+                 (llm.provider/provider-types)))))
+  (testing (str "The types whose base-URL variable is exempt from tying credentials to their address. A type "
+                "added from now on starts outside it, so growing this set is a decision, not an accident.")
+    (is (= #{"anthropic" "azure" "deepseek" "google" "mistral" "moonshot" "openai" "openrouter" "vllm" "zai"}
+           @#'llm.provider/env-base-url-shadowing-types))))
+
+(deftest a-setting-refuses-a-field-the-connection-switches-off-test
+  (testing (str "A per-provider setting writes one field at a time, so nothing about the request says where the "
+                "value is going. Storing it anyway would drop it on the way to the app DB and read back as "
+                "nothing, which is a write reported as saved that never was.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting "cloud" :api-key "sk-cloud"})]]
+      (let [refusal (try (llm.settings/llm-ollama-api-base-url! "http://ollama.internal:11434/v1")
+                         (catch clojure.lang.ExceptionInfo e e))]
+        (is (= "API base URL does not apply when Where Ollama runs is Cloud." (ex-message refusal)))
+        (testing "naming the field the admin has to change first"
+          (is (= {:status-code 400 :api-error true :error-code :llm-field-does-not-apply :field :base-url}
+                 (ex-data refusal)))))))
+  (testing "clearing one is not a write: a blank leaves nothing behind to be wrong about"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting  "cloud"
+                                                                   :api-key  "sk-cloud"
+                                                                   :base-url "http://stale.example.com/v1"})]]
+      (llm.settings/llm-ollama-api-base-url! "")
+      (is (= {:hosting "cloud" :api-key "sk-cloud"}
+             (:config (first (llm.provider/stored-connections)))))))
+  (testing "a connection that never named the controlling field is writable on either side of it"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google" {:project-id "my-project"})]]
+      (llm.settings/llm-google-oauth-access-token! "ya29.token")
+      (is (= "ya29.token" (:oauth-access-token (:config (first (llm.provider/stored-connections)))))))))
+
+(deftest per-setting-write-refuses-a-key-the-environment-moved-away-from-test
+  (testing "a key written through the per-provider setting is refused, not stored for every read to drop"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting  "self-hosted"
+                                                                   :base-url "http://ollama.internal:11434/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (=? {:message #".*MB_LLM_OLLAMA_API_KEY.*"}
+                (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-api-key" {:value "sk-new"})))
+        (is (nil? (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
+(deftest typed-value-test
+  (testing "what counts as a value the caller really typed"
+    (are [submitted expected] (= expected (#'llm.provider/typed-value {:k submitted} :k))
+      "sk-new"           "sk-new"
+      "  sk-new  "       "sk-new"
+      nil                nil
+      "   "              nil
+      "**********ew"     nil
+      "**********ew  "   nil
+      ;; the mask of a newline-terminated JSON key file
+      "**********}\n"    nil)))
