@@ -29,6 +29,7 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     H.saveDashboard();
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
@@ -40,11 +41,12 @@ describe("scenarios > dashboard > filters > date", () => {
           filterType: filter,
           filterValue: value,
         });
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.findByTestId("dashcard").within(() => {
-          cy.findByText(representativeResult);
-        });
+        cy.findByTestId("dashcard")
+          .should("contain", representativeResult)
+          .and("not.contain", "39.72");
 
         H.clearFilterWidget(index);
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
@@ -111,6 +113,8 @@ describe("scenarios > dashboard > filters > date", () => {
 
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
     H.saveDashboard();
+
+    H.ensureDashboardCardHasText("27.74");
 
     // Updates the filter value
     H.filterWidget().should("contain.text", "November 2026").click();
@@ -208,7 +212,12 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
       break;
 
     case "All Options":
-      DateFilter.setAdHocFilter(filterValue);
+      H.popover().within(() => {
+        cy.findByText("Fixed date range…").click();
+        cy.findByText("Before").click();
+        cy.findByLabelText("Date").clear().type(filterValue).blur();
+        cy.button("Add filter").click();
+      });
       break;
 
     default:
