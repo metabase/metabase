@@ -155,16 +155,21 @@ const createGroupedRowSeries = ({
 
 // ECharts SSR positions text with `translate(x y)`, or `matrix(a,b,c,d,x,y)`
 // when rotated, and centres it on that anchor (`dominant-baseline="central"`).
-const TEXT_ANCHOR_PATTERN =
-  /^(?:translate\(([-\d.]+) ([-\d.]+)\)|matrix\((?:[-\d.]+,){4}([-\d.]+),([-\d.]+)\))$/;
+const TRANSLATE_PATTERN = /^translate\((?<x>[-\d.]+) (?<y>[-\d.]+)\)$/;
+const MATRIX_PATTERN = /^matrix\((?:[-\d.]+,){4}(?<x>[-\d.]+),(?<y>[-\d.]+)\)$/;
+
+const parseTranslation = (transform: string | null) => {
+  const match =
+    transform?.match(TRANSLATE_PATTERN) ?? transform?.match(MATRIX_PATTERN);
+  const groups = match?.groups;
+  return groups ? { x: Number(groups.x), y: Number(groups.y) } : null;
+};
 
 const getTextAnchors = (text: string) =>
-  screen.queryAllByText(text).flatMap((element) => {
-    const match = element.getAttribute("transform")?.match(TEXT_ANCHOR_PATTERN);
-    return match
-      ? [{ x: Number(match[1] ?? match[3]), y: Number(match[2] ?? match[4]) }]
-      : [];
-  });
+  screen
+    .queryAllByText(text)
+    .map((element) => parseTranslation(element.getAttribute("transform")))
+    .filter((anchor) => anchor !== null);
 
 const renderRowChart = (rawSeries: RawSeries) =>
   render(

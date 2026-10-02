@@ -27,7 +27,7 @@ export const StaticVisualization = ({
   width,
   height,
   fitWithinBounds,
-}: StaticVisualizationProps) => {
+}: StaticVisualizationProps): JSX.Element => {
   const display = rawSeries[0].card.display;
   const transformedSeries = getVisualizationTransformed(rawSeries).series;
   const settings = getComputedSettingsForSeries(transformedSeries);
