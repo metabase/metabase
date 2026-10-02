@@ -5,6 +5,7 @@ import {
   databaseApi,
   invalidateNotificationsApiCache,
   revisionApi,
+  timelineApi,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -25,10 +26,20 @@ import {
   questionUpdated,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import {
+  LIST_TIMELINES_REQUEST,
+  getTransformedTimelines,
+  selectListTimelines,
+} from "metabase/timelines/panel/selectors";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
 import {
+  getCollectionTimelinesVisibility,
+  getRecordedTimelineEventsVisibility,
+} from "metabase/visualizations/lib/timeline-events-visibility";
+import {
+  canDisplayTimelineEvents,
   getCardAfterVisualizationClick,
   getRegisteredDefaultSize,
 } from "metabase/viz-core";
@@ -36,9 +47,17 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, DashboardTabId, DatasetQuery } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  DashboardTabId,
+  DatasetQuery,
+} from "metabase-types/api";
 
-import { trackNewQuestionSaved } from "../../analytics";
+import {
+  trackNewQuestionSaved,
+  trackQuestionTimelineEventsSaved,
+} from "../../analytics";
 import { updateModelIndexes } from "../../model-indexes/actions";
 import {
   API_CREATE_QUESTION,
@@ -222,7 +241,10 @@ export const setDatasetQuery =
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };
 
-type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+export type OnCreateOptions = {
+  dashboardTabId?: DashboardTabId | undefined;
+  sourceCardId?: CardId | undefined;
+};
 
 export const apiCreateQuestion = (
   question: Question,
@@ -230,6 +252,32 @@ export const apiCreateQuestion = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     let submittableQuestion = getSubmittableQuestion(getState(), question);
+    // A new time series shows its collection's timelines before it is saved, so record that selection — otherwise
+    // the saved question shows no events on a dashboard. The defaults come from the collection it is being saved
+    // into, which the Save modal may have changed. Questions that recorded a selection, and charts that draw no
+    // events, keep their settings untouched.
+    if (
+      getRecordedTimelineEventsVisibility(submittableQuestion.settings()) ==
+        null &&
+      canDisplayTimelineEvents(submittableQuestion.display())
+    ) {
+      await dispatch(
+        timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
+          forceRefetch: false,
+          subscribe: false,
+        }),
+      );
+      // An empty collection must still be recorded, or the query builder would later pick up timelines the
+      // dashboard never shows; only a failed request leaves the selection unrecorded.
+      if (selectListTimelines(getState()).isSuccess) {
+        submittableQuestion = submittableQuestion.updateSettings(
+          getCollectionTimelinesVisibility(
+            getTransformedTimelines(getState()),
+            submittableQuestion.collectionId(),
+          ),
+        );
+      }
+    }
     // Saving models with list view setting as a question in not allowed for now,
     // so we change it back to table.
     if (
@@ -254,6 +302,7 @@ export const apiCreateQuestion = (
       createdQuestion,
       isBasedOnExistingQuestion(getState()),
     );
+    trackQuestionTimelineEventsSaved(createdQuestion);
 
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
@@ -317,6 +366,8 @@ export const apiUpdateQuestion = (
         excludeVisualisationSettings: isMetric,
       },
     );
+
+    trackQuestionTimelineEventsSaved(updatedQuestion, originalQuestion);
 
     // invalidate question notifications
     // (some of the old alerts might be removed during update)
@@ -386,6 +437,7 @@ async function reduxCreateQuestion(
     createQuestionCard({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
+      source_card_id: options?.sourceCardId,
       ...(size && { size: { size_x: size.width, size_y: size.height } }),
     }),
   )) as Card;

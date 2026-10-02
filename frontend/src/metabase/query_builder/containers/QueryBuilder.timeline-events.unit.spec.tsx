@@ -1,74 +1,443 @@
-import { screen, waitFor } from "__support__/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import { setupCardCreateEndpoint } from "__support__/server-mocks";
+import { getTimelineEventCheckbox } from "__support__/timelines";
+import { act, waitFor } from "__support__/ui";
+import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
+import { checkNotNull } from "metabase/utils/types";
 import {
+  hideTimelines,
+  showTimelineEvents,
+  showTimelines,
+} from "metabase/visualizations/lib/timeline-events-visibility";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type { Card, TimelineEventsVisibility } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
+import { apiCreateQuestion } from "../actions";
 import {
-  getFetchedTimelines,
+  openTimelines,
+  updateTimelineEventsVisibility,
+} from "../actions/timelines";
+import { onOpenTimelines } from "../store/actions";
+import {
+  getIsDirty,
+  getQuestion,
+  getSubmittableQuestion,
   getVisibleTimelineEventIds,
 } from "../store/selectors";
 
-import { TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD, setup } from "./test-utils";
+import {
+  TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+  saveQuestion,
+  setup,
+  triggerVisualizationQueryChange,
+} from "./test-utils";
 
 registerVisualizations();
 
-const EVENT_ID = 99;
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
-const CARD = TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD;
+const CARD = createMockCard({
+  ...TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+  display: "line",
+  visualization_settings: { "graph.show_values": true },
+});
+
+const RC1 = createMockTimelineEvent({
+  id: 99,
+  timeline_id: 1,
+  name: "RC1",
+  timestamp: "2025-06-01T00:00:00Z",
+});
+const RC2 = createMockTimelineEvent({
+  id: 98,
+  timeline_id: 1,
+  name: "RC2",
+  timestamp: "2025-06-02T00:00:00Z",
+});
+
+const EVENTS_OFF: TimelineEventsVisibility = {
+  "timeline.selected_timeline_ids": [],
+  "timeline.excluded_timeline_event_ids": [],
+};
 
 const TIMELINE = createMockTimeline({
   id: 1,
-  // Match the question's collection so showTimelinesForCollection selects it.
   collection_id: CARD.collection_id,
-  events: [
-    createMockTimelineEvent({
-      id: EVENT_ID,
-      name: "RC1",
-      timestamp: "2025-06-01T00:00:00Z",
-    }),
-  ],
+  events: [RC1, RC2],
 });
 
-describe("QueryBuilder > timeline events (GHY-3839)", () => {
-  it("shows timeline events when the timelines request resolves after the question loads", async () => {
-    // Delay /api/timeline so it resolves *after* the question and bookmarks have
-    // loaded — i.e. after the effect that calls showTimelinesForCollection has
-    // already run once without them. This reproduces the load-order race: if the
-    // effect doesn't re-run when the timelines arrive, the event is never added
-    // to the visible set and no marker ever renders on the chart.
+type Store = Awaited<ReturnType<typeof setup>>["store"];
+
+const getVisibleEventIds = (store: Store) =>
+  getVisibleTimelineEventIds(store.getState());
+
+const updateVisibility = (
+  store: Store,
+  update: TimelineEventsVisibilityUpdate,
+) =>
+  act(async () => {
+    store.dispatch(updateTimelineEventsVisibility(update));
+  });
+
+const getSavedSettings = () => {
+  const body = checkNotNull(
+    fetchMock.callHistory.lastCall(`path:/api/card/${CARD.id}`, {
+      method: "PUT",
+    })?.options.body,
+  );
+  const card: Card = JSON.parse(body.toString());
+  return card.visualization_settings;
+};
+
+const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
+  const { store } = await setup({
+    card: createMockCard({
+      ...CARD,
+      visualization_settings: { ...CARD.visualization_settings, ...visibility },
+    }),
+    timelines: [TIMELINE],
+  });
+  await waitFor(() => {
+    expect(getFetchedTimelines(store.getState())).toHaveLength(1);
+  });
+  return store;
+};
+
+const DESTINATION_COLLECTION = createMockCollection({ id: 123 });
+
+const setupNewQuestion = async (
+  options: Pick<Parameters<typeof setup>[0], "timelines" | "timelinesResponse">,
+) => {
+  setupCardCreateEndpoint();
+  fetchMock.get(
+    /\/api\/card\/\d+\/query_metadata/,
+    createMockCardQueryMetadata(),
+  );
+  const { store } = await setup({
+    card: createMockUnsavedCard({
+      dataset_query: CARD.dataset_query,
+      display: "line",
+    }),
+    ...options,
+  });
+  return store;
+};
+
+const getCreatedCard = (): Card => {
+  const body = checkNotNull(
+    fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
+      ?.options.body,
+  );
+  return JSON.parse(body.toString());
+};
+
+const saveNewQuestion = async (
+  options: Pick<Parameters<typeof setup>[0], "timelines" | "timelinesResponse">,
+) => {
+  const store = await setupNewQuestion(options);
+  const question = checkNotNull(getQuestion(store.getState())).setCollectionId(
+    DESTINATION_COLLECTION.id,
+  );
+  await act(async () => {
+    await store.dispatch(apiCreateQuestion(question));
+  });
+  return getCreatedCard();
+};
+
+describe("QueryBuilder > timeline events", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
+  it("shows the collection's events for a question that never recorded any", async () => {
+    const store = await setupWithTimelines();
+
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+  });
+
+  it("shows root-collection events for an ad-hoc question", async () => {
     const { store } = await setup({
-      card: CARD,
-      timelines: [TIMELINE],
-      timelinesDelay: 200,
+      card: createMockUnsavedCard({
+        dataset_query: CARD.dataset_query,
+        display: "line",
+      }),
+      timelines: [
+        createMockTimeline({ ...TIMELINE, collection_id: null }),
+        createMockTimeline({
+          id: 2,
+          collection_id: 123,
+          events: [createMockTimelineEvent({ ...RC1, id: 97, timeline_id: 2 })],
+        }),
+      ],
     });
 
-    // Guard the race conditions: the timelines must not have loaded yet, so the
-    // effect's first run already happened without them. If this fails, bump the
-    // delay — otherwise the test wouldn't actually exercise the re-run.
-    expect(getFetchedTimelines(store.getState())).toHaveLength(0);
-    expect(getVisibleTimelineEventIds(store.getState())).toHaveLength(0);
-
-    // The timelines request resolves.
     await waitFor(() => {
-      expect(getFetchedTimelines(store.getState())).toHaveLength(1);
+      expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    });
+    expect(
+      checkNotNull(getQuestion(store.getState())).settings(),
+    ).not.toHaveProperty(["timeline.selected_timeline_ids"]);
+  });
+
+  it("waits for collection timelines before saving a new question", async () => {
+    let resolveTimelines: (timelines: (typeof TIMELINE)[]) => void = () => {};
+    const timelinesResponse = new Promise<(typeof TIMELINE)[]>((resolve) => {
+      resolveTimelines = resolve;
+    });
+    const destinationTimeline = createMockTimeline({
+      id: 2,
+      collection_id: DESTINATION_COLLECTION.id,
+      collection: DESTINATION_COLLECTION,
+      events: [createMockTimelineEvent({ ...RC1, id: 97, timeline_id: 2 })],
+    });
+    const store = await setupNewQuestion({
+      timelinesResponse: () => timelinesResponse,
+    });
+    const question = checkNotNull(
+      getQuestion(store.getState()),
+    ).setCollectionId(checkNotNull(DESTINATION_COLLECTION.entity_id));
+
+    const savePromise = store.dispatch(apiCreateQuestion(question));
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/timeline")).toBe(true);
+    });
+    const createCallBeforeTimelinesLoaded = fetchMock.callHistory.lastCall(
+      "path:/api/card",
+      { method: "POST" },
+    );
+
+    resolveTimelines([destinationTimeline]);
+    await act(async () => {
+      await savePromise;
     });
 
-    // Once loaded, the event must become visible on the chart. Without the fix
-    // the effect never re-runs and this stays empty — that's the bug. The DOM
-    // query forces React to flush the re-render triggered by the late resolve.
-    await waitFor(
-      () => {
-        // Reading the DOM forces testing-library to flush React's pending
-        // re-render from the late timelines resolve (queryByTestId, so it
-        // doesn't throw if the chart subtree errored out under jsdom).
-        screen.queryByTestId("test-container");
-        expect(getVisibleTimelineEventIds(store.getState())).toContain(
-          EVENT_ID,
-        );
-      },
-      { timeout: 5000 },
+    expect(createCallBeforeTimelinesLoaded).toBeUndefined();
+    expect(getCreatedCard().visualization_settings).toMatchObject({
+      "timeline.selected_timeline_ids": [destinationTimeline.id],
+    });
+  });
+
+  it("records an explicit empty selection when saving into a collection with no timelines", async () => {
+    const created = await saveNewQuestion({ timelines: [TIMELINE] });
+
+    expect(created.visualization_settings).toMatchObject(EVENTS_OFF);
+    expect(created).not.toHaveProperty("source_card_id");
+  });
+
+  it("records no selection when collection timelines fail to load", async () => {
+    const created = await saveNewQuestion({
+      timelinesResponse: () => Promise.reject(new Error("unavailable")),
+    });
+
+    expect(created.visualization_settings).not.toHaveProperty([
+      "timeline.selected_timeline_ids",
+    ]);
+    expect(created.visualization_settings).not.toHaveProperty([
+      "timeline.excluded_timeline_event_ids",
+    ]);
+  });
+
+  it("shows only the events a saved question recorded", async () => {
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+      "timeline.excluded_timeline_event_ids": [RC1.id],
+    });
+
+    expect(getVisibleEventIds(store)).toEqual([RC2.id]);
+  });
+
+  it("shows nothing for a question saved with events turned off", async () => {
+    const store = await setupWithTimelines(EVENTS_OFF);
+
+    expect(getVisibleEventIds(store)).toEqual([]);
+  });
+
+  it("hiding an event records the selection on the question", async () => {
+    const store = await setupWithTimelines();
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+
+    // The footer's Events button only renders for time series results.
+    await act(async () => {
+      store.dispatch(onOpenTimelines());
+    });
+    await userEvent.click(getTimelineEventCheckbox("RC1"));
+
+    await waitFor(() => {
+      expect(getVisibleEventIds(store)).toEqual([RC2.id]);
+    });
+    expect(checkNotNull(getQuestion(store.getState())).settings()).toEqual(
+      expect.objectContaining({
+        "timeline.selected_timeline_ids": [TIMELINE.id],
+        "timeline.excluded_timeline_event_ids": [RC1.id],
+      }),
+    );
+    expect(getIsDirty(store.getState())).toBe(true);
+
+    await saveQuestion();
+
+    expect(await getSavedSettings()).toEqual(
+      expect.objectContaining({
+        "graph.show_values": true,
+        "timeline.selected_timeline_ids": [TIMELINE.id],
+        "timeline.excluded_timeline_event_ids": [RC1.id],
+      }),
+    );
+  });
+
+  it("saving after turning events off records the absence", async () => {
+    const store = await setupWithTimelines();
+
+    await updateVisibility(store, (visibility, timelines) =>
+      hideTimelines(visibility, [TIMELINE.id], timelines),
+    );
+    const state = store.getState();
+
+    const question = getSubmittableQuestion(
+      state,
+      checkNotNull(getQuestion(state)),
+    );
+
+    expect(question.settings()).toEqual(
+      expect.objectContaining({
+        "timeline.selected_timeline_ids": [],
+        "timeline.excluded_timeline_event_ids": [],
+      }),
+    );
+  });
+
+  it("opening the events panel from the chart tracks where it was opened from", async () => {
+    const store = await setupWithTimelines();
+
+    await act(async () => {
+      store.dispatch(openTimelines("chart", [RC1.id]));
+    });
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "question_events_panel_opened",
+      triggered_from: "chart",
+    });
+  });
+
+  it("focusing events while the panel is already open does not track another opening", async () => {
+    const store = await setupWithTimelines();
+    await act(async () => {
+      store.dispatch(openTimelines("footer"));
+    });
+    trackSimpleEvent.mockClear();
+
+    await act(async () => {
+      store.dispatch(openTimelines("chart", [RC1.id]));
+    });
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("saving a question with a recorded selection tracks it", async () => {
+    const store = await setupWithTimelines();
+
+    await updateVisibility(store, (visibility, timelines) =>
+      hideTimelines(visibility, [TIMELINE.id], timelines),
+    );
+    await saveQuestion();
+
+    expect(await getSavedSettings()).toEqual(
+      expect.objectContaining(EVENTS_OFF),
+    );
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "question_timeline_events_saved",
+      target_id: CARD.id,
+    });
+  });
+
+  it("saving other changes preserves recorded events without tracking an event change", async () => {
+    const savedVisibility = {
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+      "timeline.excluded_timeline_event_ids": [RC1.id],
+    };
+    await setupWithTimelines(savedVisibility);
+
+    await triggerVisualizationQueryChange();
+    await saveQuestion();
+
+    expect(await getSavedSettings()).toEqual(
+      expect.objectContaining(savedVisibility),
+    );
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("saving unrelated changes does not record collection-default events or track an event change", async () => {
+    await setupWithTimelines();
+
+    await triggerVisualizationQueryChange();
+    await saveQuestion();
+
+    const settings = await getSavedSettings();
+    expect(settings).not.toHaveProperty(["timeline.selected_timeline_ids"]);
+    expect(settings).not.toHaveProperty([
+      "timeline.excluded_timeline_event_ids",
+    ]);
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("re-showing a timeline keeps events outside the chart's range", async () => {
+    const store = await setupWithTimelines(EVENTS_OFF);
+
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelines(visibility, [TIMELINE.id], timelines),
+    );
+
+    expect(
+      checkNotNull(getQuestion(store.getState())).settings()[
+        "timeline.excluded_timeline_event_ids"
+      ],
+    ).toEqual([]);
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+  });
+
+  it("creating an event on a timeline that is already shown records nothing", async () => {
+    const store = await setupWithTimelines();
+
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelineEvents(visibility, [RC1], timelines),
+    );
+
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
+    expect(
+      checkNotNull(getQuestion(store.getState())).settings(),
+    ).not.toHaveProperty(["timeline.selected_timeline_ids"]);
+    expect(getIsDirty(store.getState())).toBe(false);
+  });
+
+  it("shows an event created on a timeline that has not been fetched yet", async () => {
+    const store = await setupWithTimelines();
+    const firstEvent = createMockTimelineEvent({
+      id: 97,
+      timeline_id: 2,
+      timestamp: "2025-06-03T00:00:00Z",
+    });
+
+    await updateVisibility(store, (visibility, timelines) =>
+      showTimelineEvents(visibility, [firstEvent], timelines),
+    );
+
+    expect(checkNotNull(getQuestion(store.getState())).settings()).toEqual(
+      expect.objectContaining({
+        "timeline.selected_timeline_ids": [TIMELINE.id, 2],
+        "timeline.excluded_timeline_event_ids": [],
+      }),
     );
   });
 });

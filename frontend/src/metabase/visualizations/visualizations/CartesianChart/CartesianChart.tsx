@@ -33,8 +33,6 @@ import {
 } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
-  const { timelineEvents } = useTimelineEvents(props);
-
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
@@ -83,6 +81,8 @@ function CartesianChartInner(props: VisualizationProps) {
         : originalSettings,
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
+
+  const { timelineEvents } = useTimelineEvents({ ...props, settings });
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);

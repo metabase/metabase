@@ -1,13 +1,20 @@
 import { renderHook } from "@testing-library/react";
+import { Editor, Node } from "@tiptap/core";
+import TiptapDocument from "@tiptap/extension-document";
+import Paragraph from "@tiptap/extension-paragraph";
+import Text from "@tiptap/extension-text";
 import fetchMock from "fetch-mock";
 
 import { act, getTestStoreAndWrapper, waitFor } from "__support__/ui";
 import { documentApi } from "metabase/api/document";
 import type { Document } from "metabase-types/api";
 import {
+  createMockCard,
   createMockDocument,
   createMockDocumentContent,
 } from "metabase-types/api/mocks";
+
+import { createDraftCard } from "../documents.slice";
 
 import { useDocumentEditor } from "./use-document-editor";
 
@@ -141,5 +148,60 @@ describe("useDocumentEditor", () => {
 
     expect(result.current.isDocumentLoading).toBe(false);
     expect(result.current.documentData?.name).toBe("Current");
+  });
+
+  it("sends the saved card id as source_card_id when a chart is edited twice", async () => {
+    const doc = createMockDocument({ id: DOCUMENT_ID });
+    const put = setupEndpoints(doc);
+
+    const { result, store } = renderEditorHook();
+    await waitForDocument(result);
+
+    const CardEmbed = Node.create({
+      name: "cardEmbed",
+      group: "block",
+      addAttributes: () => ({ id: { default: null } }),
+      renderHTML: () => ["div"],
+    });
+    const editor = new Editor({
+      extensions: [TiptapDocument, Paragraph, Text, CardEmbed],
+      content: {
+        type: "doc",
+        content: [{ type: "cardEmbed", attrs: { id: -2 } }],
+      },
+    });
+
+    act(() => {
+      result.current.setEditorInstance(editor);
+      store.dispatch(
+        createDraftCard({
+          originalCard: createMockCard({ id: 5 }),
+          modifiedData: {},
+          draftId: -1,
+        }),
+      );
+      store.dispatch(
+        createDraftCard({
+          originalCard: createMockCard({ id: -1 }),
+          modifiedData: {},
+          draftId: -2,
+        }),
+      );
+    });
+
+    put.resolve(doc);
+    await act(() => result.current.handleSave());
+    await waitFor(() => {
+      expect(result.current.isSaving).toBe(false);
+    });
+
+    const body = JSON.parse(
+      String(
+        fetchMock.callHistory.lastCall(`path:/api/document/${DOCUMENT_ID}`, {
+          method: "PUT",
+        })?.options.body,
+      ),
+    );
+    expect(body.cards["-2"]).toMatchObject({ source_card_id: 5 });
   });
 });
