@@ -11,7 +11,7 @@ import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
-  settlePendingUpdates,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -86,9 +86,10 @@ const setup = async ({
   if (shouldWaitForLoader) {
     await waitForLoaderToBeRemoved();
   } else {
-    // The page is still loading on purpose here. Absorb the updates it is
-    // about to make, which the caller cannot do once this has returned.
-    await settlePendingUpdates();
+    // The page is still loading on purpose here, so there is nothing to wait
+    // on. Flush the updates it is about to make, which the caller cannot do
+    // once this has returned.
+    await waitFor(() => {});
   }
 
   return { mockEventListener, databaseMetadata };
