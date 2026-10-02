@@ -475,6 +475,15 @@
     (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id
                  (when parent-tree (.copy ^RevTree parent-tree)) (atom nil))))
 
+(defn- ref-branch-names
+  "Sorted branch names (without 'refs/heads/') among the `refs` returned by an lsRemote."
+  [refs]
+  (->> refs
+       (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
+       (remove #(.isSymbolic ^Ref %))
+       (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
+       sort))
+
 (defn branches
   "Retrieves all branch names from the remote repository.
 
@@ -483,11 +492,19 @@
 
   Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
   [{:keys [^Git git] :as source}]
-  (->> (call-remote-command (.lsRemote git) source)
-       (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
-       (remove #(.isSymbolic ^Ref %))
-       (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
-       sort))
+  (ref-branch-names (call-remote-command (.lsRemote git) source)))
+
+(defn remote-branches
+  "Lists the branch names of the repository at `remote-url` straight from the remote, authenticating with the
+  optional `token`. Unlike [[branches]], it needs no local clone, so validating a URL or token does not first
+  download the repository's whole history.
+
+  Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
+  [^String remote-url ^String token]
+  (ref-branch-names (call-remote-command (-> (Git/lsRemoteRepository)
+                                             (.setRemote remote-url)
+                                             (.setHeads true))
+                                         {:remote-url remote-url :token token})))
 
 (defn has-data?
   "Checks if the remote git repository has any commits/data.
