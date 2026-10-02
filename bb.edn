@@ -432,7 +432,10 @@
                (str "CI skips every PR above the bottom of a GitHub stack, and any PR labelled ci:skip.\n"
                     "For such a PR this starts the \"Run tests\" workflow on the branch, compared against the\n"
                     "branch the stack targets, and prints the run URL. Otherwise it prints the PR run URL.\n\n"
-                    "The run does not show in the PR's checks; follow the URL.\n\n"
+                    "The run does not show in the PR's checks; follow the URL. It runs without the affected-tests\n"
+                    "plan, changed-tests Eastwood and the PR's ci:run-* labels.\n\n"
+                    "A run that is still going is reused; once it finishes, running the task again starts a new one.\n"
+                    "Exits 1 if the PR run has no verdict after about a minute.\n\n"
                     "Requires GitHub CLI (gh) to be installed and authenticated."))
    :requires [[mage.ci-run-skipped :as ci-run-skipped]]
    :task (task! (ci-run-skipped/ci-run-skipped!))}

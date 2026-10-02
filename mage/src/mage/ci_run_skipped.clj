@@ -26,12 +26,16 @@
 
 (defn- gh
   "Run `gh` with `args` and return its trimmed stdout.
-  Exits with `gh`'s error message, after `hint` when given, if it fails."
-  [{:keys [hint]} & args]
+  On failure, returns nil when `soft?` is set.
+  Otherwise exits with `gh`'s error message, adding `hint`'s `:text` when the error matches its `:pattern`."
+  [{:keys [soft? hint]} & args]
   (let [{:keys [exit out err]} @(apply p/process {:out :string :err :string :in nil} "gh" args)]
-    (if (zero? exit)
-      (str/trim out)
-      (fail! 3 (str/join "\n" (remove nil? [(str "gh " (first args) " failed: " (str/trim err)) hint]))))))
+    (cond
+      (zero? exit) (str/trim out)
+      soft?        nil
+      :else        (let [hint? (some-> (:pattern hint) (re-find err))]
+                     (fail! 3 (cond-> (str "gh " (first args) " failed: " (str/trim err))
+                                hint? (str "\n" (:text hint))))))))
 
 (defn- gh-json [& args]
   (json/read-str (apply gh {} args) {:key-fn keyword}))
@@ -49,7 +53,7 @@
   (first (filter #(= repo (get-in % [:headRepository :nameWithOwner])) prs)))
 
 (defn- open-pr
-  "The open PR from `branch` in `repo`, with the base its stack targets, or nil."
+  "The open PR from `branch` in `repo`, with its labels and the base its stack targets, or nil."
   [branch]
   (let [[owner name] (str/split repo #"/")]
     (->> (gh-json "api" "graphql"
@@ -57,7 +61,7 @@
                             " repository(owner: $owner, name: $name) {"
                             " pullRequests(headRefName: $branch, states: OPEN, first: 10) {"
                             " nodes { number headRefOid baseRefName headRepository { nameWithOwner }"
-                            " stack { baseRefName } } } } }")
+                            " stack { baseRefName } labels(first: 100) { nodes { name } } } } } }")
                   "-f" (str "owner=" owner) "-f" (str "name=" name) "-f" (str "branch=" branch))
          :data :repository :pullRequests :nodes
          own-pr)))
@@ -66,6 +70,11 @@
   "The branch `pr`'s changes should be compared against: the stack's base when `pr` is in one."
   [pr]
   (or (get-in pr [:stack :baseRefName]) (:baseRefName pr)))
+
+(defn run-labels
+  "The `ci:run-*` labels on `pr`, which a run started by hand cannot see."
+  [pr]
+  (->> (get-in pr [:labels :nodes]) (map :name) (filter #(str/starts-with? % "ci:run-")) sort))
 
 (defn- runs [branch sha event]
   (gh-json "run" "list" "-R" repo "--workflow" workflow "--branch" branch "--commit" sha
@@ -85,8 +94,10 @@
     (when (= "completed" (:status job))
       (when (not= "success" (:conclusion job))
         (fail! 3 (format "%s ended %s: %s" decide-job (:conclusion job) (run-url run-id))))
-      (or (parse-verdict (gh {} "api" (format "repos/%s/actions/jobs/%s/logs" repo (:databaseId job))))
-          (fail! 3 (str "No verdict in the decide job's log: " (run-url run-id)))))))
+      ;; The logs can lag a few seconds behind the job, so a failed fetch means "ask again".
+      (when-let [log (gh {:soft? true} "api" (format "repos/%s/actions/jobs/%s/logs" repo (:databaseId job)))]
+        (or (parse-verdict log)
+            (fail! 3 (str "No verdict in the decide job's log: " (run-url run-id))))))))
 
 (defn poll
   "Call `f` until it returns non-nil, sleeping for each of `pauses` seconds in turn.
@@ -130,8 +141,9 @@
 (defn- start-run!
   "Start the workflow and return the new run's URL, or the workflow's run list when `gh` prints none."
   [branch base]
-  (let [out (apply gh {:hint (str "The branch's " workflow " may predate the `base` input; rebase it.")}
-                   (dispatch-args branch base))]
+  (let [hint {:pattern #"(?i)unexpected inputs"
+              :text    (str "The branch's " workflow " predates the `base` input; rebase it.")}
+        out  (apply gh {:hint hint} (dispatch-args branch base))]
     (or (re-find #"https://github\.com/\S+/actions/runs/\d+" out)
         (format "https://github.com/%s/actions/workflows/%s" repo workflow))))
 
@@ -163,4 +175,6 @@
       :start
       (let [base (stack-base pr)]
         (info (format "PR #%s was force-skipped; starting a run on %s against %s." (:number pr) branch base))
+        (when-let [labels (seq (run-labels pr))]
+          (info (str "These labels do not carry over to a run started by hand: " (str/join ", " labels))))
         (println (start-run! branch base))))))

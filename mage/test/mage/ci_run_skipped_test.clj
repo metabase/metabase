@@ -66,3 +66,10 @@
     (let [calls (atom 0)]
       (is (nil? (ci-run-skipped/poll "x" [0 0] #(do (swap! calls inc) nil))))
       (is (= 3 @calls)))))
+
+(deftest run-labels-test
+  (testing "lists the ci:run-* labels, sorted"
+    (is (= ["ci:run-all" "ci:run-snowflake"]
+           (ci-run-skipped/run-labels {:labels {:nodes [{:name "ci:run-snowflake"}
+                                                        {:name "backport"}
+                                                        {:name "ci:run-all"}]}})))))
