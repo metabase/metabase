@@ -5,10 +5,12 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.callback-api :as mcp.callback-api]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -193,6 +195,23 @@
             (let [response (run!)]
               (is (= 202 (:status response)))
               (is (seq (get-in response [:body :data :rows]))))))))))
+
+(deftest group-policy-gates-every-derived-handle-test
+  (testing "derive and the drills route both consult the group-policy check before they store a new handle"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-dynamic-fn-redefs [mcp.callback-api/group-policy-permits-derive? (constantly false)]
+        (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :rasta)
+              handle (ui.tu/store-query-handle! session-id user-id (checkins-by-month))]
+          (is (= 403 (:status (ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" handle "/derive")
+                                                 {:operations [{:type "temporal-bucket/set" :unit "year"}]}))))
+          (is (= 403 (:status (ui.tu/ui-request! auth :post nil "embed-mcp/drills"
+                                                 {:handle    handle
+                                                  :operation {:type    "drill-thru" :drill "underlying-records"
+                                                              :context {:column     "count" :value 8
+                                                                        :dimensions [{:column "DATE"
+                                                                                      :value  "2013-01-01T00:00:00Z"}]}}}))))
+          (is (= 1 (count (t2/select :model/McpQueryHandle :mcp_session_id session-id)))
+              "only the base handle was stored"))))))
 
 (deftest drills-route-derives-on-the-server-test
   (testing "The drills route takes a handle and a drill, not a query, and stores the drilled query the server built"
