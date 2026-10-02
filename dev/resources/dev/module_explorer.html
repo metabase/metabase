@@ -308,17 +308,19 @@ const DECLARED_CYCLES_NOTE = 'These edges come from the declared <code>:uses</co
   '<code>:uses :any</code> module are missing; run <code>(dev.module-explorer/open!)</code> for observed edges.';
 const BRIDGES = new Set(CYCLES.flatMap(c => c['strong-bridges'].map(([a,b]) => a+'->'+b)));
 function sameCycle(a, b){ const ca = byId[a] && byId[a].cycle; return ca != null && byId[b] && ca === byId[b].cycle; }
-const STRONG_BRIDGE_HELP = 'A strong bridge is one dependency whose removal splits the cycle into smaller cycles, or none. '+
+const STRONG_BRIDGE_HELP = 'A strong bridge is one dependency whose removal splits the cycle into smaller cycles, or none.\n'+
   'Cutting one is the cheapest way to start breaking a cycle up.';
 // density and cycle rank, with this cycle's numbers in the formula
 function densityHelp(c){
-  return `Density = edges ÷ (modules × (modules − 1)) = ${c.edges} ÷ (${c.size} × ${c.size-1}) = ${c.density.toFixed(2)}. `+
-    'The share of all possible dependencies between members that exist; 1.00 means every module depends on every other.';
+  return `Density = edges ÷ (modules × (modules − 1))\n= ${c.edges} ÷ (${c.size} × ${c.size-1}) = ${c.density.toFixed(2)}\n\n`+
+    'The share of all possible dependencies between members that exist.\n'+
+    '1.00 means every module depends on every other.';
 }
 function cycleRankHelp(c){
-  return `Cycle rank = edges − modules + 1 = ${c.edges} − ${c.size} + 1 = ${c['cycle-rank']}. `+
-    'The number of independent loops in the cycle. It is also an upper bound on the dependencies to cut to break '+
-    'the cycle, though the real minimum is often far lower.';
+  return `Cycle rank = edges − modules + 1\n= ${c.edges} − ${c.size} + 1 = ${c['cycle-rank']}\n\n`+
+    'The number of independent loops in the cycle.\n'+
+    'It is also an upper bound on the dependencies to cut to break the cycle,\n'+
+    'though the real minimum is often far lower.';
 }
 // [label, value, tooltip] triples shown wherever a cycle is summarised
 function cycleMetrics(c){
