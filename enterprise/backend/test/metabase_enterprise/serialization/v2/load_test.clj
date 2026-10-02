@@ -1428,7 +1428,7 @@
                                                  :table_id      ["my-db" nil "CUSTOMERS"]
                                                  :visualization_settings {}}])]
             (is (some? (serdes.load/load-metabase! ingestion)))))
-        (testing "depending on nonexisting values fails"
+        (testing "depending on a nonexisting database creates a stub database"
           (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0123"}]
                                                  :created_at    (t/instant)
                                                  :creator_id    "glee@rush.yyz"
@@ -1441,6 +1441,31 @@
                                                  :name          "Some card"
                                                  :table_id      ["bad-db" nil "CUSTOMERS"]
                                                  :visualization_settings {}}])
+                _         (serdes.load/load-metabase! ingestion)
+                stub      (t2/select-one :model/Database :name "bad-db")]
+            (is (=? {:engine  :postgres
+                     :details {}
+                     :is_stub true}
+                    stub))
+            (testing "the stub's table is synthesized as inactive"
+              (is (=? {:active false}
+                      (t2/select-one :model/Table :db_id (:id stub) :name "CUSTOMERS"))))
+            (is (= (:id stub)
+                   (t2/select-one-fn :database_id :model/Card :entity_id "0123456789abcdef_0123")))))
+        (testing "depending on nonexisting values fails"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0124"}]
+                                                 :collection_id "missingcollection0001"
+                                                 :created_at    (t/instant)
+                                                 :creator_id    "glee@rush.yyz"
+                                                 :database_id   "my-db"
+                                                 :dataset_query {:database "my-db"
+                                                                 :type     :query
+                                                                 :query    {:source-table ["my-db" nil "CUSTOMERS"]}}
+                                                 :display       :table
+                                                 :entity_id     "0123456789abcdef_0124"
+                                                 :name          "Other card"
+                                                 :table_id      ["my-db" nil "CUSTOMERS"]
+                                                 :visualization_settings {}}])
                 e         (try
                             (serdes.load/load-metabase! ingestion)
                             nil
@@ -1448,20 +1473,16 @@
             (is (some? e))
             (is (re-find #"was not found" (ex-message e)))
             (testing "the not-found error names the entity holding the dangling reference (GHY-3992)"
-              (is (= {:model "Database" :id "bad-db"}
+              (is (= {:model "Collection" :id "missingcollection0001"}
                      (select-keys (ex-data e) [:model :id])))
-              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+              (is (= {:model "Card" :id "0123456789abcdef_0124" :name "Other card"}
                      (:referrer (ex-data e)))))
             ;; attaching the referrer must not nest the original beneath itself: error reporting renders the
             ;; whole cause chain, and a self-nested exception prints the same message twice
             (testing "attaching the referrer does not duplicate the error through the cause chain"
               (is (nil? (ex-cause e))))))
-        ;; `result-metadata-deps` derives deps only from each entry's `:field_ref`, never from its `:table_id`.
-        ;; So a result_metadata `:table_id` naming an absent database gets past dependency resolution and only
-        ;; fails inside `serdes/load-one!`, where `import-table-fk` raises ::database-not-found. (The Card's own
-        ;; top-level `table_id` cannot be used here: `populate-query-fields` recomputes it from `dataset_query`.)
-        (testing "a result_metadata table_id naming an absent database names the database and the card (GHY-3992)"
-          (let [ingestion (ingestion-in-memory [{:serdes/meta     [{:model "Card" :id "0123456789abcdef_0123"}]
+        (testing "a result_metadata table_id naming an absent database creates a stub database"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta     [{:model "Card" :id "0123456789abcdef_0125"}]
                                                  :created_at      (t/instant)
                                                  :creator_id      "glee@rush.yyz"
                                                  :database_id     "my-db"
@@ -1469,29 +1490,15 @@
                                                                    :type     :query
                                                                    :query    {:source-table ["my-db" nil "CUSTOMERS"]}}
                                                  :display         :table
-                                                 :entity_id       "0123456789abcdef_0123"
+                                                 :entity_id       "0123456789abcdef_0125"
                                                  :name            "Some card"
                                                  :result_metadata [{:name      "STATE"
                                                                     :base_type :type/Text
                                                                     :table_id  ["absent-db" nil "CUSTOMERS"]}]
                                                  :table_id        ["my-db" nil "CUSTOMERS"]
-                                                 :visualization_settings {}}])
-                e         (try
-                            (serdes.load/load-metabase! ingestion)
-                            nil
-                            (catch clojure.lang.ExceptionInfo e e))
-                root      (->> (iterate ex-cause e)
-                               (take-while some?)
-                               (some #(when (= :metabase.models.serialization.resolve.db/database-not-found
-                                               (:error (ex-data %)))
-                                        %)))]
-            (is (some? e))
-            (testing "the root cause carries the missing database name"
-              (is (some? root))
-              (is (= "absent-db" (:db-name (ex-data root)))))
-            (testing "the outer load-failure names the card that failed to load"
-              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
-                     (:entity (ex-data e)))))))))))
+                                                 :visualization_settings {}}])]
+            (serdes.load/load-metabase! ingestion)
+            (is (true? (t2/select-one-fn :is_stub :model/Database :name "absent-db")))))))))
 
 (deftest card-with-snippet-test
   (let [db1s      (atom nil)
@@ -2350,8 +2357,8 @@
                 (testing "table is linked to imported collection"
                   (is (= (:id imported-coll) (:collection_id imported-table))))))))))))
 
-(deftest import-published-table-without-database-fails-test
-  (testing "Importing a published table fails when database doesn't exist on target"
+(deftest import-published-table-without-database-creates-stub-database-test
+  (testing "Importing a published table creates a stub database when the database doesn't exist on target"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (testing "export published table"
@@ -2368,13 +2375,18 @@
                                 {:targets       [["Collection" (:id coll)]]
                                  :no-data-model true
                                  :no-settings   true}))))))
-        (testing "import fails when database doesn't exist"
+        (testing "import creates a stub database"
           (ts/with-db dest-db
-            ;; Don't create the database - import should fail
-            (is (thrown-with-msg?
-                 Exception
-                 #"source-only-db|not found|Failed"
-                 (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))))
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [stub (t2/select-one :model/Database :name "source-only-db")]
+              (is (=? {:engine  :postgres
+                       :details {}
+                       :is_stub true}
+                      stub))
+              (testing "the published table is imported into the stub database"
+                (is (=? {:db_id        (:id stub)
+                         :is_published true}
+                        (t2/select-one :model/Table :name "published_table")))))))))))
 
 (deftest segment-minimal-required-properties-test
   (testing "Segment deserialized with only: entity_id, name, definition, creator_id"

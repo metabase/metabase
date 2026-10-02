@@ -1463,6 +1463,10 @@
   (when (seq metadata)
     (-> (reduce into #{} (for [m metadata]
                            (serdes/mbql-deps allow-int-ids? (:field_ref m))))
+        (into (for [m            metadata
+                    portable-ref ((juxt :table_id :id :fk_target_field_id) m)
+                    :when        (vector? portable-ref)]
+                [{:model "Database" :id (first portable-ref)}]))
         (disj nil))))
 
 (defmethod serdes/storage-path "Card" [card ctx]

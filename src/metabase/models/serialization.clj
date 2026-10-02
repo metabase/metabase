@@ -612,6 +612,16 @@
     (when model
       (lookup-by-id model id))))
 
+(defmulti load-insert-stub!
+  "Given the path of an entity that is neither in the export nor in the appdb, inserts a stub for it and returns it, or
+  returns nil when the model has no stubs."
+  {:arglists '([path])}
+  (fn [path]
+    (-> path last :model)))
+
+(defmethod load-insert-stub! :default [_path]
+  nil)
+
 ;;; ## Dependencies
 ;;; The files of an export are returned in arbitrary order by [[ingest-list]]. But in order to load any entity,
 ;;; everything it has a foreign key to must be loaded first. This is the purpose of one of the most complicated parts of

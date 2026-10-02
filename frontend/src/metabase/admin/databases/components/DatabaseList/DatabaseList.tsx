@@ -7,7 +7,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Button, Flex, Loader, UnstyledButton } from "metabase/ui";
+import { Badge, Button, Flex, Loader, UnstyledButton } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database, Engine } from "metabase-types/api";
 
@@ -92,6 +92,11 @@ export const DatabaseList = ({
                         >
                           {database.name}
                         </Link>
+                        {database.is_stub && (
+                          <Badge ml="sm" variant="light" color="warning">
+                            {t`Not connected`}
+                          </Badge>
+                        )}
                       </Flex>
                     </td>
                     <td>

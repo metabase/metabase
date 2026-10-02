@@ -168,7 +168,8 @@
     (let [ingested (serdes.ingest/ingest-one ingestion path)]
       (if-not ingested
         (do
-          (when-not (serdes/load-find-local path)
+          (when-not (or (serdes/load-find-local path)
+                        (serdes/load-insert-stub! path))
             (let [missing (last path)
                   model (:model missing)
                   id    (:id missing)]
