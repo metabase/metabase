@@ -380,7 +380,7 @@
   too old to report them answers), `GET /api/ps` reports the window each model was loaded with from
   its `:context-length` (so a catalog entry without one is a server that will not say), and each
   `POST /chat/completions` returns whatever `choice-by-probe` holds for the probe it was sent, so the
-  two probes can disagree."
+  two probes can disagree — or, where that is a function, what it returns for the model probed."
   [models choice-by-probe]
   (fn [{:keys [url body]}]
     (cond
@@ -399,7 +399,9 @@
                                     {:model id :name id :context_length context-length})}}
 
       :else
-      {:status 200 :body {:choices [(get choice-by-probe (probe-kind (json/decode+kw (str body))))]}})))
+      (let [decoded (json/decode+kw (str body))
+            choice  (get choice-by-probe (probe-kind decoded))]
+        {:status 200 :body {:choices [(if (fn? choice) (choice (:model decoded)) choice)]}}))))
 
 (def ^:private tool-calling-message
   {:content    ""
@@ -460,6 +462,60 @@
                (get-in (probe! [{:id "first-model"} {:id "second-model"}] tool-calling-message)
                        [:connection-info :probed-model])))))))
 
+(defn- probe-by-model!
+  "Drive a probing connect where the tool-calling probe answers per model from `tool-message-by-model`."
+  [models tool-message-by-model opts]
+  (with-clean-capabilities!
+    (fn []
+      (mt/with-dynamic-fn-redefs [http/request (probing-server
+                                                models
+                                                {:tools      (fn [model]
+                                                               {:message       (get tool-message-by-model model)
+                                                                :finish_reason "tool_calls"})
+                                                 :structured structured-success})]
+        (ollama/list-models (merge {:credentials credentials :probe? true} opts))))))
+
+(deftest preflight-moves-on-from-a-model-that-fails-the-probes-test
+  (let [models   [{:id "qwen3:0.6b"} {:id "qwen3:14b"}]
+        by-model {"qwen3:0.6b" {:content "Sure! The table is orders."}
+                  "qwen3:14b"  tool-calling-message}]
+    (testing "the connect path names no model and the form offers no picker, so a newest model that cannot
+             drive Metabot hands over to the next chat model rather than leaving the admin stuck"
+      (is (= "qwen3:14b"
+             (get-in (probe-by-model! models by-model {}) [:connection-info :probed-model]))))
+    (testing "a model asked for by name is the only one probed"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"qwen3:0\.6b answered with text instead of calling a tool"
+           (probe-by-model! models by-model {:model "qwen3:0.6b"})))))
+  (testing "when every model tried fails, the error names them and gives the newest one's reason"
+    (let [ids (map #(str "m" %) (range 5))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"None of the models tried can drive Metabot \(m0, m1, m2\)\. m0 answered with text"
+           (probe-by-model! (map #(hash-map :id %) ids) (zipmap ids (repeat {:content "Sure!"})) {})))))
+  (testing "a timeout ends the search at the first model: the next one would load just as slowly"
+    (let [probed (atom [])]
+      (with-clean-capabilities!
+        (fn []
+          (mt/with-dynamic-fn-redefs [http/request (let [serve (probing-server [{:id "m0"} {:id "m1"}] {})]
+                                                     (fn [{:keys [url body] :as req}]
+                                                       (if (re-find #"/chat/completions$" (str url))
+                                                         (do (swap! probed conj (:model (json/decode+kw (str body))))
+                                                             (throw (SocketTimeoutException. "Read timed out")))
+                                                         (serve req))))]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"^Ollama did not answer the connection test"
+                 (ollama/list-models {:credentials credentials :probe? true})))
+            (is (= ["m0"] @probed)))))))
+  (testing "a window too small is the model's own as often as the server's — a Modelfile can set one — so
+           the search moves on"
+    (is (= "m1"
+           (get-in (probe! [{:id "m0" :context-length 4096} {:id "m1" :context-length 32768}]
+                           tool-calling-message)
+                   [:connection-info :probed-model])))))
+
 (deftest preflight-says-so-when-no-model-can-chat-test
   (testing "a server that rules every model out is told so, rather than handed one to probe"
     (with-clean-capabilities!
@@ -514,6 +570,24 @@
       (is (= "good-model"
              (get-in (probe! [{:id "good-model"}] tool-calling-message)
                      [:connection-info :probed-model]))))))
+
+(deftest preflight-checks-the-window-before-spending-a-second-generation-test
+  (testing "the window is a lookup once the tool probe has loaded the model, so a model whose window is
+           too small is turned away before the structured-output probe runs"
+    (let [probes (atom [])]
+      (mt/with-dynamic-fn-redefs [http/request (let [serve (probing-server
+                                                            [{:id "good-model" :context-length 4096}]
+                                                            {:tools      {:message tool-calling-message :finish_reason "tool_calls"}
+                                                             :structured structured-success})]
+                                                 (fn [{:keys [url body] :as req}]
+                                                   (when (re-find #"/chat/completions$" (str url))
+                                                     (swap! probes conj (probe-kind (json/decode+kw (str body)))))
+                                                   (serve req)))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"4096 token context window"
+             (ollama/list-models {:credentials credentials :probe? true})))
+        (is (= [:tools] @probes))))))
 
 (deftest preflight-does-not-read-the-window-off-the-catalog-test
   (testing (str "the window comes from `/api/ps`, not from the listing — Ollama's catalog carries no "

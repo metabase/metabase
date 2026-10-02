@@ -119,11 +119,16 @@
 ;;; -------------------------------------------------- Preflight -------------------------------------------------
 
 (defn- preflight-ex
-  "A preflight failure, tagged so `metabase.metabot.api` surfaces the message verbatim, not as a 500."
-  [msg]
-  (ex-info msg {:api-error   true
-                :status-code 400
-                :error-code  :ollama-preflight-failed}))
+  "A preflight failure, tagged so `metabase.metabot.api` surfaces the message verbatim, not as a 500.
+
+  `data` may carry `::server-wide?`, for a failure every model on the server would hit as well, which
+  ends [[preflight!]]'s search rather than moving it on to the next model."
+  ([msg] (preflight-ex msg nil))
+  ([msg data]
+   (ex-info msg (merge {:api-error   true
+                        :status-code 400
+                        :error-code  :ollama-preflight-failed}
+                       data))))
 
 (defn- probe-chat!
   "One non-streaming Chat Completions turn, returning the first choice. `body` carries what differs
@@ -267,24 +272,18 @@
                  (preflight-ex (tru "None of the models on this server can chat and call tools. Pull one that can, then connect again."))
                  (no-models-ex))))))
 
-(defn- run-probes!
-  "Run both contract probes, throwing on the first failure.
-
-  Which structured-output probe runs depends on the deployment, because the mechanism does — see
-  [[metabase.metabot.self.ollama.forced-calls/probe-body]].
-
-  Sequential, tool calling first: structured output only means anything once tool calling works, so
-  stopping at the first failure is strictly less work. Concurrency would not help — Ollama serializes
-  generation per model unless `OLLAMA_NUM_PARALLEL` is raised, and a losing probe cannot be called
-  off: `future-cancel` interrupts, and a blocking socket read ignores interrupts."
-  [req model]
+(defn- run-probe!
+  "Run one contract probe, `check!`, against `model`, turning a timeout into its own diagnosis and any
+  other failure into the provider's."
+  [check! req model]
   (try
-    (check-tool-calling! req model)
-    (check-structured-output! req model)
+    (check! req model)
     (catch SocketTimeoutException _
       (throw (preflight-ex
               (tru "Ollama did not answer the connection test within {0}ms. On a self-hosted server the first request also loads the model into memory — if it is large, retry once it is warm, otherwise it is too slow to drive Metabot."
-                   (str (:socket-timeout (probe-timeouts)))))))
+                   (str (:socket-timeout (probe-timeouts))))
+              ;; the next model would load just as slowly
+              {::server-wide? true})))
     (catch Exception e
       (adapter/rethrow! provider e))))
 
@@ -326,17 +325,64 @@
               (tru "{0} runs with a {1} token context window, which is too small for Metabot — it needs at least {2}."
                    (str model) (str window) (str adapter/min-context-window-tokens)))))))
 
+(def ^:private max-fallback-candidates
+  "How many chat models the connect path tries before giving up. Each costs a model load and two
+  generations, so the bound is what keeps a server with a long catalog from stalling the connect."
+  3)
+
+(defn- preflight-model!
+  "Run every check against `model`, returning it, and throw on the first failure.
+
+  Cheapest first, each where it can first be answered. Tool calling leads: structured output only means
+  anything once it works. The context window comes next — it is a lookup on `/api/ps`, but one that
+  can only answer once a probe has loaded the model — so a window too small costs one generation
+  rather than two. Which structured-output probe runs depends on the deployment, because the mechanism
+  does — see [[metabase.metabot.self.ollama.forced-calls/probe-body]].
+
+  Sequential: concurrency would not help — Ollama serializes generation per model unless
+  `OLLAMA_NUM_PARALLEL` is raised, and a losing probe cannot be called off: `future-cancel` interrupts,
+  and a blocking socket read ignores interrupts."
+  [{:keys [credentials] :as req} model]
+  (run-probe! check-tool-calling! req model)
+  (check-context-budget! credentials model)
+  (run-probe! check-structured-output! req model)
+  model)
+
 (defn- preflight!
   "Exercise the agent loop's contract against the model that will actually serve it, returning that
   model's id. The connect path must adopt exactly this model rather than re-deriving it from the
   listing, which agrees only while nothing reorders the catalog.
 
-  The context-window check runs last: it needs the model loaded, which the probes do."
-  [{:keys [credentials] :as req} entries requested-model]
-  (let [model (:id (probe-target entries requested-model))]
-    (run-probes! req model)
-    (check-context-budget! credentials model)
-    model))
+  A model asked for by name is the only one probed. The connect path names none, and the form offers
+  no picker for Ollama, so a failing model there would leave the admin no way forward: it moves on to
+  the next chat model, newest first, up to [[max-fallback-candidates]] of them. A failure every model
+  would share — see [[preflight-ex]] — ends the search."
+  [req entries requested-model]
+  (if requested-model
+    (preflight-model! req (:id (probe-target entries requested-model)))
+    (let [candidates (->> entries (filter ::chat?) (map :id) (take max-fallback-candidates))
+          errors     (volatile! [])]
+      ;; nothing to try: [[probe-target]] says why
+      (when (empty? candidates)
+        (probe-target entries nil))
+      (or (some (fn [model]
+                  (try
+                    (preflight-model! req model)
+                    (catch clojure.lang.ExceptionInfo e
+                      (let [{:keys [error-code] :as data} (ex-data e)]
+                        (when (or (not= :ollama-preflight-failed error-code) (::server-wide? data))
+                          (throw e)))
+                      (vswap! errors conj e)
+                      nil)))
+                candidates)
+          (let [[newest & others] @errors]
+            (throw (if others
+                     (preflight-ex
+                      (tru "None of the models tried can drive Metabot ({0}). {1}"
+                           (str/join ", " candidates)
+                           ;; the newest model's reason, the one an admin is likeliest to act on
+                           (ex-message newest)))
+                     newest)))))))
 
 (defn- tag-chat-capable
   "`entries` with `::chat?` on each, saying whether Ollama offers that model for chat at all.
