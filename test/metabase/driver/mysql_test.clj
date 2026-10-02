@@ -72,6 +72,33 @@
                        {:ssl false :ssl-cert "/etc/server-ca.pem"}]]
           (is (map? (spec extra)) (pr-str extra)))))))
 
+(deftest ssl-cert-url-must-be-readable-test
+  ;; the client opens the value as a URL before falling back to a file path, so `file:/etc/x` reads `/etc/x` -- not a
+  ;; file named `file:/etc/x` under the working directory, which is allowed here
+  (mt/with-temp-env-var-value! [mb-readable-paths (str "/allowed-dir," (System/getProperty "user.dir"))]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          spec    #(sql-jdbc.conn/connection-details->spec :mysql (merge details {:ssl-cert %}))]
+      (testing "a URL the client would read from somewhere other than an allowed local file is refused"
+        (doseq [cert ["file:/etc/server-ca.pem"
+                      "file:///etc/server-ca.pem"
+                      "file:/allowed-dir/%2E%2E/etc/server-ca.pem"
+                      "file://other-host/allowed-dir/server-ca.pem"
+                      "jar:file:/allowed-dir/certs.jar!/server-ca.pem"
+                      "http://example.com/server-ca.pem"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec cert))
+              cert)))
+      (testing "a file URL for an allowed path is accepted"
+        (doseq [cert ["file:/allowed-dir/server-ca.pem"
+                      "file:///allowed-dir/server-ca.pem"
+                      "file://localhost/allowed-dir/server-ca.pem"]]
+          (is (map? (spec cert)) cert)))))
+  (testing "any URL is accepted when every path is readable"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/"]
+      (is (map? (sql-jdbc.conn/connection-details->spec
+                 :mysql
+                 {:host "h" :port 3306 :dbname "db" :user "u" :ssl true :ssl-cert "http://example.com/server-ca.pem"}))))))
+
 (deftest default-schema-test
   (mt/test-driver :mysql
     (is (nil? (driver.sql/default-schema :mysql (mt/db))))))
