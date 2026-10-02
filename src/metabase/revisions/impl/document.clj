@@ -1,10 +1,10 @@
-(ns metabase.documents.revisions.impl
+(ns metabase.revisions.impl.document
   "Document revision serialization implementation.
 
   Implements Document revision serialization following the Card exclusion pattern,
   excluding metadata columns while preserving content, name, and other Document-specific fields."
   (:require
-   [metabase.revisions.core :as revisions]))
+   [metabase.revisions.models.revision :as revision]))
 
 (def ^:private excluded-columns-for-document-revision
   "Columns to exclude from Document revision serialization.
@@ -25,11 +25,11 @@
     :public_uuid_prefix
     :made_public_by_id})
 
-(defmethod revisions/serialize-instance :model/Document
+(defmethod revision/serialize-instance :model/Document
   [_model _id instance]
   (apply dissoc instance excluded-columns-for-document-revision))
 
-(defmethod revisions/revert-to-revision! :model/Document
+(defmethod revision/revert-to-revision! :model/Document
   [model id user-id serialized-document]
-  ((get-method revisions/revert-to-revision! :default)
+  ((get-method revision/revert-to-revision! :default)
    model id user-id (apply dissoc serialized-document excluded-columns-for-document-revision)))

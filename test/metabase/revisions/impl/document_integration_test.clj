@@ -1,11 +1,11 @@
-(ns metabase.documents.revisions.integration-test
+(ns metabase.revisions.impl.document-integration-test
   "Integration tests for Document revision history including API endpoints, events, and permissions."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
-   [metabase.documents.revisions.impl]
    [metabase.events.core :as events]
+   [metabase.revisions.impl.document]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.util :as u]

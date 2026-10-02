@@ -1,4 +1,4 @@
-(ns metabase.premium-features.api-test
+(ns metabase.premium-features.rest.api-test
   (:require
    [clj-http.client :as http]
    [clj-http.cookies :as cookies]

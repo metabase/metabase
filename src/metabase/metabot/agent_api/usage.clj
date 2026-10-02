@@ -1,4 +1,4 @@
-(ns metabase.agent-api.usage
+(ns metabase.metabot.agent-api.usage
   "Agent API (CLI) usage logging.
 
   [[wrap-record-cli-usage]] is the single write point: a Ring middleware in the main handler

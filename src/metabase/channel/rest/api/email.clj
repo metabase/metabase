@@ -1,4 +1,4 @@
-(ns metabase.channel.api.email
+(ns metabase.channel.rest.api.email
   "/api/email endpoints"
   (:require
    [metabase.api.common :as api]

@@ -1,4 +1,4 @@
-(ns metabase.channel.api.slack-test
+(ns metabase.channel.rest.api.slack-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -7,7 +7,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.prometheus-test :as prometheus-test]
-   [metabase.channel.api.slack :as api.slack]
+   [metabase.channel.rest.api.slack :as api.slack]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]

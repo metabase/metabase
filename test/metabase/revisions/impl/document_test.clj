@@ -1,8 +1,8 @@
-(ns metabase.documents.revisions.impl-test
+(ns metabase.revisions.impl.document-test
   "Unit tests for Document revision serialization and reversion functionality."
   (:require
    [clojure.test :refer :all]
-   [metabase.documents.revisions.impl]
+   [metabase.revisions.impl.document]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -91,7 +91,7 @@
 
 (deftest excluded-columns-test
   (testing "excluded columns constant contains expected fields"
-    (let [excluded-columns @#'metabase.documents.revisions.impl/excluded-columns-for-document-revision]
+    (let [excluded-columns @#'metabase.revisions.impl.document/excluded-columns-for-document-revision]
       (is (contains? excluded-columns :id))
       (is (contains? excluded-columns :creator_id))
       (is (contains? excluded-columns :created_at))

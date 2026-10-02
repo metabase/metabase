@@ -19,7 +19,7 @@ SELECT
      LIMIT 1)                                                  AS group_name,
     t.client_name                                              AS client_name,
     -- NOTE: keep these CASE branches in sync with `supported-client-keys` /
-    -- `detect-client` in src/metabase/agent_api/usage.clj (the enum-<->-CASE sync footgun).
+    -- `detect-client` in src/metabase/metabot/agent_api/usage.clj (the enum-<->-CASE sync footgun).
     CASE t.client_name
         WHEN 'metabase-cli' THEN 'Metabase CLI'
         WHEN 'other'        THEN 'Other'

@@ -1,4 +1,4 @@
-(ns metabase.premium-features.api
+(ns metabase.premium-features.rest.api
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
