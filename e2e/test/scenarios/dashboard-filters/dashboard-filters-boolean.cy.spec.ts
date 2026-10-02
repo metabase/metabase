@@ -20,10 +20,117 @@ const PARAMETER_NAME = "Boolean parameter";
 const COLUMN_NAME = "Boolean";
 const FIELD_NAME = "boolean";
 
-describe(
-  "scenarios > dashboard > filters > number",
-  { tags: "@external" },
-  () => {
+describe("scenarios > dashboard > filters > number", () => {
+  describe("mbql queries", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should allow to map a boolean parameter to a boolean column of an MBQL query and drill-thru", () => {
+      createQuestionAndDashboard().then(({ dashboardId }) =>
+        H.visitDashboard(dashboardId),
+      );
+      H.editDashboard();
+      createAndMapParameter();
+      H.saveDashboard();
+
+      testParameterWidget({
+        allRowCountText: "200 rows",
+        trueRowCountText: "1 row",
+        falseRowCountText: "199 rows",
+        hasBooleanColumn: true,
+      });
+
+      cy.log("drill-thru");
+      H.filterWidget().click();
+      H.popover().button("Add filter").click();
+      H.getDashboardCard().findByText(QUESTION_NAME).click();
+      H.assertQueryBuilderRowCount(1);
+      H.queryBuilderFiltersPanel()
+        .findByText(`${COLUMN_NAME} is true`)
+        .should("be.visible");
+    });
+
+    it("should allow to use a 'Update dashboard filter' click behavior", () => {
+      createQuestionAndDashboard().then(({ dashboardId }) =>
+        H.visitDashboard(dashboardId),
+      );
+
+      cy.log("set up click behavior");
+      H.editDashboard();
+      createAndMapParameter();
+      H.showDashboardCardActions();
+      cy.findByLabelText("Click behavior").click();
+      H.sidebar().within(() => {
+        cy.findByText(COLUMN_NAME).click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByTestId("unset-click-mappings")
+          .findByText(PARAMETER_NAME)
+          .click();
+      });
+      H.selectDropdown().findByText(COLUMN_NAME).click();
+      H.saveDashboard();
+
+      cy.log("assert click behavior");
+      H.getDashboardCard().findAllByText("true").first().click();
+      H.filterWidget().findByText("True").should("be.visible");
+      H.getDashboardCard().findByText("1 row").should("be.visible");
+      H.getDashboardCard().findAllByText("true").first().click();
+      H.filterWidget().findByText("True").should("not.exist");
+      H.getDashboardCard().findByText("200 rows").should("be.visible");
+    });
+
+    it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
+      createQuestionAndDashboard().then(({ dashboardId }) =>
+        H.visitDashboard(dashboardId),
+      );
+
+      cy.log("set up click behavior");
+      H.editDashboard();
+      H.showDashboardCardActions();
+      cy.findByLabelText("Click behavior").click();
+      H.sidebar().within(() => {
+        cy.findByText(COLUMN_NAME).click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Saved question").click();
+      });
+      H.entityPickerModal().findByText(QUESTION_NAME).click();
+      H.sidebar()
+        .findByTestId("unset-click-mappings")
+        .findByText(COLUMN_NAME)
+        .click();
+      H.selectDropdown().findByText(COLUMN_NAME).click();
+      H.saveDashboard();
+
+      cy.log("assert click behavior");
+      H.getDashboardCard().findAllByText("true").first().click();
+      H.queryBuilderFiltersPanel()
+        .findByText(`${COLUMN_NAME} is true`)
+        .should("be.visible");
+      H.assertTableRowsCount(1);
+    });
+
+    it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a column or a parameter", () => {
+      setupDashboardClickBehavior();
+
+      cy.log("column source passes the clicked value");
+      H.getDashboardCard().findAllByText("true").first().click();
+      H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
+      H.filterWidget().findByText("True").should("be.visible");
+      H.getDashboardCard().findByText("1 row").should("be.visible");
+
+      cy.log("parameter source passes the unmapped parameter's default");
+      cy.go("back");
+      H.dashboardHeader().findByText(DASHBOARD_2_NAME).should("be.visible");
+      H.getDashboardCard().findAllByText("1").first().click();
+      H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
+      H.filterWidget().findByText("False").should("be.visible");
+      H.getDashboardCard().findByText("199 rows").should("be.visible");
+    });
+  });
+
+  describe("native queries with field filters", { tags: "@external" }, () => {
     beforeEach(() => {
       H.restore(`${DIALECT}-writable`);
       H.resetTestTable({ type: DIALECT, table: TABLE_NAME });
@@ -31,226 +138,122 @@ describe(
       H.resyncDatabase({ tableName: TABLE_NAME });
     });
 
-    describe("mbql queries", () => {
-      it("should allow to map a boolean parameter to a boolean column of an MBQL query and drill-thru", () => {
-        createQuestionAndDashboard().then(({ dashboardId }) =>
-          H.visitDashboard(dashboardId),
-        );
-        H.editDashboard();
-        createAndMapParameter();
-        H.saveDashboard();
+    it("should allow to map a boolean parameter to a boolean field filter of a SQL query and drill-thru", () => {
+      createNativeQuestionWithFieldFilterAndDashboard().then(
+        ({ dashboardId }) => H.visitDashboard(dashboardId),
+      );
+      H.editDashboard();
+      createAndMapParameter();
+      H.saveDashboard();
 
-        testParameterWidget({
-          allRowCountText: "200 rows",
-          trueRowCountText: "1 row",
-          falseRowCountText: "199 rows",
-          hasBooleanColumn: true,
-        });
-
-        cy.log("drill-thru");
-        H.filterWidget().click();
-        H.popover().button("Add filter").click();
-        H.getDashboardCard().findByText(QUESTION_NAME).click();
-        H.assertQueryBuilderRowCount(1);
-        H.queryBuilderFiltersPanel()
-          .findByText(`${COLUMN_NAME} is true`)
-          .should("be.visible");
+      testParameterWidget({
+        allRowCountText: "2 rows",
+        trueRowCountText: "1 row",
+        falseRowCountText: "1 row",
+        hasBooleanColumn: true,
       });
 
-      it("should allow to use a 'Update dashboard filter' click behavior", () => {
-        createQuestionAndDashboard().then(({ dashboardId }) =>
-          H.visitDashboard(dashboardId),
-        );
-
-        cy.log("set up click behavior");
-        H.editDashboard();
-        createAndMapParameter();
-        H.showDashboardCardActions();
-        cy.findByLabelText("Click behavior").click();
-        H.sidebar().within(() => {
-          cy.findByText(COLUMN_NAME).click();
-          cy.findByText("Update a dashboard filter").click();
-          cy.findByTestId("unset-click-mappings")
-            .findByText(PARAMETER_NAME)
-            .click();
-        });
-        H.selectDropdown().findByText(COLUMN_NAME).click();
-        H.saveDashboard();
-
-        cy.log("assert click behavior");
-        H.getDashboardCard().findAllByText("true").first().click();
-        H.filterWidget().findByText("True").should("be.visible");
-        H.getDashboardCard().findByText("1 row").should("be.visible");
-        H.getDashboardCard().findAllByText("true").first().click();
-        H.filterWidget().findByText("True").should("not.exist");
-        H.getDashboardCard().findByText("200 rows").should("be.visible");
-      });
-
-      it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
-        createQuestionAndDashboard().then(({ dashboardId }) =>
-          H.visitDashboard(dashboardId),
-        );
-
-        cy.log("set up click behavior");
-        H.editDashboard();
-        createAndMapParameter();
-        H.showDashboardCardActions();
-        cy.findByLabelText("Click behavior").click();
-        H.sidebar().within(() => {
-          cy.findByText(COLUMN_NAME).click();
-          cy.findByText("Go to a custom destination").click();
-          cy.findByText("Saved question").click();
-        });
-        H.entityPickerModal().findByText(QUESTION_NAME).click();
-        H.sidebar()
-          .findByTestId("unset-click-mappings")
-          .findByText(COLUMN_NAME)
-          .click();
-        H.selectDropdown().findByText(COLUMN_NAME).click();
-        H.saveDashboard();
-
-        cy.log("assert click behavior");
-        H.getDashboardCard().findAllByText("true").first().click();
-        H.queryBuilderFiltersPanel()
-          .findByText(`${COLUMN_NAME} is true`)
-          .should("be.visible");
-        H.assertTableRowsCount(1);
-      });
-
-      it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a column or a parameter", () => {
-        setupDashboardClickBehavior();
-
-        cy.log("column source passes the clicked value");
-        H.getDashboardCard().findAllByText("true").first().click();
-        H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
-        H.filterWidget().findByText("True").should("be.visible");
-        H.getDashboardCard().findByText("1 row").should("be.visible");
-
-        cy.log("parameter source passes the unmapped parameter's default");
-        cy.go("back");
-        H.dashboardHeader().findByText(DASHBOARD_2_NAME).should("be.visible");
-        H.getDashboardCard().findAllByText("1").first().click();
-        H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
-        H.filterWidget().findByText("False").should("be.visible");
-        H.getDashboardCard().findByText("199 rows").should("be.visible");
-      });
+      cy.log("drill-thru");
+      H.filterWidget().click();
+      H.popover().button("Add filter").click();
+      H.getDashboardCard().findByText(QUESTION_NAME).click();
+      H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(1);
+      H.filterWidget().findByText("True").should("be.visible");
     });
 
-    describe("native queries with field filters", () => {
-      it("should allow to map a boolean parameter to a boolean field filter of a SQL query and drill-thru", () => {
-        createNativeQuestionWithFieldFilterAndDashboard().then(
-          ({ dashboardId }) => H.visitDashboard(dashboardId),
-        );
-        H.editDashboard();
-        createAndMapParameter();
-        H.saveDashboard();
+    it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
+      createNativeQuestionWithFieldFilterAndDashboard().then(
+        ({ dashboardId }) => H.visitDashboard(dashboardId),
+      );
 
-        testParameterWidget({
-          allRowCountText: "2 rows",
-          trueRowCountText: "1 row",
-          falseRowCountText: "1 row",
-          hasBooleanColumn: true,
-        });
-
-        cy.log("drill-thru");
-        H.filterWidget().click();
-        H.popover().button("Add filter").click();
-        H.getDashboardCard().findByText(QUESTION_NAME).click();
-        H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
-        H.assertQueryBuilderRowCount(1);
-        H.filterWidget().findByText("True").should("be.visible");
+      cy.log("set up click behavior");
+      H.editDashboard();
+      H.showDashboardCardActions();
+      cy.findByLabelText("Click behavior").click();
+      H.sidebar().within(() => {
+        cy.findByText(FIELD_NAME).click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Saved question").click();
       });
+      H.entityPickerModal().findByText(QUESTION_NAME).click();
+      H.sidebar()
+        .findByTestId("unset-click-mappings")
+        .findByText(COLUMN_NAME)
+        .click();
+      H.selectDropdown().findByText(FIELD_NAME).click();
+      H.saveDashboard();
 
-      it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
-        createNativeQuestionWithFieldFilterAndDashboard().then(
-          ({ dashboardId }) => H.visitDashboard(dashboardId),
-        );
-
-        cy.log("set up click behavior");
-        H.editDashboard();
-        createAndMapParameter();
-        H.showDashboardCardActions();
-        cy.findByLabelText("Click behavior").click();
-        H.sidebar().within(() => {
-          cy.findByText(FIELD_NAME).click();
-          cy.findByText("Go to a custom destination").click();
-          cy.findByText("Saved question").click();
-        });
-        H.entityPickerModal().findByText(QUESTION_NAME).click();
-        H.sidebar()
-          .findByTestId("unset-click-mappings")
-          .findByText(COLUMN_NAME)
-          .click();
-        H.selectDropdown().findByText(FIELD_NAME).click();
-        H.saveDashboard();
-
-        cy.log("assert click behavior");
-        H.getDashboardCard().findAllByText("true").first().click();
-        H.assertTableRowsCount(1);
-        H.filterWidget().findByText("True").should("be.visible");
-      });
-
-      it("should allow to use a 'Go to a custom destination - URL' click behavior", () => {
-        createNativeQuestionWithFieldFilterAndDashboard().then(
-          ({ dashboardId, questionId }) => {
-            H.visitDashboard(dashboardId);
-
-            cy.log("set up click behavior");
-            H.editDashboard();
-            createAndMapParameter();
-            H.showDashboardCardActions();
-            cy.findByLabelText("Click behavior").click();
-            H.sidebar().within(() => {
-              cy.findByText(FIELD_NAME).click();
-              cy.findByText("Go to a custom destination").click();
-              cy.findByText("URL").click();
-            });
-            H.modal().within(() => {
-              cy.findByPlaceholderText(
-                "e.g. http://acme.com/id/{{user_id}}",
-              ).type(
-                `http://localhost:4000/question/${questionId}?boolean={{${FIELD_NAME}}}`,
-                { parseSpecialCharSequences: false },
-              );
-              cy.button("Done").click();
-            });
-            H.saveDashboard();
-
-            cy.log("assert click behavior");
-            H.getDashboardCard().findAllByText("true").first().click();
-            H.assertTableRowsCount(1);
-            H.filterWidget().findByText("True").should("be.visible");
-          },
-        );
-      });
+      cy.log("assert click behavior");
+      H.getDashboardCard().findAllByText("true").first().click();
+      H.assertTableRowsCount(1);
+      H.filterWidget().findByText("True").should("be.visible");
     });
 
-    describe("native queries with variables", () => {
-      it("should allow to map a boolean parameter to a boolean variable of a SQL query and drill-thru", () => {
-        createNativeQuestionWithVariableAndDashboard().then(({ dashboardId }) =>
-          H.visitDashboard(dashboardId),
-        );
-        H.editDashboard();
-        createAndMapParameter();
-        H.saveDashboard();
+    it("should allow to use a 'Go to a custom destination - URL' click behavior", () => {
+      createNativeQuestionWithFieldFilterAndDashboard().then(
+        ({ dashboardId, questionId }) => {
+          H.visitDashboard(dashboardId);
 
-        testParameterWidget({
-          allRowCountText: "200 rows",
-          trueRowCountText: "53 rows",
-          falseRowCountText: "54 rows",
-          hasBooleanColumn: false,
-        });
+          cy.log("set up click behavior");
+          H.editDashboard();
+          H.showDashboardCardActions();
+          cy.findByLabelText("Click behavior").click();
+          H.sidebar().within(() => {
+            cy.findByText(FIELD_NAME).click();
+            cy.findByText("Go to a custom destination").click();
+            cy.findByText("URL").click();
+          });
+          H.modal().within(() => {
+            cy.findByPlaceholderText(
+              "e.g. http://acme.com/id/{{user_id}}",
+            ).type(
+              `http://localhost:4000/question/${questionId}?boolean={{${FIELD_NAME}}}`,
+              { parseSpecialCharSequences: false },
+            );
+            cy.button("Done").click();
+          });
+          H.saveDashboard();
 
-        H.filterWidget().click();
-        H.popover().button("Add filter").click();
-        H.getDashboardCard().findByText(QUESTION_NAME).click();
-        H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
-        H.assertQueryBuilderRowCount(53);
-        H.filterWidget().findByText("True").should("be.visible");
-      });
+          cy.log("assert click behavior");
+          H.getDashboardCard().findAllByText("true").first().click();
+          H.assertTableRowsCount(1);
+          H.filterWidget().findByText("True").should("be.visible");
+        },
+      );
     });
-  },
-);
+  });
+
+  describe("native queries with variables", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should allow to map a boolean parameter to a boolean variable of a SQL query and drill-thru", () => {
+      createNativeQuestionWithVariableAndDashboard().then(({ dashboardId }) =>
+        H.visitDashboard(dashboardId),
+      );
+      H.editDashboard();
+      createAndMapParameter();
+      H.saveDashboard();
+
+      testParameterWidget({
+        allRowCountText: "200 rows",
+        trueRowCountText: "53 rows",
+        falseRowCountText: "54 rows",
+        hasBooleanColumn: false,
+      });
+
+      H.filterWidget().click();
+      H.popover().button("Add filter").click();
+      H.getDashboardCard().findByText(QUESTION_NAME).click();
+      H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(53);
+      H.filterWidget().findByText("True").should("be.visible");
+    });
+  });
+});
 
 function createQuestionAndDashboard({
   questionName = QUESTION_NAME,
