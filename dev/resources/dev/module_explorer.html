@@ -140,6 +140,7 @@ main{flex:1;display:flex;min-height:0}
   background:color-mix(in srgb,var(--cycle) 6%,var(--chip));border-color:color-mix(in srgb,var(--cycle) 18%,transparent)}
 .bridge .arrow{color:var(--cycle);font-size:1.25em;line-height:1}
 .chip.bridge.dull{opacity:.35}
+.chip.bridge.teambridge{background:color-mix(in srgb,var(--team) 22%,var(--chip));border-color:var(--team)}
 .bridge .end.link{cursor:pointer}
 .bridge .end.link:hover{color:var(--accent);text-decoration:underline}
 .bridge .end.sel{color:var(--accent);font-weight:600}
@@ -676,8 +677,11 @@ function renderCycles(){
       const bb=document.createElement('div');
       for(const [a,b] of c['strong-bridges']){
         const br=bridgeEl(a, b);
-        // with teams picked, bridges touching none of their modules fade so the team's own stand out
-        if(focusTeams.size && !ownedByFocusTeam(byId[a]) && !ownedByFocusTeam(byId[b])) br.classList.add('dull');
+        // with teams picked, a bridge takes the colour of the picked team it touches (its source's first),
+        // and bridges touching none of their modules fade so the team's own stand out
+        const owner = [a, b].map(id => byId[id]).find(ownedByFocusTeam);
+        if(owner){ br.classList.add('teambridge'); br.style.setProperty('--team', teamColor[owner.team]); }
+        else if(focusTeams.size) br.classList.add('dull');
         bb.appendChild(br);
       }
       card.appendChild(bb);
