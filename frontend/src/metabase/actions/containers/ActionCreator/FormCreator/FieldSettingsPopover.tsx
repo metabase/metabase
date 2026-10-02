@@ -1,11 +1,23 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import type { ChangeEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { Popover, Radio, Stack, Switch, UnstyledButton } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import {
+  Box,
+  Divider,
+  Flex,
+  Icon,
+  Popover,
+  Radio,
+  Stack,
+  Switch,
+  UnstyledButton,
+} from "metabase/ui";
 import { TextInput } from "metabase/ui/components/inputs/TextInput";
 import type {
   FieldSettings,
@@ -13,13 +25,6 @@ import type {
   InputSettingType,
 } from "metabase-types/api";
 
-import {
-  Divider,
-  RequiredToggleLabel,
-  SettingsPopoverBody,
-  SettingsTriggerIcon,
-  ToggleContainer,
-} from "./FieldSettingsPopover.styled";
 import { getDefaultValueInputType } from "./utils";
 
 export interface FieldSettingsPopoverProps {
@@ -42,7 +47,8 @@ export function FieldSettingsPopover({
     >
       <Popover.Target>
         <UnstyledButton onClick={toggle}>
-          <SettingsTriggerIcon
+          <Icon
+            className={cx(CS.textPrimary, CS.textBrandHover)}
             name="gear"
             size={16}
             tooltip={t`Change field settings`}
@@ -98,20 +104,20 @@ export function FormCreatorPopoverBody({
     fieldSettings.fieldType !== "date" && fieldSettings.inputType !== "radio";
 
   return (
-    <SettingsPopoverBody data-testid="field-settings-popover">
+    <Box p="xxl" data-testid="field-settings-popover">
       <InputTypeSelect
         value={fieldSettings.inputType}
         fieldType={fieldSettings.fieldType}
         onChange={handleUpdateInputType}
       />
-      <Divider data-testid="divider" />
+      <Divider my="lg" data-testid="divider" />
       {hasPlaceholder && (
         <>
           <PlaceholderInput
             value={fieldSettings.placeholder ?? ""}
             onChange={handleUpdatePlaceholder}
           />
-          <Divider data-testid="divider" />
+          <Divider my="lg" data-testid="divider" />
         </>
       )}
       <RequiredInput
@@ -119,7 +125,7 @@ export function FormCreatorPopoverBody({
         onChangeRequired={handleUpdateRequired}
         onChangeDefaultValue={handleUpdateDefaultValue}
       />
-    </SettingsPopoverBody>
+    </Box>
   );
 }
 
@@ -198,16 +204,16 @@ function RequiredInput({
 
   return (
     <div>
-      <ToggleContainer>
-        <RequiredToggleLabel
-          htmlFor={`${id}-required`}
-        >{t`Required`}</RequiredToggleLabel>
+      <Flex align="center" justify="space-between" mb="sm">
+        <Box component="label" fw="bold" htmlFor={`${id}-required`}>
+          {t`Required`}
+        </Box>
         <Switch
           id={`${id}-required`}
           checked={required}
           onChange={(e) => onChangeRequired(e.currentTarget.checked)}
         />
-      </ToggleContainer>
+      </Flex>
       {required && (
         <>
           <TextInput

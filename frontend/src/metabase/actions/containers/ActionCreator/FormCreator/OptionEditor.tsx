@@ -2,15 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Icon, Popover, UnstyledButton } from "metabase/ui";
+import { Box, Button, Icon, Popover, Stack, UnstyledButton } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
-import {
-  AddMorePrompt,
-  ErrorMessage,
-  OptionEditorContainer,
-  TextArea,
-} from "./OptionEditor.styled";
+import S from "./OptionEditor.module.css";
 
 const optionsToText = (options: FieldValueOptions) => options.join("\n");
 export const textToOptions = (text: string): FieldValueOptions => {
@@ -51,11 +46,11 @@ export interface OptionEditorProps {
   onChange: (options: FieldValueOptions) => void;
 }
 
-export const OptionPopover = ({
+export function OptionPopover({
   fieldType,
   options,
   onChange,
-}: OptionEditorProps) => {
+}: OptionEditorProps) {
   const [text, setText] = useState(optionsToText(options));
   const [error, setError] = useState<string | null>(null);
   const [isOpened, { open, close, toggle }] = useDisclosure(false);
@@ -112,21 +107,26 @@ export const OptionPopover = ({
         </UnstyledButton>
       </Popover.Target>
       <Popover.Dropdown maw={400}>
-        <OptionEditorContainer>
-          <TextArea
+        <Stack p="lg" gap="sm">
+          <textarea
+            className={S.textarea}
             value={text}
             onChange={handleTextChange}
             placeholder={t`Enter one option per line`}
           />
-          <AddMorePrompt isVisible={hasOptions}>
+          <Box className={S.addMorePrompt} opacity={hasOptions ? 1 : 0}>
             {t`Press enter to add another option`}
-          </AddMorePrompt>
-          {hasError && <ErrorMessage>{error}</ErrorMessage>}
+          </Box>
+          {hasError && (
+            <Box ta="center" fz="md" c="feedback-negative">
+              {error}
+            </Box>
+          )}
           <Button disabled={!canSave} onClick={handleSave}>
             {t`Save`}
           </Button>
-        </OptionEditorContainer>
+        </Stack>
       </Popover.Dropdown>
     </Popover>
   );
-};
+}
