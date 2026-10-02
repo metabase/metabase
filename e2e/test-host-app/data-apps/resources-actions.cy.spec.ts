@@ -15,13 +15,6 @@ const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
 
 const COLLECTION = "hostAppCollection0002";
 
-const AUTHORED_MANIFEST = `name: Vite 6 Data App
-version: 1
-path: ./dist/index.js
-allowed_hosts:
-  - https://allowed.data-app.test
-`;
-
 const SCOREBOARD_TABLE: PortableTable = [
   "Writable Postgres12",
   "public",
@@ -65,14 +58,14 @@ describe(
       H.resetDataAppHostAppSources();
       cy.writeFile(
         MANIFEST_FILE(),
-        `${AUTHORED_MANIFEST}collection: ${COLLECTION}\n`,
+        `${H.DATA_APP_HOST_APP_MANIFEST}collection: ${COLLECTION}\n`,
       );
     });
 
     // Leave the checked-in host app as it was.
     after(() => {
       H.resetDataAppHostAppSources();
-      cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
+      cy.writeFile(MANIFEST_FILE(), H.DATA_APP_HOST_APP_MANIFEST);
     });
 
     const writeResources = (
