@@ -32,16 +32,19 @@ describe("document comments", () => {
   });
 
   it("allows to comment on every type of node", () => {
+    cy.intercept("GET", "/api/comment?*").as("comments");
     createAndVisitLoremIpsumDocument();
+    cy.wait("@comments");
 
     cy.log("does not need schema adjustments by default");
     cy.findByRole("button", { name: "Save" }).should("not.exist");
 
     cy.log("does not have any comments by default");
-    cy.findByRole("link", { name: "All comments" }).should("not.exist");
+    cy.findByRole("link", { name: "Show all comments" }).should("not.exist");
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
       testCommentingOnNode(documentId, HEADING_1_ID, H.getHeading1);
+      cy.findByRole("link", { name: "Show all comments" }).should("be.visible");
       testCommentingOnNode(documentId, HEADING_2_ID, H.getHeading2);
       testCommentingOnNode(documentId, HEADING_3_ID, H.getHeading3);
       testCommentingOnNode(documentId, PARAGRAPH_ID, H.getParagraph);
@@ -174,8 +177,22 @@ describe("document comments", () => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
           "be.visible",
         );
+        Comments.getNewThreadInput().click();
+        cy.realType("World");
+        cy.realPress([META_KEY, "Enter"]);
+        Comments.getCommentByText("World").should("be.visible");
         cy.findByText("Hello").should("not.exist");
       });
+
+      Comments.closeSidebar();
+      Comments.getSidebar().should("not.exist");
+      Comments.getDocumentNodeButtons()
+        .filter(":visible")
+        .should("have.length", 2)
+        .and(($buttons) => {
+          expect($buttons.eq(0)).to.have.text("1");
+          expect($buttons.eq(1)).to.have.text("1");
+        });
     });
   });
 
@@ -499,6 +516,8 @@ describe("document comments", () => {
     cy.findByRole("textbox", { name: "Document Title" })
       .should("be.visible")
       .and("have.value", "Lorem ipsum");
+
+    cy.findByRole("link", { name: "Show all comments" }).should("be.visible");
 
     cy.get<DocumentId>("@documentId").then((targetId) => {
       cy.findByPlaceholderText("New document").realClick();
@@ -877,7 +896,7 @@ describe("document comments", () => {
 
       Comments.resolveCommentByText(commentText);
 
-      cy.findByTestId("discussion").should("not.exist");
+      Comments.getSidebar().findByText(commentText).should("not.exist");
       cy.findByTestId("comments-resolved-tab").should("be.visible");
       cy.findByTestId("comments-resolved-tab")
         .should("contain.text", "Resolved (1)")

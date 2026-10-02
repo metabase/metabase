@@ -39,11 +39,9 @@ describe("Links in documents", () => {
       cy.log("Edit link url");
       H.documentContent().findByRole("link", { name: "here" }).realHover();
       cy.icon("pencil").click();
-      cy.findByTestId("document-formatting-menu")
-        .get("input")
-        .should("be.focused");
+      H.documentFormattingMenu().find("input").should("be.focused");
       cy.realType("url.com/a/1?k=v");
-      cy.icon("check").click();
+      H.documentFormattingMenu().icon("check").click();
 
       cy.log("Assert link still exists, has updated href");
       H.documentContent()

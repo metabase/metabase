@@ -192,6 +192,17 @@ describe("documents card embed node custom logic", () => {
 
       H.documentUndo();
 
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("have.length", 1)
+        .within(() => {
+          assertFlexContainerCardsOrder(["Orders", "Orders, Count"]);
+        });
+      H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
+        .should("be.visible")
+        .closest('[data-type="flexContainer"]')
+        .should("not.exist");
+
       // Drag the standalone card (Orders by Year) onto one of the cards in the flexContainer
       H.dragAndDropCardOnAnotherCard(
         "Orders, Count, Grouped by Created At (year)",
@@ -211,6 +222,17 @@ describe("documents card embed node custom logic", () => {
         });
 
       H.documentUndo();
+
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("have.length", 1)
+        .within(() => {
+          assertFlexContainerCardsOrder(["Orders", "Orders, Count"]);
+        });
+      H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
+        .should("be.visible")
+        .closest('[data-type="flexContainer"]')
+        .should("not.exist");
 
       // Drag the standalone card (Orders by Year) onto one of the cards in the flexContainer
       H.dragAndDropCardOnAnotherCard(
@@ -289,18 +311,32 @@ describe("documents card embed node custom logic", () => {
       cy.realPress("Escape");
       H.popover().should("not.exist");
 
-      // First, add the third card to reach the limit
-      H.dragAndDropCardOnAnotherCard(
-        "Orders, Count, Grouped by Created At (year)",
-        "Orders",
-        { side: "right" },
-      );
+      addNewStandaloneCard("Orders Model");
+      H.getDocumentCard("Orders Model")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+      H.documentContent()
+        .findAllByTestId("document-card-embed")
+        .should("have.length", 4);
+      H.getDocumentCard("Orders Model")
+        .closest('[data-type="flexContainer"]')
+        .should("not.exist");
 
-      // Verify we have 3 cards in the flexContainer
+      cy.log("a standalone card dropped onto a 2-card flexContainer joins it");
+      H.dragAndDropCardOnAnotherCard("Orders Model", "Orders", {
+        side: "right",
+      });
+
       H.documentContent()
         .find('[data-type="flexContainer"]')
+        .should("have.length", 1)
         .within(() => {
-          cy.findAllByTestId("document-card-embed").should("have.length", 3);
+          assertFlexContainerCardsOrder([
+            "Orders",
+            "Orders Model",
+            "Orders, Count",
+          ]);
         });
 
       cy.log("'Add supporting text' is disabled with 3 cards");
@@ -313,30 +349,36 @@ describe("documents card embed node custom logic", () => {
       H.popover().should("not.exist");
 
       cy.log("a fourth card is rejected");
-      // Add another card to try to exceed the limit
-      addNewStandaloneCard("Orders Model");
+      H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
+        "be.visible",
+      );
+      H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
+        .closest('[data-type="flexContainer"]')
+        .should("not.exist");
 
-      // Wait for the new card to be added
-      H.documentContent()
-        .findAllByTestId("document-card-embed")
-        .should("have.length", 4); // 3 in flexContainer + 1 new standalone
+      H.dragAndDropCardOnAnotherCard(
+        "Orders, Count, Grouped by Created At (year)",
+        "Orders",
+        { side: "left" },
+      );
 
-      // Try to drag the new standalone card onto the flexContainer
-      H.dragAndDropCardOnAnotherCard("Orders", "Orders, Count", {
-        side: "left",
-      });
-
-      // Verify the flexContainer still has only 3 cards (drop should be rejected)
       H.documentContent()
         .find('[data-type="flexContainer"]')
+        .should("have.length", 1)
         .within(() => {
-          cy.findAllByTestId("document-card-embed").should("have.length", 3);
+          assertFlexContainerCardsOrder([
+            "Orders",
+            "Orders Model",
+            "Orders, Count",
+          ]);
         });
-
-      // Verify the standalone card is still separate
+      H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
+        .should("be.visible")
+        .closest('[data-type="flexContainer"]')
+        .should("not.exist");
       H.documentContent()
         .findAllByTestId("document-card-embed")
-        .should("have.length", 4); // Still 4 total, with 1 standalone
+        .should("have.length", 4);
     });
 
     it("should reorder cards within the same flexContainer and preserve resized widths when swapping", () => {
@@ -573,18 +615,25 @@ describe("documents card embed node custom logic", () => {
           .false;
       });
 
-      H.onNextAnchorClick((anchor) => {
-        expect(anchor)
-          .to.have.attr("href")
-          .match(/\/question\//);
-        expect(anchor).to.have.attr("rel", "noopener");
-        expect(anchor).to.have.attr("target", "_blank");
-      });
+      H.onNextAnchorClick(
+        cy
+          .spy((anchor: HTMLAnchorElement) => {
+            expect(anchor)
+              .to.have.attr("href")
+              .match(/\/question\//);
+            expect(anchor).to.have.attr("rel", "noopener");
+            expect(anchor).to.have.attr("target", "_blank");
+          })
+          .as("titleAnchorClick"),
+      );
 
       // Click on the card title with ctrl/meta key
       H.getDocumentCard("Orders")
         .findByTestId("card-embed-title")
         .click(H.holdMetaKey);
+
+      cy.get("@titleAnchorClick").should("have.been.calledOnce");
+      cy.location("pathname").should("match", /^\/document\//);
 
       cy.log("drill-through action");
       // Wait for cards to load
@@ -600,19 +649,26 @@ describe("documents card embed node custom logic", () => {
         .first()
         .click();
 
-      H.onNextAnchorClick((anchor) => {
-        expect(anchor)
-          .to.have.attr("href")
-          .match(/\/question/);
-        expect(anchor).to.have.attr("rel", "noopener");
-        expect(anchor).to.have.attr("target", "_blank");
-      });
+      H.onNextAnchorClick(
+        cy
+          .spy((anchor: HTMLAnchorElement) => {
+            expect(anchor)
+              .to.have.attr("href")
+              .match(/\/question/);
+            expect(anchor).to.have.attr("rel", "noopener");
+            expect(anchor).to.have.attr("target", "_blank");
+          })
+          .as("drillAnchorClick"),
+      );
 
       // Wait for the popover to appear and click the first action with ctrl/meta key
       H.popover()
         .findByText("See these Orders")
         .should("be.visible")
         .click(H.holdMetaKey);
+
+      cy.get("@drillAnchorClick").should("have.been.calledOnce");
+      cy.location("pathname").should("match", /^\/document\//);
     });
   });
 

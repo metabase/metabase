@@ -572,7 +572,10 @@ describe("documents", () => {
       cy.log("floating menu formatting");
       const content = "Some text to play with";
 
-      const formatTests = [
+      const formatTests: ({ button: RegExp; revert?: boolean } & (
+        | { role: string }
+        | { selector: string }
+      ))[] = [
         {
           button: /text_bold/,
           role: "strong",
@@ -583,7 +586,7 @@ describe("documents", () => {
         },
         {
           button: /text_strike/,
-          role: "paragraph", // figure out what to do here
+          selector: "s",
         },
         {
           button: /format_code/,
@@ -630,11 +633,15 @@ describe("documents", () => {
 
       H.documentFormattingMenu().should("exist");
 
-      formatTests.forEach(({ button, role, revert = true }) => {
+      formatTests.forEach((formatTest) => {
+        const { button, revert = true } = formatTest;
         H.documentFormattingMenu()
           .findByRole("button", { name: button })
           .click();
-        H.documentContent().findByRole(role).should("contain.text", content);
+        ("selector" in formatTest
+          ? H.documentContent().find(formatTest.selector)
+          : H.documentContent().findByRole(formatTest.role)
+        ).should("contain.text", content);
         if (revert) {
           H.documentFormattingMenu()
             .findByRole("button", { name: button })
@@ -929,7 +936,7 @@ describe("documents", () => {
             cy.log(`${ogHeight}, ${newHeight}`);
 
             // Unjustified type cast. FIXME
-            expect(newHeight).to.be.lessThan(ogHeight as number);
+            expect(newHeight).to.be.closeTo((ogHeight as number) + 200, 3);
           });
         });
       });
@@ -1088,6 +1095,10 @@ describe("documents", () => {
           const flexContainer = H.getFlexContainerForCard(firstCardName);
           const handles = H.getResizeHandlesForFlexContianer(flexContainer);
 
+          H.getDocumentCard(firstCardName).then(($card) => {
+            cy.wrap($card.width()).as("initialCardWidth");
+          });
+
           handles.eq(0).then(($handle) => {
             cy.wrap($handle).realMouseDown({
               button: "left",
@@ -1095,10 +1106,18 @@ describe("documents", () => {
             });
 
             const steps = [10, 40, 60, -100, -10, -40, -60];
-            steps.forEach((deltaX) => {
+            steps.forEach((deltaX, index) => {
               cy.wrap($handle).realMouseMove(deltaX, 0, {
                 position: "center",
               });
+
+              if (index === 0) {
+                cy.get<number>("@initialCardWidth").then((initialWidth) => {
+                  H.getDocumentCard(firstCardName).should(($card) => {
+                    expect($card.width()).not.to.equal(initialWidth);
+                  });
+                });
+              }
 
               assertChartMatchesContainerWidth(
                 firstCardName,
@@ -1195,10 +1214,12 @@ describe("documents", () => {
           .findByText("Orders, Count, Grouped by Created At (year)")
           .click();
 
-        cy.location("pathname").should(
-          "not.include",
-          ORDERS_BY_YEAR_QUESTION_ID.toString(),
-        );
+        cy.location("pathname")
+          .should("match", /^\/question\/\d+/)
+          .then((pathname) => {
+            const [, questionId] = pathname.match(/^\/question\/(\d+)/)!;
+            expect(Number(questionId)).not.to.equal(ORDERS_BY_YEAR_QUESTION_ID);
+          });
 
         // Navigating to a question from a document should result in a back button
         cy.findByLabelText("Back to Foo Document").click();
@@ -1494,9 +1515,8 @@ describe("documents", () => {
       H.commandSuggestionItem("Chart").click();
 
       cy.log("Verify 'Create new question' footer is not visible");
-      H.commandSuggestionDialog()
-        .findByRole("button", { name: /New chart/ })
-        .should("not.exist");
+      H.commandSuggestionItem(/Browse all/).should("be.visible");
+      H.commandSuggestionItem(/New chart/).should("not.exist");
 
       cy.log("Search for something to verify footer doesn't appear");
       H.addToDocument("xyznonexistent", false);
@@ -1507,12 +1527,8 @@ describe("documents", () => {
       cy.log(
         "Verify 'Create new question' footer is still not visible for no-permission user",
       );
-      H.commandSuggestionDialog()
-        .findByRole("button", { name: /New chart/ })
-        .should("not.exist");
-
-      cy.log("Verify 'Browse all' footer is still available");
       H.commandSuggestionItem(/Browse all/).should("be.visible");
+      H.commandSuggestionItem(/New chart/).should("not.exist");
     });
 
     it("should not show native SQL question option for users without native query editing permissions", () => {
@@ -1539,13 +1555,14 @@ describe("documents", () => {
       cy.log("Click 'New chart' to open question type menu");
       H.commandSuggestionItem(/New chart/).click();
 
-      cy.log("Verify only notebook option is available, not SQL");
-      H.commandSuggestionItem(/New SQL query/).should("not.exist");
-
       cy.log("Verify notebook modal opens automatically");
       cy.findByRole("dialog", { name: "Create new question" }).should(
         "be.visible",
       );
+
+      cy.log("Verify only notebook option is available, not SQL");
+      H.commandSuggestionItem(/New Question/).should("exist");
+      H.commandSuggestionItem(/New SQL query/).should("not.exist");
     });
   });
 

@@ -1,4 +1,5 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { DocumentId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -94,6 +95,23 @@ describe("scenarios > documents > public", () => {
       idAlias: "documentId",
     });
 
+    cy.get<DocumentId>("@documentId").then((documentId) => {
+      H.createComment({
+        target_type: "document",
+        target_id: documentId,
+        child_target_id: "1",
+        content: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "A test comment" }],
+            },
+          ],
+        },
+      });
+    });
+
     cy.log("Visit the document as admin");
     H.visitDocument("@documentId");
 
@@ -121,6 +139,11 @@ describe("scenarios > documents > public", () => {
 
     // Verify the metabot block shows its Run button
     H.documentContent().findByRole("button", { name: "Run" }).should("exist");
+
+    // Verify the comments link and sidebar are available
+    cy.findByRole("link", { name: "Show all comments" }).should("be.visible");
+    H.Comments.openAllComments();
+    H.Comments.getSidebar().should("be.visible");
 
     cy.log("Create public link and visit public document");
     visitPublicDocument();

@@ -71,19 +71,19 @@ describe("scenarios > documents > downloads", () => {
     // Open card menu
     H.openDocumentCardMenu("Orders");
 
-    // Verify menu shows only "Download results" and it's enabled
+    // Verify only "Download results" is enabled
     H.popover().within(() => {
-      cy.findByRole("menuitem", { name: /Download results/i }).should(
-        "be.visible",
-      );
-      // Verify all menu items: only Download results should be enabled
-      cy.findAllByRole("menuitem").each(($item) => {
-        const text = $item.text();
-        if (text.includes("Download results")) {
-          cy.wrap($item).should("not.be.disabled");
-        } else {
-          cy.wrap($item).should("be.disabled");
-        }
+      cy.findByRole("menuitem", { name: /Download results/i })
+        .should("be.visible")
+        .and("be.enabled");
+      [
+        "Add supporting text",
+        "Edit Visualization",
+        "Edit Query",
+        "Replace",
+        "Remove Chart",
+      ].forEach((name) => {
+        cy.findByRole("menuitem", { name }).should("be.disabled");
       });
     });
 
