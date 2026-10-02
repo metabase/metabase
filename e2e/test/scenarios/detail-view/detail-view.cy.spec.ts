@@ -19,7 +19,7 @@ describe("detail view", () => {
   });
 
   describe("table", () => {
-    it("displays object details with breadcrumbs and relationships, and 404 error state", () => {
+    it("displays object details, breadcrumbs, relationships, email links, and 404 error state", () => {
       DetailView.visitTable(PRODUCTS_ID, 9999);
 
       cy.findByTestId("loading-indicator").should("not.exist");
@@ -29,6 +29,16 @@ describe("detail view", () => {
         cy.findByRole("link", { name: /Sample Database/ }).should("be.visible");
         cy.findByRole("link", { name: "Products" }).should("be.visible");
         cy.findByText("9999").should("be.visible");
+      });
+
+      DetailView.visitTable(PEOPLE_ID, 1);
+
+      DetailView.getDetailsRowValue({ index: 2, rowsCount: 13 }).within(() => {
+        cy.findByRole("link", { name: "borer-hudson@yahoo.com" }).should(
+          "have.attr",
+          "href",
+          "mailto:borer-hudson@yahoo.com",
+        );
       });
 
       DetailView.visitTable(PRODUCTS_ID, 1);
@@ -329,18 +339,6 @@ describe("detail view", () => {
           .and("have.attr", "target", "_blank")
           .and("have.attr", "rel", "noopener noreferrer");
       });
-    });
-  });
-
-  it("displays emails as links", () => {
-    DetailView.visitTable(PEOPLE_ID, 1);
-
-    DetailView.getDetailsRowValue({ index: 2, rowsCount: 13 }).within(() => {
-      cy.findByRole("link", { name: "borer-hudson@yahoo.com" }).should(
-        "have.attr",
-        "href",
-        "mailto:borer-hudson@yahoo.com",
-      );
     });
   });
 });
