@@ -103,7 +103,8 @@
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
              (select-keys table [:active :created_at :db_id :description :display_name :entity_type
-                                 :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
+                                 :id :name :rows :schema :updated_at :visibility_type :initial_sync_status
+                                 :is_writable]))
       (update :entity_type #(when % (str "entity/" (name %))))
       (update :visibility_type #(when % (name %)))
       (update :schema str)))

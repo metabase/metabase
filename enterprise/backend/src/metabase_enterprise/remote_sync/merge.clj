@@ -17,6 +17,7 @@
   and produces a merged set of file specs plus a list of genuine conflicts (the same entity changed
   differently on both sides)."
   (:require
+   [clojure.string :as str]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]))
@@ -41,10 +42,11 @@
       nil)))
 
 (defn- file-key
-  "Identity key for a `{:path :content}` file spec: the serdes identity when available, otherwise a
-  path-based fallback so non-serdes files still merge sanely."
-  [{:keys [path content]}]
-  (or (entity-identity content)
+  "Identity key for a `{:path :content}` file spec: the serdes identity of a YAML file when available, otherwise a
+  path-based fallback so non-serdes files, such as resource files, still merge sanely."
+  [{:keys [^String path content]}]
+  (or (when (str/ends-with? path ".yaml")
+        (entity-identity content))
       [::by-path path]))
 
 (defn- index-by-key
