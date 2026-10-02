@@ -27,7 +27,7 @@ export function LibraryEmptyState() {
     try {
       setError(null);
       const collection = await createLibrary().unwrap();
-      sendSuccessToast(t`Library created`);
+      sendSuccessToast(t`Semantic layer created`);
       trackDataStudioLibraryCreated(collection.id);
     } catch (error) {
       setError(getErrorMessage(error));
@@ -45,7 +45,7 @@ export function LibraryEmptyState() {
           <Stack gap="sm">
             <Title order={3}>{t`A source of truth for analytics`}</Title>
             <Text c="text-secondary" lh="1.25rem">
-              {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
+              {t`The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
             </Text>
           </Stack>
           <Stack gap="sm">
@@ -54,7 +54,7 @@ export function LibraryEmptyState() {
                 variant="filled"
                 onClick={handleSubmit}
                 loading={isLoading}
-              >{t`Create my Library`}</Button>
+              >{t`Create my semantic layer`}</Button>
             </Group>
             {error && <Text c="feedback-negative">{error}</Text>}
           </Stack>
@@ -73,7 +73,7 @@ export function LibraryEmptyState() {
           <FeatureCard
             icon="git_branch"
             title={t`Version control`}
-            description={t`Sync your Library to Git`}
+            description={t`Sync your semantic layer to git`}
           />
           <FeatureCard
             icon="verified_round"

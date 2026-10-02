@@ -6,12 +6,7 @@ import type {
 } from "react";
 import { forwardRef } from "react";
 
-import {
-  FormLabelContent,
-  FormLabelDescription,
-  FormLabelRoot,
-  FormLabelTitle,
-} from "./FormLabel.styled";
+import { Box } from "metabase/ui";
 
 interface FormLabelProps extends HTMLAttributes<HTMLDivElement> {
   htmlFor?: LabelHTMLAttributes<HTMLLabelElement>["htmlFor"];
@@ -25,15 +20,28 @@ const FormLabel = forwardRef(function FormLabel(
   ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <FormLabelRoot {...props} ref={ref}>
-      <FormLabelContent>
-        {title && <FormLabelTitle htmlFor={htmlFor}>{title}</FormLabelTitle>}
-        {description && (
-          <FormLabelDescription>{description}</FormLabelDescription>
+    <Box {...props} ref={ref} mb="xxl">
+      <Box maw="36rem">
+        {title && (
+          <Box
+            component="label"
+            htmlFor={htmlFor}
+            fz="sm"
+            fw="bold"
+            tt="uppercase"
+            lts="0.06em"
+          >
+            {title}
+          </Box>
         )}
-      </FormLabelContent>
+        {description && (
+          <Box component="p" mt="sm" mb="lg">
+            {description}
+          </Box>
+        )}
+      </Box>
       {children}
-    </FormLabelRoot>
+    </Box>
   );
 });
 
