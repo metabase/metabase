@@ -325,7 +325,7 @@ describe("monitor routes", () => {
         );
       });
 
-      it("sends monitoring-only users to content diagnostics", async () => {
+      it("sends monitoring-only users to background tasks", async () => {
         const { router } = setup({
           initialRoute: "/monitor",
           user: createMockUser({
@@ -336,9 +336,7 @@ describe("monitor routes", () => {
         });
 
         await waitFor(() =>
-          expect(router?.location.pathname).toBe(
-            "/monitor/content-diagnostics",
-          ),
+          expect(router?.location.pathname).toBe(Urls.monitorTasksList()),
         );
       });
     });

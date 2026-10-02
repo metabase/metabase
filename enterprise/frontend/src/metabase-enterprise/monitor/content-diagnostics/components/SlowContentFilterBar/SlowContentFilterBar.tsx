@@ -1,19 +1,14 @@
-import { memo } from "react";
-
 import { Group } from "metabase/ui";
 
+import { slowContentConfig } from "../../config";
 import { DiagnosticsSearchInput } from "../DiagnosticsSearchInput";
 import { SlowContentFilterPicker } from "../SlowContentFilterPicker";
-import {
-  areSlowFilterOptionsEqual,
-  getSlowDefaultFilterOptions,
-} from "../slow-utils";
 import type {
   ContentDiagnosticsFilterBarProps,
   SlowContentFilterOptions,
 } from "../types";
 
-export const SlowContentFilterBar = memo(function SlowContentFilterBar({
+export function SlowContentFilterBar({
   query,
   filterOptions,
   isLoading,
@@ -21,9 +16,9 @@ export const SlowContentFilterBar = memo(function SlowContentFilterBar({
   onFilterOptionsChange,
   onReset,
 }: ContentDiagnosticsFilterBarProps<SlowContentFilterOptions>) {
-  const hasDefaultFilterOptions = areSlowFilterOptionsEqual(
+  const hasDefaultFilterOptions = slowContentConfig.areFilterOptionsEqual(
     filterOptions,
-    getSlowDefaultFilterOptions(),
+    slowContentConfig.getDefaultFilterOptions(),
   );
   const canReset = !hasDefaultFilterOptions || query !== undefined;
 
@@ -40,4 +35,4 @@ export const SlowContentFilterBar = memo(function SlowContentFilterBar({
       />
     </Group>
   );
-});
+}

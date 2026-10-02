@@ -11,10 +11,15 @@ import {
 
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 
-const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+const { trackSimpleEvent, trackSchemaEvent } =
+  jest.requireMock("metabase/analytics");
 
 function card(
-  opts: { id?: number; entity_id?: number } = {},
+  opts: {
+    id?: number;
+    entity_id?: number;
+    card_type?: "question" | "model" | "metric";
+  } = {},
 ): ContentDiagnosticsBaseFinding {
   return createMockContentDiagnosticsStaleFinding({
     entity_type: "card",
@@ -33,14 +38,14 @@ function transform(
 
 function setup(selectedFindings: ContentDiagnosticsBaseFinding[]) {
   const onSettled = jest.fn();
-  const { store } = renderWithProviders(
+  const { store, rerender } = renderWithProviders(
     <ContentDiagnosticsBulkTrashBar
       tab="stale"
       selectedFindings={selectedFindings}
       onSettled={onSettled}
     />,
   );
-  return { onSettled, store };
+  return { onSettled, store, rerender };
 }
 
 function hasUndo(store: ReturnType<typeof setup>["store"], message: string) {
@@ -50,6 +55,7 @@ function hasUndo(store: ReturnType<typeof setup>["store"], message: string) {
 describe("ContentDiagnosticsBulkTrashBar", () => {
   beforeEach(() => {
     trackSimpleEvent.mockClear();
+    trackSchemaEvent.mockClear();
   });
 
   it("uses recoverable trash wording for archivable-only selections", async () => {
@@ -94,12 +100,7 @@ describe("ContentDiagnosticsBulkTrashBar", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "1 item will be moved to the trash and can be restored later.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        "1 transform will be permanently deleted and cannot be restored.",
+        "1 item will be moved to the trash and can be restored later. 1 transform will be permanently deleted and cannot be restored.",
       ),
     ).toBeInTheDocument();
   });
@@ -154,6 +155,33 @@ describe("ContentDiagnosticsBulkTrashBar", () => {
     expect(hasUndo(store, "Moved 1 item to the trash")).toBe(true);
   });
 
+  it.each(["model", "metric"] as const)(
+    "tracks a trashed %s as its card subtype",
+    async (cardType) => {
+      setupCardEndpoints(createMockCard({ id: 1 }));
+      const { onSettled } = setup([
+        card({ id: 1, entity_id: 1, card_type: cardType }),
+      ]);
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Move to trash" }),
+      );
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", {
+          name: "Move to trash",
+        }),
+      );
+      await waitFor(() => expect(onSettled).toHaveBeenCalledWith([]));
+      expect(trackSchemaEvent).toHaveBeenCalledWith(
+        "simple_event",
+        expect.objectContaining({
+          event: "moved-to-trash",
+          event_detail: cardType,
+        }),
+      );
+    },
+  );
+
   it("keeps failed items selected and warns when some entities can't be trashed", async () => {
     setupCardEndpoints(createMockCard({ id: 1 }));
     fetchMock.put("path:/api/card/2", { status: 500, body: {} });
@@ -180,6 +208,35 @@ describe("ContentDiagnosticsBulkTrashBar", () => {
         triggered_from: "stale",
         event_detail: "1/2",
         result: "partial",
+      }),
+    );
+  });
+
+  it("does not trash or track when the selected finding disappears before confirmation", async () => {
+    const { rerender, onSettled, store } = setup([
+      card({ id: 1, entity_id: 1 }),
+    ]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Move to trash" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+
+    rerender(
+      <ContentDiagnosticsBulkTrashBar
+        tab="stale"
+        selectedFindings={[]}
+        onSettled={onSettled}
+      />,
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move to trash" }),
+    );
+
+    expect(onSettled).not.toHaveBeenCalled();
+    expect(hasUndo(store, "Moved 0 items to the trash")).toBe(false);
+    expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_findings_bulk_trashed",
       }),
     );
   });

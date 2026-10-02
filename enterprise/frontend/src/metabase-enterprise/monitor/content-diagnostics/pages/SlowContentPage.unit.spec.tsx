@@ -299,8 +299,10 @@ describe("SlowContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(getUrlQuery(router)).toEqual({
-      "min-duration-ms": "3000",
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "min-duration-ms": "3000",
+      });
     });
     expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBe(
       "3000",

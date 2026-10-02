@@ -489,8 +489,10 @@ describe("DuplicatedContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(getUrlQuery(router)).toEqual({
-      "min-duplicate-count": "5",
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "min-duplicate-count": "5",
+      });
     });
     expect(getLastRequestUrl().searchParams.get("min-duplicate-count")).toBe(
       "5",

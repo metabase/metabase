@@ -1,19 +1,14 @@
-import { memo } from "react";
-
 import { Group } from "metabase/ui";
 
+import { staleContentConfig } from "../../config";
 import { DiagnosticsSearchInput } from "../DiagnosticsSearchInput";
 import { StaleContentFilterPicker } from "../StaleContentFilterPicker";
-import {
-  areStaleFilterOptionsEqual,
-  getStaleDefaultFilterOptions,
-} from "../stale-utils";
 import type {
   ContentDiagnosticsFilterBarProps,
   StaleContentFilterOptions,
 } from "../types";
 
-export const StaleContentFilterBar = memo(function StaleContentFilterBar({
+export function StaleContentFilterBar({
   query,
   filterOptions,
   isLoading,
@@ -21,9 +16,9 @@ export const StaleContentFilterBar = memo(function StaleContentFilterBar({
   onFilterOptionsChange,
   onReset,
 }: ContentDiagnosticsFilterBarProps<StaleContentFilterOptions>) {
-  const hasDefaultFilterOptions = areStaleFilterOptionsEqual(
+  const hasDefaultFilterOptions = staleContentConfig.areFilterOptionsEqual(
     filterOptions,
-    getStaleDefaultFilterOptions(),
+    staleContentConfig.getDefaultFilterOptions(),
   );
   const canReset = !hasDefaultFilterOptions || query !== undefined;
 
@@ -40,4 +35,4 @@ export const StaleContentFilterBar = memo(function StaleContentFilterBar({
       />
     </Group>
   );
-});
+}

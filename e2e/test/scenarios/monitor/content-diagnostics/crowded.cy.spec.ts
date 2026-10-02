@@ -37,7 +37,7 @@ const TABS = [
 
 const CROWDED = [
   { name: COLLECTION_NAME, count: "3 items" },
-  { name: PACKED_DASHBOARD_NAME, count: "2 dashcards" },
+  { name: PACKED_DASHBOARD_NAME, count: "2 dashcards on one tab" },
   { name: TABBED_DASHBOARD_NAME, count: "2 tabs" },
   { name: DOCUMENT_NAME, count: "2 cards" },
 ];

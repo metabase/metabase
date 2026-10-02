@@ -1,14 +1,8 @@
-import type {
-  OnChangeFn,
-  Row,
-  RowSelectionState,
-  SortingState,
-  Updater,
-} from "@tanstack/react-table";
+import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useScrollToTop } from "metabase/common/hooks";
+import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
@@ -20,14 +14,15 @@ import {
 import type * as Urls from "metabase/urls";
 import {
   type Sorting,
-  getNextOptionalSorting,
-  getSortingState,
+  toSorting,
+  toSortingOptions,
 } from "metabase/utils/sorting";
-import {
-  CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS,
-  type ContentDiagnosticsStaleFinding,
-  type ContentDiagnosticsStaleSortColumn,
+import type {
+  ContentDiagnosticsStaleFinding,
+  ContentDiagnosticsStaleSortColumn,
 } from "metabase-types/api";
+
+import { staleContentConfig } from "../../config";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
@@ -57,28 +52,17 @@ export function StaleContentTable({
   onRowSelectionChange,
 }: StaleContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
-  const sortingState = useMemo(
-    () => getSortingState(sortOptions),
-    [sortOptions],
-  );
+  const { sortingState, onSortingChange } = useSortingStateChange({
+    sortingOptions:
+      sortOptions == null ? undefined : toSortingOptions(sortOptions),
+    columns: staleContentConfig.sortColumns,
+    onSortingOptionsChange: (options) =>
+      onSortOptionsChange(options == null ? undefined : toSorting(options)),
+  });
 
   const handleRowActivate = useCallback(
     (row: Row<ContentDiagnosticsStaleFinding>) => onSelect?.(row.original),
     [onSelect],
-  );
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const newSortingState =
-        typeof updater === "function" ? updater(sortingState) : updater;
-      onSortOptionsChange(
-        getNextOptionalSorting(
-          newSortingState,
-          CONTENT_DIAGNOSTICS_STALE_SORT_COLUMNS,
-        ),
-      );
-    },
-    [sortingState, onSortOptionsChange],
   );
 
   const treeTableInstance =
@@ -92,7 +76,7 @@ export function StaleContentTable({
       rowSelection,
       onRowActivate: handleRowActivate,
       onRowSelectionChange,
-      onSortingChange: handleSortingChange,
+      onSortingChange,
     });
 
   useScrollToTop({

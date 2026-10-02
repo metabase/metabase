@@ -1,14 +1,8 @@
-import type {
-  OnChangeFn,
-  Row,
-  RowSelectionState,
-  SortingState,
-  Updater,
-} from "@tanstack/react-table";
+import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useScrollToTop } from "metabase/common/hooks";
+import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
@@ -20,18 +14,21 @@ import {
 import type * as Urls from "metabase/urls";
 import {
   type Sorting,
-  getNextOptionalSorting,
-  getSortingState,
+  toSorting,
+  toSortingOptions,
 } from "metabase/utils/sorting";
-import {
-  CONTENT_DIAGNOSTICS_IMBALANCED_SORT_COLUMNS,
-  type ContentDiagnosticsImbalancedFinding,
-  type ContentDiagnosticsImbalancedSortColumn,
+import type {
+  ContentDiagnosticsImbalancedFinding,
+  ContentDiagnosticsImbalancedFindingType,
+  ContentDiagnosticsImbalancedSortColumn,
 } from "metabase-types/api";
+
+import { getImbalancedContentConfig } from "../../config";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
 type ImbalancedContentTableProps = {
+  mode: ContentDiagnosticsImbalancedFindingType;
   findings: ContentDiagnosticsImbalancedFinding[];
   params: Urls.ImbalancedContentParams;
   sortOptions: Sorting<ContentDiagnosticsImbalancedSortColumn> | undefined;
@@ -48,6 +45,7 @@ type ImbalancedContentTableProps = {
 };
 
 export function ImbalancedContentTable({
+  mode,
   findings,
   params,
   sortOptions,
@@ -60,29 +58,18 @@ export function ImbalancedContentTable({
   onSortOptionsChange,
   onRowSelectionChange,
 }: ImbalancedContentTableProps) {
-  const columns = useMemo(() => getColumns(), []);
-  const sortingState = useMemo(
-    () => getSortingState(sortOptions),
-    [sortOptions],
-  );
+  const columns = useMemo(() => getColumns(mode), [mode]);
+  const { sortingState, onSortingChange } = useSortingStateChange({
+    sortingOptions:
+      sortOptions == null ? undefined : toSortingOptions(sortOptions),
+    columns: getImbalancedContentConfig(mode).sortColumns,
+    onSortingOptionsChange: (options) =>
+      onSortOptionsChange(options == null ? undefined : toSorting(options)),
+  });
 
   const handleRowActivate = useCallback(
     (row: Row<ContentDiagnosticsImbalancedFinding>) => onSelect?.(row.original),
     [onSelect],
-  );
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const newSortingState =
-        typeof updater === "function" ? updater(sortingState) : updater;
-      onSortOptionsChange(
-        getNextOptionalSorting(
-          newSortingState,
-          CONTENT_DIAGNOSTICS_IMBALANCED_SORT_COLUMNS,
-        ),
-      );
-    },
-    [sortingState, onSortOptionsChange],
   );
 
   const treeTableInstance =
@@ -98,7 +85,7 @@ export function ImbalancedContentTable({
       rowSelection,
       onRowActivate: handleRowActivate,
       onRowSelectionChange,
-      onSortingChange: handleSortingChange,
+      onSortingChange,
     });
 
   useScrollToTop({

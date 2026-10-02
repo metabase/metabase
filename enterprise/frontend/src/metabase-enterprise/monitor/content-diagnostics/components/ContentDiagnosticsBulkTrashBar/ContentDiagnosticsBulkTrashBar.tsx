@@ -1,18 +1,14 @@
-import { type ReactNode, useState } from "react";
-import { match } from "ts-pattern";
+import { useDisclosure } from "@mantine/hooks";
 import { msgid, ngettext, t } from "ttag";
 
-import {
-  BulkActionBar,
-  BulkActionButton,
-} from "metabase/common/components/BulkActionBar";
+import { BulkActionButton } from "metabase/common/components/BulkActionBar";
+import { ToastCard } from "metabase/common/components/BulkActionBar/BulkActionBar.styled";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { List } from "metabase/ui";
+import { Box, Flex, Text } from "metabase/ui";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
-import { trackContentDiagnosticsFindingsBulkTrashed } from "../../analytics";
 import type { ContentDiagnosticsTab } from "../types";
 
 import { useBulkTrashFindings } from "./use-bulk-trash-findings";
@@ -26,7 +22,7 @@ type ContentDiagnosticsBulkTrashBarProps = {
 type TrashCopy = {
   actionLabel: string;
   title: string;
-  message: ReactNode;
+  message: string;
   confirmLabel: string;
 };
 
@@ -77,12 +73,7 @@ function getTrashCopy(
   return {
     actionLabel: t`Delete`,
     title: t`Delete selected items?`,
-    message: (
-      <List>
-        <List.Item>{trashPart}</List.Item>
-        <List.Item>{deletePart}</List.Item>
-      </List>
-    ),
+    message: `${trashPart} ${deletePart}`,
     confirmLabel: t`Delete`,
   };
 }
@@ -96,8 +87,8 @@ function getResultMessage(count: number, transformCount: number): string {
     );
   }
   return ngettext(
-    msgid`Removed ${count} item`,
-    `Removed ${count} items`,
+    msgid`Deleted ${count} item`,
+    `Deleted ${count} items`,
     count,
   );
 }
@@ -109,7 +100,7 @@ export function ContentDiagnosticsBulkTrashBar({
 }: ContentDiagnosticsBulkTrashBarProps) {
   const dispatch = useDispatch();
   const trashFindings = useBulkTrashFindings();
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isConfirmOpen, { open, close }] = useDisclosure();
 
   const count = selectedFindings.length;
   const transformCount = selectedFindings.filter(
@@ -119,21 +110,15 @@ export function ContentDiagnosticsBulkTrashBar({
   const trashCopy = getTrashCopy(archivableCount, transformCount);
 
   const handleConfirm = async () => {
-    const startTime = performance.now();
-    const { total, failedFindings } = await trashFindings(selectedFindings);
-    setIsConfirmOpen(false);
-
-    const removedCount = total - failedFindings.length;
-    trackContentDiagnosticsFindingsBulkTrashed({
+    if (selectedFindings.length === 0) {
+      close();
+      return;
+    }
+    const { total, failedFindings } = await trashFindings(
+      selectedFindings,
       tab,
-      removedCount,
-      selectedCount: total,
-      durationMs: Math.trunc(performance.now() - startTime),
-      result: match({ removedCount, failedCount: failedFindings.length })
-        .with({ removedCount: 0 }, () => "failure" as const)
-        .with({ failedCount: 0 }, () => "success" as const)
-        .otherwise(() => "partial" as const),
-    });
+    );
+    close();
 
     if (failedFindings.length > 0) {
       dispatch(
@@ -155,25 +140,40 @@ export function ContentDiagnosticsBulkTrashBar({
 
   return (
     <>
-      <BulkActionBar
-        opened={count > 0}
-        message={ngettext(
-          msgid`${count} item selected`,
-          `${count} items selected`,
-          count,
-        )}
-      >
-        <BulkActionButton danger onClick={() => setIsConfirmOpen(true)}>
-          {trashCopy.actionLabel}
-        </BulkActionButton>
-      </BulkActionBar>
+      {count > 0 && (
+        <Box
+          pos="absolute"
+          left="50%"
+          style={{
+            bottom: "var(--mantine-spacing-lg)",
+            transform: "translateX(-50%)",
+            zIndex: 150,
+          }}
+          data-testid="content-diagnostics-bulk-actions"
+        >
+          <ToastCard data-testid="toast-card">
+            <Text c="tooltip-text">
+              {ngettext(
+                msgid`${count} item selected`,
+                `${count} items selected`,
+                count,
+              )}
+            </Text>
+            <Flex gap="sm" align="center">
+              <BulkActionButton danger onClick={open}>
+                {trashCopy.actionLabel}
+              </BulkActionButton>
+            </Flex>
+          </ToastCard>
+        </Box>
+      )}
       <ConfirmModal
         opened={isConfirmOpen}
         title={trashCopy.title}
         message={trashCopy.message}
         confirmButtonText={trashCopy.confirmLabel}
         onConfirm={handleConfirm}
-        onClose={() => setIsConfirmOpen(false)}
+        onClose={close}
       />
     </>
   );

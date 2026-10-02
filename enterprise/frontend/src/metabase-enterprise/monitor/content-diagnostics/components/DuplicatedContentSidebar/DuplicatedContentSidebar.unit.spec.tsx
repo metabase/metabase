@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { ContentDiagnosticsDuplicatedFinding } from "metabase-types/api";
 import {
@@ -6,6 +8,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import { DuplicatedContentSidebar } from "./DuplicatedContentSidebar";
+
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 function setup(
   finding: ContentDiagnosticsDuplicatedFinding = createMockContentDiagnosticsDuplicatedFinding(),
@@ -67,6 +71,37 @@ describe("DuplicatedContentSidebar", () => {
       name: "Revenue, Model",
     });
     expect(link).toHaveAttribute("href", expect.stringContaining("/model/11"));
+  });
+
+  it("tracks opening a duplicate peer", async () => {
+    trackSimpleEvent.mockClear();
+    setup(
+      createMockContentDiagnosticsDuplicatedFinding({
+        details: {
+          duplicate_entities: [
+            createMockContentDiagnosticsDuplicateEntity({
+              id: 11,
+              name: "Revenue",
+              entity_type: "card",
+            }),
+          ],
+        },
+      }),
+    );
+
+    await userEvent.click(
+      within(getDuplicatesSection()).getByRole("link", {
+        name: "Revenue, Question",
+      }),
+    );
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_duplicate_opened",
+        triggered_from: "duplicated",
+        target_id: 11,
+        event_detail: "card",
+      }),
+    );
   });
 
   it("shows the view count of a duplicate", () => {
