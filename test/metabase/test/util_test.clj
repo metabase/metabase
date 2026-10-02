@@ -2,6 +2,8 @@
   "Tests for the test utils!"
   (:require
    [clojure.test :refer :all]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -168,6 +170,25 @@
     (mt/with-dynamic-fn-redefs [counting-target (fn [x]
                                                   (if (pos? x) (counting-target (dec x)) :recursed))]
       (is (= :recursed (counting-target 50))))))
+
+(deftest with-dynamic-fn-redefs-reexport-test
+  (testing "A redef of a potemkin re-export holds after its source var's root changes"
+    (let [src #'premium-features.settings/is-hosted?]
+      (is (contains? (.getWatches ^clojure.lang.Var src) #'premium-features/is-hosted?))
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
+        (is (= ::reexport (premium-features/is-hosted?))))
+      ;; Each of these rebinds the source's root, and potemkin's watch copies it over the re-export's proxy.
+      (testing "after the source is patched"
+        (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly ::source)]
+          (is (= ::source (premium-features/is-hosted?))))
+        (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
+          (is (= ::reexport (premium-features/is-hosted?)))
+          (is (not= ::reexport (@src)))))
+      (testing "after `with-redefs` on the source"
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [premium-features.settings/is-hosted? (constantly ::global)])
+        (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly ::reexport)]
+          (is (= ::reexport (premium-features/is-hosted?))))))))
 
 (deftest ^:parallel ordered-subset?-test
   (is (mt/ordered-subset? [1 2 3] [1 2 3]))
