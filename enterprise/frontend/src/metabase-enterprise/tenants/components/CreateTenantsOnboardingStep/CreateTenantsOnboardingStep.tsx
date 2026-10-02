@@ -13,7 +13,6 @@ import {
   Icon,
   Paper,
   Stack,
-  Text,
   TextInput,
 } from "metabase/ui";
 import { slugify } from "metabase/utils/formatting";
@@ -152,11 +151,13 @@ export const CreateTenantsOnboardingStep = ({
                 )}
               </Group>
 
-              <TenantFormField
+              <TextInput
                 label={t`Tenant slug`}
                 description={t`Can't be changed later. Used to reference tenants via API and SSO.`}
                 value={tenant.slug}
-                onChange={(value) => updateTenantCard(index, "slug", value)}
+                onChange={(e) =>
+                  updateTenantCard(index, "slug", e.target.value)
+                }
                 placeholder="tenant-slug"
               />
 
@@ -174,12 +175,16 @@ export const CreateTenantsOnboardingStep = ({
               {(strategy === "connection-impersonation" ||
                 strategy === "database-routing") &&
                 fieldConfig && (
-                  <TenantFormField
+                  <TextInput
                     label={fieldConfig.label}
                     description={fieldConfig.description}
                     value={tenant.dataIsolationFieldValue}
-                    onChange={(value) =>
-                      updateTenantCard(index, "dataIsolationFieldValue", value)
+                    onChange={(e) =>
+                      updateTenantCard(
+                        index,
+                        "dataIsolationFieldValue",
+                        e.target.value,
+                      )
                     }
                     placeholder={fieldConfig.placeholder}
                   />
@@ -193,7 +198,7 @@ export const CreateTenantsOnboardingStep = ({
         <Button
           variant="transparent"
           size="compact-md"
-          leftSection={<Icon name="add" size={16} />}
+          leftSection={<Icon name="add" />}
           onClick={addTenantCard}
         >
           {t`New tenant`}
@@ -211,33 +216,3 @@ export const CreateTenantsOnboardingStep = ({
     </Stack>
   );
 };
-
-const TenantFormField = ({
-  label,
-  description,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  description: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-}) => (
-  <Stack gap="xxs">
-    <Text fw="bold" size="sm">
-      {label}
-    </Text>
-
-    <Text c="text-secondary" size="xs" mb="sm">
-      {description}
-    </Text>
-
-    <TextInput
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-    />
-  </Stack>
-);

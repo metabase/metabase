@@ -81,12 +81,7 @@ export const SetupKeyModal = (props: SetupKeyDialogProps) => {
             flex="1 0 auto"
             aria-label={t`New secret key`}
           />
-          <Button
-            flex="0 0 auto"
-            variant="filled"
-            size="lg"
-            onClick={generateToken}
-          >
+          <Button flex="0 0 auto" variant="filled" onClick={generateToken}>
             {t`Regenerate key`}
           </Button>
         </Flex>

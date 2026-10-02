@@ -54,7 +54,6 @@ export function FilterOptionsPicker({
             </ActionIcon>
           ) : (
             <Button
-              size="lg"
               leftSection={<FixedSizeIcon name="filter" aria-hidden />}
               disabled={isDisabled}
               data-testid="dependency-filter-button"

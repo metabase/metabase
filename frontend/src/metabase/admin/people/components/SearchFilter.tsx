@@ -19,7 +19,7 @@ export const SearchFilter = ({
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      leftSection={<Icon c="text-secondary" name="search" size={16} />}
+      leftSection={<Icon c="text-secondary" name="search" />}
       rightSectionPointerEvents="all"
       rightSection={
         value === "" ? (

@@ -12,8 +12,8 @@
 
 .placeholder {
   position: absolute;
-  bottom: 0.5rem;
-  left: 0.75rem;
+  bottom: 0.25rem;
+  left: var(--mantine-spacing-sm);
   pointer-events: none;
   user-select: none;
 }
