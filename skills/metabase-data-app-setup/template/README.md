@@ -6,14 +6,14 @@ SDK) that Metabase renders inside an isolated, sandboxed iframe at
 
 Data apps are delivered through **Git**: this directory lives at
 `data_apps/<slug>/` inside a repository connected to Metabase via remote sync.
-You commit the built bundle (`dist/index.js`), and on the next remote-sync
-import Metabase materializes the app and serves it.
+You commit the built bundle (`dist/index.js`) and `resources/`, and on the next
+remote-sync import Metabase materializes the app and serves it.
 
 ## Develop
 
 ```bash
 npm install                           # or yarn / pnpm / bun — no lockfile shipped
-cp .env.local.example .env.local      # set DATA_APP_MB_URL + DATA_APP_MB_API_KEY
+cp .env.local.example ../../.env.local  # repo root: set DATA_APP_MB_URL + DATA_APP_MB_API_KEY
 npm run dev                           # preview at http://localhost:5174
 ```
 
@@ -27,12 +27,25 @@ Admin → Embedding → Embedded analytics SDK → CORS.
 ## Ship
 
 ```bash
+npm run print-resources               # prints what resources/ is written from, as JSON
+npm run validate-resources            # validates the repository's Metabase YAML
+npm run check-resources               # checks resources/ backs every definition
 npm run build                         # produces a single dist/index.js
 ```
 
-Commit `dist/index.js` (the `path` declared in `data_app.yaml`) along with your
-source. The app appears at `/apps/<slug>` after Metabase's next remote-sync
-import (manual "Pull changes", auto-import, or startup).
+`resources/` holds the app's collection, a saved question per query, and copies
+of the models, metrics, and actions they use, as Metabase YAML. It is written
+from what `npm run print-resources` prints, which Metabase exports for the
+app's definitions; `data_app.yaml`'s `collection:` names the collection, and
+each definition names its file by entity ID. Only `print-resources` calls
+Metabase, with the URL and API key in the repo-root `.env.local`.
+Update `resources/` after any change to `queries/` or `actions/`; the check and
+the build fail until it matches them.
+
+Commit `dist/index.js` (the `path` declared in `data_app.yaml`), `resources/`,
+and your source. The app appears at `/apps/<slug>` after Metabase's next
+remote-sync import (manual "Pull changes", auto-import, or startup), which also
+applies `resources/`.
 
 ## Upgrading
 
@@ -46,7 +59,8 @@ your coding agent by the same command as the other data-app skills; do not edit
 
 ```
 .
-├── data_app.yaml           - manifest: version, name, bundle path, allowed_hosts
+├── data_app.yaml           - manifest: version, name, bundle path, allowed_hosts, collection
+├── resources/              - the app's collection, saved questions, and copied models, metrics, and actions
 ├── package.json            - @metabase/embedding-sdk-react + react/react-dom + Vite toolchain
 ├── vite.config.ts          - one-liner: `export default dataAppConfig()`
 ├── tsconfig.json
@@ -63,7 +77,8 @@ your coding agent by the same command as the other data-app skills; do not edit
 ```
 
 `queries/` and `actions/` are not optional: the query hooks accept only a
-`defineQuery(...)` export and `useAction` only a `defineAction(...)` export.
+`defineQuery(...)` export and `useAction` only a `defineAction(...)` export, and
+each definition in those two directories is backed by a file in `resources/`.
 Read their READMEs before the first hook call.
 
 The build, dev server, Near-Membrane sandbox, and bundle contract all live in
