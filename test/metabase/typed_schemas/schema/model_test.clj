@@ -87,7 +87,7 @@
                              {:id 43 :name "Model 43"}])
                 schema.model/action-rows
                 (constantly [{:id 5 :model_id 42 :name "Create" :type :query}])
-                actions/select-actions-non-http-for-models
+                actions/select-actions-for-models
                 (constantly [{:id         5
                               :model_id   42
                               :name       "Create"
@@ -107,13 +107,13 @@
                   schema.model/action-rows (fn [model-ids]
                                              (swap! action-rows-calls conj model-ids)
                                              [])
-                  actions/select-actions-non-http-for-models (fn [known-models model-ids]
-                                                               (swap! action-details-calls conj [known-models model-ids])
-                                                               [])]
+                  actions/select-actions-for-models (fn [known-models model-ids]
+                                                      (swap! action-details-calls conj [known-models model-ids])
+                                                      [])]
       (is (= {:models [] :errors []} (schema.model/model-schemas #{1} nil)))
       (is (= [#{42 43}] @action-rows-calls))
       (is (= [[models #{42 43}]]
-             @action-details-calls)))))
+             (map (fn [[known-models model-ids]] [known-models (set model-ids)]) @action-details-calls))))))
 
 (deftest model-schemas-collects-broken-model-errors-test
   (testing "a broken model becomes an :errors entry while healthy models still build"
@@ -124,7 +124,7 @@
                   (constantly [{:id 5 :model_id 42 :name "Create" :type :query}
                                ;; model 43's action row resolves to no action details
                                {:id 6 :model_id 43 :name "Broken action" :type :broken}])
-                  actions/select-actions-non-http-for-models
+                  actions/select-actions-for-models
                   (constantly [{:id         5
                                 :model_id   42
                                 :name       "Create"
@@ -144,13 +144,13 @@
                   (constantly [{:id 42 :name "Model 42"}
                                {:id 43 :name "Broken model"}])
                   ;; bulk lookup blows up for the whole batch
-                  actions/select-actions-non-http-for-models
+                  actions/select-actions-for-models
                   (fn [_known-models model-ids]
                     (cond
                       (< 1 (count model-ids))
                       (throw (ex-info "bulk lookup exploded" {}))
 
-                      (= model-ids #{42})
+                      (= (set model-ids) #{42})
                       [{:id 5 :model_id 42 :name "Create" :type :query :parameters []}]
 
                       :else
@@ -174,7 +174,7 @@
     (with-redefs [schema.common/select-schema-cards
                   (constantly [{:id 42 :name "Model 42"}])
                   schema.model/action-rows (constantly [])
-                  actions/select-actions-non-http-for-models
+                  actions/select-actions-for-models
                   (fn [& _] (throw (InterruptedException. "cancelled")))]
       (let [thrown (is (thrown? clojure.lang.ExceptionInfo
                                 (schema.model/model-schemas #{1} nil)))]
@@ -183,7 +183,7 @@
     (with-redefs [schema.common/select-schema-cards
                   (constantly [{:id 42 :name "Model 42"}])
                   schema.model/action-rows (constantly [])
-                  actions/select-actions-non-http-for-models (constantly [])
+                  actions/select-actions-for-models (constantly [])
                   schema.model/model-action-schemas
                   (fn [& _] (throw (ex-info "cancelled" {} (InterruptedException. "cancelled"))))]
       (let [thrown (is (thrown? clojure.lang.ExceptionInfo
@@ -195,7 +195,7 @@
     (with-redefs [schema.common/select-schema-cards
                   (constantly [{:id 42 :name "Model 42"}])
                   schema.model/action-rows (constantly [])
-                  actions/select-actions-non-http-for-models (constantly [])
+                  actions/select-actions-for-models (constantly [])
                   schema.model/model-action-schemas
                   (fn [& _] (throw (NullPointerException. "boom")))]
       (is (thrown? NullPointerException
@@ -203,7 +203,7 @@
 
 (deftest model-schema-surfaces-action-selection-errors-test
   (with-redefs [schema.model/action-rows (constantly [])
-                actions/select-actions-non-http-for-models
+                actions/select-actions-for-models
                 (fn [& _]
                   (throw (ex-info "action lookup failed"
                                   {:status-code 500})))]
@@ -219,7 +219,7 @@
               (ex-data exception))))))
 
 (deftest model-schema-surfaces-action-rendering-errors-test
-  (with-redefs [actions/select-actions-non-http-for-models
+  (with-redefs [actions/select-actions-for-models
                 (constantly [{:id   200
                               :name "Broken action"
                               :type :query}])
@@ -247,7 +247,7 @@
   (with-redefs [schema.model/action-rows (constantly [{:id   200
                                                        :name "Broken action"
                                                        :type :broken}])
-                actions/select-actions-non-http-for-models (constantly [])]
+                actions/select-actions-for-models (constantly [])]
     (let [exception (is (thrown? clojure.lang.ExceptionInfo
                                  (schema.model/model-schema {:id   100
                                                              :name "Broken model"})))]

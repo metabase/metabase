@@ -99,7 +99,6 @@
    "ExplorationQueryResult"
    "ExplorationThread"
    "ExplorationThreadTimeline"
-   "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"
