@@ -1010,21 +1010,21 @@
                 by-id   (into {} (map (juxt :id identity)) results)
                 card-m  (get by-id card-metric-id)
                 table-m (get by-id table-metric-id)
-                multi-m (get by-id multi-metric-id)]
-            (let [orders-fields {:base_table_id          (mt/id :orders)
-                                 :base_table_name        "ORDERS"
-                                 :base_table_schema      "PUBLIC"
-                                 :base_table_portable_fk [(:database_name table-m) "PUBLIC" "ORDERS"]}]
-              (is (= {:card  {:source_card_id                 question-id
-                              :source_card_name               "MixedSources Question"
-                              :source_card_portable_entity_id question-eid}
-                      :table orders-fields
-                      ;; Its definition names a card in stage 0, but its last stage does not, so the QP only
-                      ;; accepts the base table.
-                      :multi orders-fields}
-                     (update-vals {:card card-m, :table table-m, :multi multi-m}
-                                  #(select-keys % metric-source-keys)))
-                  "each metric carries only its own source's fields"))))))))
+                multi-m (get by-id multi-metric-id)
+                orders-fields {:base_table_id          (mt/id :orders)
+                               :base_table_name        "ORDERS"
+                               :base_table_schema      "PUBLIC"
+                               :base_table_portable_fk [(:database_name table-m) "PUBLIC" "ORDERS"]}]
+            (is (= {:card  {:source_card_id                 question-id
+                            :source_card_name               "MixedSources Question"
+                            :source_card_portable_entity_id question-eid}
+                    :table orders-fields
+                    ;; Its definition names a card in stage 0, but its last stage does not, so the QP only
+                    ;; accepts the base table.
+                    :multi orders-fields}
+                   (update-vals {:card card-m, :table table-m, :multi multi-m}
+                                #(select-keys % metric-source-keys)))
+                "each metric carries only its own source's fields")))))))
 
 (deftest enrich-with-metric-sources-marks-unreadable-base-table-unavailable-test
   (testing (str "The `source_unavailable` marker is symmetric across both source kinds. A table-based metric whose\n"
