@@ -3744,7 +3744,6 @@
            models
            permissions
            premium-features
-           query-permissions
            request
            settings
            util

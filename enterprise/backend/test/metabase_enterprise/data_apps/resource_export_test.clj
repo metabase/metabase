@@ -2,6 +2,7 @@
   "`POST /api/apps/export-resources`: what a data app's `resources/` files are written from."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.resource-export :as resource-export]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
@@ -11,9 +12,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- export! [user status body]
-  (mt/with-premium-features #{:data-apps}
-    (mt/user-http-request user :post status "apps/export-resources" body)))
+(defn- export!
+  ([user status body]
+   (export! user status body #{:data-apps}))
+  ([user status body features]
+   (mt/with-premium-features features
+     (mt/user-http-request user :post status "apps/export-resources" body))))
 
 (defn- db-name []
   (t2/select-one-fn :name :model/Database (mt/id)))
@@ -40,23 +44,27 @@
                                                                          :name          "NAME"
                                                                          :sourceName    "CATEGORIES"
                                                                          :sourceFieldId (mt/id :venues :category_id)}]
-                                                         :orderBys     [{:type "column" :name "total" :direction "desc"}]
+                                                         :orderBys     [{:type      "column"
+                                                                         :name      "total"
+                                                                         :direction "desc"}]
                                                          :limit        5}]}}]})]
     (testing "the query Metabase builds from the definition, referencing tables and fields by name"
-      (is (=? {:queries [{:export        "PriceByCategory"
-                          :metrics       []
-                          :dataset_query {:lib/type "mbql/query"
-                                          :database (db-name)
-                                          :stages   [{:source-table (table-path "VENUES")
-                                                      :filters      [[">" {} ["field" {} (field-path "VENUES" "PRICE")] 1]]
-                                                      :aggregation  [["sum" {:name "total"}
-                                                                      ["field" {} (field-path "VENUES" "PRICE")]]]
-                                                      :breakout     [["field" {:source-field (field-path "VENUES" "CATEGORY_ID")}
-                                                                      (field-path "CATEGORIES" "NAME")]]
-                                                      :order-by     [["desc" {} ["aggregation" {:lib/source-name "total"}
-                                                                                 string?]]]
-                                                      :limit        5}]}}]}
-              response)))
+      (let [price       (field-path "VENUES" "PRICE")
+            category-id (field-path "VENUES" "CATEGORY_ID")
+            category    (field-path "CATEGORIES" "NAME")]
+        (is (=? {:queries [{:export        "PriceByCategory"
+                            :metrics       []
+                            :dataset_query {:lib/type "mbql/query"
+                                            :database (db-name)
+                                            :stages   [{:source-table (table-path "VENUES")
+                                                        :filters      [[">" {} ["field" {} price] 1]]
+                                                        :aggregation  [["sum" {:name "total"} ["field" {} price]]]
+                                                        :breakout     [["field" {:source-field category-id} category]]
+                                                        :order-by     [["desc" {} ["aggregation"
+                                                                                   {:lib/source-name "total"}
+                                                                                   string?]]]
+                                                        :limit        5}]}}]}
+                response))))
     (testing "only the uuid the order by points at is kept, and it is the aggregation's"
       (let [stage (-> response :queries first :dataset_query :stages first)]
         (is (= (get-in stage [:aggregation 0 1 :lib/uuid])
@@ -117,16 +125,17 @@
 (deftest refuses-what-a-copy-cannot-hold-test
   (data-apps.tu/do-with-sources!
    (fn [{:keys [metric-id model-id]}]
-     (let [mp (mt/metadata-provider)]
+     (let [mp            (mt/metadata-provider)
+           metric-source (lib/query mp (lib.metadata/card mp metric-id))
+           model-count   (lib/aggregate (lib/query mp (lib.metadata/card mp model-id)) (lib/count))]
        (mt/with-temp [:model/Card {reading-model-id :id} {:name          "Model reading a metric"
                                                           :type          :model
                                                           :database_id   (mt/id)
-                                                          :dataset_query (lib/query mp (lib.metadata/card mp metric-id))}
+                                                          :dataset_query metric-source}
                       :model/Card {reading-metric-id :id} {:name          "Metric reading a model"
                                                            :type          :metric
                                                            :database_id   (mt/id)
-                                                           :dataset_query (-> (lib/query mp (lib.metadata/card mp model-id))
-                                                                              (lib/aggregate (lib/count)))}]
+                                                           :dataset_query model-count}]
          (let [http-id           (actions/insert! {:name "Ping" :type :http :model_id model-id
                                                    :template {:method "GET" :url "https://example.com"}})
                card-sql-id       (actions/insert! {:name          "Read a card"
@@ -137,10 +146,10 @@
                                                                    mp (str "SELECT * FROM {{#" metric-id "}}"))})
                on-reading-model  (actions/insert! {:name "Create" :type :implicit :kind :row/create
                                                    :model_id reading-model-id})
+               reads-metric      {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                            :aggregations [{:type "metric" :id reading-metric-id}]}]}
                response          (export! :crowberto 200
-                                          {:queries [{:export "ReadsMetric"
-                                                      :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
-                                                                         :aggregations [{:type "metric" :id reading-metric-id}]}]}}]
+                                          {:queries [{:export "ReadsMetric" :query reads-metric}]
                                            :actions [http-id card-sql-id on-reading-model Integer/MAX_VALUE]})]
            (testing "an HTTP action"
              (is (=? {:id http-id :error #".*is an HTTP action.*"} (nth (:actions response) 0))))
@@ -180,7 +189,7 @@
                            path []))))))
 
 (deftest a-reader-of-the-sources-exports-them-test
-  (testing "the export needs what the typed schema needs: that the caller can read the sources, not that they are an admin"
+  (testing "the export needs what the typed schema needs: a caller who can read the sources, not an admin"
     (data-apps.tu/do-with-sources!
      (fn [{:keys [metric-id implicit-id model-id]}]
        (is (=? {:queries [{:export "VenueCount" :dataset_query map? :metrics [string?]}]
@@ -246,3 +255,64 @@
                        {:queries [{:export "Cheap"
                                    :query  {:stages [{:source  {:type "table" :id (mt/id :venues)}
                                                       :filters [{:type "segment" :id segment-id}]}]}}]}))))))
+
+(deftest a-table-published-to-a-collection-the-caller-reads-exports-test
+  (testing "a table the caller reads only through its published collection is readable here as in the typed schema,
+            which reads tables through the same per-user overlay"
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Data Library" :type "library-data"}
+                   :model/TableUserSettings _ {:table_id      (mt/id :venues)
+                                               :is_published  true
+                                               :collection_id collection-id}]
+      (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted :create-queries :no}}
+        (is (=? {:queries [{:export "Venues" :dataset_query {:stages [{:source-table (table-path "VENUES")}]}}]}
+                (export! :rasta 200
+                         {:queries [{:export "Venues"
+                                     :query  {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}]}
+                         #{:data-apps :library})))))))
+
+(deftest refuses-sources-on-a-routing-destination-test
+  (testing "a routing destination is reachable only through its router, so the typed schema leaves out what it backs,
+            and so does the export"
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/DatabaseRouter _ {:database_id router-id :user_attribute "region"}
+                   ;; A destination has no tables of its own: a card on it reads its router's.
+                   :model/Database {destination-id :id} {:router_database_id router-id}
+                   :model/Card {model-id :id} {:name          "Routed model"
+                                               :type          :model
+                                               :database_id   destination-id
+                                               :dataset_query {:database destination-id
+                                                               :type     :query
+                                                               :query    {:source-table (mt/id :venues)}}}]
+      (let [action-id (actions/insert! {:name "Create" :type :implicit :kind :row/create :model_id model-id})]
+        ;; An implicit action runs on its model's database, so it is refused on its own, not only through its model.
+        (is (=? {:actions [{:id action-id :error #".*is backed by a routing destination.*"}]
+                 :models  [{:id model-id :error #".*is backed by a routing destination.*"}]}
+                (export! :crowberto 200 {:actions [action-id]})))))))
+
+(deftest refuses-a-source-whose-settings-read-a-card-test
+  (testing "a copy keeps every card its export references, so a click behaviour linking a saved question is refused
+            like a query reading one"
+    (data-apps.tu/do-with-sources!
+     (fn [{:keys [model-id implicit-id metric-id]}]
+       (t2/update! :model/Card :id model-id
+                   {:visualization_settings {:click_behavior {:type "link" :linkType "question" :targetId metric-id}}})
+       (is (=? {:models  [{:id model-id :error (re-pattern (str ".*reads card " metric-id ".*"))}]
+                :actions [{:id implicit-id :error #".*because its model can't.*"}]}
+               (export! :crowberto 200 {:actions [implicit-id]})))))))
+
+(deftest exports-each-model-in-one-extraction-test
+  (testing "the cards and the actions are each extracted in one serialization query, however many the app uses"
+    (data-apps.tu/do-with-sources!
+     (fn [{:keys [metric-id implicit-id query-action-id]}]
+       (let [calls   (atom [])
+             extract @#'resource-export/extract-by-entity-id]
+         (mt/with-dynamic-fn-redefs [resource-export/extract-by-entity-id (fn [model-name ids]
+                                                                            (swap! calls conj model-name)
+                                                                            (extract model-name ids))]
+           (is (=? {:actions [{:entity map?} {:entity map?}] :models [{:entity map?}] :metrics [{:entity map?}]}
+                   (export! :crowberto 200
+                            {:queries [{:export "VenueCount"
+                                        :query  {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                           :aggregations [{:type "metric" :id metric-id}]}]}}]
+                             :actions [implicit-id query-action-id]}))))
+         (is (= {"Card" 1 "Action" 1} (frequencies @calls))))))))

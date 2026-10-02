@@ -167,10 +167,16 @@
              :group_id [:not= group-id]))
 
 (defn table
-  "The Table with `table-id`, or nil."
+  "The Table with `table-id` as the current user sees it, or nil."
   [table-id]
-  (t2/select-one :model/Table :id table-id
-                 {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+
+(defn destination-database-ids
+  "The IDs among `database-ids` of the databases that are routing destinations."
+  [database-ids]
+  (if (seq database-ids)
+    (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil])
+    #{}))
 
 (defn cards-by-ids
   "The Cards with `card-ids`."
