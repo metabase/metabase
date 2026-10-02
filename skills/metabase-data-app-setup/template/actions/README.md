@@ -14,7 +14,7 @@ import { defineAction } from "@metabase/embedding-sdk-react/data-app";
 import schema from "../src/metabase.data";
 
 export const CreateOrder = defineAction({
-  action: schema.models.orders.actions.create,
+  action: schema.actions.createOrder,
 });
 ```
 
@@ -59,7 +59,7 @@ Rules:
   (`include-actions=true`). Synchronization copies actions; it never creates
   them.
 - Pass the export itself to `useAction`. Never pass
-  `schema.models.<model>.actions.<action>` or its `.id`.
+  `schema.actions.<action>` or its `.id`.
 - `copiedActionId` is written by synchronization. Never add, edit, or remove it
   by hand; commit it together with `resources_metadata.json`.
 - After `execute` resolves, refresh every query on screen the action could have

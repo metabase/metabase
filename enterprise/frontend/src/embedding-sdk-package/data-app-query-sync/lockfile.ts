@@ -5,7 +5,6 @@ import { isPositiveInteger, isRecord } from "./guards";
 import type {
   ActionLockEntry,
   MetricLockEntry,
-  ModelLockEntry,
   QueryLockEntry,
   ResourceLockfile,
 } from "./types";
@@ -33,17 +32,6 @@ function isActionLockEntry(value: unknown): value is ActionLockEntry {
     isPositiveInteger(value.sourceActionId) &&
     isPositiveInteger(value.copiedActionId) &&
     isHash(value.hash)
-  );
-}
-
-function isModelLockEntry(value: unknown): value is ModelLockEntry {
-  return (
-    isRecord(value) &&
-    isPositiveInteger(value.sourceModelId) &&
-    isPositiveInteger(value.copiedModelId) &&
-    isHash(value.hash) &&
-    Array.isArray(value.actions) &&
-    value.actions.every(isActionLockEntry)
   );
 }
 
@@ -105,49 +93,37 @@ function parseQueries(value: unknown): QueryLockEntry[] {
   return queries;
 }
 
-function parseModels(value: unknown): ModelLockEntry[] {
+function parseActions(value: unknown): ActionLockEntry[] {
   if (value === undefined) {
     return [];
   }
 
   if (
     !Array.isArray(value) ||
-    value.some((entry) => !isModelLockEntry(entry))
+    value.some((entry) => !isActionLockEntry(entry))
   ) {
-    throw new Error(`${RESOURCE_LOCKFILE} contains an invalid model entry.`);
+    throw new Error(`${RESOURCE_LOCKFILE} contains an invalid action entry.`);
   }
 
-  const models: ModelLockEntry[] = value;
+  const actions: ActionLockEntry[] = value;
 
   assertUnique(
-    models.map((entry) => entry.sourceModelId),
-    "source model ID",
-  );
-  assertUnique(
-    models.map((entry) => entry.copiedModelId),
-    "copied model ID",
-  );
-  assertUnique(
-    models.flatMap((entry) =>
-      entry.actions.map(({ sourceActionId }) => sourceActionId),
-    ),
+    actions.map(({ sourceActionId }) => sourceActionId),
     "source action ID",
   );
   assertUnique(
-    models.flatMap((entry) =>
-      entry.actions.map(({ copiedActionId }) => copiedActionId),
-    ),
+    actions.map(({ copiedActionId }) => copiedActionId),
     "copied action ID",
   );
 
-  return models;
+  return actions;
 }
 
 export function readResourceLockfile(appRoot: string): ResourceLockfile {
   const lockfilePath = path.join(appRoot, RESOURCE_LOCKFILE);
 
   if (!fs.existsSync(lockfilePath)) {
-    return { queries: [], models: [], metrics: [] };
+    return { queries: [], actions: [], metrics: [] };
   }
 
   let value: unknown;
@@ -173,7 +149,7 @@ export function readResourceLockfile(appRoot: string): ResourceLockfile {
       ? undefined
       : { collectionId: value.collectionId }),
     queries: parseQueries(value.queries ?? []),
-    models: parseModels(value.models),
+    actions: parseActions(value.actions),
     metrics: parseMetrics(value.metrics),
   };
 }

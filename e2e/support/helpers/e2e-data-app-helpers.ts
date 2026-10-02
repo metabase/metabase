@@ -1,12 +1,12 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import type {
-  CardId,
   Collection,
   CollectionId,
   CollectionPermission,
   CollectionPermissionsGraph,
   DataApp,
+  WritebackAction,
 } from "metabase-types/api";
 
 import type { DataAppTestEnv } from "./data-app-test-env";
@@ -197,26 +197,77 @@ export function setDataAppCollectionAccess(
     });
 }
 
-export function moveDataAppModelToCollection({
-  modelId,
+/** Creates a collection the non-admin groups hold `access` to. */
+export function createDataAppCollection({
   name,
   access,
 }: {
-  modelId: CardId;
   name: string;
   access: CollectionPermission;
 }) {
   return cy
     .request<Collection>("POST", "/api/collection", { name })
     .then(({ body: collection }) => {
-      cy.request("PUT", `/api/card/${modelId}`, {
-        collection_id: collection.id,
-      });
-
       setDataAppCollectionAccess(collection.id, access);
-
       return cy.wrap(collection, { log: false });
     });
+}
+
+/** Creates a query action without a model that inserts a team into `scoreboard_actions`. */
+export function createDataAppScoreboardAction({
+  name = "Add team",
+  collectionId = null,
+}: { name?: string; collectionId?: CollectionId | null } = {}) {
+  return cy
+    .request<WritebackAction>("POST", "/api/action", {
+      name,
+      type: "query",
+      database_id: WRITABLE_DB_ID,
+      collection_id: collectionId,
+      dataset_query: {
+        database: WRITABLE_DB_ID,
+        type: "native",
+        native: {
+          query:
+            "INSERT INTO scoreboard_actions (team_name, score) VALUES ({{team_name}}, {{score}})",
+          "template-tags": {
+            team_name: {
+              id: "team_name",
+              name: "team_name",
+              "display-name": "Team name",
+              type: "text",
+              required: true,
+            },
+            score: {
+              id: "score",
+              name: "score",
+              "display-name": "Score",
+              type: "number",
+              required: true,
+            },
+          },
+        },
+      },
+      parameters: [
+        {
+          id: "team_name",
+          slug: "team_name",
+          name: "Team name",
+          type: "string/=",
+          target: ["variable", ["template-tag", "team_name"]],
+          required: true,
+        },
+        {
+          id: "score",
+          slug: "score",
+          name: "Score",
+          type: "number/=",
+          target: ["variable", ["template-tag", "score"]],
+          required: true,
+        },
+      ],
+    })
+    .then(({ body: action }) => cy.wrap(action, { log: false }));
 }
 
 /**
