@@ -21,7 +21,9 @@ describe("scenarios > native > card template tag normalization", () => {
         `SELECT 1 FROM {{#${cardId}-foo}} AS a, {{#${cardId}-bar}} AS b`,
         { allowFastSet: true },
       );
-      H.saveQuestion("Duplicate Card Refs", { wrapId: true });
+      H.saveQuestionToCollection("Duplicate Card Refs", undefined, {
+        wrapId: true,
+      });
 
       cy.get("@questionId").then((questionId) => {
         cy.request("GET", `/api/card/${questionId}`).then(({ body }) => {
@@ -46,7 +48,7 @@ describe("scenarios > native > card template tag normalization", () => {
       H.NativeEditor.type(`SELECT * FROM {{${frontendTag}}}`, {
         allowFastSet: true,
       });
-      H.saveQuestion("Cafe Ref", { wrapId: true });
+      H.saveQuestionToCollection("Cafe Ref", undefined, { wrapId: true });
 
       cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
