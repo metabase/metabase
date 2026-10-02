@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -64,7 +65,7 @@
 (mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
   "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
   [dashboard-id :- ms/PositiveInt
-   new-tabs     :- [:sequential [:map [:id neg-int?]]]]
+   new-tabs     :- [:sequential [:merge ::dashboards.schema/dashboard-tab.update [:map {:closed true} [:id neg-int?]]]]]
   (let [new-tab-ids (dashboards.db/insert-dashboard-tabs! (->> new-tabs
                                                                (map #(dissoc % :id))
                                                                (map #(assoc % :dashboard_id dashboard-id))))]
@@ -72,8 +73,8 @@
 
 (mu/defn update-tabs! :- nil?
   "Updates tabs of a dashboard if changed."
-  [current-tabs :- [:sequential [:map [:id ms/PositiveInt]]]
-   new-tabs     :- [:sequential [:map [:id ms/PositiveInt]]]]
+  [current-tabs :- [:sequential ::dashboards.schema/dashboard-tab]
+   new-tabs     :- [:sequential ::dashboards.schema/dashboard-tab]]
   (let [update-ks       [:name :position]
         id->current-tab (m/index-by :id current-tabs)
         to-update-tabs  (filter

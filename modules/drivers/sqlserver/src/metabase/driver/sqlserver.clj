@@ -39,7 +39,8 @@
    [metabase.util.performance :as perf :refer [empty? mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
-   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (com.microsoft.sqlserver.jdbc ISQLServerConnection)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)))
@@ -77,6 +78,7 @@
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/index-ddl                   true
+                              :transforms/testing                     true
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -109,10 +111,6 @@
 (defmethod driver/db-start-of-week :sqlserver
   [_]
   :sunday)
-
-(defmethod driver.sql/default-schema :sqlserver
-  [_]
-  "dbo")
 
 (defn- quote-schema [s] (sql.u/quote-name :sqlserver :schema s))
 (defn- quote-field  [s] (sql.u/quote-name :sqlserver :field s))
@@ -167,6 +165,42 @@
     (keyword "decimal identity")  :type/Decimal
     (keyword "numeric identity")  :type/Decimal} column-type))
 
+(def ^:private jdbc-type->base-type
+  {Types/BIGINT                  :type/BigInteger
+   Types/BIT                     :type/Boolean
+   Types/BOOLEAN                 :type/Boolean
+   Types/CHAR                    :type/Text
+   Types/DATE                    :type/Date
+   Types/DECIMAL                 :type/Decimal
+   Types/DOUBLE                  :type/Float
+   Types/FLOAT                   :type/Float
+   Types/INTEGER                 :type/Integer
+   Types/LONGNVARCHAR            :type/Text
+   Types/LONGVARCHAR             :type/Text
+   Types/NCHAR                   :type/Text
+   Types/NUMERIC                 :type/Decimal
+   Types/NVARCHAR                :type/Text
+   Types/REAL                    :type/Float
+   Types/SMALLINT                :type/Integer
+   Types/TIME                    :type/Time
+   Types/TIME_WITH_TIMEZONE      :type/TimeWithTZ
+   Types/TIMESTAMP               :type/DateTime
+   Types/TIMESTAMP_WITH_TIMEZONE :type/DateTimeWithZoneOffset
+   Types/TINYINT                 :type/Integer
+   Types/VARCHAR                 :type/Text})
+
+(defmethod sql-jdbc.sync/describe-table-fields :sqlserver
+  [driver conn table db-name-or-nil]
+  ;; When TYPE_NAME is a user-defined type alias (`CREATE TYPE Key10 FROM varchar(10)`),
+  ;; `database-type->base-type` can't resolve it. The MSSQL JDBC driver already exposes the underlying
+  ;; base type as `DATA_TYPE` (a `java.sql.Types` code), so use it as a fallback. `:database-type` stays
+  ;; the alias name, so the original type is still visible in field metadata.
+  (into #{}
+        (map (fn [{:keys [base-type jdbc-type] :as col}]
+               (cond-> col
+                 (= base-type :type/*) (assoc :base-type (get jdbc-type->base-type jdbc-type base-type)))))
+        ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table db-name-or-nil)))
+
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for SQL Server that dispatches on type."
   {:arglists '([type])}
@@ -192,51 +226,84 @@
   (type->database-type base-type))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
-  [_ {:keys [user password db host port instance domain ssl]
-      :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
+  [_ {:keys [user password db host port instance domain ssl auth-mode
+             ad-client-id ad-client-secret ad-managed-identity-client-id]
+      :or   {user "dbuser", password "dbpassword", db "", host "localhost"
+             auth-mode "sql"}
       :as   details}]
-  (-> {:applicationName    driver-api/mb-version-and-process-identifier
-       :subprotocol        "sqlserver"
-       ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
-       ;; can be passed as part of the Properties
-       :subname            (str "//" host)
-       ;; everything else gets passed as `java.util.Properties` to the JDBC connection.  (passing these as Properties
-       ;; instead of part of the `:subname` is preferable because they support things like passwords with special
-       ;; characters)
-       :database           db
-       :password           password
-       ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
-       :loginTimeout       10
-       ;; apparently specifying `domain` with the official SQLServer driver is done like `user:domain\user` as opposed
-       ;; to specifying them separately as with jTDS see also:
-       ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
-       :user               (str (when domain (str domain "\\"))
-                                user)
-       :encrypt            (boolean ssl)
-       ;; only crazy people would want this. See https://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
-       :sendTimeAsDatetime false}
-      ;; only include `port` if it is specified; leave out for dynamic port: see
-      ;; https://github.com/metabase/metabase/issues/7597
-      ;; only include `instanceName` if supplied — mssql-jdbc treats an empty string as a named instance and
-      ;; initiates SQL Server Browser lookup, which breaks Microsoft Fabric / Synapse serverless endpoints
-      ;; that drop the connection whenever the property is present (#81270)
-      (merge (when port {:port port})
-             (when-not (str/blank? instance) {:instanceName instance}))
-      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+  (let [base       {:applicationName    driver-api/mb-version-and-process-identifier
+                    :subprotocol        "sqlserver"
+                    ;; it looks like the only thing that actually needs to be passed as the `subname` is the host;
+                    ;; everything else can be passed as part of the Properties. Passing them as Properties (instead of
+                    ;; part of the `:subname`) is preferable because they support things like passwords with special
+                    ;; characters.
+                    :subname            (str "//" host)
+                    :database           db
+                    ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the
+                    ;; connection failed.
+                    :loginTimeout       10
+                    :encrypt            (boolean ssl)
+                    ;; only crazy people would want this. See
+                    ;; https://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
+                    :sendTimeAsDatetime false}
+        auth-props (case auth-mode
+                     ;; https://learn.microsoft.com/en-us/sql/connect/jdbc/connecting-using-azure-active-directory-authentication?view=sql-server-ver17#connect-using-activedirectoryserviceprincipal-authentication-mode
+                     "ad-service-principal"
+                     {:authentication "ActiveDirectoryServicePrincipal"
+                      :user           ad-client-id
+                      :password       ad-client-secret}
+
+                     ;; https://learn.microsoft.com/en-us/sql/connect/jdbc/connecting-using-azure-active-directory-authentication?view=sql-server-ver17#connect-using-activedirectoryserviceprincipalcertificate-authentication-mode
+                     "ad-service-principal-certificate"
+                     (let [cert-file     (driver-api/secret-value-as-file!  :sqlserver details "ad-client-certificate")
+                           cert-password (driver-api/secret-value-as-string :sqlserver details "ad-client-certificate-password")
+                           key-file      (driver-api/secret-value-as-file!  :sqlserver details "ad-client-key")
+                           key-password  (driver-api/secret-value-as-string :sqlserver details "ad-client-key-password")]
+                       (cond-> {:authentication    "ActiveDirectoryServicePrincipalCertificate"
+                                :user              ad-client-id
+                                :clientCertificate cert-file}
+                         (not (str/blank? cert-password)) (assoc :password cert-password)
+                         key-file                         (assoc :clientKey key-file)
+                         (not (str/blank? key-password))  (assoc :clientKeyPassword key-password)))
+
+                     ;; https://learn.microsoft.com/en-us/sql/connect/jdbc/connecting-using-azure-active-directory-authentication?view=sql-server-ver17#connect-using-activedirectorymanagedidentity-authentication-mode
+                     ;; Missing :user = default identity; set :user for user-assigned managed identity.
+                     "ad-managed-identity"
+                     (cond-> {:authentication "ActiveDirectoryManagedIdentity"}
+                       (not (str/blank? ad-managed-identity-client-id))
+                       (assoc :user ad-managed-identity-client-id))
+
+                     ;; "sql" (default), nil (legacy connections without auth-mode), or any unknown value.
+                     ;; apparently specifying `domain` with the official SQLServer driver is done like
+                     ;; `user:domain\user` as opposed to specifying them separately as with jTDS. See also:
+                     ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
+                     {:user     (str (when domain (str domain "\\")) user)
+                      :password password})]
+    (-> (merge base auth-props)
+        ;; only include `port` if it is specified; leave out for dynamic port: see
+        ;; https://github.com/metabase/metabase/issues/7597
+        ;; only include `instanceName` if supplied — mssql-jdbc treats an empty string as a named instance and
+        ;; initiates SQL Server Browser lookup, which breaks Microsoft Fabric / Synapse serverless endpoints
+        ;; that drop the connection whenever the property is present (#81270)
+        (merge (when port {:port port})
+               (when-not (str/blank? instance) {:instanceName instance}))
+        (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon))))
 
 (def ^:private disallowed-additional-opts
   #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
 
 (defmethod driver/validate-db-details! :sqlserver
-  [_driver {:keys [host additional-options]}]
+  [_driver {:keys [host additional-options] :as details}]
   (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match}))))
+    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match})))
+  (sql-jdbc/reject-dangerous-additional-options! details))
 
 (defmethod driver/can-connect? :sqlserver
   [driver details]
   (driver/validate-db-details! driver details)
   ((get-method driver/can-connect? :sql-jdbc) driver details))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *field-options*
   "The options part of the `:field` clause we're currently compiling."
   nil)
@@ -860,6 +927,7 @@
   [driver [_ _opts arg]]
   (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *compared-field-options*
   "This variable is set to the options of the field we are comparing
   (presumably in a filter)."
@@ -1189,6 +1257,30 @@
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
         modified-sql (sql-tools/add-into-clause driver sql-query table-name)]
     [modified-sql sql-params]))
+
+(defmethod driver/temp-table-name :sqlserver
+  [_driver]
+  (str "#mb_test_" (str/replace (str (random-uuid)) "-" "")))
+
+(defmethod driver/compile-create-temp-table :sqlserver
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword table)))]
+    [(sql-tools/add-into-clause driver sql-query table-name) sql-params]))
+
+(defmethod driver/do-with-test-connection :sqlserver
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc)
+   driver
+   database
+   (fn [^Connection conn]
+     (let [^ISQLServerConnection sqlserver-conn (.unwrap conn ISQLServerConnection)
+           prepare-method                        (.getPrepareMethod sqlserver-conn)]
+       (.setPrepareMethod sqlserver-conn "scopeTempTablesToConnection")
+       (try
+         (f conn)
+         (finally
+           (.setPrepareMethod sqlserver-conn prepare-method)))))))
 
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]

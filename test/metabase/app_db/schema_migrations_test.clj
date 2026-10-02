@@ -1,4 +1,4 @@
-(ns metabase.app-db.schema-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.schema-migrations-test
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
@@ -2861,6 +2861,23 @@
           (migrate!)
           (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
 
+(deftest retire-confirmed-at-v59-ids-test
+  (testing "v59.2026-07-10T22:29:18 deletes the changelog rows of the confirmed_at changesets that moved to v63 ids"
+    (impl/test-migrations "v59.2026-07-10T22:29:18" [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]]
+        (t2/insert! clog (map-indexed (fn [i id]
+                                        {:id            id
+                                         :author        "escherize"
+                                         :filename      "migrations/059_update_migrations.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      v59-ids))
+        (migrate!)
+        (is (empty? (t2/select clog :id [:in v59-ids])))))))
+
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
             segment.dependency_analysis_version column (issue #74443). Every changeset that
@@ -3288,6 +3305,38 @@
           (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm)))
           (is (= 1 (t2/count :data_permissions :db_id normal-id))))))))
 
+(deftest auth-identity-confirmed-at-retires-misnumbered-v59-ids-test
+  (testing "v63.2026-07-10 confirmed_at changesets adopt a database that ran them under their old v59 ids, and roll back"
+    (impl/test-migrations ["v63.2026-07-10T22:29:15" "v63.2026-07-10T22:29:17"] [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]
+            column?    #(seq (t2/query [(str "SELECT column_name FROM information_schema.columns"
+                                             " WHERE lower(table_name) = 'auth_identity' AND lower(column_name) = 'confirmed_at'"
+                                             (case (mdb/db-type)
+                                               :mysql    " AND table_schema = database()"
+                                               :postgres " AND table_schema = current_schema()"
+                                               :h2       ""))]))]
+        ;; simulate an instance upgraded by the code that shipped these changesets under v59 ids
+        (t2/query ["ALTER TABLE auth_identity ADD COLUMN confirmed_at TIMESTAMP NULL"])
+        (t2/insert! clog (map-indexed (fn [i id]
+                                        {:id            id
+                                         :author        "escherize"
+                                         :filename      "migrations/059_update_migrations.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      v59-ids))
+        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (migrate!)
+        (testing "the stale v59 rows are gone and the existing column is adopted"
+          (is (empty? (t2/select clog :id [:in v59-ids])))
+          (is (= "MARK_RAN" (t2/select-one-fn :exectype clog :id "v63.2026-07-10T22:29:16")))
+          (is (column?)))
+        (testing "rolling back to 62 drops the column"
+          (migrate! :down 62)
+          (is (not (column?))))))))
+
 (deftest move-metabot-conversation-state-to-messages-test
   (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
     (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
@@ -3362,3 +3411,99 @@
         (testing "the mirror column is nullable"
           (t2/update! :metabase_field_user_settings :field_id field-id {:data_sensitivity nil})
           (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field_user_settings :field_id field-id))))))))
+
+(deftest backfill-field-user-settings-set-flags-test
+  (testing "v64.2026-09-09T00:00:03: description_set, semantic_type_set and fk_target_field_id_set are backfilled
+           from whether the corresponding column is already non-NULL"
+    (impl/test-migrations ["v64.2026-09-09T00:00:00" "v64.2026-09-09T00:00:03"] [migrate!]
+      (let [db-id        (t2/insert-returning-pk! :metabase_database {:name       "FUS Flags Test DB"
+                                                                      :engine     "h2"
+                                                                      :created_at :%now
+                                                                      :updated_at :%now
+                                                                      :details    "{}"})
+            table-id     (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                   :db_id      db-id
+                                                                   :name       "a table"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now})
+            insert-field! (fn [name]
+                            (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                                      :name          name
+                                                                      :active        true
+                                                                      :base_type     "type/Text"
+                                                                      :database_type "TEXT"
+                                                                      :created_at    :%now
+                                                                      :updated_at    :%now}))
+            target-id    (insert-field! "target")
+            all-set-id   (insert-field! "all_set")
+            none-set-id  (insert-field! "none_set")
+            mixed-id     (insert-field! "mixed")]
+        (t2/insert! :metabase_field_user_settings {:field_id           all-set-id
+                                                   :description        "a description"
+                                                   :semantic_type      "type/Category"
+                                                   :fk_target_field_id target-id})
+        (t2/insert! :metabase_field_user_settings {:field_id none-set-id})
+        (t2/insert! :metabase_field_user_settings {:field_id     mixed-id
+                                                   :description  "only description is set"})
+        (migrate!)
+        (testing "every column set is flagged true"
+          (is (=? {:description_set true, :semantic_type_set true, :fk_target_field_id_set true}
+                  (t2/select-one :metabase_field_user_settings :field_id all-set-id))))
+        (testing "every column NULL is flagged false"
+          (is (=? {:description_set false, :semantic_type_set false, :fk_target_field_id_set false}
+                  (t2/select-one :metabase_field_user_settings :field_id none-set-id))))
+        (testing "only the columns that are non-NULL are flagged true"
+          (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
+                  (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
+
+(deftest glossary-entity-id-backfill-test
+  (testing "v64.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
+    (impl/test-migrations ["v64.2026-09-11T12:00:00" "v64.2026-09-11T12:00:03"] [migrate!]
+      (let [row      (fn [term] {:term       term
+                                 :definition (str term " definition")
+                                 :creator_id 13371338
+                                 :created_at :%now
+                                 :updated_at :%now})
+            arr-id   (t2/insert-returning-pk! :glossary (row "ARR"))
+            churn-id (t2/insert-returning-pk! :glossary (row "Churn"))]
+        (migrate!)
+        (let [arr-eid   (t2/select-one-fn :entity_id :glossary :id arr-id)
+              churn-eid (t2/select-one-fn :entity_id :glossary :id churn-id)]
+          (testing "existing rows receive distinct 21-character entity_ids"
+            (is (= 21 (count arr-eid)))
+            (is (= 21 (count churn-eid)))
+            (is (not= arr-eid churn-eid)))
+          (testing "entity_id is NOT NULL"
+            (is (thrown? Exception
+                         (t2/insert! :glossary (assoc (row "MRR") :entity_id nil)))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception
+                         (t2/insert! :glossary (assoc (row "NRR") :entity_id arr-eid))))))))))
+
+(deftest glossary-entity-id-skipped-when-v65-ids-ran-test
+  (testing "v64.2026-09-11 glossary changesets are MARK_RAN on a database that already ran them under their v65 ids"
+    (impl/test-migrations ["v64.2026-09-11T12:00:00" "v64.2026-09-11T12:00:03"] [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            suffixes   ["T12:00:00" "T12:00:01" "T12:00:02" "T12:00:03"]]
+        (t2/insert! clog (map-indexed (fn [i suffix]
+                                        {:id            (str "v65.2026-09-11" suffix)
+                                         :author        "tplude"
+                                         :filename      "migrations/065/20260911_glossary_entity_id.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      suffixes))
+        ;; Liquibase caches the ran-changeset list per connection; drop it so the precondition sees the rows above.
+        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (migrate!)
+        (is (= (repeat 4 "MARK_RAN")
+               (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))
+        (testing "the changes were skipped, not re-applied"
+          ;; information_schema spans every database on a shared MySQL server, so scope to this app db's schema
+          (is (empty? (t2/query [(str "SELECT column_name FROM information_schema.columns"
+                                      " WHERE lower(table_name) = 'glossary' AND lower(column_name) = 'entity_id'"
+                                      (case (mdb/db-type)
+                                        :mysql    " AND table_schema = database()"
+                                        :postgres " AND table_schema = current_schema()"
+                                        :h2       ""))]))))))))

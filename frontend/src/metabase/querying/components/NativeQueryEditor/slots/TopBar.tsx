@@ -1,5 +1,6 @@
 import { type PropsWithChildren, type ReactNode, forwardRef } from "react";
 
+import { useLazyGetTableQuery } from "metabase/api";
 import { Flex } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
@@ -31,14 +32,15 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
     databaseIsDisabled,
     databaseDisabledTooltip,
   } = useNativeQueryEditorContext();
+  const [fetchTable] = useLazyGetTableQuery();
 
   if (!question) {
     return null;
   }
 
-  const setTableId = (tableId: TableId) => {
-    const table = query.metadata().table(tableId);
-    if (table && table.name !== query.collection()) {
+  const setTableId = async (tableId: TableId) => {
+    const table = await fetchTable({ id: tableId }).unwrap();
+    if (table.name !== query.collection()) {
       setDatasetQuery(query.setCollectionName(table.name));
     }
   };

@@ -8,6 +8,8 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
+   [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
@@ -52,7 +54,7 @@
 (defn- create-sql-query-in-code-editor
   [args]
   (binding [shared/*memory-atom* (atom {:context {:user_is_viewing [{:type    "code_editor"
-                                                                     :buffers [{:id "buf-1"}]}]}})]
+                                                                     :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}})]
     (agent-sql/create-sql-query-code-edit-tool (merge {:sql_query "SELECT 1"
                                                        :title     "Results"}
                                                       args))))
@@ -208,7 +210,7 @@
                   (is (= :native (get-in entity [:query :query :type])))))
               (testing "an open code-editor buffer wins"
                 (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
-                                                                  :buffers [{:id "buf-1"}]}]}))]
+                                                                  :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
                   (is (= 1 (count parts)))
                   (is (= "code_edit" (:data-type (first parts)))))))))))))
 
@@ -286,3 +288,18 @@
                                 :checklist "- [x] checked"
                                 :new_query "SELECT 2"
                                 :title     "Results"})))))))))))
+
+(deftest edit-and-replace-sql-query-unexpected-error-test
+  (testing "edit_sql_query and replace_sql_query rethrow non-agent errors so they stay tracked as failures"
+    (mt/with-dynamic-fn-redefs [edit-sql-query-tools/edit-sql-query       (fn [_] (throw (ex-info "boom" {})))
+                                replace-sql-query-tools/replace-sql-query (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (agent-sql/edit-sql-query-tool {:query_id  "q-1"
+                                                            :checklist "- [x] checked"
+                                                            :edits     [{:old_string "1" :new_string "2"}]
+                                                            :title     "Results"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (agent-sql/replace-sql-query-tool {:query_id  "q-1"
+                                                               :checklist "- [x] checked"
+                                                               :new_query "SELECT 2"
+                                                               :title     "Results"}))))))

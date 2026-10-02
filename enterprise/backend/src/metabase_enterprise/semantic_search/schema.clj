@@ -6,12 +6,10 @@
 
 (mr/def ::semantic-search-token-tracking
   "A SemanticSearchTokenTracking as selected from the app DB: every column of `:semantic_search_token_tracking`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:model_name   :string]
-   [:request_type [:maybe [:or :keyword :string]]]
-   [:created_at   ms/TemporalInstant]
-   [:total_tokens :int]])
+  [:merge
+   ::semantic-search-token-tracking.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::semantic-search-token-tracking.update
   "What an update (or insert) of a SemanticSearchTokenTracking accepts: every column of `:semantic_search_token_tracking` except `id`, all optional."

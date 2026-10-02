@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { useQuestionFromOpts } from "metabase/metadata-store";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -13,7 +13,6 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
 
 export function useQueryQuestion(
   query: Lib.Query,
-  proposedQuery: Lib.Query | undefined,
   {
     cardType,
     cardDisplay,
@@ -21,10 +20,10 @@ export function useQueryQuestion(
   }: QueryEditorUiOptions = {},
   onChangeQuery: (newQuery: Lib.Query) => void,
 ) {
-  const buildQuestion = useQuestionFromOpts();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const [parameterValues, setParameterValues] = useState({});
 
-  const { question, proposedQuestion } = useMemo(
+  const { question } = useMemo(
     () => ({
       question: buildQuestion({
         dataset_query: Lib.toJsQuery(query),
@@ -33,17 +32,9 @@ export function useQueryQuestion(
         visualization_settings: cardVizSettings,
         parameterValues,
       }),
-      proposedQuestion:
-        proposedQuery != null
-          ? buildQuestion({
-              dataset_query: Lib.toJsQuery(proposedQuery),
-              visualization_settings: DEFAULT_VIZ_SETTINGS,
-            })
-          : undefined,
     }),
     [
       query,
-      proposedQuery,
       buildQuestion,
       cardType,
       cardDisplay,
@@ -58,7 +49,6 @@ export function useQueryQuestion(
 
   return {
     question,
-    proposedQuestion,
     setQuestion,
     parameterValues,
     setParameterValues,

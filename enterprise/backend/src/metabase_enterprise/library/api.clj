@@ -22,7 +22,7 @@
   [_route
    _query
    _body]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (api/check-400 (not (collections/library-collection)) "Library already exists")
   (collections/create-library-collection!))
 

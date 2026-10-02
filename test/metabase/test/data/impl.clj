@@ -12,6 +12,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.schema :as warehouses.schema]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -24,6 +25,7 @@
 (p/import-vars
  [verify verify-data-loaded-correctly])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-dataset-prewarm?*
   "Whether `with-temp` should skip materializing the test-data Database before opening its transaction.
 
@@ -50,13 +52,14 @@
   ([]       (get-or-create-default-dataset! (tx/driver)))
   ([driver] (get-or-create-database! driver (tx/default-dataset driver))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:arglists '([])} ^:private *db-fn*
   "Implementation of `db` function that should return the current working test database when called, always with no
   arguments. By default, this is [[get-or-create-default-dataset!]] for the current [[metabase.driver/*driver*]], which
   does exactly what it suggests."
   #'get-or-create-default-dataset!)
 
-(mu/defn db :- [:map [:id ::lib.schema.id/database]]
+(mu/defn db :- ::warehouses.schema/database
   []
   (*db-fn*))
 
@@ -100,6 +103,7 @@
 (defn- test-data-database-id []
   (@memoized-test-data-database-id-fn (tx/driver)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^{:arglists '([])} *db-id-fn*
   #'test-data-database-id)
 
@@ -185,6 +189,7 @@
 (defn- cached-field-id [table-id parent-id field-name]
   (get (field-lookup-map table-id) [parent-id field-name]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:added "0.51.0"} *dbdef-used-to-create-db*
   "The database definition used to create the currently bound test database. For those rare occasions when you need to
   refer back to it."
@@ -192,7 +197,7 @@
 
 (mu/defn do-with-db
   "Internal impl of [[metabase.test.data/with-db]]."
-  [db    :- [:map [:id ::lib.schema.id/database]]
+  [db    :- ::warehouses.schema/database
    thunk :- fn?]
   (binding [*db-fn*                   (constantly db)
             *db-id-fn*                (constantly (u/the-id db))
@@ -216,7 +221,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:map [:settings [:map [:database-source-dataset-name :string]]]]]
+  [database :- [:or ::warehouses.schema/database ::warehouses.schema/database.update]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table
@@ -387,6 +392,7 @@
                        prop->old-id)))
       database)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-is-temp-copy?*
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)

@@ -82,16 +82,35 @@ const cliCallsPage = () =>
  * Hovering a Monitor sidebar link starts the fetch, so the chunk is usually in
  * hand by the time the click lands. These pages share a chunk, so the first
  * hover covers the whole section.
+ *
+ * Called from the branch of `initializePlugin` that mounts these routes, so only
+ * the pages this instance can reach are registered. The background pass reads the
+ * registrations too, and fetching a page nobody can reach would spend a download
+ * on nothing.
  */
-registerPagePrefetch(Urls.monitorAiAuditingUsage(), conversationStatsPage);
-registerPagePrefetch(Urls.monitorAiAuditingUsage(), metabotAnalyticsUpsellPage);
-registerPagePrefetch(Urls.monitorAiAuditingConversations(), conversationsPage);
-registerPagePrefetch(
-  `${Urls.monitorAiAuditingConversations()}/`,
-  conversationDetailPage,
-);
-registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
-registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
+export function registerAiAuditingPagePrefetch(): void {
+  registerPagePrefetch(Urls.monitorAiAuditingUsage(), conversationStatsPage);
+  registerPagePrefetch(
+    Urls.monitorAiAuditingConversations(),
+    conversationsPage,
+  );
+  registerPagePrefetch(
+    `${Urls.monitorAiAuditingConversations()}/`,
+    conversationDetailPage,
+  );
+  registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
+  registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
+}
+
+/** The section as an instance without the license mounts it: usage upsells. */
+export function registerAiAuditingUpsellPagePrefetch(): void {
+  registerPagePrefetch(
+    Urls.monitorAiAuditingUsage(),
+    metabotAnalyticsUpsellPage,
+  );
+  registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
+  registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
+}
 
 function getMcpAnalyticsRoutes() {
   return (
@@ -124,7 +143,10 @@ export function getAiAuditingRoutes() {
     <>
       <Route index element={redirect("usage")} />
       <Route element={<MetabotAnalyticsAvailabilityLayout />}>
-        <Route path="usage" lazy={conversationStatsPage} />
+        <Route path="usage">
+          <Route index element={redirect("conversations")} />
+          <Route path=":metric" lazy={conversationStatsPage} />
+        </Route>
         <Route path="conversations" lazy={conversationsPage} />
         <Route path="conversations/:convoId" lazy={conversationDetailPage} />
       </Route>
@@ -138,7 +160,7 @@ export function getAiAuditingUpsellRoutes() {
   return (
     <>
       <Route index element={redirect("usage")} />
-      <Route path="usage" lazy={metabotAnalyticsUpsellPage} />
+      <Route path="usage/*" lazy={metabotAnalyticsUpsellPage} />
       {getMcpAnalyticsRoutes()}
       {getCliAnalyticsRoutes()}
     </>

@@ -10,7 +10,6 @@ semantic_type: type/FK
 fk_target_field_id: [Internal Metabase Database, public, v_task_runs, id]
 dimensions: []
 position: 8
-custom_position: 0
 database_position: 8
 has_field_values: auto-list
 serdes/meta:

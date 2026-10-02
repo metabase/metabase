@@ -277,7 +277,7 @@
     (let [data    {:cols             [{:name "A" :display_name "A" :base_type :type/Integer :semantic_type nil}]
                    :rows             [[5] [10]]
                    :format-rows?     true
-                   :results_metadata {:columns [{:name "A" :base_type :type/Integer
+                   :results_metadata {:columns [{:name "A" :display_name "A" :base_type :type/Integer
                                                  :fingerprint {:global {:distinct-count 2}}}]}
                    :viz-settings     {::mb.viz/column-settings
                                       {{::mb.viz/column-name "A"} {::mb.viz/show-mini-bar true}}}}
@@ -295,8 +295,10 @@
         (is (seq (hik.s/select (hik.s/find-in-text #"^5$") doc)))
         (is (seq (hik.s/select (hik.s/find-in-text #"^10$") doc)))))))
 
-(defn- render-table [dashcard results]
-  (channel.render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
+(defn- render-table [viz-settings results]
+  (channel.render/render-pulse-card :attachment "America/Los_Angeles"
+                                    (update render.tu/test-card :visualization_settings merge viz-settings)
+                                    nil results))
 
 (deftest attachment-rows-limit-test
   (doseq [[test-explanation env-var-value expected]
@@ -309,8 +311,7 @@
       (mt/with-temp-env-var-value! ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
         (is (= expected
                (count (-> (render-table
-                           {:visualization_settings {:table.columns
-                                                     [{:name "a" :enabled true}]}}
+                           {:table.columns [{:name "a" :enabled true}]}
                            {:data {:cols [{:name         "a",
                                            :display_name "a",
                                            :base_type    :type/BigInteger
@@ -343,3 +344,32 @@
         (let [s (get (table/column->viz-setting-styles columns viz) "desc")]
           (is (contains? s :min-width))
           (is (not (contains? s :width))))))))
+
+(deftest view-as-image-only-renders-http-urls-test
+  (testing "a `view_as: image` cell only becomes an <img> when it holds an http(s) URL"
+    (let [columns       [{:name "url"}]
+          query-results {:cols columns
+                         :rows [["https://example.com/a.png"]
+                                ["http://example.com/b.png"]
+                                ["file:///etc/passwd"]
+                                ["javascript:alert(1)"]
+                                ["data:text/html,<script>alert(1)</script>"]]}
+          viz-settings  {::mb.viz/column-settings {{::mb.viz/column-name "url"} {::mb.viz/view-as "image"}}}
+          rendered      (#'table/render-table (select-keys query-results [:cols :rows])
+                                              {:col-names ["url"] :cols-for-color-lookup ["url"]}
+                                              (query-results->header+rows query-results)
+                                              columns viz-settings nil)]
+      (testing "the http(s) cells, and only those, are images"
+        (is (= ["https://example.com/a.png" "http://example.com/b.png"]
+               (postwalk-collect (fn [node] (and (vector? node) (= :img (first node))))
+                                 (fn [node] (:src (second node)))
+                                 rendered))))
+      (testing "the other cells render as escaped text instead"
+        (is (= ["file:///etc/passwd"
+                "javascript:alert(1)"
+                "data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;"]
+               (->> (find-table-body rendered)
+                    (postwalk-collect (fn [node] (and (vector? node) (= :td (first node))))
+                                      last)
+                    (filter string?)
+                    (remove #(str/starts-with? % "http")))))))))

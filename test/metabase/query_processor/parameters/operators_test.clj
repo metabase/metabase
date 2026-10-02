@@ -116,7 +116,7 @@
   (testing "between normalization"
     (are [values op] (=? [op {} [:field {:source-field 5} 26] 1]
                          (params.ops/to-clause {:type   :number/between
-                                                :target [:dimension [:field {:source-field 5} 26]]
+                                                :target [:dimension [:field 26 {:source-field 5}]]
                                                 :value  values}))
       [1]     :>=
       [1 nil] :>=

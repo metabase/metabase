@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils";
+import { useTokenRefreshUntil } from "metabase/settings";
 import {
   Box,
   Button,
@@ -103,7 +103,7 @@ export const TransformsSettingUpModal = ({
               </Text>
             </Box>
 
-            <Button variant="filled" size="md" onClick={onClose}>
+            <Button variant="filled" onClick={onClose}>
               {t`Done`}
             </Button>
           </>

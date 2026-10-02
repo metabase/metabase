@@ -88,8 +88,16 @@ describe("TransformIndexTable", () => {
     setup({
       kindLabels: new Map([["btree", "B-Tree"]]),
       indexes: [
-        createMockTableIndexEntry({ name: "idx_btree", kind: "btree" }),
-        createMockTableIndexEntry({ name: "idx_gin", kind: "gin" }),
+        createMockTableIndexEntry({
+          name: "idx_btree",
+          kind: "btree",
+          request: createMockTableIndexRequest({ id: 1 }),
+        }),
+        createMockTableIndexEntry({
+          name: "idx_gin",
+          kind: "gin",
+          request: createMockTableIndexRequest({ id: 2 }),
+        }),
       ],
     });
     await waitForLoaderToBeRemoved();

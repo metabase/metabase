@@ -18,6 +18,12 @@
 (def ^:private ratchets-file
   ".clj-kondo/ratchets.edn")
 
+(def ^:private test-ratchets-file
+  ".clj-kondo/ratchets-test.edn")
+
+(def ^:private module-ratchets-file
+  ".clj-kondo/config/modules/ratchets.edn")
+
 ;; Keep the user's git configuration (hooks, merge drivers) out of the temporary repositories.
 (def ^:private git-env
   {"GIT_CONFIG_GLOBAL"   "/dev/null"
@@ -138,6 +144,42 @@
     (is (= #{"M  .clj-kondo/ratchets.edn" "UU app.txt"}
            (status dir)))))
 
+(deftest resolves-test-ratchets-test
+  (with-conflict [dir {:base   {test-ratchets-file (ratchets {:a 5, :b :unlimited, :ours-drop 2} {} #{:b})}
+                       :ours   {test-ratchets-file (ratchets {:a 5, :b 3} {} #{})}
+                       :theirs {test-ratchets-file (ratchets {:a 4, :b :unlimited, :ours-drop 1} {} #{:b})}}]
+    (let [{:keys [exit out]} (run dir script)]
+      (is (= 0 exit))
+      (is (str/includes? out (str "staged merged " test-ratchets-file))))
+    (let [text (slurp (str (fs/path dir test-ratchets-file)))]
+      (is (= {:ignore-counts  {:a 4, :b 3}
+              :comment-exempt #{}}
+             (edn/read-string text))
+          "merged with the same rules as the prod file, and written without :config-counts")
+      (is (str/starts-with? text ";; Budgets for kondo suppressions in test code")))
+    (is (= #{(str "M  " test-ratchets-file) "UU app.txt"}
+           (status dir))))
+  (testing "a stage with :config-counts is refused rather than having them dropped"
+    (with-conflict [dir {:base   {test-ratchets-file (ratchets {:a 5} {} #{})}
+                         :ours   {test-ratchets-file (ratchets {:a 4} {} #{})}
+                         :theirs {test-ratchets-file (ratchets {:a 3} {:c 1} #{})}}]
+      (let [{:keys [exit out err]} (run dir script)]
+        (is (pos? exit))
+        (is (str/includes? (str out err) "must not set :config-counts")))
+      (is (contains? (status dir) (str "UU " test-ratchets-file))))))
+
+(deftest resolves-module-ratchets-test
+  (with-conflict [dir {:base   {module-ratchets-file "{:api-any 3, :friend-edges 5}\n"}
+                       :ours   {module-ratchets-file "{:api-any 2, :friend-edges 5}\n"}
+                       :theirs {module-ratchets-file "{:api-any 3, :friend-edges 4, :uses-any 1}\n"}}]
+    (let [{:keys [exit out]} (run dir script)]
+      (is (= 0 exit))
+      (is (str/includes? out (str "staged merged " module-ratchets-file))))
+    (is (= {:api-any 2, :friend-edges 4, :uses-any 1}
+           (edn/read-string (slurp (str (fs/path dir module-ratchets-file))))))
+    (is (= #{(str "M  " module-ratchets-file) "UU app.txt"}
+           (status dir)))))
+
 (deftest keeps-a-disabled-target-verbatim-test
   (let [disabled ";; release branch\n{:disabled true}\n"]
     (with-conflict [dir {:base   {ratchets-file base-ratchets}
@@ -214,4 +256,4 @@
   (with-conflict [dir {:base {ratchets-file base-ratchets}}]
     (let [{:keys [exit err]} (run dir script)]
       (is (= 1 exit))
-      (is (str/includes? err "is not conflicted")))))
+      (is (str/includes? err "no ratchet file is conflicted")))))

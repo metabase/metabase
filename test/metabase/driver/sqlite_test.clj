@@ -6,6 +6,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -20,6 +21,10 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :sqlite
+    (is (nil? (driver.sql/default-schema :sqlite (mt/db))))))
 
 (deftest ^:parallel timezone-id-test
   (mt/test-driver :sqlite

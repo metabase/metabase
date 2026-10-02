@@ -170,6 +170,8 @@ describe("issue 14636", () => {
     const filteredTask = createMockTask({ task });
 
     // Keep this test independent of background tasks created asynchronously by H.restore().
+    // The task picker only shows a value that is in the unique task list.
+    cy.intercept("GET", "/api/task/unique-tasks", [task]);
     // Register the less-specific routes first because Cypress matches intercepts in reverse order.
     stubFilteredResponse({
       status: "success",

@@ -20,7 +20,14 @@
 
 ;; Many functions in this namespace re-parse the same files over and over again during testing, so introduce a
 ;; mechanism for bounded caching of those parsed files.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parsed-file-cache* nil)
+
+(def ^:private File
+  "A path string or `java.io.File`, as accepted by `rewrite-clj.parser/parse-file-all` and friends."
+  [:or
+   string?
+   [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]])
 
 (defn- parse-file-all
   "Calls `rewrite-.clj.parser/parse-file-all`, but first checks in `*parsed-file-cache*` if it is bound."
@@ -121,7 +128,7 @@
 
 (mu/defn- find-dynamically-loaded-namespaces :- [:set simple-symbol?]
   "Find the set of namespace symbols for namespaces loaded by `require` and friends in a `file`."
-  [file]
+  [file :- File]
   (try
     (find-required-namespaces file)
     (catch Throwable e
@@ -142,7 +149,7 @@
 
 (mu/defn find-defenterprises
   "using rewrite-clj, find and return all the namespaces 'required' by defenterprise forms in a file."
-  [file]
+  [file :- :string]
   ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
   (if (str/includes? file "/metabase_enterprise/")
     []
@@ -160,7 +167,7 @@
 
 (mu/defn find-defenterprise-schemas
   "using rewrite-clj, find and return all the namespaces 'required' by defenterprise-schema forms in a file."
-  [file]
+  [file :- :string]
   ;; We want to know what namespace defendpoint 'requires': so do not need to parse anything in the enterprise dir.
   (if (str/includes? file "/metabase_enterprise/")
     []
@@ -204,19 +211,37 @@
   don't include them in our deps tree."
   '{metabase.config.core #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
-(mu/defn- file-dependencies :- [:map
-                                [:namespace simple-symbol?]
-                                [:filename  string?] ; filename is relative to [[project-root]]
-                                [:module    symbol?]
-                                [:deps      [:sequential
-                                             [:map
-                                              [:namespace simple-symbol?]
-                                              [:module    symbol?]
-                                              [:dynamic {:optional true} :keyword]]]]]
-  [prefix->module :- map?
-   file :- [:or
-            string?
-            [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
+(def ^:private ModuleConfig
+  [:map {:closed true}
+   [:team           {:optional true} :string]
+   [:ns-prefix      {:optional true} :string]
+   [:api            {:optional true} [:or [:= :any] [:set :symbol]]]
+   [:uses           {:optional true} [:or [:= :any] [:set :symbol]]]
+   [:friends        {:optional true} [:set :symbol]]
+   [:model-exports  {:optional true} [:or [:= :any] [:set :keyword]]]
+   [:model-imports  {:optional true} [:or [:= :bypass] [:set :keyword]]]
+   [:module-exports {:optional true} [:set :symbol]]])
+
+(def ^:private ModulesConfig
+  [:map-of :symbol ModuleConfig])
+
+(def ^:private PrefixToModule
+  [:map-of :string :symbol])
+
+(def ^:private FileDependencies
+  [:map {:closed true}
+   [:namespace {:optional true} [:maybe simple-symbol?]]
+   [:filename  string?] ; filename is relative to [[project-root]]
+   [:module    symbol?]
+   [:deps      [:sequential
+                [:map {:closed true}
+                 [:namespace simple-symbol?]
+                 [:module    symbol?]
+                 [:dynamic {:optional true} :keyword]]]]])
+
+(mu/defn- file-dependencies :- FileDependencies
+  [prefix->module :- PrefixToModule
+   file :- File]
   (try
     (let [decl         (ns.file/read-file-ns-decl file)
           ns-symb      (ns.parse/name-from-ns-decl decl)
@@ -436,12 +461,6 @@
       ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
       (dissoc 'connection-pool)))
 
-(defn module-team
-  "Team owning `module`: its own `:team`, else its nearest ancestor's."
-  [config module]
-  (some #(get-in config [% :team])
-        (take-while some? (iterate #(modules/parent-module config %) module))))
-
 (defn- kondo-config-diff-ignore-any
   "Ignore entries in the config that use `:any`."
   [diff]
@@ -618,7 +637,8 @@
 
 (mu/defn- module->source-files :- [:set :string]
   "Return the set of all *source* filenames (relative to the [[project-root]] directory) for a `module`."
-  [deps module]
+  [deps :- [:sequential FileDependencies]
+   module :- symbol?]
   (into
    (sorted-set)
    (comp (filter #(= (:module %) module))
@@ -727,11 +747,11 @@
 
 (mu/defn- module->test-files :- [:set :string]
   "Return the set of test filenames associated with a `module`."
-  ([modules-config :- map?
+  ([modules-config :- ModulesConfig
     module-sym :- :symbol]
    (module->test-files modules-config (modules/build-prefix->module modules-config) module-sym))
-  ([modules-config :- map?
-    prefix->module :- map?
+  ([modules-config :- ModulesConfig
+    prefix->module :- PrefixToModule
     module-sym :- :symbol]
    (let [path-prefix  (module->test-path-prefix modules-config module-sym)
          test-dir     (io/file path-prefix)
@@ -773,7 +793,7 @@
 
 (mu/defn find-model-keywords :- [:set :keyword]
   "Find all `:model/X` keywords referenced in a source file, ignoring comments."
-  [file]
+  [file :- File]
   (try
     (let [models (atom #{})]
       (walk-parsed-ignore-comments!
@@ -793,7 +813,7 @@
 
 (mu/defn find-model-definitions :- [:set :keyword]
   "Find all models with their `t2/table-name` defined in this file."
-  [file]
+  [file :- File]
   (let [models (atom #{})]
     (walk-parsed-ignore-comments!
      (fn [node]
@@ -930,3 +950,105 @@
 (comment
   (model-ownership)
   (model-boundary-violations (kondo-config)))
+
+;;;; Module boundary analysis
+
+(defn- graph-nodes [graph]
+  (into (set (keys graph)) (mapcat val) graph))
+
+(defn strongly-connected-components
+  "Return the strongly connected components of `graph` as a vector of sets.
+  A node outside every cycle comes back as a singleton set."
+  [graph]
+  ;; Tarjan's algorithm, kept recursive because that reads better than an explicit stack of frames.
+  ;; Each node on the search path costs a level of recursion, so the worst case is one level per node.
+  ;; As of 2026-09-11 the 206-module graph peaks at 40 levels; the default 2 MB thread stack fits about 2,600.
+  (letfn [(pop-component [state root]
+            (loop [state state, component #{}]
+              (let [node      (peek (:stack state))
+                    state     (-> state
+                                  (update :stack pop)
+                                  (update :on-stack disj node))
+                    component (conj component node)]
+                (if (= node root)
+                  (update state :components conj component)
+                  (recur state component)))))
+          (visit [state node]
+            (let [node-index (:next-index state)
+                  state      (-> state
+                                 (assoc-in [:index node] node-index)
+                                 (assoc-in [:lowlink node] node-index)
+                                 (update :next-index inc)
+                                 (update :stack conj node)
+                                 (update :on-stack conj node))
+                  state      (reduce (fn [state successor]
+                                       (cond
+                                         (not (contains? (:index state) successor))
+                                         (let [state (visit state successor)]
+                                           (update-in state [:lowlink node]
+                                                      min
+                                                      (get-in state [:lowlink successor])))
+
+                                         (contains? (:on-stack state) successor)
+                                         (update-in state [:lowlink node]
+                                                    min
+                                                    (get-in state [:index successor]))
+
+                                         :else
+                                         state))
+                                     state
+                                     (get graph node))]
+              (cond-> state
+                (= (get-in state [:lowlink node]) (get-in state [:index node]))
+                (pop-component node))))]
+    (:components
+     (reduce (fn [state node]
+               (cond-> state
+                 (not (contains? (:index state) node)) (visit node)))
+             {:components []
+              :index      {}
+              :lowlink    {}
+              :next-index 0
+              :on-stack   #{}
+              :stack      []}
+             (sort (graph-nodes graph))))))
+
+(defn cyclic-components
+  "Non-singleton [[strongly-connected-components]], largest first; ties sort by first member."
+  [graph]
+  (->> (strongly-connected-components graph)
+       (filter #(> (count %) 1))
+       (sort-by (fn [component] [(- (count component)) (str (first (sort component)))]))
+       vec))
+
+(defn- cyclic-component-sizes
+  "Module and namespace counts for each [[cyclic-components]] cluster."
+  [graph node->namespace-count]
+  (mapv (fn [component]
+          {:modules    (count component)
+           :namespaces (transduce (map #(get node->namespace-count % 0)) + 0 component)})
+        (cyclic-components graph)))
+
+(defn module-boundary-stats
+  "REPL diagnostics for the module graph:
+
+  - `:api-any-namespaces`  namespaces exposed by `:api :any` modules
+  - `:module-count`        configured modules
+  - `:scc-module-sizes`    modules per cycle, largest first
+  - `:scc-namespace-sizes` namespaces per cycle, in the same order
+
+  These values are not ratcheted because any source change can move them. Use namespace sizes to track
+  cycle reduction: splitting a module can grow a cycle's module count without removing namespaces."
+  ([]
+   (module-boundary-stats (dependencies) (kondo-config)))
+  ([deps config]
+   (let [any-modules (into #{} (keep (fn [[module cfg]] (when (= :any (:api cfg)) module))) config)
+         sizes       (cyclic-component-sizes (module-dependencies deps)
+                                             (frequencies (keep :module deps)))]
+     {:api-any-namespaces  (count (filter #(contains? any-modules (:module %)) deps))
+      :module-count        (count config)
+      :scc-module-sizes    (mapv :modules sizes)
+      :scc-namespace-sizes (mapv :namespaces sizes)})))
+
+(comment
+  (module-boundary-stats))

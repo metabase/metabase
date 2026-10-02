@@ -368,3 +368,32 @@
                 :perms/create-queries {(mt/id :products) :query-builder}
                 :perms/view-data      {(mt/id :products) :unrestricted}}
                (query-perms/required-perms-for-query query :already-preprocessed? true)))))))
+
+(deftest can-run-query?-non-permission-errors-test
+  (let [broken {:database (mt/id) :type :query :query {:source-table "card__13371337"}}]
+    (testing "a query whose permissions cannot be calculated throws when the caller asks for it"
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating permissions"
+                              (query-perms/can-run-query? broken false true)))))
+    (testing "without the flag the calculation failure stays folded into the permission answer"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (false? (query-perms/can-run-query? broken)))))))
+  (testing "a real permission denial reads as false in either mode"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [query (mt/mbql-query orders)]
+          (is (false? (query-perms/can-run-query? query)))
+          (is (false? (query-perms/can-run-query? query false true))))))))
+
+(deftest check-result-metadata-data-perms-error-message-test
+  (testing "the denied table's ID reads as a plain number, with no digit-grouping separator"
+    ;; `tru` runs its arguments through MessageFormat, which formats a bare integer for the current locale: a
+    ;; four-digit ID comes out as "1,595". IDs only reach four digits on busy instances, so the ID is passed as a
+    ;; string to keep the message stable whatever its magnitude.
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permission to view data of table 1595 in result_metadata\."
+             (query-perms/check-result-metadata-data-perms (mt/id) [{:name "NAME", :table_id 1595}])))))))

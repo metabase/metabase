@@ -178,16 +178,40 @@
    - Routes dimension requests to dimension-fetcher-fn if provided
    - Routes table/column/segment requests to the appropriate database provider
    - Caches metric, measure, and dimension metadata internally"
-  ([metric-fetcher-fn table->db-fn db-provider-fn setting-fn]
+  ([metric-fetcher-fn :- ifn?
+    table->db-fn      :- ifn?
+    db-provider-fn    :- ifn?
+    setting-fn        :- ifn?]
    (metric-context-metadata-provider metric-fetcher-fn nil nil nil table->db-fn db-provider-fn setting-fn nil))
-  ([metric-fetcher-fn measure-fetcher-fn table->db-fn db-provider-fn setting-fn]
+  ([metric-fetcher-fn  :- ifn?
+    measure-fetcher-fn :- [:maybe ifn?]
+    table->db-fn       :- ifn?
+    db-provider-fn     :- ifn?
+    setting-fn         :- ifn?]
    (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn nil nil table->db-fn db-provider-fn setting-fn nil))
-  ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn]
+  ([metric-fetcher-fn    :- ifn?
+    measure-fetcher-fn   :- [:maybe ifn?]
+    dimension-fetcher-fn :- [:maybe ifn?]
+    table->db-fn         :- ifn?
+    db-provider-fn       :- ifn?
+    setting-fn           :- ifn?]
    (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn nil table->db-fn db-provider-fn setting-fn nil))
-  ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn column-post-process-fn]
+  ([metric-fetcher-fn        :- ifn?
+    measure-fetcher-fn       :- [:maybe ifn?]
+    dimension-fetcher-fn     :- [:maybe ifn?]
+    table->db-fn             :- ifn?
+    db-provider-fn           :- ifn?
+    setting-fn               :- ifn?
+    column-post-process-fn   :- [:maybe ifn?]]
    (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn nil table->db-fn db-provider-fn setting-fn column-post-process-fn))
-  ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn segment-fetcher-fn
-    table->db-fn db-provider-fn setting-fn column-post-process-fn]
+  ([metric-fetcher-fn      :- ifn?
+    measure-fetcher-fn     :- [:maybe ifn?]
+    dimension-fetcher-fn   :- [:maybe ifn?]
+    segment-fetcher-fn     :- [:maybe ifn?]
+    table->db-fn           :- ifn?
+    db-provider-fn         :- ifn?
+    setting-fn             :- ifn?
+    column-post-process-fn :- [:maybe ifn?]]
    (->MetricContextMetadataProvider
     metric-fetcher-fn
     measure-fetcher-fn

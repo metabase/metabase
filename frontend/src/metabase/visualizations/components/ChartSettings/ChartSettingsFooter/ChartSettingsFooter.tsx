@@ -13,11 +13,11 @@ export const ChartSettingsFooter = ({
   onCancel,
   onReset,
 }: ChartSettingsFooterProps) => (
-  <Flex justify="flex-end" gap="lg" py="lg" px="xxl">
+  <Flex justify="flex-end" align="center" gap="lg" py="lg" px="xxl">
     {onReset && (
       <Button
-        variant="subtle"
-        color="text-secondary"
+        variant="transparent"
+        size="compact-md"
         leftSection={<Icon name="refresh" />}
         onClick={onReset}
       >{t`Reset to defaults`}</Button>

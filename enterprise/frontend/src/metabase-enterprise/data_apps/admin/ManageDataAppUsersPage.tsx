@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
@@ -14,6 +13,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { isApiKeyGroupMember } from "metabase/common/utils/groups";
 import { useParams } from "metabase/router";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Box, Button, Stack, Text } from "metabase/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import type { Group, Member } from "metabase-types/api";

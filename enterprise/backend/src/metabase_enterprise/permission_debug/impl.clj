@@ -28,13 +28,16 @@
   "Format of the response the Debugger will return"
   [:schema {:registry
             {::group-id :int
-             ::perm-debug-info [:map
+             ::perm-debug-info [:map {:closed true}
                                 [:model-type  [:enum "card" "invalid"]]
                                 [:model-id    :string]
                                 [:decision    [:enum "allow" "denied" "limited"]]
                                 [:segment     [:set [:enum "sandboxed" "impersonated" "routed"]]]
                                 [:message     [:sequential :string]]
-                                [:data        [:map]]
+                                [:data        [:map {:closed true}
+                                               [:blocked-tables           {:optional true} [:map-of :string [:set :string]]]
+                                               [:download-limited-tables  {:optional true} [:map-of :string [:set :string]]]
+                                               [:download-no-tables       {:optional true} [:map-of :string [:set :string]]]]]
                                 [:suggestions [:map-of ::group-id :string]]]}}
    ::perm-debug-info])
 

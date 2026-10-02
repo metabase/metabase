@@ -28,8 +28,8 @@
       (is (= {:a {:recorded 0, :actual 1, :examples ["f.clj:1"]}}
              (kondo-ratchet/over-budget {:b 1} occurrences))))
     (testing "config budgets"
-      (is (= {} (kondo-ratchet/config-over-budget {:cfg 3} {:cfg 1})))
-      (is (= {:cfg {:recorded 1, :actual 2}} (kondo-ratchet/config-over-budget {:cfg 1} {:cfg 2}))))))
+      (is (= {} (kondo-ratchet/counts-over-budget {:cfg 3} {:cfg 1})))
+      (is (= {:cfg {:recorded 1, :actual 2}} (kondo-ratchet/counts-over-budget {:cfg 1} {:cfg 2}))))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Scanner unit tests
@@ -170,8 +170,22 @@
 ;;;; Budget bookkeeping unit tests
 ;;;; ---------------------------------------------------------------------------
 
+(deftest ^:parallel module-escape-hatches-test
+  (is (= {:api-any              1
+          :friend-edges         3
+          :model-imports-bypass 1
+          :ns-prefixes          1
+          :uses-any             1}
+         (kondo-ratchet/module-escape-hatches
+          {'a {:api :any, :friends #{'b 'c}, :uses #{'b}, :model-imports :bypass}
+           'b {:api           #{'b.api}
+               :friends       #{'a}
+               :uses          :any
+               :model-imports #{:model/A}
+               :ns-prefix     "metabase.legacy-b"}}))))
+
 (deftest ^:parallel render-test
-  (testing "keys come out sorted, values aligned, and the text round-trips losslessly"
+  (testing "renders stable text with sorted entries"
     (let [ratchets {:ignore-counts  {:all              1
                                      :discouraged-var  3
                                      :metabase/modules 2
@@ -193,6 +207,27 @@
   (testing "empty ratchets"
     (is (str/ends-with? (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
                         "{:ignore-counts  {}\n :config-counts  {}\n :comment-exempt #{}}\n"))))
+
+(deftest ^:parallel render-test-test
+  (let [ratchets {:ignore-counts  {:discouraged-var 3}
+                  :comment-exempt #{:discouraged-var}}
+        text     (kondo-ratchet/render-test (assoc ratchets :config-counts {}))]
+    (is (str/starts-with? text ";; Budgets for kondo suppressions in test code"))
+    (is (str/ends-with? text (str "{:ignore-counts  {:discouraged-var 3}\n"
+                                  " :comment-exempt #{:discouraged-var}}\n"))
+        "no :config-counts -- only the prod file tracks them")
+    (is (= ratchets (edn/read-string text)))
+    (is (= text (kondo-ratchet/render-test (edn/read-string text)))))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not set :config-counts"
+                        (kondo-ratchet/render-test {:ignore-counts {}, :config-counts {:a 1}, :comment-exempt #{}}))
+      "a nonempty :config-counts is an error, not silently dropped"))
+
+(deftest ^:parallel render-module-ratchets-test
+  (let [ratchets {:uses-any 4, :api-any 1}
+        text     (kondo-ratchet/render-module-ratchets ratchets)]
+    (is (str/ends-with? text "{:api-any  1\n :uses-any 4}\n"))
+    (is (= ratchets (edn/read-string text)))
+    (is (= text (kondo-ratchet/render-module-ratchets (edn/read-string text))))))
 
 (deftest read-ratchets-policy-values-test
   (let [file (doto (java.io.File/createTempFile "kondo-ratchets" ".edn")
@@ -220,7 +255,18 @@
       (binding [kondo-ratchet/*ratchets-file* (.getPath file)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"expected a non-negative integer"
                               (kondo-ratchet/read-ratchets))
-            (str "a config budget is always a plain count, so " (pr-str value) " is rejected"))))))
+            (str "config budgets are always plain counts, so " (pr-str value) " is rejected"))))))
+
+(deftest read-module-ratchets-test
+  (doseq [[content message] [["{:api-any 1}" nil]
+                             ["{:api-any :unlimited}" #"expected a non-negative integer"]
+                             ["{\"api-any\" 1}" #"is not a module metric"]]]
+    (let [file (doto (java.io.File/createTempFile "module-ratchets" ".edn") (spit content))]
+      (binding [kondo-ratchet/*module-ratchets-file* (.getPath file)]
+        (if message
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                (kondo-ratchet/read-module-ratchets)))
+          (is (= {:api-any 1} (kondo-ratchet/read-module-ratchets))))))))
 
 (deftest read-ratchets-validates-field-shapes-test
   (doseq [[field message] [[:ignore-counts  #":ignore-counts must be a map"]
@@ -301,16 +347,28 @@
         "unused numeric budgets and unlimited policies do not fail the check")))
 
 (deftest ^:synchronized fix-when-disabled-test
-  (testing "fix! explains that the ratchets are disabled and leaves the file unchanged"
+  (testing "fix! explains that the ratchets are disabled, counts nothing, and leaves the file unchanged"
     (let [dir     (.toFile (java.nio.file.Files/createTempDirectory
                             "kondo-ratchet-test"
                             (make-array java.nio.file.attribute.FileAttribute 0)))
           budgets (doto (io/file dir "ratchets.edn") (spit "{:disabled true}\n"))]
       (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
         (is (kondo-ratchet/disabled?))
-        (is (= (str (.getPath budgets) " is disabled -- nothing to do\n")
-               (with-out-str (kondo-ratchet/fix! {:seed "whatever"}))))
+        (mt/with-dynamic-fn-redefs
+          [kondo-ratchet/known-linters         #(throw (AssertionError. "read the known linters"))
+           kondo-ratchet/scan                  #(throw (AssertionError. "scanned the source tree"))
+           kondo-ratchet/config-suppressions   #(throw (AssertionError. "counted config suppressions"))
+           kondo-ratchet/module-escape-hatches #(throw (AssertionError. "counted module escape hatches"))]
+          (is (= (str (.getPath budgets) " is disabled -- nothing to do\n")
+                 (with-out-str (kondo-ratchet/fix! {:seed "whatever"})))))
         (is (= "{:disabled true}\n" (slurp budgets)))))))
+
+(defn- empty-test-ratchets-file!
+  "A temp `.clj-kondo/ratchets-test.edn` stand-in, already clean (no budgets) -- so a [[kondo-ratchet/fix!]]
+  run with no test-path occurrences writes nothing and reports nothing for it."
+  ^java.io.File [dir]
+  (doto (io/file dir "ratchets-test.edn")
+    (spit (kondo-ratchet/render-test {:ignore-counts {}, :comment-exempt #{}}))))
 
 (deftest ^:synchronized seed-unlimited-linter-test
   (let [dir        (.toFile (java.nio.file.Files/createTempDirectory
@@ -318,15 +376,24 @@
                              (make-array java.nio.file.attribute.FileAttribute 0)))
         ratchets   {:ignore-counts {:free :unlimited}, :config-counts {}, :comment-exempt #{}}
         budgets    (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
+        modules    (doto (io/file dir "module-ratchets.edn")
+                     (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)
         occurrences [{:file "f.clj", :line 1, :linters [:free]}
                      {:file "f.clj", :line 2, :linters [:free]}]]
-    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free})
-                    kondo-ratchet/scan                (constantly occurrences)
-                    kondo-ratchet/config-suppressions (constantly {})]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:free})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
         (is (= ["seeded :free at 2"
+                "WARNING: :free has no inline ignores -- nothing to seed"
                 (str "wrote " (.getPath budgets))]
-               (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed "free"}))))))
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed "free"}))))
+            "the prod occurrences seed the prod budget; the seeded linter has none under `test/`, so the
+             test report says so and the test file is left untouched"))
       (is (= {:ignore-counts  {:free 2}
               :config-counts  {}
               :comment-exempt #{}}
@@ -337,10 +404,15 @@
                           "kondo-ratchet-test"
                           (make-array java.nio.file.attribute.FileAttribute 0)))
         text    (kondo-ratchet/render {:ignore-counts {:free :unlimited}, :config-counts {}, :comment-exempt #{}})
-        budgets (doto (io/file dir "ratchets.edn") (spit text))]
-    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters (constantly #{:free})
-                    kondo-ratchet/scan          (fn [] (throw (AssertionError. "scanned before validating the seed")))]
+        budgets (doto (io/file dir "ratchets.edn") (spit text))
+        modules (doto (io/file dir "module-ratchets.edn")
+                  (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters (constantly #{:free})
+                                  kondo-ratchet/scan          (fn [] (throw (AssertionError. "scanned before validating the seed")))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"^cannot seed :bogus: not a known linter -- policies must name"
                               (kondo-ratchet/fix! {:seed ":bogus"})))
@@ -355,12 +427,18 @@
                      :config-counts  {}
                      :comment-exempt #{:empty}}
         budgets     (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
+        modules     (doto (io/file dir "module-ratchets.edn")
+                      (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)
         occurrences [{:file "f.clj", :line 1, :linters [:free]}]
         run!        #(str/split-lines (with-out-str (kondo-ratchet/fix!)))]
-    (binding [kondo-ratchet/*ratchets-file* (.getPath budgets)]
-      (with-redefs [kondo-ratchet/known-linters       (constantly #{:free :empty :gone :zero})
-                    kondo-ratchet/scan                (constantly occurrences)
-                    kondo-ratchet/config-suppressions (constantly {})]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:free :empty :gone :zero})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
         (is (= ["dropped :gone (no ignores left)"
                 "dropped :zero (no ignores left)"
                 "WARNING: :unlimited policies with no ignores left: :empty -- delete an entry by hand once its linter no longer needs one"
@@ -377,6 +455,105 @@
                 "unchanged"]
                (run!))
             "a second run changes nothing and still reports")))))
+
+(deftest ^:synchronized fix-lowers-module-counts-test
+  (let [dir      (.toFile (java.nio.file.Files/createTempDirectory
+                           "kondo-ratchet-test"
+                           (make-array java.nio.file.attribute.FileAttribute 0)))
+        ratchets {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
+        budgets  (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
+        modules  (doto (io/file dir "module-ratchets.edn")
+                   (spit (kondo-ratchet/render-module-ratchets
+                          {:api-any 2, :friend-edges 5, :uses-any 1})))
+        test-budgets (empty-test-ratchets-file! dir)]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{})
+                                  kondo-ratchet/scan                  (constantly [])
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {:api-any 1, :friend-edges 4, :uses-any 0})]
+        (is (= ["lowered module :api-any 2 -> 1"
+                "lowered module :friend-edges 5 -> 4"
+                "dropped module :uses-any (no escape hatches left)"
+                (str "wrote " (.getPath modules))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix!)))))
+        (is (= {:api-any 1, :friend-edges 4}
+               (kondo-ratchet/read-module-ratchets)))))))
+
+(deftest ^:synchronized fix-splits-prod-and-test-budgets-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        ratchets     {:ignore-counts {:a 5}, :config-counts {}, :comment-exempt #{}}
+        budgets      (doto (io/file dir "ratchets.edn") (spit (kondo-ratchet/render ratchets)))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (doto (io/file dir "ratchets-test.edn")
+                       (spit (kondo-ratchet/render-test (dissoc ratchets :config-counts))))
+        occurrences  [{:file "src/f.clj",  :line 1, :linters [:a]}
+                      {:file "src/f.clj",  :line 2, :linters [:a]}
+                      {:file "test/g.clj", :line 1, :linters [:a]}]]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters         (constantly #{:a})
+                                  kondo-ratchet/scan                  (constantly occurrences)
+                                  kondo-ratchet/config-suppressions   (constantly {})
+                                  kondo-ratchet/module-escape-hatches (constantly {})]
+        (is (= ["lowered :a 5 -> 2"
+                "lowered :a 5 -> 1"
+                (str "wrote " (.getPath budgets))
+                (str "wrote " (.getPath test-budgets))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix!))))
+            "the two src occurrences lower the prod budget to 2; the one test occurrence lowers the test
+             budget to 1, independently -- neither count masks the other"))
+      (is (= {:ignore-counts {:a 2}, :config-counts {}, :comment-exempt #{}}
+             (kondo-ratchet/read-ratchets)))
+      (is (= {:ignore-counts {:a 1}, :config-counts {}, :comment-exempt #{}}
+             (binding [kondo-ratchet/*ratchets-file* (.getPath test-budgets)]
+               (kondo-ratchet/read-ratchets)))))))
+
+(deftest ^:synchronized fix-validates-test-ratchets-against-the-right-file-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (doto (io/file dir "ratchets-test.edn")
+                       (spit (kondo-ratchet/render-test {:ignore-counts {:bogus 1}, :comment-exempt #{}})))]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters (constantly #{})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              (re-pattern (str "^" (java.util.regex.Pattern/quote (.getPath test-budgets))
+                                               " names 1 unknown linter: :bogus"))
+                              (kondo-ratchet/fix! nil))
+            "the test file is named, not the prod file")))))
+
+(deftest ^:synchronized fix-rejects-nonempty-test-config-counts-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (doto (io/file dir "ratchets-test.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {:a 1}, :comment-exempt #{}})))]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters (constantly #{:a})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              (re-pattern (str (java.util.regex.Pattern/quote (.getPath test-budgets))
+                                               " must not set :config-counts -- config-level suppressions"
+                                               " are tracked only in "
+                                               (java.util.regex.Pattern/quote (.getPath budgets))))
+                              (kondo-ratchet/fix! nil)))))))
 
 (deftest read-ratchets-requires-one-map-test
   (doseq [[content message] [[""                       #"is empty; expected one map"]
@@ -541,12 +718,12 @@
        var), per-var re-allows count at any nesting depth, discouragements and enablements count
        nothing; groups, :config-in-comment and :config-in-call sum per linter"))
 
-(deftest ^:parallel config-drift-test
+(deftest ^:parallel count-drift-test
   (is (= {:gone {:recorded 2, :actual 0}
           :new  {:recorded 0, :actual 1}
           :up   {:recorded 1, :actual 3}}
-         (kondo-ratchet/config-drift {:gone 2, :same 5, :up 1}
-                                     {:same 5, :new 1, :up 3}))))
+         (kondo-ratchet/count-drift {:gone 2, :same 5, :up 1}
+                                    {:same 5, :new 1, :up 3}))))
 
 (defn- merge-policies
   "[[kondo-ratchet/merge-ratchets]] over `:ignore-counts` maps alone, so a test reads as the three stages."
@@ -583,10 +760,18 @@
 
 (deftest ^:parallel merge-ratchets-config-counts-test
   (is (= {:config-counts {:lowered 1, :ours-add 2, :theirs-add 3}}
-         (select-keys (kondo-ratchet/merge-ratchets {:config-counts {:lowered 4, :dropped 1}}
-                                                    {:config-counts {:lowered 2, :ours-add 2}}
-                                                    {:config-counts {:lowered 1, :dropped 1, :theirs-add 3}})
+         (select-keys (kondo-ratchet/merge-ratchets
+                       {:config-counts {:lowered 4, :dropped 1}}
+                       {:config-counts {:lowered 2, :ours-add 2}}
+                       {:config-counts {:lowered 1, :dropped 1, :theirs-add 3}})
                       [:config-counts]))))
+
+(deftest ^:parallel merge-module-ratchets-test
+  (is (= {:lowered 1, :ours-add 2, :theirs-add 3}
+         (kondo-ratchet/merge-module-ratchets
+          {:lowered 4, :dropped 1}
+          {:lowered 2, :ours-add 2}
+          {:lowered 1, :dropped 1, :theirs-add 3}))))
 
 (deftest ^:parallel merge-ratchets-absent-base-test
   (testing "with no base stage, each policy is a one-sided addition and shared linters take the stricter"
@@ -695,6 +880,8 @@
             "dropped config :cfg-gone (no suppressions left)"
             "lowered config :cfg-lower 4 -> 2"
             "WARNING: config suppressions for :cfg-over are over budget (1 recorded, 3 actual) -- remove one from .clj-kondo/config.edn or raise the budget by hand"
+            "lowered module :api-any 2 -> 1"
+            "WARNING: module :uses-any is over budget (1 recorded, 2 actual) -- remove one from .clj-kondo/config/modules/config.edn or raise the budget by hand"
             "WARNING: :comment-exempt is no longer needed for these linters: :polite -- delete the stale entries by hand"]
            (kondo-ratchet/change-report {:ignore-counts  {:empty  :unlimited
                                                           :free   :unlimited
@@ -709,8 +896,10 @@
                                                           :cfg-over  1
                                                           :cfg-same  6}
                                          :comment-exempt #{:lower :polite}}
+                                        {:api-any 2, :uses-any 1}
                                         occurrences
                                         {:cfg-lower 2, :cfg-over 3, :cfg-same 6}
+                                        {:api-any 1, :uses-any 2}
                                         [:new :void]))
         "untouched budgets (:same, :cfg-same), a used unlimited policy (:free), and a still-needed
          exemption (:lower) earn no line; a hand-written 0 (:zero) is dropped like any bounded budget with no
@@ -719,13 +908,16 @@
 (deftest ^:parallel shrink-summary-test
   (is (= (str "{:a                      2 => 1\n"
               " :config/unused-import   4 => 0\n"
+              " :module/friend-edges    3 => 2\n"
               " :z                     10 => 3}")
          (kondo-ratchet/shrink-summary
           {:ignore-counts {:a 2, :same 1, :unlimited :unlimited, :z 10}
            :config-counts {:same 2, :unused-import 4}
+           :module-counts {:friend-edges 3}
            :comment-exempt #{:a}}
           {:ignore-counts {:a 1, :raised 2, :same 1, :unlimited :unlimited, :z 3}
            :config-counts {:same 2}
+           :module-counts {:friend-edges 2}
            :comment-exempt #{}})))
   (is (= "{}" (kondo-ratchet/shrink-summary {:ignore-counts {:a 1}}
                                             {:ignore-counts {:a 2}}))
@@ -744,3 +936,23 @@
                        "# TODO\n  . TODONE"))
     (is (str/includes? (body ["# still our problem" ". fixed, so no longer our problem"])
                        "[`./bin/mage kondo-ratchets-shrink`](https://example.test/run/1)"))))
+
+(deftest ^:synchronized shrink-pr-body-from-files-test
+  (let [dir   (.toFile (java.nio.file.Files/createTempDirectory
+                        "kondo-ratchet-test"
+                        (make-array java.nio.file.attribute.FileAttribute 0)))
+        write (fn [file-name text] (.getPath (doto (io/file dir file-name) (spit text))))
+        prod  (fn [n] (kondo-ratchet/render {:ignore-counts {:a n}, :config-counts {}, :comment-exempt #{}}))
+        paths {:before         (write "before.edn" (prod 3))
+               :after          (write "after.edn" (prod 2))
+               :modules-before (write "modules-before.edn" (kondo-ratchet/render-module-ratchets {:friend-edges 5}))
+               :modules-after  (write "modules-after.edn" (kondo-ratchet/render-module-ratchets {:friend-edges 4}))
+               :test-before    (write "test-before.edn" (prod 7))
+               :test-after     (write "test-after.edn" (prod 6))}]
+    (try
+      (let [body (kondo-ratchet/shrink-pr-body-from-files paths "https://example.test/run/1")]
+        (is (re-find #":a\s+3 => 2" body))
+        (is (re-find #":module/friend-edges\s+5 => 4" body))
+        (is (re-find #":test/a\s+7 => 6" body)))
+      (finally
+        (run! io/delete-file (reverse (file-seq dir)))))))

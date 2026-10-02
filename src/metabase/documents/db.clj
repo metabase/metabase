@@ -10,6 +10,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn document
@@ -140,8 +141,8 @@
 
 (mu/defn table
   "The Table with `id`, or nil."
-  [id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id id))
+  [id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn dashboard
   "The Dashboard with `id`, or nil."

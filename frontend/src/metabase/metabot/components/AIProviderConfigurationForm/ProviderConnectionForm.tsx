@@ -169,6 +169,10 @@ export function ProviderConnectionForm({
     Object.entries(providerType.requires).every(
       ([key, deps]) => !hasValue(key) || deps.every(hasValue),
     );
+  const hasConfiguredModel =
+    providerType != null &&
+    providerType.model_fields.length > 0 &&
+    providerType.model_fields.every(hasValue);
 
   const handleSave = async () => {
     if (!providerType) {
@@ -184,19 +188,20 @@ export function ProviderConnectionForm({
       ...config,
       ...Object.fromEntries(cleared.map((key) => [key, ""])),
     };
+    const savedModel = hasConfiguredModel ? undefined : model;
     try {
       const saved = isEditing
         ? await updateProvider({
             key: connection.key,
             name,
             config: savedConfig,
-            model,
+            model: savedModel,
           }).unwrap()
         : await createProvider({
             type: providerType.type,
             name,
             config: savedConfig,
-            model,
+            model: savedModel,
           }).unwrap();
       onSaved(saved);
     } catch (caught) {
@@ -247,7 +252,7 @@ export function ProviderConnectionForm({
                 disabledFields={connection?.env_fields}
                 autoFocusFirstField
               />
-              {selected.models.length > 0 && (
+              {selected.models.length > 0 && !hasConfiguredModel && (
                 <Select
                   label={t`Model`}
                   description={t`Connecting checks your credentials against this model, and Metabot starts on it.`}
@@ -348,8 +353,8 @@ function AdvancedSettings({
     <Stack gap="lg">
       <Button
         type="button"
-        variant="subtle"
-        p={0}
+        variant="transparent"
+        size="compact-md"
         w="fit-content"
         aria-expanded={isOpened}
         onClick={onToggle}

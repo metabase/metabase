@@ -42,10 +42,12 @@
 
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
-   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
-  [driver tables transforms {search-table :table raw-schema :schema}]
+   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found.
+
+   An unqualified reference resolves to `database`'s default schema, so the database it was parsed against decides."
+  [driver database tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
-                          (sql.normalize/default-schema driver))
+                          (:default-schema database))
         normalize (partial normalize-name driver)
         matches? (fn [db-table db-schema]
                    (and (= (normalize search-table) (normalize db-table))
@@ -61,10 +63,13 @@
 
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
-  [raw-col :- [:map
+  [raw-col :- [:map {:closed true}
                [:database {:optional true} :string]
                [:schema {:optional true} :string]
-               [:table {:optional true} :string]]]
+               [:table {:optional true} :string]
+               [:table-alias {:optional true} :string]
+               [:column {:optional true} :string]
+               [:type {:optional true} :keyword]]]
   (when (:table raw-col)
     (->> [:database :schema :table]
          (keep raw-col)
@@ -91,7 +96,10 @@
   [driver metadata-provider col-spec]
   (or (some->> (:table col-spec)
                (find-table-or-transform
-                driver (lib.metadata/tables metadata-provider) (lib.metadata/transforms metadata-provider))
+                driver
+                (lib.metadata/database metadata-provider)
+                (lib.metadata/tables metadata-provider)
+                (lib.metadata/transforms metadata-provider))
                :table
                (lib.metadata/active-fields metadata-provider)
                (map #(-> (assoc % :lib/desired-column-alias (:name %))

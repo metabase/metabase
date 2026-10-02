@@ -190,8 +190,9 @@
             (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception")))
         (testing "failures for timeout"
           (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms -1]
-              (database/health-check-database! (mt/db))
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 1]
+              (with-redefs [driver/can-connect? (fn [& _args] (Thread/sleep 500) true)]
+                (database/health-check-database! (mt/db)))
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input" :connection-type "default"})) "unhealthy user-input")
               (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"})) "unhealthy exception"))))
@@ -405,6 +406,7 @@
     (is (= driver.u/default-sensitive-fields
            (database/sensitive-fields-for-db {})))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *secret-can-connect?* (constantly true))
 
 (defmethod driver/can-connect? :secret-test-driver [& args] (apply *secret-can-connect?* args))

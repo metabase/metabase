@@ -30,7 +30,7 @@
 
 (mu/defn request-body
   "Build the streamRawPredict request body for an LLM request on `model-id`."
-  [model-id opts :- core/LLMRequestOpts]
+  [model-id :- [:maybe :string] opts :- core/LLMRequestOpts]
   (-> (claude/claude-request-body (assoc opts :model (direct-api-model-id model-id)))
       (dissoc :model)
       (assoc :anthropic_version anthropic-version)))

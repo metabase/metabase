@@ -11,18 +11,10 @@
 
 (mr/def ::revision
   "A Revision as selected from the app DB: every column of `:revision`."
-  [:map {:closed true}
-   [:id               ms/PositiveInt]
-   [:model            [:or :keyword :string]]
-   [:model_id         [:maybe :int]]
-   [:user_id          ::lib.schema.id/user]
-   [:timestamp        ms/TemporalInstant]
-   [:object           ::revision.object]
-   [:is_reversion     :boolean]
-   [:is_creation      :boolean]
-   [:message          [:maybe :string]]
-   [:most_recent      :boolean]
-   [:metabase_version [:maybe :string]]])
+  [:merge
+   ::revision.update
+   [:map {:closed true}
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::revision.update
   "What an update (or insert) of a Revision accepts: every column of `:revision` except `id`, all optional."
@@ -37,3 +29,19 @@
    [:message          {:optional true} [:maybe :string]]
    [:most_recent      {:optional true} [:maybe :boolean]]
    [:metabase_version {:optional true} [:maybe :string]]])
+
+;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
+(mr/def ::last-edit-info
+  "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."
+  [:map
+   [:timestamp  [:maybe :any]]
+   [:id         [:maybe ms/PositiveInt]]
+   [:first_name [:maybe :string]]
+   [:last_name  [:maybe :string]]
+   [:email      [:maybe :string]]])
+
+(mr/def ::maybe-annotated
+  "Spec for an item annotated with last-edit-info. Items are cards or dashboards. Optional because we may not always
+  have revision history for all cards/dashboards."
+  [:map
+   [:last-edit-info {:optional true} ::last-edit-info]])

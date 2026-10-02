@@ -3,19 +3,16 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.schema]))
 
 (mr/def ::dimension
   "A Dimension as selected from the app DB: every column of `:dimension`."
-  [:map {:closed true}
-   [:id                      ms/PositiveInt]
-   [:field_id                ::lib.schema.id/field]
-   [:name                    :string]
-   [:type                    [:or :keyword :string]]
-   [:human_readable_field_id [:maybe ::lib.schema.id/field]]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:entity_id               :string]])
+  [:merge
+   ::dimension.update
+   [:map {:closed true}
+    [:id                      ms/PositiveInt]
+    [:human_readable_field    {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::dimension.update
   "What an update (or insert) of a Dimension accepts: every column of `:dimension` except `id`, all optional."
@@ -30,52 +27,18 @@
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
-  :map)
+  ms/VisualizationSettings)
 
 (mr/def ::field
   "A Field as selected from the app DB: every column of `:metabase_field`."
-  [:map {:closed true}
-   [:id                         ::lib.schema.id/field]
-   [:created_at                 ms/TemporalInstant]
-   [:updated_at                 ms/TemporalInstant]
-   [:name                       :string]
-   [:base_type                  [:or :keyword :string]]
-   [:semantic_type              [:maybe [:or :keyword :string]]]
-   [:active                     :boolean]
-   [:description                [:maybe :string]]
-   [:preview_display            :boolean]
-   [:position                   :int]
-   [:table_id                   ::lib.schema.id/table]
-   [:parent_id                  [:maybe ms/PositiveInt]]
-   [:display_name               [:maybe :string]]
-   [:visibility_type            [:or :keyword :string]]
-   [:fk_target_field_id         [:maybe ::lib.schema.id/field]]
-   [:last_analyzed              [:maybe ms/TemporalInstant]]
-   [:points_of_interest         [:maybe :string]]
-   [:caveats                    [:maybe :string]]
-   [:fingerprint                [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
-   [:fingerprint_version        :int]
-   [:database_type              [:or :keyword :string]]
-   [:has_field_values           [:maybe [:or :keyword :string]]]
-   [:settings                   [:maybe ::field.settings]]
-   [:database_position          :int]
-   [:custom_position            :int]
-   [:effective_type             [:maybe [:or :keyword :string]]]
-   [:coercion_strategy          [:maybe [:or :keyword :string]]]
-   [:nfc_path                   [:maybe [:sequential [:or :string :keyword]]]]
-   [:database_required          :boolean]
-   [:json_unfolding             :boolean]
-   [:database_is_auto_increment :boolean]
-   [:database_indexed           [:maybe :boolean]]
-   [:database_partitioned       [:maybe :boolean]]
-   [:is_defective_duplicate     {:optional true} :boolean]
-   [:unique_field_helper        {:optional true} [:maybe :int]]
-   [:database_is_pk             [:maybe :boolean]]
-   [:database_is_nullable       [:maybe :boolean]]
-   [:database_is_generated      [:maybe :boolean]]
-   [:database_default           [:maybe :string]]
-   [:dimension_interestingness  [:maybe number?]]
-   [:data_sensitivity           [:maybe [:or :keyword :string]]]])
+  [:merge
+   ::field.update
+   [:map {:closed true}
+    [:id                         ::lib.schema.id/field]
+    [:unique_field_helper        {:optional true} [:maybe :int]]
+    [:dimensions                 {:optional true} [:maybe [:sequential [:ref ::dimension]]]]
+    [:name_field                 {:optional true} [:maybe :metabase.queries.schema/param-field.name-field]]
+    [:target                     {:optional true} [:maybe [:ref ::field]]]]])
 
 (mr/def ::field.update
   "What an update (or insert) of a Field accepts: every column of `:metabase_field` except `id`, all optional."
@@ -122,28 +85,13 @@
 
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
-  :map)
+  ms/VisualizationSettings)
 
 (mr/def ::field-user-settings
   "A FieldUserSettings as selected from the app DB: every column of `:metabase_field_user_settings`."
-  [:map {:closed true}
-   [:field_id           ::lib.schema.id/field]
-   [:created_at         ms/TemporalInstant]
-   [:updated_at         ms/TemporalInstant]
-   [:semantic_type      [:maybe [:or :keyword :string]]]
-   [:description        [:maybe :string]]
-   [:display_name       [:maybe :string]]
-   [:visibility_type    [:maybe [:or :keyword :string]]]
-   [:fk_target_field_id [:maybe ::lib.schema.id/field]]
-   [:has_field_values   [:maybe [:or :keyword :string]]]
-   [:effective_type     [:maybe [:or :keyword :string]]]
-   [:coercion_strategy  [:maybe [:or :keyword :string]]]
-   [:caveats            [:maybe :string]]
-   [:points_of_interest [:maybe :string]]
-   [:nfc_path           [:maybe [:sequential [:or :string :keyword]]]]
-   [:json_unfolding     [:maybe :boolean]]
-   [:settings           [:maybe ::field-user-settings.settings]]
-   [:data_sensitivity   [:maybe [:or :keyword :string]]]])
+  [:merge
+   ::field-user-settings.update
+   [:map {:closed true}]])
 
 (mr/def ::field-user-settings.update
   "What an update (or insert) of a FieldUserSettings accepts: every column of `:metabase_field_user_settings` except `id`, all optional."
@@ -164,21 +112,18 @@
    [:nfc_path           {:optional true} [:maybe [:sequential [:or :string :keyword]]]]
    [:json_unfolding     {:optional true} [:maybe :boolean]]
    [:settings           {:optional true} [:maybe ::field-user-settings.settings]]
-   [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]])
+   [:data_sensitivity   {:optional true} [:maybe [:or :keyword :string]]]
+   [:custom_position    {:optional true} [:maybe :int]]
+   [:description_set        {:optional true} :boolean]
+   [:semantic_type_set      {:optional true} :boolean]
+   [:fk_target_field_id_set {:optional true} :boolean]])
 
 (mr/def ::field-values
   "A FieldValues as selected from the app DB: every column of `:metabase_fieldvalues`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]
-   [:values                [:maybe ms/FieldValues]]
-   [:human_readable_values [:maybe ms/FieldValues]]
-   [:field_id              ::lib.schema.id/field]
-   [:has_more_values       [:maybe :boolean]]
-   [:type                  [:or :keyword :string]]
-   [:hash_key              [:maybe :string]]
-   [:last_used_at          ms/TemporalInstant]])
+  [:merge
+   ::field-values.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::field-values.update
   "What an update (or insert) of a FieldValues accepts: every column of `:metabase_fieldvalues` except `id`, all optional."
@@ -193,43 +138,57 @@
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::table-user-settings
+  "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
+  [:merge
+   ::table-user-settings.update
+   [:map {:closed true}]])
+
+(mr/def ::table-user-settings.update
+  "What an update (or insert) of a TableUserSettings accepts: every column of
+  `:metabase_table_user_settings`, all optional."
+  [:map {:closed true}
+   [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
+   [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:display_name            {:optional true} [:maybe :string]]
+   [:description             {:optional true} [:maybe :string]]
+   [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]
+   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:data_layer              {:optional true} [:maybe [:or :keyword :string]]]
+   [:data_source             {:optional true} [:maybe [:or :keyword :string]]]
+   [:owner_email             {:optional true} [:maybe :string]]
+   [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user]]
+   [:field_order             {:optional true} [:maybe [:or :keyword :string]]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:data_authority          {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_published            {:optional true} [:maybe :boolean]]
+   [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:description_set         {:optional true} :boolean]
+   [:visibility_type_set     {:optional true} :boolean]
+   [:caveats_set             {:optional true} :boolean]
+   [:points_of_interest_set  {:optional true} :boolean]
+   [:data_layer_set          {:optional true} :boolean]
+   [:data_source_set         {:optional true} :boolean]])
+
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."
-  [:map {:closed true}
-   [:id                      ::lib.schema.id/table]
-   [:created_at              ms/TemporalInstant]
-   [:updated_at              ms/TemporalInstant]
-   [:name                    :string]
-   [:description             [:maybe :string]]
-   [:entity_type             [:maybe [:or :keyword :string]]]
-   [:active                  :boolean]
-   [:db_id                   ::lib.schema.id/database]
-   [:display_name            [:maybe :string]]
-   [:visibility_type         [:maybe [:or :keyword :string]]]
-   [:schema                  [:maybe :string]]
-   [:points_of_interest      [:maybe :string]]
-   [:caveats                 [:maybe :string]]
-   [:show_in_getting_started :boolean]
-   [:field_order             [:or :keyword :string]]
-   [:initial_sync_status     [:or :keyword :string]]
-   [:is_upload               :boolean]
-   [:database_require_filter [:maybe :boolean]]
-   [:estimated_row_count     [:maybe :int]]
-   [:view_count              :int]
-   [:is_defective_duplicate  {:optional true} :boolean]
-   [:unique_table_helper     {:optional true} [:maybe :string]]
-   [:deactivated_at          [:maybe ms/TemporalInstant]]
-   [:archived_at             [:maybe ms/TemporalInstant]]
-   [:is_writable             [:maybe :boolean]]
-   [:data_authority          [:or :keyword :string]]
-   [:data_source             [:maybe [:or :keyword :string]]]
-   [:data_layer              [:maybe [:or :keyword :string]]]
-   [:owner_email             [:maybe :string]]
-   [:owner_user_id           [:maybe ::lib.schema.id/user]]
-   [:collection_id           [:maybe ::lib.schema.id/collection]]
-   [:is_published            :boolean]
-   [:transform_id            [:maybe ::lib.schema.id/transform]]
-   [:transform_target        :boolean]])
+  [:merge
+   ::table.update
+   [:map {:closed true}
+    [:id                      ::lib.schema.id/table]
+    [:unique_table_helper     {:optional true} [:maybe :string]]
+    [:db                      {:optional true} [:maybe [:ref :metabase.warehouses.schema/database]]]
+    [:fields                  {:optional true} [:maybe [:sequential ::field]]]
+    [:transform               {:optional true} [:maybe [:ref :metabase.transforms.schema/transform]]]
+    [:owner                   {:optional true} [:maybe [:map {:closed true}
+                                                        [:id          {:optional true} ::lib.schema.id/user]
+                                                        [:email       {:optional true} :string]
+                                                        [:first_name  {:optional true} [:maybe :string]]
+                                                        [:last_name   {:optional true} [:maybe :string]]
+                                                        [:common_name {:optional true} [:maybe :string]]]]]]])
 
 (mr/def ::table.update
   "What an update (or insert) of a Table accepts: every column of `:metabase_table` except `id`, all optional."
