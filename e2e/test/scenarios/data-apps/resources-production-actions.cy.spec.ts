@@ -95,6 +95,7 @@ describe(
                   entityId: actionCopy,
                   name: "Create",
                   kind: "row/create",
+                  collection: COLLECTION,
                   model: modelCopy,
                 }),
               ],

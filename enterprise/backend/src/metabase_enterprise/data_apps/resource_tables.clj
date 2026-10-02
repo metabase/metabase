@@ -26,7 +26,7 @@
             (lib/all-implicitly-joined-table-ids query)))))
 
 (defn collection-table-ids
-  "The tables the cards in the collection with `collection-id`, and the query actions on its models, read, including
+  "The tables the cards and the query actions in the collection with `collection-id` read, including
   the ones a query reaches only through an implicit join."
   [collection-id]
   (->> (data-apps.db/collection-dataset-queries collection-id)

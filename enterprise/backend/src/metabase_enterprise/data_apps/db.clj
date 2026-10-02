@@ -182,13 +182,10 @@
     []))
 
 (defn actions-by-entity-ids
-  "The `:entity_id` of the actions with `entity-ids`, with the `:collection_id` of the model each belongs to."
+  "The `:entity_id` and `:collection_id` of the actions with `entity-ids`."
   [entity-ids]
   (if (seq entity-ids)
-    (t2/query {:select [:a.entity_id :c.collection_id]
-               :from   [[:action :a]]
-               :join   [[:report_card :c] [:= :c.id :a.model_id]]
-               :where  [:in :a.entity_id entity-ids]})
+    (t2/select [:model/Action :entity_id :collection_id] :entity_id [:in entity-ids])
     []))
 
 (defn table-ids-named
@@ -208,17 +205,14 @@
     #{}))
 
 (defn collection-dataset-queries
-  "The queries of the cards in the collection with `collection-id` and of the query actions on its models."
+  "The queries of the cards and of the query actions in the collection with `collection-id`."
   [collection-id]
-  (let [card-queries (t2/select-fn-vec :dataset_query :model/Card :collection_id collection-id)
-        model-ids    (t2/select-pks-vec :model/Card :collection_id collection-id :type "model")]
-    (into card-queries
-          (when (seq model-ids)
-            (t2/select-fn-vec :dataset_query :model/QueryAction
-                              {:select [:qa.*]
-                               :from   [[:query_action :qa]]
-                               :join   [[:action :a] [:= :a.id :qa.action_id]]
-                               :where  [:in :a.model_id model-ids]})))))
+  (into (t2/select-fn-vec :dataset_query :model/Card :collection_id collection-id)
+        (t2/select-fn-vec :dataset_query :model/QueryAction
+                          {:select [:qa.*]
+                           :from   [[:query_action :qa]]
+                           :join   [[:action :a] [:= :a.id :qa.action_id]]
+                           :where  [:= :a.collection_id collection-id]})))
 
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."

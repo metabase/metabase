@@ -104,8 +104,7 @@
          (select-keys instance-fields [:archived :public_uuid :made_public_by_id :created_at])
          {:creator_id (mt/user->id :crowberto)}
          {:query    (t2/select :model/QueryAction :action_id (:id action))
-          :implicit (t2/select :model/ImplicitAction :action_id (:id action))
-          :http     (t2/select :model/HTTPAction :action_id (:id action))}
+          :implicit (t2/select :model/ImplicitAction :action_id (:id action))}
          {:entity_id entity-id :model_id nil}))
 
 (defn- collection [entity-id]
@@ -146,8 +145,7 @@
         copy-ids  (merge (into {} (map (juxt :id (partial copy-id "metric"))) metrics)
                          (into {} (map (juxt :id (partial copy-id "model"))) models))
         extract   (fn [model-name instance & [model-entity-id]]
-                    (cond-> (serdes/extract-one model-name {} instance)
-                      (= model-name "Card")   (assoc :collection_id collection-entity-id)
+                    (cond-> (assoc (serdes/extract-one model-name {} instance) :collection_id collection-entity-id)
                       (= model-name "Action") (assoc :model_id model-entity-id)))
         entities  (serdes/with-cache
                     (binding [resolve/*export-resolver* (copy-overriding-resolver resolve/*export-resolver* copy-ids)]

@@ -72,7 +72,7 @@ Three things make those files an app's rather than any collection's:
   and resolves references to any local entity, and creates a placeholder for a table a query names
   that the instance lacks. `resource_validation.clj` runs on the whole snapshot before any import
   (`check-data-app-files!` in `remote-sync.source.ingestable`): a resource file may define only the
-  collection its manifest names (a plain root one), cards in it, and actions on its model copies,
+  collection its manifest names (a plain root one), and cards and actions in it, the actions on its model copies,
   none public, embedded, or archived; may reference nothing else of Metabase's but existing
   databases, tables, fields, snippets, segments, and measures; and may not name an entity ID that
   belongs to a collection, card, or action elsewhere. A problem fails the pull naming the file, as

@@ -800,7 +800,7 @@
   - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:data-app-collections` maps the entity_id of a data app's resource collection to the app's
-    [[data-app-resource-path]], and `:data-app-actions` the entity_id of an action on one of its models to the same.
+    [[data-app-resource-path]].
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
     `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
@@ -808,9 +808,6 @@
         app-colls (into {}
                         (for [{:keys [slug app_entity_id collection_entity_id]} (models.db/data-app-resource-collections)]
                           [collection_entity_id (data-app-resource-path slug app_entity_id)]))
-        app-acts  (into {}
-                        (for [{:keys [action_entity_id collection_entity_id]} (models.db/data-app-resource-actions)]
-                          [action_entity_id (get app-colls collection_entity_id)]))
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
         coll->path (into {}
                          (for [{:keys [entity_id id location]} colls
@@ -831,7 +828,6 @@
      :dashboards           dashboards
      :documents            documents
      :data-app-collections app-colls
-     :data-app-actions     app-acts
      :unique-name-fns      (atom {})}))
 
 ;;; # Utilities for implementing serdes
