@@ -24,4 +24,13 @@ export type GroupedDatum = {
   rawRows: RowValues[];
 };
 
-export type GroupedDataset = GroupedDatum[];
+export type XValue = number | null;
+export type YValue = string | number | boolean | null;
+
+export type Series<TDatum, TSeriesInfo = unknown> = {
+  seriesKey: string;
+  seriesName: string;
+  xAccessor: (datum: TDatum) => XValue;
+  yAccessor: (datum: TDatum) => YValue;
+  seriesInfo?: TSeriesInfo;
+};

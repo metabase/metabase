@@ -323,7 +323,7 @@ export {
   NUMBER_COLUMN_SETTINGS,
   tableColumnSettings,
 } from "./lib/settings/column";
-export { getChartGoal, GRAPH_GOAL_SETTINGS } from "./lib/settings/goal";
+export { GRAPH_GOAL_SETTINGS } from "./lib/settings/goal";
 export {
   BOXPLOT_DATA_SETTINGS,
   BOXPLOT_SETTINGS,
@@ -342,7 +342,6 @@ export {
 } from "./lib/settings/graph";
 export { nestedSettings } from "./lib/settings/nested";
 export { keyForSingleSeries } from "./lib/settings/series";
-export { getStackOffset } from "./lib/settings/stacking";
 export {
   getTimelineEventSettings,
   TIMELINE_EVENTS_SETTINGS,
@@ -415,14 +414,6 @@ export {
   unaggregatedDataWarningMap,
 } from "./lib/warnings";
 export { getSettingsWidgets, getSettingsWidgetsForSeries } from "./lib/widgets";
-export { RowChart } from "./shared/components/RowChart/RowChart";
-export type { RowChartProps } from "./shared/components/RowChart/RowChart";
-export { getStaticChartTheme } from "./shared/components/RowChart/theme";
-export type {
-  BarData,
-  RowChartTheme,
-  Series,
-} from "./shared/components/RowChart/types";
 export { getDashboardAdjustedSettings } from "./shared/settings-adjustments";
 export {
   getDefaultDimensionFilter,
@@ -444,19 +435,12 @@ export {
 export { getSeriesColors, SERIES_SETTING_KEY } from "./shared/settings/series";
 export { getTreemapRows } from "./shared/settings/treemap";
 export type {
-  GroupedDataset,
   GroupedDatum,
   MetricDatum,
   SeriesInfo,
 } from "./shared/types/data";
-export type { HoveredData } from "./shared/types/events";
-export type { ChartTicksFormatters } from "./shared/types/format";
 export type { ContinuousDomain, Range } from "./shared/types/scale";
-export { getGroupedDataset, getSeries, trimData } from "./shared/utils/data";
-export {
-  getLabelsMetricColumn,
-  getTwoDimensionalChartSeries,
-} from "./shared/utils/series";
+export { getSeries } from "./shared/utils/data";
 export { getSizeInPx } from "./shared/utils/size-in-px";
 export {
   getDefaultSize,
@@ -491,7 +475,6 @@ export type {
   HighlightedObject,
   HoveredDimension,
   HoveredObject,
-  StackedTooltipModel,
   TooltipRowModel,
 } from "./types/hover";
 export type {
