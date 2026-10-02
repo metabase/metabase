@@ -56,7 +56,7 @@
 
 (def ^:private CollectionLastEditInfo
   "Schema for the map of bulk last-item-info. A map of two keys, `:card` and `:dashboard`, each of which is a map from
-  id to a LastEditInfo.:Schema"
+  id to a `::revisions.schema/last-edit-info`."
   [:map
    [:card      {:optional true} [:map-of :int ::revisions.schema/last-edit-info]]
    [:dashboard {:optional true} [:map-of :int ::revisions.schema/last-edit-info]]])
