@@ -160,6 +160,7 @@ export function buildGridRows(tools: McpTool[]): McpToolsGridRow[] {
       id: `bucket:${bucket.scope}`,
       scope: bucket.scope,
       label: getScopeLabel(bucket.scope),
+      tools: bucket.tools,
     },
     ...bucket.tools.map<McpToolsGridRow>((tool) => ({
       kind: "tool",

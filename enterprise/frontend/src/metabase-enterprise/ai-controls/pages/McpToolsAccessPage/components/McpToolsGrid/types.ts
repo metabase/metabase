@@ -5,7 +5,13 @@ import type {
 } from "metabase-types/api";
 
 export type McpToolsGridRow =
-  | { kind: "bucket"; id: string; scope: string; label: string }
+  | {
+      kind: "bucket";
+      id: string;
+      scope: string;
+      label: string;
+      tools: McpTool[];
+    }
   | { kind: "tool"; id: string; tool: McpTool };
 
 export type McpToolsGridColumn = {

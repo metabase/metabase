@@ -6,7 +6,6 @@ import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { Ellipsified } from "metabase/ui";
 import type { McpGroupPermission, McpTool } from "metabase-types/api";
 
-import { GroupHeaderMenu } from "./GroupHeaderMenu";
 import S from "./McpToolsGrid.module.css";
 import { McpToolsGridRow } from "./McpToolsGridRow";
 import {
@@ -69,23 +68,14 @@ export function McpToolsGrid({
             </th>
             <td className={S.spacerCell} aria-hidden />
             {virtualColumns.map((virtualColumn) => {
-              const column = columns[virtualColumn.index];
-              const { group } = column;
+              const { group } = columns[virtualColumn.index];
               return (
                 <th
                   key={group.id}
                   scope="col"
                   className={cx(S.cell, S.headerCell)}
                 >
-                  {column.isAdminGroup ? (
-                    <Ellipsified>{getGroupNameLocalized(group)}</Ellipsified>
-                  ) : (
-                    <GroupHeaderMenu
-                      column={column}
-                      allTools={allTools}
-                      onPermissionChange={onPermissionChange}
-                    />
-                  )}
+                  <Ellipsified>{getGroupNameLocalized(group)}</Ellipsified>
                 </th>
               );
             })}
