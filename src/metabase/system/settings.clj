@@ -125,7 +125,10 @@
   :export?    true
   :setter     :none
   :getter     (comp sort t/available-zone-ids)
-  :doc        false)
+  :doc        false
+  ;; ~600 zone ids that change only when the instance is upgraded, and only the localization admin page
+  ;; reads them, so clients fetch them by key from `GET /api/setting/available-timezones`.
+  :include-in-list? false)
 
 (defsetting system-timezone
   "The timezone used by the system by default. AKA the JVM timezone."
