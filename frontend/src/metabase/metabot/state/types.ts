@@ -71,7 +71,7 @@ export type MetabotDebugToolCallMessage = {
 };
 
 export type MetabotAgentTurnDisplayError = {
-  type: "alert" | "locked" | "message";
+  type: "alert" | "locked" | "message" | "aborted";
   message: string;
 };
 
