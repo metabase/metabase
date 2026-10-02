@@ -43,7 +43,10 @@ export function goalLineMarker() {
 }
 
 export function trendLine() {
-  return echartsContainer().find(`path[stroke-width='${TREND_LINE_WIDTH}']`);
+  // Goal marker rings share the stroke width, but only line series use bevel joins.
+  return echartsContainer().find(
+    `path[stroke-width='${TREND_LINE_WIDTH}'][stroke-linejoin='bevel']`,
+  );
 }
 
 export function getXYTransform(element) {
