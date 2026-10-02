@@ -11,9 +11,18 @@ describe("Links in documents", () => {
   });
 
   describe("plain links", () => {
-    it("should support adding, editing, and removing links via floating menu", () => {
+    it("should convert markdown links and support adding, editing, and removing links via floating menu", () => {
       cy.visit("/document/new");
       H.documentContent().click();
+
+      cy.log("Convert a markdown link to a real link");
+      H.addToDocument("Read [there](url.com).", false);
+      H.documentContent()
+        .findByRole("paragraph")
+        .should("contain.text", "Read there.")
+        .findByRole("link", { name: "there" })
+        .should("exist");
+      H.addToDocument("", true);
 
       cy.log("Add text and make a link");
       H.addToDocument("Click here", false);
@@ -49,21 +58,9 @@ describe("Links in documents", () => {
 
       cy.log("Assert link is unlinked");
       H.documentContent()
-        .findByRole("paragraph")
-        .should("contain.text", "Click here")
+        .contains("p", "Click here")
         .findByRole("link", { name: "here" })
         .should("not.exist");
-    });
-
-    it("should convert markdown links to real links", () => {
-      cy.visit("/document/new");
-      H.documentContent().click();
-      H.addToDocument("Click [here](url.com).", false);
-      H.documentContent()
-        .findByRole("paragraph")
-        .should("contain.text", "Click here.")
-        .findByRole("link", { name: "here" })
-        .should("exist");
     });
   });
 
@@ -98,7 +95,7 @@ describe("Links in documents", () => {
       });
     });
 
-    it("should display the most up-to-date title for the entity it references", () => {
+    it("should display the most up-to-date title for the entity it references, or 'No access' without permission", () => {
       H.visitDocument("@documentId");
 
       H.documentContent().should(
@@ -115,9 +112,8 @@ describe("Links in documents", () => {
       H.documentContent()
         .findByRole("link", { name: /cached name/ })
         .should("not.exist");
-    });
 
-    it("should display 'No access' if the user doesn't have permission to see the link", () => {
+      cy.log("Display 'No access' without permission to the linked entity");
       cy.get("@questionId").then((questionId) => {
         cy.intercept("GET", `/api/card/${questionId}`, {
           statusCode: 403,
@@ -133,10 +129,11 @@ describe("Links in documents", () => {
         .should("exist");
     });
 
-    it("should allow adding a smart link using the suggestion menu", () => {
+    it("should allow adding smart links using the suggestion menu, its 'Browse all' option, and the mention menu 'Browse all' option", () => {
       cy.visit("/document/new");
       H.documentContent().click();
 
+      cy.log("Add a smart link from the suggestion menu");
       cy.log("Trigger suggestion menu with /");
       H.addToDocument("/", false);
 
@@ -154,11 +151,9 @@ describe("Links in documents", () => {
           name: new RegExp(PRODUCTS_AVERAGE_BY_CATEGORY.name),
         })
         .should("exist");
-    });
 
-    it("should allow adding a smart link using 'Browse all' option in suggestion menu", () => {
-      cy.visit("/document/new");
-
+      cy.log("Add a smart link using 'Browse all' option in suggestion menu");
+      H.addToDocument("", true);
       openLinkSuggestionBrowseAllPicker();
 
       H.modal().within(() => {
@@ -201,11 +196,9 @@ describe("Links in documents", () => {
           name: new RegExp("Bobby Tables's Personal Collection"),
         })
         .should("exist");
-    });
 
-    it("should allow adding a smart link using 'Browse all' option in mention menu", () => {
-      cy.visit("/document/new");
-
+      cy.log("Add a smart link using 'Browse all' option in mention menu");
+      H.addToDocument("", true);
       openLinkMentionMenuBrowseAllPicker();
 
       H.modal().within(() => {
@@ -218,7 +211,7 @@ describe("Links in documents", () => {
       cy.log("Verify table smart link was added");
       H.documentContent()
         .findByRole("link", {
-          name: new RegExp("Products"),
+          name: /Products$/,
         })
         .should("exist");
     });

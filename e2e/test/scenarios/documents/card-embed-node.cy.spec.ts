@@ -25,7 +25,7 @@ describe("documents card embed node custom logic", () => {
       H.visitDocument("@documentId");
     });
 
-    it("should create a flexContainer when dropping one cardEmbed onto another standalone cardEmbed", () => {
+    it("should not group a card dropped onto itself, create a flexContainer when dropping a card onto another, and add supporting text to it", () => {
       // Wait for cards to load
       H.getDocumentCard("Orders")
         .should("be.visible")
@@ -41,6 +41,18 @@ describe("documents card embed node custom logic", () => {
         .find('[data-type="flexContainer"]')
         .should("not.exist");
 
+      cy.log("dropping a card onto itself does nothing");
+      H.dragAndDropCardOnAnotherCard("Orders", "Orders");
+
+      // Verify no flexContainer was created
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("not.exist");
+
+      // Verify the card is still standalone
+      H.getDocumentCard("Orders").should("exist");
+
+      cy.log("dropping a card onto another card creates a flexContainer");
       H.dragAndDropCardOnAnotherCard("Orders", "Orders, Count");
 
       // Verify flexContainer was created
@@ -61,12 +73,39 @@ describe("documents card embed node custom logic", () => {
           cy.get('[data-type="flexContainer"]').should("exist");
         });
 
-      // Verify that originally separate cards are now side by side
+      cy.log("add supporting text to a card in the flexContainer");
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .should("not.exist");
+
+      H.openDocumentCardMenu("Orders");
+      H.popover().findByText("Add supporting text").click();
+
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .should("exist");
+
+      // Verify the supporting text has the placeholder text
+      H.documentContent()
+        .findByTestId("document-card-supporting-text")
+        .should("contain.text", "Write whatever you'd like to");
+
+      // Verify the flexContainer now contains supporting text and both cards
       H.documentContent()
         .find('[data-type="flexContainer"]')
         .within(() => {
+          cy.findByTestId("document-card-supporting-text").should("exist");
           cy.findAllByTestId("document-card-embed").should("have.length", 2);
         });
+
+      // Verify supporting text was added at the beginning of the flexContainer
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .find(
+          '[data-testid="document-card-supporting-text"], [data-testid="document-card-embed"]',
+        )
+        .first()
+        .should("have.attr", "data-testid", "document-card-supporting-text");
     });
 
     it("should handle drag and drop with proper drop side positioning", () => {
@@ -93,30 +132,6 @@ describe("documents card embed node custom logic", () => {
           assertFlexContainerCardsOrder(["Orders, Count", "Orders"]);
         });
     });
-
-    it("should prevent dropping a card onto itself", () => {
-      // Wait for cards to load
-      H.getDocumentCard("Orders")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-
-      // Verify initial state - no flexContainer
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("not.exist");
-
-      // Attempt to drag and drop the card onto itself
-      H.dragAndDropCardOnAnotherCard("Orders", "Orders");
-
-      // Verify no flexContainer was created
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("not.exist");
-
-      // Verify the card is still standalone
-      H.getDocumentCard("Orders").should("exist");
-    });
   });
 
   describe("advanced flexContainer scenarios", () => {
@@ -130,40 +145,6 @@ describe("documents card embed node custom logic", () => {
       });
 
       H.visitDocument("@documentId");
-    });
-
-    it("should allow you to resize the cards inside a flex container", () => {
-      getCardWidths(["Orders", "Orders, Count"], (first, second) => {
-        cy.wrap(first).as("ogWidth1");
-        cy.wrap(second).as("ogWidth2");
-        expect(first).to.be.closeTo(second, 3);
-      });
-
-      H.getDocumentCard("Orders").as("ORDERS_CARD");
-      H.getDocumentCard("Orders, Count").as("ORDERS_COUNT_CARD");
-
-      const flexContainer = H.getFlexContainerForCard("Orders");
-
-      const handles = H.getResizeHandlesForFlexContianer(flexContainer);
-
-      H.documentDoDrag(handles.eq(0), { x: 100 });
-
-      getCardWidths(["Orders", "Orders, Count"], (first, second) => {
-        cy.get("@ogWidth1").then((_first) => {
-          cy.get("@ogWidth2").then((_second) => {
-            cy.log("compare that changes are close to the drag distance");
-            // Unjustified type cast. FIXME
-            expect((_first as unknown as number) + 100).to.be.closeTo(first, 3);
-            // Unjustified type cast. FIXME
-            expect((_second as unknown as number) - 100).to.be.closeTo(
-              second,
-              3,
-            );
-
-            expect(first).to.be.closeTo(second + 200, 3);
-          });
-        });
-      });
     });
 
     it("should add a third card to an existing flexContainer with 2 cards", () => {
@@ -288,7 +269,7 @@ describe("documents card embed node custom logic", () => {
       });
     });
 
-    it("should prevent adding a fourth card to a flexContainer with 3 cards", () => {
+    it("should disable 'Add supporting text' and prevent adding a fourth card when a flexContainer has 3 cards", () => {
       // Wait for all cards to load
       H.getDocumentCard("Orders")
         .should("be.visible")
@@ -298,6 +279,15 @@ describe("documents card embed node custom logic", () => {
         .should("be.visible")
         .findByTestId("table-root")
         .should("exist");
+
+      cy.log("'Add supporting text' is enabled with 2 cards");
+      H.openDocumentCardMenu("Orders");
+      H.popover()
+        .findByText("Add supporting text")
+        .closest("button")
+        .should("be.enabled");
+      cy.realPress("Escape");
+      H.popover().should("not.exist");
 
       // First, add the third card to reach the limit
       H.dragAndDropCardOnAnotherCard(
@@ -313,6 +303,16 @@ describe("documents card embed node custom logic", () => {
           cy.findAllByTestId("document-card-embed").should("have.length", 3);
         });
 
+      cy.log("'Add supporting text' is disabled with 3 cards");
+      H.openDocumentCardMenu("Orders");
+      H.popover()
+        .findByText("Add supporting text")
+        .closest("button")
+        .should("have.attr", "data-disabled");
+      cy.realPress("Escape");
+      H.popover().should("not.exist");
+
+      cy.log("a fourth card is rejected");
       // Add another card to try to exceed the limit
       addNewStandaloneCard("Orders Model");
 
@@ -339,7 +339,7 @@ describe("documents card embed node custom logic", () => {
         .should("have.length", 4); // Still 4 total, with 1 standalone
     });
 
-    it("should reorder cards within the same flexContainer", () => {
+    it("should reorder cards within the same flexContainer and preserve resized widths when swapping", () => {
       // Wait for all cards to load
       H.getDocumentCard("Orders")
         .should("be.visible")
@@ -381,10 +381,8 @@ describe("documents card embed node custom logic", () => {
         .within(() => {
           assertFlexContainerCardsOrder(["Orders", "Orders, Count"]);
         });
-    });
 
-    it("should preserve card widths when swapping cards within the same flexContainer", () => {
-      // Wait for all cards to load
+      cy.log("resized widths are preserved when swapping cards");
       H.getDocumentCard("Orders")
         .should("be.visible")
         .findByTestId("table-root")
@@ -394,16 +392,10 @@ describe("documents card embed node custom logic", () => {
         .findByTestId("table-root")
         .should("exist");
 
-      // Verify initial order: Orders | Orders, Count
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("exist")
-        .within(() => {
-          assertFlexContainerCardsOrder(["Orders", "Orders, Count"]);
-        });
-
       // Verify both cards start with equal widths
       getCardWidths(["Orders", "Orders, Count"], (first, second) => {
+        cy.wrap(first).as("ogWidth1");
+        cy.wrap(second).as("ogWidth2");
         expect(first).to.be.closeTo(second, 3);
       });
 
@@ -420,6 +412,15 @@ describe("documents card embed node custom logic", () => {
           cy.wrap(ordersCountWidth).as("ordersCountWidth");
           // Verify the widths are now different
           expect(ordersWidth).to.be.greaterThan(ordersCountWidth);
+          expect(ordersWidth).to.be.closeTo(ordersCountWidth + 300, 3);
+
+          cy.get<number>("@ogWidth1").then((ogWidth1) => {
+            cy.get<number>("@ogWidth2").then((ogWidth2) => {
+              cy.log("compare that changes are close to the drag distance");
+              expect(ordersWidth).to.be.closeTo(ogWidth1 + 150, 3);
+              expect(ordersCountWidth).to.be.closeTo(ogWidth2 - 150, 3);
+            });
+          });
         },
       );
 
@@ -549,7 +550,7 @@ describe("documents card embed node custom logic", () => {
   });
 
   describe("navigating from cardEmbed", () => {
-    it("should open a question in a new tab when clicking title with ctrl/meta key", () => {
+    it("should open a question and a drill-through action in a new tab when clicking with ctrl/meta key", () => {
       H.createDocument({
         name: "Test Document",
         document: DOCUMENT_WITH_TWO_CARDS,
@@ -584,19 +585,8 @@ describe("documents card embed node custom logic", () => {
       H.getDocumentCard("Orders")
         .findByTestId("card-embed-title")
         .click(H.holdMetaKey);
-    });
 
-    it("should open drill-through action in a new tab when clicking with ctrl/meta key", () => {
-      H.createDocument({
-        name: "Test Document",
-        document: DOCUMENT_WITH_TWO_CARDS,
-        collection_id: null,
-        alias: "document",
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
+      cy.log("drill-through action");
       // Wait for cards to load
       H.getDocumentCard("Orders, Count")
         .should("be.visible")
@@ -609,12 +599,6 @@ describe("documents card embed node custom logic", () => {
         .findAllByTestId("cell-data")
         .first()
         .click();
-
-      // Verify window.open was called
-      cy.on("uncaught:exception", (error) => {
-        expect(error.message.includes("expected '<a>' to have attribute")).to.be
-          .false;
-      });
 
       H.onNextAnchorClick((anchor) => {
         expect(anchor)

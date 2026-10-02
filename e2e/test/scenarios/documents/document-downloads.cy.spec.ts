@@ -10,7 +10,7 @@ describe("scenarios > documents > downloads", () => {
     cy.signInAsAdmin();
   });
 
-  it("shows Download results for read-only document access", () => {
+  it("shows the full card menu for write access, only Download results for read-only access, and no document without collection access", () => {
     H.createDocument({
       name: "Download Test Document",
       document: DOCUMENT_WITH_TWO_CARDS,
@@ -19,6 +19,7 @@ describe("scenarios > documents > downloads", () => {
       idAlias: "documentId",
     });
 
+    cy.log("Write access shows the full menu including Download results");
     H.visitDocument("@documentId");
 
     // Wait for card to load
@@ -27,9 +28,39 @@ describe("scenarios > documents > downloads", () => {
       .findByTestId("table-root")
       .should("exist");
 
-    // Sign in as read-only user
+    // Open card menu
+    H.openDocumentCardMenu("Orders");
+
+    // Verify menu shows all options with Download results
+    H.popover().within(() => {
+      cy.findByRole("menuitem", { name: /Edit Query/i }).should("be.visible");
+      cy.findByRole("menuitem", { name: /Edit Visualization/i }).should(
+        "be.visible",
+      );
+      cy.findByRole("menuitem", { name: /Replace/i }).should("be.visible");
+      cy.findByRole("menuitem", { name: /Download results/i }).should(
+        "be.visible",
+      );
+      cy.findByRole("menuitem", { name: /Remove Chart/i }).should("be.visible");
+    });
+
+    // Click Download results
+    cy.findByRole("menuitem", { name: /Download results/i }).click();
+
+    // Verify format options appear
+    H.popover().within(() => {
+      cy.findByText(".csv").should("be.visible");
+      cy.findByText(".xlsx").should("be.visible");
+      cy.findByText(".json").should("be.visible");
+    });
+
+    cy.log("Read-only access shows only Download results");
     cy.signIn("readonly");
     H.visitDocument("@documentId");
+
+    H.documentContent()
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "false");
 
     // Wait for card to load as readonly user
     H.getDocumentCard("Orders")
@@ -65,70 +96,8 @@ describe("scenarios > documents > downloads", () => {
       cy.findByText(".xlsx").should("be.visible");
       cy.findByText(".json").should("be.visible");
     });
-  });
 
-  it("shows full menu including Download results for write access", () => {
-    H.createDocument({
-      name: "Admin Download Test Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-
-    H.visitDocument("@documentId");
-
-    // Wait for card to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-
-    // Open card menu
-    H.openDocumentCardMenu("Orders");
-
-    // Verify menu shows all options with Download results
-    H.popover().within(() => {
-      cy.findByRole("menuitem", { name: /Edit Query/i }).should("be.visible");
-      cy.findByRole("menuitem", { name: /Edit Visualization/i }).should(
-        "be.visible",
-      );
-      cy.findByRole("menuitem", { name: /Replace/i }).should("be.visible");
-      cy.findByRole("menuitem", { name: /Download results/i }).should(
-        "be.visible",
-      );
-      cy.findByRole("menuitem", { name: /Remove Chart/i }).should("be.visible");
-    });
-
-    // Click Download results
-    cy.findByRole("menuitem", { name: /Download results/i }).click();
-
-    // Verify format options appear
-    H.popover().within(() => {
-      cy.findByText(".csv").should("be.visible");
-      cy.findByText(".xlsx").should("be.visible");
-      cy.findByText(".json").should("be.visible");
-    });
-  });
-
-  it("does not show download when permissions are 'none'", () => {
-    H.createDocument({
-      name: "No Access Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-
-    H.visitDocument("@documentId");
-
-    // Wait for card to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-
-    // Sign in as user with no collection access
+    cy.log("No collection access shows a permission error");
     cy.signIn("nocollection");
     H.visitDocument("@documentId");
 

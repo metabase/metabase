@@ -31,51 +31,7 @@ describe("documents", () => {
   });
 
   describe("duplicating documents", () => {
-    it("should warn about unsaved changes when duplicating an existing document", () => {
-      H.createDocument({
-        name: "Unsaved Duplicate Doc",
-        document: {
-          content: [
-            {
-              type: "paragraph",
-              content: [{ type: "text", text: "Original content" }],
-              attrs: { _id: "1" },
-            },
-          ],
-          type: "doc",
-        },
-        collection_id: null,
-        alias: "document",
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
-      cy.findByRole("textbox", { name: "Document Title" })
-        .should("have.value", "Unsaved Duplicate Doc")
-        .clear()
-        .type("Unsaved title");
-
-      H.documentContent().click();
-      H.addToDocument(" changed", false);
-
-      H.documentSaveButton().should("be.visible");
-
-      cy.findByLabelText("More options").click();
-      H.popover().findByText("Duplicate").click();
-
-      cy.findByTestId("save-confirmation").should("be.visible");
-
-      cy.findByRole("button", { name: "Cancel" }).click();
-
-      cy.findByTestId("save-confirmation").should("not.exist");
-      cy.findByRole("heading", { name: /Duplicate "/ }).should("not.exist");
-
-      // still unsaved
-      H.documentSaveButton().should("be.visible");
-    });
-
-    it("should save changes when duplicating, then copy and redirect to the new document", () => {
+    it("should warn about unsaved changes when duplicating, keep them on cancel, and save, copy and redirect on confirm", () => {
       cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
 
       H.createDocument({
@@ -111,6 +67,19 @@ describe("documents", () => {
       H.popover().findByText("Duplicate").click();
 
       cy.findByTestId("save-confirmation").should("be.visible");
+
+      cy.log("cancelling the warning keeps the changes unsaved");
+      cy.findByRole("button", { name: "Cancel" }).click();
+
+      cy.findByTestId("save-confirmation").should("not.exist");
+      cy.findByRole("heading", { name: /Duplicate "/ }).should("not.exist");
+      H.documentSaveButton().should("be.visible");
+
+      cy.log("saving from the warning opens the duplicate modal");
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
       cy.findByRole("button", { name: "Save changes" }).click();
 
       // saved
@@ -121,6 +90,9 @@ describe("documents", () => {
       );
 
       // duplicate modal
+      cy.findByRole("heading", { name: 'Duplicate "Saved title"' }).should(
+        "be.visible",
+      );
       cy.findByRole("button", { name: "Duplicate" }).should("be.visible");
       cy.findByRole("textbox", { name: "Name" }).then(($input) => {
         // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
@@ -484,7 +456,7 @@ describe("documents", () => {
         });
       });
 
-      it("renders a 'not found' message if the copied card has been permanently deleted", () => {
+      it("renders 'not found' messages for a permanently deleted card and a nonexistent document", () => {
         cy.get<Document>("@document").then(({ id, document: { content } }) => {
           const resizeNode = content?.find((n) => n.type === "resizeNode");
           const cardEmbed = resizeNode?.content?.[0];
@@ -496,32 +468,8 @@ describe("documents", () => {
           "have.text",
           "Couldn't find this chart.",
         );
-      });
 
-      it("read only access", () => {
-        cy.signIn("readonly");
-
-        H.visitDocument("@documentId");
-
-        H.documentContent()
-          .findByRole("textbox")
-          .should("have.attr", "contenteditable", "false");
-
-        H.openDocumentCardMenu("Orders");
-        H.popover().findAllByRole("menuitem").should("be.disabled");
-      });
-
-      it("no access", () => {
-        cy.signIn("nocollection");
-
-        H.visitDocument("@documentId");
-        cy.findByRole("status").should(
-          "contain.text",
-          "Sorry, you don’t have permission to see that.",
-        );
-      });
-
-      it("not found", () => {
+        cy.log("nonexistent document");
         H.visitDocument(9999);
         H.main().within(() => {
           cy.findByText("We're a little lost...").should("be.visible");
@@ -531,8 +479,10 @@ describe("documents", () => {
         });
       });
 
-      it("should allow you to print", () => {
+      it("should allow you to print and handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
         H.visitDocument("@documentId");
+
+        cy.log("print");
         cy.findByRole("button", { name: "More options" }).click();
 
         // This needs to be *after* the page load to work
@@ -550,10 +500,8 @@ describe("documents", () => {
             target_id: id,
           });
         });
-      });
 
-      it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
-        H.visitDocument("@documentId");
+        cy.log("undo/redo");
         H.getDocumentCard("Orders").should("exist");
         H.documentContent().within(() => {
           const originalText = "Lorem Ipsum and some more words";
@@ -618,8 +566,87 @@ describe("documents", () => {
       H.addPostgresDatabase();
     });
 
-    it("should support typing with a markdown syntax", () => {
+    it("should support formatting via floating menu and typing with a markdown syntax", () => {
       H.visitDocument("@documentId");
+
+      cy.log("floating menu formatting");
+      const content = "Some text to play with";
+
+      const formatTests = [
+        {
+          button: /text_bold/,
+          role: "strong",
+        },
+        {
+          button: /text_italic/,
+          role: "emphasis",
+        },
+        {
+          button: /text_strike/,
+          role: "paragraph", // figure out what to do here
+        },
+        {
+          button: /format_code/,
+          role: "code",
+        },
+        {
+          button: /H1/,
+          role: "heading",
+        },
+        {
+          button: /H2/,
+          role: "heading",
+        },
+        {
+          button: /^list/,
+          role: "list",
+        },
+        {
+          button: /ordered_list/,
+          role: "list",
+        },
+        {
+          button: /quote/,
+          role: "blockquote",
+        },
+        {
+          button: /code_block/,
+          role: "code",
+          revert: false,
+        },
+      ];
+
+      const assertUnformatted = () =>
+        H.documentContent()
+          // Converting to a heading currently adds a newline, which generates a new paragraph
+          .findAllByRole("paragraph")
+          .eq(0)
+          .should("contain.text", content);
+
+      H.documentContent().click();
+
+      H.addToDocument(content, false);
+      cy.realPress(["Shift", "{home}"]);
+
+      H.documentFormattingMenu().should("exist");
+
+      formatTests.forEach(({ button, role, revert = true }) => {
+        H.documentFormattingMenu()
+          .findByRole("button", { name: button })
+          .click();
+        H.documentContent().findByRole(role).should("contain.text", content);
+        if (revert) {
+          H.documentFormattingMenu()
+            .findByRole("button", { name: button })
+            .click();
+          assertUnformatted();
+        }
+      });
+
+      cy.log("markdown syntax");
+      H.clearDocumentContent();
+      // Clearing keeps the code block; backspace turns it back into a paragraph
+      H.documentContent().type("{backspace}");
       H.documentContent().click();
 
       H.addToDocument("# This is a heading level 1");
@@ -679,81 +706,6 @@ describe("documents", () => {
         cy.findAllByRole("code")
           .contains("Or add whole code blocks")
           .should("exist");
-      });
-
-      it("should support formatting via floating menu", () => {
-        const content = "Some text to play with";
-
-        const formatTests = [
-          {
-            button: /text_bold/,
-            role: "strong",
-          },
-          {
-            button: /text_italic/,
-            role: "emphasis",
-          },
-          {
-            button: /text_strike/,
-            role: "paragraph", // figure out what to do here
-          },
-          {
-            button: /format_code/,
-            role: "code",
-          },
-          {
-            button: /H1/,
-            role: "heading",
-          },
-          {
-            button: /H2/,
-            role: "heading",
-          },
-          {
-            button: /^list/,
-            role: "list",
-          },
-          {
-            button: /ordered_list/,
-            role: "list",
-          },
-          {
-            button: /quote/,
-            role: "blockquote",
-          },
-          {
-            button: /code_block/,
-            role: "code",
-            revert: false,
-          },
-        ];
-
-        const assertUnformatted = () =>
-          H.documentContent()
-            // Converting to a heading currently adds a newline, which generates a new paragraph
-            .findAllByRole("paragraph")
-            .eq(0)
-            .should("contain.text", content);
-
-        H.documentContent().click();
-
-        H.addToDocument(content, false);
-        cy.realPress(["Shift", "{home}"]);
-
-        H.documentFormattingMenu().should("exist");
-
-        formatTests.forEach(({ button, role, revert = true }) => {
-          H.documentFormattingMenu()
-            .findByRole("button", { name: button })
-            .click();
-          H.documentContent().findByRole(role).should("contain.text", content);
-          if (revert) {
-            H.documentFormattingMenu()
-              .findByRole("button", { name: button })
-              .click();
-            assertUnformatted();
-          }
-        });
       });
     });
 
@@ -843,7 +795,7 @@ describe("documents", () => {
         assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
-      it("should support adding cards and updating viz settings", () => {
+      it("should support adding, renaming, replacing and resizing cards and updating viz settings", () => {
         H.documentContent().click();
         H.addToDocument("/", false);
 
@@ -907,9 +859,16 @@ describe("documents", () => {
         );
         H.getDocumentSidebar().findByRole("button", { name: /close/ }).click();
 
-        // Edit the Query. Assert on the number of breakouts
-        H.openDocumentCardMenu(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
+        cy.log("rename a card");
+        H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).realHover();
         H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
+          .find(".Icon-pencil")
+          .click();
+        cy.realType("New name{enter}");
+
+        // Edit the Query. Assert on the number of breakouts
+        H.openDocumentCardMenu("New name");
+        H.getDocumentCard("New name")
           .findByRole("list")
           .findAllByRole("listitem")
           .should("have.length", 4);
@@ -919,13 +878,14 @@ describe("documents", () => {
         H.addSummaryGroupingField({ field: "Price" });
         H.modal().findByRole("button", { name: "Save and use" }).click();
 
-        H.getDocumentCard(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
+        cy.log("the new name is preserved after editing the query");
+        H.getDocumentCard("New name")
           .findByRole("list")
           .findAllByRole("listitem")
           .should("have.length", 7);
 
         //Replace Card
-        H.openDocumentCardMenu(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
+        H.openDocumentCardMenu("New name");
         H.popover().findByText("Replace").click();
 
         H.modal().within(() => {
@@ -947,51 +907,12 @@ describe("documents", () => {
 
         H.documentContent()
           .findAllByTestId("card-embed-title")
-          .contains(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name)
+          .contains("New name")
           .should("not.exist");
 
         H.getDocumentCard("Orders").should("exist");
-      });
 
-      it("should support renaming cards", () => {
-        cy.log("Add card");
-        H.documentContent().click();
-        H.addToDocument("/", false);
-        H.commandSuggestionItem("Chart").click();
-        H.commandSuggestionDialog()
-          .findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name)
-          .click();
-
-        cy.log("Rename card");
-        cy.findByTestId("card-embed-title").realHover();
-        cy.icon("pencil").click();
-        cy.realType("New name{enter}");
-
-        cy.log("Edit query");
-        H.openDocumentCardMenu("New name");
-        H.popover().findByText("Edit Query").click();
-        H.removeSummaryGroupingField({ field: "Category" });
-        H.addSummaryGroupingField({ field: "Price" });
-        H.modal().findByRole("button", { name: "Save and use" }).click();
-
-        cy.log("Assert new name is preserved");
-        H.getDocumentCard("New name").should("exist");
-      });
-
-      it("should support resizing cards", () => {
-        H.documentContent().click();
-        H.addToDocument("/", false);
-
-        cy.log("search via type");
-        H.addToDocument("Accounts", false);
-        H.commandSuggestionDialog().should(
-          "contain.text",
-          ACCOUNTS_COUNT_BY_CREATED_AT.name,
-        );
-
-        cy.realPress("{downarrow}");
-        H.addToDocument("\n", false);
-
+        cy.log("resize a card");
         H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
           const ogHeight = el.height();
           const resizeNode = H.getDocumentCardResizeContainer(
@@ -1319,7 +1240,7 @@ describe("documents", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
-    it("should allow creating a new notebook question and embedding it in the document", () => {
+    it("should allow creating new notebook questions, including a time series one as a line chart, and embedding them in the document", () => {
       H.visitDocument("@documentId");
       H.documentContent().click();
 
@@ -1352,6 +1273,42 @@ describe("documents", () => {
           target_id: id,
         });
       });
+
+      cy.log("time series aggregation gets a line chart");
+      H.documentContent()
+        .find("p")
+        .should("have.length.at.least", 1)
+        .last()
+        .click();
+
+      cy.log("Trigger command menu and create a new question");
+      H.addToDocument("/", false);
+      H.commandSuggestionItem("Chart").click();
+      H.commandSuggestionItem(/New chart/).click();
+      H.commandSuggestionItem(/New Question/).click();
+
+      cy.log("Create a time series query with Orders table");
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders").click();
+      });
+
+      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
+      H.addSummaryGroupingField({ field: "Created At" });
+
+      cy.findByRole("dialog", { name: "Create new question" })
+        .findByRole("button", { name: "Save and use" })
+        .click();
+
+      cy.log("Verify the question is embedded with a line chart visualization");
+      H.getDocumentCard("Orders, Sum of Total, Grouped by Created At: Month")
+        .should("exist")
+        .within(() => {
+          cy.log("Verify it has a line chart visualization (not a table)");
+          cy.findByTestId("chart-container").should("exist");
+          cy.get("svg").should("exist");
+          H.cartesianChartCircle().should("have.length.at.least", 1);
+        });
 
       cy.log("Verify document can be saved with a new question");
       cy.findByRole("button", { name: "Save" }).should("be.visible").click();
@@ -1467,7 +1424,7 @@ describe("documents", () => {
       cy.findByRole("dialog", { name: "Edit SQL Query" }).should("not.exist");
     });
 
-    it("should show 'Create new question' footer when no search results are found", () => {
+    it("should show 'Create new question' footer when no search results are found and open the new question menu on Enter", () => {
       H.visitDocument("@documentId");
       H.documentContent().click();
 
@@ -1488,45 +1445,12 @@ describe("documents", () => {
 
       cy.log("Verify 'Browse all' footer is also visible");
       H.commandSuggestionItem(/Browse all/).should("be.visible");
-    });
 
-    it("should automatically assign appropriate visualization type for time series aggregation", () => {
-      H.visitDocument("@documentId");
-      H.documentContent().click();
-
-      cy.log("Trigger command menu and create a new question");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").click();
-      H.commandSuggestionItem(/New chart/).click();
-      H.commandSuggestionItem(/New Question/).click();
-
-      cy.log("Create a time series query with Orders table");
-      H.miniPicker().within(() => {
-        cy.findByText("Our analytics").click();
-        cy.findByText("Orders").click();
-      });
-
-      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
-      H.addSummaryGroupingField({ field: "Created At" });
-
-      cy.findByRole("dialog", { name: "Create new question" })
-        .findByRole("button", { name: "Save and use" })
-        .click();
-
-      cy.log("Verify the question is embedded with a line chart visualization");
-      H.getDocumentCard("Orders, Sum of Total, Grouped by Created At: Month")
-        .should("exist")
-        .within(() => {
-          cy.log("Verify it has a line chart visualization (not a table)");
-          cy.findByTestId("chart-container").should("exist");
-          cy.get("svg").should("exist");
-          H.cartesianChartCircle().should("have.length.at.least", 1);
-        });
-    });
-
-    it("should trigger new question type suggestion menu when typing non-matching search and hitting Enter", () => {
-      H.visitDocument("@documentId");
-      H.documentContent().click();
+      cy.log(
+        "hitting Enter on a non-matching search opens the new question menu",
+      );
+      cy.realPress("Escape");
+      H.clearDocumentContent();
 
       cy.log("Type a non-matching search term");
       H.addToDocument("/asdfsdaf", false);
@@ -1688,41 +1612,8 @@ describe("documents", () => {
       });
     });
 
-    it("should copy anchor URL to clipboard when clicking anchor link", () => {
-      H.visitDocument("@documentId");
-
-      cy.wrap(
-        Cypress.automation("remote:debugger:protocol", {
-          command: "Browser.grantPermissions",
-          params: {
-            permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"],
-            origin: window.location.origin,
-          },
-        }),
-      );
-
-      H.documentContent()
-        .findByRole("heading", { name: "First Heading" })
-        .realHover();
-
-      // Filter to visible one since all blocks have hidden buttons
-      cy.get('[data-testid="anchor-link-menu"]')
-        .filter(":visible")
-        .first()
-        .findByRole("button", { name: /copy link/i })
-        .click();
-
-      cy.get("body").findByText("Copied!").should("be.visible");
-
-      cy.window().then((win) => {
-        win.navigator.clipboard.readText().then((text) => {
-          expect(text).to.include("/document/");
-          expect(text).to.include("#heading-block-1");
-        });
-      });
-    });
-
-    it("should scroll to the correct block when navigating with anchor hash", () => {
+    it("should scroll to the anchor hash block, show the anchor and comments menus, and copy the anchor URL", () => {
+      cy.log("navigating with an anchor hash scrolls to the block");
       cy.get("@documentId").then((documentId) => {
         cy.visit(`/document/${documentId}#heading-block-2`);
 
@@ -1734,11 +1625,8 @@ describe("documents", () => {
           .findByRole("heading", { name: "First Heading" })
           .should("not.be.visible");
       });
-    });
 
-    it("should still show comments menu on right side (regression check)", () => {
-      H.visitDocument("@documentId");
-
+      cy.log("hovering a block shows the copy link and comments menus");
       H.documentContent()
         .findByRole("heading", { name: "First Heading" })
         .realHover();
@@ -1756,6 +1644,32 @@ describe("documents", () => {
         .first()
         .findByRole("link", { name: /comments/i })
         .should("be.visible");
+
+      cy.log("clicking the anchor link copies the anchor URL");
+      cy.wrap(
+        Cypress.automation("remote:debugger:protocol", {
+          command: "Browser.grantPermissions",
+          params: {
+            permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"],
+            origin: window.location.origin,
+          },
+        }),
+      );
+
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .click();
+
+      cy.get("body").findByText("Copied!").should("be.visible");
+
+      cy.window().then((win) => {
+        win.navigator.clipboard.readText().then((text) => {
+          expect(text).to.include("/document/");
+          expect(text).to.include("#heading-block-1");
+        });
+      });
     });
   });
 
