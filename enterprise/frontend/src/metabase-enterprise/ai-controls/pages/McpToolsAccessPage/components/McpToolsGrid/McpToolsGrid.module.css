@@ -60,15 +60,3 @@
 .fillerCell {
   border-right: none;
 }
-
-.headerButton {
-  display: inline-block;
-  max-width: 100%;
-  font-weight: bold;
-  color: inherit;
-  cursor: pointer;
-}
-
-.headerButton:hover {
-  color: var(--mb-color-brand);
-}

@@ -4,6 +4,7 @@ import cx from "classnames";
 import { Text } from "metabase/ui";
 import type { McpGroupPermission, McpTool } from "metabase-types/api";
 
+import { BucketAccessCell } from "./BucketAccessCell";
 import S from "./McpToolsGrid.module.css";
 import { ToolAccessCell } from "./ToolAccessCell";
 import { ToolNameCell } from "./ToolNameCell";
@@ -33,13 +34,19 @@ export function McpToolsGridRow({
           </Text>
         </th>
         <td className={S.spacerCell} aria-hidden />
-        {virtualColumns.map((virtualColumn) => (
-          <td
-            key={columns[virtualColumn.index].group.id}
-            className={S.cell}
-            aria-hidden
-          />
-        ))}
+        {virtualColumns.map((virtualColumn) => {
+          const column = columns[virtualColumn.index];
+          return (
+            <BucketAccessCell
+              key={column.group.id}
+              column={column}
+              label={row.label}
+              tools={row.tools}
+              allTools={allTools}
+              onPermissionChange={onPermissionChange}
+            />
+          );
+        })}
         <td className={S.spacerCell} aria-hidden />
         <td className={cx(S.cell, S.fillerCell)} aria-hidden />
       </tr>

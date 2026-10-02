@@ -267,6 +267,7 @@ describe("buildGridRows", () => {
         id: "bucket:agent:content:read",
         scope: "agent:content:read",
         label: "Read",
+        tools: [search],
       },
       { kind: "tool", id: "tool:search", tool: search },
       {
@@ -274,6 +275,7 @@ describe("buildGridRows", () => {
         id: "bucket:agent:query:run",
         scope: "agent:query:run",
         label: "Query",
+        tools: [runQuery],
       },
       { kind: "tool", id: "tool:run_query", tool: runQuery },
       {
@@ -281,6 +283,7 @@ describe("buildGridRows", () => {
         id: "bucket:agent:sql:run",
         scope: "agent:sql:run",
         label: "Raw SQL",
+        tools: [runSql],
       },
       { kind: "tool", id: "tool:run_sql", tool: runSql },
       {
@@ -288,6 +291,7 @@ describe("buildGridRows", () => {
         id: "bucket:agent:content:write",
         scope: "agent:content:write",
         label: "Write",
+        tools: [questionWrite, transformWrite],
       },
       { kind: "tool", id: "tool:question_write", tool: questionWrite },
       { kind: "tool", id: "tool:transform_write", tool: transformWrite },

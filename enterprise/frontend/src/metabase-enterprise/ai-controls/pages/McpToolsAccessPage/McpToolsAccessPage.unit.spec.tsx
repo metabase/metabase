@@ -174,11 +174,10 @@ function getToolCheckbox(groupName: string, toolName: string) {
   });
 }
 
-async function clickHeaderMenuItem(groupName: string, itemName: string) {
-  await userEvent.click(screen.getByRole("button", { name: groupName }));
-  await userEvent.click(
-    await screen.findByRole("menuitem", { name: itemName }),
-  );
+function getBucketCheckbox(groupName: string, bucketLabel: string) {
+  return screen.getByRole("checkbox", {
+    name: `Allow ${groupName} user group to use all ${bucketLabel} MCP tools.`,
+  });
 }
 
 function querySaveButton() {
@@ -437,10 +436,14 @@ describe("McpToolsAccessPage", () => {
     ]);
   });
 
-  it("Allow all tools from a group header allows every tool for that group", async () => {
+  it("checking a bucket allows its tools for that group", async () => {
     setup();
     await findGrid();
-    await clickHeaderMenuItem("All Users", "Allow all tools");
+    expect(getBucketCheckbox("All Users", "Raw SQL")).not.toBeChecked();
+
+    await userEvent.click(getBucketCheckbox("All Users", "Raw SQL"));
+
+    expect(getBucketCheckbox("All Users", "Raw SQL")).toBeChecked();
 
     for (const tool of mcpTools) {
       expect(getToolCheckbox("All Users", tool.name)).toBeChecked();

@@ -97,12 +97,10 @@ function getCheckbox(groupName: string, toolName: string) {
   });
 }
 
-async function openHeaderMenu(groupName: string) {
-  await userEvent.click(screen.getByRole("button", { name: groupName }));
-  return {
-    allowAll: await screen.findByRole("menuitem", { name: "Allow all tools" }),
-    blockAll: await screen.findByRole("menuitem", { name: "Block all tools" }),
-  };
+function getBucketCheckbox(groupName: string, bucketLabel: string) {
+  return screen.getByRole("checkbox", {
+    name: `Allow ${groupName} user group to use all ${bucketLabel} MCP tools.`,
+  });
 }
 
 type VirtualizerProbeProps = { columnCount: number };
@@ -155,10 +153,12 @@ describe("McpToolsGrid", () => {
     ]);
   });
 
-  it("renders one checkbox per tool per group reflecting entries and defaults", () => {
+  it("renders one checkbox per bucket and tool per group reflecting entries and defaults", () => {
     setup();
 
-    expect(screen.getAllByRole("checkbox")).toHaveLength(tools.length * 3);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(
+      buildGridRows(tools).length * 3,
+    );
     expect(getCheckbox("All Users", "search")).not.toBeChecked();
     expect(getCheckbox("All Users", "run_sql")).not.toBeChecked();
     expect(getCheckbox("All Users", "question_write")).toBeChecked();
@@ -188,50 +188,91 @@ describe("McpToolsGrid", () => {
     );
   });
 
-  describe("group header menu", () => {
-    it("disables the action matching the group's state", async () => {
-      setup({
-        permissionsByGroup: { [allUsersGroup.id]: allUsersPermission },
-      });
+  it("renders group headers as plain text", () => {
+    setup();
 
-      const someMenu = await openHeaderMenu("All Users");
-      expect(someMenu.allowAll).toBeEnabled();
-      expect(someMenu.blockAll).toBeEnabled();
-      await userEvent.keyboard("{Escape}");
+    expect(
+      screen.getByRole("columnheader", { name: "Marketing" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Marketing" }),
+    ).not.toBeInTheDocument();
+  });
 
-      const noneMenu = await openHeaderMenu("Marketing");
-      expect(noneMenu.allowAll).toBeEnabled();
-      expect(noneMenu.blockAll).toBeDisabled();
-    });
-
-    it("disables Allow all tools when every tool is allowed", async () => {
+  describe("bucket checkboxes", () => {
+    it("are checked, partly checked, or unchecked by how many of the bucket's tools the group can use", () => {
       setup();
 
-      const menu = await openHeaderMenu("Marketing");
-      expect(menu.allowAll).toBeDisabled();
-      expect(menu.blockAll).toBeEnabled();
+      expect(getBucketCheckbox("All Users", "Read")).not.toBeChecked();
+      expect(getBucketCheckbox("All Users", "Write")).toBePartiallyChecked();
+      expect(getBucketCheckbox("Marketing", "Read")).toBeChecked();
+      expect(getBucketCheckbox("Marketing", "Raw SQL")).toBeChecked();
+      expect(getBucketCheckbox("Marketing", "Write")).toBeChecked();
     });
 
-    it("allows every tool and turns the group on", async () => {
-      const { onPermissionChange } = setup({
-        permissionsByGroup: { [allUsersGroup.id]: allUsersPermission },
-      });
+    it("shows Administrators checked and disabled", () => {
+      setup();
 
-      const menu = await openHeaderMenu("Marketing");
-      await userEvent.click(menu.allowAll);
+      for (const label of ["Read", "Raw SQL", "Write"]) {
+        const checkbox = getBucketCheckbox("Administrators", label);
+        expect(checkbox).toBeChecked();
+        expect(checkbox).toBeDisabled();
+      }
+    });
+
+    it("allows the rest of a partly allowed bucket", async () => {
+      const { onPermissionChange } = setup();
+
+      await userEvent.click(getBucketCheckbox("All Users", "Write"));
+
+      expect(onPermissionChange).toHaveBeenCalledWith({
+        group_id: allUsersGroup.id,
+        mcp_enabled: true,
+        tool_access: { search: "no" },
+      });
+    });
+
+    it("blocks every tool of a fully allowed bucket", async () => {
+      const { onPermissionChange } = setup();
+
+      await userEvent.click(getBucketCheckbox("Marketing", "Write"));
 
       expect(onPermissionChange).toHaveBeenCalledWith({
         group_id: marketingGroup.id,
         mcp_enabled: true,
-        tool_access: { run_sql: "yes" },
+        tool_access: {
+          run_sql: "yes",
+          question_write: "no",
+          transform_write: "no",
+        },
       });
     });
 
-    it("blocks every tool and turns the group off", async () => {
-      const { onPermissionChange } = setup();
+    it("turns a group that is off on with only the bucket's tools", async () => {
+      const { onPermissionChange } = setup({
+        permissionsByGroup: { [allUsersGroup.id]: allUsersPermission },
+      });
 
-      const menu = await openHeaderMenu("Marketing");
-      await userEvent.click(menu.blockAll);
+      await userEvent.click(getBucketCheckbox("Marketing", "Read"));
+
+      expect(onPermissionChange).toHaveBeenCalledWith({
+        group_id: marketingGroup.id,
+        mcp_enabled: true,
+        tool_access: { question_write: "no", transform_write: "no" },
+      });
+    });
+
+    it("turns the group off when it blocks the last allowed tools", async () => {
+      const { onPermissionChange } = setup({
+        permissionsByGroup: {
+          [marketingGroup.id]: createMockMcpGroupPermission({
+            group_id: marketingGroup.id,
+            tool_access: { question_write: "no", transform_write: "no" },
+          }),
+        },
+      });
+
+      await userEvent.click(getBucketCheckbox("Marketing", "Read"));
 
       expect(onPermissionChange).toHaveBeenCalledWith({
         group_id: marketingGroup.id,
@@ -239,21 +280,6 @@ describe("McpToolsGrid", () => {
         tool_access: {},
       });
     });
-
-    it("has no menu for Administrators", () => {
-      setup();
-
-      expect(
-        screen.queryByRole("button", { name: "Administrators" }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  it("renders bucket rows without checkboxes", () => {
-    setup();
-
-    const readRow = screen.getByRole("row", { name: /^Read/ });
-    expect(within(readRow).queryAllByRole("checkbox")).toHaveLength(0);
   });
 
   it("shows the tool description from the info button", async () => {
