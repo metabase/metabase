@@ -146,4 +146,14 @@
     [:module [:const "x" [:obj ["key" {:metadataz {"typo" 1}} [:lit 1]]]]]
     ;; Comments were replaced by metadata blocks.
     [:module [:const "x" [:obj ["key" {:comments ["Entity ID: abc"]} [:obj]]]]]
+    ;; A block prints inside an object, so metadata on anything else has nowhere to go.
+    [:module [:const "x" [:obj ["key" {:metadata {"entityId" "abc"}} [:lit 1]]]]]
+    [:module [:const "x" [:arr [:item {:metadata {"entityId" "abc"}} [:lit 1]]]]]
     [:const "x" [:lit 1]]))
+
+(deftest metadata-inside-a-call-argument-is-refused-test
+  (testing "a `:call` argument prints on one line, where a block can't go, so its metadata is an error, not dropped"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metadata can only be attached to an object"
+                          (javascript/render-js
+                           [:module [:const "x" [:call "pickFields"
+                                                 [:obj ["orders" {:metadata {"entityId" "abc"}} [:obj]]]]]])))))
