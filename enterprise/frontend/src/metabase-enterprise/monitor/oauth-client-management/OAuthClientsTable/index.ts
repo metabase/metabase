@@ -1,0 +1,1 @@
+export { OAuthClientsTable } from "./OAuthClientsTable";

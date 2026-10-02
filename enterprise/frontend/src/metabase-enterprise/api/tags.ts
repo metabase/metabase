@@ -17,6 +17,7 @@ import {
   type DependencyNode,
   type DocumentDependencyNode,
   type MeasureDependencyNode,
+  type OAuthClient,
   type PythonLibrary,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
@@ -53,6 +54,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "data-complexity-scores",
   "security-advisory",
   "session",
+  "oauth-client",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -255,6 +257,18 @@ export function provideSessionListTags(
   sessions: Session[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("session"), ...sessions.flatMap(provideSessionTags)];
+}
+
+export function provideOAuthClientTags(
+  client: OAuthClient,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("oauth-client", client.client_id)];
+}
+
+export function provideOAuthClientListTags(
+  clients: OAuthClient[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("oauth-client"), ...clients.flatMap(provideOAuthClientTags)];
 }
 
 export function provideSourceReplacementRunTags(

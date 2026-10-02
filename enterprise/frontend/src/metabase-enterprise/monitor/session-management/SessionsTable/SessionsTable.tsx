@@ -8,9 +8,9 @@ import type {
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useScrollToTop } from "metabase/common/hooks";
+import { MonitorDateCell } from "metabase/monitor/components/MonitorDateCell";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import type { TreeTableColumnDef } from "metabase/ui";
@@ -59,12 +59,6 @@ const canSelectSession = (row: Row<Session>) =>
 
 const ACTIVE_COLUMN_WIDTHS = [0.34, 0.3, 0.16, 0.2];
 const ENDED_COLUMN_WIDTHS = [0.26, 0.22, 0.17, 0.18, 0.17];
-
-const DateCell = ({ value }: { value: string }) => (
-  <Ellipsified>
-    <DateTime value={value} unit="minute" />
-  </Ellipsified>
-);
 
 export const SessionsTable = ({
   sessions,
@@ -139,7 +133,7 @@ export const SessionsTable = ({
       enableSorting: true,
       sortDescFirst: true,
       accessorFn: (session) => session.created_at,
-      cell: ({ row }) => <DateCell value={row.original.created_at} />,
+      cell: ({ row }) => <MonitorDateCell value={row.original.created_at} />,
     };
 
     if (isEndedTab) {
@@ -156,7 +150,7 @@ export const SessionsTable = ({
           accessorFn: (session) => session.ended_at ?? "",
           cell: ({ row }) =>
             row.original.ended_at ? (
-              <DateCell value={row.original.ended_at} />
+              <MonitorDateCell value={row.original.ended_at} />
             ) : (
               EMPTY_CELL_PLACEHOLDER
             ),
