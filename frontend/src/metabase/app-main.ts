@@ -9,7 +9,7 @@ import { getUser, loadCurrentUser } from "metabase/current-user";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
-import { navigate } from "metabase/router";
+import { navigate, prefetchRegisteredPages } from "metabase/router";
 import { getRoutes } from "metabase/routes";
 import { getSetting } from "metabase/settings";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
@@ -77,4 +77,13 @@ init(mainReducers, getRoutes, (store) => {
       store.dispatch(setErrorPage({ status: 403 }));
     }
   });
+
+  // This entry serves full-app embedding too, and inside a customer's page
+  // background downloads are not ours to spend. The public and embed entries
+  // never get here at all.
+  if (IFRAMED_IN_SELF || !isWithinIframe()) {
+    prefetchRegisteredPages({
+      shouldStart: () => getUser(store.getState()) != null,
+    });
+  }
 });
