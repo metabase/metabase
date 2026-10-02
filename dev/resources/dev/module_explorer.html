@@ -256,7 +256,7 @@ kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1
   <div class=seg role=group aria-label='View'>
     <button id=view-tree class=on>Tree</button>
     <button id=view-hotspots title='Rank modules by coupling'>Hotspots</button>
-    <button id=view-cycles title='Dependency cycles and the edges that hold them together'>Cycles</button>
+    <button id=view-cycles title='Dependency cycles'>Cycles</button>
     <button id=view-graph title='Dependency graph around the focused modules'>Graph</button>
   </div>
   <button class=ghost id=debt title='Show only modules whose boundary uses an escape hatch: :api :any, :uses :any, or :model-imports :bypass'>Escape hatches only</button>
@@ -320,14 +320,12 @@ const STRONG_BRIDGE_HELP = 'A strong bridge is a single edge whose removal will 
 // density and cycle rank, with this cycle's numbers in the formula
 function densityHelp(c){
   return `Density\n= edges ÷ (modules × (modules − 1))\n= ${c.edges} ÷ (${c.size} × ${c.size-1}) = ${c.density.toFixed(2)}\n\n`+
-    'The share of all possible dependencies between members that exist.\n'+
     '1.00 means every module depends on every other.';
 }
 function cycleRankHelp(c){
   return `Cycle rank\n= edges − modules + 1\n= ${c.edges} − ${c.size} + 1 = ${c['cycle-rank']}\n\n`+
-    'The number of independent loops in the cycle.\n'+
-    'It is also an upper bound on the dependencies to cut to break the cycle,\n'+
-    'though the real minimum is often far lower.';
+    'The number of independent loops.\n'+
+    'Bounds the number of cuts necessary to break the cycle.';
 }
 // [label, value, tooltip] triples shown wherever a cycle is summarised
 function cycleMetrics(c){
@@ -408,7 +406,7 @@ document.getElementById('stats').innerHTML =
   `<span><b>${MODULES.length}</b> modules</span><span><b>${ent}</b> enterprise</span>`+
   `<span title='namespaces not yet moved to match the module name'><b>${starred}</b> ns-prefixed</span>`+
   `<span title='modules whose boundary uses an escape hatch: :api :any, :uses :any, or :model-imports :bypass'><b>${debtN}</b> with escape hatches</span>`+
-  `<span id=stat-cycles class=statlink title='groups of modules that depend on each other, directly or through others${USES_KNOWN ? '' : '. '+DECLARED_CYCLES_NOTE.replace(/<\/?code>/g, '')}. Click to list them.'><b>${CYCLES.length}</b> cycles</span>`+
+  `<span id=stat-cycles class=statlink title='Groups of modules that all reach each other${USES_KNOWN ? '' : '. '+DECLARED_CYCLES_NOTE.replace(/<\/?code>/g, '')}. Click to list them.'><b>${CYCLES.length}</b> cycles</span>`+
   `<span><b>${TEAMS.length}</b> teams</span>`;
 document.getElementById('stat-cycles').onclick = () => setView('cycles');
 document.getElementById('modlist').append(...MODULES.map(m=>{ const o=document.createElement('option'); o.value=m.id; return o; }));
@@ -661,8 +659,7 @@ function renderCycles(){
   const scroll = treeEl.scrollTop;
   treeEl.innerHTML='';
   const bar=document.createElement('div'); bar.className='viewbar';
-  bar.innerHTML=`<b>Cycles</b><span class=desc>groups of modules that all reach each other through their dependencies. `+
-    `Hover a metric for what it means.`+
+  bar.innerHTML=`<b>Cycles</b><span class=desc>Groups of modules that all reach each other.`+
     (USES_KNOWN ? '' : ` ${DECLARED_CYCLES_NOTE}`)+
     `</span>`;
   treeEl.appendChild(bar);
@@ -670,7 +667,7 @@ function renderCycles(){
   const shown = new Set(CYCLES.filter(c => c.modules.some(id => matches(byId[id]) && teamOk(byId[id]))));
   if(!shown.size){
     const e=document.createElement('div'); e.className='viewbar';
-    e.textContent = CYCLES.length ? 'No cycle has a module matching the current filters.' : 'No cycles.';
+    e.textContent = CYCLES.length ? 'No cycles match the filters.' : 'No cycles.';
     treeEl.appendChild(e);
   }
   CYCLES.forEach((c,i)=>{
@@ -902,8 +899,7 @@ function renderGraphBar(visible){
     `<span class=hint title='${STRONG_BRIDGE_HELP}'><i class=l-bridge></i>strong bridge: cutting it splits or destroys the cycle</span>`;
   info.appendChild(lg);
   const help = document.createElement('span'); help.className = 'ghelp'; help.textContent = '?';
-  help.title = 'Click a module to select it\nShift-click to add it to the focus\nDouble-click to focus only it\n'+
-    'Right-click for more';
+  help.title = 'Click: select\nShift-click: add to focus\nDouble-click: focus only this\nRight-click: more';
   info.appendChild(help);
   if(!NS_EDGES){ const note=document.createElement('span'); note.className='gnote';
     note.innerHTML='Namespace-level edges: run <code>(dev.module-explorer/open!)</code> in a dev REPL'; info.appendChild(note); }
