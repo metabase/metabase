@@ -19,7 +19,18 @@ describe("detail view", () => {
   });
 
   describe("table", () => {
-    it("displays object details with breadcrumbs and relationships", () => {
+    it("displays object details with breadcrumbs and relationships, and 404 error state", () => {
+      DetailView.visitTable(PRODUCTS_ID, 9999);
+
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
+
+      H.appBar().within(() => {
+        cy.findByRole("link", { name: /Sample Database/ }).should("be.visible");
+        cy.findByRole("link", { name: "Products" }).should("be.visible");
+        cy.findByText("9999").should("be.visible");
+      });
+
       DetailView.visitTable(PRODUCTS_ID, 1);
 
       cy.findByRole("heading", {
@@ -71,26 +82,33 @@ describe("detail view", () => {
         .should("be.visible")
         .and("have.text", "Showing 8 rows");
     });
-
-    it("shows loading state and 404 error state", () => {
-      DetailView.visitTable(PRODUCTS_ID, 9999);
-
-      cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
-
-      H.appBar().within(() => {
-        cy.findByRole("link", { name: /Sample Database/ }).should("be.visible");
-        cy.findByRole("link", { name: "Products" }).should("be.visible");
-        cy.findByText("9999").should("be.visible");
-      });
-    });
   });
 
   describe("model", () => {
-    it("displays object details with breadcrumbs", () => {
+    it("displays object details with breadcrumbs, and 404 error state", () => {
       createOrdersJoinProductsModel().then(({ body: card }) => {
-        DetailView.visitModel(card.id, 1);
+        DetailView.visitModel(card.id, 9999);
         cy.wrap(card.id).as("modelId");
+      });
+
+      cy.findByTestId("loading-indicator").should("be.visible");
+      cy.findByTestId("loading-indicator").should("not.exist");
+
+      cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
+
+      H.appBar().within(() => {
+        cy.findByRole("link", { name: /First collection/ }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Second collection/ }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /My model/ }).should("be.visible");
+        cy.findByText("9999").should("be.visible");
+      });
+
+      cy.get<number>("@modelId").then((modelId) => {
+        DetailView.visitModel(modelId, 1);
       });
 
       cy.findByRole("heading", {
@@ -145,28 +163,6 @@ describe("detail view", () => {
       ]);
 
       DetailView.getRelationships().should("not.exist");
-    });
-
-    it("shows 404 error state", () => {
-      createOrdersJoinProductsModel().then(({ body: card }) => {
-        DetailView.visitModel(card.id, 9999);
-      });
-
-      cy.findByTestId("loading-indicator").should("be.visible");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
-
-      H.appBar().within(() => {
-        cy.findByRole("link", { name: /First collection/ }).should(
-          "be.visible",
-        );
-        cy.findByRole("link", { name: /Second collection/ }).should(
-          "be.visible",
-        );
-        cy.findByRole("link", { name: /My model/ }).should("be.visible");
-        cy.findByText("9999").should("be.visible");
-      });
     });
   });
 
