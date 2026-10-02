@@ -3,7 +3,7 @@
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
@@ -78,8 +78,10 @@
                     {k (get login-attributes k)})))])))
 
 (defenterprise hash-input-for-sandbox
-  "Returns a hash-input for FieldValues if the field is sandboxed."
-  :feature :sandboxes
+  "Returns a hash-input for FieldValues if the field is sandboxed.
+  The attributes are nil when they can't be resolved, and while the `:sandboxes` feature is unavailable."
+  :feature :none
   [field]
   (when (field-is-sandboxed? field)
-    {:sandbox-attributes (field->sandbox-attributes-for-current-user field)}))
+    {:sandbox-attributes (when (premium-features/has-feature? :sandboxes)
+                           (field->sandbox-attributes-for-current-user field))}))
