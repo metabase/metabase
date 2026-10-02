@@ -1,7 +1,8 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { FormLocation } from "metabase/databases/types";
 import type {
   DatabaseData,
@@ -107,7 +108,7 @@ export interface SetupOpts {
   location?: FormLocation;
 }
 
-export const setup = ({
+export const setup = async ({
   settings,
   enterprisePlugins,
   engines = TEST_ENGINES,
@@ -115,8 +116,10 @@ export const setup = ({
   isAdvanced = true,
   location = "admin",
 }: SetupOpts = {}) => {
+  setupEnginesEndpoint(engines);
+
   const state = createMockState({
-    settings: mockSettings({ ...settings, engines }),
+    settings: mockSettings({ ...settings }),
   });
 
   if (enterprisePlugins) {
@@ -141,6 +144,8 @@ export const setup = ({
       storeInitialState: state,
     },
   );
+
+  await screen.findByTestId("database-form");
 
   return { onSubmit };
 };

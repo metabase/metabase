@@ -105,7 +105,6 @@ export const MCP_APPS_BOOTSTRAP_SETTING_KEYS = [
   "application-name",
   "available-fonts",
   "available-locales",
-  "available-timezones",
   "bug-reporting-enabled",
   "cloud-gateway-ips",
   "csp-img-allowed-hosts",

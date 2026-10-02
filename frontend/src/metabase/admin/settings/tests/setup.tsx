@@ -16,6 +16,7 @@ import {
   setupSettingsEndpoints,
   setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
+  setupTimezonesEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
   setupUserKeyValueEndpoints,
@@ -151,6 +152,7 @@ export const setup = async ({
   setupApiKeyEndpoints([]);
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
+  setupTimezonesEndpoint(["Europe/Paris", "US/Mountain", "UTC"]);
   setupSlackManifestEndpoint();
   setupSlackAppInfoEndpoint();
   setupUploadManagementEndpoint([]);

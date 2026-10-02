@@ -44,7 +44,7 @@ describe("setup (OSS)", () => {
     await clickNextStep(); // Usage question
     expectSectionsToHaveLabelsInOrder({ from: 2 });
 
-    await userEvent.click(screen.getByText("Continue with sample data"));
+    await userEvent.click(await screen.findByText("Continue with sample data"));
     expectSectionsToHaveLabelsInOrder({ from: 3 });
   });
 
@@ -134,7 +134,9 @@ describe("setup (OSS)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
       await userEvent.click(screen.getByText("Finish"));
     };
 
@@ -206,7 +208,9 @@ describe("setup (OSS)", () => {
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
 
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
 
       await userEvent.click(screen.getByText("Finish"));
 
@@ -265,7 +269,9 @@ describe("setup (OSS)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
       await userEvent.click(screen.getByText("Finish"));
 
       await userEvent.click(
@@ -292,7 +298,9 @@ describe("setup (OSS)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await userEvent.click(screen.getByText("Continue with sample data"));
+      await userEvent.click(
+        await screen.findByText("Continue with sample data"),
+      );
 
       await userEvent.click(screen.getByText("Finish"));
 

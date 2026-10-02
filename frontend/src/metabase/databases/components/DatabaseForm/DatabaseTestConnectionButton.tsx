@@ -3,10 +3,9 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useValidateDatabaseMutation } from "metabase/api";
+import { useListEnginesQuery, useValidateDatabaseMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { useSetting } from "metabase/settings";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
@@ -62,7 +61,7 @@ const TestResultIcon = ({ result }: { result: TestResult }) =>
 export const DatabaseTestConnectionButton = () => {
   const { values, validateForm, setFieldError, setFieldTouched } =
     useFormikContext<DatabaseData>();
-  const engines = useSetting("engines");
+  const { data: engines = {} } = useListEnginesQuery();
   const [validateDatabase, { isLoading }] = useValidateDatabaseMutation();
   const showLoading = useDebouncedValue(
     isLoading,
