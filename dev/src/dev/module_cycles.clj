@@ -193,9 +193,9 @@
            (format " (and %d more)" (- (count sorted) (count shown)))))))
 
 (defn- requires-lines
-  "The `requires` as indented `from -> to` lines, or nil when there are more than ten."
-  [requires]
-  (when (<= (count requires) 10)
+  "The `requires` of `cluster` as indented `from -> to` lines, or nil for a cluster of more than ten modules."
+  [cluster requires]
+  (when (<= (count cluster) 10)
     (for [[from to] requires]
       (str "    " from " -> " to))))
 
@@ -217,7 +217,7 @@
 (defn- unnamed-lines [{:keys [cluster requires proposal]}]
   (concat
    [(format "A cluster without a name: %d modules, %s." (count cluster) (module-list cluster))]
-   (when-let [lines (seq (requires-lines requires))]
+   (when-let [lines (seq (requires-lines cluster requires))]
      (cons "  It is a cycle through these requires:" lines))
    [(str "  If your change split a cluster in two, that is a real improvement: thank you."
          " You get to name the new one.")
@@ -290,7 +290,7 @@
                        (str/join ", " (sort (distinct (keep #(get-in config [% :team]) cluster))))))
       (doseq [module (sort cluster)]
         (println (str "  " module)))
-      (when-let [lines (and (empty? named) (seq (requires-lines (requires-within graph cluster))))]
+      (when-let [lines (and (empty? named) (seq (requires-lines cluster (requires-within graph cluster))))]
         (println "  requires:")
         (run! println lines))
       (println))))

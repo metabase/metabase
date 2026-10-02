@@ -150,6 +150,13 @@
                           :proposal '{:name m00-knot, :anchor m00}})]
       (is (re-find #"11 modules, m00, .*, m07 \(and 3 more\)\.$" (first msg)))
       (is (not-any? #(str/includes? % "It is a cycle through") msg))))
+  (testing "a small cluster lists its requires however many there are"
+    (let [members '[a b c d e]
+          msg     (lines {:type     :unnamed
+                          :cluster  (set members)
+                          :requires (vec (for [from members, to members :when (not= from to)] [from to]))
+                          :proposal '{:name a-knot, :anchor a}})]
+      (is (= 20 (count (filter #(str/includes? % " -> ") msg))))))
   (testing "an anchor that left every cycle asks for the name to move or retire"
     (let [msg (lines {:type :anchor-left, :name 'galactic-center, :anchor 'qp})]
       (is (= "galactic-center is anchored on qp, which is no longer in any cycle." (first msg)))
