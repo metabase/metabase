@@ -2,9 +2,12 @@
   "Helpers for tests that call the `/api/embed-mcp` handlers the way the MCP Apps iframe does: with a UI credential
   and the MCP session id it was minted for."
   (:require
+   [metabase.lib.core :as lib]
    [metabase.mcp.session :as mcp.session]
    [metabase.test :as mt]
-   [metabase.test.http-client :as client]))
+   [metabase.test.http-client :as client]
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,6 +26,21 @@
      {:user-id    user-id
       :session-id session-id
       :credential (mcp.session/issue-ui-credential session-id user-id scopes)})))
+
+(defn encode-query
+  "`query`, a lib query, in the base64 form a query handle stores."
+  [query]
+  (-> query lib/prepare-for-serialization json/encode u/encode-base64))
+
+(defn decode-query
+  "The query map stored in base64 `encoded`, as a handle stores it."
+  [encoded]
+  (-> encoded u/decode-base64 json/decode+kw))
+
+(defn store-query-handle!
+  "Store `query`, a lib query, under a new handle owned by `user-id` on MCP session `session-id`. Returns the handle."
+  [session-id user-id query]
+  (mcp.session/store-handle! session-id user-id (encode-query query)))
 
 (defn headers
   "The request headers the iframe sends for `auth`, from [[ui-auth!]]."

@@ -8,19 +8,26 @@
    [clojure.string :as str]
    [compojure.response]
    [malli.error :as me]
+   [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.response :as api.response]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.api :as qp.api]
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -157,6 +164,95 @@
     {:status 200
      :body   {:query encoded_query :prompt prompt}}))
 
+(defn- decode-stored-query
+  "The normalized query stored base64-encoded in `encoded`. Throws a 400 when it does not decode to a query."
+  [encoded]
+  (let [decoded (try
+                  (-> encoded u/decode-base64 json/decode+kw)
+                  (catch Exception _ nil))
+        query   (when (map? decoded)
+                  (try
+                    (lib-be/normalize-query decoded)
+                    (catch Exception _ nil)))]
+    (when-not (and (map? query) (pos-int? (:database query)))
+      (throw (ex-info (tru "The stored query is invalid.") {:status-code 400})))
+    query))
+
+(defn- resolve-handle!
+  "The stored row for `handle` owned by the current user, as `{:encoded_query :prompt :query}` where `:query` is
+   normalized. Throws a 404 when the user owns no such handle."
+  [session-id handle]
+  (let [row (api/check-404 (mcp.session/resolve-query-handle session-id api/*current-user-id* handle))]
+    (assoc row :query (decode-stored-query (:encoded_query row)))))
+
+(defn- runnable-handle-query!
+  "The normalized query stored under the route's handle, after the native-SQL gate for the credential `claims`."
+  [{:keys [claims session-id] [handle] :route-params}]
+  (let [{:keys [query]} (resolve-handle! session-id handle)]
+    (query-guards/check-mcp-ui-native-query! {:mcp-ui-credential claims} query)
+    query))
+
+(defn- run-handle
+  "Run the query stored under the route's handle, the way `POST /api/dataset` runs an ad-hoc query. A query in the
+   request body is ignored."
+  [context _request]
+  (qp.api/run-adhoc-query (runnable-handle-query! context)))
+
+(def ^:private pivot-body
+  [:map
+   [:pivot_rows {:optional true} [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]
+   [:pivot_cols {:optional true} [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]])
+
+(defn- pivot-handle
+  "Run the query stored under the route's handle as a pivot query, the way `POST /api/dataset/pivot` does. Only the
+   body's `pivot_rows` and `pivot_cols`, which pick among the stored query's breakouts, are read."
+  [context request]
+  (let [{:keys [pivot_rows pivot_cols]} (check-body! pivot-body (or (:body request) {}))]
+    (qp.api/run-adhoc-pivot-query (cond-> (runnable-handle-query! context)
+                                    pivot_rows (assoc :pivot-rows pivot_rows)
+                                    pivot_cols (assoc :pivot-cols pivot_cols)))))
+
+(defn- handle-query-metadata
+  "The metadata the iframe needs for the query stored under the route's handle, as `POST /api/dataset/query_metadata`
+   returns it."
+  [context _request]
+  {:status 200
+   :body   (qp.api/adhoc-query-metadata (runnable-handle-query! context))})
+
+(def ^:private remapping-body
+  [:map
+   [:parameter [:map [:id ms/NonBlankString]]]
+   [:value     [:ref ::lib.schema.parameter/parameter.value]]])
+
+(defn- template-tag-parameter
+  "The parameter and field ids for the field-filter template tag of `query` whose id is `parameter-id`, or nil."
+  [query parameter-id]
+  (some (fn [{:keys [id type widget-type dimension] tag-name :name}]
+          (when (and (= id parameter-id) (= type :dimension))
+            (let [[_ _ field-id] dimension]
+              (when (pos-int? field-id)
+                {:parameter {:id     id
+                             :type   (or widget-type :category)
+                             :slug   tag-name
+                             :target [:dimension [:template-tag tag-name]]}
+                 :field-ids [field-id]}))))
+        (lib/template-tags query)))
+
+(defn- handle-parameter-remapping
+  "The remapped value of `value` for a field-filter parameter of the query stored under the route's handle, as
+   `POST /api/dataset/parameter/remapping` returns it. The parameter is named by its id; its field comes from the
+   stored query, never from the request."
+  [context request]
+  (let [{{parameter-id :id} :parameter value :value} (check-body! remapping-body (:body request))
+        query (runnable-handle-query! context)
+        {:keys [parameter field-ids]} (api/check-404 (template-tag-parameter
+                                                      (lib/query (lib-be/application-database-metadata-provider
+                                                                  (:database query))
+                                                                 query)
+                                                      parameter-id))]
+    {:status 200
+     :body   (qp.api/param-remapped-value field-ids parameter value)}))
+
 ;;; -------------------------------------------------- Routing ---------------------------------------------------
 
 (def ^:private uuid-pattern
@@ -169,7 +265,15 @@
   [[:get  #"/bootstrap"                                     nil                           bootstrap]
    [:post #"/feedback"                                      nil                           feedback]
    [:post #"/drills"                                        metabot.scope/agent-query-run store-drill]
-   [:get  (re-pattern (str "/queries/(" uuid-pattern ")")) metabot.scope/agent-query-run query-by-handle]])
+   [:get  (re-pattern (str "/queries/(" uuid-pattern ")")) metabot.scope/agent-query-run query-by-handle]
+   [:post (re-pattern (str "/queries/(" uuid-pattern ")/run"))
+    metabot.scope/agent-query-run run-handle]
+   [:post (re-pattern (str "/queries/(" uuid-pattern ")/pivot"))
+    metabot.scope/agent-query-run pivot-handle]
+   [:post (re-pattern (str "/queries/(" uuid-pattern ")/query_metadata"))
+    metabot.scope/agent-query-run handle-query-metadata]
+   [:post (re-pattern (str "/queries/(" uuid-pattern ")/parameter/remapping"))
+    metabot.scope/agent-query-run handle-parameter-remapping]])
 
 (defn- match-route
   "The route in [[route-table]] for `method` + `path`, with its `:route-params`, or nil."
@@ -191,17 +295,26 @@
         (and (set? granted)
              (scope/scope-satisfied? (into #{} (filter string?) granted) required-scope)))))
 
+(defn- respond-with
+  "Send `response`, which may be a Ring response map or a streaming response."
+  [response request respond raise]
+  (if (map? response)
+    (respond response)
+    (compojure.response/send response request respond raise)))
+
 (defn- handle-route
-  "Authenticate the UI credential on `request` and serve `route` as the credential's user."
-  [{:keys [scope handler route-params]} request]
+  "Authenticate the UI credential on `request` and serve `route` as the credential's user.
+
+   The response is sent while the user is still bound: a body may hold lazy values that realize as it is encoded."
+  [{:keys [scope handler route-params]} request respond raise]
   (let [claims (mcp.session/resolve-ui-credential (get-in request [:headers ui-credential-header]))
         user   (some-> (:uid claims) mw.session/user-info-for-id)]
     (cond
       (not user)
-      api.response/response-unauthentic
+      (respond api.response/response-unauthentic)
 
       (not (scope-satisfied? claims scope))
-      (throw (ex-info (tru "This client was not granted the scope this request needs.")
+      (raise (ex-info (tru "This client was not granted the scope this request needs.")
                       {:status-code 403}))
 
       :else
@@ -210,23 +323,17 @@
        (fn []
          (let [session-id (get-in request [:headers "mcp-session-id"])]
            (check-session-header! session-id api/*current-user-id* (:sid claims))
-           (handler {:claims       claims
-                     :session-id   session-id
-                     :route-params route-params}
-                    request)))))))
-
-(defn- respond-with
-  "Send `response`, which may be a Ring response map or a streaming response."
-  [response request respond raise]
-  (if (map? response)
-    (respond response)
-    (compojure.response/send response request respond raise)))
+           (respond-with (handler {:claims       claims
+                                   :session-id   session-id
+                                   :route-params route-params}
+                                  request)
+                         request respond raise)))))))
 
 (defn- handler
   [request respond raise]
   (if-let [route (match-route (:request-method request) ((some-fn :path-info :uri) request))]
     (try
-      (respond-with (handle-route route request) request respond raise)
+      (handle-route route request respond raise)
       (catch Throwable e
         (raise e)))
     (respond nil)))
