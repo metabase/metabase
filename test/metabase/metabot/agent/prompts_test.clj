@@ -207,6 +207,21 @@
                           :construct-notebook-query-operators]]
           (is (str/includes? content (:description (skills/get-skill skill-id)))))))))
 
+(deftest ^:parallel embedding-prompt-never-hands-off-to-sql-editor-test
+  (testing "the embedded profile (SDK MetabotQuestion) has no SQL editor to redirect to, so its prompt forbids writing SQL (BOT-1891)"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :embedding_next)
+            content (prompts/build-system-message-content profile {} (profiles/profile->tools profile []) [])]
+        (is (str/includes? content "Never write SQL"))
+        (is (str/includes? content "there is no SQL editor"))
+        (is (not (str/includes? content "direct the user to the SQL editor")))
+        (is (not (str/includes? content "direct the user to the dashboard builder"))))))
+  (testing "the in-app natural-language profiles keep the SQL editor hand-off, since that editor exists there"
+    (doseq [template ["natural-language-querying-only.selmer"
+                      "natural-language-querying-fallback.selmer"]]
+      (let [content (prompts/build-system-message-content {:prompt-template template} {} {} [])]
+        (is (str/includes? content "direct the user to the SQL editor") template)))))
+
 (deftest ^:parallel build-system-message-content-test-9
   (testing "renders sql querying template with literal model syntax"
     (let [profile {:prompt-template "sql-querying-only.selmer"}
