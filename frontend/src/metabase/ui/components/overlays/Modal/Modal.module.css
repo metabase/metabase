@@ -18,6 +18,7 @@
 
 .content {
   background-color: var(--mb-color-background_surface-primary);
+  border: 0.5px solid var(--mb-color-modal-border);
 }
 
 .header {
