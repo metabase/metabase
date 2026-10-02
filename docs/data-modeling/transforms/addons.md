@@ -43,7 +43,7 @@ With basic transforms, you can:
 
 ### Cancel basic transforms
 
-Once basic transforms are enabled on your Metabase Cloud instance, they can't be disabled.
+Once basic transforms are enabled on your Metabase Cloud instance, you can't cancel the add-on. To stop paying for runs, an admin can [turn transforms off](./transforms-overview.md#turn-transforms-off).
 
 ## Advanced transforms
 
