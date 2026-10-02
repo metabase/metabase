@@ -294,12 +294,13 @@
 
 (mu/defn visible-table-filter-subquery-clause
   "The filter of [[visible-table-filter-with-cte]] as one WHERE clause, with the permitted-table-ids query inlined
-   as an uncorrelated subquery instead of CTEs, for a filter that has to live where a CTE is not valid: a UNION ALL
-   branch or an EXISTS probe. Hoisting the CTEs to the statement's top level is not an alternative there: H2 2.1.214
-   (through 2.2.224) returns no rows for a non-recursive CTE that contains bound parameters when the CTE is
-   referenced from inside a derived table, and the HAVING here binds its perm_value strings as parameters. Fixed in
-   H2 2.3.230, but a 2.1.214 database file cannot be opened by that version. The subquery is uncorrelated, so the
-   app DB still evaluates it once per statement.
+   as an uncorrelated subquery instead of CTEs. Use this where a CTE is not valid, such as a UNION ALL branch or an
+   EXISTS probe. The subquery is uncorrelated, so the app DB still evaluates it once per statement.
+
+   Hoisting the CTEs to the top level of the statement does not work on H2 2.1.214, the pinned app DB version: a
+   non-recursive CTE that contains bound parameters (here, the perm_value strings in the HAVING) returns no rows
+   when it is referenced from inside a derived table. H2 fixed this in 2.3.230, but that version cannot open a
+   2.1.214 database file, so upgrading is not a quick fix.
 
    Takes the same options as [[visible-table-filter-with-cte]]."
   [column-or-exp      :- ColumnOrExp
