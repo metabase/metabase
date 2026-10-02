@@ -173,3 +173,17 @@
   "Remove one group assignment."
   [app-id group-id]
   (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id group-id))
+
+(defn table-details
+  "Table names and database details for `table-ids`."
+  [table-ids]
+  (t2/select :model/Table
+             {:select [:t.id
+                       [:t.display_name :name]
+                       :t.schema
+                       [:t.db_id :database_id]
+                       [:d.name :database_name]]
+              :from [(warehouse-schema-overlay/table-query {:alias :t})]
+              :join [[:metabase_database :d] [:= :d.id :t.db_id]]
+              :where [:in :t.id table-ids]
+              :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))

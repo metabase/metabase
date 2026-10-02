@@ -1,3 +1,4 @@
+import { skipToken } from "@reduxjs/toolkit/query";
 import cx from "classnames";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
@@ -18,24 +19,31 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { DataAppGroup } from "metabase-types/api";
+import { useGetDataAppGroupPermissionWarningsQuery } from "metabase-enterprise/api";
+import type {
+  DataAppGroup,
+  DataAppGroupPermissionWarning,
+} from "metabase-types/api";
 
 import { AddDataAppGroups } from "../AddDataAppGroups/AddDataAppGroups";
+import { DataAppDataAccessWarning } from "../DataAppDataAccessWarning/DataAppDataAccessWarning";
 
 import S from "./DataAppGroupList.module.css";
 
 const PAGE_SIZE = 25;
 
 type Props = {
+  appName: string;
   isAdding: boolean;
   groups: DataAppGroup[];
 
-  onAddGroups: (groupIds: number[]) => Promise<boolean>;
   onCancelAdd: () => void;
+  onAddGroups: (groupIds: number[]) => Promise<boolean>;
   onRemoveGroup: (group: DataAppGroup) => Promise<boolean>;
 };
 
 export const DataAppGroupList = ({
+  appName,
   isAdding,
   groups,
   onAddGroups,
@@ -55,6 +63,22 @@ export const DataAppGroupList = ({
   const visibleGroups = useMemo(
     () => groups.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
     [groups, page],
+  );
+
+  const warningsQuery = useGetDataAppGroupPermissionWarningsQuery(
+    groups.length > 0 ? appName : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
+
+  const warningsByGroupId = useMemo(
+    () =>
+      new Map(
+        warningsQuery.currentData?.map((warning) => [
+          warning.group_id,
+          warning,
+        ]),
+      ),
+    [warningsQuery.currentData],
   );
 
   return (
@@ -86,12 +110,13 @@ export const DataAppGroupList = ({
             {groups.length > 0 && (
               <AdminContentTable
                 className={cx(S.groupTable, Animation.fadeIn)}
-                columnTitles={[t`Group name`, t`Members`, null]}
+                columnTitles={[t`Group name`, t`Members`, t`Data access`, null]}
               >
                 {visibleGroups.map((group) => (
                   <GroupRow
                     key={group.id}
                     group={group}
+                    warning={warningsByGroupId.get(group.id)}
                     onRemove={onRemoveGroup}
                   />
                 ))}
@@ -150,9 +175,11 @@ const DataAppGroupsEmptyState = () => (
 
 const GroupRow = ({
   group,
+  warning,
   onRemove,
 }: {
   group: DataAppGroup;
+  warning?: DataAppGroupPermissionWarning;
   onRemove: (group: DataAppGroup) => void;
 }) => {
   const name = getGroupNameLocalized(group);
@@ -164,6 +191,12 @@ const GroupRow = ({
       </td>
 
       <td>{group.member_count}</td>
+
+      <td>
+        {warning && (
+          <DataAppDataAccessWarning warning={warning} groupName={name} />
+        )}
+      </td>
 
       <Box component="td" w="1%" style={{ whiteSpace: "nowrap" }}>
         <Flex

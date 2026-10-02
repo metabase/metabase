@@ -78,3 +78,16 @@ export interface RemoveDataAppGroupRequest {
   name: string;
   group_id: number;
 }
+
+export interface DataAppMissingTable {
+  id: number;
+  name: string;
+  schema: string | null;
+  database_id: number;
+  database_name: string;
+}
+
+export interface DataAppGroupPermissionWarning {
+  group_id: number;
+  missing_tables: DataAppMissingTable[];
+}

@@ -37,6 +37,13 @@
    table-id  :- ::lib.schema.id/table]
   (t2/select :model/Sandbox :group_id [:in group-ids] :table_id table-id))
 
+(mu/defn policies-for-groups-and-tables
+  "Group and table IDs for sandbox policies matching the requested groups and tables."
+  [group-ids :- [:set ms/PositiveInt]
+   table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Sandbox :group_id :table_id]
+             :group_id [:in group-ids] :table_id [:in table-ids]))
+
 (mu/defn sandboxes-using-card
   "The `:id` and `:table_id` of the Sandboxes built on the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
