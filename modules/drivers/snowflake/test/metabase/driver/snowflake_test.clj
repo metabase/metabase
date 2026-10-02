@@ -784,15 +784,14 @@
   (testing "the FK path passes raw names to the dynamic table check (#78541)"
     (let [dynamic-table-args (atom nil)
           fk-args            (atom nil)]
-      (with-redefs [driver.snowflake/dynamic-table?
-                    (fn [_conn db-name schema table-name]
-                      (reset! dynamic-table-args [db-name schema table-name])
-                      false)
-
-                    sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata
-                    (fn [_metadata db-name schema table-name]
-                      (reset! fk-args [db-name schema table-name])
-                      [])]
+      (mt/with-dynamic-fn-redefs [driver.snowflake/dynamic-table?
+                                  (fn [_conn db-name schema table-name]
+                                    (reset! dynamic-table-args [db-name schema table-name])
+                                    false)
+                                  sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata
+                                  (fn [_metadata db-name schema table-name]
+                                    (reset! fk-args [db-name schema table-name])
+                                    [])]
         (#'driver.snowflake/reducible-table-fks-from-jdbc-metadata
          (reify java.sql.Connection) (reify java.sql.DatabaseMetaData) "MY_DB" "RAW_DATA" "MY_TABLE"))
       (is (= ["MY_DB" "RAW_DATA" "MY_TABLE"] @dynamic-table-args))

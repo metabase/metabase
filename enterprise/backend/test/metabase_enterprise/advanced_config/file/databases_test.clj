@@ -166,12 +166,12 @@
           extract-calls    (atom 0)]
       (delete-existing!)
       (try
-        (with-redefs [sample-data/extract-and-sync-sample-database!
-                      (fn []
-                        (swap! extract-calls inc)
-                        ;; simulate extract by inserting a sample row
-                        (t2/insert! :model/Database
-                                    {:name "Sample Database" :engine :h2 :details {} :is_sample true}))]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database!
+                                    (fn []
+                                      (swap! extract-calls inc)
+                                      ;; simulate extract by inserting a sample row
+                                      (t2/insert! :model/Database
+                                                  {:name "Sample Database" :engine :h2 :details {} :is_sample true}))]
           (is (= :ok
                  (advanced-config.file/initialize!
                   {:version 1
@@ -193,8 +193,8 @@
                                                 :engine    :h2
                                                 :details   {:db "preexisting"}
                                                 :is_sample true}]
-        (with-redefs [sample-data/extract-and-sync-sample-database!
-                      (fn [] (swap! extract-calls inc))]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database!
+                                    (fn [] (swap! extract-calls inc))]
           (is (= :ok
                  (advanced-config.file/initialize!
                   {:version 1

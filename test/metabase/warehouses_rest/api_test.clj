@@ -3261,7 +3261,7 @@
               (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
     (testing "Returns 402 without :writable-connection feature"
-      (with-redefs [premium-features/has-feature? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)

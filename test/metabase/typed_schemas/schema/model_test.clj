@@ -82,17 +82,17 @@
                       [:actions "updateBird" :parameters]))))))
 
 (deftest model-schemas-includes-only-actionable-models-test
-  (with-redefs [schema.common/select-schema-cards
-                (constantly [{:id 42 :name "Model 42"}
-                             {:id 43 :name "Model 43"}])
-                schema.model/action-rows
-                (constantly [{:id 5 :model_id 42 :name "Create" :type :query}])
-                actions/select-actions-for-models
-                (constantly [{:id         5
-                              :model_id   42
-                              :name       "Create"
-                              :type       :query
-                              :parameters []}])]
+  (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                              (constantly [{:id 42 :name "Model 42"}
+                                           {:id 43 :name "Model 43"}])
+                              schema.model/action-rows
+                              (constantly [{:id 5 :model_id 42 :name "Create" :type :query}])
+                              actions/select-actions-for-models
+                              (constantly [{:id         5
+                                            :model_id   42
+                                            :name       "Create"
+                                            :type       :query
+                                            :parameters []}])]
     ;; only model 42 has an action, so model 43 is omitted
     (is (= ["model42"]
            (map :key (:models (schema.model/model-schemas #{1} nil)))))))
@@ -103,13 +103,13 @@
                               {:id 43 :name "Model 43"}]
         action-rows-calls    (atom [])
         action-details-calls (atom [])]
-    (with-redefs [schema.common/select-schema-cards (constantly models)
-                  schema.model/action-rows (fn [model-ids]
-                                             (swap! action-rows-calls conj model-ids)
-                                             [])
-                  actions/select-actions-for-models (fn [known-models model-ids]
-                                                      (swap! action-details-calls conj [known-models model-ids])
-                                                      [])]
+    (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards (constantly models)
+                                schema.model/action-rows (fn [model-ids]
+                                                           (swap! action-rows-calls conj model-ids)
+                                                           [])
+                                actions/select-actions-for-models (fn [known-models model-ids]
+                                                                    (swap! action-details-calls conj [known-models model-ids])
+                                                                    [])]
       (is (= {:models [] :errors []} (schema.model/model-schemas #{1} nil)))
       (is (= [#{42 43}] @action-rows-calls))
       (is (= [[models #{42 43}]]
@@ -117,19 +117,19 @@
 
 (deftest model-schemas-collects-broken-model-errors-test
   (testing "a broken model becomes an :errors entry while healthy models still build"
-    (with-redefs [schema.common/select-schema-cards
-                  (constantly [{:id 42 :name "Model 42"}
-                               {:id 43 :name "Broken model"}])
-                  schema.model/action-rows
-                  (constantly [{:id 5 :model_id 42 :name "Create" :type :query}
-                               ;; model 43's action row resolves to no action details
-                               {:id 6 :model_id 43 :name "Broken action" :type :broken}])
-                  actions/select-actions-for-models
-                  (constantly [{:id         5
-                                :model_id   42
-                                :name       "Create"
-                                :type       :query
-                                :parameters []}])]
+    (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                                (constantly [{:id 42 :name "Model 42"}
+                                             {:id 43 :name "Broken model"}])
+                                schema.model/action-rows
+                                (constantly [{:id 5 :model_id 42 :name "Create" :type :query}
+                                             ;; model 43's action row resolves to no action details
+                                             {:id 6 :model_id 43 :name "Broken action" :type :broken}])
+                                actions/select-actions-for-models
+                                (constantly [{:id         5
+                                              :model_id   42
+                                              :name       "Create"
+                                              :type       :query
+                                              :parameters []}])]
       (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil)]
         (is (= ["model42"] (map :key models)))
         (is (=? [{:type      "modelError"
@@ -140,27 +140,27 @@
 
 (deftest model-schemas-falls-back-when-bulk-lookup-fails-test
   (testing "a broken model poisoning the bulk action lookup does not hide other models"
-    (with-redefs [schema.common/select-schema-cards
-                  (constantly [{:id 42 :name "Model 42"}
-                               {:id 43 :name "Broken model"}])
-                  ;; bulk lookup blows up for the whole batch
-                  actions/select-actions-for-models
-                  (fn [_known-models model-ids]
-                    (cond
-                      (< 1 (count model-ids))
-                      (throw (ex-info "bulk lookup exploded" {}))
+    (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                                (constantly [{:id 42 :name "Model 42"}
+                                             {:id 43 :name "Broken model"}])
+                                ;; bulk lookup blows up for the whole batch
+                                actions/select-actions-for-models
+                                (fn [_known-models model-ids]
+                                  (cond
+                                    (< 1 (count model-ids))
+                                    (throw (ex-info "bulk lookup exploded" {}))
 
-                      (= (set model-ids) #{42})
-                      [{:id 5 :model_id 42 :name "Create" :type :query :parameters []}]
+                                    (= (set model-ids) #{42})
+                                    [{:id 5 :model_id 42 :name "Create" :type :query :parameters []}]
 
-                      :else
-                      (throw (ex-info "action lookup failed" {:status-code 500}))))
-                  ;; per-model fallback: model 42 resolves, model 43 still fails
-                  schema.model/action-rows
-                  (fn [model-ids]
-                    (if (contains? model-ids 42)
-                      [{:id 5 :model_id 42 :name "Create" :type :query}]
-                      []))]
+                                    :else
+                                    (throw (ex-info "action lookup failed" {:status-code 500}))))
+                                ;; per-model fallback: model 42 resolves, model 43 still fails
+                                schema.model/action-rows
+                                (fn [model-ids]
+                                  (if (contains? model-ids 42)
+                                    [{:id 5 :model_id 42 :name "Create" :type :query}]
+                                    []))]
       (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil)]
         (is (= ["model42"] (map :key models)))
         (is (=? [{:type      "modelError"
@@ -171,42 +171,42 @@
 
 (deftest model-schemas-does-not-swallow-interruption-test
   (testing "an interruption while bulk-resolving actions propagates instead of collecting an error"
-    (with-redefs [schema.common/select-schema-cards
-                  (constantly [{:id 42 :name "Model 42"}])
-                  schema.model/action-rows (constantly [])
-                  actions/select-actions-for-models
-                  (fn [& _] (throw (InterruptedException. "cancelled")))]
+    (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                                (constantly [{:id 42 :name "Model 42"}])
+                                schema.model/action-rows (constantly [])
+                                actions/select-actions-for-models
+                                (fn [& _] (throw (InterruptedException. "cancelled")))]
       (let [thrown (is (thrown? clojure.lang.ExceptionInfo
                                 (schema.model/model-schemas #{1} nil)))]
         (is (instance? InterruptedException (ex-cause thrown))))))
   (testing "an interruption wrapped in the structured error propagates instead of collecting an error"
-    (with-redefs [schema.common/select-schema-cards
-                  (constantly [{:id 42 :name "Model 42"}])
-                  schema.model/action-rows (constantly [])
-                  actions/select-actions-for-models (constantly [])
-                  schema.model/model-action-schemas
-                  (fn [& _] (throw (ex-info "cancelled" {} (InterruptedException. "cancelled"))))]
+    (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                                (constantly [{:id 42 :name "Model 42"}])
+                                schema.model/action-rows (constantly [])
+                                actions/select-actions-for-models (constantly [])
+                                schema.model/model-action-schemas
+                                (fn [& _] (throw (ex-info "cancelled" {} (InterruptedException. "cancelled"))))]
       (let [thrown (is (thrown? clojure.lang.ExceptionInfo
                                 (schema.model/model-schemas #{1} nil)))]
         (is (instance? InterruptedException (ex-cause thrown)))))))
 
 (deftest model-schemas-propagates-unexpected-errors-test
   (testing "an unexpected, unstructured failure propagates instead of downgrading to partial data"
-    (with-redefs [schema.common/select-schema-cards
-                  (constantly [{:id 42 :name "Model 42"}])
-                  schema.model/action-rows (constantly [])
-                  actions/select-actions-for-models (constantly [])
-                  schema.model/model-action-schemas
-                  (fn [& _] (throw (NullPointerException. "boom")))]
+    (mt/with-dynamic-fn-redefs [schema.common/select-schema-cards
+                                (constantly [{:id 42 :name "Model 42"}])
+                                schema.model/action-rows (constantly [])
+                                actions/select-actions-for-models (constantly [])
+                                schema.model/model-action-schemas
+                                (fn [& _] (throw (NullPointerException. "boom")))]
       (is (thrown? NullPointerException
                    (schema.model/model-schemas #{1} nil))))))
 
 (deftest model-schema-surfaces-action-selection-errors-test
-  (with-redefs [schema.model/action-rows (constantly [])
-                actions/select-actions-for-models
-                (fn [& _]
-                  (throw (ex-info "action lookup failed"
-                                  {:status-code 500})))]
+  (mt/with-dynamic-fn-redefs [schema.model/action-rows (constantly [])
+                              actions/select-actions-for-models
+                              (fn [& _]
+                                (throw (ex-info "action lookup failed"
+                                                {:status-code 500})))]
     (let [exception (is (thrown? clojure.lang.ExceptionInfo
                                  (schema.model/model-schema {:id   100
                                                              :name "Broken model"})))]
@@ -219,16 +219,16 @@
               (ex-data exception))))))
 
 (deftest model-schema-surfaces-action-rendering-errors-test
-  (with-redefs [actions/select-actions-for-models
-                (constantly [{:id   200
-                              :name "Broken action"
-                              :type :query}])
-                schema.model/action-rows (constantly [{:id   200
-                                                       :name "Broken action"
-                                                       :type :query}])
-                schema.model/action-detail-schema (fn [& _]
-                                                    (throw (ex-info "action parameters are invalid"
-                                                                    {:status-code 500})))]
+  (mt/with-dynamic-fn-redefs [actions/select-actions-for-models
+                              (constantly [{:id   200
+                                            :name "Broken action"
+                                            :type :query}])
+                              schema.model/action-rows (constantly [{:id   200
+                                                                     :name "Broken action"
+                                                                     :type :query}])
+                              schema.model/action-detail-schema (fn [& _]
+                                                                  (throw (ex-info "action parameters are invalid"
+                                                                                  {:status-code 500})))]
     (let [exception (is (thrown? clojure.lang.ExceptionInfo
                                  (schema.model/model-schema {:id   100
                                                              :name "Broken model"})))]
@@ -244,10 +244,10 @@
               (ex-data exception))))))
 
 (deftest model-schema-surfaces-unresolved-action-row-errors-test
-  (with-redefs [schema.model/action-rows (constantly [{:id   200
-                                                       :name "Broken action"
-                                                       :type :broken}])
-                actions/select-actions-for-models (constantly [])]
+  (mt/with-dynamic-fn-redefs [schema.model/action-rows (constantly [{:id   200
+                                                                     :name "Broken action"
+                                                                     :type :broken}])
+                              actions/select-actions-for-models (constantly [])]
     (let [exception (is (thrown? clojure.lang.ExceptionInfo
                                  (schema.model/model-schema {:id   100
                                                              :name "Broken model"})))]
