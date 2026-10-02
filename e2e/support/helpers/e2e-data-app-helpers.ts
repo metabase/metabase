@@ -585,6 +585,20 @@ export type SyncedDataApp = DataApp & {
   permission_group_id: number;
 };
 
+/** The host app's checked-in `data_app.yaml`, as serialization reads it. */
+export const DATA_APP_HOST_APP_MANIFEST = `version: 1
+name: Vite 6 Data App
+slug: vite-6-data-app-host-app
+path: ./dist/index.js
+allowed_hosts:
+  - https://allowed.data-app.test
+entity_id: qxpaPkU_WRE2ZQu0cmpqD
+serdes/meta:
+- model: DataApp
+  id: qxpaPkU_WRE2ZQu0cmpqD
+  label: vite-6-data-app-host-app
+`;
+
 const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
   typeof app.resource_collection_id === "number" &&
   typeof app.permission_group_id === "number";
@@ -638,8 +652,13 @@ export function publishDataApp(
   return cy.request<DataApp[]>("/api/apps").then(({ body: apps }) => {
     const app = apps.find(({ name }) => name === slug);
 
-    if (!app || !isSyncedDataApp(app)) {
-      throw new Error(`Data app ${slug} did not publish with its resources.`);
+    if (!app) {
+      throw new Error(`The pull loaded no data app named ${slug}.`);
+    }
+    if (!isSyncedDataApp(app)) {
+      throw new Error(
+        `Data app ${slug} loaded without its resource collection or group.`,
+      );
     }
 
     return cy.wrap(app, { log: false });

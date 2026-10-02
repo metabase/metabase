@@ -14,20 +14,6 @@ const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
 
 const COLLECTION = "hostAppCollection0001";
 
-/** The host app's checked-in manifest, as serialization reads it. */
-const AUTHORED_MANIFEST = `version: 1
-name: Vite 6 Data App
-slug: vite-6-data-app-host-app
-path: ./dist/index.js
-allowed_hosts:
-  - https://allowed.data-app.test
-entity_id: qxpaPkU_WRE2ZQu0cmpqD
-serdes/meta:
-- model: DataApp
-  id: qxpaPkU_WRE2ZQu0cmpqD
-  label: vite-6-data-app-host-app
-`;
-
 const ORDERS_TABLE: PortableTable = ["Sample Database", "PUBLIC", "ORDERS"];
 
 const collection = () =>
@@ -63,14 +49,14 @@ describe("Embedding SDK: data-app resources (queries)", () => {
     H.resetDataAppHostAppSources();
     cy.writeFile(
       MANIFEST_FILE(),
-      `${AUTHORED_MANIFEST}collection: ${COLLECTION}\n`,
+      `${H.DATA_APP_HOST_APP_MANIFEST}collection: ${COLLECTION}\n`,
     );
   });
 
   // Leave the checked-in host app as it was.
   after(() => {
     H.resetDataAppHostAppSources();
-    cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
+    cy.writeFile(MANIFEST_FILE(), H.DATA_APP_HOST_APP_MANIFEST);
   });
 
   describe("the CLI", () => {
