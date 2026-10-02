@@ -476,7 +476,22 @@ describe("issue 32840", () => {
         cy.button("Update").scrollIntoView().click();
       });
     cy.wait("@executeAction");
+    H.undoToast().findByText("Successfully updated").should("be.visible");
     H.modal().findByText("July 19, 2026, 7:44 PM").should("be.visible");
+
+    cy.log("the stored timestamp is unchanged after reopening the row");
+    cy.findByTestId("object-detail").icon("close").click();
+    cy.findByTestId("object-detail").should("not.exist");
+    cy.findAllByTestId("cell-data").eq(8).click();
+    H.modal().within(() => {
+      cy.findByText("July 19, 2026, 7:44 PM").should("be.visible");
+      cy.findByTestId("actions-menu").click();
+    });
+    H.popover().findByText("Update").should("be.visible").click();
+    H.modal()
+      .eq(1)
+      .findByPlaceholderText("Created At")
+      .should("have.value", "2026-07-19T19:44:56");
   });
 });
 
