@@ -1067,6 +1067,8 @@ describe("document comments", () => {
       );
 
       cy.log("opens a comment link in its thread vs. 'All comments'");
+      // Visiting the copied link only changes the hash, so reload to open it cold
+      cy.reload();
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "All comments" }).should("not.exist");
         cy.findByRole("heading", { name: "Comments about this" }).should(

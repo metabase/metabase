@@ -1288,7 +1288,7 @@ describe("documents", () => {
 
       cy.log("time series aggregation gets a line chart");
       H.documentContent()
-        .find("p")
+        .find(".node-paragraph")
         .should("have.length.at.least", 1)
         .last()
         .click();

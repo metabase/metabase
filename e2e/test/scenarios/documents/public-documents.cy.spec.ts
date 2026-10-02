@@ -249,6 +249,7 @@ describe("scenarios > documents > public", () => {
     H.getDocumentCard("Orders").should("exist");
     verifyDocumentIsReadOnly();
     cy.location("pathname").should("match", /^\/public\/document\//);
+    cy.findByRole("button", { name: "Sign in" }).should("not.exist");
 
     cy.log("Verify 'Powered by Metabase' link exists in footer");
     cy.findByRole("link", { name: "Powered by Metabase" })

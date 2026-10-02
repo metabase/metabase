@@ -78,7 +78,11 @@ describe("documents card embed node custom logic", () => {
         .should("not.exist");
 
       H.openDocumentCardMenu("Orders");
-      H.popover().findByText("Add supporting text").click();
+      H.popover()
+        .findByText("Add supporting text")
+        .closest("button")
+        .should("be.enabled")
+        .click();
 
       H.documentContent()
         .findByTestId("document-card-supporting-text")
@@ -309,22 +313,16 @@ describe("documents card embed node custom logic", () => {
       cy.realPress("Escape");
       H.popover().should("not.exist");
 
-      addNewStandaloneCard("Orders Model");
-      H.getDocumentCard("Orders Model")
+      cy.log("a standalone card dropped onto a 2-card flexContainer joins it");
+      H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
         .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-      H.documentContent()
-        .findAllByTestId("document-card-embed")
-        .should("have.length", 4);
-      H.getDocumentCard("Orders Model")
         .closest('[data-type="flexContainer"]')
         .should("not.exist");
-
-      cy.log("a standalone card dropped onto a 2-card flexContainer joins it");
-      H.dragAndDropCardOnAnotherCard("Orders Model", "Orders", {
-        side: "right",
-      });
+      H.dragAndDropCardOnAnotherCard(
+        "Orders, Count, Grouped by Created At (year)",
+        "Orders",
+        { side: "right" },
+      );
 
       H.documentContent()
         .find('[data-type="flexContainer"]')
@@ -332,7 +330,7 @@ describe("documents card embed node custom logic", () => {
         .within(() => {
           assertFlexContainerCardsOrder([
             "Orders",
-            "Orders Model",
+            "Orders, Count, Grouped by Created At (year)",
             "Orders, Count",
           ]);
         });
@@ -347,18 +345,18 @@ describe("documents card embed node custom logic", () => {
       H.popover().should("not.exist");
 
       cy.log("a fourth card is rejected");
-      H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
-        "be.visible",
-      );
-      H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
+      addNewStandaloneCard("Orders Model");
+      H.getDocumentCard("Orders Model")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+      H.getDocumentCard("Orders Model")
         .closest('[data-type="flexContainer"]')
         .should("not.exist");
 
-      H.dragAndDropCardOnAnotherCard(
-        "Orders, Count, Grouped by Created At (year)",
-        "Orders",
-        { side: "left" },
-      );
+      H.dragAndDropCardOnAnotherCard("Orders Model", "Orders", {
+        side: "left",
+      });
 
       H.documentContent()
         .find('[data-type="flexContainer"]')
@@ -366,11 +364,11 @@ describe("documents card embed node custom logic", () => {
         .within(() => {
           assertFlexContainerCardsOrder([
             "Orders",
-            "Orders Model",
+            "Orders, Count, Grouped by Created At (year)",
             "Orders, Count",
           ]);
         });
-      H.getDocumentCard("Orders, Count, Grouped by Created At (year)")
+      H.getDocumentCard("Orders Model")
         .should("be.visible")
         .closest('[data-type="flexContainer"]')
         .should("not.exist");
