@@ -42,6 +42,25 @@
   (is (= ["WHERE (\"x\" IS NULL) = \"y\""]
          (funnysql/format {:where [:= [:= :x nil] :y]} :postgres))))
 
+(deftest ^:parallel nil-on-the-left-test
+  (testing "`nil` on the LHS has to become `IS [NOT] NULL` too -- `NULL = x` is always NULL, so it matches no rows"
+    (are [clause expected] (= [expected]
+                              (funnysql/format {:where clause} :postgres))
+      [:=      nil :field] "WHERE \"field\" IS NULL"
+      [:is     nil :field] "WHERE \"field\" IS NULL"
+      [:<>     nil :field] "WHERE \"field\" IS NOT NULL"
+      [:!=     nil :field] "WHERE \"field\" IS NOT NULL"
+      [:not=   nil :field] "WHERE \"field\" IS NOT NULL"
+      [:is-not nil :field] "WHERE \"field\" IS NOT NULL"))
+  (testing "a non-trivial LHS still gets parenthesized when it moves to the left of `IS NULL`"
+    (is (= ["WHERE (lower(\"field\")) IS NULL"]
+           (funnysql/format {:where [:= nil [:lower :field]]} :postgres))))
+  (testing "`nil` on both sides keeps a literal NULL"
+    (is (= ["WHERE NULL IS NULL"]
+           (funnysql/format {:where [:= nil nil]} :postgres)))
+    (is (= ["WHERE NULL IS NOT NULL"]
+           (funnysql/format {:where [:not= nil nil]} :postgres)))))
+
 (deftest ^:parallel number-rejects-non-numeric-rendering-test
   (testing "compiling a Number must fail closed instead of splicing whatever `(str n)` happens to produce"
     (testing "a hostile Number implementation's toString is not guaranteed to be numeric SQL syntax"
@@ -208,9 +227,18 @@
   (are [order-by sql] (= [(str "ORDER BY " sql)]
                          (funnysql/format {:order-by order-by} :postgres))
     [:field]                             "\"field\" ASC"
+    [[:field]]                           "\"field\" ASC"
     [[:field :asc]]                      "\"field\" ASC"
+    [[:field] [:other_field :desc]]      "\"field\" ASC, \"other_field\" DESC"
     [[:field :desc]]                     "\"field\" DESC"
+    [[:field] [:other_field :desc]]      "\"field\" ASC, \"other_field\" DESC"
     [[:field :asc] [:other_field :desc]] "\"field\" ASC, \"other_field\" DESC"))
+
+(deftest ^:parallel order-by-invalid-direction-test
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"Invalid order by direction"
+       (funnysql/format {:order-by [[:field :sideways]]} :postgres))))
 
 (deftest ^:parallel limit-test
   (is (= ["LIMIT 10"]
@@ -296,7 +324,7 @@
                " SELECT \"id\" FROM \"parents\"")]
          (funnysql/format {:with-recursive [[[:parents {:columns [:id :name]}]
                                              ^:allow-subquery {:select [:id :name]
-                                                                 :from   [:metabase_field]}]]
+                                                               :from   [:metabase_field]}]]
                            :select         [:id]
                            :from           [:parents]}
                           :postgres))))
@@ -714,6 +742,37 @@
       "\"id\" IN (1)" [:in :id #{1}]
       "\"id\" IN (1)" [:in :id (lazy-seq [1])])))
 
+(deftest ^:parallel in-param-collection-test
+  (testing "a `:param` naming a collection expands into a list, the way a literal collection does"
+    ;; `IN` takes a list of values rather than one value, so compiling the param as a single `?`
+    ;; would bind the whole collection and emit `IN ?`, which no database accepts.
+    (are [expected clause params] (= expected
+                                     (funnysql/format clause :postgres {:params params}))
+      ["\"id\" IN (1, 2)"]         [:in     :id [:param :p]] {:p [1 2]}
+      ["\"id\" NOT IN (1, 2)"]     [:not-in :id [:param :p]] {:p [1 2]}
+      ["\"id\" IN (1)"]            [:in     :id [:param :p]] {:p #{1}}
+      ["\"id\" IN (1)"]            [:in     :id [:param :p]] {:p (lazy-seq [1])}
+      ;; a non-numeric element still binds, one `?` per element
+      ["\"id\" IN (?, ?)" "a" "b"] [:in     :id [:param :p]] {:p ["a" "b"]}))
+  (testing "an empty one is rewritten like an empty literal collection, rather than emitting `IN ()`"
+    (are [expected clause params] (= expected
+                                     (funnysql/format clause :postgres {:params params}))
+      ["false"] [:in     :id [:param :p]] {:p []}
+      ["true"]  [:not-in :id [:param :p]] {:p []}))
+  (testing "a `:param` naming something that is not a sequence or set is left alone"
+    ;; One value is not a list of them, so there is nothing to expand. A map stays one opaque bound
+    ;; value here, as it would in any other value slot -- an unmarked one is refused upstream by
+    ;; `metabase.app-db.honeysql-guard`.
+    (are [expected clause params] (= expected
+                                     (funnysql/format clause :postgres {:params params}))
+      ["\"id\" IN ?" 1]               [:in :id [:param :p]] {:p 1}
+      ["\"id\" IN ?" {:select [:id]}] [:in :id [:param :p]] {:p {:select [:id]}}))
+  (testing "error on missing parameter"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Missing value for :param"
+         (funnysql/format [:in :id [:param :p]] :postgres)))))
+
 (deftest ^:parallel in-subquery-test
   (is (= ["WHERE \"dp\".\"group_id\" IN (SELECT \"group_id\" FROM \"permissions_group_membership\" WHERE \"user_id\" = 1)"]
          (funnysql/format {:where [:in :dp.group_id ^:allow-subquery {:select [:group_id]
@@ -738,6 +797,16 @@
   (is (= ["date_part(?, \"started_at\")" "year"]
          (funnysql/format [:date_part "year" :started_at] :postgres))))
 
+(deftest ^:parallel escape-test
+  (testing "`:escape` is a postfix operator on a LIKE pattern, not a function call"
+    (is (= ["WHERE \"NAME\" LIKE ? ESCAPE '!'" "foo%"]
+           (funnysql/format {:where [:like :name [:escape "foo%" (h2x/literal "!")]]}
+                            :h2))))
+  (testing "the pattern itself can be an arbitrary expression"
+    (is (= ["WHERE \"name\" LIKE lower(\"other\") ESCAPE '!'"]
+           (funnysql/format {:where [:like :name [:escape [:lower :other] (h2x/literal "!")]]}
+                            :postgres)))))
+
 (deftest ^:parallel create-table-test
   (is (= [(str "CREATE TABLE \"table\" ("
                "\"id\" bigint PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY, "
@@ -751,6 +820,40 @@
                                            :not-null]
                                           [:model [:varchar 32] :not-null]]}
                           :postgres))))
+
+(deftest ^:parallel create-table-auto-increment-test
+  (testing ":auto-increment keeps its underscore -- it is one SQL keyword, not two words"
+    (is (= [(str "CREATE TABLE \"SEARCH_INDEX\" ("
+                 "\"ID\" bigint AUTO_INCREMENT PRIMARY KEY, "
+                 "\"SEARCH_TERMS\" text"
+                 ")")]
+           (funnysql/format {:create-table [:search_index]
+                             :with-columns [[:id :bigint :auto-increment :primary-key]
+                                            [:search_terms :text]]}
+                            :h2)))))
+
+(deftest ^:parallel create-table-falsey-default-test
+  (testing "`false` is a legitimate column default and must not be mistaken for a missing one"
+    (is (= ["CREATE TABLE \"T\" (\"ARCHIVED\" boolean NOT NULL DEFAULT false)"]
+           (funnysql/format {:create-table [:t]
+                             :with-columns [[:archived :boolean :not-null [:default false]]]}
+                            :h2))))
+  (testing "a `:default` with no value at all is still an error"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QMissing value for :default\E"
+         (funnysql/format {:create-table [:t]
+                           :with-columns [[:archived :boolean [:default]]]}
+                          :h2)))))
+
+(deftest ^:parallel create-table-unknown-column-option-test
+  (testing "an unrecognized column option should throw a clear error rather than falling off the end of a `case`"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QUnknown column option\E"
+         (funnysql/format {:create-table [:table]
+                           :with-columns [[:id :bigint :totally-bogus-option]]}
+                          :h2)))))
 
 (deftest ^:parallel from-subquery-test
   (is (= [(str "SELECT EXISTS ("
@@ -795,7 +898,14 @@
                              :set    {:value          "2026-10-01 18:37:49.894829"
                                       :value_with_aad "2026-10-01 18:37:49.894829"}
                              :where  [:= :key [:param :p17uc4hjfp068j]]}
-                            :h2))))))
+                            :h2))))
+    (testing "`false` and `nil` are legitimate parameter values, not missing ones"
+      ;; assert on the parameters rather than the whole SQL string so this does not also depend on the
+      ;; (separate, pre-existing) extra-parens behavior around a compiled `:param`.
+      (are [v] (= [v]
+                  (rest (funnysql/format {:where [:= :key [:param :p]]} :h2 {:params {:p v}})))
+        false
+        nil))))
 
 (deftest ^:parallel over-test
   (are [form expected] (= expected
