@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
@@ -10,7 +9,7 @@ import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Flex, Loader } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { DashboardCard } from "metabase-types/api";
 
@@ -54,12 +53,10 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
-  if (!dashboard) {
-    return <Loader size="lg" label={t`Loading…`} />;
-  }
-
-  const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-  const hasTabs = dashboard.tabs && dashboard.tabs.length > 1;
+  // While the dashboard loads, its header and grid render skeletons, so lay
+  // the page out as for a dashboard with cards.
+  const isEmpty = dashboard != null && (!dashboardHasCards || !tabHasCards);
+  const hasTabs = (dashboard?.tabs?.length ?? 0) > 1;
 
   // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
   const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
@@ -81,7 +78,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
       flex="1 0 auto"
       data-testid="dashboard"
     >
-      {dashboard.archived && <DashboardArchivedEntityBanner />}
+      {dashboard?.archived && <DashboardArchivedEntityBanner />}
 
       <Box
         component="header"

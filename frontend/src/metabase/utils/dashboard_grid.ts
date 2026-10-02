@@ -20,6 +20,15 @@ export const GRID_COLUMNS = {
   mobile: 1,
 };
 
+/** The gaps between dashcards, as `[horizontal, vertical]` pixels. */
+export const GRID_MARGINS: Record<
+  keyof typeof GRID_BREAKPOINTS,
+  [number, number]
+> = {
+  desktop: [6, 6],
+  mobile: [6, 10],
+};
+
 /** @type {{ width: number, height: number }} */
 export const DEFAULT_CARD_SIZE = DEFAULT_CARD_SIZE_JSON;
 
