@@ -377,11 +377,18 @@
                               (known-linter-hint))
                       {:unknown (vec unknown)})))))
 
+(defn configured-count-keys
+  "[[discouraged-count-keys]] for each of the [[discouragement-linters]], reading the config once."
+  []
+  (let [config (kondo-config)]
+    (into {} (for [linter discouragement-linters]
+               [linter (discouraged-count-keys linter config)]))))
+
 (defn unknown-discouraged-keys
-  "Keys in `ratchets`' [[discouraged-count-field]] for `linter` that no configured symbol has, sorted."
-  [ratchets linter]
+  "Keys in `ratchets`' [[discouraged-count-field]] for `linter` that are not in `configured`, sorted."
+  [ratchets linter configured]
   (into (sorted-set-by #(compare (str %1) (str %2)))
-        (remove (discouraged-count-keys linter))
+        (remove configured)
         (keys (get ratchets (discouraged-count-field linter)))))
 
 (defn discouraged-in-ignore-counts
@@ -398,21 +405,16 @@
   [occurrences]
   (map #(update % :linters (partial remove discouragement-linters)) occurrences))
 
-(defn validate-discouraged-counts!
-  "Throw one error per [[discouragement-linters]] whose [[discouraged-count-field]] names a symbol not
-  currently configured under it."
-  [ratchets]
-  (doseq [linter discouragement-linters
-          :let   [unknown (unknown-discouraged-keys ratchets linter)]
-          :when  (seq unknown)]
-    (throw (ex-info (format "%s names %d %s symbol%s not configured in %s: %s"
-                            *ratchets-file*
-                            (count unknown)
-                            linter
-                            (if (= 1 (count unknown)) "" "s")
-                            kondo-config-file
-                            (str/join ", " unknown))
-                    {:linter linter, :unknown (vec unknown)}))))
+(defn unconfigured-budget-warnings
+  "Warnings for budgets in `ratchets`, read from `ratchets-file`, whose symbol is no longer configured under
+  its linter. `configured` is [[configured-count-keys]]."
+  [ratchets-file ratchets configured]
+  ;; Attribution never charges an unconfigured symbol, so fix! drops these at zero like any unused budget.
+  (for [linter (sort discouragement-linters)
+        :let   [unknown (unknown-discouraged-keys ratchets linter (configured linter))]
+        :when  (seq unknown)]
+    (format "WARNING: %s budgets %s symbols no longer configured in %s: %s -- `./bin/mage kondo-ratchets-shrink` drops them"
+            ratchets-file linter kondo-config-file (str/join ", " unknown))))
 
 (defn- validate-test-config-counts!
   "Throw unless `test-ratchets` has an empty :config-counts -- config-level suppressions are tracked only
@@ -433,7 +435,6 @@
     (let [test-ratchets (read-ratchets)]
       (when-not (disabled? test-ratchets)
         (validate-linters! test-ratchets known)
-        (validate-discouraged-counts! test-ratchets)
         (validate-test-config-counts! test-ratchets prod-file))
       test-ratchets)))
 
@@ -1076,8 +1077,12 @@
                      recorded  (get ratchets field)
                      actual    (get-in attribution [:actual linter] {})
                      seeded    (get seeds field [])
-                     seed-hint (partial discouraged-seed-name linter)]
-                 (concat (seed-lines recorded actual seeded)
+                     seed-hint (partial discouraged-seed-name linter)
+                     ;; a bulk seed names every configured symbol, so only those it changes are worth a line
+                     reported  (cond->> seeded
+                                 (contains? (:bulk seeds) field)
+                                 (filter #(or (contains? actual %) (contains? recorded %))))]
+                 (concat (seed-lines recorded actual reported)
                          (budget-lines recorded actual seeded seed-hint)
                          (missing-budget-lines recorded actual seeded seed-hint))))
              (sort discouragement-linters))
@@ -1216,7 +1221,7 @@
   "The budgets `seed` (a linter keyword or its `:foo` string form) sets, as a map of count field to keys:
   - `:discouraged-var/<symbol>` (likewise `:discouraged-namespace/<symbol>`) seeds that symbol's budget, named
     by the configured symbol (`clojure.core/println`) or its ratchet key (`search.core/search`)
-  - a bare `:discouraged-var` seeds every symbol configured under it
+  - a bare `:discouraged-var` seeds every symbol configured under it, and names its field under `:bulk`
   - any other linter seeds its own `:ignore-counts` budget
   Returns `{}` when `seed` is nil. Throws on a symbol not configured under its linter."
   [seed]
@@ -1234,7 +1239,10 @@
             (throw (ex-info (format "%s is not a symbol configured under %s in %s"
                                     (pr-str sym) linter kondo-config-file)
                             {:linter linter, :symbol sym})))
-          {(discouraged-count-field linter) (if k [k] (vec (sort-by str known)))})))))
+          (if k
+            {(discouraged-count-field linter) [k]}
+            {(discouraged-count-field linter) (vec (sort-by str known))
+             :bulk                            #{(discouraged-count-field linter)}}))))))
 
 (defn- no-attribution
   "The default `:attribute` for [[check]] and [[fix!]], for a tree with no [[discouragement-linters]] ignores.
@@ -1284,7 +1292,6 @@
        (let [module-ratchets  (read-module-ratchets)
              known            (known-linters)
              _                (validate-linters! ratchets known)
-             _                (validate-discouraged-counts! ratchets)
              test-ratchets    (read-validated-test-ratchets known *ratchets-file*)
              test-disabled?   (disabled? test-ratchets)
              seeds            (resolve-seed seed)
@@ -1393,6 +1400,11 @@
        [(str *module-ratchets-file* " is not normalized -- run `./bin/mage kondo-ratchets-shrink`"
              " to fix the formatting")]))))
 
+(defn- policy-count
+  "How many inline-ignore budgets `ratchets` holds, flat and per symbol."
+  [ratchets]
+  (transduce (map #(count (get ratchets %))) + policy-count-fields))
+
 (defn- exit!
   "Fail the babashka task with `message`, without mage's default stack trace."
   [message]
@@ -1408,7 +1420,8 @@
   "Validate the prod, test, and module ratchet files and current counts. Fail on missing or malformed
   configuration, unknown linters, budget violations, unjustified ignores, or discouraged-var and
   discouraged-namespace findings with no symbol to budget them under. Report stale unlimited policies,
-  exemptions, and discouraged-var and discouraged-namespace ignores without failing.
+  exemptions, discouraged-var and discouraged-namespace ignores, and budgets for symbols no longer configured,
+  without failing.
   `{:disabled true}` in [[*ratchets-file*]] disables checking entirely; the test ratchets file honors its
   own `:disabled` independently, skipping only its own checks.
   `:attribute` is as for [[fix!]]."
@@ -1422,13 +1435,13 @@
          (println (str *ratchets-file* " is disabled -- nothing to check"))
          (let [known (known-linters)]
            (validate-linters! ratchets known)
-           (validate-discouraged-counts! ratchets)
            (let [module-ratchets  (read-module-ratchets)
                  test-ratchets    (read-validated-test-ratchets known *ratchets-file*)
                  test-disabled?   (disabled? test-ratchets)
                  occurrences      (scan)
                  {test-occ true, prod-occ false} (group-by test-occurrence? occurrences)
                  [attribution test-attribution] (attribute [prod-occ (if test-disabled? [] test-occ)])
+                 configured       (configured-count-keys)
                  lines            (concat
                                    (check-report ratchets module-ratchets prod-occ attribution
                                                  (config-suppressions) (module-escape-hatches)
@@ -1439,17 +1452,19 @@
              (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts prod-occ)) println)
              (some-> (stale-exemptions-warning (:comment-exempt ratchets) prod-occ) println)
              (run! println (unattributed-lines (:unattributed attribution)))
+             (run! println (unconfigured-budget-warnings *ratchets-file* ratchets configured))
              (when-not test-disabled?
                (some-> (unexercised-unlimited-warning (:ignore-counts test-ratchets) (actual-counts test-occ)) println)
                (some-> (stale-exemptions-warning (:comment-exempt test-ratchets) test-occ) println)
-               (run! println (unattributed-lines (:unattributed test-attribution))))
+               (run! println (unattributed-lines (:unattributed test-attribution)))
+               (run! println (unconfigured-budget-warnings *test-ratchets-file* test-ratchets configured)))
              (if (empty? lines)
                (do
                  (println (format "ok -- %d ignore forms within %d policies"
-                                  (count prod-occ) (count (:ignore-counts ratchets))))
+                                  (count prod-occ) (policy-count ratchets)))
                  (when-not test-disabled?
                    (println (format "ok -- %d test ignore forms within %d test policies"
-                                    (count test-occ) (count (:ignore-counts test-ratchets))))))
+                                    (count test-occ) (policy-count test-ratchets)))))
                (do (run! println lines)
                    (exit! "ratchet files drifted from the source tree")))))))
      (catch clojure.lang.ExceptionInfo e

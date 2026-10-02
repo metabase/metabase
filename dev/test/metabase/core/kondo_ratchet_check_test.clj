@@ -242,6 +242,17 @@
               (check-with! ratchets occurrences
                            (attribute {:unresolved [{:file "f.clj", :line 2, :linters [:discouraged-var]}]})))))))
 
+(deftest check-unconfigured-budget-test
+  (let [ratchets {:ignore-counts {:a 1}, :discouraged-var-counts {:a/gone 2, :a/x 1}}]
+    (mt/with-dynamic-fn-redefs [kondo-ratchet/discouraged-count-keys (constantly #{:a/x})]
+      (is (=? {:lines   [#"WARNING: .*ratchets\.edn budgets :discouraged-var symbols no longer configured in \.clj-kondo/config\.edn: :a/gone -- `\./bin/mage kondo-ratchets-shrink` drops them"
+                         "ok -- 1 ignore forms within 3 policies"
+                         "ok -- 0 test ignore forms within 0 test policies"]
+               :thrown? false}
+              (check-with! ratchets (occurrences {:a 1})))
+          "a budget for a symbol removed from the config warns without failing, and the policy count
+           includes the per-symbol budgets"))))
+
 (deftest ^:parallel stale-test
   (let [ratchets {:ignore-counts {:a 5, :gone 2}}]
     (is (= []

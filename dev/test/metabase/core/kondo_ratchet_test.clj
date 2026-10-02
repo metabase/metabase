@@ -549,6 +549,38 @@
                 (binding [kondo-ratchet/*ratchets-file* (.getPath test-budgets)]
                   (kondo-ratchet/read-ratchets))))))))
 
+(deftest ^:synchronized fix-drops-unconfigured-and-bulk-seeds-quietly-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts          {}
+                                                    :discouraged-var-counts {:a/gone 2, :a/y 1}
+                                                    :config-counts          {}
+                                                    :comment-exempt         #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (empty-test-ratchets-file! dir)
+        occurrences  [{:file "src/f.clj", :line 1, :linters [:discouraged-var]}]
+        attribute    (constantly [(assoc no-findings :actual {:discouraged-var {:a/x 1}}) no-findings])]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters          (constantly #{:discouraged-var})
+                                  kondo-ratchet/discouraged-count-keys (constantly #{:a/x :a/y :a/z})
+                                  kondo-ratchet/scan                   (constantly occurrences)
+                                  kondo-ratchet/config-suppressions    (constantly {})
+                                  kondo-ratchet/module-escape-hatches  (constantly {})]
+        (is (= ["seeded :a/x at 1"
+                "WARNING: :a/y has no inline ignores -- dropping its policy"
+                "dropped :a/gone (no ignores left)"
+                (str "wrote " (.getPath budgets))]
+               (str/split-lines (with-out-str (kondo-ratchet/fix! {:seed      ":discouraged-var"
+                                                                   :attribute attribute}))))
+            "a budget for a symbol no longer configured is dropped rather than refused, and a bulk seed
+             reports only the symbols it changes: unused :a/z gets no line, here or for the test file")
+        (is (=? {:discouraged-var-counts {:a/x 1}} (kondo-ratchet/read-ratchets)))))))
+
 (deftest ^:synchronized fix-drops-stale-flat-discouraged-entry-test
   (let [dir         (.toFile (java.nio.file.Files/createTempDirectory
                               "kondo-ratchet-test"
@@ -780,7 +812,7 @@
       (is (= {:ignore-counts [:some-linter]}
              (#'kondo-ratchet/resolve-seed ":some-linter"))))
     (testing "a bare discouragement linter seeds every configured symbol in its own field"
-      (is (= {:discouraged-var-counts [:a/x :ee.b/y]}
+      (is (= {:discouraged-var-counts [:a/x :ee.b/y], :bulk #{:discouraged-var-counts}}
              (#'kondo-ratchet/resolve-seed ":discouraged-var"))))
     (testing "a symbol suffix seeds that symbol, named either way"
       (is (= {:discouraged-var-counts [:ee.b/y]}
