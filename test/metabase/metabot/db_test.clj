@@ -1,21 +1,16 @@
 (ns metabase.metabot.db-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
-
-(deftest ^:parallel card-source-info-columns-excludes-type-test
-  (testing (str "A performance cliff with no visible symptom, so pin it. Selecting `:dataset_query` already puts\n"
-                "these rows through `upgrade-card-schema-to-latest`; it stays cheap only because\n"
-                "`upgrade-card-schema-to 24` short-circuits on `(= :metric (keyword (:type card)))`. Adding `:type`\n"
-                "arms it, and it runs `metrics/compute-full-dimension-set` over the query of every un-curated\n"
-                "metric on a search page.")
-    (is (not (contains? (set @#'metabot.db/card-source-info-columns) :type))
-        "see the docstring on card-source-info-columns")))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest table-schema-rows-are-permission-checkable-test
   (testing (str "Callers run `can-query?` / `can-read?` straight on these narrowed rows. Both fall through to\n"
@@ -37,19 +32,37 @@
             (is (= (mi/can-read? :model/Table table-id) (mi/can-read? row))
                 (str "can-read? disagrees for " user))))))))
 
-(deftest card-source-info-does-not-arm-the-dimension-set-upgrade-test
-  (testing (str "The column list is pinned by the test above, but the thing that makes it matter lives upstream:\n"
-                "`upgrade-card-schema-to 24` short-circuits on `(= :metric (keyword (:type card)))`. If that\n"
-                "short-circuit ever moves, every search page silently starts computing a full dimension set per\n"
-                "un-curated metric -- a large cost with no visible symptom. Arm the expensive call so the day it\n"
-                "fires is the day this fails.")
-    (mt/with-temp [:model/Card {metric-id :id}
-                   {:name          "A metric"
-                    :type          :metric
-                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
-      (mt/with-dynamic-fn-redefs [metrics/compute-full-dimension-set
-                                  (fn [& _] (throw (ex-info "compute-full-dimension-set was armed" {})))]
-        (is (some? (metabot.db/card-source-info [metric-id])))))))
+(deftest card-source-info-classifies-legacy-metrics-test
+  (testing (str "Metrics saved before curated dimensions come back un-upgraded on the model: `:card_schema` below\n"
+                "24 and no `:dimensions`. Reading their source must neither arm the upgrade to 24, which recomputes\n"
+                "the whole dimension set from the query, nor lose the stage structure the classification reads.")
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {source-id :id} {:name          "Orders source"
+                                                  :database_id   (mt/id)
+                                                  :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+        (let [mp       (mt/metadata-provider)
+              on-card  (lib/query mp (lib.metadata/card mp source-id))
+              metric   (fn [query] {:type :metric, :database_id (mt/id), :dataset_query query})]
+          (mt/with-temp [:model/Card {table-metric :id}
+                         (metric (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count)))
+                         :model/Card {card-metric :id}
+                         (metric (lib/aggregate on-card (lib/count)))
+                         :model/Card {two-stage-card-metric :id}
+                         (metric (-> on-card lib/append-stage (lib/aggregate (lib/count))))]
+            (let [metric-ids [table-metric card-metric two-stage-card-metric]]
+              ;; A raw UPDATE, because before-insert forces `:card_schema` to current and `with-temp` would
+              ;; silently ignore it.
+              (t2/query-one {:update :report_card
+                             :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
+                             :where  [:in :id metric-ids]})
+              (mt/with-dynamic-fn-redefs [metrics/compute-full-dimension-set
+                                          (fn [& _] (throw (ex-info "compute-full-dimension-set was armed" {})))]
+                (is (= {table-metric          {:kind :table, :table-id (mt/id :orders), :bare-table-only? false}
+                        card-metric           {:kind :card, :card-id source-id}
+                        ;; the QP reads the last stage, which carries no `:source-card`: only the base table works
+                        two-stage-card-metric {:kind :table, :table-id (mt/id :orders), :bare-table-only? true}}
+                       (update-vals (metabot.db/card-source-info metric-ids)
+                                    metabot.tools.u/metric-required-source)))))))))))
 
 (deftest card-source-rows-are-permission-checkable-test
   (testing (str "Callers run `can-read?` straight on these narrowed rows, and the column list now feeds three\n"

@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection.model]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
@@ -788,22 +789,24 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))
 
-(def ^:private card-source-info-columns
-  "Columns [[card-source-info]] selects. Do NOT add `:type`."
-  ;; With `:dataset_query` selected, rows go through `upgrade-card-schema-to-latest`. `upgrade-card-schema-to 24`
-  ;; only stays cheap because it short-circuits on `(= :metric (keyword (:type card)))`; selecting `:type` makes it
-  ;; run `metrics/compute-full-dimension-set` over every un-curated metric on the page. Pinned by a test.
-  [:model/Card :id :card_schema :table_id :dataset_query])
-
 (mu/defn card-source-info
   "A map of Card ID to `{:table_id ... :dataset_query ...}` for `card-ids`, the input to
-  [[metabase.metabot.tools.util/metric-required-source]]."
+  [[metabase.metabot.tools.util/metric-required-source]].
+
+  SELECTs `report_card` directly instead of `:model/Card`, so the `:card_schema` read-time upgrade stays out of it.
+  Naming `:dataset_query` on the model arms the whole upgrade chain, and the upgrade to 24 recomputes a legacy
+  metric's entire dimension set from its query -- several app-db round trips per metric on a search page, for
+  columns this never reads. No upgrade rewrites `:dataset_query`, so the stored query with the model's `:out`
+  transform applied is what the model would return."
   ;; Not `:source_card_id`: it is stage 0's source, which cannot tell a single-stage card-based metric from a
-  ;; multi-stage one. `:card_schema` is required by `t2/define-after-select` once `:dataset_query` is selected.
+  ;; multi-stage one.
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select-pk->fn #(select-keys % [:table_id :dataset_query])
-                    card-source-info-columns
-                    :id [:in card-ids]))
+  (let [query-out (:out lib-be/transform-query)]
+    (into {}
+          (map (fn [{:keys [id table_id dataset_query]}]
+                 [id {:table_id table_id, :dataset_query (query-out dataset_query)}]))
+          (when (seq card-ids)
+            (t2/select [(t2/table-name :model/Card) :id :table_id :dataset_query] :id [:in card-ids])))))
 
 (mu/defn card-source-rows
   "The Cards with `card-ids`, for use as another entity's source, read-checkable without further queries."
