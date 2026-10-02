@@ -117,7 +117,7 @@ describe("BrowseDatabases", () => {
       );
 
       expect(
-        await screen.findByRole("menuitem", { name: /Manage database/ }),
+        await screen.findByRole("menuitem", { name: /Edit metadata/ }),
       ).toBeInTheDocument();
       expect(router?.location.pathname).toBe("/browse/databases");
     });

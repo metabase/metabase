@@ -1,13 +1,16 @@
 import { type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
-import { Link } from "metabase/common/components/Link";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
-import { canAccessDataModel, getUserIsAdmin } from "metabase/current-user";
+import { canAccessDataModel } from "metabase/current-user";
 import { PLUGIN_SCHEMA_VIEWER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { getAdminPaths } from "metabase/selectors/admin";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId, IconName } from "metabase-types/api";
 
 type DatabaseQuickLink = {
@@ -15,47 +18,45 @@ type DatabaseQuickLink = {
   label: string;
   icon: IconName;
   to: string;
+  isVisible: boolean;
 };
 
-export function useDatabaseQuickLinks(
-  databaseId: DatabaseId,
-): DatabaseQuickLink[] {
-  const isAdmin = useSelector(getUserIsAdmin);
+// Matches the route guard on /admin/databases
+const canManageDatabases = (state: State) =>
+  getAdminPaths(state).some((path) => path.key === "databases");
+
+function useDatabaseQuickLinks(databaseId: DatabaseId): DatabaseQuickLink[] {
+  const hasDatabaseAccess = useSelector(canManageDatabases);
   const hasDataModelAccess = useSelector(canAccessDataModel);
   const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
-  const links: DatabaseQuickLink[] = [];
-
-  if (isAdmin) {
-    links.push({
+  const links: DatabaseQuickLink[] = [
+    {
       key: "manage",
       label: t`Manage database`,
       icon: "gear",
       to: Urls.viewDatabase(databaseId),
-    });
-  }
-
-  if (hasDataModelAccess) {
-    links.push({
+      isVisible: hasDatabaseAccess,
+    },
+    {
       key: "data-model",
       label: t`Edit metadata`,
       icon: "label",
       to: hasDataStudioAccess
         ? Urls.dataStudioData({ databaseId })
         : Urls.dataModel({ databaseId }),
-    });
-  }
-
-  if (hasDataStudioAccess && PLUGIN_SCHEMA_VIEWER.isEnabled) {
-    links.push({
+      isVisible: hasDataModelAccess,
+    },
+    {
       key: "schema-viewer",
       label: t`View schema`,
       icon: "network",
       to: Urls.dataStudioSchemaViewer({ databaseId }),
-    });
-  }
+      isVisible: hasDataStudioAccess && PLUGIN_SCHEMA_VIEWER.isEnabled,
+    },
+  ];
 
-  return links;
+  return links.filter((link) => link.isVisible);
 }
 
 type DatabaseQuickLinksMenuProps = {
@@ -70,13 +71,13 @@ export const DatabaseQuickLinksMenu = ({
   const links = useDatabaseQuickLinks(databaseId);
   const [isOpened, setIsOpened] = useState(false);
 
-  if (links.length === 0) {
+  const isVirtualDatabase = databaseId === SAVED_QUESTIONS_VIRTUAL_DB_ID;
+  if (links.length === 0 || isVirtualDatabase) {
     return null;
   }
 
-  // The menu can sit inside a card that is itself a link, so clicks on it
-  // must not reach the card
-  const handleTargetClick = (event: MouseEvent) => {
+  // The menu can sit inside a card that is itself a link
+  const preventCardNavigation = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
   };
@@ -91,7 +92,7 @@ export const DatabaseQuickLinksMenu = ({
           size="sm"
           color="text-secondary"
           aria-label={t`Database options`}
-          onClick={handleTargetClick}
+          onClick={preventCardNavigation}
         >
           <Icon name="ellipsis" />
         </ActionIcon>
@@ -100,7 +101,7 @@ export const DatabaseQuickLinksMenu = ({
         {links.map((link) => (
           <Menu.Item
             key={link.key}
-            component={Link}
+            component={ForwardRefLink}
             to={link.to}
             leftSection={<Icon name={link.icon} />}
           >

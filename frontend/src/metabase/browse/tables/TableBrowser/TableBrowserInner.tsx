@@ -64,9 +64,7 @@ export const TableBrowserInner = ({
             ...(showSchemaInHeader ? [{ title: schemaName }] : []),
           ]}
         />
-        {dbId !== SAVED_QUESTIONS_VIRTUAL_DB_ID && (
-          <DatabaseQuickLinksMenu databaseId={dbId} />
-        )}
+        <DatabaseQuickLinksMenu databaseId={dbId} />
       </Flex>
       <BrowseGrid pt="xl">
         {tables.map((table) => (
