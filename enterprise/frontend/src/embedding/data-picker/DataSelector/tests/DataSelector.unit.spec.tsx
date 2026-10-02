@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, render, screen, settlePendingUpdates } from "__support__/ui";
+import { getIcon, render, screen, waitFor } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
@@ -387,10 +387,9 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
-    await settlePendingUpdates();
 
     expect(
-      screen.getByRole("heading", { name: "Sample Database" }),
+      await screen.findByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
   });
 
@@ -451,7 +450,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
-    await settlePendingUpdates();
+    await waitFor(() => {});
 
     expect(
       screen.getByText("To pick some data, you'll need to add some first"),
