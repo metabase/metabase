@@ -7,7 +7,7 @@ import {
   VIEWS_COLUMN_CARD,
 } from "e2e/support/test-visualizer-data";
 
-describe("scenarios > dashboard > visualizer > funnels", () => {
+describe("scenarios > visualizer > funnels", () => {
   beforeEach(() => {
     H.restore();
 

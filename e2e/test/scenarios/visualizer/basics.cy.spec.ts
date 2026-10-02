@@ -18,7 +18,7 @@ import {
 // this should be fixed in the future
 const DASHCARD_QUERY_WAIT_TIME = 1000;
 
-describe("scenarios > dashboard > visualizer > basics", () => {
+describe("scenarios > visualizer > basics", () => {
   beforeEach(() => {
     H.restore();
 

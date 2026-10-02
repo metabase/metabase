@@ -11,7 +11,7 @@ import {
   createDashboardWithVisualizerDashcards,
 } from "e2e/support/test-visualizer-data";
 
-describe("scenarios > dashboard > visualizer > drillthrough", () => {
+describe("scenarios > visualizer > drillthrough", () => {
   beforeEach(() => {
     H.restore();
 

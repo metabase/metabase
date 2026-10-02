@@ -6,7 +6,7 @@ import {
 
 const { H } = cy;
 
-describe("scenarios > dashboard > visualizer > snowplow tracking", () => {
+describe("scenarios > visualizer > snowplow tracking", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

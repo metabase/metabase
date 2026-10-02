@@ -17,7 +17,7 @@ import {
   createDashboardWithVisualizerDashcards,
 } from "e2e/support/test-visualizer-data";
 
-describe("scenarios > dashboard > visualizer > cartesian", () => {
+describe("scenarios > visualizer > cartesian", () => {
   beforeEach(() => {
     H.restore();
 
