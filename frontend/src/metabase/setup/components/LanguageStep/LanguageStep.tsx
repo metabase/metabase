@@ -54,12 +54,10 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
 
   return (
     <ActiveStep title={t`What's your preferred language?`} label={stepLabel}>
-      <Box c="text-secondary" my="md">
-        <Stack gap="lg">
-          {t`This language will be used throughout Metabase and will be the default for new users.`}
-          <CommunityLocalizationNotice isAdminView />
-        </Stack>
-      </Box>
+      <Stack c="text-secondary" my="md" gap="lg">
+        {t`This language will be used throughout Metabase and will be the default for new users.`}
+        <CommunityLocalizationNotice isAdminView />
+      </Stack>
       <Box
         component="ol"
         className={S.localeGroup}

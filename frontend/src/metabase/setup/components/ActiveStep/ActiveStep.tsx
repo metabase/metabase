@@ -41,10 +41,14 @@ export const ActiveStep = ({
       </Box>
 
       {shouldShowStepNumber && (
-        <Center className={S.label} data-testid="step-number">
-          <Box component="span" c="core-brand" fw={700} lh={1}>
-            {label}
-          </Box>
+        <Center
+          className={S.label}
+          c="core-brand"
+          fw={700}
+          lh={1}
+          data-testid="step-number"
+        >
+          {label}
         </Center>
       )}
 

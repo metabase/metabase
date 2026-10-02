@@ -37,13 +37,16 @@ export const InactiveStep = ({
       >
         {title}
       </Box>
-      <Center className={cx(S.label, { [S.labelCompleted]: isStepCompleted })}>
+      <Center
+        className={cx(S.label, { [S.labelCompleted]: isStepCompleted })}
+        c="core-brand"
+        fw={700}
+        lh={1}
+      >
         {isStepCompleted ? (
           <Icon name="check" size="1rem" c="text-primary-inverse" />
         ) : (
-          <Box component="span" c="core-brand" fw={700} lh={1}>
-            {label}
-          </Box>
+          label
         )}
       </Center>
     </Box>

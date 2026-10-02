@@ -52,20 +52,25 @@ export const CompletedStep = (): JSX.Element | null => {
     >
       <Title order={2}>{t`You're all set up!`}</Title>
       {shouldOfferAiConfig && (
-        <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="xxs" p="xl">
-          <Flex align="center" justify="space-between" gap="xl">
-            <Box>
-              <Text fw="bold">{t`Want to use AI in Metabase?`}</Text>
-              <Text c="text-secondary">
-                {t`Connect an AI provider to use AI explorations, SQL generation and Metabot.`}
-              </Text>
-            </Box>
-            <Button
-              flex="0 0 auto"
-              onClick={() => dispatch(startAiConfig())}
-            >{t`Set up AI`}</Button>
-          </Flex>
-        </Box>
+        <Flex
+          align="center"
+          justify="space-between"
+          gap="xl"
+          bd="1px solid var(--mb-color-border-neutral)"
+          bdrs="xxs"
+          p="xl"
+        >
+          <Box>
+            <Text fw="bold">{t`Want to use AI in Metabase?`}</Text>
+            <Text c="text-secondary">
+              {t`Connect an AI provider to use AI explorations, SQL generation and Metabot.`}
+            </Text>
+          </Box>
+          <Button
+            flex="0 0 auto"
+            onClick={() => dispatch(startAiConfig())}
+          >{t`Set up AI`}</Button>
+        </Flex>
       )}
       <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="xxs" p="xl">
         <Switch
