@@ -191,17 +191,23 @@
 
 (def ^:private pivot-body
   [:map
-   [:pivot_rows {:optional true} [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]
-   [:pivot_cols {:optional true} [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]])
+   [:pivot_rows         {:optional true} [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]
+   [:pivot_cols         {:optional true} [:maybe [:sequential ms/IntGreaterThanOrEqualToZero]]]
+   [:show_row_totals    {:optional true} [:maybe :boolean]]
+   [:show_column_totals {:optional true} [:maybe :boolean]]])
 
 (defn- pivot-handle
   "Run the query stored under the route's handle as a pivot query, the way `POST /api/dataset/pivot` does. Only the
-   body's `pivot_rows` and `pivot_cols`, which pick among the stored query's breakouts, are read."
+   body's pivot layout is read: `pivot_rows` and `pivot_cols`, which pick among the stored query's breakouts, and the
+   two totals flags."
   [context request]
-  (let [{:keys [pivot_rows pivot_cols]} (check-body! pivot-body (or (:body request) {}))]
+  (let [{:keys [pivot_rows pivot_cols show_row_totals show_column_totals]}
+        (check-body! pivot-body (or (:body request) {}))]
     (qp.api/run-adhoc-pivot-query (cond-> (runnable-handle-query! context)
-                                    pivot_rows (assoc :pivot-rows pivot_rows)
-                                    pivot_cols (assoc :pivot-cols pivot_cols)))))
+                                    pivot_rows                 (assoc :pivot-rows pivot_rows)
+                                    pivot_cols                 (assoc :pivot-cols pivot_cols)
+                                    (some? show_row_totals)    (assoc :show-row-totals show_row_totals)
+                                    (some? show_column_totals) (assoc :show-column-totals show_column_totals)))))
 
 (defn- handle-query-metadata
   "The metadata the iframe needs for the query stored under the route's handle, as `POST /api/dataset/query_metadata`

@@ -63,6 +63,9 @@
     (testing "a temporal-bucket operation rebuckets the temporal breakout"
       (is (= :year (breakout-unit (derived-query! (checkins-by-month)
                                                   [{:type "temporal-bucket/set" :unit "year"}])))))
+    (testing "a nil unit removes the bucket, the granularity control's \"All time\""
+      (is (nil? (breakout-unit (derived-query! (checkins-by-month)
+                                               [{:type "temporal-bucket/set" :unit nil}])))))
     (testing "a unit the breakout cannot take is a 400"
       (is (= 400 (:status (derive! (checkins-by-month) {:operations [{:type "temporal-bucket/set"
                                                                       :unit "hour"}]})))))
