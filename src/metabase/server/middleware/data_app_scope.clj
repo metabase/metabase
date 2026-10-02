@@ -49,16 +49,9 @@
       (contains? token-scopes "*")))
 
 (defn- narrow-to-data-app?
-  "True when `request` carries the data-app client marker on a credential this may confine.
-
-  MCP visualization iframes are excluded even though they look full-access here:
-  `wrap-current-user-info` hands them `#{::scope/unrestricted}` deliberately, because their
-  authorization boundary is the route allowlist in [[metabase.server.middleware.session]]
-  rather than the scope set. Narrowing one would cost it the `/api/embed-mcp` routes, which
-  carry no `data-app` tag, and it is already confined by that allowlist either way."
+  "True when `request` carries the data-app client marker on a credential this may confine."
   [request]
   (and (embedding.util/has-data-app-header? request)
-       (not (:mcp-ui-credential request))
        (full-access? (:token-scopes request))))
 
 (defn wrap-data-app-scope

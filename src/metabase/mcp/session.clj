@@ -141,17 +141,11 @@
     (str payload "." (ui-credential-signature payload))))
 
 (defn issue-ui-credential
-  "Create a short-lived credential for the MCP Apps UI. It authenticates only the narrow server-side UI request surface,
-  never as a core Metabase session.
+  "Create a short-lived credential for the MCP Apps UI. It authenticates only the iframe routes in
+  [[metabase.mcp.callback-api]], never as a core Metabase session.
 
-  `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim because it is the only
-  record of what the client was actually granted: the credential authenticates as `::scope/mcp-ui`, which
-  satisfies no endpoint's declared `:scope`. Both gates on the iframe's request surface spend this claim — see
-  [[metabase.mcp.ui-surface/request-surface]] and [[metabase.agent-api.query-guards/check-mcp-ui-native-query!]].
-
-  Passing the caller's real scopes is what subjects the credential to the native-SQL gate. (v1's frozen
-  surface used to mint claimless, gate-exempt `:legacy` credentials through a 2-arity of this fn; that shim
-  retired with v1.)"
+  `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim because the iframe routes
+  charge their scope against it."
   [session-id user-id token-scopes]
   (sign-ui-credential session-id user-id (encode-token-scopes token-scopes)))
 

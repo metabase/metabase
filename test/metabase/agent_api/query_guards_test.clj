@@ -137,13 +137,8 @@
 
 (deftest ^:parallel native-query?-sees-a-json-encoded-query-test
   (testing "`POST /api/dataset/:export-format` accepts `query` as a JSON STRING for `<form>`-submit
-            back-compat, decoding it in Malli (`:decode/api`). `+refuse-unscoped-native-sql` runs ahead of that
-            decoding, so the guard is handed the raw string — and a string edge fell through to `deep-scan`,
-            which finds no marker inside text. The guard therefore could not see native SQL in that shape.
-
-            Unreachable today only because that route is absent from the MCP UI credential's allowlist, which
-            is exactly the coupling the middleware's docstring promises does NOT matter: \"a route later added
-            to the allowlist is covered the day it is added\"."
+            back-compat, so a query edge can arrive as a string. A string edge used to fall through to
+            `deep-scan`, which finds no marker inside text, so the guard could not see native SQL in that shape."
     (testing "a JSON-encoded query is decoded and scanned, not skipped"
       (are [q] (true? (query-guards/native-query? q))
         {:query (json/encode {:type "native" :native {:query "select 1"}})}
@@ -221,9 +216,9 @@
                                     {:stages [{:source-table (mt/id :orders)}]}))))))))
 
 (defn- ui-request
-  "A request map shaped like one the MCP Apps iframe credential authenticated."
+  "Verified MCP Apps UI credential claims carrying `token-scopes`."
   [token-scopes]
-  {:mcp-ui-credential {:uid 1 :sid "session" :token-scopes token-scopes}})
+  {:uid 1 :sid "session" :token-scopes token-scopes})
 
 (def ^:private legacy-native {:database 1 :type "native" :native {:query "SELECT 1"}})
 (def ^:private mbql-5-native {:lib/type "mbql/query" :database 1
@@ -261,11 +256,10 @@
                                 (ui-request #{:metabase.api.macros.scope/unrestricted}) legacy-native)))))
   (testing "non-native queries are never gated, whatever the grant"
     (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query! (ui-request #{}) mbql-query)))))
-  (testing "requests not authenticated by a UI credential pass through untouched"
-    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query! {} legacy-native)))))
   (testing "a credential carrying no scopes claim fails closed — a rolling deploy can mint one"
+    (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query! {} legacy-native))))
     (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                {:mcp-ui-credential {:uid 1 :sid "session"}} legacy-native)))))
+                                {:uid 1 :sid "session"} legacy-native)))))
   (testing "the kill switch outranks the grant"
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
       (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
