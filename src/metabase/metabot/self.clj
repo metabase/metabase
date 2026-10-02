@@ -626,35 +626,28 @@
       (with-retries
         tracking-opts
         (fn []
-          (let [parts (into []
-                            (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf tracking-opts)
-                                  (report-token-usage-xf tracking-opts))
-                            (stream-fn streaming-opts))
-                result (some (fn [{:keys [type arguments]}]
-                               (when (= type :tool-input)
-                                 arguments))
-                             parts)
-                error  (some (fn [{:keys [type error]}]
-                               (when (= type :error)
-                                 error))
-                             parts)]
+          (let [parts    (into []
+                               (comp (core/aisdk-xf)
+                                     (report-aisdk-errors-xf tracking-opts)
+                                     (report-token-usage-xf tracking-opts))
+                               (stream-fn streaming-opts))
+                result   (some (fn [{:keys [type arguments]}]
+                                 (when (= type :tool-input)
+                                   arguments))
+                               parts)
+                error    (some (fn [{:keys [type error]}]
+                                 (when (= type :error)
+                                   error))
+                               parts)
+                unparsed (core/unparsed-arguments result)]
             (cond
-              ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
-              ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
-              ;; bogus map back to the caller as if it were a valid structured result.
-              (and (map? result) (contains? result :_raw_arguments))
-              (throw (ex-info "LLM returned malformed JSON in its structured tool call"
-                              {:parts         parts
-                               :error-code    "structured-output-invalid"
-                               :raw-arguments (:_raw_arguments result)}))
-
-              ;; The tool call's JSON parsed but isn't an object; `parse-tool-arguments` returned the
-              ;; `{:_non_object_arguments ...}` sentinel. Reject it the same way.
-              (and (map? result) (contains? result :_non_object_arguments))
-              (throw (ex-info "LLM returned a JSON value that is not an object in its structured tool call"
-                              {:parts      parts
-                               :error-code "structured-output-invalid"}))
+              ;; The tool call's arguments were malformed JSON or valid JSON that isn't an object. Reject them
+              ;; rather than handing the parse sentinel back to the caller as if it were a structured result.
+              unparsed
+              (throw (ex-info "LLM returned arguments that are not a JSON object in its structured tool call"
+                              (merge {:parts      parts
+                                      :error-code "structured-output-invalid"}
+                                     unparsed)))
 
               result
               {:result result :parts parts}
