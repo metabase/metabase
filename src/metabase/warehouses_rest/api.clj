@@ -289,6 +289,7 @@
              include-saved-questions-tables?
              include-editable-data-model?
              include-analytics?
+             include-stubs?
              exclude-uneditable-details?
              include-only-uploadable?
              router-database-id
@@ -302,7 +303,7 @@
                                         filter-on-router-database-id))
         dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
                                                 filter-by-data-access? filter-on-router-database-id
-                                                include-analytics?)
+                                                include-analytics? include-stubs?)
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
@@ -346,6 +347,8 @@
 
   * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
 
+  * `include_stubs` includes stub DBs, which serialization creates for missing databases. Default: `false`.
+
   * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.
 
   * `can-write-metadata` will only include DBs for which the current user has data model editing permissions
@@ -358,12 +361,13 @@
   {:scope api-scope/data-app}
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
-           router_database_id can-query can-write-metadata]}
+           include_stubs router_database_id can-query can-write-metadata]}
    :- [:map {:closed true}
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:enum "tables" "schemas"]]
                                                        (deferred-tru "include must be either empty, ''tables'', or ''schemas''"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
+       [:include_stubs               {:default false} [:maybe :boolean]]
        [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
@@ -387,6 +391,7 @@
                                                                :include-editable-data-model?    include_editable_data_model
                                                                :exclude-uneditable-details?     only-editable?
                                                                :include-analytics?              include_analytics
+                                                               :include-stubs?                  include_stubs
                                                                :include-only-uploadable?        include_only_uploadable
                                                                :router-database-id              router_database_id
                                                                :can-query?                      can-query

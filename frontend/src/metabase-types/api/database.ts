@@ -81,6 +81,7 @@ export interface Database extends DatabaseData {
   uploads_table_prefix: string | null;
   is_audit?: boolean;
   is_attached_dwh?: boolean;
+  is_stub?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
 
@@ -165,6 +166,7 @@ export type ListDatabasesRequest = {
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
+  include_stubs?: boolean;
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
   "can-write-metadata"?: boolean;

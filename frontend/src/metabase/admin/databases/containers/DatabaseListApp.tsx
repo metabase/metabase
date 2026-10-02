@@ -29,7 +29,10 @@ export const DatabaseListApp = (props: DatabaseListAppProps) => {
   const [pollingInterval, setPollingInterval] = useState<number>();
 
   const databasesReq = useListDatabasesQuery(
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+    {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+      include_stubs: true,
+    },
     { pollingInterval },
   );
 

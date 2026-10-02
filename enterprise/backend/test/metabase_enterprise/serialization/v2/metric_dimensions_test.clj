@@ -123,10 +123,10 @@
               :target       [:field {:source-field ["metric-db" nil "sales" "product_id"]}
                              ["metric-db" nil "products" "title"]]}]
             (:dimension_mappings card)))
-    (is (contains? (metrics/dimension-mappings-deps (:dimension_mappings card))
-                   [{:model "Database" :id "metric-db"}]))
-    (is (contains? (serdes/deserialization-dependencies card)
-                   [{:model "Database" :id "metric-db"}]))))
+    (is (not (contains? (set (metrics/dimension-mappings-deps (:dimension_mappings card)))
+                        [{:model "Database" :id "metric-db"}])))
+    (is (not (contains? (set (serdes/deserialization-dependencies card))
+                        [{:model "Database" :id "metric-db"}])))))
 
 (defn- prepare-destination! []
   (let [other-db    (ts/create! :model/Database :name "other-db")

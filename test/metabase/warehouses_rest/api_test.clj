@@ -220,7 +220,14 @@
                      :model/Database {db-id-2 :id} {:is_stub false}]
         (let [{databases :data} (mt/user-http-request :lucky :get 200 "database")]
           (is (nil? (m/find-first #(= (:id %) db-id-1) databases)))
-          (is (some? (m/find-first #(= (:id %) db-id-2) databases))))))))
+          (is (some? (m/find-first #(= (:id %) db-id-2) databases))))
+        (testing "unless include_stubs is passed"
+          (let [{databases :data} (mt/user-http-request :crowberto :get 200 "database" :include_stubs true)]
+            (is (some? (m/find-first #(= (:id %) db-id-1) databases)))
+            (is (some? (m/find-first #(= (:id %) db-id-2) databases)))))
+        (testing "A stub database can be fetched by id"
+          (is (=? {:id db-id-1 :is_stub true}
+                  (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id-1)))))))))
 
 (deftest get-database-legacy-no-self-service-test
   (testing "GET /api/database/:id"
