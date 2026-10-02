@@ -162,45 +162,33 @@ describe("scenarios > dashboard > filters > boolean", () => {
       H.filterWidget().findByText("True").should("be.visible");
     });
 
-    it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
-      createNativeQuestionWithFieldFilterAndDashboard().then(
-        ({ dashboardId }) => H.visitDashboard(dashboardId),
-      );
-
-      cy.log("set up click behavior");
-      H.editDashboard();
-      H.showDashboardCardActions();
-      cy.findByLabelText("Click behavior").click();
-      H.sidebar().within(() => {
-        cy.findByText(FIELD_NAME).click();
-        cy.findByText("Go to a custom destination").click();
-        cy.findByText("Saved question").click();
-      });
-      H.entityPickerModal().findByText(QUESTION_NAME).click();
-      H.sidebar()
-        .findByTestId("unset-click-mappings")
-        .findByText(COLUMN_NAME)
-        .click();
-      H.selectDropdown().findByText(FIELD_NAME).click();
-      H.saveDashboard();
-
-      cy.log("assert click behavior");
-      H.getDashboardCard().findAllByText("true").first().click();
-      H.assertTableRowsCount(1);
-      H.filterWidget().findByText("True").should("be.visible");
-    });
-
-    it("should allow to use a 'Go to a custom destination - URL' click behavior", () => {
+    it("should allow to use 'Go to a custom destination - Saved question' and 'Go to a custom destination - URL' click behaviors", () => {
       createNativeQuestionWithFieldFilterAndDashboard().then(
         ({ dashboardId, questionId }) => {
           H.visitDashboard(dashboardId);
 
-          cy.log("set up click behavior");
+          cy.log(
+            "set up a saved question click behavior on the boolean column",
+          );
           H.editDashboard();
           H.showDashboardCardActions();
           cy.findByLabelText("Click behavior").click();
           H.sidebar().within(() => {
             cy.findByText(FIELD_NAME).click();
+            cy.findByText("Go to a custom destination").click();
+            cy.findByText("Saved question").click();
+          });
+          H.entityPickerModal().findByText(QUESTION_NAME).click();
+          H.sidebar()
+            .findByTestId("unset-click-mappings")
+            .findByText(COLUMN_NAME)
+            .click();
+          H.selectDropdown().findByText(FIELD_NAME).click();
+
+          cy.log("set up a URL click behavior on the id column");
+          H.sidebar().icon("chevronleft").click();
+          H.sidebar().within(() => {
+            cy.findByText("id").click();
             cy.findByText("Go to a custom destination").click();
             cy.findByText("URL").click();
           });
@@ -215,10 +203,16 @@ describe("scenarios > dashboard > filters > boolean", () => {
           });
           H.saveDashboard();
 
-          cy.log("assert click behavior");
+          cy.log("assert the saved question click behavior");
           H.getDashboardCard().findAllByText("true").first().click();
           H.assertTableRowsCount(1);
           H.filterWidget().findByText("True").should("be.visible");
+
+          cy.log("assert the URL click behavior with the second row's value");
+          cy.go("back");
+          H.getDashboardCard().findByText("2").click();
+          H.assertTableRowsCount(1);
+          H.filterWidget().findByText("False").should("be.visible");
         },
       );
     });
