@@ -49,3 +49,14 @@
     (is (= ["workflow" "run" "run-tests.yml" "-R" "metabase/metabase" "--ref" "my-branch"
             "-f" "base=release-x.60.x"]
            (ci-run-skipped/dispatch-args "my-branch" "release-x.60.x")))))
+
+(deftest poll-test
+  (testing "returns the first non-nil result"
+    (let [results (atom [nil nil :done :unused])
+          next!   (fn [] (let [result (first @results)] (swap! results rest) result))]
+      (is (= :done (ci-run-skipped/poll "x" [0 0 0] next!)))
+      (is (= [:unused] @results))))
+  (testing "gives up with nil after the last pause"
+    (let [calls (atom 0)]
+      (is (nil? (ci-run-skipped/poll "x" [0 0] #(do (swap! calls inc) nil))))
+      (is (= 3 @calls)))))

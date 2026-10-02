@@ -79,19 +79,27 @@
       (or (parse-verdict (gh {} "api" (format "repos/%s/actions/jobs/%s/logs" repo (:databaseId job))))
           (fail! 3 (str "No verdict in the decide job's log: " (run-url run-id)))))))
 
+(def ^:private waits-s
+  "Pauses between checks for a verdict, about a minute in all: enough for a fresh push or a new run."
+  [10 20 30])
+
+(defn poll
+  "Call `f` until it returns non-nil, sleeping for each of `pauses` seconds in turn.
+  Returns nil if it never does; `what` names the thing being waited for in progress messages."
+  [what pauses f]
+  (loop [pauses pauses]
+    (or (f)
+        (when-let [[wait & more] (seq pauses)]
+          (info (format "Waiting %ss for %s to decide." wait what))
+          (Thread/sleep (long (* 1000 wait)))
+          (recur more)))))
+
 (defn- decided-pr-run
-  "The latest PR run for `sha` with its `:verdict`, waiting about a minute for a fresh push to get one."
+  "The latest PR run for `sha` with its `:verdict`, or nil if it does not get one in time."
   [branch sha]
-  (loop [waits [10 20 30]]
-    (let [run (first (runs branch sha "pull_request"))
-          v   (some-> run :databaseId verdict)]
-      (cond
-        v              (assoc run :verdict v)
-        (empty? waits) nil
-        :else
-        (do (info (format "Waiting %ss for the PR run to decide." (first waits)))
-            (Thread/sleep (long (* 1000 (first waits))))
-            (recur (rest waits)))))))
+  (poll "the PR run" waits-s
+        #(when-let [run (first (runs branch sha "pull_request"))]
+           (some->> (verdict (:databaseId run)) (assoc run :verdict)))))
 
 (defn next-step
   "What to do given the PR run (with its `:verdict`) and the runs started by hand for the same commit.
@@ -149,6 +157,12 @@
           (println (run-url (:databaseId run))))
 
       :start
-      (let [base (stack-base pr)]
-        (info (format "PR #%s was force-skipped; starting a run on %s against %s." (:number pr) branch base))
-        (println (start-run! branch base))))))
+      (let [base   (stack-base pr)
+            _      (info (format "PR #%s was force-skipped; starting a run on %s against %s."
+                                 (:number pr) branch base))
+            url    (start-run! branch base)
+            run-id (second (re-find #"/actions/runs/(\d+)$" url))]
+        ;; `should-run` never skips a run started by hand, but a later skip rule could break that.
+        (when (and run-id (= "force-skip" (poll "the new run" waits-s #(verdict run-id))))
+          (fail! 3 (str "The new run was force-skipped too: " url)))
+        (println url)))))
