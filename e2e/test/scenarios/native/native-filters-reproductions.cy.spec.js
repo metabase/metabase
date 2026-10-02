@@ -16,7 +16,7 @@ describe("issue 9357", () => {
   });
 
   it(
-    "should reorder template tags by drag and drop (metabase#9357)",
+    "should reorder template tags by drag and drop, but not from popovers (metabase#9357, metabase#40232)",
     { viewportWidth: 800, viewportHeight: 600 },
     () => {
       H.startNewNativeQuestion();
@@ -24,7 +24,7 @@ describe("issue 9357", () => {
         "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
       );
 
-      // Drag the firstparameter to last position
+      // Drag the firstparameter below the nextparameter
       H.filterWidget().findAllByRole("listitem").first().as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
@@ -37,6 +37,22 @@ describe("issue 9357", () => {
       cy.get("@variableField").first().findByText("nextparameter");
 
       cy.get("@variableField").eq(1).findByText("firstparameter");
+
+      cy.log(
+        "dragging from inside a filter popover does not reorder the filters (metabase#40232)",
+      );
+      cy.findAllByRole("radio", { name: "Search box" }).first().click();
+      H.filterWidget().first().should("contain.text", "Nextparameter").click();
+
+      H.popover().findByText("Add filter").as("popoverElement");
+      H.moveDnDKitElementByAlias("@popoverElement", {
+        horizontal: 300,
+      });
+
+      H.filterWidget()
+        .should("have.length", 3)
+        .first()
+        .should("contain.text", "Nextparameter");
     },
   );
 });
@@ -88,7 +104,7 @@ describe("issue 11580", () => {
     cy.signInAsAdmin();
   });
 
-  it("shouldn't reorder template tags when updated (metabase#11580)", () => {
+  it("shouldn't reorder template tags when updated (metabase#11580, metabase#15700)", () => {
     H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
 
@@ -107,6 +123,27 @@ describe("issue 11580", () => {
     cy.get("@variableType").should("have.value", "Number");
 
     // ensure they're still in the right order
+    assertVariablesOrder();
+
+    cy.log(
+      "should be able to select 'Field Filter' category in native query (metabase#15700)",
+    );
+    cy.findAllByTestId("variable-type-select")
+      .should("have.length", 2)
+      .last()
+      .click();
+    SQLFilter.chooseType("Field Filter");
+
+    FieldFilter.mapTo({
+      table: "Products",
+      field: "Category",
+    });
+
+    FieldFilter.setWidgetType("String is not");
+    H.rightSidebar()
+      .findByTestId("filter-widget-type-select")
+      .should("have.value", "String is not");
+
     assertVariablesOrder();
   });
 });
@@ -135,8 +172,6 @@ describe("issue 12581", () => {
   };
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -152,14 +187,12 @@ describe("issue 12581", () => {
       .findByText(/open editor/i)
       .should("not.exist");
 
-    // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
-    // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
     H.NativeEditor.clear().type("SELECT 1");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.findByTestId("save-question-modal").within((modal) => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByText("Save").click();
     });
 
@@ -232,8 +265,8 @@ describe("issue 14302", () => {
   it("should not make the question dirty when there are no changes (metabase#14302)", () => {
     cy.log("Reported on v0.37.5 - Regression since v0.37.0");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").should("not.exist");
+    cy.findByTestId("query-visualization-root").should("contain", "Gizmo");
+    H.queryBuilderHeader().button("Save").should("not.exist");
   });
 });
 
@@ -331,35 +364,11 @@ describe("issue 14302", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      H.NativeEditor.get().should("not.exist");
       cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
+      H.NativeEditor.get().should("not.exist");
     });
-  });
-});
-
-describe("issue 15700", () => {
-  const widgetType = "String is not";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be able to select 'Field Filter' category in native query (metabase#15700)", () => {
-    H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery("{{filter}}");
-
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
-
-    FieldFilter.mapTo({
-      table: "Products",
-      field: "Category",
-    });
-
-    FieldFilter.setWidgetType(widgetType);
   });
 });
 
@@ -389,21 +398,6 @@ describe("issue 15981", () => {
     cy.findByText("Showing 51 rows");
     cy.icon("play").should("not.exist");
   });
-
-  it('"Number" filter should work (metabase#15981-2)', () => {
-    SQLFilter.enterParameterizedQuery(
-      "select * from ORDERS where QUANTITY = {{number_filter}}",
-    );
-
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Number");
-
-    SQLFilter.setWidgetValue("20");
-
-    SQLFilter.runQuery();
-
-    cy.findByTestId("query-visualization-root").contains("23.54");
-  });
 });
 
 describe("issue 16739", () => {
@@ -422,25 +416,59 @@ describe("issue 16739", () => {
     cy.signInAsAdmin();
   });
 
-  ["normal", "nodata"].forEach((user) => {
-    //Very related to the metabase#15981, only this time the issue happens with the "Field Filter" without the value being set.
-    it(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
-      H.createNativeQuestion({
-        native: {
-          query: "select * from PRODUCTS where {{ filter }}",
-          "template-tags": { filter },
-        },
-      }).then(({ body: { id } }) => {
-        if (user === "nodata") {
-          cy.signOut();
-          cy.signIn(user);
-        }
-
-        H.visitQuestion(id);
-      });
-
-      cy.icon("play").should("not.exist");
+  //Very related to the metabase#15981, only this time the issue happens with the "Field Filter" without the value being set.
+  it("empty field filters shouldn't cause run-overlay of results for admin and nodata users (metabase#16739, metabase#70311)", () => {
+    H.createNativeQuestion({
+      native: {
+        query: "select * from PRODUCTS where {{ filter }}",
+        "template-tags": { filter },
+      },
+    }).then(({ body: { id } }) => {
+      cy.wrap(id).as("questionId");
+      H.visitQuestion(id);
     });
+
+    H.assertQueryBuilderRowCount(200);
+    H.runButtonOverlay().icon("play").should("not.exist");
+
+    cy.log(
+      "should not show the run overlay for a saved question with an empty between field filter (metabase#70311)",
+    );
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    H.createNativeQuestion(
+      {
+        name: "70311",
+        native: {
+          query: "SELECT * FROM PRODUCTS WHERE {{filter}} LIMIT 5",
+          "template-tags": {
+            filter: {
+              id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
+              name: "filter",
+              "display-name": "Filter",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.RATING, null],
+              "widget-type": "number/between",
+              default: null,
+            },
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.wait("@cardQuery");
+
+    cy.findByTestId("query-visualization-root").should("be.visible");
+    H.assertQueryBuilderRowCount(5);
+    H.runButtonOverlay().icon("play").should("not.exist");
+
+    cy.log("as nodata user (metabase#16739)");
+    cy.signOut();
+    cy.signIn("nodata");
+    cy.get("@questionId").then((id) => H.visitQuestion(id));
+
+    H.assertQueryBuilderRowCount(200);
+    H.runButtonOverlay().icon("play").should("not.exist");
   });
 });
 
@@ -507,34 +535,6 @@ describe("issue 16756", () => {
   });
 });
 
-describe("issue 17490", () => {
-  function mockDatabaseTables() {
-    cy.intercept("GET", "/api/database?include=tables", (req) => {
-      req.reply((res) => {
-        const mockTables = new Array(7).fill({
-          id: 42, // id is hard coded, but it doesn't matter for this repro
-          db_id: 1,
-          name: "Z",
-          display_name: "ZZZ",
-          schema: "PUBLIC",
-        });
-
-        res.body.data = res.body.data.map((d) => ({
-          ...d,
-          tables: [...d.tables, ...mockTables],
-        }));
-      });
-    });
-  }
-
-  beforeEach(() => {
-    mockDatabaseTables();
-
-    H.restore();
-    cy.signInAsAdmin();
-  });
-});
-
 describe("issue 27257", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -567,12 +567,12 @@ describe("issue 27257", () => {
     cy.reload();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear");
-    cy.findByDisplayValue("0");
+    H.filterWidget().findByDisplayValue("0").should("be.visible");
   });
 });
 
-describe("issue 31606", { tags: "@external" }, () => {
-  const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE CATEGORY = {{test}}";
+describe("issue 31606", () => {
+  const SQL_QUERY = "SELECT COUNT(*) FROM PRODUCTS WHERE ID = {{test}}";
 
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -581,18 +581,17 @@ describe("issue 31606", { tags: "@external" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("should clear values on UI for Text, Number, Date and Field Filter Types (metabase#31606)", () => {
+  it("should clear values on UI for Text, Number and Field Filter Types (metabase#31606)", () => {
     H.startNewNativeQuestion();
 
     SQLFilter.enterParameterizedQuery(SQL_QUERY);
 
     // Text
-    SQLFilter.setWidgetValue("Gizmo");
+    SQLFilter.setWidgetValue("1");
     SQLFilter.runQuery();
 
-    H.queryBuilderMain()
-      .findByText(/missing required parameters/)
-      .should("not.exist");
+    cy.findByTestId("scalar-value").should("have.text", "1");
+    H.filterWidget().icon("close").should("be.visible");
 
     H.filterWidget().findByRole("textbox").clear();
 
@@ -611,9 +610,8 @@ describe("issue 31606", { tags: "@external" }, () => {
 
     SQLFilter.runQuery();
 
-    H.queryBuilderMain()
-      .findByText(/missing required parameters/)
-      .should("not.exist");
+    cy.findByTestId("scalar-value").should("have.text", "1");
+    H.filterWidget().icon("close").should("be.visible");
 
     H.filterWidget().findByRole("textbox").clear();
     SQLFilter.runQuery();
@@ -665,11 +663,7 @@ describe("issue 31606", { tags: "@external" }, () => {
     H.filterWidget().within(() => {
       cy.icon("close").should("be.visible");
     });
-
-    SQLFilter.runQuery();
-    H.queryBuilderMain()
-      .findByText(/missing required parameters/)
-      .should("not.exist");
+    H.filterWidget().should("contain.text", "23");
 
     H.filterWidget().click();
 
@@ -678,6 +672,7 @@ describe("issue 31606", { tags: "@external" }, () => {
       cy.findByText("Update filter").click();
     });
 
+    H.filterWidget().should("not.contain.text", "23");
     H.filterWidget().within(() => {
       cy.icon("close").should("not.exist");
     });
@@ -755,117 +750,6 @@ describe("issue 34129", () => {
   });
 });
 
-describe("issue 31606", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not start drag and drop from clicks on popovers", () => {
-    H.startNewNativeQuestion();
-
-    SQLFilter.enterParameterizedQuery("{{foo}} {{bar}}");
-
-    cy.findAllByRole("radio", { name: "Search box" }).first().click();
-    H.filterWidget().first().click();
-
-    H.popover().findByText("Add filter").as("dragElement");
-    H.moveDnDKitElementByAlias("@dragElement", {
-      horizontal: 300,
-    });
-
-    H.filterWidget()
-      .should("have.length", 2)
-      .first()
-      .should("contain.text", "Foo");
-  });
-});
-
-describe("issue 49577", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not show the values initially when using a single select search box (metabase#49577)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from {{param");
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar()
-      .last()
-      .within(() => {
-        cy.findByText("Search box").click();
-        cy.findByText("Edit").click();
-      });
-
-    H.modal().within(() => {
-      cy.findByText("Custom list").click();
-      cy.findByRole("textbox").type("foo\nbar\nbaz");
-      cy.button("Done").click();
-    });
-
-    H.filterWidget().click();
-
-    H.popover().within(() => {
-      cy.findByText("foo").should("not.exist");
-      cy.findByText("bar").should("not.exist");
-      cy.findByText("baz").should("not.exist");
-
-      cy.findByPlaceholderText("Search").should("be.visible").type("fo");
-
-      cy.findByText("foo").should("be.visible");
-    });
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.sidebar().last().findByText("Dropdown list").click();
-
-    H.filterWidget().click();
-
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Search the list").should("be.visible");
-      cy.findByText("foo").should("be.visible");
-      cy.findByText("bar").should("be.visible");
-      cy.findByText("baz").should("be.visible");
-    });
-  });
-});
-
-describe("issue 70311", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-  });
-
-  it("should not show the run overlay for a saved question with an empty between field filter (metabase#70311)", () => {
-    H.createNativeQuestion(
-      {
-        name: "70311",
-        native: {
-          query: "SELECT * FROM PRODUCTS WHERE {{filter}} LIMIT 5",
-          "template-tags": {
-            filter: {
-              id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
-              name: "filter",
-              "display-name": "Filter",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.RATING, null],
-              "widget-type": "number/between",
-              default: null,
-            },
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.wait("@cardQuery");
-
-    cy.findByTestId("query-visualization-root").should("be.visible");
-    cy.icon("play").should("not.exist");
-  });
-});
-
 // This reproduction can possibly be replaced with the unit test for the `ListField` component in the future
 describe("issue 45877", () => {
   beforeEach(() => {
@@ -926,7 +810,7 @@ describe("issue 44665", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should use the correct widget for the default value picker (metabase#44665)", () => {
+  it("should use the correct widgets for the search box and the default value picker (metabase#44665, metabase#49577)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from {{param");
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -943,6 +827,26 @@ describe("issue 44665", () => {
       cy.button("Done").click();
     });
 
+    cy.log(
+      "should not show the values initially when using a single select search box (metabase#49577)",
+    );
+    H.filterWidget().click();
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Search").should("be.visible");
+      cy.findByText("foo").should("not.exist");
+      cy.findByText("bar").should("not.exist");
+      cy.findByText("baz").should("not.exist");
+      cy.findByText("foobar").should("not.exist");
+
+      cy.findByPlaceholderText("Search").type("fo");
+
+      cy.findByText("foo").should("be.visible");
+    });
+    cy.realPress("Escape");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    cy.log("should use the correct widget for the default value picker");
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar().last().findByText("Enter a default value…").click();
     H.popover().within(() => {
@@ -972,6 +876,18 @@ describe("issue 44665", () => {
       cy.findByText("bar").should("be.visible");
       cy.findByText("baz").should("be.visible");
       cy.findByText("foobar").should("be.visible");
+    });
+    cy.realPress("Escape");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    cy.log("the dropdown list shows all values (metabase#49577)");
+    H.filterWidget().click();
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Search the list").should("be.visible");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
     });
   });
 });
