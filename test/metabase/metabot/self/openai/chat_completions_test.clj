@@ -233,6 +233,17 @@
                                             :temperature 0.2
                                             :max-tokens  128})))))
 
+(deftest ^:parallel request-body-replays-nested-tool-arguments-test
+  (testing "a streamed tool call whose arguments nest objects replays into the next request"
+    (let [query {:lib/type "mbql/query"
+                 :stages   [{:lib/type "mbql.stage/mbql" :source-table ["Sample Database" nil "ORDERS"]}]}
+          parts (into [] (self.core/aisdk-xf)
+                      (metabot.tu/parts->aisdk-chunks
+                       [{:type :tool-input :id "call-1" :function "construct_notebook_query" :arguments {:query query}}]))]
+      (is (=? {:messages [{:role       "assistant"
+                           :tool_calls [{:function {:name "construct_notebook_query"}}]}]}
+              (chat-completions/request-body {:model "some/model" :input parts}))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;;
