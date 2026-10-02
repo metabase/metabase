@@ -136,3 +136,61 @@
                         :archived    false}]
                       (filter #(= table-id (:id %)) (filter #(= "table" (:model %)) items)))
                   "User with data permissions should see published tables in root"))))))))
+
+(deftest collection-items-metadata-table-permissions-test
+  (testing "The EXISTS probe behind /items/metadata and include-available-models applies the non-admin table filter"
+    (mt/with-premium-features #{:library}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Collection collection {:type "library-data"}
+                       :model/Table      table     {:collection_id (u/the-id collection)
+                                                    :is_published  true}
+                       :model/Table      _         {:collection_id (u/the-id collection)
+                                                    :is_published  false}
+                       :model/PermissionsGroup {group-id :id} {}]
+          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+          (let [metadata-url (str "collection/" (u/the-id collection) "/items/metadata")
+                items-url    (str "collection/" (u/the-id collection) "/items")
+                fetch        (fn []
+                               {:metadata (mt/user-http-request :rasta :get 200 metadata-url)
+                                :items    (mt/user-http-request :rasta :get 200 items-url
+                                                                :include-available-models true)})]
+            (testing "with collection read but view-data blocked, the table is not counted"
+              (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+              (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+              (let [{:keys [metadata items]} (fetch)]
+                (is (= {:available_models [] :total_items 0} metadata))
+                (is (= [] (:available_models items)))
+                (is (= [] (:data items)))))
+            (testing "with collection read and view-data, the published-via-collection grant makes the table count"
+              (data-perms/set-table-permission! group-id table :perms/view-data :unrestricted)
+              (let [{:keys [metadata items]} (fetch)]
+                (is (= {:available_models ["table"] :total_items 1} metadata))
+                (is (= ["table"] (:available_models items)))
+                (is (= [(u/the-id table)] (map :id (:data items))))))
+            (testing "with direct query permissions as well, the table still counts exactly once"
+              (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
+              (let [{:keys [metadata items]} (fetch)]
+                (is (= {:available_models ["table"] :total_items 1} metadata))
+                (is (= ["table"] (:available_models items)))))
+            (testing "the model filter does not change what is counted"
+              (is (= {:available_models ["table"] :total_items 1}
+                     (mt/user-http-request :rasta :get 200 metadata-url :models "table")))
+              (is (= {:available_models [] :total_items 0}
+                     (mt/user-http-request :rasta :get 200 metadata-url :models "card")))))))
+      (testing "GET /api/collection/root/items/metadata applies the same filter to published tables in the root"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Table table {:collection_id nil
+                                             :is_published  true}
+                         :model/PermissionsGroup {group-id :id} {}]
+            (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+            (let [fetch (fn []
+                          (mt/user-http-request :rasta :get 200 "collection/root/items/metadata" :models "table"))]
+              (testing "with view-data blocked, no table is counted"
+                (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+                (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+                (is (= {:available_models [] :total_items 0} (fetch))))
+              (testing "with view-data on the table, it is counted"
+                (data-perms/set-table-permission! group-id table :perms/view-data :unrestricted)
+                (is (= ["table"] (:available_models (fetch))))
+                (is (pos? (:total_items (fetch))))))))))))
