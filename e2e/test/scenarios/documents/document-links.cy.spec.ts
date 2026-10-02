@@ -65,6 +65,9 @@ describe("Links in documents", () => {
   describe("smart links", () => {
     beforeEach(() => {
       H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY, { wrapId: true });
+    });
+
+    it("should display the most up-to-date title for the entity it references, or 'No access' without permission", () => {
       cy.get("@questionId").then((questionId) => {
         H.createDocument({
           name: "Document with SmartLinks",
@@ -91,9 +94,7 @@ describe("Links in documents", () => {
           idAlias: "documentId",
         });
       });
-    });
 
-    it("should display the most up-to-date title for the entity it references, or 'No access' without permission", () => {
       H.visitDocument("@documentId");
 
       H.documentContent().should(

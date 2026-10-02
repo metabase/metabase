@@ -28,7 +28,6 @@ describe("document comments", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.resetSnowplow();
   });
 
   it("allows to comment on every type of node", () => {

@@ -18,7 +18,6 @@ describe("documents supporting text", () => {
       name: "Supporting Text Test Document",
       document: DOCUMENT_WITH_TWO_LIGHTWEIGHT_CARDS,
       collection_id: null,
-      alias: "document",
       idAlias: "documentId",
     });
 
@@ -84,7 +83,6 @@ describe("documents supporting text", () => {
       name: "Resize Supporting Text Test Document",
       document: DOCUMENT_WITH_TWO_CARDS,
       collection_id: null,
-      alias: "document",
       idAlias: "documentId",
     });
 
@@ -291,7 +289,6 @@ describe("documents supporting text", () => {
       name: "Supporting Text auto-cleanup",
       document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
       collection_id: null,
-      alias: "document",
       idAlias: "documentId",
     });
     H.visitDocument("@documentId");
@@ -317,7 +314,6 @@ describe("documents supporting text", () => {
         name: "DnD Test Document",
         document: DOCUMENT_WITH_SUPPORTING_TEXT,
         collection_id: null,
-        alias: "document",
         idAlias: "documentId",
       });
       H.visitDocument("@documentId");

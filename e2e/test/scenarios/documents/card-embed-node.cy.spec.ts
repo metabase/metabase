@@ -18,7 +18,6 @@ describe("documents card embed node custom logic", () => {
         name: "DnD Test Document",
         document: DOCUMENT_WITH_TWO_CARDS,
         collection_id: null,
-        alias: "document",
         idAlias: "documentId",
       });
 
@@ -140,7 +139,6 @@ describe("documents card embed node custom logic", () => {
         name: "Advanced DnD Test Document",
         document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
         collection_id: null,
-        alias: "document",
         idAlias: "documentId",
       });
 
@@ -597,7 +595,6 @@ describe("documents card embed node custom logic", () => {
         name: "Test Document",
         document: DOCUMENT_WITH_TWO_CARDS,
         collection_id: null,
-        alias: "document",
         idAlias: "documentId",
       });
 
@@ -691,7 +688,6 @@ describe("documents card embed node custom logic", () => {
         name: "DnD Test Document",
         document: DOCUMENT_WITH_TWO_CARDS,
         collection_id: null,
-        alias: "document",
         idAlias: "documentId",
       });
 
@@ -738,7 +734,6 @@ describe("documents card embed node custom logic", () => {
         name: "DnD Test Document",
         document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
         collection_id: null,
-        alias: "document",
         idAlias: "documentId",
       });
 

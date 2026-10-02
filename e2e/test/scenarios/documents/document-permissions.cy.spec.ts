@@ -6,13 +6,11 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 describe("document permissions", () => {
   beforeEach(() => {
     H.restore();
-    cy.signInAsAdmin();
-    H.resetSnowplow();
-    cy.signOut();
   });
 
   it("should allow a non-admin user to create a new document and save it", () => {
     cy.signInAsAdmin();
+    H.resetSnowplow();
 
     cy.updateCollectionGraph({
       [ALL_USERS_GROUP]: { root: "none" },
@@ -78,7 +76,6 @@ describe("document permissions", () => {
         type: "doc",
       },
       collection_id: null,
-      alias: "document",
       idAlias: "documentId",
     });
 

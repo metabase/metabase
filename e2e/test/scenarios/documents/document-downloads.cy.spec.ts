@@ -15,7 +15,6 @@ describe("scenarios > documents > downloads", () => {
       name: "Download Test Document",
       document: DOCUMENT_WITH_TWO_CARDS,
       collection_id: null,
-      alias: "document",
       idAlias: "documentId",
     });
 
@@ -119,17 +118,8 @@ describe("scenarios > documents > downloads", () => {
       name: "No Download Permission Document",
       document: DOCUMENT_WITH_TWO_CARDS,
       collection_id: null,
-      alias: "document",
       idAlias: "documentId",
     });
-
-    H.visitDocument("@documentId");
-
-    // Wait for card to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
 
     // Remove download permission but keep view-data unrestricted
     const { READONLY_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
