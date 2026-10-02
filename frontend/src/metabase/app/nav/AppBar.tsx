@@ -35,7 +35,7 @@ import type { State } from "metabase/redux/store";
 import type { RouterProps } from "metabase/selectors/app";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { getUser } from "metabase/selectors/user";
+import { getIsAllClientUser, getUser } from "metabase/selectors/user";
 import { modelToUrl } from "metabase/urls";
 import type { SearchResult } from "metabase-types/api";
 
@@ -68,7 +68,8 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isLogoVisible: getIsLogoVisible(state),
   isSearchVisible: getIsSearchVisible(state),
   isEmbeddingIframe: getIsEmbeddingIframe(state),
-  isNewButtonVisible: getIsNewButtonVisible(state),
+  isNewButtonVisible:
+    getIsNewButtonVisible(state) && !getIsAllClientUser(state),
   isAppSwitcherVisible: getIsAppSwitcherVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),

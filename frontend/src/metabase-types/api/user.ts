@@ -72,6 +72,8 @@ export interface User extends BaseUser {
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
   can_write_any_collection: boolean;
+  /** ALL Tecnologias: true quando o usuário está em um grupo de cliente (ver users_rest/api.clj). */
+  all_is_client?: boolean;
   personal_collection_id: CollectionId;
   tenant_collection_id: CollectionId | null;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;

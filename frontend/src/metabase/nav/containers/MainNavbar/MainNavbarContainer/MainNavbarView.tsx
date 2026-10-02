@@ -24,6 +24,7 @@ import {
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
 import {
+  getIsAllClientUser,
   getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
@@ -100,6 +101,7 @@ export function MainNavbarView({
   const currentUser = useSelector(getUser);
   const useTenants = useSetting("use-tenants");
   const isTenantUser = useSelector(getIsTenantUser);
+  const isAllClientUser = useSelector(getIsAllClientUser);
 
   const [
     addDataModalOpened,
@@ -303,16 +305,18 @@ export function MainNavbarView({
             </ErrorBoundary>
           </SidebarSection>
 
-          <SidebarSection>
-            <ErrorBoundary>
-              <BrowseNavSection
-                nonEntityItem={nonEntityItem}
-                onItemSelect={onItemSelect}
-                hasDataAccess={hasDataAccess}
-                onAddDataModalOpen={openAddDataModal}
-              />
-            </ErrorBoundary>
-          </SidebarSection>
+          {!isAllClientUser && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <BrowseNavSection
+                  nonEntityItem={nonEntityItem}
+                  onItemSelect={onItemSelect}
+                  hasDataAccess={hasDataAccess}
+                  onAddDataModalOpen={openAddDataModal}
+                />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
 
           {trashCollection && (
             <TrashSidebarSection>

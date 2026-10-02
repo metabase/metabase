@@ -2,6 +2,7 @@
   "/api/user endpoints"
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -354,6 +355,22 @@
                                                      :include-archived-items :exclude
                                                      :permission-level :write})}))))
 
+;; ALL Tecnologias: usuários de grupos de cliente têm a interface simplificada (sem "Novo", Metabot e Dados).
+;; Um grupo é "de cliente" quando o nome começa com o prefixo abaixo (sem diferenciar maiúsculas).
+;; Configurável pela variável de ambiente MB_ALL_CLIENT_GROUP_PREFIX (padrão: "Cliente").
+(defn- all-client-group-prefix []
+  (u/lower-case-en (or (config/config-str :mb-all-client-group-prefix) "Cliente")))
+
+(defn- add-all-client-flag
+  [{:keys [is_superuser group_ids] :as user}]
+  (assoc user :all_is_client
+         (boolean
+          (and (not is_superuser)
+               (seq group_ids)
+               (let [prefix (all-client-group-prefix)]
+                 (some #(str/starts-with? (u/lower-case-en (str %)) prefix)
+                       (t2/select-fn-set :name :model/PermissionsGroup :id [:in group_ids])))))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -369,7 +386,8 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info
-      add-can-write-any-collection))
+      add-can-write-any-collection
+      add-all-client-flag))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

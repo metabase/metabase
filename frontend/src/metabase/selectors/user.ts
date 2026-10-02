@@ -5,6 +5,13 @@ import type { State } from "metabase/redux/store";
 
 export const getUser = (state: State) => state.currentUser;
 
+/**
+ * ALL Tecnologias: usuário de grupo de cliente — interface simplificada,
+ * sem botão "Novo", Metabot e seção "Dados" (modelos/métricas).
+ */
+export const getIsAllClientUser = (state: State) =>
+  Boolean(state.currentUser?.all_is_client);
+
 export const getUserId = createSelector([getUser], (user) => user?.id);
 
 export const getUserIsAdmin = createSelector(
