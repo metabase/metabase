@@ -34,7 +34,7 @@
   ([username scopes query body]
    (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! username scopes)
          handle (ui.tu/store-query-handle! session-id user-id query)]
-     (ui.tu/ui-request auth :post nil (str "embed-mcp/queries/" handle "/derive") body))))
+     (ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" handle "/derive") body))))
 
 (defn- stored-query
   "The query stored under `handle` for `username`, as a lib query."
@@ -42,7 +42,7 @@
   (let [{:keys [encoded_query]} (mcp.session/resolve-query-handle nil (mt/user->id username) handle)]
     (lib/query (mt/metadata-provider) (ui.tu/decode-query encoded_query))))
 
-(defn- derived-query
+(defn- derived-query!
   "Derive from `query` with `operations` as rasta, assert a new handle owned by rasta came back, and return the query
   stored under it."
   [query operations]
@@ -61,8 +61,8 @@
 (deftest temporal-bucket-test
   (mt/with-model-cleanup [:model/McpQueryHandle]
     (testing "a temporal-bucket operation rebuckets the temporal breakout"
-      (is (= :year (breakout-unit (derived-query (checkins-by-month)
-                                                 [{:type "temporal-bucket/set" :unit "year"}])))))
+      (is (= :year (breakout-unit (derived-query! (checkins-by-month)
+                                                  [{:type "temporal-bucket/set" :unit "year"}])))))
     (testing "a unit the breakout cannot take is a 400"
       (is (= 400 (:status (derive! (checkins-by-month) {:operations [{:type "temporal-bucket/set"
                                                                       :unit "hour"}]})))))
@@ -78,19 +78,19 @@
           exclude  {:type  "date-filter/set"
                     :value {:type "exclude" :operator "!=" :unit "day-of-week" :values [1 7]}}]
       (testing "set adds a date filter on the temporal breakout's column"
-        (let [query   (derived-query (checkins-by-month) [relative])
+        (let [query   (derived-query! (checkins-by-month) [relative])
               filters (lib/filters query)]
           (is (=? [[:time-interval {} [:field {} (mt/id :checkins :date)] -30 :day]] filters))
           (testing "and set again replaces it rather than adding a second one"
             (is (=? [[:between {} [:field {} (mt/id :checkins :date)] "2014-01-01" "2014-06-30"]]
-                    (lib/filters (derived-query query [specific])))))
+                    (lib/filters (derived-query! query [specific])))))
           (testing "clear removes it"
-            (is (empty? (lib/filters (derived-query query [{:type "date-filter/clear"}])))))))
+            (is (empty? (lib/filters (derived-query! query [{:type "date-filter/clear"}])))))))
       (testing "an exclude filter"
         (is (=? [[:not-in {} [:get-day-of-week {} [:field {} (mt/id :checkins :date)] :iso] 1 7]]
-                (lib/filters (derived-query (checkins-by-month) [exclude])))))
+                (lib/filters (derived-query! (checkins-by-month) [exclude])))))
       (testing "operations apply in order"
-        (let [query (derived-query (checkins-by-month) [relative {:type "temporal-bucket/set" :unit "week"}])]
+        (let [query (derived-query! (checkins-by-month) [relative {:type "temporal-bucket/set" :unit "week"}])]
           (is (= 1 (count (lib/filters query))))
           (is (= :week (breakout-unit query))))))))
 
@@ -98,29 +98,29 @@
   (mt/with-model-cleanup [:model/McpQueryHandle]
     (let [point {:column "count" :value 8 :dimensions [{:column "DATE" :value "2013-01-01T00:00:00Z"}]}]
       (testing "a stay drill: zoom-in.timeseries narrows to the clicked month and buckets by week"
-        (let [query (derived-query (checkins-by-month) [{:type "drill-thru" :drill "zoom-in.timeseries"
-                                                         :context point}])]
+        (let [query (derived-query! (checkins-by-month) [{:type "drill-thru" :drill "zoom-in.timeseries"
+                                                          :context point}])]
           (is (=? [[:= {} [:field {:temporal-unit :month} (mt/id :checkins :date)] "2013-01-01T00:00:00Z"]]
                   (lib/filters query)))
           (is (= :week (breakout-unit query)))))
       (testing "sort takes its direction"
         (is (=? [[:desc {} [:field {} (mt/id :venues :price)]]]
-                (lib/order-bys (derived-query (venues) [{:type      "drill-thru" :drill "sort"
-                                                         :context   {:column "PRICE"}
-                                                         :direction "desc"}])))))
+                (lib/order-bys (derived-query! (venues) [{:type      "drill-thru" :drill "sort"
+                                                          :context   {:column "PRICE"}
+                                                          :direction "desc"}])))))
       (testing "quick-filter takes one of the drill's operators"
         (is (=? [[:< {} [:field {} "count"] 8]]
-                (lib/filters (derived-query (checkins-by-month) [{:type     "drill-thru" :drill "quick-filter"
-                                                                  :context  point
-                                                                  :operator "<"}]) -1))))
+                (lib/filters (derived-query! (checkins-by-month) [{:type     "drill-thru" :drill "quick-filter"
+                                                                   :context  point
+                                                                   :operator "<"}]) -1))))
       (testing "summarize-column takes its aggregation"
         (is (=? [[:sum {} [:field {} (mt/id :venues :price)]]]
-                (lib/aggregations (derived-query (venues) [{:type        "drill-thru" :drill "summarize-column"
-                                                            :context     {:column "PRICE"}
-                                                            :aggregation "sum"}])))))
+                (lib/aggregations (derived-query! (venues) [{:type        "drill-thru" :drill "summarize-column"
+                                                             :context     {:column "PRICE"}
+                                                             :aggregation "sum"}])))))
       (testing "underlying-records drops the aggregation and filters to the clicked month"
-        (let [query (derived-query (checkins-by-month) [{:type "drill-thru" :drill "underlying-records"
-                                                         :context point}])]
+        (let [query (derived-query! (checkins-by-month) [{:type "drill-thru" :drill "underlying-records"
+                                                          :context point}])]
           (is (empty? (lib/aggregations query)))
           (is (= 1 (count (lib/filters query))))))
       (testing "a drill the click does not offer is a 400"
@@ -173,16 +173,16 @@
     (testing "a handle another user stored does not resolve"
       (let [owner-id (mt/user->id :crowberto)
             handle   (ui.tu/store-query-handle! (mcp.session/create! owner-id) owner-id (checkins-by-month))]
-        (is (= 404 (:status (ui.tu/ui-request (ui.tu/ui-auth! :rasta) :post nil
-                                              (str "embed-mcp/queries/" handle "/derive")
-                                              {:operations [{:type "temporal-bucket/set" :unit "year"}]}))))))
+        (is (= 404 (:status (ui.tu/ui-request! (ui.tu/ui-auth! :rasta) :post nil
+                                               (str "embed-mcp/queries/" handle "/derive")
+                                               {:operations [{:type "temporal-bucket/set" :unit "year"}]}))))))
     (testing "Gate 2: a derived handle runs only when its user may query the table"
       (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :rasta)
             handle  (ui.tu/store-query-handle! session-id user-id (checkins-by-month))
-            derived (-> (ui.tu/ui-request auth :post 200 (str "embed-mcp/queries/" handle "/derive")
-                                          {:operations [{:type "temporal-bucket/set" :unit "year"}]})
+            derived (-> (ui.tu/ui-request! auth :post 200 (str "embed-mcp/queries/" handle "/derive")
+                                           {:operations [{:type "temporal-bucket/set" :unit "year"}]})
                         (get-in [:body :handle]))
-            run!    #(ui.tu/ui-request auth :post nil (str "embed-mcp/queries/" derived "/run") {})]
+            run!    #(ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" derived "/run") {})]
         (mt/with-no-data-perms-for-all-users!
           (is (= 403 (:status (run!)))))
         (testing "control: with permission the derived handle runs"
@@ -198,14 +198,14 @@
             handle (ui.tu/store-query-handle! session-id user-id (checkins-by-month))
             drill  {:type    "drill-thru" :drill "underlying-records"
                     :context {:column "count" :value 8 :dimensions [{:column "DATE" :value "2013-01-01T00:00:00Z"}]}}
-            {:keys [status body]} (ui.tu/ui-request auth :post nil "embed-mcp/drills"
-                                                    {:handle handle :operation drill})]
+            {:keys [status body]} (ui.tu/ui-request! auth :post nil "embed-mcp/drills"
+                                                     {:handle handle :operation drill})]
         (is (= 200 status))
         (is (empty? (lib/aggregations (stored-query :rasta (:handle body)))))
         (testing "a client-encoded query is no longer accepted"
-          (is (= 400 (:status (ui.tu/ui-request auth :post nil "embed-mcp/drills"
-                                                {:encodedQuery "ZW5jb2RlZA=="})))))
+          (is (= 400 (:status (ui.tu/ui-request! auth :post nil "embed-mcp/drills"
+                                                 {:encodedQuery "ZW5jb2RlZA=="})))))
         (testing "only a drill can go to the agent this way"
-          (is (= 400 (:status (ui.tu/ui-request auth :post nil "embed-mcp/drills"
-                                                {:handle    handle
-                                                 :operation {:type "temporal-bucket/set" :unit "year"}})))))))))
+          (is (= 400 (:status (ui.tu/ui-request! auth :post nil "embed-mcp/drills"
+                                                 {:handle    handle
+                                                  :operation {:type "temporal-bucket/set" :unit "year"}})))))))))

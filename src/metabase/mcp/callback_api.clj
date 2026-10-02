@@ -12,7 +12,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
-   [metabase.api.response :as api.response]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -355,7 +354,7 @@
                  (mw.session/user-info-for-id (:uid claims)))]
     (cond
       (not user)
-      (respond api.response/response-unauthentic)
+      (respond {:status 401 :body "Unauthenticated"})
 
       (not (scope-satisfied? claims scope))
       (raise (ex-info (tru "This client was not granted the scope this request needs.")

@@ -35,7 +35,7 @@
   (mt/with-model-cleanup [:model/McpQueryHandle]
     (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :rasta scopes)
           handle (ui.tu/store-query-handle! session-id user-id query)]
-      (ui.tu/ui-request auth :post nil (str "embed-mcp/queries/" handle "/" route) (or body {})))))
+      (ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" handle "/" route) (or body {})))))
 
 (defn- rows [response]
   (get-in response [:body :data :rows]))
@@ -136,9 +136,9 @@
               auth         (ui.tu/ui-auth! :rasta)]
           (doseq [route ["run" "pivot" "query_metadata" "parameter/remapping"]]
             (testing route
-              (is (= 404 (:status (ui.tu/ui-request auth :post nil
-                                                    (str "embed-mcp/queries/" owner-handle "/" route)
-                                                    {:parameter {:id "x"} :value 1})))))))))))
+              (is (= 404 (:status (ui.tu/ui-request! auth :post nil
+                                                     (str "embed-mcp/queries/" owner-handle "/" route)
+                                                     {:parameter {:id "x"} :value 1})))))))))))
 
 (deftest run-ignores-a-query-in-the-body-test
   (testing "The iframe cannot run a query that no handle holds: a run reads only the stored query, whatever the body
