@@ -73,11 +73,22 @@ export const BrowseCard = ({
         h="100%"
         w="100%"
       >
-        <FixedSizeIcon
-          name={icon}
-          c={iconColor}
-          size={sizeOptions[size].iconSize}
-        />
+        {size === "lg" ? (
+          <Flex justify="space-between" align="flex-start" w="100%">
+            <FixedSizeIcon
+              name={icon}
+              c={iconColor}
+              size={sizeOptions[size].iconSize}
+            />
+            {children}
+          </Flex>
+        ) : (
+          <FixedSizeIcon
+            name={icon}
+            c={iconColor}
+            size={sizeOptions[size].iconSize}
+          />
+        )}
         <Ellipsified>
           <Title
             order={2}
