@@ -4,11 +4,10 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.config.core :as config]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
@@ -36,6 +35,13 @@
     (api/check-superuser)
     (user/set-permissions-groups! user-or-id new-groups-or-ids)))
 
+(defenterprise set-group-memberships!
+  "Set the group memberships of `user-or-id`. Without advanced permissions only the group IDs count, and changing them
+  requires a superuser."
+  metabase-enterprise.advanced-permissions.oss-hooks
+  [user-or-id new-user-group-memberships]
+  (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))
+
 (mu/defn maybe-set-user-group-memberships!
   "Implementation for `POST /api/user` and friends; set the PermissionsGroupMemberships for a `user-or-id`."
   [user-or-id :- ::lib.schema.id/user
@@ -47,11 +53,7 @@
     (when (some? is-superuser?)
       (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms/admin-group))))
                   "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
-    (if-let [f (and (premium-features/enable-advanced-permissions?)
-                    config/ee-available?
-                    (requiring-resolve 'metabase-enterprise.advanced-permissions.models.permissions.group-manager/set-user-group-memberships!))]
-      (f user-or-id new-user-group-memberships)
-      (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))))
+    (set-group-memberships! user-or-id new-user-group-memberships)))
 
 (defn fetch-user
   "Implementation for `/api/user` endpoints; fetch a User from the app DB by `:id`, optionally requiring `:type`
