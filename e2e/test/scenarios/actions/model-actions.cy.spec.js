@@ -470,13 +470,12 @@ describe(
         cy.findByTestId("toast-undo")
           .findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`)
           .should("be.visible");
+        H.undoToast().icon("close").click();
+        H.undoToast().should("not.exist");
 
         verifyScoreValue(22, dialect);
 
         resetAndVerifyScoreValue(dialect);
-
-        H.undoToast().icon("close").click();
-        H.undoToast().should("not.exist");
 
         openActionEditorFor(SAMPLE_QUERY_ACTION.name);
 
