@@ -661,7 +661,14 @@ describe("document comments", () => {
   });
 
   describe("comment editor", () => {
-    it("supports formatting via keyboard shortcuts, markdown, and the formatting menu, and emojis", () => {
+    it("supports formatting via keyboard shortcuts, markdown, and the formatting menu, emojis, and mentions", () => {
+      cy.request("post", "/api/user", { email: "no-name@metabase.test" });
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/search",
+        query: { q: "tAbLes" },
+      }).as("searchTables");
+
       startNewCommentIn1ParagraphDocument();
 
       cy.log("supports basic formatting with keyboard shortcuts");
@@ -811,18 +818,9 @@ describe("document comments", () => {
           cy.contains("🍆").should("be.visible");
           cy.contains("🥚").should("be.visible");
         });
-    });
 
-    it("supports mentions, including yourself and users without first and last names", () => {
-      cy.request("post", "/api/user", { email: "no-name@metabase.test" });
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/search",
-        query: { q: "tAbLes" },
-      }).as("searchTables");
-
-      startNewCommentIn1ParagraphDocument();
-
+      cy.log("supports mentions, including yourself");
+      Comments.getNewThreadInput().click();
       cy.realType("@");
       H.documentMentionDialog().within(() => {
         cy.findByText("Lorem ipsum").should("be.visible");
@@ -851,7 +849,7 @@ describe("document comments", () => {
       cy.realPress("Enter");
       H.documentMentionDialog().should("not.exist");
 
-      cy.log("closes suggestion dialog but not the comments modal on Esc");
+      cy.log("closes mention dialog but not the comments modal on Esc");
       cy.realType(" @no");
       H.documentMentionDialog().should("be.visible");
       cy.realPress("Escape");
@@ -870,11 +868,16 @@ describe("document comments", () => {
           .should("be.visible");
 
         cy.realPress([META_KEY, "Enter"]);
-
-        cy.findByText("a few seconds ago").should("be.visible");
-        cy.findByText("@Bobby Tables").should("be.visible");
-        cy.findByText("@None Tableton").should("be.visible");
       });
+
+      Comments.getAllComments()
+        .should("have.length", 5)
+        .eq(4)
+        .within(() => {
+          cy.findByText("a few seconds ago").should("be.visible");
+          cy.findByText("@Bobby Tables").should("be.visible");
+          cy.findByText("@None Tableton").should("be.visible");
+        });
 
       cy.log("handles mentioning users without first and last names");
       Comments.getNewThreadInput().type("@No");
@@ -882,7 +885,7 @@ describe("document comments", () => {
       Comments.getNewThreadInput().type("needs to see this");
       cy.realPress([META_KEY, "Enter"]);
 
-      Comments.getAllComments().should("have.length", 2);
+      Comments.getAllComments().should("have.length", 6);
       // mention is it's own span, so we need to search for the pieces individually
       Comments.getCommentByText("@no-name@metabase.test").should("exist");
       Comments.getCommentByText("needs to see this").should("exist");
@@ -1292,50 +1295,7 @@ describe("document comments", () => {
   });
 
   describe("top level blocks", () => {
-    it("should support ordered list, bullet list, and code block with shortcuts", () => {
-      startNewCommentIn1ParagraphDocument();
-
-      cy.realType("ol");
-      cy.realPress([META_KEY, "Shift", "7"]);
-
-      H.getOrderedList("ol", Comments.getNewThreadInput()).should("be.visible");
-      cy.realPress([META_KEY, "Enter"]);
-      Comments.getAllComments().should("have.length", 1);
-
-      cy.log("bullet list");
-      Comments.getNewThreadInput().click();
-      cy.realType("ul");
-      cy.realPress([META_KEY, "Shift", "8"]);
-
-      H.getBulletList("ul", Comments.getNewThreadInput()).should("be.visible");
-      cy.realPress([META_KEY, "Enter"]);
-      Comments.getAllComments().should("have.length", 2);
-
-      cy.log("blockquote shortcut is disabled");
-      // CustomBlockquote drops tiptap's Mod-Shift-b to keep default browser behavior
-      Comments.getNewThreadInput().click();
-      cy.realType("not a quote");
-      cy.realPress([META_KEY, "Shift", "b"]);
-      cy.realType(" after shortcut");
-      Comments.getNewThreadInput()
-        .find("p")
-        .should("have.text", "not a quote after shortcut");
-      Comments.getNewThreadInput().find("blockquote").should("not.exist");
-      cy.realPress([META_KEY, "Enter"]);
-      Comments.getAllComments().should("have.length", 3);
-      Comments.getCommentByText("not a quote after shortcut")
-        .find("blockquote")
-        .should("not.exist");
-
-      cy.log("code block");
-      Comments.getNewThreadInput().click();
-      cy.realType("code");
-      cy.realPress([META_KEY, "Alt", "c"]);
-
-      H.getCodeBlock("code", Comments.getNewThreadInput()).should("be.visible");
-    });
-
-    it("should support top level blocks with markdown and render them after submitting and reloading", () => {
+    it("should support top level blocks with markdown and shortcuts and render them after submitting and reloading", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.log("blockquote");
@@ -1392,6 +1352,64 @@ describe("document comments", () => {
         "be.visible",
       );
 
+      cy.log("ordered list shortcut");
+      Comments.getNewThreadInput().click();
+      cy.realType("ol shortcut");
+      cy.realPress([META_KEY, "Shift", "7"]);
+
+      H.getOrderedList("ol shortcut", Comments.getNewThreadInput()).should(
+        "be.visible",
+      );
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 5);
+      H.getOrderedList("ol shortcut", Comments.getAllComments().eq(4)).should(
+        "be.visible",
+      );
+
+      cy.log("bullet list shortcut");
+      Comments.getNewThreadInput().click();
+      cy.realType("ul shortcut");
+      cy.realPress([META_KEY, "Shift", "8"]);
+
+      H.getBulletList("ul shortcut", Comments.getNewThreadInput()).should(
+        "be.visible",
+      );
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 6);
+      H.getBulletList("ul shortcut", Comments.getAllComments().eq(5)).should(
+        "be.visible",
+      );
+
+      cy.log("blockquote shortcut is disabled");
+      // CustomBlockquote drops tiptap's Mod-Shift-b to keep default browser behavior
+      Comments.getNewThreadInput().click();
+      cy.realType("not a quote");
+      cy.realPress([META_KEY, "Shift", "b"]);
+      cy.realType(" after shortcut");
+      Comments.getNewThreadInput()
+        .find("p")
+        .should("have.text", "not a quote after shortcut");
+      Comments.getNewThreadInput().find("blockquote").should("not.exist");
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 7);
+      Comments.getCommentByText("not a quote after shortcut")
+        .find("blockquote")
+        .should("not.exist");
+
+      cy.log("code block shortcut");
+      Comments.getNewThreadInput().click();
+      cy.realType("code shortcut");
+      cy.realPress([META_KEY, "Alt", "c"]);
+
+      H.getCodeBlock("code shortcut", Comments.getNewThreadInput()).should(
+        "be.visible",
+      );
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 8);
+      H.getCodeBlock("code shortcut", Comments.getAllComments().eq(7)).should(
+        "be.visible",
+      );
+
       cy.intercept("GET", "/api/document/*").as("reloadedDocument");
       cy.intercept("GET", "/api/comment?*").as("reloadedComments");
       cy.reload();
@@ -1401,6 +1419,15 @@ describe("document comments", () => {
       H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");
       H.getBulletList("ul", Comments.getSidebar()).should("be.visible");
       H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
+      H.getOrderedList("ol shortcut", Comments.getSidebar()).should(
+        "be.visible",
+      );
+      H.getBulletList("ul shortcut", Comments.getSidebar()).should(
+        "be.visible",
+      );
+      H.getCodeBlock("code shortcut", Comments.getSidebar()).should(
+        "be.visible",
+      );
     });
   });
 

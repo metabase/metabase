@@ -477,7 +477,11 @@ describe("documents", () => {
         });
       });
 
-      it("should print and handle undo/redo, resetting the history when a different document is viewed", () => {
+      it("should print and handle undo/redo, resetting the history when a different document is viewed and keeping it on save", () => {
+        const originalText = "Lorem Ipsum and some more words";
+        const originalExact = new RegExp(`^${originalText}$`);
+        const modification = " etc.";
+        const modifiedExact = new RegExp(`^${originalText}${modification}$`);
         H.visitDocument("@documentId");
 
         cy.log("print");
@@ -502,14 +506,10 @@ describe("documents", () => {
         cy.log("undo/redo");
         H.getDocumentCard("Orders").should("exist");
         H.documentContent().within(() => {
-          const originalText = "Lorem Ipsum and some more words";
-          const originalExact = new RegExp(`^${originalText}$`);
           cy.contains(originalExact).click();
           cy.realPress([H.metaKey, "z"]);
           cy.contains(originalExact);
 
-          const modification = " etc.";
-          const modifiedExact = new RegExp(`^${originalText}${modification}$`);
           H.addToDocument(modification, false);
           cy.contains(modifiedExact);
           cy.realPress([H.metaKey, "z"]);
@@ -522,17 +522,11 @@ describe("documents", () => {
         H.documentContent().should("have.text", "");
         cy.realPress([H.metaKey, "z"]);
         H.documentContent().should("have.text", "");
-      });
 
-      it("should not clear undo history on save", () => {
-        const originalText = "Lorem Ipsum and some more words";
-        const originalExact = new RegExp(`^${originalText}$`);
+        cy.log("undo history survives save");
         H.visitDocument("@documentId");
         cy.findByTestId("document-card-embed").should("contain", "37.65"); // wait for data loading
         H.documentContent().contains(originalExact).click();
-
-        const modification = " etc.";
-        const modifiedExact = new RegExp(`^${originalText}${modification}$`);
         H.addToDocument(modification, false);
         H.documentContent().contains(modifiedExact);
 
@@ -1402,7 +1396,7 @@ describe("documents", () => {
       H.undoToast().findByText("Document saved").should("exist");
     });
 
-    it("should support keyboard navigation when creating a new question", () => {
+    it("should support keyboard navigation when creating a new question and show the 'Create new question' footer for empty search results", () => {
       H.visitDocument("@documentId");
       H.documentContent().click();
 
@@ -1451,11 +1445,9 @@ describe("documents", () => {
 
       cy.log("Verify modal is closed");
       cy.findByRole("dialog", { name: "Edit SQL Query" }).should("not.exist");
-    });
 
-    it("should show the 'Create new question' footer for empty search results and open the new question menu on Enter", () => {
-      H.visitDocument("@documentId");
-      H.documentContent().click();
+      cy.log("'Create new question' footer for empty search results");
+      H.clearDocumentContent();
 
       cy.log("Trigger command menu and select Chart");
       H.addToDocument("/", false);

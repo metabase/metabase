@@ -10,58 +10,6 @@ describe("Links in documents", () => {
     cy.signInAsAdmin();
   });
 
-  describe("plain links", () => {
-    it("should convert markdown links and support adding, editing, and removing links via floating menu", () => {
-      cy.visit("/document/new");
-      H.documentContent().click();
-
-      cy.log("Convert a markdown link to a real link");
-      H.addToDocument("Read [there](url.com).", false);
-      H.documentContent()
-        .findByRole("paragraph")
-        .should("contain.text", "Read there.")
-        .findByRole("link", { name: "there" })
-        .should("exist");
-      H.addToDocument("", true);
-
-      cy.log("Add text and make a link");
-      H.addToDocument("Click here", false);
-      times("here".length, () => cy.realPress(["Shift", "{leftarrow}"]));
-      H.documentFormattingMenu().findByRole("button", { name: /link/ }).click();
-      cy.realType("test.com{enter}");
-
-      cy.log("Assert link exists with correct href");
-      H.documentContent()
-        .findByRole("link", { name: "here" })
-        .invoke("attr", "href")
-        .then((href) => expect(href).to.equal("https://test.com"));
-
-      cy.log("Edit link url");
-      H.documentContent().findByRole("link", { name: "here" }).realHover();
-      cy.icon("pencil").click();
-      H.documentFormattingMenu().find("input").should("be.focused");
-      cy.realType("url.com/a/1?k=v");
-      H.documentFormattingMenu().icon("check").click();
-
-      cy.log("Assert link still exists, has updated href");
-      H.documentContent()
-        .findByRole("link", { name: "here" })
-        .invoke("attr", "href")
-        .then((href) => expect(href).to.equal("https://url.com/a/1?k=v"));
-
-      cy.log("Remove link");
-      H.documentContent().findByRole("link", { name: "here" }).realHover();
-      cy.icon("pencil").click();
-      cy.findByTestId("document-formatting-menu").icon("trash").click();
-
-      cy.log("Assert link is unlinked");
-      H.documentContent()
-        .contains("p", "Click here")
-        .findByRole("link", { name: "here" })
-        .should("not.exist");
-    });
-  });
-
   describe("smart links", () => {
     beforeEach(() => {
       H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY, { wrapId: true });
@@ -128,11 +76,58 @@ describe("Links in documents", () => {
         .should("exist");
     });
 
-    it("should add smart links via the suggestion menu, its 'Browse all' picker, and the mention menu's 'Browse all' picker", () => {
+    it("should convert markdown links, add, edit and remove links via the floating menu, and add smart links via the suggestion and mention menus", () => {
       cy.visit("/document/new");
       H.documentContent().click();
 
+      cy.log("Convert a markdown link to a real link");
+      H.addToDocument("Read [there](url.com).", false);
+      H.documentContent()
+        .findByRole("paragraph")
+        .should("contain.text", "Read there.")
+        .findByRole("link", { name: "there" })
+        .should("exist");
+      H.addToDocument("", true);
+
+      cy.log("Add text and make a link");
+      H.addToDocument("Click here", false);
+      times("here".length, () => cy.realPress(["Shift", "{leftarrow}"]));
+      H.documentFormattingMenu().findByRole("button", { name: /link/ }).click();
+      cy.realType("test.com{enter}");
+
+      cy.log("Assert link exists with correct href");
+      H.documentContent()
+        .findByRole("link", { name: "here" })
+        .invoke("attr", "href")
+        .then((href) => expect(href).to.equal("https://test.com"));
+
+      cy.log("Edit link url");
+      H.documentContent().findByRole("link", { name: "here" }).realHover();
+      cy.icon("pencil").click();
+      H.documentFormattingMenu().find("input").should("be.focused");
+      cy.realType("url.com/a/1?k=v");
+      H.documentFormattingMenu().icon("check").click();
+
+      cy.log("Assert link still exists, has updated href");
+      H.documentContent()
+        .findByRole("link", { name: "here" })
+        .invoke("attr", "href")
+        .then((href) => expect(href).to.equal("https://url.com/a/1?k=v"));
+
+      cy.log("Remove link");
+      H.documentContent().findByRole("link", { name: "here" }).realHover();
+      cy.icon("pencil").click();
+      cy.findByTestId("document-formatting-menu").icon("trash").click();
+
+      cy.log("Assert link is unlinked");
+      H.documentContent()
+        .contains("p", "Click here")
+        .findByRole("link", { name: "here" })
+        .should("not.exist");
+
       cy.log("Add a smart link from the suggestion menu");
+      H.documentContent().click();
+      H.addToDocument("", true);
       cy.log("Trigger suggestion menu with /");
       H.addToDocument("/", false);
 

@@ -293,7 +293,7 @@ describe("documents card embed node custom logic", () => {
       });
     });
 
-    it("should disable 'Add supporting text' and prevent adding a fourth card when a flexContainer has 3 cards", () => {
+    it("should disable 'Add supporting text', prevent adding a fourth card, and delete cards with Backspace when a flexContainer has 3 cards", () => {
       // Wait for all cards to load
       H.getDocumentCard("Orders")
         .should("be.visible")
@@ -375,6 +375,34 @@ describe("documents card embed node custom logic", () => {
       H.documentContent()
         .findAllByTestId("document-card-embed")
         .should("have.length", 4);
+
+      cy.log("Backspace deletes a selected card from the flexContainer");
+      H.getDocumentCard("Orders").realClick({ position: "top" });
+      cy.realPress("Backspace");
+
+      H.documentContent()
+        .findAllByTestId("card-embed-title")
+        .filter((_index, element) => element.innerText === "Orders")
+        .should("not.exist");
+      H.documentContent()
+        .findAllByTestId("document-card-embed")
+        .should("have.length", 3);
+      H.documentContent().find('[data-type="flexContainer"]').should("exist");
+
+      cy.log("deleting down to 1 card unwraps the flexContainer");
+      H.getDocumentCard("Orders, Count").realClick({ position: "top" });
+      cy.realPress("Backspace");
+
+      H.documentContent()
+        .find('[data-type="flexContainer"]')
+        .should("not.exist");
+      H.documentContent()
+        .findAllByTestId("document-card-embed")
+        .should("have.length", 2);
+      H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
+        "exist",
+      );
+      H.getDocumentCard("Orders Model").should("exist");
     });
 
     it("should reorder cards within the same flexContainer and preserve resized widths when swapping", () => {
@@ -725,79 +753,6 @@ describe("documents card embed node custom logic", () => {
 
       // Verify the remaining card is Orders, Count
       H.getDocumentCard("Orders, Count").should("exist").and("be.visible");
-    });
-
-    it("should delete a cardEmbed from a flexContainer when selected and Backspace is pressed", () => {
-      H.createDocument({
-        name: "DnD Test Document",
-        document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
-        collection_id: null,
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
-      // Wait for the cards in the existing flexContainer to load
-      H.getDocumentCard("Orders")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-      H.getDocumentCard("Orders, Count")
-        .should("be.visible")
-        .findByTestId("table-root")
-        .should("exist");
-
-      // Add the standalone card to the flexContainer
-      H.dragAndDropCardOnAnotherCard(
-        "Orders, Count, Grouped by Created At (year)",
-        "Orders",
-        { side: "right" },
-      );
-
-      // Verify the flexContainer now has 3 cards
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("exist")
-        .within(() => {
-          cy.findAllByTestId("document-card-embed").should("have.length", 3);
-        });
-
-      // Click on one of the cards in the flexContainer to select it
-      H.getDocumentCard("Orders").realClick({ position: "top" });
-
-      // Press Backspace to delete the selected card
-      cy.realPress("Backspace");
-
-      // Verify the Orders card has been deleted from the flexContainer
-      H.documentContent()
-        .findAllByTestId("card-embed-title")
-        .filter((_index, element) => element.innerText === "Orders")
-        .should("not.exist");
-
-      H.documentContent()
-        .findAllByTestId("document-card-embed")
-        .should("have.length", 2);
-
-      H.documentContent().find('[data-type="flexContainer"]').should("exist");
-
-      // Click on one of the cards in the flexContainer to select it
-      H.getDocumentCard("Orders, Count").realClick({ position: "top" });
-
-      // Press Backspace to delete the selected card
-      cy.realPress("Backspace");
-
-      // With only 1 card left, the flexContainer is unwrapped
-      H.documentContent()
-        .find('[data-type="flexContainer"]')
-        .should("not.exist");
-
-      // Verify only the Orders by year card remains as a standalone card
-      H.documentContent()
-        .findAllByTestId("document-card-embed")
-        .should("have.length", 1);
-      H.getDocumentCard("Orders, Count, Grouped by Created At (year)").should(
-        "exist",
-      );
     });
   });
 });
