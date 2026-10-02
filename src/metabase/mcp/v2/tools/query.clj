@@ -101,10 +101,8 @@
       ;; page's predicate rather than stack a dead one beside it. The `:query` branch above is the
       ;; one place a caller-supplied query is stripped.
       ;;
-      ;; `POST /api/embed-mcp/drills` stores its caller-supplied query verbatim and does NOT strip,
-      ;; so a caller holding a UI credential can still land a marked filter in a drill handle and
-      ;; have it silently dropped from later pages. Accepted: reaching that needs the scoped UI
-      ;; credential, and the damage is confined to the caller's own narrowed-question reporting.
+      ;; The iframe's derive and drill routes build their queries from a stored handle on the
+      ;; server, so a marked filter reaches a derived handle only when the base handle carried it.
       {:query stored :prompt (or prompt stored-prompt)})))
 
 ;;; ------------------------------------------------- Execution ----------------------------------------------------

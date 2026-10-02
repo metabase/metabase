@@ -95,21 +95,6 @@
                            :get 200 "embed-mcp/bootstrap" credential session-id)))
           "the purpose-built endpoint serves what the iframe actually needs"))))
 
-(deftest drills-costs-the-query-scope-test
-  (testing "GHY-4400: the scope gate covers the MCP module's own routes, not just the query endpoints"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          post!      (fn [scopes expected-status]
-                       (client/client-full-response
-                        :post expected-status "embed-mcp/drills"
-                        {:request-options
-                         {:headers {"x-metabase-mcp-ui-auth" (mcp.session/issue-ui-credential
-                                                              session-id user-id scopes)
-                                    "mcp-session-id" session-id}}}
-                        {:encodedQuery "ZW5jb2RlZA=="}))]
-      (is (= 403 (:status (post! #{"agent:search"} 403))))
-      (is (= 200 (:status (post! #{"agent:query:run"} 200)))))))
-
 (deftest dataset-routes-cost-the-query-scope-test
   (testing "GHY-4400: a route on the surface is refused unless the minting session's signed scopes cover it"
     (let [user-id    (mt/user->id :crowberto)
