@@ -16,6 +16,14 @@ import type { IconName } from "metabase-types/api";
 
 import S from "./EmptyState.module.css";
 
+/**
+ * A raster illustration and its high-density variant, both resolved by the bundler.
+ */
+export type ImageSource = {
+  src: string;
+  srcSet?: string;
+};
+
 // Don't break existing empty states
 // TODO - remove these and update empty states with proper usage of illustrationElement
 const LegacyIcon = ({ icon }: { icon: IconName }) =>
@@ -27,21 +35,20 @@ const LegacyImage = ({
   imageClassName,
   message,
 }: {
-  image: string;
+  image: ImageSource;
   imageHeight?: number;
   imageClassName?: string;
   message?: string;
-}) =>
-  image ? (
-    <img
-      src={`${image}.png`}
-      width="300px"
-      height={imageHeight}
-      alt={message}
-      srcSet={`${image}@2x.png 2x`}
-      className={imageClassName}
-    />
-  ) : null;
+}) => (
+  <img
+    src={image.src}
+    width="300px"
+    height={imageHeight}
+    alt={message}
+    srcSet={image.srcSet}
+    className={imageClassName}
+  />
+);
 
 type EmptyStateProps = {
   message?: React.ReactNode;
@@ -52,7 +59,7 @@ type EmptyStateProps = {
   onActionClick?: () => void;
   className?: string;
   icon?: IconName;
-  image?: string;
+  image?: ImageSource;
   spacing?: "sm" | "md";
   actionVariant?: ButtonProps["variant"];
 };

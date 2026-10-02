@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
+import {
+  EmptyState,
+  type ImageSource,
+} from "metabase/common/components/EmptyState";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import type { IconName } from "metabase-types/api";
@@ -14,7 +17,7 @@ interface AdminAwareEmptyStateProps {
   message?: ReactNode;
   adminMessage?: ReactNode;
   icon?: IconName;
-  image?: string;
+  image?: ImageSource;
   action?: ReactNode;
   adminAction?: ReactNode;
   link?: string;
