@@ -149,7 +149,7 @@ export const getEventDimensions = (
       ? dimensionModel.columnByCardId[seriesModel.cardId]
       : dimensionModel.column;
 
-  const hasDimensionValue = sameCardDatumColumns.length > 0;
+  const hasDimensionValue = sameCardDatumColumns.includes(dimensionColumn);
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {

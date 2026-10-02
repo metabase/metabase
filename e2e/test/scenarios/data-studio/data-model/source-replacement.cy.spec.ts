@@ -1333,7 +1333,11 @@ function buildClickBehaviorDashboard({
           },
         ],
         visualization_settings: {
-          click_behavior: crossfilterClickBehavior(CATEGORY_FILTER_ID),
+          column_settings: {
+            '["name","category"]': {
+              click_behavior: crossfilterClickBehavior(CATEGORY_FILTER_ID),
+            },
+          },
         },
       },
     });
