@@ -1,20 +1,24 @@
 (ns metabase-enterprise.data-apps.resource-export
-  "What a data app's `resources/` files are written from, as serialization writes it: the query Metabase builds from
-  each `defineQuery` definition, and each action the app runs together with its model and the metrics its queries
-  aggregate. Nothing here references an entity by numeric ID, so the author copies it into the app's resources as it
-  is, apart from what makes it a copy.
+  "What a data app's `resources/` files are written from, as serialization writes it: the saved question that holds
+  the query Metabase builds from each `defineQuery` definition, and each action the app runs together with its model
+  and the metrics its queries aggregate. Nothing here references an entity by numeric ID, so the author copies it into
+  the app's resources as it is, apart from what makes it a copy.
 
   Permissions are the typed schema's: the caller must be able to read each source, and what a routing destination
   backs is left out, as the schema leaves it out. A table the caller can't read answers as if it didn't exist, before
   its columns are looked at, so the export reveals nothing the schema wouldn't."
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.actions.core :as actions]
+   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -75,6 +79,59 @@
   (when-not exported
     (fail (tru "Serialization could not export {0}." label))))
 
+(defn- as-written
+  "`entity` as the author writes it: in the key order serialization writes, and without the keys it leaves unset,
+  which the format omits. The query is kept whole; nothing in it is unset."
+  [entity]
+  (let [query (:dataset_query entity)]
+    (serialization.dump/serialization-deep-sort
+     (cond-> (walk/postwalk (fn [x] (if (map? x) (into {} (remove (comp nil? val)) x) x))
+                            (dissoc entity :dataset_query))
+       query (assoc :dataset_query query)))))
+
+(defn- export-name->card-name
+  "The saved question's name from the definition's export name: its words, as `ProductsList` is `Products list`."
+  [export]
+  (-> export
+      (str/replace #"([a-z0-9])([A-Z])" "$1 $2")
+      (str/replace #"[\s_]+" " ")
+      u/lower-case-en
+      str/capitalize))
+
+(defn- question-card
+  "The saved question an author writes for a `defineQuery` definition, as a card for serialization to extract: the
+  query Metabase `built`, created by the caller, with the definition's entity ID. The app's collection is set on the
+  extracted entity, since serialization resolves a collection by numeric ID."
+  [{:keys [export entity_id]} built]
+  {:entity_id              entity_id
+   :name                   (export-name->card-name export)
+   :type                   :question
+   :display                :table
+   :description            nil
+   :collection_id          nil
+   :collection_position    nil
+   :collection_preview     true
+   :dashboard_id           nil
+   :document_id            nil
+   :archived               false
+   :archived_directly      false
+   :public_uuid            nil
+   :made_public_by_id      nil
+   :enable_embedding       false
+   :embedding_params       nil
+   :embedding_type         nil
+   :creator_id             api/*current-user-id*
+   :created_at             nil
+   :card_schema            nil
+   :database_id            (:database built)
+   :dataset_query          (lib/prepare-for-serialization built)
+   :visualization_settings {}
+   :parameters             []
+   :parameter_mappings     []
+   :result_metadata        nil
+   :dimensions             nil
+   :dimension_mappings     nil})
+
 (defn- built-query
   "The query Metabase builds from `query-definition`, as the dev preview does. The table has to be one the typed
   schema would show the caller: one they can read. (A routing destination has no tables of its own, only cards.)"
@@ -86,15 +143,17 @@
     (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)))
 
 (defn- export-query
-  "A `defineQuery` definition as `{:export :dataset_query :metric_ids}`, or `{:export :error}`."
-  [{:keys [export query]}]
+  "A `defineQuery` definition as `{:export :entity :metric_ids}`, the entity being the saved question that holds the
+  query Metabase builds from it, in the collection with `collection-entity-id`, or `{:export :error}`."
+  [collection-entity-id {:keys [export query] :as definition}]
   (with-item-error
     {:export export}
     (fn []
       (let [built (built-query query)]
-        {:export        export
-         :dataset_query (serdes/export-mbql built)
-         :metric_ids    (vec (sort (lib/all-source-card-ids built)))}))))
+        {:export     export
+         :entity     (as-written (cond-> (serdes/extract-one "Card" {} (question-card definition built))
+                                   collection-entity-id (assoc :collection_id collection-entity-id)))
+         :metric_ids (vec (sort (lib/all-source-card-ids built)))}))))
 
 (defn- export-card
   "The model or metric `card` as `{:id :entity}`, or `{:id :error}` when the app can't copy it. `exported` is its
@@ -109,7 +168,7 @@
         (when-not (and card (= card-type (keyword (:type card))) (mi/can-read? card))
           (fail (tru "{0} does not exist, or you can''t read it." label)))
         (check-copyable label "Card" card exported #{})
-        {:id card-id, :entity exported}))))
+        {:id card-id, :entity (as-written exported)}))))
 
 (defn- export-action
   "The action with `action-id` as `{:id :entity}`, or `{:id :error}` when the app can't copy it, including when its
@@ -127,16 +186,17 @@
         (check-copyable label "Action" action exported #{(:model_id action)})
         (when model-error
           (fail (tru "{0} can''t be copied because its model can''t: {1}" label model-error)))
-        {:id action-id, :entity exported}))))
+        {:id action-id, :entity (as-written exported)}))))
 
 (defn export-resources
-  "Export the query built from each of `queries` (`{:export <name> :query <definition>}`), the actions with
-  `action-ids`, the models those actions belong to, and the metrics the queries aggregate. Each item comes back on
-  its own, with what it exports or the error that stops it, so one item that can't be exported doesn't hide the
-  rest. A query lists the entity IDs of the metrics it references, which the author points at the app's copies."
-  [queries action-ids]
+  "Export the saved question built from each of `queries` (`{:export <name> :query <definition> :entity_id <id>}`),
+  in the app's collection with `collection-entity-id`, the actions with `action-ids`, the models those actions
+  belong to, and the metrics the queries aggregate. Each item comes back on its own, with what it exports or the
+  error that stops it, so one item that can't be exported doesn't hide the rest. A query lists the entity IDs of the
+  metrics it references, which the author points at the app's copies."
+  [queries action-ids & {:keys [collection-entity-id]}]
   (serdes/with-cache
-    (let [queries       (mapv export-query queries)
+    (let [queries       (mapv (partial export-query collection-entity-id) queries)
           actions-by-id (into {} (map (juxt :id identity)) (actions/select-actions-for-ids nil action-ids))
           model-ids     (into (sorted-set) (keep :model_id) (vals actions-by-id))
           metric-ids    (into (sorted-set) (mapcat :metric_ids) queries)
