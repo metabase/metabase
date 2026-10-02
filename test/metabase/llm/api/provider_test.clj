@@ -13,7 +13,8 @@
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -356,6 +357,30 @@
                (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
                                                {:type "anthropic" :config {:api-key "sk-ant-nope"}}))))
         (is (= [] (llm.provider/connections)))))))
+
+(deftest a-refused-listing-logs-only-a-malformed-catalog-test
+  (testing "a model list that was not a catalog is logged with its cause, which the admin never sees"
+    (let [cause (Exception. "Unexpected character '<'")]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [& _]
+                                    (throw (ex-info "vLLM returned an unexpected model list response"
+                                                    {:api-error true :status-code 400 :error-code :malformed-model-catalog}
+                                                    cause)))]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (log.capture/with-log-messages-for-level [messages [metabase.llm.api.provider :warn]]
+            (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                  {:type "vllm" :config {:base-url "https://vllm.example.com/v1"}})
+            (is (some #(= cause (ex-cause (:e %))) (messages))))))))
+  (testing "any other refusal is not, since its ex-data carries the provider's response"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [& _]
+                                  (throw (ex-info "Invalid API key"
+                                                  {:api-error true :status-code 401 :body {:secret "response"}})))]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (log.capture/with-log-messages-for-level [messages [metabase.llm.api.provider :warn]]
+          (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                {:type "vllm" :config {:base-url "https://vllm.example.com/v1"}})
+          (is (empty? (messages))))))))
 
 (deftest models-listing-does-not-probe-test
   (testing "listing models is a page load; only a write may spend a generation on the operator's server"

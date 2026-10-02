@@ -201,9 +201,11 @@
           (catch clojure.lang.ExceptionInfo e
             (if (provider-client-error? e)
               (do
-                ;; the admin gets only the message; the cause — say, the parse error behind a model list that was
-                ;; not JSON — is what tells an operator what actually came back
-                (log/warn e "Listing models was refused for LLM provider connection" {:connection conn-key :type type})
+                ;; the admin gets only the message; the parse error behind a model list that was not JSON is what
+                ;; tells an operator what actually came back. Only that error: any other carries the provider's
+                ;; response in its ex-data, which `rethrow-api-error!` keeps out of the log on purpose
+                (when (= :malformed-model-catalog (:error-code (ex-data e)))
+                  (log/warn e "Listing models was refused for LLM provider connection" {:connection conn-key :type type}))
                 ;; Keep offering config-models, otherwise admin has no way to select a different model to fix "model
                 ;; not served in given region" errors.
                 {:models (or config-models []) :error (.getMessage e)})
