@@ -464,6 +464,15 @@
        "#_{:clj-kondo/ignore [:discouraged-var]}\n"
        "(inc 3)\n"))
 
+(defn- var-hits
+  "Kondo's JSON output, as [[kondo-ratchet/attribute-discouraged]] takes it, for a discouraged-var finding at each
+  `[file row col sym]` of `hits`, with the var usage it reports on."
+  [& hits]
+  {:findings (for [[file row col] hits]
+               {:filename file, :row row, :col col, :type "discouraged-var"})
+   :analysis {:var-usages (for [[file row col sym] hits]
+                            {:filename file, :row row, :col col, :to (namespace sym), :name (name sym)})}})
+
 (def ^:private known
   {:discouraged-var       #{'clojure.core/eval 'clojure.core/println}
    :discouraged-namespace #{'clojure.tools.logging}})
@@ -489,10 +498,8 @@
     (is (= {:clojure.core/eval 1}
            (-> (kondo-ratchet/attribute-discouraged
                 {"b.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(do (eval 1) (eval 2))\n"}
-                {:findings [{:filename "b.clj", :row 2, :col 5, :type "discouraged-var"}
-                            {:filename "b.clj", :row 2, :col 14, :type "discouraged-var"}]
-                 :analysis {:var-usages [{:filename "b.clj", :row 2, :col 5, :to "clojure.core", :name "eval"}
-                                         {:filename "b.clj", :row 2, :col 14, :to "clojure.core", :name "eval"}]}}
+                (var-hits ["b.clj" 2 5 'clojure.core/eval]
+                          ["b.clj" 2 14 'clojure.core/eval])
                 []
                 known)
                (get-in [:actual :discouraged-var])))))
@@ -501,10 +508,8 @@
            (-> (kondo-ratchet/attribute-discouraged
                 {"b.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(eval 1)\n"
                  "c.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(eval 1)\n"}
-                {:findings [{:filename "b.clj", :row 2, :col 1, :type "discouraged-var"}
-                            {:filename "c.clj", :row 2, :col 1, :type "discouraged-var"}]
-                 :analysis {:var-usages [{:filename "b.clj", :row 2, :col 1, :to "clojure.core", :name "eval"}
-                                         {:filename "c.clj", :row 2, :col 1, :to "clojure.core", :name "eval"}]}}
+                (var-hits ["b.clj" 2 1 'clojure.core/eval]
+                          ["c.clj" 2 1 'clojure.core/eval])
                 []
                 known)
                (get-in [:actual :discouraged-var])))))
@@ -527,3 +532,17 @@
   (testing "findings in files outside `contents` are ignored"
     (is (= {}
            (get-in (kondo-ratchet/attribute-discouraged {} eval-and-println [] known) [:actual :discouraged-var])))))
+
+(deftest parse-kondo-output-test
+  (testing "a run that reported findings still parses"
+    (is (= {:findings [{:type :x}]}
+           (kondo-ratchet/parse-kondo-output :edn {:exit 2, :out ["{:findings [{:type :x}]}"], :err []})))
+    (is (= {:findings [{:type "x"}]}
+           (kondo-ratchet/parse-kondo-output :json {:exit 3, :out ["{\"findings\": [{\"type\": \"x\"}]}"], :err []}))))
+  (testing "a failed run throws with its stderr rather than reading as no findings"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?s)clj-kondo run failed \(exit 1\):.*boom"
+                          (kondo-ratchet/parse-kondo-output :edn {:exit 1, :out ["{}"], :err ["boom"]}))))
+  (testing "output that doesn't parse to a map throws"
+    (doseq [out [["not json"] [""] ["[]"]]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"clj-kondo run failed \(exit 0\)"
+                            (kondo-ratchet/parse-kondo-output :json {:exit 0, :out out, :err []}))))))

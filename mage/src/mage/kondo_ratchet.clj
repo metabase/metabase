@@ -16,24 +16,32 @@
 (def ^:private lint-roots
   ["src" "test" "enterprise/backend" "modules/drivers" "dev" "bin" "mage"])
 
-(defn- run-kondo!
-  "Parsed output of a `clojure -M:kondo` run over `paths`, with `config` merged over the repository's and
-  output written as `output-format` (`:edn` or `:json`).
-  Throws when kondo fails or its output doesn't parse, rather than returning an empty result."
-  [output-format config paths]
-  (let [{:keys [exit out err]} (apply shell/sh* {:quiet? true}
-                                      "clojure" "-M:kondo"
-                                      "--config" (pr-str (assoc-in config [:output :format] output-format))
-                                      "--lint" paths)
-        ;; 2 and 3 mean kondo ran and reported warnings or errors
-        parsed                 (when (#{0 2 3} exit)
-                                 (case output-format
-                                   :edn  (edn/read-string (str/join "\n" out))
-                                   :json (json/read-str (str/join "\n" out) {:key-fn keyword})))]
+(defn parse-kondo-output
+  "The map a kondo run printed as `out` lines in `output-format` (`:edn` or `:json`).
+  Throws when the run failed (an `exit` other than 0, 2 or 3) or its output isn't a map, rather than returning
+  an empty result."
+  [output-format {:keys [exit out err]}]
+  (let [;; 2 and 3 mean kondo ran and reported warnings or errors
+        parsed (when (#{0 2 3} exit)
+                 (try
+                   (case output-format
+                     :edn  (edn/read-string (str/join "\n" out))
+                     :json (json/read-str (str/join "\n" out) {:key-fn keyword}))
+                   (catch Exception _ nil)))]
     (when-not (map? parsed)
       (throw (ex-info (format "clj-kondo run failed (exit %d):\n%s" exit (str/join "\n" (take-last 20 err)))
                       {:exit exit})))
     parsed))
+
+(defn- run-kondo!
+  "Output of a `clojure -M:kondo` run over `paths`, with `config` merged over the repository's, as
+  [[parse-kondo-output]] reads it."
+  [output-format config paths]
+  (parse-kondo-output output-format
+                      (apply shell/sh* {:quiet? true}
+                             "clojure" "-M:kondo"
+                             "--config" (pr-str (assoc-in config [:output :format] output-format))
+                             "--lint" paths)))
 
 (defn- kondo-findings!
   "Kondo run over `roots`, optionally with `linter` forced to `:warning`; returns findings as EDN maps

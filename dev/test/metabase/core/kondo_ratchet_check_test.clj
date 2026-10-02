@@ -219,11 +219,12 @@
          test-only linter")))
 
 (deftest check-discouraged-attribution-test
-  (let [ratchets    {:ignore-counts {}}
-        occurrences [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}]
-        attribution {:actual {}, :unattributed [], :unresolved []}
+  (let [ratchets         {:ignore-counts {}}
+        occurrences      [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}]
+        attribution      {:actual {}, :unattributed [], :unresolved []}
         ;; check attributes the prod and test occurrences in one call; only the prod ones carry anything here
-        attribute   (fn [m] {:attribute (fn [[_prod _test]] [(merge attribution m) attribution])})]
+        with-attribution (fn [m] {:attribute (constantly [(merge attribution m) attribution])})
+        finding-at       (fn [line] [{:file "f.clj", :line line, :linters [:discouraged-var]}])]
     (testing "without an :attribute, a discouraged-var ignore fails instead of counting as zero"
       (is (=? {:lines   [#"attributing :discouraged-var/:discouraged-namespace ignores needs a kondo run.*"]
                :thrown? true}
@@ -234,13 +235,13 @@
                         "ok -- 0 test ignore forms within 0 test policies"]
               :thrown? false}
              (check-with! ratchets occurrences
-                          (attribute {:unattributed [{:file "f.clj", :line 1, :linters [:discouraged-var]}]})))))
+                          (with-attribution {:unattributed (finding-at 1)})))))
     (testing "a finding with no configured symbol fails"
       (is (=? {:lines   ["ignored discouraged-var/namespace findings with no per-symbol budget -- they can't be budgeted, so remove the ignore or the usage:"
                          "  f.clj:2: :discouraged-var finding not resolved to a configured symbol"]
                :thrown? true}
               (check-with! ratchets occurrences
-                           (attribute {:unresolved [{:file "f.clj", :line 2, :linters [:discouraged-var]}]})))))))
+                           (with-attribution {:unresolved (finding-at 2)})))))))
 
 (deftest check-unconfigured-budget-test
   (let [ratchets {:ignore-counts {:a 1}, :discouraged-var-counts {:a/gone 2, :a/x 1}}]
