@@ -966,7 +966,8 @@
 
   These values are not ratcheted because any source change can move them. Use namespace sizes to track
   cycle reduction: splitting a module can grow a cycle's module count without removing namespaces.
-  Density compares how tangled cycles of different sizes are; cycle rank is an upper bound on the edges to cut."
+  Density compares how tangled cycles of different sizes are.
+  Cycle rank is an upper bound on the edges to cut."
   ([]
    (module-boundary-stats (dependencies) (kondo-config)))
   ([deps config]
