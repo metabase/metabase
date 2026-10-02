@@ -17,11 +17,27 @@ import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
+const queryWithInvalidSavedQuestionEntityId = {
+  savedQuestionEntityId: 54,
+  source: TEST_SCHEMA.tables.orders,
+} as const;
+
+// @ts-expect-error saved-question entity IDs are strings
+defineQuery(queryWithInvalidSavedQuestionEntityId);
+
 // @ts-expect-error query definitions with breakouts require aggregations
 defineQuery({
   source: TEST_SCHEMA.tables.orders,
   breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
 });
+
+const actionWithInvalidCopiedActionEntityId = {
+  copiedActionEntityId: 91,
+  action: TEST_SCHEMA.models.orders.actions.create,
+} as const;
+
+// @ts-expect-error copied action entity IDs are strings
+defineAction(actionWithInvalidCopiedActionEntityId);
 
 // @ts-expect-error action definitions must reference a generated action
 defineAction({ action: TEST_SCHEMA.tables.orders });
@@ -107,6 +123,7 @@ breakout(TEST_SCHEMA.tables.orders.fields.status, { unit: "month" });
 function InvalidTypeFixtures() {
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
+    savedQuestionEntityId: "ordersQuestionEntity1",
   });
 
   // @ts-expect-error a query is a `defineQuery` export from `queries/`, never an inline object
