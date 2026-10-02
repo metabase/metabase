@@ -23,6 +23,7 @@
    [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.schema :as ms]
@@ -714,13 +715,21 @@
       (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
         (fetch-illustration :login-page-illustration-custom 404)))))
 
+(defsetting test-session-api-i18n-setting
+  "Public setting whose value nests a deferred-tru, so the locale header has something to translate."
+  :encryption :no
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] {:display-name (deferred-tru "Connection String")})
+  :doc        false)
+
 (deftest properties-i18n-test
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
       (mt/with-mock-i18n-bundles! {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
-                   :engines :h2 :details-fields first :display-name)))))))
+                   :test-session-api-i18n-setting :display-name)))))))
 
 (deftest properties-skip-sensitive-test
   (testing "GET /session/properties"
