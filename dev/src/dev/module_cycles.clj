@@ -103,37 +103,35 @@
 (defn- shortest-path
   "The shortest chain of requires from `from` to `to` that stays inside `cluster`, as a vector of modules."
   [graph cluster from to]
-  (loop [frontier [[from]]
+  (loop [frontier (conj clojure.lang.PersistentQueue/EMPTY [from])
          seen     #{from}]
-    (when-let [[path & more] (seq frontier)]
-      (let [here (peek path)]
-        (if (= here to)
-          path
-          (let [nexts (remove seen (filter cluster (sort (get graph here))))]
-            (recur (into (vec more) (map #(conj path %)) nexts)
-                   (into seen nexts))))))))
+    (when-let [path (peek frontier)]
+      (if (= (peek path) to)
+        path
+        (let [nexts (remove seen (filter cluster (sort (get graph (peek path)))))]
+          (recur (into (pop frontier) (map #(conj path %)) nexts)
+                 (into seen nexts)))))))
 
-(defn- merge-message [graph cluster anchors-in]
-  (let [[[name-a anchor-a] & others] anchors-in
+(defn- merge-message
+  "`named` holds the `[name anchor]` pairs inside `cluster`, sorted by name."
+  [graph cluster named]
+  (let [[[name-a anchor-a] & others] named
         chain #(str/join " -> " (shortest-path graph cluster %1 %2))]
     (str/join
      "\n"
-     [(format "%s merged into one cycle of %d modules."
-              (str/join " and " (map first anchors-in)) (count cluster))
-      (str "  This undoes the work that kept them apart, and the merged tangle is hard to cut apart again."
-           " Please find another way.")
-      (str/join
-       "\n"
-       (for [[name-b anchor-b] others
-             line [(format "  %s reaches %s through %s" name-a name-b (chain anchor-a anchor-b))
-                   (format "  %s reaches %s through %s" name-b name-a (chain anchor-b anchor-a))]]
-         line))
-      (str "  The require that joined them is most likely on one of these chains, probably one your change added."
-           " Cut it, for example by moving the code that needs it, or by inverting the dependency with an event or"
-           " a multimethod.")
-      (str "  Only if there is truly no way around it: remove all but one of the names from "
-           clusters-file " and explain why in the PR.")])))
-
+     (concat
+      [(format "%s merged into one cycle of %d modules." (str/join " and " (map first named)) (count cluster))
+       (str "  This undoes the work that kept them apart, and the merged tangle is hard to cut apart again."
+            " Please find another way.")]
+      (mapcat (fn [[name-b anchor-b]]
+                [(format "  %s reaches %s through %s" name-a name-b (chain anchor-a anchor-b))
+                 (format "  %s reaches %s through %s" name-b name-a (chain anchor-b anchor-a))])
+              others)
+      [(str "  The require that joined them is most likely on one of these chains, probably one your change added."
+            " Cut it, for example by moving the code that needs it, or by inverting the dependency with an event or"
+            " a multimethod.")
+       (str "  Only if there is truly no way around it: remove all but one of the names from "
+            clusters-file " and explain why in the PR.")]))))
 (defn- requires-within
   "The requires between members of `cluster`, as `from -> to` lines, which show why it is a cycle.
   Nil for a cluster too large to list them usefully."
@@ -166,61 +164,73 @@
    [(format "%s is no longer a cycle: %s is not in any cluster. Nice work." cluster-name anchor)
     (format "  Remove its line from %s to retire the name." clusters-file)]))
 
+(defn- names-in
+  "A function of a cluster returning the `[name anchor]` pairs inside it, sorted by name.
+  Only anchors among `modules` count, so a name on an undeclared module never names anything."
+  [modules anchors]
+  (let [anchor->name (into {} (comp (filter (comp modules val)) (map (juxt val key))) anchors)]
+    (fn [cluster]
+      (sort (keep (fn [module] (some-> (anchor->name module) (vector module))) cluster)))))
+
 (defn problems
   "Messages for every way the cyclic clusters of `graph` and `anchors` disagree, empty when each cluster holds
   exactly one anchor and each anchor is a module in a cluster.
   `modules` is every configured module."
   [graph modules anchors]
-  (let [clusters  (deps-graph/cyclic-components graph)
-        valid     (into {} (filter (comp modules val)) anchors)
-        anchor->n (into {} (map (juxt val key)) valid)
-        anchors-in (fn [cluster] (sort (keep (fn [m] (when-let [n (anchor->n m)] [n m])) cluster)))
-        in-any    (into #{} cat clusters)
-        unnamed   (filter (comp empty? anchors-in) clusters)
+  (let [clusters  (map (juxt identity (names-in modules anchors)) (deps-graph/cyclic-components graph))
+        in-any    (into #{} (mapcat first) clusters)
+        unnamed   (keep (fn [[cluster named]] (when (empty? named) cluster)) clusters)
+        ;; Each placeholder takes a name the next one must avoid.
         proposals (first (reduce (fn [[acc taken] cluster]
                                    (let [p (propose graph modules cluster taken)]
                                      [(conj acc [cluster p]) (cond-> taken p (conj (:name p)))]))
                                  [[] (set (keys anchors))]
                                  unnamed))]
     (concat
-     (for [cluster clusters
-           :let    [named (anchors-in cluster)]
-           :when   (< 1 (count named))]
+     (for [[cluster named] clusters
+           :when (< 1 (count named))]
        (merge-message graph cluster named))
      (for [[cluster proposal] proposals]
        (unnamed-message graph cluster proposal))
-     (for [[cluster-name anchor] (sort-by key anchors)
-           :when (or (not (contains? modules anchor)) (not (contains? in-any anchor)))]
-       (if (contains? modules anchor)
-         (dissolved-message cluster-name anchor)
-         (format "%s is anchored on %s, which is not a module. Anchor it on another module of the cluster in %s."
-                 cluster-name anchor clusters-file))))))
+     (keep (fn [[cluster-name anchor]]
+             (cond
+               (not (modules anchor))
+               (format "%s is anchored on %s, which is not a module. Anchor it on another module of the cluster in %s."
+                       cluster-name anchor clusters-file)
+
+               (not (in-any anchor))
+               (dissolved-message cluster-name anchor)))
+           (sort-by key anchors)))))
 
 ;;;; =============================================================================
 ;;;; The repository
 ;;;; =============================================================================
 
+(defn- repository
+  "The module config, require graph, configured modules and cluster names of the current tree."
+  []
+  (let [config (deps-graph/kondo-config)]
+    {:config  config
+     :graph   (deps-graph/module-dependencies (deps-graph/dependencies))
+     :modules (set (keys config))
+     :anchors (read-anchors)}))
+
 (defn report
   "What CI says about the current tree: the [[problems]] between the module require graph and
   [[clusters-file]]."
   []
-  (let [config (deps-graph/kondo-config)]
-    (vec (problems (deps-graph/module-dependencies (deps-graph/dependencies))
-                   (set (keys config))
-                   (read-anchors)))))
+  (let [{:keys [graph modules anchors]} (repository)]
+    (vec (problems graph modules anchors))))
 
 (defn print-clusters
   "Print every cyclic cluster of the module require graph with its name, anchor, teams and full membership, for
   choosing a name. Run it with `clojure -X:dev dev.module-cycles/print-clusters`."
   [_]
-  (let [config    (deps-graph/kondo-config)
-        graph     (deps-graph/module-dependencies (deps-graph/dependencies))
-        anchors   (read-anchors)
-        modules   (set (keys config))
-        anchor->n (into {} (comp (filter (comp modules val)) (map (juxt val key))) anchors)]
+  (let [{:keys [config graph modules anchors]} (repository)
+        named-in (names-in modules anchors)]
     ;; Unnamed clusters first: they are the ones someone is here to name.
-    (doseq [cluster (sort-by #(boolean (some anchor->n %)) (deps-graph/cyclic-components graph))
-            :let    [named (sort (keep (fn [m] (when-let [n (anchor->n m)] [n m])) cluster))]]
+    (doseq [cluster (sort-by #(boolean (seq (named-in %))) (deps-graph/cyclic-components graph))
+            :let    [named (named-in cluster)]]
       (println (if (seq named)
                  (str/join " + " (map (fn [[n m]] (format "%s (anchor %s)" n m)) named))
                  (if-let [{:keys [name anchor]} (propose graph modules cluster (keys anchors))]
