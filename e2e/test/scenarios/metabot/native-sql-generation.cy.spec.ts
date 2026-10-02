@@ -17,7 +17,7 @@ const rejectButton = () => cy.findByTestId("reject-proposed-changes-button");
 const generatingLoader = () => cy.findByLabelText("Stop generating");
 
 describe("Native SQL generation", () => {
-  it("should show setup guidance when metabot is not configured", () => {
+  it("should show setup guidance in SQL generation and on the AI exploration page when metabot is not configured", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
@@ -33,6 +33,14 @@ describe("Native SQL generation", () => {
 
     cy.findByRole("button", { name: "connect to a model" }).click();
     cy.findByTestId("ai-provider-configuration-modal").should("be.visible");
+
+    cy.visit("/question/ask");
+    cy.url().should("include", "/question/ask");
+    cy.findByRole("button", { name: "connect to a model" }).should(
+      "be.visible",
+    );
+    cy.findByRole("button", { name: "connect to a model" }).click();
+    cy.findByTestId("ai-provider-configuration-modal").should("be.visible");
   });
 
   describe("single db", () => {
@@ -44,7 +52,7 @@ describe("Native SQL generation", () => {
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
-    it("should be able to successfully generate sql", () => {
+    it("should be able to successfully generate sql and correctly control the input", () => {
       H.startNewNativeQuestion({ query: "SELECT 1" });
       H.NativeEditor.get().should("be.visible");
 
@@ -85,9 +93,9 @@ describe("Native SQL generation", () => {
       rejectButton().should("not.exist");
       H.NativeEditor.get().should("not.contain", "SELECT 1");
       H.NativeEditor.get().should("contain", "SELECT * FROM users");
-    });
 
-    it("should be able to correctly control the input", () => {
+      cy.log("control the input");
+      cy.visit("/");
       H.startNewNativeQuestion();
       H.NativeEditor.get().should("be.visible");
 
@@ -130,7 +138,24 @@ describe("Native SQL generation", () => {
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
-    it("should manage conversation state correctly", () => {
+    it("should show error if no code_edit is received and manage conversation state correctly", () => {
+      H.startNewNativeQuestion();
+      H.NativeEditor.get().should("be.visible");
+
+      toggleInlineSQLPrompt();
+      inlinePromptInput().click();
+      cy.realType("do something", { pressDelay: 10 });
+      H.mockMetabotResponse({
+        body: mockTextOnlyResponse("I can help with that!"),
+      });
+      generateButton().click();
+      cy.wait("@metabotAgent");
+
+      errorMessage().should("be.visible");
+      acceptButton().should("not.exist");
+
+      cy.log("manage conversation state");
+      cy.visit("/");
       H.startNewNativeQuestion({ query: "SELECT 1" });
       H.NativeEditor.get().should("be.visible");
 
@@ -214,23 +239,6 @@ describe("Native SQL generation", () => {
       H.NativeEditor.get().realPress("Backspace");
       acceptButton().should("not.exist");
       rejectButton().should("not.exist");
-    });
-
-    it("should show error if no code_edit is received", () => {
-      H.startNewNativeQuestion();
-      H.NativeEditor.get().should("be.visible");
-
-      toggleInlineSQLPrompt();
-      inlinePromptInput().click();
-      cy.realType("do something", { pressDelay: 10 });
-      H.mockMetabotResponse({
-        body: mockTextOnlyResponse("I can help with that!"),
-      });
-      generateButton().click();
-      cy.wait("@metabotAgent");
-
-      errorMessage().should("be.visible");
-      acceptButton().should("not.exist");
     });
   });
 });

@@ -24,17 +24,6 @@ describe("Metabot Query Builder", () => {
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
   });
 
-  it("should show setup guidance when llm-metabot-configured? is false", () => {
-    H.clearLlmProviders();
-    cy.visit("/question/ask");
-    cy.url().should("include", "/question/ask");
-    cy.findByRole("button", { name: "connect to a model" }).should(
-      "be.visible",
-    );
-    cy.findByRole("button", { name: "connect to a model" }).click();
-    cy.findByTestId("ai-provider-configuration-modal").should("be.visible");
-  });
-
   it("should redirect to notebook when metabot-enabled? is false", () => {
     H.updateSetting("metabot-enabled?", false);
 
