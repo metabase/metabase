@@ -12,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
-   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
@@ -32,10 +31,9 @@
 
 (methodical/defmethod t2/table-name :model/Action [_model] :action)
 (methodical/defmethod t2/table-name :model/QueryAction [_model] :query_action)
-(methodical/defmethod t2/table-name :model/HTTPAction [_model] :http_action)
 (methodical/defmethod t2/table-name :model/ImplicitAction [_model] :implicit_action)
 
-(def ^:private action-sub-models [:model/QueryAction :model/HTTPAction :model/ImplicitAction])
+(def ^:private action-sub-models [:model/QueryAction :model/ImplicitAction])
 
 (doto :model/Action
   (derive :metabase/model)
@@ -49,7 +47,6 @@
 (derive :model/QueryAction :hook/search-index)
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
-(methodical/defmethod t2/primary-keys :model/HTTPAction     [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
 
 (def ^:private transform-action-visualization-settings
@@ -78,17 +75,6 @@
 
 (t2/deftransforms :model/ImplicitAction
   {:kind mi/transform-keyword})
-
-(def ^:private transform-json-with-nested-parameters
-  {:in  (comp mi/json-in
-              (fn [template]
-                (u/update-if-exists template :parameters #(lib/normalize ::parameters.schema/parameters %))))
-   :out (comp (fn [template]
-                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions #(lib/normalize ::parameters.schema/parameters %))))
-              mi/json-out-with-keywordization)})
-
-(t2/deftransforms :model/HTTPAction
-  {:template transform-json-with-nested-parameters})
 
 (methodical/defmethod t2/batched-hydrate [:model/Action :model]
   [_model k actions]
@@ -231,7 +217,6 @@
                      (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
       (case (:type action)
         :query    (actions.db/insert-query-action! row)
-        :http     (actions.db/insert-http-action! row)
         :implicit (actions.db/insert-implicit-action! row))
       (:id action))))
 
@@ -262,15 +247,12 @@
             (do
               (case (:type existing-action)
                 :query    (actions.db/delete-query-action! id)
-                :http     (actions.db/delete-http-action! id)
                 :implicit (actions.db/delete-implicit-action! id))
               (case (:type updates)
                 :query    (actions.db/insert-query-action! type-row)
-                :http     (actions.db/insert-http-action! type-row)
                 :implicit (actions.db/insert-implicit-action! type-row)))
             (case (:type existing-action)
               :query    (actions.db/update-query-action! id type-row)
-              :http     (actions.db/update-http-action! id type-row)
               :implicit (actions.db/update-implicit-action! id type-row)))))
       (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
 
@@ -288,19 +270,6 @@
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
         (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
-
-(defn- normalize-http-actions [actions]
-  (when (seq actions)
-    (let [http-actions (actions.db/http-actions (map :id actions))
-          http-actions-by-action-id (m/index-by :action_id http-actions)]
-      (map (fn [action]
-             (let [http-action (get http-actions-by-action-id (:id action))]
-               (-> action
-                   (merge
-                    {:disabled false}
-                    (select-keys http-action [:template :response_handle :error_handle])
-                    (select-keys (:template http-action) [:parameters :parameter_mappings])))))
-           actions))))
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
@@ -326,18 +295,17 @@
                                       (actions.db/actions-with-id id))
         (contains? opts :entity_id) (actions.db/action-with-entity-id entity_id)
         (and (contains? opts :model_id) (contains? opts :type))
-        (actions.db/unarchived-non-http-actions-for-model model_id)
+        (actions.db/unarchived-actions-for-models [model_id])
         (contains? opts :type)      (actions.db/actions-of-type type)
         :else                       (throw (ex-info "Unsupported Action query options" {:options options}))))))
 
 (defn- normalize-actions-by-type
   "Groups `actions` by `:type` and fills in each subtype's sub type information."
   [actions]
-  (let [{:keys [query http implicit]} (group-by :type actions)
-        query-actions                 (normalize-query-actions query)
-        http-actions                  (normalize-http-actions http)
-        implicit-actions              (normalize-implicit-actions implicit)]
-    (sort-by :updated_at (concat query-actions http-actions implicit-actions))))
+  (let [{:keys [query implicit]} (group-by :type actions)
+        query-actions            (normalize-query-actions query)
+        implicit-actions         (normalize-implicit-actions implicit)]
+    (sort-by :updated_at (concat query-actions implicit-actions))))
 
 (defn- select-actions-without-implicit-params
   "Select Actions and fill in sub type information. Don't use this if you need implicit parameters
@@ -482,7 +450,7 @@
         (seq implicit-params)
         (-> (assoc :parameters implicit-params)
             (update-in [:visualization_settings :fields] enrich-viz-settings-fields implicit-params field-id->viz-field))))
-    (:query :http)
+    :query
     action))
 
 (defn- enrich-actions-with-implicit-params
@@ -530,15 +498,6 @@
   [known-models :- [:maybe [:sequential ::queries.schema/card]]
    model-ids    :- [:sequential ms/PositiveInt]]
   (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-actions-for-models model-ids))))
-
-(mu/defn select-actions-non-http-for-models :- [:maybe [:sequential ::actions.schema/action]]
-  "Find the unarchived, non-HTTP Actions whose `:model_id` is in `model-ids`, filling in implicit parameters as
-   [[select-actions]] does.
-
-   Pass in known-models to save a second Card lookup."
-  [known-models :- [:maybe [:sequential ::queries.schema/card]]
-   model-ids    :- [:set ms/PositiveInt]]
-  (enrich-actions-with-implicit-params known-models (normalize-actions-by-type (actions.db/unarchived-non-http-actions-for-models model-ids))))
 
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
@@ -595,11 +554,6 @@
                :database_id   (serdes/fk :model/Database)
                :dataset_query {:export serdes/export-mbql :import serdes/import-mbql}}})
 
-(defmethod serdes/generate-path "HTTPAction" [_ _] nil)
-(defmethod serdes/make-spec "HTTPAction" [_model-name _opts]
-  {:copy      [:error_handle :response_handle :template]
-   :transform {:action_id (serdes/parent-ref)}})
-
 (defmethod serdes/generate-path "ImplicitAction" [_ _] nil)
 (defmethod serdes/make-spec "ImplicitAction" [_model-name _opts]
   {:copy      [:kind]
@@ -616,7 +570,6 @@
                :collection_id          (serdes/fk :model/Collection)
                :model_id               (serdes/fk :model/Card)
                :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
-               :http                   (serdes/nested :model/HTTPAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
                :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :parameter_mappings     {:export serdes/export-parameter-mappings
@@ -624,6 +577,10 @@
                :visualization_settings {:export serdes/export-visualization-settings
                                         :import serdes/import-visualization-settings}}
    :defaults  {:archived false, :archived_directly false}})
+
+(defmethod serdes/load-one! "Action" [ingested maybe-local]
+  (when-not (= "http" (some-> (:type ingested) name))
+    (serdes/default-load-one! ingested maybe-local)))
 
 (defmethod serdes/deserialization-dependencies "Action" [action]
   (set

@@ -57,12 +57,11 @@
   (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn model-actions
-  "The id, model id, name, and type of the unarchived non-HTTP Actions of the model Cards with `model-ids`."
+  "The id, model id, name, and type of the unarchived Actions of the model Cards with `model-ids`."
   [model-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/Action :id :model_id :name :type]
              :model_id [:in model-ids]
-             :archived false
-             :type [:not= "http"]))
+             :archived false))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."

@@ -42,7 +42,6 @@
     :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
-    :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/ApplicationPermissionsRevision

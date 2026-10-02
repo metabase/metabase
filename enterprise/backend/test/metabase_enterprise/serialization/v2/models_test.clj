@@ -159,7 +159,7 @@
               ;; check applies to the parent's `dependencies`, not theirs. Skipped either
               ;; via the explicit list in `serdes.models/inlined-models` or by detecting a
               ;; nil `generate-path` (the convention for nested-only models like
-              ;; QueryAction / HTTPAction / ImplicitAction).
+              ;; QueryAction / ImplicitAction).
               :when (not (or (inlined? m) (inlined-via-nested? m)))
               :let [fks (->> (:transform (serdes/make-spec m nil))
                              direct-fks
