@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { t } from "ttag";
 
 import { formatPercent } from "metabase/utils/formatting";
 import type { TooltipRowModel } from "metabase/viz-core";
@@ -41,32 +40,5 @@ export const TooltipRow = ({
         {formatPercent(percent)}
       </td>
     ) : null}
-  </tr>
-);
-
-interface TotalTooltipRow {
-  value: string;
-  percent?: number;
-  hasIcon?: boolean;
-}
-
-export const TooltipTotalRow = ({
-  value,
-  percent,
-  hasIcon,
-}: TotalTooltipRow) => (
-  <tr className={S.totalRowRoot}>
-    {hasIcon && <td className={cx(S.cell, S.colorIndicatorCell)}>=</td>}
-    <td className={S.cell} data-testid="row-name">
-      {t`Total`}
-    </td>
-    <td className={cx(S.cell, S.valueCell)} data-testid="row-value">
-      {value}
-    </td>
-    {percent != null && (
-      <td className={cx(S.cell, S.percentCell)} data-testid="row-percent">
-        {formatPercent(percent)}
-      </td>
-    )}
   </tr>
 );

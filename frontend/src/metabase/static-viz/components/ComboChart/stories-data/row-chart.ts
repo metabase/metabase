@@ -8,7 +8,7 @@ import {
   type RenderingContext,
 } from "metabase/viz-core";
 
-import type { StaticChartProps } from "../StaticVisualization";
+import type { StaticChartProps } from "../../StaticVisualization";
 
 export const renderingContext: RenderingContext = {
   getColor: color,

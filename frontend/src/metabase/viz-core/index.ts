@@ -204,7 +204,6 @@ export {
   getPercent,
   getSortedRows,
   getTotalValue,
-  groupExcessiveTooltipRows,
 } from "./echarts/tooltip/utils";
 export { isLineXBrushRange } from "./echarts/types";
 export type {
@@ -389,7 +388,6 @@ export {
 } from "./lib/table_format";
 export { truncateText } from "./lib/text";
 export { dimensionIsTimeseries } from "./lib/timeseries";
-export { formatValueForTooltipWithoutScaling } from "./lib/tooltip";
 export {
   computePreviousPeriodChange,
   findPreviousNonEmptyRowIndex,
@@ -439,7 +437,7 @@ export type {
   MetricDatum,
   SeriesInfo,
 } from "./shared/types/data";
-export type { ContinuousDomain, Range } from "./shared/types/scale";
+export type { ContinuousDomain } from "./shared/types/scale";
 export { getSeries } from "./shared/utils/data";
 export { getSizeInPx } from "./shared/utils/size-in-px";
 export {

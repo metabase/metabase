@@ -61,7 +61,3 @@
   color: var(--mb-color-tooltip-text-secondary);
   text-align: right;
 }
-
-.totalRowRoot {
-  background-color: var(--mb-color-tooltip-background-focused);
-}
