@@ -963,6 +963,8 @@
         new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids)) new-dashcards)]
     (check-shared-dashboard-timeline-permissions-for-card-ids! dashboard new-card-ids)))
 
+;; before-insert can't take arguments, so the copy source is passed through a binding
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-source-card*
   "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so
   copying a Card does not require read access to the timelines it already selects."
