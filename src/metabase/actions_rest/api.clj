@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -76,8 +77,9 @@
     (analytics/track-event! :snowplow/action
                             {:event     :action-deleted
                              :type      (:type action)
-                             :action_id action-id}))
-  (actions-rest.db/delete-action! action-id)
+                             :action_id action-id})
+    (actions-rest.db/delete-action! action-id)
+    (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -111,11 +113,12 @@
                              :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
-    (if action-id
-      (actions/select-action :id action-id)
-      ;; t2/insert! does not return a value when used with h2
-      ;; so we return the most recently updated http action.
-      (last (actions/select-actions nil :type action-type)))))
+    (u/prog1 (if action-id
+               (actions/select-action :id action-id)
+               ;; t2/insert! does not return a value when used with h2
+               ;; so we return the most recently updated http action.
+               (last (actions/select-actions nil :type action-type)))
+      (events/publish-event! :event/action-create {:object <> :user-id api/*current-user-id*}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -144,6 +147,7 @@
       (check-native-query-perms! (:database_id action) dataset-query))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
+    (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated
                              :type           type

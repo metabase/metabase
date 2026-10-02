@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.config-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.config :as data-app.config]))
 
@@ -35,6 +36,15 @@ path: ./dist/index.js"))))
   (testing "the scaffolding template stamps the version this Metabase serves, so a new app is never born outdated"
     (is (= data-app.config/supported-app-version
            (:version (parse (slurp "skills/metabase-data-app-setup/template/data_app.yaml")))))))
+
+(deftest migration-upgrade-guides-cover-every-version-test
+  (testing "the migrate skill ships one guide per upgrade up to the supported version, so an app at any older version has a path"
+    (let [upgrades (->> (.listFiles (io/file "skills/metabase-data-app-migrate/references/upgrades"))
+                        (keep #(re-matches #"v(\d+)-to-v(\d+)\.md" (.getName ^java.io.File %)))
+                        (map (fn [[_ from to]] [(parse-long from) (parse-long to)]))
+                        sort)]
+      (is (= (map (fn [n] [n (inc n)]) (range 1 data-app.config/supported-app-version))
+             upgrades)))))
 
 (deftest outdated-test
   (testing "an app below the supported version is outdated; one at it is not"

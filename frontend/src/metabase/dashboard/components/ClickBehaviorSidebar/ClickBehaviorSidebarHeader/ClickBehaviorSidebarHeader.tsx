@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import { isTableDisplay } from "metabase/dashboard/utils";
+import { hasColumnLevelClickBehavior } from "metabase/dashboard/utils";
 import { Box, Icon } from "metabase/ui";
 import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 
@@ -26,7 +26,7 @@ interface Props {
 }
 
 function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
-  if (isTableDisplay(dashcard)) {
+  if (hasColumnLevelClickBehavior(dashcard)) {
     if (selectedColumn) {
       return (
         <Box

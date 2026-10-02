@@ -31,6 +31,7 @@ const DATA_APP_SKILLS = [
   "metabase-data-app-routing",
   "metabase-data-app-actions",
   "metabase-data-app-semantic-layer",
+  "metabase-data-app-migrate",
 ];
 
 describe("DataAppSkillsSection", () => {
