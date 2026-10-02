@@ -25,7 +25,6 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -319,24 +318,20 @@
     (oauth-server.tu/with-oauth-client [client-id]
       (mt/with-model-cleanup [:model/OAuthAccessToken]
         (let [bearer-tools (fn [scopes]
-                             (let [token   (str (random-uuid))
-                                   headers {"authorization" (str "Bearer " token)}]
-                               (t2/insert! :model/OAuthAccessToken
-                                           {:token     (oidc.util/hash-token token)
-                                            :user_id   (mt/user->id :crowberto)
-                                            :client_id client-id
-                                            :scope     scopes
-                                            :expiry    (+ (System/currentTimeMillis) 3600000)})
-                               (let [session-id (-> (client/client-full-response
-                                                     :post 200 endpoint
-                                                     {:request-options {:headers headers}}
-                                                     (jsonrpc-request "initialize" {:capabilities {}}))
-                                                    (get-in [:headers "Mcp-Session-Id"]))]
-                                 (-> (client/client-full-response
-                                      :post 200 endpoint
-                                      {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                                      (jsonrpc-request "tools/list"))
-                                     (get-in [:body :result :tools])))))
+                             (let [token   (oauth-server.tu/insert-access-token!
+                                            (mt/user->id :crowberto) client-id scopes
+                                            :resource (oauth-server.tu/mcp-resource))
+                                   headers {"authorization" (str "Bearer " token)}
+                                   session-id (-> (client/client-full-response
+                                                   :post 200 endpoint
+                                                   {:request-options {:headers headers}}
+                                                   (jsonrpc-request "initialize" {:capabilities {}}))
+                                                  (get-in [:headers "Mcp-Session-Id"]))]
+                               (-> (client/client-full-response
+                                    :post 200 endpoint
+                                    {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                    (jsonrpc-request "tools/list"))
+                                   (get-in [:body :result :tools]))))
               cookie-tools (let [[session-id _] (initialize!)]
                              (-> (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
                                  (get-in [:body :result :tools])))]
@@ -808,21 +803,14 @@
         (reset! @#'registry/manifest-cache nil)))))
 
 (defn- do-with-bearer-token!
-  "Issue an OAuth access token carrying `scopes` for crowberto and call `f` with the auth headers."
+  "Issue an OAuth access token bound to the MCP resource and carrying `scopes` for crowberto, and call `f` with the
+  auth headers."
   [scopes f]
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
     (oauth-server.tu/with-oauth-client [client-id]
       (mt/with-model-cleanup [:model/OAuthAccessToken]
-        (let [token (str (random-uuid))]
-          ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-          ;; up, so the row has to be written the same way a real issued token would be — including a
-          ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
-          (t2/insert! :model/OAuthAccessToken
-                      {:token     (oidc.util/hash-token token)
-                       :user_id   (mt/user->id :crowberto)
-                       :client_id client-id
-                       :scope     (vec scopes)
-                       :expiry    (+ (System/currentTimeMillis) 3600000)})
+        (let [token (oauth-server.tu/insert-access-token! (mt/user->id :crowberto) client-id scopes
+                                                          :resource (oauth-server.tu/mcp-resource))]
           (f {"authorization" (str "Bearer " token)}))))))
 
 (defn- embedded-credential
@@ -911,45 +899,38 @@
        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
          (oauth-server.tu/with-oauth-client [client-id]
            (mt/with-model-cleanup [:model/OAuthAccessToken]
-             (let [token   (str (random-uuid))
-                   headers {"authorization" (str "Bearer " token)}]
-               ;; `:token` is stored hashed — the resolver hashes the presented string before looking it
-               ;; up, so the row has to be written the same way a real issued token would be — including a
-               ;; live `oauth_client` row, since the resolver fails closed on a token whose client is gone.
-               (t2/insert! :model/OAuthAccessToken
-                           {:token     (oidc.util/hash-token token)
-                            :user_id   (mt/user->id :crowberto)
-                            :client_id client-id
-                            :scope     ["agent:content:read"]
-                            :expiry    (+ (System/currentTimeMillis) 3600000)})
-               (let [session-id (-> (client/client-full-response :post 200 endpoint
-                                                                 {:request-options {:headers headers}}
-                                                                 (jsonrpc-request "initialize" {:capabilities {}}))
-                                    (get-in [:headers "Mcp-Session-Id"]))
-                     session!   (fn [body]
-                                  (client/client-full-response
-                                   :post 200 endpoint
-                                   {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                                   body))
-                     call!      (fn [tool-name]
-                                  (session! (jsonrpc-request "tools/call" {:name tool-name :arguments {}})))
-                     tool-names (-> (session! (jsonrpc-request "tools/list"))
-                                    (get-in [:body :result :tools])
-                                    (->> (map :name) set))]
-                 (is (some? session-id))
-                 (testing "GHY-4543: tools/list lists tools on both sides of the token's scopes"
-                   (is (contains? tool-names "test_echo"))
-                   (is (contains? tool-names "scope_probe_write")
-                       "a client can only step up for a tool it can see"))
-                 (testing "a tool inside the granted scope (agent:content:read) is served"
-                   (is (not (get-in (call! "test_echo") [:body :result :isError]))))
-                 (testing "a tool gated on a scope the token lacks (agent:content:write) is refused at call time"
-                   (let [response (client/client-full-response
-                                   :post 403 endpoint
-                                   {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
-                                   (jsonrpc-request "tools/call" {:name "scope_probe_write" :arguments {}}))]
-                     (is (str/starts-with? (get-in response [:body :error :message])
-                                           "Insufficient scope to call tool: \"scope_probe_write\".")))))))))))))
+             (let [token   (oauth-server.tu/insert-access-token! (mt/user->id :crowberto) client-id
+                                                                 ["agent:content:read"]
+                                                                 :resource (oauth-server.tu/mcp-resource))
+                   headers {"authorization" (str "Bearer " token)}
+                   session-id (-> (client/client-full-response :post 200 endpoint
+                                                               {:request-options {:headers headers}}
+                                                               (jsonrpc-request "initialize" {:capabilities {}}))
+                                  (get-in [:headers "Mcp-Session-Id"]))
+                   session!   (fn [body]
+                                (client/client-full-response
+                                 :post 200 endpoint
+                                 {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                 body))
+                   call!      (fn [tool-name]
+                                (session! (jsonrpc-request "tools/call" {:name tool-name :arguments {}})))
+                   tool-names (-> (session! (jsonrpc-request "tools/list"))
+                                  (get-in [:body :result :tools])
+                                  (->> (map :name) set))]
+               (is (some? session-id))
+               (testing "GHY-4543: tools/list lists tools on both sides of the token's scopes"
+                 (is (contains? tool-names "test_echo"))
+                 (is (contains? tool-names "scope_probe_write")
+                     "a client can only step up for a tool it can see"))
+               (testing "a tool inside the granted scope (agent:content:read) is served"
+                 (is (not (get-in (call! "test_echo") [:body :result :isError]))))
+               (testing "a tool gated on a scope the token lacks (agent:content:write) is refused at call time"
+                 (let [response (client/client-full-response
+                                 :post 403 endpoint
+                                 {:request-options {:headers (assoc headers "mcp-session-id" session-id)}}
+                                 (jsonrpc-request "tools/call" {:name "scope_probe_write" :arguments {}}))]
+                   (is (str/starts-with? (get-in response [:body :error :message])
+                                         "Insufficient scope to call tool: \"scope_probe_write\"."))))))))))))
 
 ;;; ------------------------------------------- Insufficient-scope step-up -----------------------------------------
 
@@ -1152,6 +1133,77 @@
                            "error_description=\"execute_sql requires agent:sql:run "
                            "(" (registry/english-scope-label "agent:sql:run") ")" unticked-note "\"")
                       (get-in response [:headers "WWW-Authenticate"])))))))))))
+
+(def ^:private grants-that-are-not-mcp-scopes
+  "Grants that are not MCP v2 scopes but would satisfy tool scopes if the MCP endpoint honored them: the REST
+  full-access scope, and wildcards that `scope-satisfied?` matches on the granted side."
+  [["mb:full"] ["*"] ["agent:*"] ["agent:query:*"]])
+
+(deftest oauth-token-is-never-unrestricted-at-the-mcp-endpoint-test
+  (testing "At the MCP endpoint an OAuth token holds only its scopes that are literally MCP v2 scopes. `mb:full`, `*`
+            and `agent:*` grant nothing there, so a token holding only one of them can connect and list tools but
+            every tool call is refused with the 403 `insufficient_scope` challenge."
+    (doseq [grant grants-that-are-not-mcp-scopes]
+      (testing (pr-str grant)
+        (do-with-bearer-token!
+         grant
+         (fn [headers]
+           (let [init  (client/client-full-response :post endpoint {:request-options {:headers headers}}
+                                                    (jsonrpc-request "initialize" {:capabilities {}}))
+                 post! (bearer-session-post! headers)]
+             (testing "initialize succeeds"
+               (is (= 200 (:status init))))
+             (testing "tools/list lists the tools"
+               (is (seq (get-in (post! 200 (jsonrpc-request "tools/list")) [:body :result :tools]))))
+             (doseq [[tool-name required] [["execute_sql" "agent:sql:run"]
+                                           ["search" "agent:content:read"]
+                                           ["execute_query" "agent:query:run"]]]
+               (testing (str tool-name " is refused")
+                 (let [response (post! 403 (jsonrpc-request "tools/call" {:name tool-name :arguments {}}))]
+                   (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"] "")
+                                         (str "Bearer error=\"insufficient_scope\", scope=\"" required "\"")))))))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest mb-full-adds-nothing-at-the-mcp-endpoint-test
+  (testing "A token holding `mb:full` and `agent:query:run` runs queries and is refused raw SQL, exactly as a token
+            holding only `agent:query:run` would be. `mb:full` adds nothing at the MCP endpoint."
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (do-with-bearer-token!
+       ["mb:full" "agent:query:run"]
+       (fn [headers]
+         (let [post! (bearer-session-post! headers)]
+           (testing "execute_query"
+             (let [response (post! 200 (jsonrpc-request "tools/call" {:name      "execute_query"
+                                                                      :arguments {:query (orders-query)}}))]
+               (is (nil? (get-in response [:body :error])))
+               (is (false? (boolean (get-in response [:body :result :isError]))))))
+           (testing "execute_sql"
+             (let [response (post! 403 (jsonrpc-request "tools/call" {:name "execute_sql" :arguments {}}))]
+               (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"] "")
+                                     "Bearer error=\"insufficient_scope\", scope=\"agent:query:run agent:sql:run\""))))))))))
+
+(deftest fields-catalog-needs-a-literal-mcp-scope-test
+  (testing "`resources/read` of the fields catalog honors only literal MCP v2 scopes, like tool calls"
+    (doseq [grant [["mb:full"] ["*"] ["agent:*"]]]
+      (testing (pr-str grant)
+        (do-with-bearer-token!
+         grant
+         (fn [headers]
+           (let [response ((bearer-session-post! headers)
+                           403
+                           (jsonrpc-request "resources/read" {:uri v2.resources/fields-catalog-uri}))]
+             (is (str/starts-with? (get-in response [:headers "WWW-Authenticate"] "")
+                                   "Bearer error=\"insufficient_scope\", scope=\"agent:content:read\"")))))))
+    (testing "control: a token holding agent:content:read reads it"
+      (do-with-bearer-token!
+       ["agent:content:read"]
+       (fn [headers]
+         (let [response ((bearer-session-post! headers)
+                         200
+                         (jsonrpc-request "resources/read" {:uri v2.resources/fields-catalog-uri}))]
+           (is (nil? (get-in response [:body :error])))
+           (is (= [v2.resources/fields-catalog-uri]
+                  (map :uri (get-in response [:body :result :contents]))))))))))
 
 (deftest data-resource-read-without-its-scope-is-a-403-insufficient-scope-challenge-test
   (testing "GHY-4543: a data resource read the token lacks the scope for answers with the same 403 challenge as

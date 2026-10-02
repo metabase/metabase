@@ -667,6 +667,12 @@
        (when (seq default-ask-scopes)
          (str ", scope=" (quoted-string (str/join " " default-ask-scopes))))))
 
+(defn- oauth-surface-scopes
+  "The scopes an OAuth token holds at the MCP endpoint: those of `granted` that are literally MCP v2 scopes.
+  `mb:full`, the unrestricted sentinel, and wildcards such as `*` or `agent:*` grant nothing here."
+  [granted]
+  (into #{} (filter (set (mcp/v2-scopes))) granted))
+
 (defn make-handler
   "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,
    so the OpenAPI spec is empty.
@@ -738,19 +744,20 @@
            (and (:authenticated-via-oauth? request) (empty? token-scopes))
            (respond @invalid-token)
 
-           ;; Respect the scope set attached to an authenticated request. Sessions without one
-           ;; retain unrestricted access.
+           ;; An OAuth bearer request holds only its literal MCP scopes. Sessions and API keys carry no scope set
+           ;; and retain unrestricted access.
            session-auth
-           ;; An OAuth bearer request lands here too — the session middleware resolves the token and
-           ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
-           (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
+           (dispatch session-auth (if (:authenticated-via-oauth? request)
+                                    (oauth-surface-scopes token-scopes)
+                                    (or token-scopes #{::scope/unrestricted})))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer
            ;; token — including checking `user.is_active` and running the granted scopes through the
            ;; `oauth-token->token-scopes` trust hinge — and sets `*current-user-id*`, so an active user's token is
            ;; served by the `session-auth` branch above. Landing here therefore means the token is unknown, expired,
-           ;; revoked, or names a DEACTIVATED user. We must not re-resolve and dispatch it: doing so bypassed the
+           ;; revoked, names a DEACTIVATED user, or is not bound to the MCP endpoint by its stored resource (a REST
+           ;; token, which the client must replace by re-authorizing for this resource). We must not re-resolve and dispatch it: doing so bypassed the
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
            bearer-token

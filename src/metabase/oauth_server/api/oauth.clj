@@ -21,6 +21,7 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
+   [oidc-provider.store :as oidc.store]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
@@ -244,6 +245,19 @@
          :headers {"Location" url}
          :body    ""}
         (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0)))))
+
+(defn- refresh-keeps-binding!
+  "The token request `body`, made safe for the provider. A refresh grant always keeps the refresh token's resource
+  binding, which decides where the new access token works: `resource` is dropped so the provider copies the stored
+  binding, after an RFC 8707 `invalid_target` error is thrown when the requested resource is not within it. Any
+  other grant is returned unchanged."
+  [provider {:keys [grant_type refresh_token resource] :as body}]
+  (if (= "refresh_token" grant_type)
+    (let [stored (some->> refresh_token (oidc.store/get-refresh-token (:token-store provider)))]
+      (when (and resource stored (not (oauth-server/resources-within? resource (:resource stored))))
+        (throw (ex-info "resource is outside the refresh token's binding" {:error "invalid_target"})))
+      (dissoc body :resource))
+    body))
 
 (defn- login-redirect-url
   "Build a redirect URL to the login page that will redirect back to the given path after login.
@@ -654,7 +668,8 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [response (oidc/token-request provider body authorization-header)]
+                (let [response (oidc/token-request provider (refresh-keeps-binding! provider body)
+                                                   authorization-header)]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

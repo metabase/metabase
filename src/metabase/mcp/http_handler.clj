@@ -10,9 +10,11 @@
   The fns are passed as vars, so redefining one takes effect without rebuilding the handler."
   {:cors               {:origins-fn         #'mcp/cors-origins
                         :sandbox-origin?-fn #'mcp/sandbox-origin?}
-   :oauth-bearer       {:extract-token     #'oauth-server/extract-bearer-token
-                        :resolve-token     #'oauth-server/resolve-access-token
-                        :full-access-scope oauth-server/full-access-scope}
+   :oauth-bearer       {:extract-token         #'oauth-server/extract-bearer-token
+                        :resolve-token         #'oauth-server/resolve-access-token
+                        :full-access-scope     oauth-server/full-access-scope
+                        :mcp-resource?         #'oauth-server/mcp-resource?
+                        :mcp-endpoint-request? #'oauth-server/mcp-endpoint-request?}
    :mcp-ui-credentials {:on-surface?        #'mcp/ui-credential-on-surface?
                         :resolve-credential #'mcp/resolve-ui-credential
                         :scope-satisfied?   #'mcp/ui-credential-scope-satisfied?}})

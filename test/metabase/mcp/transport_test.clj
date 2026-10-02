@@ -501,19 +501,19 @@
   "Insert an OAuth access token row for `user-id` and return the raw (unhashed) token to present. `:token` is stored
   hashed, so the row is written the way a real issued token would be — including `client-id` naming a live
   `oauth_client` row ([[oauth-server.tu/with-oauth-client]]): the resolver fails closed on a token whose issuing
-  client is gone. Call inside `with-model-cleanup`. `scope` defaults to a single v2 read scope; pass it
-  explicitly to mint a token with a different scope shape."
+  client is gone — and bound to the MCP resource, which the MCP endpoint requires. Call inside `with-model-cleanup`.
+  `scope` defaults to a single v2 read scope; pass it explicitly to mint a token with a different scope shape."
   ([user-id client-id]
    (issue-bearer! user-id client-id ["agent:content:read"]))
   ([user-id client-id scope]
-   (let [token (str (random-uuid))]
-     (t2/insert! :model/OAuthAccessToken
-                 {:token     (oidc.util/hash-token token)
-                  :user_id   user-id
-                  :client_id client-id
-                  :scope     scope
-                  :expiry    (+ (System/currentTimeMillis) 3600000)})
-     token)))
+   (oauth-server.tu/insert-access-token! user-id client-id scope :resource (oauth-server.tu/mcp-resource))))
+
+(deftest ^:parallel oauth-surface-scopes-test
+  (testing "an OAuth token holds only its literal MCP v2 scopes at the MCP endpoint: `mb:full`, wildcards and the
+            unrestricted sentinel grant nothing there"
+    (is (= #{"agent:query:run"}
+           (#'mcp.transport/oauth-surface-scopes
+            #{"mb:full" "*" "agent:*" "agent:query:run" :metabase.api.macros.scope/unrestricted})))))
 
 (deftest deactivated-user-bearer-token-is-refused-test
   (testing (str "GHY-4337 / round-1 4a: a bearer token that names a DEACTIVATED user must not authenticate. The "
