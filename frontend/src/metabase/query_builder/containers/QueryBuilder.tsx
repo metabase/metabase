@@ -25,7 +25,6 @@ import {
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
 import { connect, useSelector } from "metabase/redux";
-import { closeNavbar } from "metabase/redux/app";
 import {
   editSummary,
   setIsNativeEditorOpen,
@@ -130,12 +129,10 @@ import {
   getFirstQueryResult,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
-  getIsAnySidebarOpen,
   getIsDirty,
   getIsHeaderVisible,
   getIsLiveResizable,
   getIsLoadingComplete,
-  getIsNativeEditorOpen,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
@@ -200,11 +197,9 @@ const mapStateToProps = (state: State) => {
     uiControls: getUiControls(state),
     ...state.qb.uiControls,
     dataReferenceStack: getDataReferenceStack(state),
-    isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isDirty: getIsDirty(state),
     isObjectDetail: getIsObjectDetail(state),
-    isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
@@ -317,9 +312,6 @@ const mapDispatchToProps = {
   viewNextObjectDetail,
   viewPreviousObjectDetail,
   zoomInRow,
-
-  // other
-  closeNavbar,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -346,9 +338,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     question,
     originalQuestion,
     uiControls,
-    isNativeEditorOpen,
-    isAnySidebarOpen,
-    closeNavbar,
     initializeQB,
     locationChanged,
     setUIControls,
@@ -411,8 +400,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
-  const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
-  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
   const collectionId = question?.collectionId();
 
@@ -480,21 +467,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     closeQB();
     clearTimeout(timeout.current);
   });
-
-  useEffect(() => {
-    if (
-      (isAnySidebarOpen && !wasShowingAnySidebar) ||
-      (isNativeEditorOpen && !wasNativeEditorOpen)
-    ) {
-      closeNavbar();
-    }
-  }, [
-    isAnySidebarOpen,
-    wasShowingAnySidebar,
-    isNativeEditorOpen,
-    wasNativeEditorOpen,
-    closeNavbar,
-  ]);
 
   useEffect(() => {
     // Gate on the timelines actually being loaded (not just bookmarks), and
