@@ -1033,7 +1033,8 @@
 
 (defn- check-week-of-year-labels!
   "Checks, for every first day of the week, that a week-of-year filter's name is the week its query returns.
-  With `check-days?`, also checks that the query returns exactly the days in [[week-of-year-test-ranges]]."
+  With `check-days?`, the query must return exactly the days in [[week-of-year-test-ranges]].
+  Otherwise it must return at least those days."
   [check-days?]
   (doseq [start-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]]
     (mt/with-temporary-setting-values [start-of-week start-of-week]
@@ -1049,13 +1050,15 @@
                                (lib/breakout week-of-year))
               ;; Some drivers return the week as a decimal, such as 52.0.
               rows         (for [[day week] (mt/rows (qp/process-query query))]
-                             [(subs (str day) 0 10) (str (long week))])]
-          (when check-days?
-            (is (= (for [[start end] week-of-year-test-ranges
-                         day         (t/iterate t/plus (t/local-date start) (t/days 1))
-                         :while      (not (t/after? day (t/local-date end)))]
-                     (str day))
-                   (map first rows))))
+                             [(subs (str day) 0 10) (str (long week))])
+              days         (for [[start end] week-of-year-test-ranges
+                                 day         (t/iterate t/plus (t/local-date start) (t/days 1))
+                                 :while      (not (t/after? day (t/local-date end)))]
+                             (str day))]
+          (if check-days?
+            (is (= days (map first rows)))
+            ;; Bucketing in UTC adds days at the edges of each range but must not drop any.
+            (is (every? (set (map first rows)) days)))
           (is (= (for [[day _] rows]
                    [day (lib/filter-args-display-name query -1 (lib/= week-of-year day))])
                  rows))
