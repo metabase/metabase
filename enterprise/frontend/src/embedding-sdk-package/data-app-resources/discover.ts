@@ -1,34 +1,85 @@
+import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
 import { build } from "esbuild";
 
-import {
-  ACTION_DEFINITIONS,
-  type DefinitionKind,
-  type DefinitionSource,
-  QUERY_DEFINITIONS,
-  findDefinitionSources,
-} from "./ast/definition-source";
-import { canonicalJson } from "./canonical";
-import { isEntityId } from "./entity-ids";
-import { isPositiveInteger, isRecord } from "./guards";
+import { isEntityId, isObject } from "./guards";
 import { getRelativeDefinitionLocation } from "./messages";
 import type { DiscoveredAction, DiscoveredQuery } from "./types";
 
-interface EvaluatedDefinition extends DefinitionSource {
+/** A source-controlled definition kind, and where the CLI looks for it. */
+interface DefinitionKind {
+  directory: string;
+  idKey: string;
+}
+
+export const QUERY_DEFINITIONS: DefinitionKind = {
+  directory: "queries",
+  idKey: "savedQuestionEntityId",
+};
+
+export const ACTION_DEFINITIONS: DefinitionKind = {
+  directory: "actions",
+  idKey: "copiedActionEntityId",
+};
+
+const DEFINITION_FILE_EXTENSIONS = [
+  ".js",
+  ".jsx",
+  ".ts",
+  ".tsx",
+  ".cjs",
+  ".cts",
+  ".mjs",
+  ".mts",
+];
+
+interface EvaluatedDefinition {
+  exportName: string;
+  filePath: string;
   value: Record<string, unknown>;
 }
 
-async function evaluateModule(filePath: string) {
+function listDefinitionFiles(directory: string): string[] {
+  if (!fs.existsSync(directory)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(directory, { recursive: true, encoding: "utf8" })
+    .filter((relativePath) =>
+      DEFINITION_FILE_EXTENSIONS.some((extension) =>
+        relativePath.endsWith(extension),
+      ),
+    )
+    .map((relativePath) => path.join(directory, relativePath))
+    .sort();
+}
+
+/**
+ * Bundles every definition file into one module and evaluates it, so a file
+ * two others import is instantiated once and its definitions keep their
+ * identity across them.
+ */
+async function evaluateFiles(directory: string, filePaths: string[]) {
   const result = await build({
-    absWorkingDir: path.dirname(filePath),
+    stdin: {
+      contents: filePaths
+        .map(
+          (filePath, index) =>
+            `export * as file${index} from ${JSON.stringify(filePath)};`,
+        )
+        .join("\n"),
+      resolveDir: directory,
+      loader: "ts",
+    },
+    absWorkingDir: directory,
     bundle: true,
-    entryPoints: [filePath],
     format: "cjs",
     packages: "external",
     platform: "node",
-    target: "node20",
+    target: "node22",
     write: false,
     logLevel: "silent",
   });
@@ -36,19 +87,57 @@ async function evaluateModule(filePath: string) {
   const compiled = result.outputFiles[0]?.text;
 
   if (!compiled) {
-    throw new Error(`Could not evaluate ${filePath}.`);
+    throw new Error(`Could not evaluate the definitions in ${directory}.`);
   }
 
   const runtimeModule: { exports: Record<string, unknown> } = { exports: {} };
-  const runtimeRequire = createRequire(filePath);
 
   new Function("require", "module", "exports", compiled)(
-    runtimeRequire,
+    createRequire(path.join(directory, "definitions.ts")),
     runtimeModule,
     runtimeModule.exports,
   );
 
-  return runtimeModule.exports;
+  return filePaths.map((filePath, index) => ({
+    filePath,
+    exports: runtimeModule.exports[`file${index}`],
+  }));
+}
+
+/**
+ * Every object a definition file exports is a definition: `defineQuery` and
+ * `defineAction` return their argument as is, and the directories hold nothing
+ * else. An object re-exported by a second file counts once.
+ */
+async function evaluateDefinitions(
+  appRoot: string,
+  kind: DefinitionKind,
+): Promise<EvaluatedDefinition[]> {
+  const directory = path.join(appRoot, kind.directory);
+  const filePaths = listDefinitionFiles(directory);
+
+  if (filePaths.length === 0) {
+    return [];
+  }
+
+  const seen = new Set<object>();
+  const evaluated: EvaluatedDefinition[] = [];
+
+  for (const { filePath, exports } of await evaluateFiles(
+    directory,
+    filePaths,
+  )) {
+    for (const [exportName, value] of Object.entries(
+      isObject(exports) ? exports : {},
+    )) {
+      if (isObject(value) && !seen.has(value)) {
+        seen.add(value);
+        evaluated.push({ exportName, filePath, value });
+      }
+    }
+  }
+
+  return evaluated;
 }
 
 function definedEntityId(value: unknown, location: string, idKey: string) {
@@ -61,66 +150,6 @@ function definedEntityId(value: unknown, location: string, idKey: string) {
   }
 
   return value;
-}
-
-/**
- * Evaluates every definition of `kind`, proving each one is deterministic so the
- * resource written from it keeps describing it.
- */
-async function evaluateDefinitions(
-  appRoot: string,
-  kind: DefinitionKind,
-): Promise<EvaluatedDefinition[]> {
-  const sourcesByFile = new Map<string, DefinitionSource[]>();
-
-  for (const source of findDefinitionSources(appRoot, kind)) {
-    sourcesByFile.set(source.filePath, [
-      ...(sourcesByFile.get(source.filePath) ?? []),
-      source,
-    ]);
-  }
-
-  const evaluated: EvaluatedDefinition[] = [];
-
-  for (const [filePath, fileSources] of sourcesByFile) {
-    const [first, second] = await Promise.all([
-      evaluateModule(filePath),
-      evaluateModule(filePath),
-    ]);
-
-    for (const { exportName } of fileSources) {
-      const value = first[exportName];
-      const repeatedValue = second[exportName];
-
-      const location = getRelativeDefinitionLocation(appRoot, {
-        filePath,
-        exportName,
-      });
-
-      if (!isRecord(value)) {
-        throw new Error(
-          `${location} did not evaluate to ${kind.description} object.`,
-        );
-      }
-
-      let deterministic: boolean;
-      try {
-        deterministic = canonicalJson(value) === canonicalJson(repeatedValue);
-      } catch (error) {
-        throw new Error(
-          `${location} could not be canonicalized: ${String(error)}`,
-        );
-      }
-
-      if (!deterministic) {
-        throw new Error(`${location} is not deterministic.`);
-      }
-
-      evaluated.push({ exportName, filePath, value });
-    }
-  }
-
-  return evaluated;
 }
 
 /** Rejects two definitions claiming the same ID, as a copied definition would. */
@@ -174,6 +203,9 @@ export async function discoverQueries(
   return discovered;
 }
 
+const isGeneratedActionId = (id: unknown): id is number =>
+  typeof id === "number" && Number.isInteger(id) && id > 0;
+
 export async function discoverActions(
   appRoot: string,
 ): Promise<DiscoveredAction[]> {
@@ -186,7 +218,7 @@ export async function discoverActions(
     });
     const action = value.action;
 
-    if (!isRecord(action) || !isPositiveInteger(action.id)) {
+    if (!isObject(action) || !isGeneratedActionId(action.id)) {
       throw new Error(
         `${location} must reference a generated action, such as \`schema.models.<model>.actions.<action>\`.`,
       );

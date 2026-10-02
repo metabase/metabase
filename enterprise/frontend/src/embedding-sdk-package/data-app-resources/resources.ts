@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { load as parseYaml } from "js-yaml";
 
-import { isRecord } from "./guards";
+import { isObject } from "./guards";
 import type { ResourceModel } from "./types";
 
 export const RESOURCES_DIR = "resources";
@@ -61,7 +61,7 @@ export function readResources(appRoot: string): ResourceFile[] {
         return {
           path: filePath,
           model,
-          entity: isRecord(entity) ? entity : {},
+          entity: isObject(entity) ? entity : {},
         };
       },
     ),
