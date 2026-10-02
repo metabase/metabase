@@ -81,7 +81,10 @@
       (is (re-find #"(?s)type: \"card\"\n\s*/\* metadata: \{\n\s*\"description\": \"Saved orders\"\n\s*\} \*/" body))
       (is (str/includes? body "\"description\": \"Total order revenue\""))
       (is (str/includes? body "\"filters\": [\"Status is paid\", \"Created At is in the previous 30 days\"]"))
-      (is (re-find #"(?s)tableId: 10\n\s*/\* metadata: \{\n\s*\"displayName\": \"Payment Method\",\n\s*\"semanticType\": \"type/Category\"\n\s*\} \*/" body)))
+      (is (re-find (re-pattern (str "(?s)tableId: 10\\n\\s*/\\* metadata: \\{\\n"
+                                    "\\s*\"displayName\": \"Payment Method\",\\n"
+                                    "\\s*\"semanticType\": \"type/Category\"\\n\\s*\\} \\*/"))
+                   body)))
     (testing "data for the Lib.createTestQuery DSL stays runtime"
       (is (str/includes? body "ordersQuestion: {\n    type: \"card\""))
       (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
@@ -106,7 +109,9 @@
                                                         :schemaName   nil
                                                         :tableName    "ORDERS"}}}})]
     (testing "a table in a database without schemas has no schema key, not a null one"
-      (is (re-find #"(?s)\"sourceTable\": \{\n\s*\"databaseName\": \"Sample Database\",\n\s*\"tableName\": \"ORDERS\"\n\s*\}" body))
+      (is (re-find (re-pattern (str "(?s)\"sourceTable\": \\{\\n\\s*\"databaseName\": \"Sample Database\",\\n"
+                                    "\\s*\"tableName\": \"ORDERS\"\\n\\s*\\}"))
+                   body))
       (is (not (str/includes? body "null"))))
     (testing "a blank description is not written"
       (is (not (str/includes? body "description"))))))

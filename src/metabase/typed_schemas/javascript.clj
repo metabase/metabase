@@ -72,10 +72,12 @@
   [:schema {:registry
             {::entry-options [:map {:closed true}
                               [:metadata {:optional true} [:map-of key-schema :any]]]
+             ;; Metadata prints as a block inside the entry's object, so only an object can carry it.
              ::entry         [:or
                               [:tuple key-schema [:ref ::expr]]
-                              [:tuple key-schema [:ref ::entry-options] [:ref ::expr]]]
-             ::item          [:tuple [:= :item] [:ref ::entry-options] [:ref ::expr]]
+                              [:tuple key-schema [:ref ::entry-options] [:ref ::obj]]]
+             ::item          [:tuple [:= :item] [:ref ::entry-options] [:ref ::obj]]
+             ::obj           [:cat [:= :obj] [:* [:schema [:ref ::entry]]]]
              ::expr            [:multi {:dispatch first}
                                 [:lit [:tuple [:= :lit] :any]]
                                 [:ref [:cat [:= :ref] [:+ key-schema]]]
@@ -83,7 +85,7 @@
                                 [:arr [:cat [:= :arr] [:* [:or
                                                            [:schema [:ref ::item]]
                                                            [:schema [:ref ::expr]]]]]]
-                                [:obj [:cat [:= :obj] [:* [:schema [:ref ::entry]]]]]]
+                                [:obj [:ref ::obj]]]
              ::statement       [:multi {:dispatch first}
                                 [:const [:tuple [:= :const] key-schema [:ref ::expr]]]
                                 [:raw [:tuple [:= :raw] :string]]
@@ -182,8 +184,13 @@
     :arr  (str "[ " (str/join ", " (map render-inline (rest node))) " ]")
     :obj  (str "{ "
                (str/join ", " (for [entry (rest node)
-                                    :let [[entry-key _ expr] (entry-parts entry)]]
-                                (str (javascript-key entry-key) ": " (render-inline expr))))
+                                    :let [[entry-key options expr] (entry-parts entry)]]
+                                (do
+                                  ;; An inline object has no room for a block, so refuse rather than drop it.
+                                  (when (seq (:metadata options))
+                                    (throw (ex-info "Metadata can only be attached to an object on its own lines."
+                                                    {:node node})))
+                                  (str (javascript-key entry-key) ": " (render-inline expr)))))
                " }")))
 
 (defn- literal-node?

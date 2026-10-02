@@ -9,6 +9,7 @@ import type {
   Group,
   WritebackAction,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { createTestNativeQuery } from "./api";
 import type { DataAppTestEnv } from "./data-app-test-env";
@@ -434,7 +435,12 @@ export function typedSchemaMetadata(
     .join("\n")
     .trim();
 
-  return JSON.parse(
+  const metadata: unknown = JSON.parse(
     block.slice("/* metadata: ".length, block.length - " */".length),
   );
+  if (!isObject(metadata)) {
+    throw new Error(`The metadata of \`${entry}\` is not an object.`);
+  }
+
+  return metadata;
 }
