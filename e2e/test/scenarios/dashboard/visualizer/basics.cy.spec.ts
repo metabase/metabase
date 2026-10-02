@@ -265,49 +265,18 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     cy.findByLabelText("Back to Test Dashboard").click();
   });
 
-  it("should open underlying questions in the ellipsis menu if the card has no title", () => {
-    createDashboardWithVisualizerDashcards();
-
-    // This card HAS a title, so it should NOT have the "View question(s)" option
-    H.getDashboardCard(0).realHover();
-    H.getDashboardCardMenu(0).click();
-    H.popover().findByText("View question(s)").should("not.exist");
-
-    // This card has NO title, so it SHOULD have the "View question(s)" option
-    H.editDashboard();
-    H.showDashcardVisualizerModal(2);
-    H.modal().within(() => {
-      cy.findByTestId("visualizer-title").clear().blur();
-    });
-    H.saveDashcardVisualizerModal();
-    cy.wait(DASHCARD_QUERY_WAIT_TIME);
-    H.saveDashboard();
-
-    H.getDashboardCard(2).realHover();
-    H.getDashboardCardMenu(2).click();
-    H.popover().within(() => {
-      cy.findByText("View question(s)").should("exist");
-      cy.findByText("View question(s)").realHover();
-    });
-
-    cy.findByTestId("dashcard-menu-open-underlying-question").within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CATEGORY.name).click();
-    });
-
-    cy.get("@productsCountByCategoryQuestionId").then((id) =>
-      cy.url().should("contain", `${id}-products-by-category`),
-    );
-  });
-
-  it("should rename a dashboard card", () => {
+  it("should rename, describe and untitle dashboard cards (metabase#61457)", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
 
-    // Rename the first card and check
+    // Rename the first card and give it a description
     // My chart -> "Renamed chart"
     H.showDashcardVisualizerModal(0);
     H.modal().within(() => {
       cy.findByDisplayValue("My chart").clear().type("Renamed chart").blur();
+      cy.findByText("Settings").click();
+      cy.findByTestId("card.description").should("have.value", "");
+      cy.findByTestId("card.description").type("My description").blur();
     });
     H.saveDashcardVisualizerModal();
     H.getDashboardCard(0).findByText("Created At: Month").should("exist"); // wait for query rerun
@@ -338,35 +307,26 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.getDashboardCard(1).findByText("Product → Category").should("exist"); // wait for query rerun
     H.assertDashboardCardTitle(1, "");
 
+    // Clear the single-series pie title
+    // My pie chart -> ""
+    H.showDashcardVisualizerModal(2);
+    H.modal().within(() => {
+      cy.findByTestId("visualizer-title").clear().blur();
+    });
+    H.saveDashcardVisualizerModal();
+    H.getDashboardCard(2).within(() => {
+      H.pieSlices().should("have.length", 4); // wait for query rerun
+    });
+    H.assertDashboardCardTitle(2, "");
+
     // Save the dashboard
     H.saveDashboard();
 
     // Check that the card titles are still good
     H.assertDashboardCardTitle(0, "Renamed chart");
     H.assertDashboardCardTitle(1, "");
+    H.assertDashboardCardTitle(2, "");
     H.assertDashboardCardTitle(3, "Another chart");
-
-    // Making sure the title is empty (not "My new visualization")
-    H.editDashboard();
-    H.showDashcardVisualizerModal(1);
-    H.modal().within(() => {
-      cy.findByTestId("visualizer-title").should("have.text", "");
-    });
-  });
-
-  it("should allow adding description to a visualizer dashcard (metabase#61457)", () => {
-    createDashboardWithVisualizerDashcards();
-    H.editDashboard();
-
-    H.showDashcardVisualizerModal(0);
-    H.modal().within(() => {
-      cy.findByText("Settings").click();
-      cy.findByTestId("card.description").should("have.value", "");
-      cy.findByTestId("card.description").type("My description").blur();
-    });
-
-    H.saveDashcardVisualizerModal();
-    H.saveDashboard();
 
     H.getDashboardCard(0)
       .realHover()
@@ -374,44 +334,37 @@ describe("scenarios > dashboard > visualizer > basics", () => {
         cy.icon("info").realHover();
       });
     H.tooltip().findByText("My description").should("exist");
-  });
 
-  it("should allow drilling into the underlying question by clicking on the title (metabase#64340)", () => {
-    H.createQuestion(ORDERS_COUNT_BY_CREATED_AT, {
-      wrapId: true,
-      idAlias: "questionId",
+    // A titled card doesn't offer "View question(s)" in its menu
+    H.getDashboardCard(0).realHover();
+    H.getDashboardCardMenu(0).click();
+    H.popover().within(() => {
+      cy.findByText("Edit visualization").should("exist");
+      cy.findByText("View question(s)").should("not.exist");
     });
+    cy.realPress("Escape");
 
-    H.createDashboard().then(({ body: { id: dashboardId } }) => {
-      cy.get("@questionId").then((questionId) => {
-        H.addQuestionToDashboard({
-          dashboardId,
-          // Unjustified type cast. FIXME
-          cardId: questionId as any,
-        });
-        H.visitDashboard(dashboardId);
-      });
+    // An untitled card offers its underlying question in the menu
+    H.getDashboardCard(2).realHover();
+    H.getDashboardCardMenu(2).click();
+    H.popover().findByText("View question(s)").realHover();
+    cy.findByTestId("dashcard-menu-open-underlying-question").within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CATEGORY.name).click();
     });
+    cy.get("@productsCountByCategoryQuestionId").then((id) =>
+      cy.url().should("contain", `${id}-products-by-category`),
+    );
 
+    // Making sure the title is empty (not "My new visualization")
+    H.visitDashboard("@dashboardId");
     H.editDashboard();
-    H.getDashboardCard(0)
-      .realHover({ scrollBehavior: "bottom" })
-      .findByLabelText("Visualize another way")
-      .click();
-
+    H.showDashcardVisualizerModal(1);
     H.modal().within(() => {
-      H.selectVisualization("bar");
+      cy.findByTestId("visualizer-title").should("have.text", "");
     });
-    H.saveDashcardVisualizerModal();
-    H.saveDashboard();
-    H.getDashboardCard(0).within(() => {
-      cy.findByText("Orders by Created At (Month)").click();
-    });
-
-    cy.url().should("match", /\/question\/\d+/);
   });
 
-  it("should propagate original card title and description to visualizer cards (metabase#63863)", () => {
+  it("should propagate original card title and description to visualizer cards (metabase#63863, metabase#64340)", () => {
     const questionWithDescription = {
       ...ORDERS_COUNT_BY_CREATED_AT,
       name: "Original Question Title",
@@ -477,6 +430,13 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       });
     H.tooltip().findByText("Original question description").should("exist");
 
+    // The propagated title drills into the underlying question (metabase#64340)
+    H.getDashboardCard(0).findByText("Original Question Title").click();
+    cy.get("@questionWithDescriptionId").then((id) =>
+      cy.url().should("contain", `/question/${id}-`),
+    );
+    cy.findByLabelText("Back to Test Dashboard").click();
+
     H.editDashboard();
 
     H.showDashcardVisualizerModal(0);
@@ -511,13 +471,25 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.tooltip().findByText("Updated description").should("exist");
   });
 
-  it("should start in a pristine state and update dirtyness accordingly", () => {
+  it("should start in a pristine state and update dirtyness accordingly (metabase#69038)", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
 
     H.showDashcardVisualizerModal(0);
 
     // no changes, save button should be disabled
+    H.modal().within(() => {
+      cy.findByText("Save").closest("button").should("be.disabled");
+    });
+
+    // viewing the table preview doesn't change the card (metabase#69038)
+    cy.findByTestId("visualizer-view-as-table-button").click();
+    cy.findByTestId("visualizer-tabular-preview-modal").within(() => {
+      cy.findByText("Count").should("exist");
+      cy.findByLabelText("Close").click();
+    });
+    cy.findByTestId("visualizer-tabular-preview-modal").should("not.exist");
+
     H.modal().within(() => {
       cy.findByText("Save").closest("button").should("be.disabled");
       // hit escape
@@ -548,6 +520,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@redoButton").should("be.disabled");
 
       H.switchToAddMoreData();
+      cy.findByPlaceholderText("Search for something").type("non-existing");
+      cy.findByText("No compatible results").should("exist");
+
       H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.switchToColumnsList();
 
@@ -869,9 +844,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
         .should("be.visible");
     }
 
-    it("visualizer cards should work in public dashboards", () => {
+    it("visualizer cards should work in public and embedded dashboards", () => {
       cy.signInAsAdmin();
-      createDashboardWithVisualizerDashcards();
+      createDashboardWithVisualizerDashcards({ enable_embedding: true });
+
       cy.log("Visit public dashboard");
       cy.get("@dashboardId")
         .then((dashboardId) => {
@@ -880,37 +856,16 @@ describe("scenarios > dashboard > visualizer > basics", () => {
         .then(({ body: { uuid } }: any) => {
           cy.visit(`/public/dashboard/${uuid}`);
         });
-
       ensureVisualizerCardsAreRendered();
-    });
 
-    it("visualizer cards should work in embedded dashboards", () => {
-      cy.signInAsAdmin();
-      createDashboardWithVisualizerDashcards({ enable_embedding: true });
-      cy.log("Visit public dashboard");
-
+      cy.log("Visit embedded dashboard");
       cy.get("@dashboardId").then((dashboard: any) => {
         H.visitEmbeddedPage({
           resource: { dashboard: dashboard },
           params: {},
         });
       });
-
       ensureVisualizerCardsAreRendered();
-    });
-  });
-
-  it("show a message when there are no search results", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    H.openQuestionsSidebar();
-    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
-
-    H.modal().within(() => {
-      cy.findByText("Add more data").click();
-      cy.findByPlaceholderText("Search for something").type("non-existing");
-
-      cy.findByText("No compatible results").should("exist");
     });
   });
 
@@ -958,19 +913,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name).should(
         "be.disabled",
       );
-    });
-  });
-
-  it("should allow viewing the table preview (metabase#69038)", () => {
-    createDashboardWithVisualizerDashcards();
-    H.editDashboard();
-
-    H.showDashcardVisualizerModal(0);
-
-    cy.findByTestId("visualizer-view-as-table-button").click();
-
-    cy.findByTestId("visualizer-tabular-preview-modal").within(() => {
-      cy.findByText("Count").should("exist");
     });
   });
 });
