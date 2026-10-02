@@ -159,7 +159,8 @@
     :mini-model    "deepseek-flash"
     ;; Ids of retired models, each mapped to the model that now serves it
     ;; (https://api-docs.deepseek.com/quick_start/pricing). Saved selections may still name them, and they read as
-    ;; the successor, so keep an entry for as long as any instance may have it stored.
+    ;; the successor. Treat an entry as permanent: nothing rewrites a value pinned by an environment variable, and a
+    ;; stored value converges only when the setting is next written.
     :retired-models {"deepseek-v4-flash" "deepseek-flash"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
@@ -883,14 +884,19 @@
   (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
 
 (defn- current-model
-  "The model now serving `model` on provider type `type-name`: its successor when the type retired it, otherwise
-  `model` itself."
+  "The model now serving `model` on provider type `type-name`.
+
+  Its successor when the type retired it, otherwise `model` itself. Read from the raw registry, like
+  [[retired-model-ids]]: retirement is not hosted policy, so it needs no [[provider-type]] lookup.
+
+    \"deepseek\" \"deepseek-v4-flash\" => \"deepseek-flash\""
   [type-name model]
-  (get-in (provider-type type-name) [:retired-models model] model))
+  (get-in provider-type-by-name [type-name :retired-models model] model))
 
 (defn canonical-model-ref
-  "`model-ref` with a retired model id replaced by the model that now serves it, so a selection saved before a
-  rename reads as the current model. Returns any other `model-ref` unchanged.
+  "`model-ref` with any retired model id replaced by its successor.
+
+  A selection saved before a rename reads as the current model. Returns any other `model-ref` unchanged.
 
     \"deepseek/deepseek-v4-flash\" => \"deepseek/deepseek-flash\""
   [model-ref]

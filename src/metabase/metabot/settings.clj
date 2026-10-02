@@ -202,9 +202,10 @@
       (str conn-key "/" model))))
 
 (defn explicit-mini-model
-  "The model reference [[llm-mini-model]] was explicitly set to, or nil while it is being derived
-  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model quick tasks happen
-  to run on want this: [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked.
+  "The model reference [[llm-mini-model]] was explicitly set to, or nil when derived from [[llm-metabot-provider]].
+
+  Callers that act on the admin's choice rather than on the model quick tasks happen to run on want this:
+  [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked.
   A retired model id reads as the model that now serves it (see [[llm.provider/canonical-model-ref]])."
   []
   (llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-mini-model)))

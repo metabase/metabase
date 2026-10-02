@@ -637,6 +637,14 @@
       (is (= "nope/deepseek-v4-flash" (llm.provider/canonical-model-ref "nope/deepseek-v4-flash")))
       (is (nil? (llm.provider/canonical-model-ref nil))))))
 
+(deftest ^:parallel retired-models-map-straight-to-a-current-model-test
+  (testing (str "a retired model's successor is never itself retired: a model ref resolves through a single "
+                "lookup, so a chain would leave a saved selection naming a retired id")
+    (doseq [{:keys [type retired-models]} (llm.provider/provider-types)
+            successor                     (vals retired-models)]
+      (testing type
+        (is (not (contains? retired-models successor)))))))
+
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"
     (is (= "https://api.mistral.ai/v1"
