@@ -21,17 +21,17 @@ export const UploadInfoModal = ({
       padding="2rem"
       styles={{ header: { marginBottom: "1rem" } }}
     >
-      <Stack gap="md" align="center" justify="center">
+      <Stack gap="lg" align="center" justify="center">
         <Text
           component="div"
           px="sm"
-          py="xs"
+          py="xxs"
           fz="md"
           fw={700}
           c="core-brand"
           bg="background_surface-brand-subtle"
           mx="auto"
-          bdrs="sm"
+          bdrs="xs"
         >
           {t`New`}
         </Text>
@@ -40,13 +40,13 @@ export const UploadInfoModal = ({
         </Title>
         {isAdmin ? (
           <>
-            <Box c="text-secondary">
-              <p>
+            <Box>
+              <Text c="text-secondary" mb="1rem">
                 {t`Team members will be able to upload CSV files and work with them just like any other data source.`}
-              </p>
-              <p>
+              </Text>
+              <Text c="text-secondary">
                 {t`You'll be able to pick the default database where the data should be stored when enabling the feature.`}
-              </p>
+              </Text>
             </Box>
             <Button
               component={Link}
@@ -59,10 +59,10 @@ export const UploadInfoModal = ({
           </>
         ) : (
           <>
-            <Box c="text-secondary">
-              <p>
+            <Box>
+              <Text c="text-secondary">
                 {t`You'll need to ask your admin to enable this feature to get started. Then, you'll be able to upload CSV files and work with them just like any other data source.`}
-              </p>
+              </Text>
             </Box>
             <Button onClick={onClose}>{t`Got it`}</Button>
           </>

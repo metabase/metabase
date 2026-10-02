@@ -22,7 +22,7 @@ export const DestinationDatabasesModal = () => {
       opened
       title={t`Destination databases`}
       onClose={handleCloseModal}
-      padding="xl"
+      padding="xxl"
       classNames={{
         content: S.modalRoot,
         header: S.modalHeader,

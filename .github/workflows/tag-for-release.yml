@@ -34,7 +34,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -60,6 +60,23 @@ jobs:
               userName: '${{ github.actor }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
+      - name: Write job summary
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const { owner, repo } = context.repo;
+            const commit = '${{ inputs.commit }}';
+            const version = '${{ inputs.version }}';
+
+            await core.summary
+              .addHeading(`🚀 ${version} Release Overview`)
+              .addList([
+                `Version: ${version}`,
+                `Release commit: <a href="https://github.com/${owner}/${repo}/commit/${commit}">${commit.slice(0, 7)}</a>`,
+                `Started by: @${{ github.actor }}`,
+              ])
+              .write();
 
   check-version:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -75,7 +92,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release
@@ -118,7 +135,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
         sparse-checkout: |
@@ -189,7 +206,7 @@ jobs:
     env:
       INTERACTIVE: false
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: .github
     - name: Get correct version number
@@ -249,7 +266,7 @@ jobs:
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: .github
     - name: Retrieve release ee uberjar artifact

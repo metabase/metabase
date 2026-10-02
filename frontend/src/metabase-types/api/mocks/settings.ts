@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import type {
   Engine,
   EngineField,
@@ -147,6 +146,7 @@ export const createMockTokenFeatures = (
   "data-apps": false,
   "transforms-basic": false,
   "transforms-python": false,
+  "transforms-testing": false,
   library: false,
   library_retrieval: false,
   "support-users": false,
@@ -244,7 +244,6 @@ export const createMockSettings = (
   "disable-cors-on-localhost": false,
   "llm-openai-model": "",
   "llm-openai-api-key": "",
-  "llm-anthropic-model": "",
   "email-configured?": false,
   "email-smtp-host": null,
   "email-smtp-port": null,
@@ -326,7 +325,6 @@ export const createMockSettings = (
   "ldap-group-mappings": null,
   "ldap-group-membership-filter": "(member={dn})",
   "loading-message": "doing-science",
-  "llm-anthropic-api-key-configured?": false,
   "mcp-enabled?": true,
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "native-query-autocomplete-match-style": "substring",
@@ -448,5 +446,6 @@ export const createMockSettings = (
   "mcp-apps-cors-custom-origins": "",
   "transforms-meter-locked": null,
   "mfa-enforcement": "off",
+  "mfa-requirement-deadline": null,
   ...opts,
 });

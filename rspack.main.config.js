@@ -28,6 +28,9 @@ const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const {
+  DropStylesEntryScriptPlugin,
+} = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
+const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
 const {
@@ -49,6 +52,10 @@ const isEEBuild = process.env.MB_EDITION === "ee";
 const SDK_DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
+// Bind to loopback by default so the hot-reload server is not reachable from the
+// local network. Set MB_FRONTEND_DEV_HOST=0.0.0.0 to serve it to other devices
+// (or from inside a container, where the published port is the boundary).
+const HOST = process.env.MB_FRONTEND_DEV_HOST || "127.0.0.1";
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
@@ -91,9 +98,7 @@ const SWC_LOADER = {
 
     sourceMaps: true,
     minify: false, // produces same bundle size, but cuts 1s locally
-    env: {
-      targets: ["defaults"],
-    },
+    env: {},
   },
 };
 
@@ -110,6 +115,55 @@ class OnScriptError {
               script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
             });
             // Tell webpack to move on
+            cb(null, data);
+          },
+        );
+      },
+    );
+  }
+}
+
+const PRELOAD_MARKER = "<!-- asset-preloads -->";
+
+/**
+ * The bundle tags are injected at the end of <head>, after ~124 kB of inline JSON,
+ * so the browser only discovers them once nearly the whole document has arrived.
+ * This emits `rel=preload` copies near the top of <head> instead, where they land in
+ * the first flight of response bytes. Templates without the marker are left alone.
+ */
+class PreloadAssetTags {
+  apply(/** @type {import("webpack").Compiler} */ compiler) {
+    compiler.hooks.compilation.tap(
+      "PreloadAssetTags",
+      (/** @type {import("webpack").Compilation} */ compilation) => {
+        HtmlWebpackPlugin.getHooks(compilation).afterTemplateExecution.tapAsync(
+          "PreloadAssetTags",
+          (data, cb) => {
+            if (!data.html.includes(PRELOAD_MARKER)) {
+              cb(null, data);
+              return;
+            }
+
+            const hints = data.headTags
+              .flatMap((tag) => {
+                if (tag.tagName === "script" && tag.attributes.src) {
+                  return [{ url: tag.attributes.src, as: "script" }];
+                }
+                if (
+                  tag.attributes.rel === "stylesheet" &&
+                  tag.attributes.href
+                ) {
+                  return [{ url: tag.attributes.href, as: "style" }];
+                }
+                return [];
+              })
+              .map(
+                (hint) =>
+                  `<link rel="preload" href="${hint.url}" as="${hint.as}">`,
+              )
+              .join("");
+
+            data.html = data.html.replace(PRELOAD_MARKER, hints);
             cb(null, data);
           },
         );
@@ -233,16 +287,7 @@ const config = {
     ],
   },
   resolve: {
-    extensions: [
-      ".webpack.js",
-      ".web.js",
-      ".js",
-      ".jsx",
-      ".ts",
-      ".tsx",
-      ".css",
-      ".svg",
-    ],
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
     alias: RESOLVE_ALIASES,
     fallback: {
       buffer: require.resolve("buffer/"),
@@ -257,15 +302,30 @@ const config = {
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
-          // The data-app iframe is isolated from main-app CSS/JS by design;
-          // sharing the vendor chunk would re-link them. Keep its
-          // node_modules in its own chunks.
+          // The data-app and MCP iframes are isolated from main-app CSS/JS by
+          // design; sharing the vendor chunk would re-link them. Keep their
+          // node_modules in their own chunks.
+          //
+          // For MCP that also cuts both pages. `@modelcontextprotocol/ext-apps`
+          // reaches no entry but `app-embed-mcp`, so the shared chunk was
+          // charging `app-main` for it, while the MCP page pulled down a vendor
+          // chunk built for an app it never runs.
           chunks: (chunk) =>
             chunk.canBeInitial() &&
             chunk.name !== "data-app-vendors" &&
-            chunk.name !== "app-data-app",
+            chunk.name !== "app-data-app" &&
+            chunk.name !== "app-embed-mcp",
           name: "vendor",
           priority: -10,
+        },
+        // Modules shared by two or more async chunks (e.g. CodeMirror, pulled
+        // in by every lazily loaded editor) move into a shared async chunk
+        // instead of being copied into each one. `vendors` above only claims
+        // initial chunks, so this never grows the initial payload.
+        asyncCommons: {
+          chunks: "async",
+          minChunks: 2,
+          reuseExistingChunk: true,
         },
         sqlFormatter: {
           test: /[\\/]sql-formatter[\\/]/,
@@ -303,6 +363,8 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
+    ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
+    new PreloadAssetTags(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
@@ -343,7 +405,9 @@ const config = {
     new HtmlWebpackPlugin({
       filename: "../../embed-mcp.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-embed-mcp"],
+      // No "vendor": the cache group above leaves this entry out of it, so a
+      // tag for it would fetch a chunk the page does not use.
+      chunks: ["styles", "app-embed-mcp"],
       template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
 
       // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
@@ -407,7 +471,7 @@ if (shouldEnableHotRefresh) {
       // if you want to reduce stats noise
       // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     },
-    host: "0.0.0.0",
+    host: HOST,
   };
 
   config.watchOptions = {

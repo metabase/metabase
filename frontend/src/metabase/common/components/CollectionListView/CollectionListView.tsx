@@ -36,7 +36,7 @@ export const CollectionListView = ({
   const renderItem = (item: CollectionListItem) => (
     <Link to={item.link}>
       <Card shadow="none" withBorder className={styles.card}>
-        <Group gap="xs">
+        <Group gap="xxs">
           <Icon name={item.icon} className={CS.mr1} size={18} />
 
           <Title order={6} component="h3">

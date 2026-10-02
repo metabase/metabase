@@ -23,10 +23,10 @@ export function ChartTypePicker({
     <Flex
       h={32}
       align="center"
-      gap="xs"
+      gap="xxs"
       bg="background_page-secondary"
-      px="xs"
-      bdrs="md"
+      px="xxs"
+      bdrs="sm"
     >
       {chartTypes.map(({ type, icon }) => (
         <ActionIcon

@@ -3,6 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase-enterprise.database-replication.db :as database-replication.db]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.common :as api]
@@ -12,8 +13,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.util.regex PatternSyntaxException)))
 
@@ -133,10 +133,10 @@
      :schema-filters schema-filters}))
 
 (def ^:private body-schema
-  [:map
+  [:map {:closed true}
    [:replicationSchemaFilters
     {:optional true}
-    [:map
+    [:map {:closed true}
      [:schema-filters-type [:enum "inclusion" "exclusion" "all"]]
      [:schema-filters-patterns :string]]]])
 
@@ -146,8 +146,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
-  (let [database (t2/select-one :model/Database :id database-id)
+  [{:keys [database-id]} :- [:map {:closed true} [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
+  (let [database (database-replication.db/database database-id)
         secret (->secret database)
         replication-schema-filters (m->schema-filter replicationSchemaFilters)]
     (u/recursive-map-keys u/->camelCaseEn (preview-replication (premium-features/quotas) (preview-tables secret replication-schema-filters)))))
@@ -158,9 +158,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
+  [{:keys [database-id]} :- [:map {:closed true} [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
-  (let [database   (t2/select-one :model/Database :id database-id)
+  (let [database   (database-replication.db/database database-id)
         db-details (:details database)]
     (api/check-404 database)
     (api/check-400 (= :postgres (:engine database)) "PG replication is only supported for PostgreSQL databases.")
@@ -189,7 +189,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/connection/:database-id"
   "Delete PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
+  [{:keys [database-id]} :- [:map {:closed true} [:database-id ms/PositiveInt]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [conns (pruned-database-replication-connections)]
     (when-let [connection-id (database-id->connection-id conns database-id)]

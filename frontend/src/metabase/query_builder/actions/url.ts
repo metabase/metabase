@@ -1,6 +1,7 @@
 import { parse as parseUrl } from "url";
 
 import { isEqualCard } from "metabase/common/utils/card";
+import { selectQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
 import type { Path } from "metabase/router";
 import { getIsNavigationPending, navigate } from "metabase/router";
@@ -16,7 +17,7 @@ import {
   getQueryBuilderMode,
   getQuestion,
   getUiControls,
-} from "../selectors";
+} from "../store/selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
   getCurrentQueryParams,
@@ -102,7 +103,10 @@ export const updateUrl = createThunkAction(
       );
       const tableUrl =
         isOnTableRoute && objectId == null && queryBuilderMode === "view"
-          ? getTableUrlForPristineQuestion(question)
+          ? getTableUrlForPristineQuestion(
+              question,
+              selectQuestionFromOptsBuilder(getState()),
+            )
           : null;
       const url =
         tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);

@@ -1,7 +1,12 @@
 (ns metabase.collections.schema
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(def ^:constant trash-collection-type
+  "The value of the `:type` field for the Trash collection that holds archived items."
+  "trash")
 
 (mr/def ::CollectionContentModel [:enum "card" "dataset" "metric"])
 
@@ -92,3 +97,55 @@
    [:effective_location {:optional true} :string]
    [:authority_level {:optional true} [:maybe :string]]
    [:dashboard_count {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::collection
+  "A Collection as selected from the app DB: every column of `:collection`."
+  [:merge
+   ::collection.update
+   [:map {:closed true}
+    [:id                   ::lib.schema.id/collection]
+    [:can_write            {:optional true} :boolean]
+    [:is_personal          {:optional true} [:maybe :boolean]]
+    [:effective_location   {:optional true} [:maybe :string]]]])
+
+(mr/def ::root-collection
+  "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."
+  [:map {:closed true}
+   [:metabase.collections.models.collection.root/is-root? [:= true]]
+   [:authority_level     {:optional true} [:maybe [:or :keyword :string]]]
+   [:id                  {:optional true} [:= "root"]]
+   [:name                {:optional true} :string]
+   [:namespace           {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_personal         {:optional true} :boolean]
+   [:is_remote_synced    {:optional true} :boolean]
+   [:can_write           {:optional true} :boolean]
+   [:parent_id           {:optional true} :nil]
+   [:effective_location  {:optional true} [:maybe :string]]
+   [:effective_ancestors {:optional true} [:sequential [:ref ::collection]]]
+   [:can_restore         {:optional true} :boolean]
+   [:can_delete          {:optional true} :boolean]])
+
+(mr/def ::collection-or-root
+  "A Collection row, or the Root Collection placeholder."
+  [:multi {:dispatch (fn [x] (if (:metabase.collections.models.collection.root/is-root? x) :root :row))}
+   [:root [:ref ::root-collection]]
+   [:row  [:ref ::collection]]])
+
+(mr/def ::collection.update
+  "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."
+  [:map {:closed true}
+   [:name                 {:optional true} [:maybe :string]]
+   [:description          {:optional true} [:maybe :string]]
+   [:archived             {:optional true} [:maybe :boolean]]
+   [:location             {:optional true} [:maybe :string]]
+   [:personal_owner_id    {:optional true} [:maybe ::lib.schema.id/user]]
+   [:slug                 {:optional true} [:maybe :string]]
+   [:namespace            {:optional true} [:maybe [:or :keyword :string]]]
+   [:authority_level      {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_id            {:optional true} [:maybe :string]]
+   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:type                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_sample            {:optional true} [:maybe :boolean]]
+   [:archive_operation_id {:optional true} [:maybe :string]]
+   [:archived_directly    {:optional true} [:maybe :boolean]]
+   [:is_remote_synced     {:optional true} [:maybe :boolean]]])

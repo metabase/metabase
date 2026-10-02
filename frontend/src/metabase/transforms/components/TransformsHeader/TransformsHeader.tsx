@@ -1,12 +1,12 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
-  PaneHeader,
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import * as Urls from "metabase/urls";
 
 import {
@@ -16,15 +16,13 @@ import {
 } from "./utils";
 
 type TransformsHeaderProps = {
-  showMetabotButton?: boolean;
   showTabs?: boolean;
 };
 
 export const TransformsHeader = memo(function TransformsHeader({
-  showMetabotButton,
   showTabs = true,
 }: TransformsHeaderProps) {
-  const tabs: PaneHeaderTab[] = [
+  const tabs: PillTab[] = [
     {
       label: t`Transforms`,
       to: Urls.transformList(),
@@ -51,10 +49,9 @@ export const TransformsHeader = memo(function TransformsHeader({
       breadcrumbs={
         <DataStudioBreadcrumbs>{t`Data transformation`}</DataStudioBreadcrumbs>
       }
-      tabs={showTabs ? <PaneHeaderTabs tabs={tabs} /> : undefined}
+      tabs={showTabs ? <PillTabNavigation tabs={tabs} /> : undefined}
       py={0}
-      mb="md"
-      showMetabotButton={showMetabotButton}
+      mb="lg"
     />
   );
 });

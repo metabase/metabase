@@ -6,6 +6,8 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.measures.db :as measures.db]
+   [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -22,7 +24,7 @@
    [:id                  ms/PositiveInt]
    [:name                ms/NonBlankString]
    [:table_id            ms/PositiveInt]
-   [:definition          ms/Map]
+   [:definition          ::measures.schema/definition]
    [:description         {:optional true} [:maybe :string]]
    [:archived            :boolean]
    [:creator_id          ms/PositiveInt]
@@ -34,29 +36,6 @@
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
 
-(defn- normalize-input-definition
-  "Normalize measure definition from API input to MBQL5.
-  Accepts MBQL4 definitions for Cypress e2e test support:
-  - MBQL5 full queries (passed through)
-  - MBQL4 full queries (converted to MBQL5)
-  - MBQL4 fragments (wrapped in full query, then converted to MBQL5); the fragment must
-    include `:source-table` so the table can be derived"
-  [definition]
-  (if (seq definition)
-    (-> (case (lib/normalized-mbql-version definition)
-          (:mbql-version/mbql5 :mbql-version/legacy)
-          definition
-          ;; default: MBQL4 fragment - wrap it in a full query
-          (let [table-id    (:source-table definition)
-                _           (api/check-400 (pos-int? table-id)
-                                           (tru "Measure definition must specify a source table."))
-                database-id (t2/select-one-fn :db_id :model/Table :id table-id)]
-            {:database database-id
-             :type :query
-             :query definition}))
-        lib-be/normalize-query)
-    {}))
-
 (defn- definition-table-id
   "Derive the source table ID from a normalized measure definition, or throw a 400 if it has none."
   [normalized-definition]
@@ -64,31 +43,37 @@
                    (lib/primary-source-table-id normalized-definition))
                  (tru "Measure definition must specify a source table.")))
 
+(defn create-measure!
+  "Create-check and insert a new Measure whose table is derived from its `definition`; publishes
+  `:event/measure-create` and returns the hydrated Measure. The shared domain create path, so
+  the create-check runs wherever a Measure is authored."
+  [{:keys [name description definition], :as body}]
+  ;; The REST endpoint's `::measures.schema/definition` normalizes legacy MBQL on decode, but this
+  ;; is the shared entry point — a non-REST caller (MCP's measure_write) arrives undecoded, and
+  ;; `definition-table-id` requires a normalized definition.
+  (let [definition (lib-be/normalize-query definition)
+        table-id   (definition-table-id definition)]
+    (api/create-check :model/Measure (assoc body :table_id table-id))
+    (let [measure (api/check-500
+                   (measures.db/insert-measure! api/*current-user-id* name description definition))]
+      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
+      (t2/hydrate measure :creator))))
+
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`. The Measure's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ms/Map]
-                                                       [:description {:optional true} [:maybe :string]]]]
-  (let [normalized-definition (normalize-input-definition definition)
-        table-id (definition-table-id normalized-definition)]
-    (api/create-check :model/Measure (assoc body :table_id table-id))
-    (let [measure (api/check-500
-                   (first (t2/insert-returning-instances! :model/Measure
-                                                          :creator_id  api/*current-user-id*
-                                                          :name        name
-                                                          :description description
-                                                          :definition  normalized-definition)))]
-      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
-      (t2/hydrate measure :creator))))
+   body :- [:map {:closed true}
+            [:name        ms/NonBlankString]
+            [:definition  ::measures.schema/definition]
+            [:description {:optional true} [:maybe :string]]]]
+  (create-measure! body))
 
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
-  (api/read-check (t2/select-one :model/Measure :id id))
+  (api/read-check (measures.db/measure id))
   (metrics/sync-dimensions! :metadata/measure id)
-  (cond-> (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
+  (cond-> (-> (t2/hydrate (measures.db/measure id) :creator)
               metrics/filter-dimensions-for-user)
     (not include-orphaned?) metrics/without-orphaned-dimensions))
 
@@ -103,9 +88,9 @@
 
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include-orphaned]} :- [:map
+   {:keys [include-orphaned]} :- [:map {:closed true}
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (let [measure (hydrated-measure id (boolean include-orphaned))]
     (-> measure
@@ -115,50 +100,51 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
   []
-  (let [measures  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]})
+  (let [measures  (measures.db/unarchived-measures)
         table-ids (into #{} (keep :table_id) measures)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
-                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                                 (measures.db/table-database-ids table-ids))
                                     :table-ids table-ids})
     (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
          (mapv with-api-dimensions))))
 
-(defn- write-check-and-update-measure!
+(defn write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
-  event and returns updated/hydrated Measure."
+  event and returns updated/hydrated Measure. The shared domain update path, so the write-check runs
+  wherever a Measure is edited."
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check :model/Measure id)
-        clean-body (u/select-keys-when body
-                                       :present #{:description}
-                                       :non-nil #{:archived :definition :name})
-        new-def    (when-let [def (:definition clean-body)]
-                     (normalize-input-definition def))
-        new-body   (merge
-                    (dissoc clean-body :revision_message)
-                    (when new-def {:definition new-def}))
+        ;; Normalized for the same reason as in `create-measure!` — non-REST callers (MCP's
+        ;; measure_write) arrive undecoded, and both the stored definition and the table-id
+        ;; derivation below need MBQL 5.
+        clean-body (cond-> (u/select-keys-when body
+                                               :present #{:description}
+                                               :non-nil #{:archived :definition :name})
+                     (some? (:definition body)) (update :definition lib-be/normalize-query))
+        new-body   (dissoc clean-body :revision_message)
         changes    (when-not (= new-body existing)
                      new-body)]
     ;; An updated definition must still specify a source table; if it implicitly moves the Measure to a different
     ;; table, the write-check above checked the old table, so also make sure the user could create a Measure on the
     ;; new one.
-    (when new-def
+    (when-let [new-def (:definition clean-body)]
       (let [new-table-id (definition-table-id new-def)]
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Measure {:table_id new-table-id}))))
     (when changes
-      (t2/update! :model/Measure id changes))
+      (measures.db/update-measure! id changes))
     (u/prog1 (hydrated-measure id false)
       (events/publish-event! :event/measure-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
 (api.macros/defendpoint :put "/:id" :- ::measure
   "Update a `Measure` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            [:definition              {:optional true} [:maybe ms/Map]]
+            [:definition              {:optional true} [:maybe ::measures.schema/definition]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]
@@ -183,7 +169,7 @@
    - values: list of [value] or [value, display-name] tuples
    - field_id: the underlying field ID
    - has_more_values: boolean indicating if there are more values"
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
   (let [measure (hydrated-measure id false)]
@@ -197,10 +183,10 @@
   "Search for values of a dimension that contain the query string.
 
    Returns field values matching the search query in the same format as the field values API."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
+   {:keys [query]}            :- [:map {:closed true} [:query ms/NonBlankString]]]
   (let [measure (hydrated-measure id false)]
     (metrics/dimension-search-values
      (:dimensions measure)
@@ -213,10 +199,10 @@
   "Fetch remapped value for a specific dimension value.
 
    Returns a pair [value, display-name] if remapping exists, or [value] otherwise."
-  [{:keys [id dimension-key]} :- [:map
+  [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [value]}             :- [:map [:value :string]]]
+   {:keys [value]}             :- [:map {:closed true} [:value :string]]]
   (let [measure (hydrated-measure id false)]
     (metrics/dimension-remapped-value
      (:dimensions measure)

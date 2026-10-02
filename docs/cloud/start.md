@@ -29,6 +29,7 @@ Manage your Metabase Cloud instance, subscription, and billing via the [Metabase
 
 - [Changing which region your Metabase is hosted in](./change-region.md)
 - [IP addresses to whitelist](ip-addresses-to-whitelist.md)
+- [IP allowlist](./ip-allowlist.md)
 - [Changing your domain name](./custom-domain.md)
 
 ### Migrations
@@ -40,7 +41,7 @@ Manage your Metabase Cloud instance, subscription, and billing via the [Metabase
 ### Billing
 
 - [Accounts and billing](./accounts-and-billing.md)
-- [How billing works](./how-billing-works.md)
+- [How billing works](https://www.metabase.com/how-billing-works)
 
 ## Metabase Cloud contact
 

@@ -2,9 +2,9 @@ import { renderHook } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 import { mainReducers } from "__support__/entities-store";
+import { createMockState } from "__support__/state";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { EmbedState } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
 import { getStore } from "metabase/store";
 

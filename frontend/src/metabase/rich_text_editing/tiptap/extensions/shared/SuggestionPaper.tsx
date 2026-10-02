@@ -33,7 +33,7 @@ export const LoadingSuggestionPaper = ({
   <Box
     aria-label={ariaLabel}
     ta="center"
-    py="lg"
+    py="xl"
     className={S.suggestionPaper}
     data-testid="mention-suggestions-popup"
   >

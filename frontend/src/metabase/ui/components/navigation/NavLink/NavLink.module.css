@@ -1,76 +1,74 @@
 .NavLink {
   border-radius: 0.5rem;
 
-  &[data-variant="default"] {
-    &:hover {
-      background-color: var(--mb-color-background_surface-hover);
+  &[data-variant="secondary"],
+  &[data-variant="primary"] {
+    border-radius: var(--mantine-radius-xs);
+
+    .NavLinkSection[data-position="left"] {
+      color: var(--mb-color-icon-brand);
     }
 
-    &[data-active] {
-      color: var(--mb-color-text-primary-inverse);
-
-      &,
-      &:hover {
-        background-color: var(--mb-color-core-brand);
-      }
-
-      .NavLinkLabel {
-        color: var(--mb-color-text-primary-inverse);
-      }
-
-      .NavLinkChevron {
-        color: var(--mb-color-text-primary-inverse);
-      }
+    &:hover:not([data-active], :has([data-navlink-button]:hover)) {
+      background-color: var(--mb-color-background_surface-primary-hover);
     }
 
-    &:not([data-active]) {
-      /* apply default icon color for section icons when inactive */
-      .NavLinkSection {
-        color: var(--mb-color-text-primary);
-      }
+    &:active:not([data-active], :has([data-navlink-button]:active)) {
+      background-color: var(--mb-color-background_surface-primary-pressed);
+    }
+
+    [data-navlink-button]:hover {
+      background-color: var(--mb-color-background_surface-primary-hover);
+    }
+
+    [data-navlink-button]:active {
+      background-color: var(--mb-color-background_surface-primary-pressed);
     }
   }
 
-  &[data-variant="mb-light"] {
+  &[data-variant="secondary"][data-active] {
+    color: var(--mb-color-text-primary);
+
+    &,
     &:hover {
-      background-color: var(--mb-color-background_surface-hover);
-    }
-
-    &[data-active] {
-      &,
-      .NavLinkLabel {
-        color: var(--mb-color-text-primary);
-      }
-
-      background-color: var(--mb-color-background_page-tertiary);
-    }
-  }
-
-  &[data-variant="admin-nav"] {
-    &:hover {
-      background-color: var(--mb-color-background_surface-hover);
+      background-color: var(--mb-color-background_surface-secondary);
     }
 
     .NavLinkLabel {
       color: var(--mb-color-text-primary);
     }
+  }
 
-    &[data-active] {
-      color: var(--mb-color-text-brand);
+  &[data-variant="primary"][data-active] {
+    color: var(--mb-color-text-primary-inverse);
 
-      &,
-      &:hover {
-        background-color: var(--mb-color-background_surface-selected);
-      }
-
-      .NavLinkLabel {
-        color: var(--mb-color-text-brand);
-      }
-
-      .NavLinkChevron {
-        color: var(--mb-color-text-brand);
-      }
+    &,
+    &:hover {
+      background-color: var(--mb-color-background_surface-brand-strong);
     }
+
+    .NavLinkLabel {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    .NavLinkSection {
+      color: var(--mb-color-icon-primary-inverse);
+    }
+
+    .NavLinkSection[data-position="left"] {
+      color: var(--mb-color-icon-brand-inverse);
+    }
+
+    .NavLinkChevron {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    [data-navlink-button] {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    --navlink-badge-bg: var(--mb-color-background_surface-secondary-inverse);
+    --navlink-badge-color: var(--mb-color-text-primary-inverse);
   }
 }
 

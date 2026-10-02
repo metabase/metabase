@@ -1,8 +1,8 @@
 import fetchMock from "fetch-mock";
 
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 
 import { useAttachedDwh } from "./use-attached-dwh";

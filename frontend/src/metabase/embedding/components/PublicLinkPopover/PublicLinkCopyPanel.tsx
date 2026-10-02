@@ -2,8 +2,8 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import type { ExportFormat } from "metabase/common/types/export";
 import { Anchor, Box, Group, Stack, Text, Tooltip } from "metabase/ui";
+import type { ExportFormat } from "metabase-types/api";
 
 export const PublicLinkCopyPanel = ({
   loading = false,

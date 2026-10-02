@@ -13,10 +13,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private byok-credentials
+  "What a resolved OpenRouter connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-or-v1-byok" :base-url "https://openrouter.ai/api"})
+
 (defn- fixture
   "Load cached OpenRouter raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (metabot.tu/raw-fixture fixture-name #(openrouter/openrouter-raw (merge {:model "anthropic/claude-haiku-4-5"} opts))))
+  (metabot.tu/raw-fixture
+   fixture-name
+   #(openrouter/openrouter-raw (merge {:model       "anthropic/claude-haiku-4-5"
+                                       :credentials byok-credentials}
+                                      opts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; openrouter-request-body prompt-caching tests
@@ -63,6 +71,236 @@
                 {:model "anthropic/claude-haiku-4.5"
                  :input [{:role :user :content "hi"}]})]
       (is (= ["user"] (map :role (:messages body)))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Temperature gating
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- request-body-temperature
+  [model]
+  (:temperature (openrouter/openrouter-request-body {:model       model
+                                                     :input       [{:role :user :content "hi"}]
+                                                     :temperature 0.3})))
+
+(deftest ^:parallel request-body-drops-temperature-for-models-that-reject-it-test
+  (testing "the GPT-5 and o-series families take no explicit temperature"
+    (doseq [model ["openai/gpt-5.6-sol" "openai/gpt-5.5-pro" "openai/gpt-5.4" "openai/gpt-5.4-mini"
+                   "openai/o1" "openai/o3-mini"]]
+      (testing model
+        (is (nil? (request-body-temperature model))))))
+  (testing "neither does current-generation Claude, whose OpenRouter ids use dots for the minor version"
+    (doseq [model ["anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
+                   "anthropic/claude-opus-4.7" "anthropic/claude-sonnet-5"]]
+      (testing model
+        (is (nil? (request-body-temperature model)))))))
+
+(deftest ^:parallel request-body-keeps-temperature-for-models-that-accept-it-test
+  (testing "every other whitelisted model still gets the profile's temperature"
+    (doseq [model ["anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1"
+                   "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5"
+                   "deepseek/deepseek-v4-pro" "mistralai/mistral-medium-3-5" "z-ai/glm-5.2"]]
+      (testing model
+        (is (= 0.3 (request-body-temperature model))))))
+  (testing "the 4.6 Claudes accept temperature only while reasoning is off — enabled thinking rejects it"
+    (doseq [model ["anthropic/claude-opus-4.6" "anthropic/claude-sonnet-4.6"]]
+      (testing model
+        (is (nil? (request-body-temperature model)))
+        (is (= 0.3 (:temperature (openrouter/openrouter-request-body
+                                  {:model       model
+                                   :input       [{:role :user :content "hi"}]
+                                   :temperature 0.3
+                                   :reasoning?  false}))))))))
+
+(deftest ^:parallel request-body-omits-temperature-when-none-is-supplied-test
+  (testing "a request with no temperature is unchanged either way"
+    (doseq [model ["openai/gpt-5.4" "anthropic/claude-haiku-4.5"]]
+      (testing model
+        (is (not (contains? (openrouter/openrouter-request-body {:model model
+                                                                 :input [{:role :user :content "hi"}]})
+                            :temperature)))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; openrouter-request-body tool_choice tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-schema-tool-choice-test
+  (testing "the structured-output forced tool call is downgraded to auto for qwen3.8-max"
+    (let [body (openrouter/openrouter-request-body
+                {:model  "qwen/qwen3.8-max"
+                 :input  [{:role :user :content "hi"}]
+                 :schema {:type "object" :properties {:answer {:type "string"}}}})]
+      (is (=? {:tool_choice "auto"
+               :tools       [{:function {:name "structured_output"}}]}
+              body)))))
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-explicit-tool-choice-test
+  (testing "an explicit tool_choice required is downgraded too"
+    (let [body (openrouter/openrouter-request-body
+                {:model       "qwen/qwen3.8-max"
+                 :input       [{:role :user :content "hi"}]
+                 :tools       [{:tool-name "get_thing"
+                                :doc       "Get a thing."
+                                :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                :fn        identity}]
+                 :tool_choice "required"})]
+      (is (= "auto" (:tool_choice body))))))
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-leaves-auto-tool-choice-test
+  (testing "a tool_choice that is already auto is left alone for qwen3.8-max"
+    (let [body (openrouter/openrouter-request-body
+                {:model       "qwen/qwen3.8-max"
+                 :input       [{:role :user :content "hi"}]
+                 :tools       [{:tool-name "get_thing"
+                                :doc       "Get a thing."
+                                :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                :fn        identity}]
+                 :tool_choice "auto"})]
+      (is (= "auto" (:tool_choice body))))))
+
+(deftest ^:parallel request-body-other-models-keep-required-tool-choice-test
+  (testing "models that accept a forced tool call keep tool_choice required"
+    (doseq [model ["anthropic/claude-haiku-4.5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
+      (testing model
+        (let [body (openrouter/openrouter-request-body
+                    {:model  model
+                     :input  [{:role :user :content "hi"}]
+                     :schema {:type "object" :properties {:answer {:type "string"}}}})]
+          (is (= "required" (:tool_choice body))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Reasoning directive tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- body-for
+  "The request body for `opts`, with a stock user message."
+  [opts]
+  (openrouter/openrouter-request-body (merge {:input [{:role :user :content "hi"}]} opts)))
+
+(deftest ^:parallel reasoning-model?-test
+  (are [model expected] (= expected (openrouter/reasoning-model? model))
+    "anthropic/claude-sonnet-4.6" true
+    "anthropic/claude-fable-5"    true
+    "moonshotai/kimi-k3"          true
+    "z-ai/glm-5.2"                true
+    "openai/gpt-5.5"              true
+    "openai/gpt-5.6-sol"          true
+    "openai/gpt-5.4"              true
+    "openai/gpt-5.4-mini"         true
+    "anthropic/claude-haiku-4.5"  false
+    "anthropic/claude-opus-4.5"   false
+    "not/a-model"                 false
+    nil                           false))
+
+(deftest ^:parallel request-body-reasoning-directive-test
+  (testing "renderable models get an explicit enable by default"
+    (is (= {:enabled true} (:reasoning (body-for {:model "anthropic/claude-sonnet-4.6"})))))
+  (testing ":reasoning? false gets an explicit disable"
+    (is (= {:enabled false} (:reasoning (body-for {:model "anthropic/claude-sonnet-4.6" :reasoning? false})))))
+  (testing "structured output gets an explicit disable"
+    (is (= {:enabled false} (:reasoning (body-for {:model "z-ai/glm-5.2" :schema {:type "object"}})))))
+  (testing "a forced tool call gets an explicit disable: probed live, Anthropic upstreams do no reasoning under it"
+    (is (= {:enabled false}
+           (:reasoning (body-for {:model       "anthropic/claude-sonnet-4.6"
+                                  :tools       [{:tool-name "get_thing"
+                                                 :doc       "Get a thing."
+                                                 :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                                 :fn        identity}]
+                                  :tool_choice "required"})))))
+  (testing "qwen's required->auto downgrade lands first, so its directive stays enabled"
+    (is (= {:enabled true}
+           (:reasoning (body-for {:model       "qwen/qwen3.8-max"
+                                  :tools       [{:tool-name "get_thing"
+                                                 :doc       "Get a thing."
+                                                 :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                                 :fn        identity}]
+                                  :tool_choice "required"})))))
+  (testing "mandatory-reasoning models get no directive instead of a rejected disable"
+    (is (not (contains? (body-for {:model "anthropic/claude-fable-5" :reasoning? false}) :reasoning)))
+    (is (not (contains? (body-for {:model "qwen/qwen3.8-max" :schema {:type "object"}}) :reasoning))))
+  (testing "renderable-default models never get a directive, even under structured output:
+            they stream summaries server-side by default and an explicit enable suppresses
+            gpt-5.6's reasoning entirely"
+    (is (not (contains? (body-for {:model "openai/gpt-5.5"}) :reasoning)))
+    (is (not (contains? (body-for {:model "openai/gpt-5.6-sol"}) :reasoning)))
+    (is (not (contains? (body-for {:model "openai/gpt-5.5" :schema {:type "object"}}) :reasoning)))
+    (is (not (contains? (body-for {:model "openai/gpt-5.5" :reasoning? false}) :reasoning))))
+  (testing "budget-only models never get a directive"
+    (is (not (contains? (body-for {:model "anthropic/claude-haiku-4.5"}) :reasoning))))
+  (testing "enabling reasoning drops :temperature for anthropic models (rejected while thinking)"
+    (let [body (body-for {:model "anthropic/claude-sonnet-4.6" :temperature 0.3})]
+      (is (= {:enabled true} (:reasoning body)))
+      (is (not (contains? body :temperature)))))
+  (testing "other renderable models keep their temperature alongside the enable"
+    (is (=? {:reasoning   {:enabled true}
+             :temperature 0.3}
+            (body-for {:model "z-ai/glm-5.2" :temperature 0.3})))))
+
+(deftest ^:parallel mandatory-reasoning-forced-tool-call-floor-test
+  (testing "a forced tool call on a mandatory-reasoning model gets its max_tokens cap floored"
+    ;; safety net — its reasoning cannot be disabled and bills against the same budget as the
+    ;; tool call; theory vs practice in openrouter/forced-tool-call-token-floor
+    (are [expected opts] (= expected (:max_tokens (body-for (assoc opts :model "qwen/qwen3.8-max"))))
+      2048 {:schema {:type "object"} :max-tokens 512}
+      4096 {:schema {:type "object"} :max-tokens 4096}
+      nil  {:schema {:type "object"}}
+      512  {:max-tokens 512}))
+  (testing "a non-mandatory model keeps its cap — it got the disable instead"
+    (let [body (body-for {:model "anthropic/claude-sonnet-4.6" :schema {:type "object"} :max-tokens 512})]
+      (is (= 512 (:max_tokens body)))
+      (is (= {:enabled false} (:reasoning body)))))
+  (testing "the floor is keyed on the mandatory flag, not the class: the renderable-default pros get it too"
+    (doseq [model ["openai/gpt-5.5-pro" "openai/gpt-5.4-pro"]]
+      (testing model
+        (let [body (body-for {:model model :schema {:type "object"} :max-tokens 512})]
+          (is (= 2048 (:max_tokens body)))
+          (is (not (contains? body :reasoning))))
+        (is (= 512 (:max_tokens (body-for {:model model :max-tokens 512})))))))
+  (testing "a non-mandatory renderable-default model keeps its cap and still gets no directive"
+    (let [body (body-for {:model "openai/gpt-5.5" :schema {:type "object"} :max-tokens 512})]
+      (is (= 512 (:max_tokens body)))
+      (is (not (contains? body :reasoning))))))
+
+(deftest ^:parallel reasoning-class-partition-test
+  (testing "every whitelisted model is deliberately classified, and the class drives the body"
+    (let [renderable         #{"anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
+                               "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6" "anthropic/claude-sonnet-5"
+                               "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
+                               "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"
+                               "openai/gpt-5.4" "openai/gpt-5.4-mini" "qwen/qwen3.8-max" "z-ai/glm-5.3" "z-ai/glm-5.2"}
+          renderable-default #{"openai/gpt-5.6-sol" "openai/gpt-5.6-terra" "openai/gpt-5.6-luna" "openai/gpt-5.5"
+                               "openai/gpt-5.5-pro" "openai/gpt-5.4-pro"}
+          budget             #{"anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1" "anthropic/claude-sonnet-4.5"
+                               "anthropic/claude-haiku-4.5"}]
+      (is (= (set (keys @#'openrouter/supported-models))
+             (into renderable (concat renderable-default budget))))
+      (doseq [model renderable]
+        (testing model
+          (is (true? (openrouter/reasoning-model? model)))
+          (is (= {:enabled true} (:reasoning (body-for {:model model}))))))
+      (doseq [model renderable-default]
+        (testing model
+          (is (true? (openrouter/reasoning-model? model)))
+          (is (not (contains? (body-for {:model model}) :reasoning)))))
+      (doseq [model budget]
+        (testing model
+          (is (false? (openrouter/reasoning-model? model)))
+          (is (not (contains? (body-for {:model model}) :reasoning))))))))
+
+(deftest ^:parallel openrouter-reasoning-deltas-become-reasoning-parts-test
+  (testing "flat delta.reasoning strings stream as a reasoning part ahead of the text"
+    (is (=? [{:type :start}
+             {:type :reasoning :text "Let me think about 2+2."}
+             {:type :text :text "4"}
+             {:type :usage}]
+            (into [] (comp (openrouter/openrouter->aisdk-chunks-xf)
+                           (self.core/aisdk-xf))
+                  [{:id      "gen-1"
+                    :model   "anthropic/claude-sonnet-4.6"
+                    :choices [{:delta {:role "assistant" :reasoning "Let me think"}}]}
+                   {:choices [{:delta {:reasoning " about 2+2."}}]}
+                   {:choices [{:delta {:content "4"}}]}
+                   {:choices [{:delta {} :finish_reason "stop"}]
+                    :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}])))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -209,9 +447,8 @@
 (deftest openrouter-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-byok"
-                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
                         self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
@@ -220,16 +457,22 @@
                      :url     "https://openrouter.ai/api/v1/chat/completions"
                      :headers {"Authorization" "Bearer sk-or-v1-byok"}
                      :body    string?}
-                    (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
+                    (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                                :credentials byok-credentials})))))
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No OpenRouter API key is set"
+               (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenRouter API key is set"
-                 (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
+                 (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                             :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil
-                                             llm.settings/llm-proxy-base-url    nil]
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenRouter API key is set"
@@ -267,12 +510,14 @@
                                     :body   {:data [{:id "openai/gpt-5.6-sol"          :name "OpenAI: GPT-5.6 Sol"          :created 50}
                                                     {:id "openai/gpt-5.6-terra"        :name "OpenAI: GPT-5.6 Terra"        :created 49}
                                                     {:id "openai/gpt-5.6-luna"         :name "OpenAI: GPT-5.6 Luna"         :created 48}
+                                                    {:id "qwen/qwen3.8-max"            :name "Qwen: Qwen3.8 Max"            :created 41}
                                                     {:id "qwen/qwen3.7-max"            :name "Qwen: Qwen3.7 Max"            :created 40}
                                                     {:id "openai/gpt-5.4"              :name "OpenAI: GPT-5.4"              :created 30}
                                                     {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
                                                     {:id "anthropic/claude-opus-5"     :name "Anthropic: Claude Opus 5"     :created 26}
                                                     {:id "anthropic/claude-sonnet-4.6"                                      :created 25}
                                                     {:id "anthropic/claude-haiku-4.5"  :name "Anthropic: Claude Haiku 4.5"  :created 20}
+                                                    {:id "z-ai/glm-5.3"                :name "Z.AI: GLM 5.3"                :created 15}
                                                     {:id "openai/gpt-4o"               :name "OpenAI: GPT-4o"               :created 10}
                                                     {:id "openai/gpt-5"                :name "OpenAI: GPT-5"                :created 5}]}})]
         (is (= [{:id "anthropic/claude-haiku-4.5"  :display_name "Anthropic: Claude Haiku 4.5"}
@@ -281,8 +526,35 @@
                 {:id "openai/gpt-5.4"              :display_name "OpenAI: GPT-5.4"}
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}
                 {:id "openai/gpt-5.6-sol"          :display_name "OpenAI: GPT-5.6 Sol"}
-                {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}]
-               (:models (openrouter/list-models))))))))
+                {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}
+                {:id "qwen/qwen3.8-max"            :display_name "Qwen: Qwen3.8 Max"}
+                {:id "z-ai/glm-5.3"                :display_name "Z.AI: GLM 5.3"}]
+               (:models (openrouter/list-models {:credentials byok-credentials}))))))))
+
+(deftest openrouter-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key      "sk-or-v1-setting"
+                                       llm.settings/llm-openrouter-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/v1/chat/completions"
+                                                          :headers {"Authorization" "Bearer sk-or-v1-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                         :credentials {:api-key  "sk-or-v1-explicit"
+                                                       :base-url "https://explicit.example"}})))))))
+
+(deftest openrouter-raw-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenRouter API key is set"
+           (openrouter/openrouter-raw {:input       [{:role :user :content "hi"}]
+                                       :credentials {:api-key ""}}))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
@@ -294,15 +566,13 @@
         (is (= {:models []}
                (openrouter/list-models {:credentials {:api-key "sk-or-v1-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"Authorization" "Bearer sk-or-v1-setting"}}
-                                                         req))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []}
-               (openrouter/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenRouter API key is set"
+           (openrouter/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"

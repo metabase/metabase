@@ -1,18 +1,18 @@
 export {
   useDeleteSuggestedMetabotPromptMutation,
-  useGetMetabotSettingsQuery,
   useGetSuggestedMetabotPromptsQuery,
   useListMetabotsQuery,
   useRegenerateSuggestedMetabotPromptsMutation,
   useUpdateMetabotMutation,
-  useUpdateMetabotSettingsMutation,
   useUpdateMetabotSlackSettingsMutation,
 } from "./api";
 export * from "./context";
 export {
-  AIProviderConfigurationForm,
-  getProviderOptions,
-  parseProviderAndModel,
-  useAIProviderConfigurationContext,
+  AIProviderList,
+  AIProviderSetup,
+  LlmModelPicker,
 } from "./components/AIProviderConfigurationForm";
-export type { MetabotApiKeyProvider } from "./components/AIProviderConfigurationForm";
+export {
+  PLUGIN_METABOT_SLASH_COMMANDS,
+  type MetabotSlashCommandHandler,
+} from "./plugins";

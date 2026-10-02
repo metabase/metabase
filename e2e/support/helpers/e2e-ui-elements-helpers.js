@@ -50,10 +50,6 @@ export function miniPickerBrowseAll() {
   return miniPicker().findByText("Browse all");
 }
 
-export function miniPickerOurAnalytics() {
-  return miniPicker().findByText("Our analytics");
-}
-
 export function miniPickerHeader() {
   return cy.findByTestId("mini-picker-header");
 }
@@ -330,14 +326,6 @@ export const undo = () => {
 
 export const getDraggableElements = () => {
   return cy.findAllByTestId(/draggable-item/);
-};
-
-export const moveColumnDown = (column, distance) => {
-  column
-    .trigger("mousedown", 0, 0, { force: true })
-    .trigger("mousemove", 5, 5, { force: true })
-    .trigger("mousemove", 0, distance * 50, { force: true })
-    .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
 /**

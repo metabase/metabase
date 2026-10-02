@@ -1,9 +1,11 @@
 import type { StoryFn } from "@storybook/react";
-import type { ReactNode } from "react";
 
-import { Alert, type AlertProps, Box, Icon, Stack, Text } from "metabase/ui";
-import { deriveFullMetabaseTheme } from "metabase/ui/colors";
-import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
+import { Alert, type AlertProps, Box, Icon, Stack } from "metabase/ui";
+import {
+  StoryBoard,
+  StoryJsx,
+  StoryShowcase,
+} from "metabase/ui/stories/showcase";
 
 const MESSAGE =
   "Let your team and customers chat with your data, query in natural language, and explore with AI-backed tools. Connect to your database in minutes for analytics without bottlenecks.";
@@ -198,42 +200,13 @@ const buildAlertJsx = ({
     .filter(Boolean)
     .join(" ")} />`;
 
-const THEMES = ["light", "dark"] as const;
-
-const getThemeVars = (
-  colorScheme: (typeof THEMES)[number],
-): Record<`--${string}`, string> => {
-  const { colors } = deriveFullMetabaseTheme({ colorScheme });
-  return Object.fromEntries(
-    Object.entries(colors).map(([name, value]) => [
-      `--mb-color-${name}`,
-      value,
-    ]),
-  );
-};
-
-const FeedbackColumn = ({
-  colorScheme,
+const FeedbackTemplate: StoryFn<StoryArgs> = ({
   withTitle,
   withIcon,
-  titleOverride,
-  message,
-}: {
-  colorScheme: (typeof THEMES)[number];
-  withTitle?: boolean;
-  withIcon?: boolean;
-  titleOverride?: ReactNode;
-  message?: ReactNode;
+  title: titleOverride,
+  children,
 }) => (
-  <Stack
-    gap="48px"
-    data-mantine-color-scheme={colorScheme}
-    style={{
-      ...getThemeVars(colorScheme),
-      padding: "48px 96px 96px",
-      backgroundColor: "var(--mb-color-background-primary)",
-    }}
-  >
+  <StoryBoard title="Feedback" background="background_page-primary">
     {FEEDBACK_COLORS.flatMap(({ color, variant, title }) =>
       FEEDBACK_SIZES.map((size) => (
         <Stack key={`${color ?? "default"}-${size}`} gap="sm" w="480px">
@@ -246,56 +219,12 @@ const FeedbackColumn = ({
             icon={withIcon ? <Icon name="model" /> : undefined}
             title={withTitle ? titleOverride || title : undefined}
           >
-            {message ?? MESSAGE}
+            {children ?? MESSAGE}
           </Alert>
         </Stack>
       )),
     )}
-  </Stack>
-);
-
-const FeedbackTemplate: StoryFn<StoryArgs> = ({
-  withTitle,
-  withIcon,
-  title,
-  children,
-}) => (
-  <Box
-    style={{
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gridTemplateRows: "auto 1fr",
-      minHeight: "100vh",
-    }}
-  >
-    <Box
-      style={{
-        ...getThemeVars("light"),
-        padding: "96px 96px 0",
-        backgroundColor: "var(--mb-color-background-primary)",
-      }}
-    >
-      <Text fz="1.5rem" fw="bold" c="text-primary">
-        Feedback
-      </Text>
-    </Box>
-    <Box
-      style={{
-        ...getThemeVars("dark"),
-        backgroundColor: "var(--mb-color-background-primary)",
-      }}
-    />
-    {THEMES.map((colorScheme) => (
-      <FeedbackColumn
-        key={colorScheme}
-        colorScheme={colorScheme}
-        withTitle={withTitle}
-        withIcon={withIcon}
-        titleOverride={title}
-        message={children}
-      />
-    ))}
-  </Box>
+  </StoryBoard>
 );
 
 export const Feedback = {
@@ -307,9 +236,5 @@ export const Feedback = {
     controls: {
       include: ["withTitle", "withIcon", "title", "children"],
     },
-    backgrounds: { disable: true },
-    viewport: { disable: true },
-    measure: { disable: true },
-    outline: { disable: true },
   },
 };

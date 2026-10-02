@@ -13,8 +13,11 @@
 
 (defmethod =?-diff :default
   [expected actual]
-  (when-not (= expected actual)
-    (list 'not= expected actual)))
+  (if (fn? expected)
+    (when-not (expected actual)
+      (list 'not (list expected actual)))
+    (when-not (= expected actual)
+      (list 'not= expected actual))))
 
 (defmethod =?-diff [:dispatch-type/regex :dispatch-type/string]
   [expected-regex s]
@@ -26,11 +29,6 @@
   [expected actual]
   (when-not (= (str expected) (str actual))
     (list 'not= (list 'str expected) (list 'str actual))))
-
-(defmethod =?-diff [:dispatch-type/fn :dispatch-type/*]
-  [pred actual]
-  (when-not (pred actual)
-    (list 'not (list pred actual))))
 
 (defmethod =?-diff [:dispatch-type/sequential :dispatch-type/sequential]
   [expected actual]

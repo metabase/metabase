@@ -1,6 +1,6 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { TransformId } from "metabase-types/api";
+import type { DependencyNode, TransformId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -505,9 +505,22 @@ function createModelContent() {
 }
 
 function waitForBreakingDependencies() {
-  H.waitForBreakingDependencies(
-    (nodes) => nodes.length >= BROKEN_DEPENDENCIES.length,
+  // The instance already has unrelated (Usage Analytics) breaking dependencies,
+  // so a bare count check can pass before the test's own entities are analyzed.
+  // Wait until every expected entity is present by name instead.
+  H.waitForBreakingDependencies((nodes) =>
+    BROKEN_DEPENDENCIES.every((name) =>
+      nodes.some((node) => getNodeName(node) === name),
+    ),
   );
+}
+
+function getNodeName(node: DependencyNode): string | undefined {
+  const { data } = node;
+  if ("display_name" in data && data.display_name) {
+    return data.display_name;
+  }
+  return "name" in data ? data.name : undefined;
 }
 
 function checkList({

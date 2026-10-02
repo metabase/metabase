@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { resetConversation } from "metabase/metabot/state";
-import { useDispatch } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
@@ -16,8 +14,6 @@ export function NewMenuItemAIExploration({
   collectionId,
   hasNlqAccess,
 }: NewMenuItemAIExplorationProps) {
-  const dispatch = useDispatch();
-
   const url = hasNlqAccess
     ? Urls.newQuestion({
         mode: "ask",
@@ -31,11 +27,6 @@ export function NewMenuItemAIExploration({
       component={ForwardRefLink}
       to={url}
       leftSection={<Icon name="comment" />}
-      onClick={() => {
-        if (hasNlqAccess) {
-          dispatch(resetConversation({ agentId: "ask" }));
-        }
-      }}
     >
       {t`AI exploration`}
     </Menu.Item>

@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { getUser } from "metabase/current-user";
 import type { AdminPathKey, State } from "metabase/redux/store";
-import { getUser } from "metabase/selectors/user";
 import type {
   PermissionSubject,
   SpecialGroupType,

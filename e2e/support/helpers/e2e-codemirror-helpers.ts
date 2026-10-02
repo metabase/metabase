@@ -45,6 +45,11 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
     ) {
       if (focus) {
         helpers.focus();
+      } else {
+        // The editor can be a lazily loaded chunk, so it may still be mounting.
+        // Wait for it to hold focus before typing, or the first keystroke goes
+        // nowhere. Do not click it: that would move the caret.
+        helpers.get().get(".cm-editor").should("have.class", "cm-focused");
       }
 
       if (allowFastSet) {
@@ -148,21 +153,14 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return helpers.get().get("[role='textbox']");
     },
     value() {
-      // Get the multiline text content of the editor
+      // `invoke` chains are queries, so a chained assertion re-reads the text on every retry
       return helpers
-        .textbox()
-        .get(".cm-line")
-        .then((lines) => {
-          const text: string[] = [];
-          lines.each((_, line) => {
-            const placeholder = line.querySelector(".cm-placeholder");
-            if (placeholder) {
-              return;
-            }
-            text.push(line.textContent ?? "");
-          });
-          return text.join("\n");
-        });
+        .get()
+        .invoke("find", ".cm-line")
+        .invoke("toArray")
+        .invoke("filter", (line) => !line.querySelector(".cm-placeholder"))
+        .invoke("map", (line) => line.textContent ?? "")
+        .invoke("join", "\n");
     },
     completions() {
       return cy.get(".cm-tooltip-autocomplete").should("be.visible");

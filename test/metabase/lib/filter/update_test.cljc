@@ -250,7 +250,7 @@
                   (lib/update-temporal-filter query
                                               (-> (meta/field-metadata table field)
                                                   (lib/with-temporal-bucket :day))
-                                              "2024-01-01"
+                                              "2024-01-02"
                                               "2024-01-03"))))))))
 
 (deftest ^:parallel update-temporal-filter-existing-breakout-date-stop-drill-down
@@ -274,7 +274,7 @@
               (lib/update-temporal-filter query
                                           (-> (meta/field-metadata :checkins :date)
                                               (lib/with-temporal-bucket :day))
-                                          "2024-01-01"
+                                          "2024-01-02"
                                           "2024-01-03"))))))
 
 (deftest ^:parallel update-temporal-filter-equals-test
@@ -287,7 +287,7 @@
               (lib/update-temporal-filter query
                                           (-> (meta/field-metadata :checkins :date)
                                               (lib/with-temporal-bucket :day))
-                                          "2024-01-01"
+                                          "2024-01-02"
                                           "2024-01-02"))))))
 
 #?(:cljs

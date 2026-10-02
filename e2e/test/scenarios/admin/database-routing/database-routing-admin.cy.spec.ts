@@ -12,6 +12,7 @@ import {
   BASE_POSTGRES_DESTINATION_DB_INFO,
   configureDbRoutingViaAPI,
   createDestinationDatabasesViaAPI,
+  grantDatabaseManagementViaAPI,
 } from "./helpers/e2e-database-routing-helpers";
 
 const { H } = cy;
@@ -128,7 +129,7 @@ describe("admin > database > database routing", () => {
       // bulk creation via api (this is how we expect most users to create destination dbs)
       cy.log("should be able to bulk create destination dbs via API");
       createDestinationDatabasesViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         databases: _.range(2, 7).map((i) => ({
           ...BASE_POSTGRES_DESTINATION_DB_INFO,
           name: `Destination DB ${i}`,
@@ -209,15 +210,15 @@ describe("admin > database > database routing", () => {
 
     it("should not leak destinations databases in the application", () => {
       cy.log("setup db routing via API");
-      cy.visit("/admin/databases/2");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
       cy.log("disable model actions");
       cy.findByLabelText("Model actions").click({ force: true });
       configureDbRoutingViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         user_attribute: "role",
       });
       createDestinationDatabasesViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         databases: [BASE_POSTGRES_DESTINATION_DB_INFO],
       });
 
@@ -283,14 +284,16 @@ describe("admin > database > database routing", () => {
         .should("not.exist");
     });
 
-    it("should not allow turning on db routing on if other conflicting features are enabled", () => {
+    it("should not allow turning on db routing if other conflicting features are enabled", () => {
       cy.log("setup");
       setupModelPersistence();
       visitDatabaseAdminPage(WRITABLE_DB_ID);
 
       cy.log("should be disabled if model actions is enabled");
       cy.findByLabelText("Model actions").should("be.checked");
-      assertDbRoutingDisabled();
+      assertDbRoutingDisabled(
+        "Database routing can't be enabled if model actions are enabled.",
+      );
 
       cy.findByLabelText("Model actions").parent("label").click();
 
@@ -302,12 +305,31 @@ describe("admin > database > database routing", () => {
         .parent("label")
         .click();
 
-      assertDbRoutingDisabled();
+      assertDbRoutingDisabled(
+        "Database routing can't be enabled if model persistence is enabled.",
+      );
       cy.findAllByTestId("database-model-features-section")
         .findByLabelText("Model persistence")
         .should("be.checked")
         .parent("label")
         .click();
+      assertDbRoutingNotDisabled();
+
+      cy.log("should be disabled if table editing is enabled");
+      // Table editing must be the only active conflict here: the routing
+      // section shows a single message, and model actions, model persistence,
+      // and uploads all take precedence over table editing.
+      tableEditingSection()
+        .findByLabelText("Editable tables")
+        .should("not.be.checked")
+        .click({ force: true });
+      assertDbRoutingDisabled(
+        "Database routing can't be enabled when table editing is enabled.",
+      );
+      tableEditingSection()
+        .findByLabelText("Editable tables")
+        .should("be.checked")
+        .click({ force: true });
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if uploads are enabled for the database");
@@ -326,16 +348,18 @@ describe("admin > database > database routing", () => {
         .click();
 
       visitDatabaseAdminPage(WRITABLE_DB_ID);
-      assertDbRoutingDisabled();
+      assertDbRoutingDisabled(
+        "Database routing can't be enabled if uploads are enabled for this database.",
+      );
     });
 
     it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
       cy.log("setup");
-      cy.request("PUT", "/api/database/2", {
+      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
         settings: { "database-enable-actions": false },
       });
       configureDbRoutingViaAPI({
-        router_database_id: 2,
+        router_database_id: WRITABLE_DB_ID,
         user_attribute: "role",
       });
 
@@ -346,13 +370,15 @@ describe("admin > database > database routing", () => {
         .should("exist");
 
       cy.log("should highlight on group perms page at table level");
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}/database/2`);
+      cy.visit(
+        `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${WRITABLE_DB_ID}`,
+      );
       cy.findByTestId("permissions-editor-breadcrumbs")
         .findByText("(Database routing enabled)")
         .should("exist");
 
       cy.log("should highlight on group perms page at table level");
-      cy.visit("/admin/permissions/data/database/2");
+      cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
       cy.findByTestId("permissions-editor-breadcrumbs")
         .findByText("(Database routing enabled)")
         .should("exist");
@@ -377,77 +403,48 @@ describe("admin > database > database routing", () => {
         dbRoutingSection().should("not.exist");
       });
 
-      it("should show for users with db management permissions but prevent removal of destination databases", () => {
-        cy.log("setup - db routing");
-        cy.visit("/admin/databases/2");
-        visitDatabaseAdminPage(WRITABLE_DB_ID);
-        cy.findAllByTestId("database-model-features-section")
-          .findByLabelText("Model actions")
-          .click({ force: true });
+      it("should let a database manager edit but not remove a destination database", () => {
+        cy.log("setup - routing enabled with one destination database");
+        disableModelActionsViaApi(WRITABLE_DB_ID);
         configureDbRoutingViaAPI({
-          router_database_id: 2,
+          router_database_id: WRITABLE_DB_ID,
           user_attribute: "role",
         });
         createDestinationDatabasesViaAPI({
-          router_database_id: 2,
+          router_database_id: WRITABLE_DB_ID,
           databases: [BASE_POSTGRES_DESTINATION_DB_INFO],
+        })
+          .its("body.0.id")
+          .as("destinationDbId");
+
+        cy.log("grant database management permission to all users");
+        grantDatabaseManagementViaAPI({
+          groupId: ALL_USERS_GROUP,
+          databaseId: WRITABLE_DB_ID,
         });
 
-        cy.log("normal user should not see db routing");
-        cy.signOut();
-        cy.signInAsNormalUser();
-        visitDatabaseAdminPage(WRITABLE_DB_ID);
-        cy.get("main").findByText(
-          "Sorry, you don’t have permission to see that.",
-        );
-
-        cy.log("grant db management permissions to all users");
-        cy.signOut();
-        cy.signInAsAdmin();
-        cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-        // NOTE: manage db permissions currently do not work in master w/o having create queries permissions
-        // so we have to grant this permission in addition to db management
-        const CREATE_QUERIES_PERMISSION_INDEX = 1;
-        H.modifyPermission(
-          "Writable Postgres12",
-          CREATE_QUERIES_PERMISSION_INDEX,
-          "Query builder and native",
-        );
-        const MANAGE_DATABASE_PERMISSION_INDEX = 4;
-        H.modifyPermission(
-          "Writable Postgres12",
-          MANAGE_DATABASE_PERMISSION_INDEX,
-          "Yes",
-        );
-        cy.button("Save changes").click();
-        H.modal().button("Yes").click();
-
-        cy.log("normal user should see db");
         cy.signOut();
         cy.signIn("normal");
-        visitDatabaseAdminPage(WRITABLE_DB_ID);
-        dbRoutingSection().should("exist");
-        dbRoutingSection().within(() => {
-          cy.log("should not be able to manage db routing settings");
-          cy.findByLabelText("Enable database routing").should("be.disabled");
-          cy.findByTestId("db-routing-user-attribute").should("be.disabled");
-          cy.findByRole("button", { name: /Add/ }).should("not.exist");
-        });
 
-        cy.log("should be able to edit databases");
-        dbRoutingSection()
-          .findByTestId("destination-db-list-item")
-          .icon("ellipsis")
-          .click();
-        H.popover().within(() => {
-          cy.findByText("Remove").should("not.exist");
-          cy.findByText("Edit").should("exist").click();
+        cy.log("editing a destination database is allowed by direct URL");
+        cy.get("@destinationDbId").then((destinationDbId) => {
+          cy.visit(
+            `/admin/databases/${WRITABLE_DB_ID}/destination-databases/${destinationDbId}`,
+          );
         });
-        H.modal().within(() => {
-          H.typeAndBlurUsingLabel(/Slug/, "Destination DB 1");
-          cy.button("Save changes").click();
-          cy.wait("@databaseUpdate");
+        H.modal().findByText("Edit destination database").should("be.visible");
+
+        cy.log("removing a destination database is refused by direct URL");
+        cy.get("@destinationDbId").then((destinationDbId) => {
+          cy.visit(
+            `/admin/databases/${WRITABLE_DB_ID}/destination-databases/${destinationDbId}/remove`,
+          );
         });
+        cy.location("pathname").should("eq", "/unauthorized");
+        cy.findByRole("status").should(
+          "contain.text",
+          "Sorry, you don\u2019t have permission to see that.",
+        );
       });
     });
 
@@ -457,150 +454,69 @@ describe("admin > database > database routing", () => {
         disableModelActionsViaApi(WRITABLE_DB_ID);
       });
 
-      describe("model actions", () => {
-        it("should not be possible to enable model actions when database routing is enabled", () => {
-          configureDbRoutingViaAPI({
-            router_database_id: WRITABLE_DB_ID,
-            user_attribute: "role",
-          });
-
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-
-          modelsSection().within(() => {
-            cy.findByLabelText("Model actions").should("be.disabled");
-            cy.findByText(
-              "Model actions can't be enabled when database routing is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
+      it("should not be possible to enable model persistence, model actions, table editing, or uploads when database routing is enabled", () => {
+        cy.log("setup");
+        enableGlobalModelPersistence();
+        configureDbRoutingViaAPI({
+          router_database_id: WRITABLE_DB_ID,
+          user_attribute: "role",
         });
 
-        it("should not be possible to enable database routing when model actions are enabled", () => {
-          enableModelActionsViaApi(WRITABLE_DB_ID);
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
+        visitDatabaseAdminPage(WRITABLE_DB_ID);
 
-          dbRoutingSection().within(() => {
-            cy.findByLabelText("Enable database routing").should("be.disabled");
-            cy.findByText(
-              "Database routing can't be enabled if model actions are enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-      });
-
-      describe("model persistence", () => {
-        beforeEach(() => {
-          enableGlobalModelPersistence();
-        });
-
-        it("should not be possible to enable model persistence when database routing is enabled", () => {
-          configureDbRoutingViaAPI({
-            router_database_id: WRITABLE_DB_ID,
-            user_attribute: "role",
-          });
-
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-          modelsSection().within(() => {
-            cy.findByLabelText("Model persistence").should("be.disabled");
-            cy.findByText(
-              "Model persistence can't be enabled when database routing is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-
-        it("should not be possible to enable database routing when model persistence enabled", () => {
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-          modelsSection()
-            .findByLabelText("Model persistence")
-            .click({ force: true });
-
-          dbRoutingSection().within(() => {
-            cy.findByLabelText("Enable database routing").should("be.disabled");
-            cy.findByText(
-              "Database routing can't be enabled if model persistence is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-      });
-
-      describe("Table editing", () => {
-        it("should not be possible to enable table editing when database routing is enabled", () => {
-          configureDbRoutingViaAPI({
-            router_database_id: WRITABLE_DB_ID,
-            user_attribute: "role",
-          });
-
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-
-          tableEditingSection().within(() => {
-            cy.findByLabelText("Editable tables").should("be.disabled");
-            cy.findByText(
-              "Table editing can't be enabled when database routing is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-
-        it("should not be possible to enable table editing when database routing is enabled", () => {
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-
-          tableEditingSection()
-            .findByLabelText("Editable tables")
-            .click({ force: true });
-
-          dbRoutingSection().within(() => {
-            cy.findByLabelText("Enable database routing").should("be.disabled");
-            cy.findByText(
-              "Database routing can't be enabled when table editing is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-      });
-      describe("Uploads", () => {
-        it("should not be possible to enable uploads when database routing is enabled", () => {
-          configureDbRoutingViaAPI({
-            router_database_id: WRITABLE_DB_ID,
-            user_attribute: "role",
-          });
-
-          visitUploadSettingsPage();
-
-          cy.findByLabelText("Database to use for uploads").click();
-          H.popover()
-            .findByText("Writable Postgres12 (DB Routing Enabled)")
+        cy.log(
+          "should not be possible to enable model persistence when database routing is enabled",
+        );
+        modelsSection().within(() => {
+          cy.findByLabelText("Model persistence").should("be.disabled");
+          cy.findByText(
+            "Model persistence can't be enabled when database routing is enabled.",
+          )
+            .scrollIntoView()
             .should("be.visible");
         });
 
-        it("should not be possible to enable database routing when uploads are enabled", () => {
-          H.enableUploads("postgres");
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-
-          dbRoutingSection().within(() => {
-            cy.findByLabelText("Enable database routing").should("be.disabled");
-            cy.findByText(
-              "Database routing can't be enabled if uploads are enabled for this database.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
+        cy.log(
+          "should not be possible to enable model actions when database routing is enabled",
+        );
+        modelsSection().within(() => {
+          cy.findByLabelText("Model actions").should("be.disabled");
+          cy.findByText(
+            "Model actions can't be enabled when database routing is enabled.",
+          )
+            .scrollIntoView()
+            .should("be.visible");
         });
+
+        cy.log(
+          "should not be possible to enable table editing when database routing is enabled",
+        );
+        tableEditingSection().within(() => {
+          cy.findByLabelText("Editable tables").should("be.disabled");
+          cy.findByText(
+            "Table editing can't be enabled when database routing is enabled.",
+          )
+            .scrollIntoView()
+            .should("be.visible");
+        });
+
+        cy.log(
+          "should not be possible to enable uploads when database routing is enabled",
+        );
+        // Keep this step last: it navigates away from the database page.
+        visitUploadSettingsPage();
+
+        cy.findByLabelText("Database to use for uploads").click();
+        H.popover()
+          .findByText("Writable Postgres12 (DB Routing Enabled)")
+          .should("be.visible");
       });
     });
   });
 
   describe("OSS", { tags: ["@OSS"] }, () => {
     it("should not show the feature if not enabled in token features", () => {
-      cy.visit("/admin/databases/2");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
       dbConnectionInfoSection().should("exist");
       dbRoutingSection().should("not.exist");
     });
@@ -630,11 +546,12 @@ function assertDbRoutingNotDisabled() {
   H.tooltip().should("not.contain", /Database routing can't be enabled if/);
 }
 
-function assertDbRoutingDisabled() {
+function assertDbRoutingDisabled(message: string) {
   dbRoutingSection().within(() => {
     cy.findByLabelText("Enable database routing")
       .should("not.be.checked")
       .should("be.disabled");
+    cy.findByText(message).scrollIntoView().should("be.visible");
   });
   // Use cy.trigger("mouseenter") instead of realHover() because Chrome v122+
   // headless hit-tests CDP mouse events to the disabled <input> inside the
@@ -644,9 +561,7 @@ function assertDbRoutingDisabled() {
   dbRoutingSection()
     .findByTestId("database-routing-toggle-wrapper")
     .trigger("mouseenter");
-  H.tooltip()
-    .findByText(/Database routing can't be enabled if/)
-    .should("exist");
+  H.tooltip().findByText(message).should("exist");
 }
 
 function setupModelPersistence() {
@@ -667,12 +582,6 @@ function modelsSection() {
 function disableModelActionsViaApi(databaseId: DatabaseId) {
   cy.request("PUT", `/api/database/${databaseId}`, {
     settings: { "database-enable-actions": false },
-  });
-}
-
-function enableModelActionsViaApi(databaseId: DatabaseId) {
-  cy.request("PUT", `/api/database/${databaseId}`, {
-    settings: { "database-enable-actions": true },
   });
 }
 

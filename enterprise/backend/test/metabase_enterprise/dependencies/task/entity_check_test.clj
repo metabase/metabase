@@ -12,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:sequential batch-size-zero-suppresses-event-triggers-but-stays-warm-test
+(deftest ^:synchronized batch-size-zero-suppresses-event-triggers-but-stays-warm-test
   (testing "A non-positive batch size stops the job doing work, but leaves it on its slow periodic schedule so it
            resumes if the setting ever becomes positive. What it must not do is keep firing the 1-second event-driven
            trigger: entity changes fire it, and it never consulted the batch size, so a disabled job woke roughly once
@@ -35,7 +35,7 @@
           (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "5")]
             (is (= 1 (scheduled-by dependencies.entity-check/trigger-entity-check-job!)))))))))
 
-(deftest ^:sequential post-run-reschedule-licence-states-test
+(deftest ^:synchronized post-run-reschedule-licence-states-test
   (testing "The entity check job is a periodic checker with no terminal state, so it always queues another run. That
            is right while licensed, but check-entities! is gated on :dependencies, so without the feature the job
            rescheduled itself every 30-90 minutes forever to do nothing at all.
@@ -66,7 +66,7 @@
   [calls]
   (into #{} (map (fn [args] (.getName (.getKey ^JobDetail (nth args 1))))) calls))
 
-(deftest ^:sequential token-event-restarts-the-job-test
+(deftest ^:synchronized token-event-restarts-the-job-test
   (testing "Setting a premium token must restart the entity check job. The backfill job derives
            :event/set-premium-embedding-token for this; entity check had no event wiring at all, so its only restarts
            came from content-change handlers. Enabling the feature on an idle instance left the periodic checker dead

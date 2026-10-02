@@ -23,7 +23,7 @@
   (cond->> s
     (not (str/starts-with? s "/")) (str "/")))
 
-(mu/defn- ->requestor [method]
+(mu/defn- ->requestor [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]]
   (case method
     :get     http/get
     :head    http/head
@@ -36,9 +36,9 @@
     :patch   http/patch))
 
 (mu/defn- get-safe-status
-  [response]
-  (when (number? (:status response))
-    (http/success? response)))
+  [status :- [:maybe :int]]
+  (when (number? status)
+    (http/success? {:status status})))
 
 (defn- ->config
   "Returns the config needed to call [[make-request]].
@@ -93,7 +93,7 @@
 
 (defn- calculate-success [response url request]
   (try
-    (get-safe-status response)
+    (get-safe-status (:status response))
     (catch Exception e
       (log/errorf "Error decoding response from %s, is it json? %s" url (ex-message e))
       {:response response
@@ -110,7 +110,10 @@
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
   [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
-   & [body]]
+   & [body] :- [:* [:map {:closed true}
+                    [:type   :string]
+                    [:secret [:map {:closed true}
+                              [:resources [:sequential :string]]]]]]]
   (let [{:keys [store-api-url
                 api-key]} (->config)
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
@@ -170,7 +173,8 @@
       x)))
 
 (defn call
-  "Call the API, using Martian. Will throw on non 2xx, and you can get the failure body (if any) using ex-data.
+  "Call the API, using Martian. Will throw on non 2xx, and you can get the failure body (if any) using ex-data,
+  along with the HTTP `:status` the Store responded with (when there was a response at all).
   The Harbormaster API uses snake_keys, and this fn automatically converts kebab-keys to snake_keys on request,
   and back to kebab-keys on response.
   e.g.
@@ -181,10 +185,12 @@
   (try
     (m.util/deep-kebab-keys (:body (martian/response-for (client) operation-id (m.util/deep-snake-keys args))))
     (catch Exception e
-      (let [resp-body (some-> e ex-data :body maybe-decode m.util/deep-kebab-keys)
+      (let [{:keys [status body]} (ex-data e)
+            resp-body (some-> body maybe-decode m.util/deep-kebab-keys)
             msg (format "Error on Harbormaster operation call %s" operation-id)]
         (log/error msg (ex-message e))
-        (throw (ex-info msg (if (map? resp-body) resp-body {})))))))
+        (throw (ex-info msg (cond-> (if (map? resp-body) resp-body {})
+                              status (assoc :status status))))))))
 
 (defn request
   "Same as call, but return the request that will be performed.

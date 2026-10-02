@@ -167,7 +167,6 @@
                                               :stages   [{:lib/type     :mbql.stage/mbql
                                                           :source-table 1
                                                           :joins        [{:lib/type    :mbql/join
-                                                                          :lib/options {:lib/uuid (str (random-uuid))}
                                                                           :stages      [{}]
                                                                           :conditions  [true]}]}]})]
     (are [f expected] (= expected

@@ -1,11 +1,12 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { createMockUser } from "metabase-types/api/mocks";
+import type { TokenFeatures } from "metabase-types/api";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import {
   CanAccessAiAuditing,
@@ -17,9 +18,10 @@ describe("monitor route-guards", () => {
   describe("CanAccessMonitor", () => {
     interface SetupOpts {
       currentUser?: ReturnType<typeof createMockUser>;
+      tokenFeatures?: Partial<TokenFeatures>;
     }
 
-    const setup = ({ currentUser }: SetupOpts = {}) => {
+    const setup = ({ currentUser, tokenFeatures }: SetupOpts = {}) => {
       return renderWithProviders(
         <>
           <Route element={<CanAccessMonitor />}>
@@ -31,7 +33,10 @@ describe("monitor route-guards", () => {
         {
           storeInitialState: createMockState({
             currentUser,
-            settings: createMockSettingsState({ "has-user-setup": true }),
+            settings: createMockSettingsState({
+              "has-user-setup": true,
+              "token-features": createMockTokenFeatures(tokenFeatures),
+            }),
           }),
           withRouter: true,
           initialRoute: "/monitor",
@@ -72,9 +77,24 @@ describe("monitor route-guards", () => {
           is_data_analyst: true,
           is_superuser: false,
         }),
+        tokenFeatures: { advanced_permissions: true },
       });
 
       expect(screen.getByText("monitor page")).toBeInTheDocument();
+    });
+
+    it("redirects an analyst whose plan lost the feature to unauthorized", async () => {
+      const { router } = setup({
+        currentUser: createMockUser({
+          is_data_analyst: true,
+          is_superuser: false,
+        }),
+        tokenFeatures: { advanced_permissions: false },
+      });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
     });
   });
 

@@ -21,5 +21,6 @@
  #'sql.qp/inline-value
  ::reload
  (fn [_key _ref _old-state _new-state]
+   ;; keeps the deprecated alias in sync with inline-value on reload; the whole ns is the shim
    #_{:clj-kondo/ignore [:deprecated-var]}
    (alter-var-root #'unprepare-value (constantly sql.qp/inline-value))))

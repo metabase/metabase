@@ -1,8 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { useGetFieldValuesQuery } from "metabase/api";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useGetFieldQuery, useGetFieldValuesQuery } from "metabase/api";
 import { Flex, Loader } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import type { FieldId, FieldValue } from "metabase-types/api";
@@ -29,8 +27,7 @@ export function GlobalFingerprint({
   fieldId,
   showAllFieldValues,
 }: GlobalFingerprintProps) {
-  const metadata = useSelector(getMetadata);
-  const field = metadata.field(fieldId);
+  const { data: field } = useGetFieldQuery({ id: fieldId });
   const hasListValues = field?.has_field_values === "list";
   const { data: fieldData, isLoading } = useGetFieldValuesQuery(fieldId, {
     skip: !hasListValues,

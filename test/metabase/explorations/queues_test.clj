@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase.explorations.queues-test
+(ns ^:synchronized metabase.explorations.queues-test
   "End-to-end tests for the exploration queues.
 
   `mq.tu/with-test-mq` starts the real subsystem on an in-memory backend and realizes every
@@ -6,7 +6,7 @@
   `metabase.explorations.queues` — so these exercise the production wiring, not a stand-in: publish a
   message, wait, and assert on what the handlers did.
 
-  Marked `^:synchronous` because `with-test-mq` installs its backend with `alter-var-root` — it is
+  Marked `^:synchronized` because `with-test-mq` installs its backend with `alter-var-root` — it is
   process-global, so two of these running in parallel would clobber each other's backend.
 
   NOTE ON FIXTURES: these deliberately do NOT use `mt/with-temp`. It runs the body inside a

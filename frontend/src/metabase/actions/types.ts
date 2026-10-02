@@ -8,17 +8,19 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 
+// A fetched action always carries a description; creating one need not send it.
 type BaseCreateActionParams = Pick<
   WritebackAction,
-  "name" | "description" | "model_id" | "parameters" | "visualization_settings"
->;
+  "name" | "model_id" | "parameters" | "visualization_settings"
+> &
+  Partial<Pick<WritebackAction, "description">>;
 
 type BaseUpdateActionParams = {
   id: WritebackAction["id"];
 };
 
 export type CreateQueryActionParams = BaseCreateActionParams &
-  Pick<WritebackQueryAction, "type" | "dataset_query">;
+  Pick<WritebackQueryAction, "type" | "dataset_query" | "database_id">;
 
 export type UpdateQueryActionParams = Partial<CreateQueryActionParams> &
   BaseUpdateActionParams;

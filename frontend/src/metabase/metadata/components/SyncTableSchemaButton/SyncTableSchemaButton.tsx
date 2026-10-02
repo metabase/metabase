@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import { useSyncTableSchemaMutation } from "metabase/api";
-import { useTemporaryState } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
@@ -22,7 +21,7 @@ export function SyncTableSchemaButton({ tableId }: { tableId: TableId }) {
   };
 
   return (
-    <Button variant="default" onClick={handleClick}>
+    <Button onClick={handleClick}>
       {started ? t`Sync triggered!` : t`Sync table schema`}
     </Button>
   );

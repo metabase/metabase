@@ -31,3 +31,12 @@ export type ErrorPayload = Partial<{
   queryResults: DatasetData;
   bugReportDetails: MetabaseInfo;
 }>;
+
+/**
+ * The `diagnosticInfo` body of `POST /api/slack/bug-report`: an `ErrorPayload` whose `reporter` is a
+ * boolean saying whether to attribute the report to the current user. The identity itself is never
+ * sent — the backend derives it from the session.
+ */
+export type DiagnosticInfoPayload = Omit<ErrorPayload, "reporter"> & {
+  reporter: boolean;
+};

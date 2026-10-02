@@ -4,6 +4,11 @@ import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
@@ -14,16 +19,11 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { stableStringify } from "metabase/utils/objects";
-import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
+import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -264,7 +264,11 @@ function createDashboard({
       [CATEGORY_DROPDOWN_FILTER.id]: [createProductsCategoryField()],
       [DATE_FILTER_ID]: [createProductsCreatedAtField()],
       [UNIT_OF_TIME_FILTER_ID]: [createProductsCreatedAtField()],
-      [NUMBER_FILTER_ID]: [createProductsRatingField()],
+      // the story types a value into this filter, so its field must not offer
+      // a list to pick from
+      [NUMBER_FILTER_ID]: [
+        createProductsRatingField({ has_field_values: "none" }),
+      ],
     },
     dashcards: [
       createMockDashboardCard({

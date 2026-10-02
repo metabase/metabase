@@ -1,8 +1,15 @@
+.band {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  isolation: isolate;
+}
+
 .track {
   position: absolute;
   display: flex;
   align-items: center;
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   background-color: var(--mb-color-background_page-secondary);
   pointer-events: none;
   padding: 0.25rem 0;
@@ -35,12 +42,12 @@
 
 .chip {
   position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 2rem;
-  height: 1.5rem;
   padding: 0;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.75rem;
@@ -48,16 +55,51 @@
   color: var(--mb-color-icon-primary);
   cursor: pointer;
   pointer-events: all;
-  transform: translate(-50%, -50%);
 }
 
 .chip:hover {
-  background-color: var(--mb-color-background_surface-primary-hover);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .chipSelected {
   color: var(--mb-color-text-brand);
   border-color: var(--mb-color-text-brand);
+}
+
+.chipHidden {
+  pointer-events: none;
+}
+
+.chipHidden:not(.stackMember) {
+  opacity: 0;
+}
+
+.stackHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* invisible catcher filling the gaps between spread stack members so the
+   pointer never "leaves" the stack while moving across it */
+.stackHoverPad {
+  position: absolute;
+  pointer-events: all;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chip {
+    transition: opacity 150ms ease;
+  }
+
+  .stackMember {
+    transition:
+      transform 200ms ease,
+      opacity 150ms ease;
+  }
+
+  .stackHidden {
+    transition: opacity 150ms ease;
+  }
 }
 
 .listItemWrapper {

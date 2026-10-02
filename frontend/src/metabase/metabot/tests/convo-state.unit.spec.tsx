@@ -1,11 +1,21 @@
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
+import fetchMock from "fetch-mock";
 
+import {
+  createMockMetabotConversationDetail,
+  createMockMetabotMessage,
+  createMockMetabotTextMessage,
+  setupGetMetabotConversationEndpoint,
+} from "__support__/server-mocks/metabot";
 import { act, waitFor } from "__support__/ui";
 import {
+  attachAgentToConversation,
+  fetchConversationSnapshot,
+  getIsConversationProcessing,
+  getMessages,
   getMetabotConversation,
   getMetabotRequestState,
-  setConversationSnapshot,
+  loadConversation,
 } from "metabase/metabot/state";
 
 import {
@@ -21,6 +31,7 @@ import {
   setup,
   showMetabot,
   stopResponseButton,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
@@ -28,7 +39,7 @@ describe("metabot > convo state", () => {
   it("should update the convo state on a successful request", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       stream: createMockSSEStream(
@@ -48,7 +59,7 @@ describe("metabot > convo state", () => {
   it("should not update the convo state on a failed request", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       events: [
@@ -65,7 +76,7 @@ describe("metabot > convo state", () => {
   it("should preserve conversation state if aborted response didn't contain a state data object", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       events: [
@@ -121,11 +132,14 @@ describe("metabot > convo state", () => {
     });
     await enterChatMessage("hi");
     await userEvent.click(await stopResponseButton());
-    const reqState = getMetabotRequestState(store.getState(), "omnibot");
+    const reqState = getMetabotRequestState(
+      store.getState(),
+      testConversationId("omnibot"),
+    );
     expect(reqState).toEqual({ testing: 123 });
   });
 
-  it("should drop streamed output once the user has switched away, even after switching back", async () => {
+  it("should keep streaming into a conversation the surface has navigated away from", async () => {
     const { store } = setup();
     const { conversationId } = getMetabotConversation(
       store.getState(),
@@ -151,28 +165,30 @@ describe("metabot > convo state", () => {
       ["agent", "first half"],
     ]);
 
-    const reload = (id: string) =>
+    act(() => {
       store.dispatch(
-        setConversationSnapshot({
+        attachAgentToConversation({
           agentId: "omnibot",
-          conversationId: id,
-          messages: [
-            { id: "u1", role: "user", type: "text", message: "stream me" },
-          ],
-          activeToolCalls: [],
+          conversationId: "some-other-conversation",
         }),
       );
-
-    act(() => {
-      reload("some-other-conversation");
-      reload(conversationId);
     });
+    await assertConversation([]);
 
     await act(async () => {
       pause1.resolve();
     });
 
-    await assertConversation([["user", "stream me"]]);
+    act(() => {
+      store.dispatch(
+        attachAgentToConversation({ agentId: "omnibot", conversationId }),
+      );
+    });
+
+    await assertConversation([
+      ["user", "stream me"],
+      ["agent", "first half second half"],
+    ]);
   });
 
   it("should keep the conversation thread when metabot is hidden or opened", async () => {
@@ -183,16 +199,17 @@ describe("metabot > convo state", () => {
 
     await enterChatMessage("Who is your favorite?");
     await waitFor(() => expect(agentSpy).toHaveBeenCalledTimes(1));
+    const firstReqBody = await lastReqBody(agentSpy);
 
     hideMetabot(store.dispatch);
     showMetabot(store.dispatch);
     await enterChatMessage("Hi!");
     const reqBody = await lastReqBody(agentSpy);
     // the thread survives hide/show: the next request still points at the prior turn
-    expect(reqBody.parent_message_id).toBe("msg_test_favorite");
+    expect(reqBody.parent_message_id).toBe(firstReqBody.assistant_message_id);
   });
 
-  it("should reset the conversation when the reset button is clicked", async () => {
+  it("should start a new conversation when the new conversation button is clicked", async () => {
     const { store } = setup();
     const getState = () => getMetabotConversation(store.getState(), "omnibot");
     mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
@@ -204,18 +221,16 @@ describe("metabot > convo state", () => {
     ]);
 
     const beforeResetState = getState();
-    expect(_.omit(beforeResetState.messages[0], ["id"])).toStrictEqual({
-      role: "user",
-      type: "text",
-      message: "Who is your favorite?",
-    });
-    expect(
-      _.omit(beforeResetState.messages[1], ["id", "externalId"]),
-    ).toStrictEqual({
-      role: "agent",
-      type: "text",
-      message: "You, but don't tell anyone.",
-    });
+    expect(beforeResetState.messages).toMatchObject([
+      {
+        role: "user",
+        parts: [{ type: "text", message: "Who is your favorite?" }],
+      },
+      {
+        role: "agent",
+        parts: [{ type: "text", message: "You, but don't tell anyone." }],
+      },
+    ]);
 
     await userEvent.click(await newConversationButton());
 
@@ -224,5 +239,82 @@ describe("metabot > convo state", () => {
       beforeResetState.conversationId,
     );
     expect(afterResetState.messages).toStrictEqual([]);
+  });
+
+  it("should refuse to load a conversation that is currently streaming", async () => {
+    const { store } = setup();
+    const [pause] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "text-delta", id: "t1", delta: "live reply" };
+          await pause.promise;
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("hello");
+    await assertConversation([
+      ["user", "hello"],
+      ["agent", "live reply"],
+    ]);
+    const { conversationId } = getMetabotConversation(
+      store.getState(),
+      "omnibot",
+    );
+    setupGetMetabotConversationEndpoint(
+      createMockMetabotConversationDetail({
+        conversation_id: conversationId,
+        messages: [
+          createMockMetabotTextMessage("user", "hello"),
+          createMockMetabotMessage({ status: { type: "in_progress" } }),
+        ],
+      }),
+    );
+    const expectedError = {
+      message: `Cannot load conversation ${conversationId} while it is streaming`,
+    };
+
+    try {
+      await expect(
+        store.dispatch(fetchConversationSnapshot(conversationId)).unwrap(),
+      ).rejects.toMatchObject(expectedError);
+
+      act(() => {
+        store.dispatch(
+          attachAgentToConversation({
+            agentId: "omnibot",
+            conversationId: "some-other-conversation",
+          }),
+        );
+      });
+
+      await expect(
+        store
+          .dispatch(loadConversation({ agentId: "omnibot", conversationId }))
+          .unwrap(),
+      ).rejects.toMatchObject(expectedError);
+      expect(
+        getMetabotConversation(store.getState(), "omnibot").conversationId,
+      ).toBe("some-other-conversation");
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/metabot/conversations/${conversationId}`,
+        ),
+      ).toHaveLength(0);
+    } finally {
+      pause.resolve();
+    }
+
+    await waitFor(() => {
+      expect(
+        getIsConversationProcessing(store.getState(), conversationId),
+      ).toBe(false);
+    });
+    expect(getMessages(store.getState(), conversationId).at(-1)).toMatchObject({
+      status: { type: "done" },
+      parts: [{ type: "text", message: "live reply" }],
+    });
   });
 });

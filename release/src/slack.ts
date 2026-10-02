@@ -127,7 +127,7 @@ export async function sendPreReleaseStatus({
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": `_<https://github.com/metabase/metabase/milestone/${milestoneId}|:direction-sign: Milestone> targeted for release on ${date}_ ${mentionSlackTeam('core-release')}`,
+				"text": `_<https://github.com/metabase/metabase/milestone/${milestoneId}|:direction-sign: Milestone> targeted for release on ${date}_ ${mentionSlackTeam('release-managers')}`,
 			}
 		},
   ];
@@ -198,7 +198,11 @@ async function getSlackChannelId(
   return maybeChannelId;
 }
 
-async function getExistingSlackMessage(version: string, channelName: string) {
+export async function findSlackMessage({ channelName, text, limit = 100 }: {
+  channelName: string,
+  text: string,
+  limit?: number,
+}) {
   const channelId = await getSlackChannelId(channelName);
   if (!channelId) {
     throw new Error(`Could not find channel ${channelName}`);
@@ -206,10 +210,11 @@ async function getExistingSlackMessage(version: string, channelName: string) {
 
   const response = await slack.conversations.history({
     channel: channelId,
+    limit,
   });
 
   const existingMessage = response.messages?.find(
-    message => message.text?.includes(getReleaseTitle(version)),
+    message => message.text?.includes(text),
   );
 
   if (!existingMessage) {
@@ -220,6 +225,10 @@ async function getExistingSlackMessage(version: string, channelName: string) {
     id: existingMessage.ts ?? '',
     body: existingMessage.text ?? '',
   };
+}
+
+function getExistingSlackMessage(version: string, channelName: string) {
+  return findSlackMessage({ channelName, text: getReleaseTitle(version) });
 }
 
 export async function sendSlackReply({ channelName, message, messageId, broadcast }: {channelName: string, message: string, messageId?: string, broadcast?: boolean}) {
@@ -323,7 +332,7 @@ export function buildAutoReleaseSkipMessage({
   const messageByReason: Record<AutoReleaseSkipReason, string> = {
     "no-green-commit": `:x: ${label} for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
     "no-next-version": noNextVersion,
-    "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${runLink}`,
+    "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${mentionSlackTeam('release-managers')} monitor the v${majorVersion} branch and manually release the next green commit. ${runLink}`,
   };
 
   return messageByReason[reason];

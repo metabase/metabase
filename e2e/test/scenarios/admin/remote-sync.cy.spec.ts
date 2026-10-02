@@ -1,7 +1,15 @@
+import yaml from "js-yaml";
+
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import type { Collection } from "metabase-types/api";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import type {
+  Collection,
+  RemoteSyncDependencyErrorResponse,
+} from "metabase-types/api";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -11,22 +19,39 @@ const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-describe("Remote Sync", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-    H.setupGitSync();
-    H.interceptTask();
-  });
+const BLOCKED_COLLECTION_NAME = "Blocked Collection";
+const SECOND_BLOCKED_COLLECTION_NAME = "Also Blocked Collection";
+const SOURCE_COLLECTION_NAME = "Dependency Source";
+const SOURCE_QUESTION_NAME = "Dependency Source Question";
+const DEPENDENT_QUESTION_NAME = "Dependent Question";
+const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
+const OTHER_SOURCE_QUESTION_NAME = "Other Source Question";
+const WEEKLY_DEPENDENT_NAME = "Weekly Summary";
+const MONTHLY_DEPENDENT_NAME = "Monthly Summary";
+const SNIPPET_NAME = "active_users";
+const SNIPPET_QUESTION_NAME = "Snippet Dependent Question";
+const PERSONAL_QUESTION_NAME = "Personal Source Question";
 
+const setup = (snapshot = "default") => {
+  H.restore(snapshot);
+  H.resetSnowplow();
+  cy.signInAsAdmin();
+  H.activateToken("pro-self-hosted");
+  H.setupGitSync();
+  H.interceptTask();
+};
+
+describe("Remote Sync", () => {
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
   });
 
   describe("read-write Mode", () => {
+    beforeEach(() => {
+      setup("postgres-writable");
+      H.updateSetting("transforms-enabled", true);
+    });
+
     it("can push and pull changes", () => {
       H.configureGitWithNewSyncedCollection("read-write").as(
         "syncedCollection",
@@ -454,10 +479,7 @@ describe("Remote Sync", () => {
 
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
-      H.restore();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      cy.signInAsAdmin();
+      setup();
     });
 
     it("can set up read-write mode", () => {
@@ -484,40 +506,6 @@ describe("Remote Sync", () => {
 
       // Branch picker should appear in the app bar (doesn't require import)
       H.getGitSyncControls().should("contain.text", "main");
-    });
-
-    it("can set up read-only mode", () => {
-      // Set up a Synced Collection to connect to, otherwise read-only mode will be empty
-      // Copy some files
-      H.copySyncedCollectionFixture();
-
-      // Commit those files to the main branch
-      H.commitToRepo();
-
-      cy.visit("/admin/settings/remote-sync");
-      cy.findByLabelText(/repository url/i)
-        .should("be.visible")
-        .click()
-        .clear()
-        .type(LOCAL_GIT_URL);
-
-      cy.findByTestId("admin-layout-content").findByText("Read-only").click();
-      cy.button("Set up remote sync").click();
-      cy.findByTestId("admin-layout-content")
-        .findByText("Success")
-        .should("exist");
-
-      // Read-only setup runs an initial import; close its confirmation modal (GHY-3747).
-      H.closeSyncResultModal();
-      H.modal().should("not.exist");
-      H.goToMainApp();
-
-      // In read-only mode, git sync controls should not be visible in app bar
-      H.getGitSyncControls().should("not.exist");
-
-      H.navigationSidebar().within(() => {
-        cy.findByRole("treeitem", { name: /Synced Collection/ }).click();
-      });
     });
 
     it("should disable 'Set up remote sync' button if git url is not set (#65653)", () => {
@@ -601,60 +589,278 @@ describe("Remote Sync", () => {
 
       ensureSyncedCollectionIsVisible();
     });
+
+    describe("unsynced dependency modal", () => {
+      beforeEach(() => {
+        H.configureGit("read-write");
+        cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
+      });
+
+      it("reports every blocked collection and allows to sync from dependency modal", () => {
+        createDependencyFixture().then(({ source, blocked, alsoBlocked }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.button("Save changes").should("be.disabled");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+          cy.findByLabelText(`Sync ${SECOND_BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          cy.log("Both collections are refused in a single pass");
+          saveAndExpectRefusal();
+
+          H.modal().within(() => {
+            cy.findByText("Couldn’t sync selected collection").should(
+              "be.visible",
+            );
+            cy.findAllByText(SOURCE_COLLECTION_NAME).should("have.length", 1);
+
+            cy.log(
+              "Expanding the row lists every blocking item and what uses it",
+            );
+            cy.findByText(SOURCE_COLLECTION_NAME).click();
+            cy.findByText("Item").should("be.visible");
+            cy.findByText("Used By").should("be.visible");
+
+            cy.log("One row per dependency, both under the same remedy");
+            cy.findByText(SOURCE_QUESTION_NAME).should("be.visible");
+            cy.findByText(OTHER_SOURCE_QUESTION_NAME).should("be.visible");
+
+            // Each dependent reaches the source from a different selected collection, so the cell
+            // names both — one per selection, pooled rather than reported from whichever came first.
+            cy.findByText(
+              new RegExp(
+                `^(${DEPENDENT_QUESTION_NAME}, ${SECOND_DEPENDENT_QUESTION_NAME}|${SECOND_DEPENDENT_QUESTION_NAME}, ${DEPENDENT_QUESTION_NAME})$`,
+              ),
+            ).should("be.visible");
+
+            cy.findByText(
+              new RegExp(
+                `^(${WEEKLY_DEPENDENT_NAME}, ${MONTHLY_DEPENDENT_NAME}|${MONTHLY_DEPENDENT_NAME}, ${WEEKLY_DEPENDENT_NAME})$`,
+              ),
+            ).should("be.visible");
+
+            cy.findByLabelText(`Sync ${SOURCE_COLLECTION_NAME}`)
+              .should("be.enabled")
+              .click({ force: true });
+            cy.button("Save changes").click();
+          });
+
+          cy.wait("@saveSettings").then(({ request, response }) => {
+            expect(response?.statusCode).to.eq(200);
+            expect(request.body.collections).to.deep.equal({
+              [blocked.id]: true,
+              [alsoBlocked.id]: true,
+              [source.id]: true,
+            });
+          });
+
+          H.modal().should("not.exist");
+
+          cy.reload();
+          [
+            BLOCKED_COLLECTION_NAME,
+            SECOND_BLOCKED_COLLECTION_NAME,
+            SOURCE_COLLECTION_NAME,
+          ].forEach((name) => {
+            cy.findByLabelText(`Sync ${name}`).should("be.checked");
+          });
+
+          // The dependents error carries no error_code, so the modal must ignore it.
+          cy.log("Un-syncing the source is a plain error, not the modal");
+          cy.findByLabelText(`Sync ${SOURCE_COLLECTION_NAME}`).click({
+            force: true,
+          });
+          cy.button("Save changes").should("be.enabled").click();
+
+          cy.wait("@saveSettings").its("response.statusCode").should("eq", 400);
+          H.undoToast().should("contain.text", "Used by remote synced content");
+          H.modal().should("not.exist");
+        });
+      });
+
+      it("leaves a snippet dependency with nothing to act on when no Library exists", () => {
+        createSnippetDependencyFixture().then(({ blocked }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          saveAndExpectRefusal().then((interception) => {
+            const body: RemoteSyncDependencyErrorResponse =
+              interception.response?.body;
+            const [required] = body.errors.required;
+
+            expect(required.blocks.map((collection) => collection.id)).to.eql([
+              blocked.id,
+            ]);
+            // With no Library there is no collection to name, so the remedy carries only its type.
+            expect(required.remedy).to.deep.equal({ type: "library" });
+            expect(required.syncable).to.be.false;
+            expect(required.dependencies).to.have.length(1);
+            expect(required.dependencies[0].model).to.eq("snippet");
+            expect(required.dependencies[0].name).to.eq(SNIPPET_NAME);
+          });
+
+          H.modal().within(() => {
+            cy.findByText("Couldn’t sync selected collection").should(
+              "be.visible",
+            );
+            cy.findByText(/sync with the Library/).should("be.visible");
+            cy.findByRole("switch").should("not.exist");
+
+            cy.button("Back").click();
+          });
+
+          H.modal().should("not.exist");
+        });
+      });
+
+      it("lists only the personal collection when a syncable one is blocked behind it", () => {
+        createPersonalDependencyFixture().then(({ personal }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          saveAndExpectRefusal();
+
+          H.modal().within(() => {
+            cy.findByText(/saved in a personal collection/).should(
+              "be.visible",
+            );
+            cy.findByText(personal.name).should("be.visible");
+            cy.findByText("Can't be synced").should("be.visible");
+            // The person icon is how the row shows this is someone's personal collection.
+            cy.findByRole("img", { name: "person icon" }).should("be.visible");
+
+            cy.log("The syncable collection is hidden — no save can succeed");
+            cy.findByText(SOURCE_COLLECTION_NAME).should("not.exist");
+            cy.findByRole("switch").should("not.exist");
+            cy.button("Save changes").should("not.exist");
+
+            cy.button("Back").click();
+          });
+
+          H.modal().should("not.exist");
+        });
+      });
+    });
   });
 
   describe("read-only mode", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
+      setup();
     });
 
-    it("can change branches", () => {
-      const UPDATED_REMOTE_QUESTION_NAME = "New Name";
+    it(
+      "can set up read-only mode from the settings page and change branches",
+      { requestTimeout: 15000 },
+      () => {
+        const UPDATED_REMOTE_QUESTION_NAME = "New Name";
 
-      H.copySyncedCollectionFixture();
-      H.commitToRepo();
-      H.configureGit("read-only");
+        // Set up a Synced Collection to connect to, otherwise read-only mode will be empty
+        H.copySyncedCollectionFixture();
+        H.commitToRepo();
 
-      cy.visit("/");
+        cy.log("Set up read-only mode from the admin settings page");
+        cy.visit("/admin/settings/remote-sync");
+        cy.findByLabelText(/repository url/i)
+          .should("be.visible")
+          .click()
+          .clear()
+          .type(LOCAL_GIT_URL);
 
-      H.navigationSidebar()
-        .findByRole("treeitem", { name: /Synced Collection/ })
-        .click();
-      H.collectionTable().findByText(REMOTE_QUESTION_NAME);
+        cy.findByTestId("admin-layout-content").findByText("Read-only").click();
+        cy.button("Set up remote sync").click();
+        cy.findByTestId("admin-layout-content")
+          .findByText("Success")
+          .should("exist");
 
-      // Make a change, and commit it to the branch
-      H.checkoutSyncedCollectionBranch("test");
-      H.updateRemoteQuestion((doc) => {
-        doc.name = UPDATED_REMOTE_QUESTION_NAME;
-        return doc;
-      });
+        cy.log(
+          "Read-only setup runs an initial import; close its confirmation modal (GHY-3747)",
+        );
+        H.closeSyncResultModal();
+        H.modal().should("not.exist");
+        H.goToMainApp();
 
-      cy.visit("/admin/settings/remote-sync");
-      cy.findByLabelText("Sync branch").scrollIntoView().clear().type("test");
-      cy.findByTestId("remote-sync-submit-button").click();
+        cy.log(
+          "In read-only mode, git sync controls are not shown in the app bar",
+        );
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Synced Collection/ })
+          .click();
+        H.collectionTable().findByText(REMOTE_QUESTION_NAME).should("exist");
+        H.getGitSyncControls().should("not.exist");
 
-      cy.findByTestId("admin-layout-content")
-        .findByText("Success")
-        .should("exist");
+        cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+          "mainBranchItems",
+        );
+        cy.visit("/");
 
-      cy.findByRole("dialog", { name: "Switch branches?" })
-        .button("Continue")
-        .click();
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Synced Collection/ })
+          .click();
+        cy.wait(["@mainBranchItems", "@mainBranchItems"]);
+        H.collectionTable().findByText(REMOTE_QUESTION_NAME);
 
-      H.waitForTask({ taskName: "import" });
+        // Make a change, and commit it to the branch
+        H.checkoutSyncedCollectionBranch("test");
+        H.updateRemoteQuestion((doc) => {
+          doc.name = UPDATED_REMOTE_QUESTION_NAME;
+          return doc;
+        });
 
-      cy.findByTestId("remote-sync-submit-button").should("be.disabled");
+        cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+        cy.intercept("GET", "/api/setting").as("settingDetails");
+        cy.intercept("GET", "/api/collection/root/items?*").as("rootItems");
+        cy.intercept("GET", "/api/ee/library").as("libraryCollection");
+        cy.visit("/admin/settings/remote-sync");
+        cy.wait([
+          "@sessionProperties",
+          "@settingDetails",
+          "@rootItems",
+          "@libraryCollection",
+        ]);
 
-      cy.visit("/");
+        cy.findByLabelText("Sync branch")
+          .scrollIntoView()
+          .clear()
+          .type("test")
+          .should("have.value", "test");
+        cy.findByTestId("remote-sync-submit-button").click();
 
-      H.navigationSidebar()
-        .findByRole("treeitem", { name: /Synced Collection/ })
-        .click();
-      H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
-    });
+        cy.findByTestId("admin-layout-content")
+          .findByText("Success")
+          .should("exist");
+
+        cy.findByRole("dialog", { name: "Switch branches?" })
+          .button("Continue")
+          .click();
+
+        H.waitForTask({ taskName: "import" });
+
+        cy.findByTestId("remote-sync-submit-button").should("be.disabled");
+
+        H.pollForTask({ taskName: "import" });
+
+        cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+          "testBranchItems",
+        );
+        cy.visit("/");
+
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Synced Collection/ })
+          .click();
+        cy.wait(["@testBranchItems", "@testBranchItems"]);
+        H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
+      },
+    );
 
     it("keeps the Embed sharing option available for a question in a read-only synced collection (metabase#72752)", () => {
       H.copySyncedCollectionFixture();
@@ -679,11 +885,7 @@ describe("Remote Sync", () => {
 
   describe("shared tenant collections", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      H.interceptTask();
+      setup();
 
       // Enable tenants feature
       H.enableTenants();
@@ -694,55 +896,17 @@ describe("Remote Sync", () => {
     });
 
     describe("admin settings", () => {
-      it("should show shared tenant collections section when tenants are enabled and remote sync is configured", () => {
-        // First set up remote sync
-        H.configureGitAndPullChanges("read-write");
-
-        // Create some tenant collections
-        H.createSharedTenantCollection("Tenant A Shared");
-        H.createSharedTenantCollection("Tenant B Shared");
-
+      it("shows the shared tenant collections section, with an empty state, only when remote sync is configured and tenants are enabled", () => {
+        cy.log(
+          "Collections to sync section is hidden when remote sync is not enabled",
+        );
         cy.visit("/admin/settings/remote-sync");
-
         cy.findByTestId("admin-layout-content").within(() => {
-          // Main section should be visible
-          cy.findByText("Collections to sync").should("exist");
-
-          // Shared collections sub-section should be visible
-          cy.findByText("Shared collections").should("exist");
-
-          // Should show the tenant collections
-          cy.findByText("Tenant A Shared").should("exist");
-          cy.findByText("Tenant B Shared").should("exist");
-
-          // Each collection should have a sync toggle
-          cy.findAllByRole("switch").should("have.length.at.least", 2);
+          // Wait for the form to render so the negative assertion is meaningful
+          cy.button("Set up remote sync").should("exist");
+          cy.findByText("Collections to sync").should("not.exist");
         });
-      });
 
-      it("should not show shared tenant collections section when tenants are disabled", () => {
-        // Disable tenants
-        cy.request("PUT", "/api/setting/use-tenants", { value: false });
-
-        H.configureGitAndPullChanges("read-write");
-        cy.visit("/admin/settings/remote-sync");
-
-        // Shared collections sub-section should NOT be visible
-        cy.findByTestId("admin-layout-content")
-          .findByText("Shared collections")
-          .should("not.exist");
-      });
-
-      it("should not show shared tenant collections section when remote sync is not enabled", () => {
-        cy.visit("/admin/settings/remote-sync");
-
-        // Collections to sync section should NOT be visible (remote sync not yet configured)
-        cy.findByTestId("admin-layout-content")
-          .findByText("Collections to sync")
-          .should("not.exist");
-      });
-
-      it("should show empty state when no shared tenant collections exist", () => {
         H.configureGitAndPullChanges("read-write");
         cy.visit("/admin/settings/remote-sync");
 
@@ -750,27 +914,16 @@ describe("Remote Sync", () => {
           cy.findByText("Shared collections").should("exist");
           cy.findByText("No shared tenant collections found").should("exist");
         });
-      });
 
-      it("can toggle sync for a shared tenant collection", () => {
-        H.configureGitAndPullChanges("read-write");
-
-        // Create a tenant collection
-        H.createSharedTenantCollection("Tenant Collection To Sync");
-
-        cy.visit("/admin/settings/remote-sync");
-
+        cy.log(
+          "Shared collections sub-section is hidden when tenants are disabled",
+        );
+        cy.request("PUT", "/api/setting/use-tenants", { value: false });
+        cy.reload();
         cy.findByTestId("admin-layout-content").within(() => {
-          // Find the collection row and toggle sync on
-          cy.findByRole("switch", {
-            name: "Sync Tenant Collection To Sync",
-          }).click({ force: true });
-
-          // Save changes
-          cy.button("Save changes").click();
-
-          // Verify the setting was saved
-          cy.findByText(/success/i).should("exist");
+          // Wait for the section to render so the negative assertion is meaningful
+          cy.findByText("Collections to sync").should("exist");
+          cy.findByText("Shared collections").should("not.exist");
         });
       });
 
@@ -825,16 +978,32 @@ describe("Remote Sync", () => {
     });
 
     describe("syncing tenant collections", () => {
-      it("can push changes from a synced tenant collection", () => {
+      it("lists shared tenant collections in settings and can push changes from a synced one", () => {
         H.configureGitAndPullChanges("read-write");
+
+        // A second, unsynced tenant collection so the settings list shows more than one row
+        H.createSharedTenantCollection("Second Tenant Collection");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Syncable Tenant Collection").then(
           (response) => {
             const tenantCollectionId = response.body.id;
 
-            // Enable sync for this collection via admin settings
             cy.visit("/admin/settings/remote-sync");
+
+            cy.log(
+              "Shared tenant collections section is shown when tenants are enabled and remote sync is configured",
+            );
+            cy.findByTestId("admin-layout-content").within(() => {
+              cy.findByText("Collections to sync").should("exist");
+              cy.findByText("Shared collections").should("exist");
+              cy.findByText("Syncable Tenant Collection").should("exist");
+              cy.findByText("Second Tenant Collection").should("exist");
+              // Each collection should have a sync toggle
+              cy.findAllByRole("switch").should("have.length.at.least", 2);
+            });
+
+            // Enable sync for this collection via admin settings
             // Mantine Switch has a hidden input (0x0 pixels), so we need force: true
             cy.findByTestId("admin-layout-content")
               .findByRole("switch", { name: "Sync Syncable Tenant Collection" })
@@ -842,6 +1011,9 @@ describe("Remote Sync", () => {
             cy.findByTestId("admin-layout-content")
               .button("Save changes")
               .click();
+            cy.findByTestId("admin-layout-content")
+              .findByText(/success/i)
+              .should("exist");
 
             // Create a question in the tenant collection
             H.createQuestion({
@@ -854,8 +1026,11 @@ describe("Remote Sync", () => {
 
             cy.visit("/");
 
-            // Verify sync status indicator appears
-            H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
+            // Verify the sync status badge appears on the tenant collection
+            H.navigationSidebar()
+              .findByRole("treeitem", { name: /Syncable Tenant Collection/ })
+              .findByTestId("remote-sync-status")
+              .should("exist");
 
             // Push changes
             H.clickPushOption();
@@ -872,47 +1047,14 @@ describe("Remote Sync", () => {
           },
         );
       });
-
-      it("shows sync status badge on synced tenant collections in sidebar", () => {
-        H.configureGitAndPullChanges("read-write");
-
-        // Create a tenant collection
-        H.createSharedTenantCollection("Badge Test Collection").then(
-          (response) => {
-            const collectionId = response.body.id;
-
-            // Enable sync
-            cy.visit("/admin/settings/remote-sync");
-            // Mantine Switch has a hidden input (0x0 pixels), so we need force: true
-            cy.findByTestId("admin-layout-content")
-              .findByRole("switch", { name: "Sync Badge Test Collection" })
-              .click({ force: true });
-            cy.findByTestId("admin-layout-content")
-              .button("Save changes")
-              .click();
-
-            // Create content to trigger dirty state
-            H.createQuestion({
-              name: "Status Badge Test Question",
-              query: { "source-table": PRODUCTS_ID },
-              collection_id: collectionId,
-            });
-
-            cy.visit("/");
-
-            // Verify the sync status badge appears on the tenant collection
-            H.navigationSidebar()
-              .findByRole("treeitem", { name: /Badge Test Collection/ })
-              .findByTestId("remote-sync-status")
-              .should("exist");
-          },
-        );
-      });
     });
   });
 
   describe("initial pull conflict handling", () => {
     beforeEach(() => {
+      setup("postgres-writable");
+      H.updateSetting("transforms-enabled", true);
+
       // Create a local transform that could be overwritten by the remote
       H.createSqlTransform({
         sourceQuery: "SELECT 1",
@@ -941,13 +1083,20 @@ describe("Remote Sync", () => {
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
+      cy.intercept("POST", "/api/ee/remote-sync/import").as("pullImport");
+      cy.intercept("GET", "/api/transform*").as("getTransforms");
+
       H.DataStudio.Transforms.visit();
+      cy.wait("@getTransforms");
 
       cy.findByRole("treegrid").within(() => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
       });
 
       H.clickPullOption();
+
+      cy.wait("@pullImport");
+      H.pollForTask({ taskName: "import", until: "conflict" });
 
       cy.log("make sure conflict modal is displayed");
       H.modal().within(() => {
@@ -967,13 +1116,18 @@ describe("Remote Sync", () => {
 
       cy.findByRole("button", { name: "Delete unsynced changes" }).click();
 
+      cy.log("wait for the forced import to replace local state");
+      cy.wait("@pullImport");
+      H.pollForTask({ taskName: "import" });
+      H.closeSyncResultModal();
+
       cy.findByRole("treegrid").within(() => {
+        cy.log("check remote transform was pulled in");
+        cy.findByText("Imported Simple SQL transform").should("be.visible");
         cy.log(
           "check existing transform was removed after pulling from remote",
         );
         cy.findByText("Batman's Existing Transform").should("not.exist");
-        cy.log("check remote transform was pulled in");
-        cy.findByText("Imported Simple SQL transform").should("be.visible");
       });
     });
 
@@ -1012,6 +1166,129 @@ describe("Remote Sync", () => {
       });
     });
   });
+
+  describe("glossary", () => {
+    const GLOSSARY_TERM = "ARR";
+    const GLOSSARY_DEFINITION = "Annual recurring revenue";
+
+    const visitDataStudioGlossary = () => {
+      H.DataModel.visitDataStudio();
+      glossaryTab().click();
+      cy.findByRole("heading", { name: "Glossary" }).should("be.visible");
+    };
+
+    const glossaryTab = () => H.DataStudio.nav().findByLabelText("Glossary");
+
+    describe("read-write mode", () => {
+      beforeEach(() => {
+        setup();
+      });
+
+      it("flags a new term on the Glossary tab and pushes it to the repository", () => {
+        // Glossary entries ride with the Library, so sync the Library rather than a plain collection.
+        H.createLibrary().then(({ body: library }) => {
+          H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
+        });
+
+        visitDataStudioGlossary();
+        cy.findByRole("button", { name: /new term/i }).click();
+        cy.findByPlaceholderText(/boat/i).type(GLOSSARY_TERM);
+        cy.findByPlaceholderText(/a small vessel.*/i).type(GLOSSARY_DEFINITION);
+        cy.findByLabelText("Save").click();
+        cy.get("table").findByText(GLOSSARY_TERM).should("be.visible");
+
+        cy.log("The Glossary tab shows unsynced changes");
+        glossaryTab().findByTestId("remote-sync-status").should("be.visible");
+
+        H.clickPushOption();
+        H.modal()
+          .button(/Push changes/)
+          .click();
+        H.waitForTask({ taskName: "export" });
+
+        cy.log("The badge clears once the term is pushed");
+        glossaryTab().findByTestId("remote-sync-status").should("not.exist");
+
+        cy.log("The term is serialized under glossary/ in the repository");
+        H.wrapSyncedCollectionFiles();
+        cy.get("@syncedCollectionFiles").then((files) => {
+          // Unjustified type cast. FIXME
+          const glossaryFile = (files as unknown as string[]).find((file) =>
+            file.includes("glossary/"),
+          );
+          expect(glossaryFile).to.match(/glossary\/arr\.yaml$/);
+
+          cy.readFile(`${H.LOCAL_GIT_PATH}/${glossaryFile}`).then((str) => {
+            // Unjustified type cast. FIXME
+            const doc = yaml.load(str) as Record<string, unknown>;
+            expect(doc.term).to.equal(GLOSSARY_TERM);
+            expect(doc.definition).to.equal(GLOSSARY_DEFINITION);
+            expect(doc.entity_id).to.be.a("string").with.lengthOf(21);
+          });
+        });
+      });
+    });
+
+    describe("read-only mode", () => {
+      beforeEach(() => {
+        setup();
+        // The fixture carries the Library (matching the ids createLibrary assigns) with is_remote_synced set,
+        // so the pull both loads the term and locks the glossary.
+        H.createLibrary();
+        H.copySyncedLibraryFixture();
+        H.commitToRepo();
+        H.configureGitAndPullChanges("read-only");
+      });
+
+      it("lists pulled terms and locks editing", () => {
+        visitDataStudioGlossary();
+
+        cy.get("table").within(() => {
+          cy.findByText(GLOSSARY_TERM).should("be.visible");
+          cy.findByText(GLOSSARY_DEFINITION).should("be.visible");
+          cy.findByLabelText("Delete").should("not.exist");
+        });
+        cy.findByRole("button", { name: /new term/i }).should("not.exist");
+
+        cy.log("Clicking a term does not open the inline editor");
+        cy.get("table").findByText(GLOSSARY_TERM).click();
+        cy.findByPlaceholderText(/boat/i).should("not.exist");
+
+        cy.log(
+          "The API reports the glossary as not writable and rejects writes",
+        );
+        cy.request("GET", "/api/glossary").then(({ body }) => {
+          expect(body.can_write).to.equal(false);
+          const [entry] = body.data;
+          expect(entry.term).to.equal(GLOSSARY_TERM);
+
+          cy.request({
+            method: "POST",
+            url: "/api/glossary",
+            body: { term: "MRR", definition: "Monthly recurring revenue" },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+          cy.request({
+            method: "PUT",
+            url: `/api/glossary/${entry.id}`,
+            body: { term: GLOSSARY_TERM, definition: "changed" },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+          cy.request({
+            method: "DELETE",
+            url: `/api/glossary/${entry.id}`,
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+        });
+      });
+    });
+  });
 });
 
 const ensureSyncedCollectionIsVisible = () => {
@@ -1019,3 +1296,141 @@ const ensureSyncedCollectionIsVisible = () => {
     cy.findByRole("treeitem", { name: /Synced Collection/ }).should("exist");
   });
 };
+
+const createCollection = (name: string) =>
+  cy
+    .request<Collection>("POST", "/api/collection", { name })
+    .then(({ body }) => cy.wrap(body));
+
+// Saves, clears the toast  and yields the refusal for inspection.
+const saveAndExpectRefusal = () => {
+  cy.findByTestId("remote-sync-submit-button").should("be.enabled").click();
+  return cy.wait("@saveSettings").then((interception) => {
+    expect(interception.response?.statusCode).to.eq(400);
+    H.undoToast()
+      .should("contain.text", "Uses content that is not remote synced")
+      .icon("close")
+      .click();
+    return cy.wrap(interception, { log: false });
+  });
+};
+
+const createDependentQuestion = (
+  name: string,
+  sourceQuestionId: number,
+  collectionId: Collection["id"],
+) =>
+  H.createQuestion({
+    name,
+    query: { "source-table": `card__${sourceQuestionId}` },
+    collection_id: collectionId,
+  });
+
+const createSnippetDependencyFixture = () =>
+  H.createSnippet({ name: SNIPPET_NAME, content: "1 = 1" }).then(
+    ({ body: snippet }) =>
+      createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+        H.createNativeQuestion({
+          name: SNIPPET_QUESTION_NAME,
+          collection_id: blocked.id,
+          native: {
+            query: `select 1 where {{snippet: ${SNIPPET_NAME}}}`,
+            "template-tags": {
+              [`snippet: ${SNIPPET_NAME}`]: {
+                id: "6c1b2f34-5d6e-4a7b-8c9d-0e1f2a3b4c5d",
+                type: "snippet",
+                name: `snippet: ${SNIPPET_NAME}`,
+                "display-name": `Snippet: ${SNIPPET_NAME}`,
+                "snippet-id": snippet.id,
+                "snippet-name": SNIPPET_NAME,
+              },
+            },
+          },
+        }).then(() => ({ snippet, blocked })),
+      ),
+  );
+
+const createPersonalDependencyFixture = () =>
+  createCollection(SOURCE_COLLECTION_NAME).then((source) =>
+    createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+      H.createQuestion({
+        name: SOURCE_QUESTION_NAME,
+        query: { "source-table": PRODUCTS_ID },
+        collection_id: source.id,
+      }).then(({ body: sourceQuestion }) =>
+        H.createQuestion({
+          name: PERSONAL_QUESTION_NAME,
+          query: { "source-table": PRODUCTS_ID },
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        }).then(({ body: personalQuestion }) =>
+          createDependentQuestion(
+            DEPENDENT_QUESTION_NAME,
+            sourceQuestion.id,
+            blocked.id,
+          ).then(() =>
+            createDependentQuestion(
+              SECOND_DEPENDENT_QUESTION_NAME,
+              personalQuestion.id,
+              blocked.id,
+            ).then(() =>
+              cy
+                .request<Collection>(
+                  "GET",
+                  `/api/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
+                )
+                .then(({ body: personal }) => ({ source, blocked, personal })),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+// Two collections that each depend on a question in a third, so syncing either alone is refused.
+// A second source question, used twice from the same blocked collection, gives the modal a second
+// dependency row and a Used By cell that names more than one thing.
+const createDependencyFixture = () =>
+  createCollection(SOURCE_COLLECTION_NAME).then((source) =>
+    createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+      createCollection(SECOND_BLOCKED_COLLECTION_NAME).then((alsoBlocked) =>
+        H.createQuestion({
+          name: SOURCE_QUESTION_NAME,
+          query: { "source-table": PRODUCTS_ID },
+          collection_id: source.id,
+        })
+          .then(({ body: sourceQuestion }) =>
+            createDependentQuestion(
+              DEPENDENT_QUESTION_NAME,
+              sourceQuestion.id,
+              blocked.id,
+            ).then(() =>
+              createDependentQuestion(
+                SECOND_DEPENDENT_QUESTION_NAME,
+                sourceQuestion.id,
+                alsoBlocked.id,
+              ),
+            ),
+          )
+          .then(() =>
+            H.createQuestion({
+              name: OTHER_SOURCE_QUESTION_NAME,
+              query: { "source-table": PRODUCTS_ID },
+              collection_id: source.id,
+            }).then(({ body: otherSource }) =>
+              createDependentQuestion(
+                WEEKLY_DEPENDENT_NAME,
+                otherSource.id,
+                blocked.id,
+              ).then(() =>
+                createDependentQuestion(
+                  MONTHLY_DEPENDENT_NAME,
+                  otherSource.id,
+                  blocked.id,
+                ),
+              ),
+            ),
+          )
+          .then(() => ({ source, blocked, alsoBlocked })),
+      ),
+    ),
+  );

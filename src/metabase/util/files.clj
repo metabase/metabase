@@ -14,7 +14,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io FileNotFoundException)
-   (java.net URL)
+   (java.net URI URL)
    (java.nio.file CopyOption Files FileSystem FileSystemAlreadyExistsException
                   FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
@@ -208,6 +208,13 @@
                (getResource ".keep-me")
                getProtocol)))
 
+(defn code-location->path
+  "Convert a code-source location URI into a native filesystem path string."
+  ^String [^URI uri]
+  ;; Paths/get decodes %-escapes AND yields the platform-native form. URI.getPath only decodes: on Windows it returns
+  ;; `/C:/...`, which java.nio.file.Path rejects (#81733).
+  (str (Paths/get uri)))
+
 (defn get-jar-path
   "Returns the path to the currently running jar file.
 
@@ -218,8 +225,8 @@
       (.getProtectionDomain)
       (.getCodeSource)
       (.getLocation)
-      (.toURI) ;; avoid problems with special characters in path.
-      (.getPath)))
+      (.toURI)
+      (code-location->path)))
 
 (defn find-in-current-jar
   "Find matching files in the current jar. See
@@ -230,20 +237,23 @@
 
   to find the plugin manifests in the jar."
   [pattern]
-  (let [jar-url (URL. (str "jar:file:" (get-jar-path) "!/"))]
-    (with-open [fs (jar-file-system-from-url jar-url)]
-      (let [matcher (.getPathMatcher fs pattern)
-            root    (.getPath fs "/" (into-array String []))
-            files   (atom [])]
-        (Files/walkFileTree root
-                            (proxy [java.nio.file.SimpleFileVisitor] []
-                              (preVisitDirectory [dir _attrs]
-                                (if (or (str/starts-with? (str dir) "/metabase")
-                                        (= (str "/") (str dir)))
-                                  java.nio.file.FileVisitResult/CONTINUE
-                                  java.nio.file.FileVisitResult/SKIP_SUBTREE))
-                              (visitFile [file _attrs]
-                                (when (.matches matcher file)
-                                  (swap! files conj file))
-                                java.nio.file.FileVisitResult/CONTINUE)))
-        (into [] (map #(.toUri ^Path %) @files))))))
+  ;; Open the jar via a Path, not a jar:file: URL — [[get-jar-path]] returns the decoded filesystem path, and
+  ;; stuffing that back into a URL string breaks URL->URI conversion when the path contains a space. The Path-based
+  ;; overload also bypasses NIO's global URI-keyed filesystem cache, so closing it here can't clobber a filesystem
+  ;; some other consumer obtained via FileSystems/getFileSystem.
+  (with-open [fs (nio-fs (get-jar-path))]
+    (let [matcher (.getPathMatcher fs pattern)
+          root    (.getPath fs "/" (into-array String []))
+          files   (atom [])]
+      (Files/walkFileTree root
+                          (proxy [java.nio.file.SimpleFileVisitor] []
+                            (preVisitDirectory [dir _attrs]
+                              (if (or (str/starts-with? (str dir) "/metabase")
+                                      (= (str "/") (str dir)))
+                                java.nio.file.FileVisitResult/CONTINUE
+                                java.nio.file.FileVisitResult/SKIP_SUBTREE))
+                            (visitFile [file _attrs]
+                              (when (.matches matcher file)
+                                (swap! files conj file))
+                              java.nio.file.FileVisitResult/CONTINUE)))
+      (into [] (map #(.toUri ^Path %) @files)))))

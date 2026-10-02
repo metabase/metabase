@@ -23,7 +23,7 @@
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
-   (java.util.concurrent Future)
+   (java.util.concurrent ExecutorService Future)
    (java.util.concurrent.atomic AtomicBoolean)
    (java.util.zip GZIPOutputStream)
    (org.eclipse.jetty.ee9.nested HttpChannel Request)
@@ -44,6 +44,7 @@
   (cond-> (Throwable->map e)
     (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *response*
   "The `HttpServletResponse` for the current streaming response.
    Bound automatically inside `streaming-response` bodies in the Jetty async path.
@@ -51,6 +52,7 @@
    [[set-content-type!]] to interact with it."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *request*
   "The Jetty `Request` for the current streaming response.
    Bound automatically inside `streaming-response` bodies in the Jetty async path.
@@ -58,6 +60,7 @@
    occurs after the response has already been committed."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *completed?*
   "An `AtomicBoolean` that is set to `true` when the async context has been completed,
    either by the worker thread or by Jetty's timeout/error callbacks. When `true`, the
@@ -231,10 +234,10 @@
             (.cancel fut true)))))))
 
 (defn- do-f-async
-  "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes,
-  completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean` used to coordinate with
-  Jetty's timeout/error callbacks so that only one path calls `.complete`."
-  [^AsyncContext async-context response ^Request request f ^OutputStream os finished-chan canceled-chan ^AtomicBoolean completed?]
+  "Runs `f` asynchronously on `executor` (the shared streaming response `thread-pool` when nil), returning
+  immediately. When `f` finishes, completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean`
+  used to coordinate with Jetty's timeout/error callbacks so that only one path calls `.complete`."
+  [^AsyncContext async-context response ^Request request f ^OutputStream os finished-chan canceled-chan ^AtomicBoolean completed? executor]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
                (binding [*response*   response
@@ -257,7 +260,8 @@
                      (a/close! canceled-chan)
                      (when (.compareAndSet completed? false true)
                        (.complete async-context))))))
-        fut  (.submit (thread-pool/thread-pool) ^Runnable task)]
+        ^ExecutorService pool (or executor (thread-pool/thread-pool))
+        fut  (.submit pool ^Runnable task)]
     (start-interrupt-escalation! fut finished-chan canceled-chan)
     nil))
 
@@ -375,7 +379,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers], :as _options} finished-chan]
+   f {:keys [content-type status headers executor], :as _options} finished-chan]
   (let [canceled-chan (a/promise-chan)
         completed?   (AtomicBoolean. false)]
     (.addListener async-context
@@ -414,7 +418,7 @@
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
-          (do-f-async async-context response request f delay-os finished-chan canceled-chan completed?)))
+          (do-f-async async-context response request f delay-os finished-chan canceled-chan completed? executor)))
       (catch Throwable e
         (log/errorf "Unexpected exception in do-f-async: %s" (ex-message e))
         (try
@@ -491,7 +495,12 @@
   Current options:
 
   *  `:content-type` -- string content type to return in the results. This is required!
-  *  `:headers` -- other headers to include in the API response."
+  *  `:headers` -- other headers to include in the API response.
+  *  `:executor` -- optional `ExecutorService` to run `f` on. Defaults to the shared streaming response thread pool,
+     which is a small fixed pool: responses that block for the life of a client connection (rather than for the life
+     of a query) must supply their own executor so they cannot exhaust it. The supplied executor's futures must
+     support real interruption (`Future.cancel(true)`) — the hung-request escalation interrupts the worker, and a
+     ForkJoinPool-backed executor silently ignores it."
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}

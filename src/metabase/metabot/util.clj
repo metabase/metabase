@@ -1,7 +1,5 @@
 (ns metabase.metabot.util
   (:require
-   [clojure.data.xml :as xml]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.util :as u]))
 
@@ -25,17 +23,6 @@
   (walk/walk #(cond-> % (coll? %) (recursive-update-keys f))
              #(cond-> % (map? %) (update-keys f))
              form))
-
-(defn xml
-  "Format hiccup-like data structure to an XML string"
-  [& bits]
-  (let [fmt (fn [v]
-              (let [res ^String (xml/indent-str (xml/sexp-as-element v))]
-                (cond-> res
-                  ;; strip preamble
-                  (str/starts-with? res "<?xml") (subs (inc (.indexOf res "\n"))))))]
-    (->> (map fmt bits)
-         (str/join "\n"))))
 
 ;;; MBQL utils (needed until we erradicate legacy from Metabot module)
 

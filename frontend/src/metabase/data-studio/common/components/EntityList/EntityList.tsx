@@ -33,7 +33,7 @@ export function EntityList<T>({
   renderItem,
 }: EntityListProps<T>) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Group justify="space-between" wrap="nowrap">
         <Title order={4}>{title}</Title>
         {!!newButtonProps && (

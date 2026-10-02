@@ -34,23 +34,22 @@ export function Sidesheet({
           content: cx(S.content, Animation.slideLeft),
         }}
         data-testid="sidesheet"
-        px="none"
+        px={0}
         transitionProps={{ duration: 0 }}
         w={rem(720)}
       >
-        <Modal.Body className={S.body} p={0} pt="lg">
-          <Group gap="lg" justify="flex-end" px="xl">
+        <Modal.Body className={S.body} p={0} pt="xl">
+          <Group gap="lg" justify="flex-end" px="xxl">
             {actions}
 
             <Tooltip label={t`Close`}>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 aria-label={t`Close`}
-                c="text-primary"
-                h={20}
                 leftSection={<Icon name="close" />}
-                p={0}
+                size="sm"
                 variant="subtle"
-                w={20}
+                color="neutral"
                 onClick={onClose}
               />
             </Tooltip>

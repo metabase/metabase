@@ -1,5 +1,3 @@
-import type * as Lib from "metabase-lib";
-
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
@@ -321,6 +319,8 @@ export type SegmentFilter = ["segment", SegmentId];
 type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", FieldReference];
 
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+
 export type JoinStrategy =
   | "left-join"
   | "right-join"
@@ -521,6 +521,10 @@ export type TestOperatorSpec = {
   type: "operator";
   operator: string;
   args?: readonly TestExpressionSpec[];
+
+  // For an aggregation: the name of its result column, which a later stage
+  // refers to.
+  name?: string;
 };
 
 export type TestTemporalBucketSpec = {
@@ -553,7 +557,7 @@ export type TestJoinSpec = {
 };
 
 type TestJoinConditionSpec = {
-  operator: Lib.JoinConditionOperator;
+  operator: JoinConditionOperator;
   left: TestColumnWithBinningSpec | TestExpressionSpec;
   right: TestColumnWithBinningSpec | TestExpressionSpec;
 };

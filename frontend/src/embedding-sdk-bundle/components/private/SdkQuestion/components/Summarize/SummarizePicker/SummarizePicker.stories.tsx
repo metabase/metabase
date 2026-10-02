@@ -19,7 +19,7 @@ export default {
 export const SummarizePickerStory = {
   render() {
     return (
-      <Center p="lg">
+      <Center p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           {/* the point of doing this is to test the picker within the portal */}
           {/* so the styles are messed up */}

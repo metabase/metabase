@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
+import { canAccessSettings, getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 
 import { useGetUserMetabotPermissionsQuery } from "../api";

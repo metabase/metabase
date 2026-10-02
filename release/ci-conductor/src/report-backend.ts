@@ -22,7 +22,10 @@ async function main(): Promise<void> {
   const testSuite =
     env.CI_CONDUCTOR_TEST_SUITE ||
     (env.DRIVERS ? `driver-${env.DRIVERS}` : "backend");
-  await reportTestFailures(normalizeBackendJunit(), testSuite);
+  // If re-running tests we report failures AND passing tests so that ci-conductor can
+  // determine flaky tests. We should not ignore passing tests in this case.
+  const ignorePassingTests = env.IS_RERUN === "true" ? false : true;
+  await reportTestFailures(normalizeBackendJunit(ignorePassingTests), testSuite);
 }
 
 main().catch((error) => {

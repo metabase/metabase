@@ -1,9 +1,9 @@
 import { handleActions } from "redux-actions";
 
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import type {
   ChannelApiResponse,
   DashboardSubscription,
+  DraftDashboardSubscription,
 } from "metabase-types/api";
 
 import {

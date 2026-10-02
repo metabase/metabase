@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 
 import type { SdkIframeEmbedSetupSettings } from "../types";
 
-export type BehaviorDocsParams = { page: string; anchor?: string } | null;
+export type BehaviorDocsParams = { page: string } | null;
 
 export const getBehaviorDocsUrlParams = (
   settings: SdkIframeEmbedSetupSettings,
@@ -11,15 +11,17 @@ export const getBehaviorDocsUrlParams = (
     return { page: "embedding/guest-embedding" };
   }
 
-  const anchor = match(settings.componentName)
-    .with("metabase-question", () => "question")
-    .with("metabase-dashboard", () => "dashboard")
-    .with("metabase-browser", () => "browser")
+  // Each component's attributes are documented on its own reference page, where
+  // they're the first section.
+  const page = match(settings.componentName)
+    .with("metabase-browser", () => "embedding/browser-reference")
+    .with("metabase-question", () => "embedding/question-reference")
+    .with("metabase-dashboard", () => "embedding/dashboard-reference")
     .otherwise(() => null);
 
-  if (!anchor) {
+  if (!page) {
     return null;
   }
 
-  return { page: "embedding/components", anchor };
+  return { page };
 };

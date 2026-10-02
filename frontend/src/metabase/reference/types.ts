@@ -52,3 +52,9 @@ export interface FieldFormFieldsValues {
   settings?: FieldFormattingSettings;
   [key: string]: unknown;
 }
+
+/** Fetch state, passed from a container to the page it renders. */
+export type ReferenceLoadingProps = {
+  loading?: boolean;
+  loadingError?: unknown;
+};

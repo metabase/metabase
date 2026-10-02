@@ -5,24 +5,24 @@
 // on it. Complementary to router/navigate-contract.unit.spec.tsx, which pins the
 // other side: how `navigate` drives the router.
 
-import { createMockEntitiesState } from "__support__/store";
-import { SET_CURRENT_STATE } from "metabase/redux/query-builder";
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import type { DraftQuestionBuilder } from "metabase/metadata-store";
 import {
   type NavigateOptions,
   type To,
   getIsNavigationPending,
   navigate,
 } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
   ORDERS_ID,
@@ -30,6 +30,7 @@ import {
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
+import { SET_CURRENT_STATE } from "../store/actions";
 import { getTableUrlForPristineQuestion } from "../utils";
 
 import { updateUrl } from "./url";
@@ -49,17 +50,23 @@ function buildSavedQuestion(card: Card): Question {
     databases: [createSampleDatabase()],
     questions: [card],
   });
-  const metadata = getMetadata(createMockState({ entities }));
+  const metadata = createMockMetadataFromState(createMockState({ entities }));
   return checkNotNull(metadata.question(card.id));
 }
 
 function buildPristineTableQuestion(): Question {
-  const entities = createMockEntitiesState({
-    databases: [createSampleDatabase()],
-  });
-  const metadata = getMetadata(createMockState({ entities }));
-  return checkNotNull(metadata.table(ORDERS_ID)).newQuestion();
+  return checkNotNull(tableMetadata.table(ORDERS_ID)).newQuestion();
 }
+
+const tableMetadata = createMockMetadataFromState(
+  createMockState({
+    entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
+  }),
+);
+
+// What `selectQuestionFromOptsBuilder` gives the thunk, over test metadata.
+const buildDraftQuestion: DraftQuestionBuilder = (opts) =>
+  Question.create({ ...opts, metadata: tableMetadata });
 
 // Re-presents the `navigate(to, options)` call as the descriptor the assertions
 // below were written against: `state` rides in the options, and replacing vs
@@ -314,7 +321,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       const navigation = getDispatchedNavigation();
       expect(navigation?.descriptor.pathname).toBe(expectedUrl);
       expect(navigation?.descriptor.pathname).toBe(
-        getTableUrlForPristineQuestion(question),
+        getTableUrlForPristineQuestion(question, buildDraftQuestion),
       );
     });
 

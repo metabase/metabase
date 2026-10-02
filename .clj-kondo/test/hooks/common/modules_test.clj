@@ -5,6 +5,6 @@
 
 (deftest ^:parallel module-test
   (are [symb expected] (= expected
-                          (hooks.common.modules/module symb))
+                          (hooks.common.modules/module {} symb))
     'metabase.qp.middleware.wow        'qp
     'metabase-enterprise.whatever.core 'enterprise/whatever))

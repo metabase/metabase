@@ -1,0 +1,17 @@
+.description {
+  opacity: 0;
+  transition: opacity 400ms ease 1s;
+}
+
+.description.visible,
+.root:hover .description,
+.root:focus-within .description {
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+@media (prefers-reduced-motion) {
+  .description {
+    transition: none;
+  }
+}

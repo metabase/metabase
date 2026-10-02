@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email.result-attachment :as email.result-attachment]
@@ -327,6 +328,9 @@
 
     :fixture
     (fn [_ thunk]
+      ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
+      ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
         (thunk)))
 
@@ -440,11 +444,12 @@
     {:email
      (fn [_ [email]]
        (testing "Markdown cards are included in email subscriptions"
-         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"                 true
-                                                   "header, quote isn't escaped" true}
+         ;; The apostrophe arrives as `&apos;` now that heading text is escaped on its way into the body.
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"                      true
+                                                   "header, quote isn&apos;t escaped" true}
                                                   pulse.test-util/png-attachment]})
                 (mt/summarize-multipart-single-email email #"Aviary KPIs"
-                                                     #"header, quote isn't escaped")))))
+                                                     #"header, quote isn&apos;t escaped")))))
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -542,6 +547,36 @@
                                                      #"Quarter and Year"
                                                      #"State")))))}}))
 
+(deftest dashboard-filter-html-escaping-test
+  (let [name-html  "<b>Bold</b>"
+        value-html "R&D <i>x</i>"]
+    (tests!
+     {:pulse     {:skip_if_empty false}
+      :dashboard (update pulse.test-util/test-dashboard :parameters
+                         (fn [params]
+                           (for [param params]
+                             (cond-> param
+                               (= "State" (:name param)) (assoc :name    name-html
+                                                                :default [value-html])))))}
+     "Dashboard subscription whose filter name and value contain HTML delivers them escaped"
+     {:card (pulse.test-util/checkins-query-card {})
+
+      :fixture
+      (fn [_ thunk]
+        (thunk))
+
+      :assert
+      {:email
+       (fn [_ [email]]
+         (let [html-body (-> email :message first :content)]
+           (testing "the filter name and value arrive as text, not as markup"
+             (is (not (str/includes? html-body name-html))
+                 "filter name was not escaped")
+             (is (not (str/includes? html-body value-html))
+                 "filter value was not escaped")
+             (is (str/includes? html-body "&lt;b&gt;Bold&lt;/b&gt;"))
+             (is (str/includes? html-body "R&amp;D &lt;i&gt;x&lt;/i&gt;")))))}})))
+
 (deftest filter-render-failure-doesnt-fail-subscription-test
   (tests!
    {:pulse     {:skip_if_empty false}
@@ -551,7 +586,7 @@
 
     :fixture
     (fn [_ thunk]
-      (with-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
         (thunk)))
 
     :assert
@@ -620,6 +655,32 @@
                               :text {:type "mrkdwn", :text "*## Dashboard Header*"},
                               :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}]}
                   message)))))}}))
+
+(deftest dashboard-heading-html-escaping-test
+  (let [heading-html "<b>Heading</b>"]
+    (tests!
+     {:pulse     {:skip_if_empty false}
+      :dashboard pulse.test-util/test-dashboard}
+     "Dashboard subscription whose heading card contains HTML delivers it escaped"
+     {:card (pulse.test-util/checkins-query-card {})
+
+      :fixture
+      (fn [{dashboard-id :dashboard-id} thunk]
+        (mt/with-temp [:model/DashboardCard _ {:dashboard_id            dashboard-id
+                                               :row                    0
+                                               :col                    0
+                                               :visualization_settings {:virtual_card {:display "heading"}
+                                                                        :text         heading-html}}]
+          (thunk)))
+
+      :assert
+      {:email
+       (fn [_ [email]]
+         (let [html-body (-> email :message first :content)]
+           (testing "the heading text arrives as text, not as markup"
+             (is (not (str/includes? html-body heading-html))
+                 "heading text was not escaped")
+             (is (str/includes? html-body "&lt;b&gt;Heading&lt;/b&gt;")))))}})))
 
 (deftest dashboard-with-dashcard-filters-test
   (tests!
@@ -902,28 +963,29 @@
                                                                card-id
                                                                model-id
                                                                dashboard-id]}]
-        (let [site-url (system/site-url)]
-          (testing "should returns all link cards and name are newly fetched"
-            (doseq [[model id] [[:model/Card card-id]
-                                [:model/Table table-id]
-                                [:model/Database database-id]
-                                [:model/Dashboard dashboard-id]
-                                [:model/Collection collection-id]
-                                [:model/Card model-id]]]
-              (t2/update! model id {:name (format "New %s name" (name model))}))
-            (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
-                     {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                     {:text "### [https://metabase.com](https://metabase.com)"}]
-                    (execute-dashboard (:id dashboard) collection-owner-id nil))))
-          (testing "it should filter out models that current users does not have permission to read"
-            (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text "### [https://metabase.com](https://metabase.com)"}]
-                    (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
+        (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+          (let [site-url (system/site-url)]
+            (testing "should returns all link cards and name are newly fetched"
+              (doseq [[model id] [[:model/Card card-id]
+                                  [:model/Table table-id]
+                                  [:model/Database database-id]
+                                  [:model/Dashboard dashboard-id]
+                                  [:model/Collection collection-id]
+                                  [:model/Card model-id]]]
+                (t2/update! model id {:name (format "New %s name" (name model))}))
+              (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
+                       {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                       {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                       {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
+                       {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
+                       {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
+                       {:text "### [https://metabase.com](https://metabase.com)"}]
+                      (execute-dashboard (:id dashboard) collection-owner-id nil))))
+            (testing "it should filter out models that current users does not have permission to read"
+              (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                       {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                       {:text "### [https://metabase.com](https://metabase.com)"}]
+                      (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil))))))))))
 
 (deftest iframe-cards-are-skipped-test
   (testing "iframe cards should be filtered out"
@@ -952,28 +1014,29 @@
                                                                card-id
                                                                model-id
                                                                dashboard-id]}]
-        (let [site-url (system/site-url)]
-          (testing "should returns all link cards and name are newly fetched"
-            (doseq [[model id] [[:model/Card card-id]
-                                [:model/Table table-id]
-                                [:model/Database database-id]
-                                [:model/Dashboard dashboard-id]
-                                [:model/Collection collection-id]
-                                [:model/Card model-id]]]
-              (t2/update! model id {:name (format "New %s name" (name model))}))
-            (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
-                     {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
-                     {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                     {:text "### [https://metabase.com](https://metabase.com)"}]
-                    (execute-dashboard (:id dashboard) collection-owner-id nil))))
-          (testing "it should filter out models that current users does not have permission to read"
-            (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
-                     {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text "### [https://metabase.com](https://metabase.com)"}]
-                    (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
+        (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+          (let [site-url (system/site-url)]
+            (testing "should returns all link cards and name are newly fetched"
+              (doseq [[model id] [[:model/Card card-id]
+                                  [:model/Table table-id]
+                                  [:model/Database database-id]
+                                  [:model/Dashboard dashboard-id]
+                                  [:model/Collection collection-id]
+                                  [:model/Card model-id]]]
+                (t2/update! model id {:name (format "New %s name" (name model))}))
+              (is (=? [{:text (format "### [New Collection name](%s/collection/%d)\nLinked collection desc" site-url collection-id)}
+                       {:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                       {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                       {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
+                       {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
+                       {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
+                       {:text "### [https://metabase.com](https://metabase.com)"}]
+                      (execute-dashboard (:id dashboard) collection-owner-id nil))))
+            (testing "it should filter out models that current users does not have permission to read"
+              (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
+                       {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
+                       {:text "### [https://metabase.com](https://metabase.com)"}]
+                      (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil))))))))))
 
 (deftest execute-dashboard-with-tabs-test
   (mt/with-temp
@@ -1157,6 +1220,42 @@
   [{:keys [name field_ref]} enabled?]
   {:name name :field_ref field_ref :enabled enabled?})
 
+(deftest simple-pivot-table-test
+  (testing "a Table card with the \"Pivot table\" toggle on is pivoted in email and Slack alike (#76931)"
+    (tests!
+     {:pulse   {:skip_if_empty false}
+      :display :table
+      :card    {:dataset_query          (mt/mbql-query orders
+                                          {:aggregation [[:count]]
+                                           :breakout    [$product_id->products.category
+                                                         $user_id->people.source]})
+                :visualization_settings {:table.pivot        true
+                                         :table.pivot_column "SOURCE"
+                                         :table.cell_column  "count"}}
+      ;; Slack rasterizes the rendered hiccup; wrap the rasterizer to see what it was given
+      :fixture (fn [_ thunk]
+                 (with-redefs [channel.render/png-from-render-info
+                               (pulse.test-util/wrap-function @#'channel.render/png-from-render-info)]
+                   (thunk)))
+      :assert
+      {:email
+       (fn [_ [email]]
+         (is (= (rasta-dashsub-message {:message [{">Facebook</th>" true
+                                                   ">Product → Category</th>" true}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email
+                                                     #">Facebook</th>"
+                                                     #">Product → Category</th>"))))
+       :slack
+       (fn [_ _]
+         (let [[[rendered-info]] (pulse.test-util/input @#'channel.render/png-from-render-info)
+               h                 (html (:content rendered-info))]
+           (testing "the hiccup handed to the rasterizer is the pivoted grid"
+             (is (str/includes? h ">Facebook</th>"))
+             (is (str/includes? h ">Product → Category</th>"))
+             ;; header row + Doohickey, Gadget, Gizmo, Widget
+             (is (= 5 (count (re-seq #"<tr" h)))))))}})))
+
 (deftest dashboard-subscription-attachments-test
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
@@ -1179,7 +1278,7 @@
                            :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                            :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                            :pulse_channel_id pc-id}]
-              (with-redefs [email.result-attachment/result-attachment result-attachment!]
+              (mt/with-dynamic-fn-redefs [email.result-attachment/result-attachment result-attachment!]
                 (pulse.send/send-pulse! pulse)
                 (is (= 1
                        (-> @mt/inbox

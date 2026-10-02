@@ -635,53 +635,6 @@ describe("issue 21665", () => {
   });
 });
 
-describe("issue 22527", { tags: "@skip" }, () => {
-  const questionDetails = {
-    native: {
-      query:
-        "select 1 x, 1 y, 20 size\nunion all  select 2 x, 10 y, 10 size\nunion all  select 3 x, -9 y, 6 size\nunion all  select 4 x, 100 y, 30 size\nunion all  select 5 x, -20 y, 70 size",
-    },
-    display: "scatter",
-    visualization_settings: {
-      "graph.dimensions": ["X"],
-      "graph.metrics": ["Y"],
-    },
-  };
-
-  function assertion() {
-    cy.get("circle").should("have.length", 5).last().realHover();
-
-    H.popover().within(() => {
-      H.testPairedTooltipValues("X", "5");
-      H.testPairedTooltipValues("Y", "-20");
-      H.testPairedTooltipValues("SIZE", "70");
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-  });
-
-  it("should render negative values in a scatter visualziation (metabase#22527)", () => {
-    assertion();
-
-    H.openVizSettingsSidebar();
-    cy.findByTestId("sidebar-left").within(() => {
-      cy.findByTextEnsureVisible("Data").click();
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Bubble size").parent().contains("Select a field").click();
-
-    H.popover().contains(/size/i).click();
-
-    assertion();
-  });
-});
-
 describe("issue 25156", () => {
   const questionDetails = {
     name: "25156",

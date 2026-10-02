@@ -9,7 +9,7 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { EntityItem } from "metabase/common/components/EntityItem";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
@@ -245,7 +245,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
             })}
             onClick={preventDefault}
           >
-            <EntityItem.Name name={metric.name} variant="list" id={headingId} />
+            <EntityItemName name={metric.name} id={headingId} />
           </Link>
         ) : (
           <SkeletonText />
@@ -391,15 +391,14 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
     >
       <Menu position="bottom-end">
         <Menu.Target>
+          {/* TODO: replace with ActionIcon (GDGT-2457) */}
           <Button
-            size="xs"
             variant="subtle"
-            px="sm"
+            color="neutral"
+            size="sm"
             aria-label={t`Metric options`}
-            c="text-primary"
-          >
-            <Icon name="ellipsis" />
-          </Button>
+            leftSection={<Icon name="ellipsis" />}
+          />
         </Menu.Target>
         <Menu.Dropdown>
           {actions.map((action) => (

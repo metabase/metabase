@@ -20,7 +20,7 @@ export function EmailChannelCard({ isConfigured }: { isConfigured: boolean }) {
 
   if (!isConfigured) {
     return (
-      <Card withBorder p="lg">
+      <Card withBorder p="xl">
         <Group gap="sm">
           <Icon name="mail" />
           <Title order={4}>{t`Email`}</Title>
@@ -34,12 +34,12 @@ export function EmailChannelCard({ isConfigured }: { isConfigured: boolean }) {
   }
 
   return (
-    <Card withBorder p="lg" data-testid="email-channel-card">
-      <Group gap="sm" mb="lg">
+    <Card withBorder p="xl" data-testid="email-channel-card">
+      <Group gap="sm" mb="xl">
         <Icon name="mail" />
         <Title order={4}>{t`Email`}</Title>
       </Group>
-      <Stack gap="lg">
+      <Stack gap="xl">
         <Switch
           label={t`Send to all instance admins`}
           checked={config.email.sendToAllAdmins}
@@ -47,7 +47,7 @@ export function EmailChannelCard({ isConfigured }: { isConfigured: boolean }) {
           data-testid="send-to-admins-toggle"
         />
         <Box>
-          <Text size="sm" fw={500} mb="xs">
+          <Text size="sm" fw={500} mb="xxs">
             {config.email.sendToAllAdmins
               ? t`Additional recipients`
               : t`Recipients`}
@@ -63,7 +63,7 @@ export function EmailChannelCard({ isConfigured }: { isConfigured: boolean }) {
           />
           {!config.email.sendToAllAdmins &&
             config.email.handler.recipients.length === 0 && (
-              <Text size="sm" c="feedback-negative" mt="xs">
+              <Text size="sm" c="feedback-negative" mt="xxs">
                 {t`At least one recipient is required.`}
               </Text>
             )}

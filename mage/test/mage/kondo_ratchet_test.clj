@@ -1,11 +1,58 @@
 (ns mage.kondo-ratchet-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [dev.kondo-ratchet :as dev-ratchet]
    [mage.kondo-ratchet :as kondo-ratchet]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
 (def keep-me :loaded)
+
+(defn- with-ratchets-files!
+  "Run `f` with [[dev.kondo-ratchet/*ratchets-file*]] and [[dev.kondo-ratchet/*test-ratchets-file*]]
+  bound to temp files carrying `prod-exempt`/`test-exempt` as their only budgets."
+  [prod-exempt test-exempt f]
+  (let [dir  (.toFile (java.nio.file.Files/createTempDirectory
+                       "kondo-ratchet-test" (make-array java.nio.file.attribute.FileAttribute 0)))
+        prod (doto (io/file dir "ratchets.edn")
+               (spit (dev-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt prod-exempt})))
+        test (doto (io/file dir "ratchets-test.edn")
+               (spit (dev-ratchet/render-test {:ignore-counts {}, :comment-exempt test-exempt})))]
+    (binding [dev-ratchet/*ratchets-file*      (.getPath prod)
+              dev-ratchet/*test-ratchets-file* (.getPath test)]
+      (f))))
+
+(deftest exemption-suggestion-test
+  (let [prod-occ {:file "src/f.clj", :line 1, :linters [:new], :justified? false}
+        test-occ {:file "test/g.clj", :line 1, :linters [:new], :justified? false}]
+    (testing "an unjustified occurrence only in prod code names only the prod file"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ])))))
+    (testing "an unjustified occurrence only in test code names only the test file"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [test-occ])))))
+    (testing "unjustified occurrences in both name both files"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in both %s and %s -- the inserted ignores have no comments."
+                        dev-ratchet/*ratchets-file* dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ test-occ])))))
+    (testing "a file whose own :comment-exempt already covers the linter is not named, even if the other needs it"
+      (with-ratchets-files! #{:new} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ test-occ])))))
+    (testing "no suggestion once every occurrence is justified"
+      (with-ratchets-files! #{} #{}
+        #(is (nil? (#'kondo-ratchet/exemption-suggestion
+                    :new [(assoc prod-occ :justified? true) (assoc test-occ :justified? true)])))))
+    (testing "no suggestion when there are no occurrences at all"
+      (with-ratchets-files! #{} #{}
+        #(is (nil? (#'kondo-ratchet/exemption-suggestion :new [])))))))
 
 (deftest insert-ignore-lines-test
   (testing "inserts at the flagged line's indentation"
@@ -265,6 +312,14 @@
   (update (#'kondo-ratchet/remove-ignores-at text rows)
           :sites (partial mapv #(dissoc % :original :removed-line))))
 
+(deftest ignored-linters-at-test
+  (testing "reads the complete file when an ignore vector spans more than three lines"
+    (is (= [:a :b :c :d]
+           (#'kondo-ratchet/ignored-linters-at
+            (vec (str/split-lines
+                  "#_{:clj-kondo/ignore [:a\n                      :b\n                      :c\n                      :d]}\n(foo)"))
+            1)))))
+
 (deftest remove-ignores-at-originals-test
   (testing "each site captures its removed form verbatim, so a restore puts back exactly what was cut"
     (is (= [{:whole-line? true, :text "  #_{:clj-kondo/ignore [:equals-true]}"}]
@@ -279,7 +334,16 @@
            (map :original
                 (:sites (#'kondo-ratchet/remove-ignores-at
                          "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n"
-                         [2])))))))
+                         [2]))))))
+  (testing "a `#` before the form is left for a human -- `#^` metadata and a gensym's `#` need a reader to tell apart"
+    (doseq [[description text] [["legacy #^ metadata"        "(def #^{:clj-kondo/ignore [:x]} y 1)\n"]
+                                ["a syntax-quote gensym"     "`(m x#^{:clj-kondo/ignore [:x]} y)\n"]
+                                ["a quote macro before it"   "(def x '#^{:clj-kondo/ignore [:z]} y)\n"]]]
+      (testing description
+        (let [{removed :text, :keys [sites skipped]} (#'kondo-ratchet/remove-ignores-at text [1])]
+          (is (= text removed) "the source is left exactly as it was")
+          (is (= [] sites) "nothing is excised")
+          (is (= [1] skipped) "the row is reported instead"))))))
 
 (deftest inline-ignore-separator-round-trip-test
   (doseq [[description separator text]
@@ -321,6 +385,10 @@
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
             [1]))))
+  (testing "a prefixless match is left for manual removal rather than risking a dangling reader discard"
+    (let [text "#_ ;; rationale\n{:clj-kondo/ignore [:x]}\n(a)\n"]
+      (is (= {:text text, :sites [], :skipped [2]}
+             (remove-ignores-at' text [2])))))
   (testing "a skipped row is reported in post-removal coordinates when removals above it delete lines"
     (is (= {:text      "(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
             :sites     [{:row 1, :linters [:x]}]

@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { UserMetabotPermissions } from "metabase-types/api";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks";
@@ -114,7 +114,7 @@ describe("MetabotAppBarButton", () => {
 
     // Unjustified type cast. FIXME
     const initialState = store.getState() as any;
-    expect(initialState.metabot.conversations.omnibot.visible).toBe(false);
+    expect(initialState.metabot.agents.omnibot.visible).toBe(false);
 
     await userEvent.click(
       await screen.findByRole("button", { name: /Chat with Metabot/ }),
@@ -122,6 +122,6 @@ describe("MetabotAppBarButton", () => {
 
     // Unjustified type cast. FIXME
     const newState = store.getState() as any;
-    expect(newState.metabot.conversations.omnibot.visible).toBe(true);
+    expect(newState.metabot.agents.omnibot.visible).toBe(true);
   });
 });

@@ -1,13 +1,13 @@
+import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, DashboardCard, VirtualCard } from "metabase-types/api";
+import type { Card, DashboardCard, SeriesCard } from "metabase-types/api";
 
 import { getNewCardUrl } from "./getNewCardUrl";
 
@@ -42,8 +42,8 @@ export const editQuestion = createThunkAction(
  *     - those all can be applied without or with a dashboard filter
  */
 type NavigateToNewCardFromDashboardArgs = {
-  nextCard: Card | VirtualCard;
-  previousCard: Card | VirtualCard;
+  nextCard: SeriesCard;
+  previousCard: Card;
   dashcard: DashboardCard;
   objectId?: number | string;
 };
@@ -58,13 +58,13 @@ export const navigateToNewCardFromDashboard = createThunkAction(
   }: NavigateToNewCardFromDashboardArgs) =>
     (dispatch: Dispatch, getState: GetState) => {
       const state = getState();
-      const metadata = getMetadata(state);
+      const buildQuestion = selectQuestionFromCardBuilder(state);
       const { dashboardId, dashboards, parameterValues } = state.dashboard;
       const dashboard = dashboardId != null ? dashboards[dashboardId] : null;
 
       if (dashboard && isQuestionDashCard(dashcard)) {
         const url = getNewCardUrl({
-          metadata,
+          buildQuestion,
           dashboard,
           parameterValues,
           nextCard,

@@ -27,19 +27,17 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]))
 
-(mu/defn expand-stage :- ::lib.schema/stage.native
+(mu/defn expand-stage :- ::lib.schema/query
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   stage                 :- ::lib.schema/stage.native]
-  (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database metadata-providerable))
-    stage
-    (let [substituted-stage (driver/substitute-native-parameters-in-stage driver/*driver* metadata-providerable stage)]
-      (->
-       substituted-stage
-       (dissoc :parameters :template-tags)))))
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database query))
+    query
+    (-> (driver/substitute-native-parameters-in-stage driver/*driver* query stage-number)
+        (lib/update-query-stage stage-number dissoc :parameters :template-tags))))

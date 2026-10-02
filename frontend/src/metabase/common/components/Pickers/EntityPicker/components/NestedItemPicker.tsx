@@ -1,4 +1,4 @@
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Box, Flex } from "metabase/ui";
 
 import { useOmniPickerContext } from "../context";

@@ -1,3 +1,4 @@
+export * from "./alert-upgrade-versions";
 export * from "./backports";
 export * from "./github";
 export * from "./linked-issues";

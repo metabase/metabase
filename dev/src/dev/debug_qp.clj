@@ -65,6 +65,7 @@
                        (compare (str x) (str y))
                        (compare x-order y-order))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *shorten-namespaced-keywords?*
   "Whether to shorten something like `:metabase.query-processor.util.add-alias-info/source-table` to
   `::add/source-table` if an alias exists for the keyword namespace in the current namespace ([[*ns*]])."
@@ -148,8 +149,11 @@
 
 ;; see docstring for [[process-query-debug]] for descriptions of what these do.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *print-full?*     true)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *print-metadata?* false)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *print-names?*    true)
 
 (defn- remove-metadata
@@ -248,6 +252,7 @@
   (println (format "[post] %s transformed row" middleware-var))
   (print-transform-result before after))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *printer* print-formatted-event)
 
 ;;;; [[to-mbql-shorthand]]
@@ -398,6 +403,7 @@
   ([sql]
    (pprint-sql (mdb/db-type) sql))
   ([driver sql]
+   ;; dev REPL helper; pretty SQL goes to the console for a human
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (driver/prettify-native-form driver sql))))
 
@@ -429,5 +435,6 @@
      (stop-portal!)
      (reset! portal (portal.api/start config))
      (add-tap #'portal.api/submit)
+     ;; dev REPL feedback; the startup notice goes to the console
      #_{:clj-kondo/ignore [:discouraged-var]}
      (printf "Started Portal on port %d.\n" (:port config)))))

@@ -2,11 +2,11 @@ import { KBarProvider, useKBar, useRegisterActions } from "kbar";
 import { type PropsWithChildren, useMemo } from "react";
 
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
+import { getUserIsAdmin } from "metabase/current-user";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getAdminPaths } from "metabase/selectors/admin";
-import { getUserIsAdmin } from "metabase/selectors/user";
 
 export const AppKBarProvider = ({ children }: PropsWithChildren) => (
   <KBarProvider>
@@ -30,7 +30,7 @@ const AppPaletteActions = () => {
 
     return [...adminPaths, ...adminSubpaths].map((adminPath) => ({
       id: `admin-page-${adminPath.key}`,
-      name: adminPath.name,
+      name: adminPath.getName(),
       icon: "gear",
       perform: () => {},
       section: "admin",

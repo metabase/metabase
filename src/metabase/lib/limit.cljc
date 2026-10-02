@@ -18,7 +18,8 @@
 
 (mu/defn ^:export limit :- ::lib.schema/query
   "Set the maximum number of rows to be returned by a stage of a query to `n`. If `n` is `nil`, remove the limit."
-  ([query n]
+  ([query :- ::lib.schema/query
+    n     :- [:maybe pos-int?]]
    (limit query -1 n))
 
   ([query        :- ::lib.schema/query
@@ -34,7 +35,7 @@
     stage-number :- :int]
    (:limit (lib.util/query-stage query stage-number))))
 
-(defn ^:export disable-default-limit
+(defn disable-default-limit
   "Sets the `disable-max-results?` middleware option on `query`, which disables the default limit on
   query results. Used by transforms to allow unlimited result rows."
   [query]

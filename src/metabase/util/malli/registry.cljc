@@ -27,6 +27,7 @@
        str))
    x))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache-miss-hook*
   "A hook that is called whenever there is a cache miss, for side effects.
   This is used in tests or to monitor cache misses."
@@ -80,6 +81,7 @@
   [schema]
   (letfn [(make-validator* []
             (try
+              ;; this is the sanctioned caching wrapper; it must call raw malli once to build the cached fn
               #_{:clj-kondo/ignore [:discouraged-var]}
               (mc/validator (cached-schema schema))
               (catch #?(:clj Throwable :cljs :default) e
@@ -108,6 +110,7 @@
   [schema]
   (letfn [(make-explainer []
             (try
+              ;; this is the sanctioned caching wrapper; it must call raw malli once to build the cached fn
               #_{:clj-kondo/ignore [:discouraged-var]}
               (let [validator* (validator schema)
                     explainer* (mc/explainer (cached-schema schema))]

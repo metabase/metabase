@@ -2,10 +2,10 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def DBMSVersion
   "Schema for the expected output of [[sync-dbms-version!]]."
@@ -18,5 +18,5 @@
   (let [driver  (driver.u/database->driver database)
         version (driver/dbms-version driver database)]
     (when (not= version (:dbms_version database))
-      (t2/update! :model/Database (:id database) {:dbms_version version}))
+      (sync.db/update-database! (:id database) {:dbms_version version}))
     version))

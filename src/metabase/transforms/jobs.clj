@@ -13,6 +13,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.coordinated-run :as coordinated-run]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.freshness :as freshness]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
@@ -24,8 +25,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -83,7 +83,7 @@
 
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
-    (let [all-transforms (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
+    (let [all-transforms (transforms.db/transform-dependency-rows)
           ;; Walk only the dependency closure of the transforms we're asked to run.
           ;; `table-dependencies` (and the QP preprocessing it triggers) is therefore called
           ;; only on transforms in that closure — never on unrelated transforms elsewhere in
@@ -101,7 +101,7 @@
       (transforms-base.ordering/persist-table-dependencies! uncached)
       ;; Fetch full rows only for the closure, which is what callers actually consume.
       (let [closure-transforms (if (seq dependencies)
-                                 (t2/select :model/Transform :id [:in (keys dependencies)])
+                                 (transforms.db/transforms (keys dependencies))
                                  [])]
         (dependencies->plan dependencies closure-transforms)))))
 
@@ -335,7 +335,7 @@
 
 (defn- app-db-now
   []
-  (:now (t2/query-one {:select [[[:raw "current_timestamp"] :now]]})))
+  (transforms.db/app-db-now))
 
 (defn run-transforms!
   "Run the transforms of `plan`, honoring the DAG.
@@ -402,9 +402,9 @@
       :else                         {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
-  (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id)]
+  (let [tag-ids (transforms.db/job-tag-ids job-id)]
     (if (seq tag-ids)
-      (or (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids])
+      (or (transforms.db/transform-ids-with-tags tag-ids)
           #{})
       #{})))
 
@@ -491,18 +491,18 @@
   (when-some [revisions (seq (revisions/revisions :model/Transform transform-id))]
     (let [user-ids (map :user_id revisions)
           distinct-user-ids (distinct user-ids)
-          users (t2/select :model/User :id [:in distinct-user-ids] :is_active true)
+          users (transforms.db/active-users distinct-user-ids)
           by-id (u/index-by :id users)]
       ;; maintain order
       (map by-id distinct-user-ids))))
 
 (defn- active-admins
   []
-  (t2/select :model/User :is_superuser true :is_active true))
+  (transforms.db/active-admins))
 
 (defn- transform-creator
   [transform]
-  (t2/select :model/User :id (:creator_id transform) :is_active true))
+  (transforms.db/active-users [(:creator_id transform)]))
 
 (defn- users-to-notify-of-transform-failure [transform]
   (or (seq (take 1 (active-users-to-edit-transform (:id transform))))
@@ -525,7 +525,7 @@
   ;; We hope that this will be the most recent user.
   ;; Only root-cause failures are reported individually; dependents that never ran because an
   ;; upstream transform failed are summarized as a count to avoid a cascade of redundant errors.
-  (let [job (t2/select-one :model/TransformJob job-id)
+  (let [job (transforms.db/job job-id)
         [roots cascades] (split-cascade-failures failures)
         roots (map (fn [failure]
                      (let [transform (::transform failure)]

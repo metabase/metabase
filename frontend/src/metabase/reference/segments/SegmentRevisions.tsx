@@ -7,28 +7,21 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { Revision } from "metabase/querying/segments/components/revisions/Revision";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/components/List/List.module.css";
-import { getShallowTables as getTables } from "metabase/selectors/metadata";
+import { Revision } from "metabase/segments";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type {
-  NormalizedTable,
   Revision as RevisionData,
+  Segment,
+  Table,
   User,
 } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getError,
-  getLoading,
-  getSegment,
-  getSegmentRevisions,
-  getUser,
-} from "../selectors";
-import type { StubbedSegment } from "../types";
+import { getSegmentRevisions, getUser } from "../selectors";
+import type { ReferenceLoadingProps } from "../types";
 
 const emptyStateData = {
   get message() {
@@ -42,23 +35,15 @@ const mapStateToProps = (
 ) => {
   return {
     revisions: getSegmentRevisions(state, props),
-    segment: getSegment(state, props),
-    tables: getTables(state),
     user: getUser(state),
-    loading: getLoading(state),
-    loadingError: getError(state),
   };
-};
-
-const mapDispatchToProps = {
-  ...metadataActions,
 };
 
 interface SegmentRevisionsProps {
   style: React.CSSProperties;
   revisions: Record<string, RevisionData>;
-  segment: StubbedSegment;
-  tables: Record<string, NormalizedTable>;
+  segment: Segment | undefined;
+  table: Table | undefined;
   user: User;
   loading?: boolean;
   loadingError?: unknown;
@@ -66,10 +51,8 @@ interface SegmentRevisionsProps {
 
 class SegmentRevisions extends Component<SegmentRevisionsProps> {
   render() {
-    const { style, revisions, segment, tables, user, loading, loadingError } =
+    const { style, revisions, segment, table, user, loading, loadingError } =
       this.props;
-
-    const entity = segment;
 
     const userColorAssignments: Record<string | number, string> =
       user && Object.keys(revisions).length > 0
@@ -84,7 +67,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
     return (
       <div style={style} className={CS.full} data-testid="segment-revisions">
         <ReferenceHeader
-          name={t`Revision history for ${this.props.segment.name}`}
+          name={t`Revision history for ${segment?.name}`}
           headerIcon={modelIconMap.segment}
         />
         <LoadingAndErrorWrapper
@@ -92,9 +75,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
           error={loadingError}
         >
           {() =>
-            Object.keys(revisions).length > 0 &&
-            entity.table_id != null &&
-            tables[entity.table_id] ? (
+            Object.keys(revisions).length > 0 && table != null ? (
               <div className={CS.wrapper}>
                 <div
                   className={cx(
@@ -112,8 +93,8 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
                           <Revision
                             key={revision.id}
                             revision={revision || {}}
-                            tableId={entity.table_id!}
-                            objectName={entity.name!}
+                            tableId={table.id}
+                            objectName={segment?.name ?? ""}
                             currentUser={user || {}}
                             userColor={
                               userColorAssignments[
@@ -143,6 +124,16 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
-  mapDispatchToProps,
   // Unjustified type cast. FIXME
-)(SegmentRevisions as unknown as React.ComponentType);
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  SegmentRevisions as unknown as React.ComponentType<
+    ReferenceRouteProps &
+      ReferenceLoadingProps & {
+        segment: Segment | undefined;
+        table: Table | undefined;
+      }
+  >,
+);

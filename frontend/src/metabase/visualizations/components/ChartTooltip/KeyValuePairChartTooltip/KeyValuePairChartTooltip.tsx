@@ -2,17 +2,16 @@ import cx from "classnames";
 import { isValidElement, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import type {
-  ComputedVisualizationSettings,
-  DataPoint,
-  HoveredDimension,
-  HoveredObject,
-  RemappingHydratedDatasetColumn,
-} from "metabase/visualizations/types";
+import { getNullDisplayValue } from "metabase/utils/constants";
+import {
+  type ComputedVisualizationSettings,
+  type DataPoint,
+  type HoveredDimension,
+  type HoveredObject,
+  type RemappingHydratedDatasetColumn,
+  formatValueForTooltip,
+} from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
-
-import { formatValueForTooltip } from "../../../echarts/tooltip/format";
 
 import S from "./KeyValuePairChartTooltip.module.css";
 
@@ -118,7 +117,7 @@ const getRows = (hovered: HoveredObject) => {
 
 export const getRowFromDataPoint = (data: DataPoint) => ({
   ...data,
-  key: data.key || (data?.col?.display_name ?? NULL_DISPLAY_VALUE),
+  key: data.key || (data?.col?.display_name ?? getNullDisplayValue()),
 });
 
 const getRowFromDimension = ({ column, value }: HoveredDimension) => ({

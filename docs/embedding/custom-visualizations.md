@@ -61,6 +61,8 @@ Add `allowedCustomVisualizations` to `defineMetabaseConfig()`:
 <metabase-dashboard dashboard-id="1"></metabase-dashboard>
 ```
 
+These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
+
 If you create your embed through the [embed wizard](./modular-embedding.md#create-a-new-embed), Metabase fills in the allowlist with the custom visualizations that the dashboard or question you picked already uses, so the generated snippet works as-is.
 
 ### React SDK allowlist for custom visualizations
@@ -75,7 +77,7 @@ Pass the `allowedCustomVisualizations` prop to `MetabaseProvider`. Like the page
 
 A custom visualization runs third-party JavaScript in your app. Metabase runs that code in an isolated sandbox, so a visualization can't reach the rest of your app or make network requests. The sandbox doesn't block passive image loads, though: a visualization can still trigger outbound requests through `<img>` tags or CSS `url()`.
 
-To limit where custom visualizations can load images from, set a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) with an `img-src` allowlist in your app. The core Metabase app sets this CSP with [Restrict image domains](../configuring-metabase/settings.md#restrict-image-domains), but you should also set a CSP in your app.
+To limit where custom visualizations can load images from, set a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) with an `img-src` allowlist in your app. The core Metabase app sets this CSP with [Restrict image domains](../configuring-metabase/domains.md#restrict-where-images-can-load-from), but you should also set a CSP in your app.
 
 ## Custom visualizations don't work in guest embeds
 

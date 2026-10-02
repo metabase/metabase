@@ -53,13 +53,25 @@ describe("scenarios > collection pinned items overview", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
-    cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+    cy.intercept("GET", "/api/**/items?pinned-state*").as("getPinnedItems");
     cy.intercept("GET", "/api/**/items?models*").as("getCollectionItems");
   });
 
-  it("should be able to pin a dashboard and keep it in the contents list", () => {
+  it("should be able to pin a question without rendering its visualization, a dashboard while keeping it in the contents list, and a model", () => {
+    cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
     openRootCollection();
+
+    cy.log("pin a question without rendering its visualization");
+    H.openUnpinnedItemMenu(QUESTION_NAME);
+    H.popover().findByText("Pin this").click();
+    cy.wait(["@getPinnedItems", "@getCollectionItems"]);
+
+    H.getPinnedSection().within(() => {
+      cy.findByText("A question").should("be.visible");
+      cy.get("@getCardQuery.all").should("have.length", 0);
+    });
+
+    cy.log("pin a dashboard and keep it in the contents list");
     H.openUnpinnedItemMenu(DASHBOARD_NAME);
     H.popover().findByText("Pin this").click();
     cy.wait(["@getPinnedItems", "@getCollectionItems"]);
@@ -74,39 +86,15 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText(DASHBOARD_NAME).click();
       cy.url().should("include", `/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
-  });
 
-  it("should be able to pin a question without rendering its visualization", () => {
     openRootCollection();
-    H.openUnpinnedItemMenu(QUESTION_NAME);
-    H.popover().findByText("Pin this").click();
-    cy.wait("@getPinnedItems");
-
     H.getPinnedSection().within(() => {
-      cy.findByText("A question").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
       cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
 
-    cy.get("@getCardQuery.all").should("have.length", 0);
-  });
-
-  it("should be able to pin a pivot table", () => {
-    H.createQuestion(PIVOT_QUESTION_DETAILS).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
-    });
-
-    openRootCollection();
-
-    H.getPinnedSection().within(() => {
-      cy.findByText(PIVOT_QUESTION_DETAILS.name).should("be.visible");
-      cy.findByText("A question").should("be.visible");
-    });
-  });
-
-  it("should be able to pin a model", () => {
+    cy.log("pin a model");
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-
     openRootCollection();
     H.openUnpinnedItemMenu(MODEL_NAME);
     H.popover().findByText("Pin this").click();
@@ -120,45 +108,37 @@ describe("scenarios > collection pinned items overview", () => {
     });
   });
 
-  it("should be able to unpin a pinned dashboard", () => {
+  it("should be able to move, duplicate and unpin a pinned dashboard", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       collection_position: 1,
     });
 
     openRootCollection();
+
+    cy.log("should be able to move a pinned dashboard");
+    H.openPinnedItemMenu(DASHBOARD_NAME);
+    H.popover().findByText("Move").click();
+    H.entityPickerModal()
+      .findByText(`Move "${DASHBOARD_NAME}"?`)
+      .should("be.visible");
+    H.entityPickerModal().button("Cancel").click();
+    H.entityPickerModal().should("not.exist");
+
+    cy.log("should be able to duplicate a pinned dashboard");
+    H.openPinnedItemMenu(DASHBOARD_NAME);
+    H.popover().findByText("Duplicate").click();
+    H.modal()
+      .findByText(`Duplicate "${DASHBOARD_NAME}" and its questions`)
+      .should("be.visible");
+    H.modal().button("Cancel").click();
+    H.modal().should("not.exist");
+
+    cy.log("should be able to unpin a pinned dashboard");
     H.openPinnedItemMenu(DASHBOARD_NAME);
     H.popover().findByText("Unpin").click();
     cy.wait("@getPinnedItems");
 
     H.getPinnedSection().should("not.exist");
-  });
-
-  it("should be able to move a pinned dashboard", () => {
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      collection_position: 1,
-    });
-
-    openRootCollection();
-    H.openPinnedItemMenu(DASHBOARD_NAME);
-    H.popover().findByText("Move").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`Move "${DASHBOARD_NAME}"?`).should("be.visible");
-  });
-
-  it("should be able to duplicate a pinned dashboard", () => {
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      collection_position: 1,
-    });
-
-    openRootCollection();
-    H.openPinnedItemMenu(DASHBOARD_NAME);
-    H.popover().findByText("Duplicate").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`Duplicate "${DASHBOARD_NAME}" and its questions`).should(
-      "be.visible",
-    );
   });
 
   it("should be able to archive a pinned dashboard", () => {
@@ -176,22 +156,6 @@ describe("scenarios > collection pinned items overview", () => {
     cy.findByText(DASHBOARD_NAME).should("not.exist");
   });
 
-  it("should render pinned native questions as static cards", () => {
-    H.createNativeQuestion(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER).then(
-      ({ body: { id } }) => {
-        cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
-      },
-    );
-
-    openRootCollection();
-    H.getPinnedSection().within(() => {
-      cy.findByText(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER.name).should(
-        "be.visible",
-      );
-      cy.findByText("A question").should("be.visible");
-    });
-  });
-
   it("should render all pinned items in a single section without type headings", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       collection_position: 1,
@@ -199,12 +163,25 @@ describe("scenarios > collection pinned items overview", () => {
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       collection_position: 2,
     });
+    H.createQuestion(PIVOT_QUESTION_DETAILS).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { collection_position: 3 });
+    });
+    H.createNativeQuestion(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER).then(
+      ({ body: { id } }) => {
+        cy.request("PUT", `/api/card/${id}`, { collection_position: 4 });
+      },
+    );
 
     openRootCollection();
 
     H.getPinnedSection().within(() => {
       cy.findByText(DASHBOARD_NAME).should("be.visible");
       cy.findByText(QUESTION_NAME).should("be.visible");
+      cy.findByText(PIVOT_QUESTION_DETAILS.name).should("be.visible");
+      cy.findByText(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER.name).should(
+        "be.visible",
+      );
+      cy.findAllByText("A question").should("have.length", 3);
       cy.findByText("Dashboards").should("not.exist");
       cy.findByText("Pinned questions").should("not.exist");
     });
