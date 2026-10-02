@@ -2034,3 +2034,22 @@
                             (lib/filter (lib/= j-category "Gadget"))
                             (lib/breakout j-category)
                             (lib/aggregate (lib/count)))))))))))))
+
+(deftest ^:parallel slow-join-with-aggregated-card-test
+  (testing "joining a table with an aggregated card should complete in time (QUE2-877)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :basic-aggregations)
+      (let [mp         (mt/metadata-provider)
+            card-q     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id))))
+            mp         (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [card-q])
+            card       (lib.metadata/card mp 1)
+            base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            orders-pid (lib.metadata/field mp (mt/id :orders :product_id))
+            card-pid   (m/find-first #(= (mt/id :orders :product_id) (:id %))
+                                     (lib/join-condition-rhs-columns base card (lib/ref orders-pid) nil))
+            query      (-> base
+                           (lib/join (lib/join-clause card [(lib/= orders-pid card-pid)]))
+                           (lib/aggregate (lib/count)))]
+        (is (= [[18760]]
+               (mt/rows (qp/process-query query))))))))
