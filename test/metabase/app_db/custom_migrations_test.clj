@@ -376,8 +376,14 @@
                                                                                        :email       "howard@aircraft.com"
                                                                                        :password    "superstrong"
                                                                                        :date_joined :%now}))
-            dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                            :creator_id user-id}))
+            ;; insert through the raw table, not the model: the app DB sits at v47 here, and the model's
+            ;; before-insert hooks set columns (e.g. public_uuid_prefix, added in v58) that don't exist yet.
+            dashboard-id (first (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                          {:name       "A dashboard"
+                                                           :parameters "[]"
+                                                           :creator_id user-id
+                                                           :created_at :%now
+                                                           :updated_at :%now}))
             tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
                                                                                :position     0
                                                                                :dashboard_id dashboard-id}))
@@ -391,54 +397,58 @@
             tab4-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 4"
                                                                                :position     3
                                                                                :dashboard_id dashboard-id}))
+            dashcard-table (t2/table-name :model/DashboardCard)
             default-card {:dashboard_id           dashboard-id
-                          :visualization_settings {:virtual_card {:display "text"}
-                                                   :text         "A text card"}}
-            tab1-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab1-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
+                          :parameter_mappings     "[]"
+                          :created_at             :%now
+                          :updated_at             :%now
+                          :visualization_settings (json/encode {:virtual_card {:display "text"}
+                                                                :text         "A text card"})}
+            tab1-card1-id (first (t2/insert-returning-pks! dashcard-table (merge
+                                                                           default-card
+                                                                           {:dashboard_tab_id tab1-id
+                                                                            :row              0
+                                                                            :col              0
+                                                                            :size_x           4
+                                                                            :size_y           4})))
 
-            tab1-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab1-id
-                                                                                  :row              2
-                                                                                  :col              0
-                                                                                  :size_x           2
-                                                                                  :size_y           6})))
+            tab1-card2-id (first (t2/insert-returning-pks! dashcard-table (merge
+                                                                           default-card
+                                                                           {:dashboard_tab_id tab1-id
+                                                                            :row              2
+                                                                            :col              0
+                                                                            :size_x           2
+                                                                            :size_y           6})))
 
-            tab2-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab2-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
+            tab2-card1-id (first (t2/insert-returning-pks! dashcard-table (merge
+                                                                           default-card
+                                                                           {:dashboard_tab_id tab2-id
+                                                                            :row              0
+                                                                            :col              0
+                                                                            :size_x           4
+                                                                            :size_y           4})))
 
-            tab2-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab2-id
-                                                                                  :row              4
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           2})))
-            tab4-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab4-id
-                                                                                  :row              0
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           4})))
-            tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                 default-card
-                                                                                 {:dashboard_tab_id tab4-id
-                                                                                  :row              4
-                                                                                  :col              0
-                                                                                  :size_x           4
-                                                                                  :size_y           2})))]
+            tab2-card2-id (first (t2/insert-returning-pks! dashcard-table (merge
+                                                                           default-card
+                                                                           {:dashboard_tab_id tab2-id
+                                                                            :row              4
+                                                                            :col              0
+                                                                            :size_x           4
+                                                                            :size_y           2})))
+            tab4-card1-id (first (t2/insert-returning-pks! dashcard-table (merge
+                                                                           default-card
+                                                                           {:dashboard_tab_id tab4-id
+                                                                            :row              0
+                                                                            :col              0
+                                                                            :size_x           4
+                                                                            :size_y           4})))
+            tab4-card2-id (first (t2/insert-returning-pks! dashcard-table (merge
+                                                                           default-card
+                                                                           {:dashboard_tab_id tab4-id
+                                                                            :row              4
+                                                                            :col              0
+                                                                            :size_x           4
+                                                                            :size_y           2})))]
         (migrate! :down 46)
         (is (= [;; tab 1
                 {:id  tab1-card1-id
