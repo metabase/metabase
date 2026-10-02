@@ -3,11 +3,12 @@
   Toucan 2 call with no additional logic, so the rest of the module only touches `toucan2.core` for the
   model definition, hydration and transactions.
 
-  Nothing module-internal is required here: `common` holds the entity-type → model mapping and the
-  shared WHERE fragments, and its own queries route through this namespace, so callers pass the model
-  and any prebuilt fragment in as arguments."
+  Nothing module-internal is required here beyond the leaf `schema` vocabulary: `common` holds the
+  entity-type → model mapping and the shared WHERE fragments, and its own queries route through this
+  namespace, so callers pass the model and any prebuilt fragment in as arguments."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.content-diagnostics.schema :as cd.schema]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -48,11 +49,9 @@
 
 (def ^:private finding-row-columns
   "The columns every finding writes, whatever its type. `detected_at` and `invalidated_at` are absent by
-  design: the first takes the column default, the second is stamped later by invalidation. The
-  entity-type vocabulary is spelled out rather than required from `common`, so this namespace stays the
-  module-internal leaf its docstring promises."
+  design: the first takes the column default, the second is stamped later by invalidation."
   [[:scan_id                :string]
-   [:entity_type            [:enum :card :collection :dashboard :document :transform]]
+   [:entity_type            (into [:enum] cd.schema/entity-types)]
    [:entity_id              ms/PositiveInt]
    [:scope_collection_id    [:maybe ::lib.schema.id/collection]]
    [:last_active_at         [:maybe ms/TemporalInstant]]
