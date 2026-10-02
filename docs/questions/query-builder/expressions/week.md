@@ -33,7 +33,7 @@ Filters on Week of year use the same numbering, so a filter's name matches the w
 
 ### Using a different first week of the year
 
-None of the `week` custom expression's modes match the Week of year grouping. The `"Instance"` mode uses the same first day of the week, but it counts the week that contains January 1 as week 1, so the two can disagree for days near the start of the year.
+In the `week` custom expression, the `"Instance"` mode uses the same first day of the week as the Week of year grouping, but it counts the week that contains January 1 as week 1, so the two can disagree for days near the start of the year.
 
 The `week` custom expression provides three alternative algorithms for computing first week of the year. To use an alternative algorithm for summarizing, you can create a custom column that extracts the week number from a date column using the `week` expression, then group by that custom column.
 
