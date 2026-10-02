@@ -34,27 +34,16 @@
                                       {:system "You are terse."
                                        :input  [{:role :user :content "hi"}]})))))
 
-(deftest ^:parallel request-body-dated-model-resolves-max-tokens-test
-  (testing "a model dated in the platform's `@` spelling resolves to the same max_tokens ceiling as its
-            direct-API `-` spelling, rather than falling back to the unknown-model default"
-    (is (= 32000
-           (:max_tokens (raw-predict/request-body "claude-opus-4-1@20250805"
-                                                  {:input [{:role :user :content "hi"}]}))))))
-
-(deftest ^:parallel request-body-bare-model-resolves-max-tokens-test
-  (testing "an undated model ID is already in the direct-API spelling and resolves as-is"
-    (is (= 128000
-           (:max_tokens (raw-predict/request-body "claude-sonnet-4-6"
-                                                  {:input [{:role :user :content "hi"}]}))))))
-
-(deftest ^:parallel request-body-unknown-model-gets-default-max-tokens-test
-  (testing "a model outside the Claude adapter's knowledge falls back to the safe default ceiling"
-    (is (= 64000
-           (:max_tokens (raw-predict/request-body "claude-not-a-real-model"
-                                                  {:input [{:role :user :content "hi"}]}))))))
+(deftest ^:parallel request-body-default-max-tokens-test
+  (testing "every model gets the Claude request body's default max_tokens, dated, bare, or unknown"
+    (are [model-id] (= 32000
+                       (:max_tokens (raw-predict/request-body model-id {:input [{:role :user :content "hi"}]})))
+      "claude-opus-4-1@20250805"
+      "claude-sonnet-4-6"
+      "claude-not-a-real-model")))
 
 (deftest ^:parallel request-body-explicit-max-tokens-wins-test
-  (testing "an explicit :max-tokens overrides the model's ceiling"
+  (testing "an explicit :max-tokens overrides the default"
     (is (= 4096
            (:max_tokens (raw-predict/request-body "claude-opus-4-1@20250805"
                                                   {:input      [{:role :user :content "hi"}]

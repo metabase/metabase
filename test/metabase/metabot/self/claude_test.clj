@@ -645,22 +645,22 @@
                              :tools       [(metabot.tu/get-time-tool)]
                              :tool_choice "required"})))))))
 
-(deftest ^:parallel every-supported-model-has-a-ceiling-test
-  (doseq [[id {:keys [display-name max-tokens]}] @#'claude/supported-models]
-    (is (pos-int? max-tokens) id)
+(deftest ^:parallel every-supported-model-has-a-display-name-test
+  (doseq [[id {:keys [display-name]}] @#'claude/supported-models]
     (is (seq display-name) id)))
 
 (deftest claude-max-tokens-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
     (let [max-tokens #(:max_tokens (capture-claude-request-body!
                                     (merge {:input [{:role :user :content "hi"}]} %)))]
-      (are [opts tokens] (= tokens (max-tokens opts))
-        {:model "claude-opus-4-8"}                             128000
-        {:model "claude-haiku-4-5-20251001"}                    64000
-        {:model "claude-opus-4-8" :max-tokens 32000}            32000
-        ;; Bedrock ids reach us vendor-prefixed
-        {:model "anthropic.claude-opus-4-8"}                   128000
-        {:model "my-deployment-3"} @#'claude/default-max-tokens))))
+      (testing "every model gets the same default cap, and a caller's own cap wins"
+        (are [opts tokens] (= tokens (max-tokens opts))
+          {:model "claude-opus-4-8"}                     32000
+          {:model "claude-haiku-4-5-20251001"}           32000
+          {:model "claude-opus-4-8" :max-tokens 4096}     4096
+          ;; Bedrock ids reach us vendor-prefixed
+          {:model "anthropic.claude-opus-4-8"}           32000
+          {:model "my-deployment-3"}                     32000)))))
 
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
