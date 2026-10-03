@@ -426,17 +426,18 @@
                 (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" TEXT;")
                 (sync/sync-database! (mt/db))
                 (is (= [["name" :text]] (map (juxt :id :type) (:parameters (action/select-action action-id))))))))
-          (testing "if a column added, the model column set is used, not the table"
+          (testing (str "GHY-4638: if a column is added, sync adds it to the columns of a model that has no :fields "
+                        "clause, so the action gains a parameter for it")
             (exec! "ALTER TABLE \"FOO\" ADD COLUMN \"name2\" BIGINT;")
-            (is (= ["name"] (map :id (:parameters (action/select-action action-id))))))
+            (is (= ["name" "name2"] (map :id (:parameters (action/select-action action-id))))))
           (testing "viz settings are kept after a schema change (for hiding fields)"
             (let [action     (action/select-action action-id)
                   hide-state #(-> % :visualization_settings :fields (update-vals :hidden))]
-              (is (= {"name" false} (hide-state action)))
+              (is (= {"name" false, "name2" false} (hide-state action)))
               (action/update! (assoc-in action [:visualization_settings :fields "name" :hidden] true) action)
-              (is (= {"name" true}  (hide-state (action/select-action action-id))))
+              (is (= {"name" true, "name2" false} (hide-state (action/select-action action-id))))
               (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
-              (is (= {"name" true}  (hide-state (action/select-action action-id)))))))))))
+              (is (= {"name" true, "name2" false} (hide-state (action/select-action action-id)))))))))))
 
 (deftest load-skips-http-actions-test
   (testing "HTTP actions from older exports are skipped on load"

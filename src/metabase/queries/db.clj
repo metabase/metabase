@@ -133,6 +133,30 @@
              :type :metric
              {:order-by [[:name :asc]]}))
 
+(mu/defn unarchived-models-for-table
+  "The query-related fields and query type of the unarchived model Cards whose primary table is `table-id`."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select (queries.card-schema/selection [:query_type])
+             :table_id table-id
+             :type     :model
+             :archived false))
+
+(mu/defn set-card-result-metadata-if-unchanged!
+  "Set the result metadata of the Card with `card-id` to `result-metadata` without touching `updated_at`, but only if
+  its query and result metadata still equal those in `expected`. Returns whether it wrote."
+  [card-id         :- ::lib.schema.id/card
+   expected        :- [:map {:closed true}
+                       [:dataset_query   :metabase.lib.schema/query]
+                       [:result_metadata [:maybe ::queries.schema/card.result-metadata]]]
+   result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
+  (t2/with-transaction [_conn]
+    ;; lock the row so that no save can land between the check and the write
+    (let [current (t2/select-one (queries.card-schema/selection) :id card-id {:for :update})]
+      (boolean
+       (when (= expected (select-keys current [:dataset_query :result_metadata]))
+         (t2/update! :model/Card card-id {:result_metadata result-metadata
+                                          :updated_at      :updated_at}))))))
+
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
   [document-id :- ms/PositiveInt]
