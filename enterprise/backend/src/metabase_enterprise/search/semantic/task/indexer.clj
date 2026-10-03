@@ -79,9 +79,6 @@
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
 (def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
 
-(task/register-renamed-job-class!
- "metabase_enterprise.semantic_search.task.indexer.SemanticSearchIndexer" SemanticSearchIndexer)
-
 (defmethod task/init! ::SemanticSearchIndexer [_]
   (when (semantic.u/semantic-search-configured?)
     (let [job         (jobs/build

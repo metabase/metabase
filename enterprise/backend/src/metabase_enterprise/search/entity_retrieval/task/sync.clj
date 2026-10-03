@@ -39,9 +39,6 @@
 ;; The +10s first firing (startup reconcile / post-upgrade rebuild) is preserved regardless of this value.
 (def ^:private ^Duration run-frequency (Duration/parse "PT15M"))
 
-(task/register-renamed-job-class!
- "metabase_enterprise.entity_retrieval.task.sync.OsiAiContextSync" OsiAiContextSync)
-
 (defmethod task/init! ::OsiAiContextSync [_]
   ;; Gate on the boot-safe check, NOT on available? — the job body self-gates, so scheduling here lets the
   ;; periodic safety net (and the write-path trigger's target job) exist before the store is reachable.
