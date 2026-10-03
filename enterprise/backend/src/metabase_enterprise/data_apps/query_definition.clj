@@ -109,7 +109,8 @@
          ::sdk-metadata [:columns]}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::operator]
-   [:args {:default []} [:sequential [:ref ::expression]]]])
+   [:args {:default []} [:sequential [:ref ::expression]]]
+   [:name {:optional true} string?]])
 
 (mr/def ::expression
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case

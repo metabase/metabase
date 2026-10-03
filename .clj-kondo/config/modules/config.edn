@@ -3735,11 +3735,13 @@
   enterprise/data-apps
   {:team "Embedding"
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
-   :uses #{api
+   :uses #{actions
+           api
            api-scope
            collections
            events
            lib
+           lib.be
            lib.schema
            models
            permissions
@@ -3747,8 +3749,10 @@
            request
            settings
            util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Collection
+           warehouse-schema-overlay
+           enterprise/serialization}
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/DataPermissions
                     :model/Database
                     :model/Permissions

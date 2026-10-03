@@ -24,6 +24,13 @@
 (deftest ^:parallel supported-query-fields-test
   (is (nil? (mr/explain ::query-definition/query-definition query-definition))))
 
+(deftest ^:parallel named-aggregation-test
+  (testing "an aggregation named in its definition, which the SDK sends as `name`"
+    (is (nil? (mr/explain ::query-definition/query-definition
+                          (assoc-in query-definition [:stages 0 :aggregations]
+                                    [{:type :operator :operator :sum :name "revenue"
+                                      :args [{:type :column :name "PRICE"}]}]))))))
+
 (deftest ^:parallel unknown-query-fields-test
   (doseq [path [[] [:stages 0] [:stages 0 :source]
                 [:stages 0 :fields 0]
