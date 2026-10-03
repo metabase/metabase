@@ -120,7 +120,8 @@
        (search.db/orphan-index-table-names)))
 
 (defn- drop-orphan-indexes!
-  "Drop every index table that has no metadata row. Best effort: a failed drop is logged and never propagates."
+  "Drop every index table that has no metadata row, returning those dropped.
+  Best effort: a failed drop is logged and never propagates."
   []
   (let [dropped (into []
                       (keep (fn [table]
@@ -132,7 +133,8 @@
                                   (log/warnf "Failed to drop orphan index %s: %s" table (ex-message e))
                                   nil))))
                       (orphan-indexes))]
-    (log/infof "Dropped %d orphan indexes: %s" (count dropped) dropped)))
+    (log/infof "Dropped %d orphan indexes: %s" (count dropped) dropped)
+    dropped))
 
 (defn- ddl-commits-caller-transaction?
   "Whether dropping a table here would commit the transaction the caller is holding."
@@ -145,13 +147,15 @@
   "Drop index tables that are no longer needed.
   Best effort: failures are logged and never propagate.
   Does nothing while mocking tables, where the pending table lives in an atom with no metadata row.
-  Does nothing either when the drop would commit the caller's transaction, leaving those to a later sweep."
+  Does nothing either when the drop would commit the caller's transaction.
+  Those tables wait for a later sweep."
   []
   (when-not *mocking-tables*
     (try
       ;; Delete metadata around indexes that are no longer needed.
       (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
-      ;; Drop any indexes that are no longer referenced. A sweep outside the caller's transaction gets the rest.
+      ;; Drop any indexes that are no longer referenced.
+      ;; A sweep outside the caller's transaction gets the rest.
       (when-not (ddl-commits-caller-transaction?)
         (drop-orphan-indexes!))
       (catch Exception e
