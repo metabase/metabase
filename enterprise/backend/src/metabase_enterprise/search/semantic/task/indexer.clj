@@ -1,5 +1,6 @@
 (ns metabase-enterprise.search.semantic.task.indexer
   (:require
+   [clojure.java.io :as io]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -10,13 +11,13 @@
    [metabase-enterprise.search.semantic.indexer :as semantic-search.indexer]
    [metabase-enterprise.search.semantic.settings :as semantic.settings]
    [metabase-enterprise.search.semantic.util :as semantic.u]
+   [metabase.classloader.core :as classloader]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import (java.time Duration Instant)
-           (java.util Date)
-           (org.quartz DisallowConcurrentExecution)))
+           (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,46 +36,68 @@
   (contains? search.config/hnsw-index-backed-strategies
              (semantic.settings/semantic-search-vector-strategy)))
 
-(deftype ^{DisallowConcurrentExecution true
-           :doc                        "Runs an indexer process for a time, expects to be rescheduled to continue"}
- SemanticSearchIndexer []
-  org.quartz.Job
-  (execute [_ _]
-    (when (semantic.u/semantic-search-active?)
-      (log/with-context {:quartz-job-type 'SemanticSearchIndexer}
-        (try
-          (vreset! execution-thread-ref (Thread/currentThread))
-          (let [pgvector       (semantic.env/get-pgvector-datasource!)
-                index-metadata (semantic.env/get-index-metadata)]
-            (if-let [{:keys [index]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
-              (do
-                ;; The strategy setter's build event no-ops while semantic is inactive, so an index-backed
-                ;; strategy configured before (re)activation arrives here with no HNSW index. Retry absent
-                ;; or abandoned invalid indexes; an active concurrent build is left alone.
-                (let [hnsw-index (semantic.index/schema-qualified-index-name
-                                  index (semantic.index/hnsw-index-name index))]
-                  (when (and (hnsw-strategy?)
-                             (semantic.u/index-needs-build? pgvector hnsw-index))
-                    (semantic.core/build-hnsw-index-async!)))
-                (semantic-search.indexer/quartz-job-run! pgvector index-metadata))
-              ;; Engines can activate at runtime (license applied, additional-search-engines set on
-              ;; another node); initializing from the next tick heals
-              ;; every such path within seconds. Initialize all active engines, not just semantic:
-              ;; activation may also have activated dependencies with no index.
-              (do
-                (search/init-index!)
-                (when (hnsw-strategy?)
-                  (semantic.core/build-hnsw-index-async!)))))
-          (finally
-            (locking execution-thread-ref
-              (vreset! execution-thread-ref nil)))))))
-  org.quartz.InterruptableJob
-  (interrupt [_]
-    ;; locking required here to avoid racing with the unset in the finally
-    ;; and interrupting some other unintended task/work
-    (locking execution-thread-ref
-      (when-some [^Thread execution-thread @execution-thread-ref]
-        (.interrupt execution-thread)))))
+(defn execute!
+  "Run the indexer for a time, then return so Quartz reschedules it.
+  Entry point of the Quartz job class in [[metabase-enterprise.search.semantic.task.indexer-job]]."
+  []
+  (when (semantic.u/semantic-search-active?)
+    (log/with-context {:quartz-job-type 'SemanticSearchIndexer}
+      (try
+        (vreset! execution-thread-ref (Thread/currentThread))
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
+              index-metadata (semantic.env/get-index-metadata)]
+          (if-let [{:keys [index]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
+            (do
+              ;; The strategy setter's build event no-ops while semantic is inactive, so an index-backed
+              ;; strategy configured before (re)activation arrives here with no HNSW index. Retry absent
+              ;; or abandoned invalid indexes; an active concurrent build is left alone.
+              (let [hnsw-index (semantic.index/schema-qualified-index-name
+                                index (semantic.index/hnsw-index-name index))]
+                (when (and (hnsw-strategy?)
+                           (semantic.u/index-needs-build? pgvector hnsw-index))
+                  (semantic.core/build-hnsw-index-async!)))
+              (semantic-search.indexer/quartz-job-run! pgvector index-metadata))
+            ;; Engines can activate at runtime (license applied, additional-search-engines set on
+            ;; another node); initializing from the next tick heals
+            ;; every such path within seconds. Initialize all active engines, not just semantic:
+            ;; activation may also have activated dependencies with no index.
+            (do
+              (search/init-index!)
+              (when (hnsw-strategy?)
+                (semantic.core/build-hnsw-index-async!)))))
+        (finally
+          (locking execution-thread-ref
+            (vreset! execution-thread-ref nil)))))))
+
+(defn interrupt!
+  "Interrupt the running [[execute!]], if any."
+  []
+  ;; locking required here to avoid racing with the unset in the finally
+  ;; and interrupting some other unintended task/work
+  (locking execution-thread-ref
+    (when-some [^Thread execution-thread @execution-thread-ref]
+      (.interrupt execution-thread))))
+
+;; Quartz stores a job's class name in the app DB, and this class keeps the name it had before the namespace moved
+;; from `semantic-search` to `search.semantic`. During a rolling upgrade, old nodes can then still load the stored
+;; class, and the running job is never deleted as classless, so the indexer stays a cluster singleton.
+(def ^:private job-class-name "metabase_enterprise.semantic_search.task.indexer.SemanticSearchIndexer")
+
+(defn- job-class
+  "The indexer's Quartz job class, defined by the `gen-class` in
+  [[metabase-enterprise.search.semantic.task.indexer-job]]."
+  ^Class []
+  (try
+    (Class/forName job-class-name false (classloader/the-classloader))
+    (catch ClassNotFoundException _
+      ;; AOT-compiled in the uberjar; dev and tests compile nothing ahead of time, so compile the `gen-class`
+      ;; into a classpath directory first, as [[metabase.mq.quartz-affinity/ensure-delegate-loadable!]] does
+      (let [dir (io/file (System/getProperty "java.io.tmpdir") "mb-quartz-jobs")]
+        (.mkdirs dir)
+        (classloader/add-url-to-classpath! (-> dir .toURI .toURL))
+        (binding [*compile-path* (str dir)]
+          (compile (quote metabase-enterprise.search.semantic.task.indexer-job))))
+      (Class/forName job-class-name false (classloader/the-classloader)))))
 
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
 (def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
@@ -82,7 +105,7 @@
 (defmethod task/init! ::SemanticSearchIndexer [_]
   (when (semantic.u/semantic-search-configured?)
     (let [job         (jobs/build
-                       (jobs/of-type SemanticSearchIndexer)
+                       (jobs/of-type (job-class))
                        (jobs/store-durably)
                        (jobs/with-identity indexer-job-key))
           trigger-key (triggers/key (str indexer-stem ".trigger"))

@@ -13,6 +13,18 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- new-job ^org.quartz.Job []
+  (let [^Class job-class (#'sut/job-class)]
+    (.newInstance (.getConstructor job-class (make-array Class 0)) (object-array 0))))
+
+(deftest job-class-keeps-its-pre-move-name-test
+  ;; Quartz stores the class name in the app DB. A new name would make old and new nodes disagree during a rolling
+  ;; upgrade, so the running job could be deleted as classless and a second indexer started.
+  (let [^Class job-class (#'sut/job-class)]
+    (is (= "metabase_enterprise.semantic_search.task.indexer.SemanticSearchIndexer" (.getName job-class)))
+    (is (.isAnnotationPresent job-class org.quartz.DisallowConcurrentExecution))
+    (is (isa? job-class org.quartz.InterruptableJob))))
+
 (deftest startup-hnsw-safety-net-test
   (testing "the indexer task's startup builds the HNSW index when configured for any index-backed strategy"
     ;; Covers instances that boot already configured for an HNSW-index-backed strategy (e.g. strategy set via
@@ -36,7 +48,7 @@
 (deftest indexer-builds-only-absent-or-abandoned-hnsw-indexes-test
   (let [builds (atom 0)
         runs   (atom 0)
-        job    (sut/->SemanticSearchIndexer)]
+        job    (new-job)]
     (mt/with-dynamic-fn-redefs
       [semantic.u/semantic-search-active?                   (constantly true)
        semantic.env/get-pgvector-datasource!                (constantly ::pgvector)
@@ -48,6 +60,6 @@
       (doseq [[state expected-builds] [[nil 1] [:invalid 1] [:building 0] [:ready 0]]]
         (reset! builds 0)
         (mt/with-dynamic-fn-redefs [semantic.u/index-state (constantly state)]
-          (.execute ^org.quartz.Job job nil))
+          (.execute job nil))
         (is (= expected-builds @builds) (str state " build count")))
       (is (= 4 @runs) "index maintenance continues in every catalog state"))))

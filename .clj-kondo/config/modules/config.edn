@@ -4288,6 +4288,7 @@
            task
            tracing
            util
+           util.classloader
            util.config
            warehouse-schema-overlay}
    :model-imports #{:model/Collection :model/Dashboard :model/Table}}
