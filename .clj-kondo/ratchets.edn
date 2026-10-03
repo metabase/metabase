@@ -74,8 +74,6 @@
                                 :ee.transform-testing.expectations.empty/->Empty       1
                                 :ee.transform-testing.expectations.equals/->EqualsRows 1
                                 :ee.transform-testing.expectations.equals/->EqualsSql  1
-                                :entity-retrieval.core/search-unfiltered               1
-                                :entity-retrieval.mirror/search-unfiltered             1
                                 :lib.core/->legacy-MBQL                                10
                                 :lib.equality/find-column-indexes-for-refs             1
                                 :malli.core/explain                                    1
@@ -83,7 +81,9 @@
                                 :malli.core/validate                                   1
                                 :malli.core/validator                                  1
                                 :me.flowthing.pp/pprint                                2
-                                :next.jdbc/active-tx?                                  1}
+                                :next.jdbc/active-tx?                                  1
+                                :search.entity-retrieval.core/search-unfiltered        1
+                                :search.entity-retrieval.mirror/search-unfiltered      1}
  :config-counts                {:constant-condition                      1
                                 :deprecated-namespace                    7
                                 :deprecated-var                          16
