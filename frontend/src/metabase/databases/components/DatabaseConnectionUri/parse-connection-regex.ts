@@ -243,7 +243,11 @@ function mapSemicolonParams(semicolonParams: string | undefined) {
   return semicolonParams
     .split(";")
     .reduce<Record<string, string | undefined>>((acc, param) => {
-      const [key, value] = param.split("=");
+      const separatorIndex = param.indexOf("=");
+      const key =
+        separatorIndex === -1 ? param : param.slice(0, separatorIndex);
+      const value =
+        separatorIndex === -1 ? undefined : param.slice(separatorIndex + 1);
       if (key !== "") {
         acc[key] = safeDecode(value);
       }
