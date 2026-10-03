@@ -76,8 +76,8 @@
   (testing "an unknown id lists the ids the model can use"
     (is (= {:output "No query with id nope. Known query ids: [q1]."}
            (run-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
-  (testing "a SQL query is refused"
-    (is (=? {:output #"run_query only runs notebook queries.*"}
+  (testing "a SQL query is refused with a pointer to construct_notebook_query"
+    (is (=? {:output #"run_query only runs notebook queries.*construct_notebook_query.*"}
             (run-tool! {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))
   (testing "a user without data access gets a failure, not rows"
     (mt/with-no-data-perms-for-all-users!
