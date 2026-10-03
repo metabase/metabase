@@ -192,22 +192,7 @@ describe("scenarios > search > snowplow", () => {
     });
 
     describe("type filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&type=card");
-        cy.wait("@search");
-
-        H.expectUnstructuredSnowplowEvent(
-          {
-            event: NEW_SEARCH_QUERY_EVENT_NAME,
-
-            context: "search-app",
-            content_type: ["card"],
-          },
-          1,
-        );
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
+      it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
@@ -237,11 +222,11 @@ describe("scenarios > search > snowplow", () => {
             "table",
           ],
         });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        H.expectNoBadSnowplowEvents();
+        H.resetSnowplow();
+        cy.intercept("GET", "/api/search**").as("hydratedSearch");
         cy.visit("/search?q=orders&type=card");
-        cy.wait("@search");
+        cy.wait("@hydratedSearch");
         H.expectUnstructuredSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
@@ -257,24 +242,13 @@ describe("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
-          content_type: [],
+          content_type: null,
         });
       });
     });
 
     describe("created_by filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&created_by=1");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creator: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
+      it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
@@ -295,11 +269,11 @@ describe("scenarios > search > snowplow", () => {
 
           creator: true,
         });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        H.expectNoBadSnowplowEvents();
+        H.resetSnowplow();
+        cy.intercept("GET", "/api/search**").as("hydratedSearch");
         cy.visit("/search?q=orders&created_by=1");
-        cy.wait("@search");
+        cy.wait("@hydratedSearch");
         H.expectUnstructuredSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
@@ -321,18 +295,7 @@ describe("scenarios > search > snowplow", () => {
     });
 
     describe("last_edited_by filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&last_edited_by=1");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_editor: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
+      it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
@@ -354,11 +317,11 @@ describe("scenarios > search > snowplow", () => {
 
           last_editor: true,
         });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        H.expectNoBadSnowplowEvents();
+        H.resetSnowplow();
+        cy.intercept("GET", "/api/search**").as("hydratedSearch");
         cy.visit("/search?q=orders&last_edited_by=1");
-        cy.wait("@search");
+        cy.wait("@hydratedSearch");
         H.expectUnstructuredSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
@@ -380,18 +343,7 @@ describe("scenarios > search > snowplow", () => {
     });
 
     describe("created_at filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&created_at=thisday");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          creation_date: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
+      it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
@@ -412,11 +364,11 @@ describe("scenarios > search > snowplow", () => {
 
           creation_date: true,
         });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        H.expectNoBadSnowplowEvents();
+        H.resetSnowplow();
+        cy.intercept("GET", "/api/search**").as("hydratedSearch");
         cy.visit("/search?q=orders&created_at=thisday");
-        cy.wait("@search");
+        cy.wait("@hydratedSearch");
         H.expectUnstructuredSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
@@ -438,18 +390,7 @@ describe("scenarios > search > snowplow", () => {
     });
 
     describe("last_edited_at filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&last_edited_at=thisday");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          last_edit_date: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
+      it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
@@ -470,11 +411,11 @@ describe("scenarios > search > snowplow", () => {
 
           last_edit_date: true,
         });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        H.expectNoBadSnowplowEvents();
+        H.resetSnowplow();
+        cy.intercept("GET", "/api/search**").as("hydratedSearch");
         cy.visit("/search?q=orders&last_edited_at=thisday");
-        cy.wait("@search");
+        cy.wait("@hydratedSearch");
         H.expectUnstructuredSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
@@ -500,18 +441,7 @@ describe("scenarios > search > snowplow", () => {
         H.activateToken("pro-self-hosted");
       });
 
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&verified=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          verified_items: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
+      it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
@@ -531,11 +461,11 @@ describe("scenarios > search > snowplow", () => {
 
           verified_items: true,
         });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        H.expectNoBadSnowplowEvents();
+        H.resetSnowplow();
+        cy.intercept("GET", "/api/search**").as("hydratedSearch");
         cy.visit("/search?q=orders&verified=true");
-        cy.wait("@search");
+        cy.wait("@hydratedSearch");
         H.expectUnstructuredSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
@@ -557,18 +487,7 @@ describe("scenarios > search > snowplow", () => {
     });
 
     describe("search_native_query filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&search_native_query=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_native_queries: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
+      it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
@@ -588,11 +507,11 @@ describe("scenarios > search > snowplow", () => {
 
           search_native_queries: true,
         });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        H.expectNoBadSnowplowEvents();
+        H.resetSnowplow();
+        cy.intercept("GET", "/api/search**").as("hydratedSearch");
         cy.visit("/search?q=orders&search_native_query=true");
-        cy.wait("@search");
+        cy.wait("@hydratedSearch");
         H.expectUnstructuredSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
@@ -614,18 +533,7 @@ describe("scenarios > search > snowplow", () => {
     });
 
     describe("archived filter", () => {
-      it("should send a snowplow event when a search filter is used in the URL", () => {
-        cy.visit("/search?q=orders&archived=true");
-        cy.wait("@search");
-        H.expectUnstructuredSnowplowEvent({
-          event: NEW_SEARCH_QUERY_EVENT_NAME,
-          context: "search-app",
-
-          search_archived: true,
-        });
-      });
-
-      it("should send a snowplow event when a search filter is applied from the UI", () => {
+      it("should send snowplow events when a filter is applied, hydrated from the URL, and removed", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
         H.expectUnstructuredSnowplowEvent({
@@ -645,11 +553,11 @@ describe("scenarios > search > snowplow", () => {
 
           search_archived: true,
         });
-      });
-
-      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        H.expectNoBadSnowplowEvents();
+        H.resetSnowplow();
+        cy.intercept("GET", "/api/search**").as("hydratedSearch");
         cy.visit("/search?q=orders&archived=true");
-        cy.wait("@search");
+        cy.wait("@hydratedSearch");
         H.expectUnstructuredSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",

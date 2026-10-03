@@ -40,28 +40,33 @@ describe("search > recently viewed", () => {
     cy.findByTestId("loading-indicator").should("not.exist");
   });
 
-  it("shows list of recently viewed items", () => {
+  it("shows an up-to-date list of recently viewed items, and allows to select an item from keyboard (metabase#36868)", () => {
+    cy.findByTestId("recents-list-container").findByText("Recently viewed");
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
-  });
 
-  it("allows to select an item from keyboard", () => {
-    cy.findByTestId("recents-list-container").findByText("Recently viewed");
-    cy.get("body").trigger("keydown", { key: "ArrowDown" });
-    cy.get("body").trigger("keydown", { key: "ArrowDown" });
-    cy.get("body").trigger("keydown", { key: "Enter" });
-
-    cy.url().should("match", /\/question\/\d+-orders$/);
-  });
-
-  it("shows up-to-date list of recently viewed items after another page is visited (metabase#36868)", () => {
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
     cy.findByTestId("loading-indicator").should("not.exist");
 
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
+    assertRecentlyViewedItem(2, "People", "Table");
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    advanceServerClockBy(100);
+    cy.get("body").trigger("keydown", { key: "ArrowDown" });
+    cy.get("body").trigger("keydown", { key: "ArrowDown" });
+    cy.get("body").trigger("keydown", { key: "Enter" });
+
+    cy.url().should("match", /\/question\/\d+-orders$/);
+    cy.wait("@cardQuery");
+
+    cy.findByPlaceholderText("Search…").click();
+    cy.wait("@recent");
+
+    assertRecentlyViewedItem(0, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
 
     cy.intercept("/api/dataset").as("dataset");
@@ -93,10 +98,9 @@ describe("Recently Viewed > Entity Picker", () => {
     H.popover().findByText("Dashboard").click();
     cy.findByTestId("collection-picker-button").click();
 
-    H.entityPickerModal().within(() => {
-      cy.findByText("Select a collection").click();
-      cy.findByText("My Fresh Collection");
-    });
+    H.entityPickerModalItem(1, "My Fresh Collection").should("be.visible");
+    H.entityPickerModalItem(0, "Recent items").click();
+    H.entityPickerModalItem(1, "My Fresh Collection").should("be.visible");
   });
 
   it("shows recently visited dashboard in entity picker", () => {
@@ -116,6 +120,35 @@ describe("Recently Viewed > Entity Picker", () => {
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}-`);
     cy.findByTestId("dashboard-header-container").findByText(
       /You're editing this dashboard/,
+    );
+    H.saveDashboard();
+
+    H.createDashboard({ name: "My Fresh Dashboard" }).then(
+      ({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.visitQuestion(ORDERS_QUESTION_ID);
+
+        cy.findByTestId("qb-header").icon("ellipsis").click();
+        H.popover().findByText("Add to dashboard").click();
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Add this question to a dashboard").should(
+            "be.visible",
+          );
+          cy.button("Select").should("be.enabled");
+          cy.findByText("Recent items").click();
+          cy.contains(
+            "[data-testid=result-item]",
+            "My Fresh Dashboard",
+          ).click();
+          cy.button("Select").click();
+        });
+
+        cy.url().should("contain", `/dashboard/${dashboardId}-`);
+        cy.findByTestId("dashboard-header-container").findByText(
+          /You're editing this dashboard/,
+        );
+      },
     );
   });
 });
