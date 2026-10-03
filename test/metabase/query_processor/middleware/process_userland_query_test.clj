@@ -4,6 +4,7 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -18,7 +19,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -115,6 +117,44 @@
                :parameterized   false}
               (qe))
           "QueryExecution should be saved"))))
+
+(deftest oversized-row-does-not-destroy-batch-test
+  (testing "a row the app DB rejects (here: an oversized embedding_client) does not take the rest of the batch with it"
+    (mt/with-model-cleanup [:model/QueryExecution]
+      (let [marker (str "oversized-row-batch-test-" (random-uuid))
+            ;; hash must be a real 32-byte digest: the column is BINARY(32) on H2/MySQL (only Postgres' bytea is unbounded)
+            row    (fn [i client]
+                     {:hash             (buddy-hash/sha256 (str marker "-" i))
+                      :started_at       (t/offset-date-time)
+                      :running_time     1
+                      :result_rows      0
+                      :native           false
+                      :context          :ad-hoc
+                      :cache_hit        true
+                      :error            (str marker "-" i)
+                      :embedding_client client})
+            rows   [(row 1 "embedding-sdk-react")
+                    (row 2 (apply str (repeat 255 "c")))
+                    (row 3 "embedding-sdk-react")]]
+        (#'process-userland-query/save-execution-metadata!* rows)
+        (is (= [(str marker "-1") (str marker "-3")]
+               (t2/select-fn-vec :error :model/QueryExecution
+                                 :error [:like (str marker "%")]
+                                 {:order-by [[:id :asc]]})))))
+    (testing "inside a caller's transaction (the synchronous path of grouper/submit!) the good rows are still saved,
+              and the rejected statement does not abort that transaction"
+      (let [marker (str "oversized-row-batch-test-" (random-uuid))]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (#'process-userland-query/save-execution-metadata!*
+           [{:hash (buddy-hash/sha256 (str marker "-1")) :started_at (t/offset-date-time) :running_time 1
+             :result_rows 0 :native false :context :ad-hoc :cache_hit true :error (str marker "-1")
+             :embedding_client (apply str (repeat 255 "c"))}
+            {:hash (buddy-hash/sha256 (str marker "-2")) :started_at (t/offset-date-time) :running_time 1
+             :result_rows 0 :native false :context :ad-hoc :cache_hit true :error (str marker "-2")
+             :embedding_client "embedding-sdk-react"}])
+          (is (= [(str marker "-2")]
+                 (t2/select-fn-vec :error :model/QueryExecution :error [:like (str marker "%")])))
+          (is (pos? (t2/count :model/User))))))))
 
 (deftest failure-test
   (let [query (mt/mbql-query venues)]

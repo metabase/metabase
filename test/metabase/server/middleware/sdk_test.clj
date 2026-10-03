@@ -42,7 +42,31 @@
          (is (= version
                 (:body response "no-body"))))
     nil
-    "1.1.1"))
+    "1.1.1")
+  (testing "oversized versions are truncated to fit the varchar(254) column"
+    (let [request  (mock-request {:version (apply str (repeat 300 "1"))})
+          handler  (analytics.core/embedding-mw
+                    (fn [_ respond _] (respond {:status 200 :body (sdk/get-version)})))
+          response (handler request identity identity)]
+      (is (= 254 (count (:body response)))))))
+
+(deftest oversized-client-header-test
+  (let [bound-client (fn [headers]
+                       (let [request  (reduce-kv ring.mock/header (ring.mock/request :get "api/health") headers)
+                             handler  (analytics.core/embedding-mw
+                                       (fn [_ respond _] (respond {:status 200 :body (sdk/get-client)})))
+                             response (handler request identity identity)]
+                         (:body response)))]
+    (testing "a 254-byte client is stored as-is"
+      (is (= (apply str (repeat 254 "c"))
+             (bound-client {"x-metabase-client" (apply str (repeat 254 "c"))}))))
+    (testing "oversized clients are truncated to fit the varchar(254) column"
+      (is (= 254 (count (bound-client {"x-metabase-client" (apply str (repeat 255 "c"))})))))
+    (testing "the -preview suffix cannot push a client that fit over the limit"
+      (let [client (bound-client {"x-metabase-client"           (apply str (repeat 250 "c"))
+                                  "x-metabase-embedded-preview" "true"})]
+        (is (= 254 (count client)))
+        (is (str/starts-with? client (apply str (repeat 250 "c"))))))))
 
 (deftest bind-client-identifier-test
   (are [identifier]
