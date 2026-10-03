@@ -54,7 +54,9 @@
 ;; old name.
 (def job-class-history
   "Every name a renamed Quartz job class has had, oldest first, so the last is its current name."
-  [["metabase.task.upgrade_checks.CheckForNewVersions"
+  [["metabase_enterprise.task.cache.Cache"
+    "metabase_enterprise.cache.task.refresh_cache_configs.Cache"]
+   ["metabase.task.upgrade_checks.CheckForNewVersions"
     "metabase.version.task.upgrade_checks.CheckForNewVersions"]
    ["metabase.task.creator_sentiment_emails.CreatorSentimentEmail"
     "metabase.product_feedback.task.creator_sentiment_emails.CreatorSentimentEmail"]
@@ -62,10 +64,10 @@
     "metabase.pulse.task.email_remove_legacy_pulse.EmailRemoveLegacyPulse"]
    ["metabase.task.follow_up_emails.FollowUpEmail"
     "metabase.product_feedback.task.follow_up_emails.FollowUpEmail"]
+   ["metabase.task.send_pulses.InitSendPulseTriggers"
+    "metabase.pulse.task.send_pulses.InitSendPulseTriggers"]
    ["metabase.task.index_values.ModelIndexRefresh"
     "metabase.indexed_entities.task.index_values.ModelIndexRefresh"]
-   ["metabase.task.notification.SendNotification"
-    "metabase.notification.task.send.SendNotification"]
    ["metabase.task.persist_refresh.PersistencePrune"
     "metabase.model_persistence.task.persist_refresh.PersistencePrune"]
    ["metabase.task.persist_refresh.PersistenceRefresh"
@@ -74,30 +76,28 @@
     "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCache"]
    ["metabase.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"
     "metabase.channel.task.refresh_slack_channel_user_cache.RefreshCacheOnStartup"]
+   ["metabase_enterprise.transforms.schedule.RunTransforms"
+    "metabase.transforms.schedule.RunTransforms"]
    ["metabase.task.search_index.SearchIndexInit"
     "metabase.search.task.search_index.SearchIndexInit"]
    ["metabase.task.search_index.SearchIndexReindex"
     "metabase.search.task.search_index.SearchIndexReindex"]
    ["metabase.task.send_anonymous_stats.SendAnonymousUsageStats"
     "metabase.analytics.task.send_anonymous_stats.SendAnonymousUsageStats"]
-   ["metabase.task.send_pulses.InitSendPulseTriggers"
-    "metabase.pulse.task.send_pulses.InitSendPulseTriggers"]
+   ["metabase.task.notification.SendNotification"
+    "metabase.notification.task.send.SendNotification"]
    ["metabase.task.send_pulses.SendPulse"
     "metabase.pulse.task.send_pulses.SendPulse"]
    ["metabase.task.session_cleanup.SessionCleanup"
     "metabase.session.task.session_cleanup.SessionCleanup"]
    ["metabase.task.sync_databases.SyncAndAnalyzeDatabase"
     "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"]
-   ["metabase.task.sync_databases.UpdateFieldValues"
-    "metabase.sync.task.sync_databases.UpdateFieldValues"]
    ["metabase.task.task_history_cleanup.TaskHistoryCleanup"
     "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"]
    ["metabase.task.truncate_audit_tables.TruncateAuditTables"
     "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"]
-   ["metabase_enterprise.task.cache.Cache"
-    "metabase_enterprise.cache.task.refresh_cache_configs.Cache"]
-   ["metabase_enterprise.transforms.schedule.RunTransforms"
-    "metabase.transforms.schedule.RunTransforms"]])
+   ["metabase.task.sync_databases.UpdateFieldValues"
+    "metabase.sync.task.sync_databases.UpdateFieldValues"]])
 
 (defn current-class-name
   "Returns the current name of a job class stored as `stored-name`, given `history` shaped like
