@@ -1,34 +1,17 @@
 (ns metabase.search.permissions
   (:require
-   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
 
-(defn- assert-current-user! [missing-param]
-  (assert @api/*current-user*
-          (format "metabase.api.common/*current-user* must be bound if %s is missing from search-ctx" missing-param)))
-
-(defn- impersonated-user? [{:keys [is-impersonated-user?] :as _search-ctx}]
-  (or is-impersonated-user?
-      ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
-      (when (nil? is-impersonated-user?)
-        (assert-current-user! :is-impersonated-user?)
-        (perms/impersonated-user?))))
-
-(defn- sandboxed-user? [{:keys [is-sandboxed-user?] :as _search-ctx}]
-  (or is-sandboxed-user?
-      ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
-      (when (nil? is-sandboxed-user?)
-        (assert-current-user! :is-sandboxed-user?)
-        (perms/sandboxed-user?))))
-
-(defn sandboxed-or-impersonated-user?
-  "Is the current user sandboxed or impersonated?"
-  [search-ctx]
-  (or (impersonated-user? search-ctx) (sandboxed-user? search-ctx)))
+(defn sandboxed-impersonated-or-routed-user?
+  "Is the current user's view of warehouse data narrowed by a lens -- sandboxing, connection impersonation, or database
+  routing? Content captured under the unrestricted lens (e.g. indexed entity values) must not be shown to such a user.
+  The three flags are computed once, when the search context is built, see [[metabase.search.impl/search-context]]."
+  [{:keys [is-impersonated-user? is-sandboxed-user? is-routed-user?] :as _search-ctx}]
+  (or is-impersonated-user? is-sandboxed-user? is-routed-user?))
 
 (mu/defn permitted-collections-clause
   "Build the WHERE clause corresponding to which collections the given user has access to."

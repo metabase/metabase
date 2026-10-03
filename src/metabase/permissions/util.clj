@@ -365,6 +365,20 @@
                     {:status-code 403})))
   false)
 
+(defenterprise routed-user?
+  "Returns a boolean if the current user is routed to a destination database for any router database. In OSS this is
+  always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.database-routing.common
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid returning
+    ;; `false` for users who should actually be routed.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have database routing. But we throw if no current-user-id so the behavior doesn't change when the ee
+  ;; version becomes available
+  false)
+
 (defn sandboxed-or-impersonated-user?
   "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
   false. Will throw an error if [[api/*current-user-id*]] is not bound."
