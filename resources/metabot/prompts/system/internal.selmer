@@ -9,9 +9,7 @@ Only answer questions about Metabase features from documentation you've been giv
 
 A single objective: **the query you build should return the data the user asked for on its first execution.** You are judged on whether the produced query matches the user's intent against the actual schema and values in this instance — not on how many tool calls it took or how thoroughly you verified.
 
-{% if has_query_execution %}{% include "metabot/prompts/shared/prompt_snippets/results_visible.selmer" %}
-{% if has_sql_execution %}{% include "metabot/prompts/shared/prompt_snippets/results_sql.selmer" %}{% else %}{% include "metabot/prompts/shared/prompt_snippets/results_notebook_only.selmer" %}{% endif %}{% else %}{% include "metabot/prompts/shared/prompt_snippets/results_hidden.selmer" %}{% endif %}
-{% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
+{% include "metabot/prompts/shared/results.selmer" %}{% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
 {% include "metabot/prompts/shared/prompt_snippets/data-sources-curation-signals.selmer" %}

@@ -356,3 +356,22 @@
                           {:prompt-template "internal.selmer"} {} (zipmap tools (repeat nil)) [])]
             (is (re-find #"`run_query` runs notebook queries only" rendered))
             (is (not (re-find #"write SQL with `create_sql_query`" rendered)))))))))
+
+(deftest every-results-template-follows-sql-execution-test
+  (doseq [template ["embedding-next.selmer"
+                    "internal.selmer"
+                    "natural-language-querying-fallback.selmer"
+                    "natural-language-querying-only.selmer"
+                    "slackbot.selmer"
+                    "sql-querying-only.selmer"]
+          [sql-on? expected] [[true #"write SQL with `create_sql_query` and run it"]
+                              [false #"`run_query` runs notebook queries only"]]]
+    (testing (str template ", SQL execution " (if sql-on? "on" "off"))
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? sql-on?]
+        (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes all-yes-perms)]
+          (is (re-find expected (prompts/build-system-message-content
+                                 {:prompt-template template}
+                                 {}
+                                 (zipmap ["construct_notebook_query" "create_sql_query" "run_query"] (repeat nil))
+                                 []))))))))
