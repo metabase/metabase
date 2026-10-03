@@ -46,6 +46,7 @@ import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
+import { normalizeNewLines } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
@@ -291,7 +292,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
           const value = tc(untranslatedValue);
 
-          return formatValue(value, {
+          const formattedValue = formatValue(value, {
             ...columnSettings,
             type: "cell",
             jsx: true,
@@ -299,6 +300,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             clicked,
             collapseNewlines: !wrap,
           });
+
+          return wrap ? normalizeNewLines(formattedValue) : formattedValue;
         },
       );
 
