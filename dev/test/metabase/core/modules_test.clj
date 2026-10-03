@@ -425,17 +425,22 @@
                  {:namespace metabase-enterprise.x.core
                   :module    enterprise/x
                   :deps      [{:namespace metabase.x.impl, :module x}]}
+                 {:namespace metabase-enterprise.x.y.core
+                  :module    enterprise/x.y
+                  :deps      [{:namespace metabase.x.y.impl, :module x.y}
+                              {:namespace metabase.x.impl, :module x}]}
                  {:namespace metabase.z.core
                   :module    z
                   :deps      [{:namespace metabase.x.core, :module x}]}]
-        config '{enterprise/x {}
-                 w            {:api :any}
-                 w.v          {}
-                 x            {}
-                 x.y          {}
-                 x.y.z        {}
-                 z            {}}]
-    (testing "requires into any ancestor count, except an enterprise companion requiring its OSS module"
+        config '{enterprise/x   {}
+                 enterprise/x.y {}
+                 w              {:api :any}
+                 w.v            {}
+                 x              {}
+                 x.y            {}
+                 x.y.z          {}
+                 z              {}}]
+    (testing "requires into any ancestor count, except an enterprise companion requiring its own OSS module"
       (is (= '[{:namespace          metabase.x.y.core
                 :module             x.y
                 :required-namespace metabase.x.core
@@ -459,12 +464,18 @@
                 :required-namespace metabase.x.core
                 :ancestor           x
                 :api?               true
+                :cycle?             false}
+               {:namespace          metabase-enterprise.x.y.core
+                :module             enterprise/x.y
+                :required-namespace metabase.x.impl
+                :ancestor           x
+                :api?               false
                 :cycle?             false}]
              (dev.deps-graph/upward-references deps config))))
     (testing "stats count upward requires, their module pairs, and the internal and cycle-closing subsets"
-      (is (=? {:upward-requires          4
-               :upward-module-edges      3
-               :upward-internal-requires 1
+      (is (=? {:upward-requires          5
+               :upward-module-edges      4
+               :upward-internal-requires 2
                :upward-cycle-requires    2}
               (dev.deps-graph/module-boundary-stats deps config))))))
 
