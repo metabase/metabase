@@ -25,7 +25,10 @@ env:
 jobs:
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
+  # On `skip` mage would skip every driver anyway, so don't spend a runner asking.
+  # Every driver job needs this one and skips with it; drivers-tests-result ignores it.
   determine-driver-skips:
+    if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
