@@ -189,6 +189,26 @@ describe("SettingsOIDCForm - Group Sync", () => {
     expect(lastPut.body["group-sync"]["group-attribute"]).toBe("roles");
   });
 
+  it("does not run a separate connection check on form submission", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    const groupAttrInput = screen.getByLabelText("Group attribute name");
+    await userEvent.clear(groupAttrInput);
+    await userEvent.type(groupAttrInput, "roles");
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(async () => {
+      const puts = await getOidcPutCalls();
+      expect(puts.length).toBeGreaterThan(0);
+    });
+
+    const checks = (await findRequests("POST")).filter(({ url }) =>
+      url.includes("/api/ee/sso/oidc/check"),
+    );
+    expect(checks).toHaveLength(0);
+  });
+
   it("does not overwrite group mappings added via the widget on form save", async () => {
     // Scenario: user adds a mapping via GroupMappingsWidgetView (which saves
     // immediately via PUT), then submits the form. The form should include the
@@ -331,5 +351,35 @@ describe("SettingsOIDCForm - user provisioning", () => {
     );
     expect(puts[0].body).toEqual({ value: false });
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+});
+
+describe("SettingsOIDCForm - connection check", () => {
+  it("sends the scopes from the form to the connection check", async () => {
+    await setup({ providers: [EXISTING_PROVIDER] });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Optional settings" }),
+    );
+    const scopesInput = screen.getByLabelText("Scopes");
+    await userEvent.clear(scopesInput);
+    await userEvent.type(
+      scopesInput,
+      "openid, https://graph.microsoft.com/.default",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Check connection" }),
+    );
+
+    await waitFor(async () => {
+      const checks = (await findRequests("POST")).filter(({ url }) =>
+        url.includes("/api/ee/sso/oidc/check"),
+      );
+      expect(checks).toHaveLength(1);
+      expect(checks[0].body.scopes).toEqual([
+        "openid",
+        "https://graph.microsoft.com/.default",
+      ]);
+    });
   });
 });
