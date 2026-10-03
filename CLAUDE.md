@@ -106,7 +106,7 @@ type name. After moving a job's namespace or renaming its type, add the new clas
 `metabase.app-db.quartz/job-history`, or stored jobs and their triggers are deleted at the next startup.
 Entries are keyed by job key. If the key changes too, replace the entry with one for the new key that lists only
 the current class name, and add the rename to the list of past key renames in the comment above `job-history`.
-`metabase.app-db.quartz-test` checks the history.
+`metabase.app-db.quartz-test` lists every job class, and fails with instructions when one is moved, renamed or added.
 
 ## Ratchets
 
