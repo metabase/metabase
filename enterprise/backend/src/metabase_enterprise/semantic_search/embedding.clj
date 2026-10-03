@@ -332,6 +332,8 @@
         (try
           (when-let [state (embedder-circuit-state)]
             (not= :closed state))
+          (catch InterruptedException e
+            (throw e))
           (catch Exception _ true)))))
 
 (def ^:private request-specific-statuses
