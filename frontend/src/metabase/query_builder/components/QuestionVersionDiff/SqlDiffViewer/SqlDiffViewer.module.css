@@ -1,0 +1,105 @@
+.container {
+  overflow: auto;
+  max-height: 60vh;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background_page-primary);
+}
+
+.table {
+  min-width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--mb-color-text-primary);
+}
+
+.table td {
+  padding: 0 8px;
+  vertical-align: top;
+}
+
+.lineNumber {
+  width: 1%;
+  min-width: 40px;
+  text-align: right;
+  color: var(--mb-color-text-disabled);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.marker {
+  width: 1%;
+  user-select: none;
+  color: var(--mb-color-text-secondary);
+}
+
+.code {
+  white-space: pre;
+}
+
+.splitCode {
+  width: 50%;
+}
+
+.splitDivider {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.added {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-feedback-positive) 12%,
+    transparent
+  );
+}
+
+.added .changed {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-feedback-positive) 35%,
+    transparent
+  );
+  border-radius: 2px;
+}
+
+.removed {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-feedback-negative) 12%,
+    transparent
+  );
+}
+
+.removed .changed {
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-feedback-negative) 35%,
+    transparent
+  );
+  border-radius: 2px;
+}
+
+.empty {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.collapsedRow td {
+  padding: 0;
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.expandButton {
+  display: block;
+  width: 100%;
+  padding: 2px 8px;
+  text-align: left;
+  font-family: var(--mantine-font-family);
+  color: var(--mb-color-text-brand);
+  cursor: pointer;
+}
+
+.expandButton:hover {
+  background-color: var(--mb-color-background_surface-hover);
+}
