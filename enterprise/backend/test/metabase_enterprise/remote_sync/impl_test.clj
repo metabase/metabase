@@ -2040,7 +2040,7 @@ serdes/meta:
                                 source/source-from-settings      (constantly (export-test-source))
                                 spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
-                                source/preview-merge             (fn [_ _ _ _]
+                                source/preview-merge             (fn [_ _ _ _ & _]
                                                                    {:clean? true :conflicts []
                                                                     :summary {:added 1 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 1 :updated 0 :removed 0}}
@@ -2052,7 +2052,7 @@ serdes/meta:
                                 source/source-from-settings      (constantly (export-test-source))
                                 spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
-                                source/preview-merge             (fn [_ _ _ _]
+                                source/preview-merge             (fn [_ _ _ _ & _]
                                                                    {:clean? false :conflicts ["Card A (collections/a.yaml)"]
                                                                     :summary {:added 0 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? false
@@ -2069,7 +2069,7 @@ serdes/meta:
                                   source/source-from-settings      (constantly (export-test-source))
                                   spec/exportable-entities         (fn [] (swap! walks inc) {"Card" [1]})
                                   spec/extract-entities-for-export (fn [_targets] stream)
-                                  source/preview-merge             (fn [s _ _ _]
+                                  source/preview-merge             (fn [s _ _ _ & _]
                                                                      (reset! received s)
                                                                      {:clean? true :conflicts []
                                                                       :summary {:added 0 :updated 0 :removed 0}})]

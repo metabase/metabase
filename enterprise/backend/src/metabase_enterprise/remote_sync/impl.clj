@@ -535,7 +535,8 @@
                                              (let [targets (spec/exportable-entities)]
                                                (source/compute-merge (spec/extract-entities-for-export targets)
                                                                      snapshot base-snapshot task-id
-                                                                     :total (spec/exportable-entity-count targets))))]
+                                                                     :total (spec/exportable-entity-count targets)
+                                                                     :synced-hashes (remote-sync.db/synced-content-hashes-by-path))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -747,7 +748,8 @@
   Returns a `:success` result with a `:merge-summary`."
   [source snapshot base-snapshot task-id message sync-timestamp models & {:keys [total]}]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
-        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total)]
+        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total
+                                                                 :synced-hashes (remote-sync.db/synced-content-hashes-by-path))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies)" (count labels))
@@ -1646,7 +1648,8 @@
         (serdes/with-cache
           (let [targets (spec/exportable-entities)]
             (if (seq targets)
-              (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil)
+              (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil
+                                           :synced-hashes (remote-sync.db/synced-content-hashes-by-path))
                      :diverged? true)
               (assoc no-changes :diverged? true))))
         ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
