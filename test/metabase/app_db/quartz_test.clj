@@ -73,8 +73,8 @@
                 (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))))))))))
 
 (deftest current-class-name-test
-  (let [history [["a.Oldest" "a.Old" "a.Current"]
-                 ["b.Old" "b.Current"]]]
+  (let [history {"a.job" ["a.Oldest" "a.Old" "a.Current"]
+                 "b.job" ["b.Old" "b.Current"]}]
     (are [stored-name expected] (= expected (mdb.quartz/current-class-name history stored-name))
       ;; every old name maps to the current one
       "a.Oldest"  "a.Current"
@@ -99,26 +99,16 @@
                  false))
              (loaded?)))))
 
-(defn- simple-name [class-name]
-  (last (str/split class-name #"\.")))
+(defn- repeated [xs]
+  (for [[x n] (frequencies xs) :when (> n 1)] x))
 
-(deftest job-class-history-test
-  (testing "no name belongs to two jobs, or twice to one"
-    (let [names (mapcat identity mdb.quartz/job-class-history)]
-      (is (= [] (for [[class-name n] (frequencies names) :when (> n 1)] class-name)))))
-  ;; only a namespace move keeps the job, so every name of one job has the same simple name, and no two jobs share one
-  (testing "each job keeps its simple name"
-    (is (= [] (remove #(apply = (map simple-name %)) mdb.quartz/job-class-history))))
-  (testing "no two jobs share a simple name"
-    (let [simple-names (map (comp simple-name peek) mdb.quartz/job-class-history)]
-      (is (= [] (for [[s n] (frequencies simple-names) :when (> n 1)] s)))))
-  (testing "jobs are listed by simple name"
-    (let [simple-names (map (comp simple-name peek) mdb.quartz/job-class-history)]
-      (is (= (sort simple-names) simple-names))))
-  (doseq [names mdb.quartz/job-class-history
+(deftest job-history-test
+  (testing "no class name belongs to two jobs, or twice to one"
+    (is (= [] (repeated (mapcat val mdb.quartz/job-history)))))
+  (doseq [[job-key class-names] mdb.quartz/job-history
           :when (or config/ee-available?
-                    (not (str/starts-with? (peek names) "metabase_enterprise.")))]
-    (testing (peek names)
+                    (not (str/starts-with? (peek class-names) "metabase_enterprise.")))]
+    (testing job-key
       (is (= {:current-exists? true, :old-names-that-exist []}
-             {:current-exists?      (class-exists? (peek names))
-              :old-names-that-exist (filterv class-exists? (pop names))})))))
+             {:current-exists?      (class-exists? (peek class-names))
+              :old-names-that-exist (filterv class-exists? (pop class-names))})))))
