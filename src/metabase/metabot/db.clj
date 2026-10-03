@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection.model]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
@@ -474,9 +475,17 @@
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-schema-rows
-  "The ID, name, schema, and Database ID of the Tables with `table-ids`."
+  "The ID, name, schema, and Database ID of the Tables with `table-ids`, permission-checkable without further queries.
+
+  `:is_published` and `:collection_id` are not surfaced to callers but must be selected: both `can-read?` and
+  `can-query?` on a `:model/Table` fall through to [[metabase.permissions.core/can-access-via-collection?]], whose EE
+  implementation reads `:is_published` and then resolves the parent collection. Omitting `:is_published` fails that
+  branch silently -- every published (Data Studio library) table reads as inaccessible -- and omitting
+  `:collection_id` makes `perms-objects-set-for-parent-collection` throw on its Malli schema, which requires the key
+  to be present even when nil."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]
+             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-curation-rows
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
@@ -780,10 +789,31 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))
 
-(mu/defn card-table-ids
-  "A map of Card ID to Table ID for `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn :table_id :model/Card :id [:in card-ids]))
+(mu/defn card-source-info
+  "A map of Card ID to `{:table_id ... :dataset_query ...}` for `card-ids`, the input to
+  [[metabase.metabot.tools.util/metric-required-source]].
+
+  SELECTs `report_card` directly instead of `:model/Card`, so the `:card_schema` read-time upgrade stays out of it.
+  Naming `:dataset_query` on the model arms the whole upgrade chain, and the upgrade to 24 recomputes a legacy
+  metric's entire dimension set from its query -- several app-db round trips per metric on a search page, for
+  columns this never reads. No upgrade rewrites `:dataset_query`, so the stored query with the model's `:out`
+  transform applied is what the model would return."
+  ;; Not `:source_card_id`: it is stage 0's source, which cannot tell a single-stage card-based metric from a
+  ;; multi-stage one.
+  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
+  (let [query-out (:out lib-be/transform-query)]
+    (into {}
+          (map (fn [{:keys [id table_id dataset_query]}]
+                 [id {:table_id table_id, :dataset_query (query-out dataset_query)}]))
+          (when (seq card-ids)
+            (t2/select [(t2/table-name :model/Card) :id :table_id :dataset_query] :id [:in card-ids])))))
+
+(mu/defn card-source-rows
+  "The Cards with `card-ids`, for use as another entity's source, read-checkable without further queries."
+  ;; `:collection_id` and `:document_id` feed `mi/can-read?`; without `:collection_id` a card in a restricted
+  ;; collection reads as readable.
+  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
+  (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in card-ids]))
 
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."

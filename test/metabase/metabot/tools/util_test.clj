@@ -8,7 +8,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.permissions.models.permissions :as perms]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel handle-agent-or-api-error-test
   (testing "an API check's refusal goes back to the agent as output"
@@ -344,3 +345,112 @@
         (catch clojure.lang.ExceptionInfo e
           (is (:agent-error? (ex-data e)))
           (is (= 404 (:status-code (ex-data e)))))))))
+
+;;; ---------------------------------------- metric sources ----------------------------------------
+
+(deftest ^:parallel metric-required-source-classifies-the-four-definition-shapes-test
+  (testing (str "The whole QP rule reduces to this classification, because only the initial stage of a query may\n"
+                "carry a source at all. So the metric's last stage carries a `:source-card` exactly when the\n"
+                "definition is single-stage and card-based -- and a multi-stage card-based metric, whose stage 0\n"
+                "names a card, must still be consumed from its BASE TABLE. That last row is the one\n"
+                "`report_card.source_card_id` cannot express, and getting it wrong is a 500.")
+    (are [expected stages] (= expected
+                              (metabot.tools.util/metric-required-source
+                               {:dataset_query {:stages stages} :table_id 5}))
+      {:kind :table, :table-id 5, :bare-table-only? false} [{:source-table 5}]
+      {:kind :card,  :card-id 42}                          [{:source-card 42}]
+      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-table 5} {}]
+      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-card 42} {}])))
+
+(deftest ^:parallel metric-required-source-unreadable-definition-test
+  (testing (str "A definition that is present but unreadable -- a blank `dataset_query`, which MBQL 4->5\n"
+                "conversion failures really do produce (`monitor-blank-dataset-query` exists to count them), or a\n"
+                "legacy one that fails to convert -- offers no source, even with a `table_id`. The QP has no\n"
+                "aggregation to splice from it on any source, so naming the base table would only move the failure\n"
+                "to execution.")
+    (are [card] (nil? (metabot.tools.util/metric-required-source card))
+      {:dataset_query {} :table_id 5}
+      ;; legacy, but unconvertible
+      {:dataset_query {:type :bogus} :table_id 5}))
+  (testing (str "`report_card.dataset_query` is NOT NULL, so a missing definition means the caller did not load it.\n"
+                "It must not be guessed into a single-stage table-based metric.")
+    (is (nil? (metabot.tools.util/metric-required-source {:table_id 5})))))
+
+(deftest ^:parallel metric-required-source-legacy-definition-test
+  (testing (str "A legacy definition is converted and classified like any other, NOT read as stageless: falling\n"
+                "back to the table for a `card__N` source would offer the base table of a card-based metric --\n"
+                "the pairing the QP rejects with `Incompatible metric`.")
+    (are [expected query] (= expected (metabot.tools.util/metric-required-source
+                                       {:dataset_query (assoc query :database 1 :type :query) :table_id 5}))
+      {:kind :table, :table-id 5, :bare-table-only? false} {:query {:source-table 5}}
+      {:kind :card, :card-id 12}                           {:query {:source-table "card__12"
+                                                                    :aggregation  [[:count]]}}
+      ;; a nested `:source-query` is two stages, so the base table is the one to use
+      {:kind :table, :table-id 5, :bare-table-only? true}  {:query {:source-query {:source-table "card__12"}
+                                                                    :aggregation  [[:count]]}})))
+
+(deftest ^:parallel metric-compatible-with-stage?-test
+  (testing "a table-based metric rides any stage resolving to its table, including a card over that table"
+    (let [required {:kind :table, :table-id 5, :bare-table-only? false}]
+      (is (true?  (metabot.tools.util/metric-compatible-with-stage? required {:stage-table-id 5})))
+      (is (true?  (metabot.tools.util/metric-compatible-with-stage?
+                   required {:stage-table-id 5 :stage-card-id 7})))
+      (is (false? (metabot.tools.util/metric-compatible-with-stage? required {:stage-table-id 9})))))
+  (testing "a multi-stage definition additionally pins it to a bare source-table: stage"
+    (let [required {:kind :table, :table-id 5, :bare-table-only? true}]
+      (is (true?  (metabot.tools.util/metric-compatible-with-stage? required {:stage-table-id 5})))
+      (is (false? (metabot.tools.util/metric-compatible-with-stage?
+                   required {:stage-table-id 5 :stage-card-id 7})))))
+  (testing "a nil table-id never matches -- a metric over a native question has no usable table source"
+    (is (false? (metabot.tools.util/metric-compatible-with-stage?
+                 {:kind :table, :table-id nil, :bare-table-only? false} {:stage-table-id nil}))))
+  (testing "an unrecognized kind fails loudly rather than answering -- the guard cannot be deleted silently"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized metric source kind"
+                          (metabot.tools.util/metric-compatible-with-stage? {:kind :bogus} {}))))
+  (testing "a card-pinned metric takes that exact card, not a sibling over the same table"
+    (let [required {:kind :card, :card-id 42}]
+      (is (true?  (metabot.tools.util/metric-compatible-with-stage? required {:stage-card-id 42})))
+      (is (false? (metabot.tools.util/metric-compatible-with-stage?
+                   required {:stage-card-id 43 :stage-table-id 5})))
+      (is (false? (metabot.tools.util/metric-compatible-with-stage? required {:stage-table-id 5}))))))
+
+(deftest metric-required-source-reads-both-card-shapes-test
+  (testing (str "The surfaces pass two shapes: a t2 row (snake_case) and a `lib.metadata/card` map, which is a\n"
+                "SnakeHatingMap that THROWS on a snake_case read. Both must classify identically.")
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id}
+                   {:name "Card metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" question-id)
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp        (lib-be/application-database-metadata-provider (mt/id))
+              t2-row    (t2/select-one :model/Card :id metric-id)
+              lib-card  (lib.metadata/card mp metric-id)]
+          (is (= {:kind :card, :card-id question-id}
+                 (metabot.tools.util/metric-required-source t2-row)))
+          (is (= {:kind :card, :card-id question-id}
+                 (metabot.tools.util/metric-required-source lib-card))
+              "and reading the lib shape does not throw a snake_case deprecation error"))))))
+
+(deftest ^:parallel metric-source-fields-test
+  (testing "exactly one group of fields, card first, `source_unavailable` when neither source is usable"
+    (are [expected input] (= expected (metabot.tools.util/metric-source-fields input))
+      {:source_card_id 7, :source_card_name "Q", :source_card_portable_entity_id "eid"}
+      {:source-card {:id 7, :name "Q", :entity_id "eid", :collection_id 3}, :database-name "Sample"}
+
+      {:base_table_id 5, :base_table_name "ORDERS", :base_table_schema "PUBLIC"
+       :base_table_portable_fk ["Sample" "PUBLIC" "ORDERS"]}
+      {:source-table {:id 5, :schema "PUBLIC", :name "ORDERS"}, :database-name "Sample"}
+
+      ;; no database name, no portable FK
+      {:base_table_id 5, :base_table_name "ORDERS", :base_table_schema "PUBLIC"}
+      {:source-table {:id 5, :schema "PUBLIC", :name "ORDERS"}}
+
+      {:source_unavailable true}
+      {:database-name "Sample"})))
