@@ -63,7 +63,7 @@
                               (keyword (str "oidc-" provider-key))
                               redirect-url
                               {:browser-id (:browser-id request)})
-      (throw (ex-info (or (:message auth-result) (tru "Failed to initiate OIDC authentication"))
+      (throw (ex-info (str (or (:message auth-result) (tru "Failed to initiate OIDC authentication")))
                       {:status-code 500})))))
 
 (defn sso-callback
@@ -92,6 +92,6 @@
                                        session
                                        (t/zoned-date-time (t/zone-id "GMT")))
           base-response))
-      (let [error-msg (or (:message login-result) (tru "OIDC authentication failed"))]
+      (let [error-msg (str (or (:message login-result) (tru "OIDC authentication failed")))]
         (log/errorf "OIDC authentication failed for provider %s: %s" provider-key error-msg)
         (throw (ex-info error-msg {:status-code 401}))))))
