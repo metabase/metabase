@@ -106,7 +106,8 @@
 
 (defsetting ee-embedding-service-api-key
   (deferred-tru (str "API key for authenticating with the embedding service. Leave empty for proxying thorugh"
-                     " ai-service. In that case premium-embedding-token is used for authentication."))
+                     " ai-service. In that case premium-embedding-token is used for authentication. When the API key is"
+                     " set through an environment variable, set the embedding service base URL through the environment too."))
   :sensitive? true
   :visibility :settings-manager
   :export?    false
