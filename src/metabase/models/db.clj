@@ -225,6 +225,14 @@
   []
   (t2/select [:model/Collection :id :entity_id :location :name]))
 
+(mu/defn data-app-resource-collections
+  "The slug and entity id of every data app with a resource collection, and the entity id of that collection. Read
+  from the tables, since the data-app model is enterprise-only."
+  []
+  (t2/query {:select [[:d.name :slug] [:d.entity_id :app_entity_id] [:c.entity_id :collection_entity_id]]
+             :from   [[:data_app :d]]
+             :join   [[:collection :c] [:= :c.id :d.resource_collection_id]]}))
+
 (mu/defn dashboard-entity-ids-and-names
   "The entity id and name of every Dashboard."
   []

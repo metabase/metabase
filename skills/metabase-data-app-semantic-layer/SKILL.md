@@ -1,6 +1,8 @@
 ---
 name: metabase-data-app-semantic-layer
 description: Use when building, creating, or editing data apps that should query Metabase tables and metrics through generated schema files like metabase.data.ts or *.metabase.data.ts.
+metadata:
+  version: development
 ---
 
 # Metabase Data App Semantic Layer
@@ -161,9 +163,9 @@ Write the YAML in the Metabase representation format. **Before writing or editin
 
 4. **A copy per metric.** Each metric a query aggregates must be copied too, since viewers can read only the app's collection. Write the metric's printed `entity` into `resources/cards/` as a card with a new entity ID and `collection_id` set to the app's collection, and reference the copy's entity ID from every question that uses the metric. One copy serves them all.
 
-5. **A copy per action, on a copy of its model.** Write the action's printed `entity` into `resources/actions/` with a new entity ID, set as the definition's `copiedActionEntityId`, and write the printed model whose entity ID is the action's `model_id` into `resources/cards/` once, however many of its actions the app uses, with a new entity ID and `collection_id` set to the app's collection. Then set each action copy's `model_id` to the model copy's entity ID.
+5. **A copy per action, on a copy of its model.** Write the action's printed `entity` into `resources/actions/` with a new entity ID, set as the definition's `copiedActionEntityId`, and `collection_id` set to the app's collection, and write the printed model whose entity ID is the action's `model_id` into `resources/cards/` once, however many of its actions the app uses, with a new entity ID and `collection_id` set to the app's collection. Then set each action copy's `model_id` to the model copy's entity ID.
 
-Write every card and copy yourself from the printed export, following the format skill, never from YAML (not the repository's exported collections or its top-level `actions/`, not another app's `resources/`, not git history), never from your own API calls, and never with a script that dumps the printed JSON as YAML. Its references are already in the form the YAML uses, so copy them as they are. A copy keeps exactly what its export prints, except what makes it a copy: a new `entity_id` (and the matching `serdes/meta` `id`, with a label from the copy's name), `collection_id` on cards, and `model_id` on actions. The print already leaves out what serialization leaves unset or at its default (`description`, `archived`, `enable_embedding`, `public_uuid`, a form field's unset settings, ...), as the format omits them: never add a key the print doesn't have, never keep one with a `null` value, and keep the printed key order.
+Write every card and copy yourself from the printed export, following the format skill, never from YAML (not the repository's exported collections or its top-level `actions/`, not another app's `resources/`, not git history), never from your own API calls, and never with a script that dumps the printed JSON as YAML. Its references are already in the form the YAML uses, so copy them as they are. A copy keeps exactly what its export prints, except what makes it a copy: a new `entity_id` (and the matching `serdes/meta` `id`, with a label from the copy's name), `collection_id`, and `model_id` on actions. The print already leaves out what serialization leaves unset or at its default (`description`, `archived`, `enable_embedding`, `public_uuid`, a form field's unset settings, ...), as the format omits them: never add a key the print doesn't have, never keep one with a `null` value, and keep the printed key order.
 
 Every card and action carries the `creator_id` the print gives; Metabase replaces it with its internal user when it loads the app.
 

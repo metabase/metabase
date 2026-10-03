@@ -56,11 +56,6 @@
     (when-not app-read-only?
       (perms/grant-collection-read-permissions! group collection))))
 
-(defn- apply-resource-permissions!
-  [group collection]
-  (data-app.permissions/reconcile-app-group-permissions! (:id group) (data-apps.db/non-router-database-ids))
-  (apply-collection-permissions! group collection))
-
 (defn- create-resource-collection! [app]
   (let [collection (data-apps.db/insert-resource-collection! {:name (resource-name app)
                                                               :location "/"})]
@@ -73,18 +68,23 @@
       (create-resource-collection! app)))
 
 (defn ensure-resources!
-  "Create or restore the server-owned permission resources for `app` and return their IDs."
-  [app]
+  "Create or restore the permission resources `app` owns and return their IDs: its permission group, and its resource
+  collection, created when the app has none unless `:create-collection?` is false. A repository import passes false:
+  the collection is the repository's, in `resources/collection.yaml`, so an app whose manifest names none has none,
+  and isn't published until it does. The collection keeps the name the file gives it."
+  [app & {:keys [create-collection?] :or {create-collection? true}}]
   (perms/with-global-permissions-lock
     (let [app        (data-apps.db/data-app (:id app))
           group      (permission-group! app)
-          collection (resource-collection! app)]
+          collection (if create-collection?
+                       (resource-collection! app)
+                       (some->> (:resource_collection_id app) (data-apps.db/resource-collection)))]
       (data-apps.db/update-permission-group! (:id group)
                                              {:name (resource-name app)})
-      (data-apps.db/update-resource-collection! (:id collection)
-                                                {:name (resource-name app)})
-      (restore-trashed-collection! collection)
-      (apply-resource-permissions! group collection)
+      (data-app.permissions/reconcile-app-group-permissions! (:id group) (data-apps.db/non-router-database-ids))
+      (when collection
+        (restore-trashed-collection! collection)
+        (apply-collection-permissions! group collection))
       {:permission_group_id    (:id group)
        :resource_collection_id (:id collection)})))
 

@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-import { USER_GROUPS } from "e2e/support/cypress_data";
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import type {
   CardId,
@@ -10,6 +10,7 @@ import type {
   CollectionPermissionsGraph,
   CreateApiKeyResponse,
   DataApp,
+  RemoteSyncTask,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -18,6 +19,7 @@ import { getIframeBody } from "./e2e-embedding-helpers";
 import {
   LOCAL_GIT_PATH,
   commitToRepo,
+  configureGit,
   configureGitAndPullChanges,
   copySyncedCollectionFixture,
   setupGitSync,
@@ -174,7 +176,7 @@ export function assertNoDataAppScopeDenials() {
     expect(
       scopeDenials,
       `data-app scope rejections:\n${scopeDenials.join("\n")}`,
-    ).to.be.empty;
+    ).to.deep.eq([]);
   });
 }
 
@@ -312,6 +314,7 @@ export const resourceCard = ({
   display: type === "metric" ? "scalar" : "table",
   entity_id: entityId,
   collection_id: collection,
+  creator_id: USERS.admin.email,
   dataset_query: {
     "lib/type": "mbql/query",
     database: table[0],
@@ -321,6 +324,33 @@ export const resourceCard = ({
   },
   visualization_settings: {},
   "serdes/meta": serdesMeta("Card", entityId, name),
+});
+
+/** A copy of an implicit action in `resources/actions/`, on the model copy `model`. */
+export const resourceImplicitAction = ({
+  entityId,
+  name,
+  kind,
+  collection,
+  model,
+}: {
+  entityId: string;
+  name: string;
+  kind: "row/create" | "row/update" | "row/delete";
+  collection: string;
+  model: string;
+}): ResourceEntity => ({
+  name,
+  type: "implicit",
+  entity_id: entityId,
+  collection_id: collection,
+  creator_id: USERS.admin.email,
+  model_id: model,
+  implicit: [{ kind }],
+  query: [],
+  parameters: [],
+  parameter_mappings: [],
+  "serdes/meta": serdesMeta("Action", entityId, name),
 });
 
 const fileName = (entity: ResourceEntity) =>
@@ -358,6 +388,28 @@ export function writeDataAppResources(
           yaml.dump(action),
         ]),
       ),
+    },
+  });
+}
+
+/** Declares one `defineAction` per action, as the generated schema names it, with the ID of its copy. */
+export function declareDataAppActions(
+  appRoot: string,
+  actions: Array<{
+    exportName: string;
+    sourceActionId: number;
+    copiedActionEntityId: string;
+  }>,
+) {
+  return cy.task("writeDataAppFiles", {
+    files: {
+      [`${appRoot}/actions/orders.action.ts`]: [
+        'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
+        ...actions.map(
+          ({ exportName, sourceActionId, copiedActionEntityId }) =>
+            `export const ${exportName} = defineAction({ copiedActionEntityId: "${copiedActionEntityId}", action: { id: ${sourceActionId}, parameters: [] } });`,
+        ),
+      ].join("\n"),
     },
   });
 }
@@ -430,14 +482,155 @@ export const copySyncedDataAppsFixture = () =>
 /**
  * Pulls `example_synced_data_apps` through a real remote-sync import, so a spec
  * gets real app rows, each with its resource collection and permission group.
- * `good` is served; `broken-bundle` fails to sync.
+ * `good` is served; `broken-bundle` fails to sync. `goodAppCards` replaces the
+ * `good` app's saved questions, so a spec decides which tables it reads.
  */
-export function pullExampleDataApps() {
+export function pullExampleDataApps({
+  goodAppCards,
+}: { goodAppCards?: ResourceEntity[] } = {}) {
   setupGitSync();
   copySyncedCollectionFixture();
   copySyncedDataAppsFixture();
+  if (goodAppCards) {
+    writeDataAppResources(`${LOCAL_GIT_PATH}/data_apps/good`, {
+      collection: resourceCollection(
+        "goodAppCollection0000",
+        "Data App: Good App",
+      ),
+      cards: goodAppCards,
+    });
+  }
   commitToRepo("Add data apps");
   configureGitAndPullChanges("read-write");
+}
+
+/** A data app whose resources loaded: it has its collection and its permission group. */
+export type SyncedDataApp = DataApp & {
+  resource_collection_id: number;
+  permission_group_id: number;
+};
+
+/** The host app's checked-in `data_app.yaml`, as serialization reads it. */
+export const DATA_APP_HOST_APP_MANIFEST = `version: 1
+name: Vite 6 Data App
+slug: vite-6-data-app-host-app
+path: ./dist/index.js
+allowed_hosts:
+  - https://allowed.data-app.test
+entity_id: qxpaPkU_WRE2ZQu0cmpqD
+serdes/meta:
+- model: DataApp
+  id: qxpaPkU_WRE2ZQu0cmpqD
+  label: vite-6-data-app-host-app
+`;
+
+const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
+  typeof app.resource_collection_id === "number" &&
+  typeof app.permission_group_id === "number";
+
+/**
+ * Writes the app's manifest and `resources/` into the sync repository as
+ * `data_apps/<slug>` and commits them, as an author does. The bundle is a
+ * placeholder, since specs serve the built one through `mockDataApp`. Pass
+ * `initializeRepo: false` to write into the repository an earlier call set up.
+ */
+function commitDataApp(
+  appRoot: string,
+  slug: string,
+  { initializeRepo = true }: { initializeRepo?: boolean } = {},
+) {
+  const appDir = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
+
+  if (initializeRepo) {
+    setupGitSync();
+    copySyncedCollectionFixture();
+  }
+  cy.task("removeDataAppPaths", { paths: [`${appDir}/resources`] });
+  cy.task("copyDirectory", {
+    source: `${appRoot}/resources`,
+    destination: `${appDir}/resources`,
+  });
+  cy.readFile(`${appRoot}/data_app.yaml`).then((manifest: string) =>
+    cy.task("writeDataAppFiles", {
+      files: {
+        [`${appDir}/data_app.yaml`]: manifest,
+        [`${appDir}/dist/index.js`]: "// served by the spec",
+      },
+    }),
+  );
+  commitToRepo(`Publish ${slug}`);
+}
+
+/**
+ * Publishes the app with a pull and yields it once its resources loaded: with
+ * its collection and its permission group. The app comes from the admin list,
+ * since `/api/apps/:slug` answers 409 for an app without a collection.
+ */
+export function publishDataApp(
+  appRoot: string,
+  slug: string,
+  options?: { initializeRepo?: boolean },
+) {
+  commitDataApp(appRoot, slug, options);
+  configureGitAndPullChanges("read-write");
+
+  return cy.request<DataApp[]>("/api/apps").then(({ body: apps }) => {
+    const app = apps.find(({ name }) => name === slug);
+
+    if (!app) {
+      throw new Error(`The pull loaded no data app named ${slug}.`);
+    }
+    if (!isSyncedDataApp(app)) {
+      throw new Error(
+        `Data app ${slug} loaded without its resource collection or group.`,
+      );
+    }
+
+    return cy.wrap(app, { log: false });
+  });
+}
+
+const IMPORT_POLL_LIMIT = 120;
+
+/** Yields the error of the import that is running or just ran, once it fails. */
+function waitForImportError(retries = 0): Cypress.Chainable<string> {
+  if (retries > IMPORT_POLL_LIMIT) {
+    throw new Error("The import did not fail in time.");
+  }
+
+  return cy
+    .request<RemoteSyncTask | null>("/api/ee/remote-sync/current-task")
+    .then(({ body }) => {
+      if (body?.sync_task_type === "import" && body.status === "errored") {
+        return cy.wrap(body.error_message ?? "", { log: false });
+      }
+
+      if (body?.sync_task_type === "import" && body.status === "successful") {
+        throw new Error(
+          "The import succeeded, but its resources should have been refused.",
+        );
+      }
+
+      cy.wait(500);
+      return waitForImportError(retries + 1);
+    });
+}
+
+/**
+ * Publishes an app whose resource files the pull is expected to refuse, and
+ * yields the pull's error. A refused file fails the whole pull, so nothing of
+ * the app loads.
+ */
+export function publishDataAppExpectingRefusal(
+  appRoot: string,
+  slug: string,
+  options?: { initializeRepo?: boolean },
+) {
+  commitDataApp(appRoot, slug, options);
+  configureGit("read-write");
+  cy.request("POST", "/api/ee/remote-sync/import", { expected_branch: "main" });
+
+  return waitForImportError();
 }
 
 /**
@@ -452,6 +645,7 @@ export function buildDataAppHostApp() {
   });
 }
 
+/** The app's own permission group — the one its viewers are given. */
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 

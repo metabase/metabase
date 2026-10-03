@@ -19,9 +19,10 @@
           (t2/insert-returning-instance! :model/DataApp {:name "sales" :display_name "sales"
                                                          :bundle_path "dist/index.js" :draft true})]
       (is (= draft-id (data-apps.apps/create-app! app-row)))
+      (is (nil? resource_collection_id) "a draft has no collection yet")
       (is (=? {:display_name           "Sales"
                :draft                  false
-               :resource_collection_id resource_collection_id}
+               :resource_collection_id pos-int?}
               (t2/select-one :model/DataApp draft-id))))))
 
 (deftest create-app-refuses-a-taken-slug-test

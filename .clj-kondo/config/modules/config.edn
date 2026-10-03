@@ -3734,11 +3734,12 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.core metabase-enterprise.data-apps.init}
    :uses #{actions
            api
            api-scope
            collections
+           driver
            events
            lib
            lib.be
@@ -3751,12 +3752,14 @@
            util
            warehouse-schema-overlay
            enterprise/serialization}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/DataPermissions
                     :model/Database
                     :model/Permissions
                     :model/PermissionsGroup
+                    :model/QueryAction
                     :model/Table
                     :model/User}
    :model-exports #{:model/DataApp}}
@@ -4195,6 +4198,7 @@
            task.history
            util
            warehouse-schema-overlay
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}

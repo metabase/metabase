@@ -107,7 +107,9 @@
 
 (t2/define-after-insert :model/DataApp
   [app]
-  (merge app (data-app.resources/ensure-resources! app)))
+  ;; The permission group is the app's own; its resource collection comes with it from the repository, or is created
+  ;; for an app made through the API (see `metabase-enterprise.data-apps.apps`).
+  (merge app (data-app.resources/ensure-resources! app {:create-collection? false})))
 
 (t2/define-before-delete :model/DataApp
   [app]
@@ -140,9 +142,12 @@
                :enabled
                ;; set by the import itself
                :draft :bundle_hash
-               ;; server-managed resources, recreated on import
-               :resource_collection_id :permission_group_id :table_ids]
+               ;; server-managed, recreated on import; the tables are recomputed from the resources after it
+               :permission_group_id :table_ids]
    :transform {:created_at   (serdes/date)
+               ;; the app's resource collection, `resources/collection.yaml` beside the manifest, which the app
+               ;; depends on and so loads after
+               :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
                :name         {:as :slug :export identity :import identity}
                :display_name {:as :name :export identity :import identity}
                :bundle_path  {:as :path :export identity :import identity}
@@ -165,6 +170,17 @@
             (data-apps.db/reducible-data-apps-with-bundles filter-column filter-ids
                                                            (serdes/extract-order-columns model-name opts))))
 
+(defmethod serdes/deserialization-dependencies "DataApp" [{:keys [collection resource_collection_id]}]
+  ;; The resource collection the manifest names loads first, so the app links to it as it lands. A manifest names it
+  ;; as `collection`; serialization's own checks ask by the column.
+  (when-let [collection-entity-id (or collection resource_collection_id)]
+    [[{:model "Collection" :id collection-entity-id}]]))
+
+(defmethod serdes/descendants "DataApp" [_model-name id _opts]
+  ;; An app's resource collection, and through it the copies it holds, travel with the app.
+  (when-let [collection-id (data-apps.db/resource-collection-id id)]
+    {["Collection" collection-id] {"DataApp" id}}))
+
 (defmethod serdes/storage-path "DataApp" [app _ctx]
   [{:label data-app.config/apps-dir}
    {:label (:slug app) :key (:entity_id app) :style :slug}
@@ -175,11 +191,15 @@
 
 (defmethod serdes/load-one! "DataApp"
   [ingested maybe-local]
-  (let [local (or maybe-local (data-apps.db/draft-by-slug (:slug ingested)))
-        app   (serdes/default-load-one! ingested local)]
+  (let [local    (or maybe-local (data-apps.db/draft-by-slug (:slug ingested)))
+        app      (serdes/default-load-one! ingested local)
+        previous (:resource_collection_id local)]
     (data-apps.db/update-data-app! (:id app) {:draft false})
-    (when local
-      (data-app.resources/ensure-resources! app))
+    ;; The collection is the manifest's, loaded before the app; none means the app isn't published yet.
+    (data-app.resources/ensure-resources! app {:create-collection? false})
+    ;; A manifest naming a new collection leaves the previous one owned by nothing: delete it with its copies.
+    (when (and previous (not= previous (:resource_collection_id app)))
+      (data-apps.db/delete-resource-collection! previous))
     app))
 
 (defenterprise data-app-group-ids
