@@ -14,6 +14,7 @@
    [metabase.api.common :as api]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
+   [metabase.exec-log.core :as exec-log]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
@@ -89,6 +90,14 @@
                             analytics.core/include-sdk-info
                             add-running-time
                             (cond-> json-query (assoc :json_query json-query)))]
+    ;; Emit to the execution-log stream here, not from the batch worker: `execution-info'` has just been enriched with
+    ;; the SDK and PII fields, and the PII setting must be read on this thread for the same reason
+    ;; `include-sdk-info` runs here. Never throws, and runs before the queue handoff so a sink failure cannot touch
+    ;; the QueryExecution insert.
+    (exec-log/record-query-execution!
+     execution-info'
+     {:pii?        (analytics.settings/analytics-pii-retention-enabled)
+      :instance-id (analytics.settings/analytics-uuid)})
     (if qp.util/*execute-async?*
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
