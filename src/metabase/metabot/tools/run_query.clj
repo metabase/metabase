@@ -134,6 +134,11 @@
                        node)))]
     (boolean (sql? query))))
 
+(defn- raw-database-id
+  "The database id of `query` as state holds it, under any key spelling [[native-query?]] reads."
+  [query]
+  (some (fn [[k v]] (when (= "database" (token k)) v)) query))
+
 (defn- check-sql-runnable!
   "Refuse a SQL query unless Metabot may run SQL for the current user ([[scope/sql-execution-allowed?]]) and the user
    may run SQL against `database-id`. The same gates as MCP's `execute_sql`, in the same order, so with SQL execution
@@ -160,13 +165,13 @@
   [query-id query]
   (let [native? (native-query? query)]
     (when native?
-      (check-sql-runnable! query-id (:database query)))
+      (check-sql-runnable! query-id (raw-database-id query)))
     (let [normalized (lib-be/normalize-query query)]
       ;; Normalizing recovers to an empty map from any failure, a missing database or a malformed query alike.
       ;; Only a database the user can read gets the distinct message, so a missing and an unreadable one still
       ;; read the same.
       (when (empty? normalized)
-        (throw (if (readable-database? (:database query))
+        (throw (if (readable-database? (raw-database-id query))
                  (ex-info (str "Query " query-id " could not be read. " notebook-query-hint) {:agent-error? true})
                  (database-not-found query-id))))
       ;; Normalizing can surface a native stage under a spelling [[native-query?]] does not follow.

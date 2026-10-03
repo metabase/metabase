@@ -319,3 +319,13 @@
           (testing (str shape " on database " db-id)
             (is (= {:output sql-refused-output}
                    (run-tool! {"q1" (assoc query :database db-id)} {:query_id "q1"})))))))))
+
+(deftest run-query-string-keyed-sql-test
+  (testing "with SQL execution on, a string-keyed SQL query reads its database and runs"
+    (doseq [database-key ["database" "DATABASE"]]
+      (testing database-key
+        (is (=? {:structured-output {:returned 1}}
+                (run-sql-tool! {"q1" {database-key (mt/id)
+                                      "type"       "native"
+                                      "native"     {"query" "SELECT 1 AS N"}}}
+                               {:query_id "q1"})))))))
