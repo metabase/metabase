@@ -1,14 +1,11 @@
 (ns metabase.task.core
   (:require
-   [metabase.app-db.quartz]
    [metabase.task.impl]
    [potemkin :as p]))
 
 (comment metabase.task.impl/keep-me)
 
 (p/import-vars
- [metabase.app-db.quartz
-  register-renamed-job-class!]
  [metabase.task.impl
   add-job!
   add-job-listener!
