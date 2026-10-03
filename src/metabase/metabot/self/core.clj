@@ -200,32 +200,21 @@
    [:type    :string]
    [:display {:optional true} [:maybe :string]]])
 
-(def ^:private JSONSchemaLeaf
-  "A leaf JSON Schema node: no `:properties` of its own, one further leaf level of `:items` for
-  an array-typed leaf."
-  [:map {:closed true}
-   [:type        {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:items       {:optional true} [:map {:closed true}
-                                   [:type        {:optional true} [:maybe :string]]
-                                   [:description {:optional true} [:maybe :string]]]]
-   [:minimum     {:optional true} number?]
-   [:maximum     {:optional true} number?]])
-
-(def ^:private JSONSchemaProperties
-  "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
-  string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
-   [:or :string :keyword] JSONSchemaLeaf])
-
-(def ^:private JSONSchemaNode
-  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
-  `:properties` keys are the field names the schema itself declares, not ours to enumerate."
+(mr/def ::json-schema-node
+  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema. Nodes nest through
+  `:properties` and `:items`. `:properties` keys are the field names the schema itself declares, not ours to
+  enumerate: string keys off the wire, keyword keys when built in Clojure."
   [:map {:closed true}
    [:type                 {:optional true} [:maybe :string]]
-   [:properties           {:optional true} JSONSchemaProperties]
+   [:description          {:optional true} [:maybe :string]]
+   [:enum                 {:optional true} [:sequential ms/JSONSchemaLiteral]]
+   [:items                {:optional true} [:ref ::json-schema-node]]
+   [:properties           {:optional true} [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
+                                            [:or :string :keyword] [:ref ::json-schema-node]]]
    [:required             {:optional true} [:vector :string]]
-   [:additionalProperties {:optional true} :boolean]])
+   [:additionalProperties {:optional true} :boolean]
+   [:minimum              {:optional true} number?]
+   [:maximum              {:optional true} number?]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -265,7 +254,7 @@
    [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
-   [:schema           {:optional true} [:maybe JSONSchemaNode]]
+   [:schema           {:optional true} [:maybe ::json-schema-node]]
    [:credentials      {:optional true} [:maybe LLMCredentials]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
