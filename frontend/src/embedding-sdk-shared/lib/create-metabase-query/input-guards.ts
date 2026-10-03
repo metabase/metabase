@@ -17,6 +17,7 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   source: TableSchema;
   limit?: number;
   enabled?: boolean;
+  savedQuestionEntityId?: string;
 };
 
 /**
