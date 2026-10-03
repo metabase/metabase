@@ -1,21 +1,6 @@
 .dropdown {
-  /** Safari has a bug where parent elements with overflow: auto
-   *  will clip elements that are positioned with fixed/absolute
-   *  whenever the parent element is overflowing (ie. has scrollbars).
-   *
-   *  See https://bugs.webkit.org/show_bug.cgi?id=160953
-   *
-   *  This causes popovers rendered by children of this popover to be
-   *  clipped.
-   *
-   *  This workaround solves the issue by moving the overflow
-   *  onto a child element instead.
-   */
   overflow: visible;
-  /* Reset box-sizing to content-box so when .dropdownContent inherits max-height, it
-    won't include border. Otherwise, it will make .dropdownContent overflow .dropdown
-    by 2px.
-  */
+  /* content-box so the inherited max-height does not include the border */
   box-sizing: content-box;
 }
 

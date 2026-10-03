@@ -1,3 +1,4 @@
+import { rem } from "@mantine/core";
 import {
   Calendar,
   CalendarHeader,
@@ -20,7 +21,7 @@ export const calendarOverrides = {
        * navigating between months, and the "next" & "previous" buttons will shift their positions (metabase#39487).
        * This value should be the same as the default height of the calendar when 6 day rows are displayed.
        */
-      mih: 314,
+      mih: rem(290),
     },
   }),
   Day: Day.extend({
