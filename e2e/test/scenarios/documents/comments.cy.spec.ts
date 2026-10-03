@@ -28,20 +28,25 @@ describe("document comments", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.resetSnowplow();
   });
 
   it("allows to comment on every type of node", () => {
+    cy.intercept("GET", "/api/comment?*").as("comments");
     createAndVisitLoremIpsumDocument();
+    cy.wait("@comments");
 
     cy.log("does not need schema adjustments by default");
+    H.getHeading1().should("be.visible");
     cy.findByRole("button", { name: "Save" }).should("not.exist");
 
     cy.log("does not have any comments by default");
-    cy.findByRole("link", { name: "All comments" }).should("not.exist");
+    cy.findByRole("link", { name: "Show all comments" }).should("not.exist");
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
       testCommentingOnNode(documentId, HEADING_1_ID, H.getHeading1);
+      cy.findByRole("link", { name: "Show all comments" })
+        .scrollIntoView()
+        .should("be.visible");
       testCommentingOnNode(documentId, HEADING_2_ID, H.getHeading2);
       testCommentingOnNode(documentId, HEADING_3_ID, H.getHeading3);
       testCommentingOnNode(documentId, PARAGRAPH_ID, H.getParagraph);
@@ -174,8 +179,22 @@ describe("document comments", () => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
           "be.visible",
         );
+        Comments.getNewThreadInput().click();
+        cy.realType("World");
+        cy.realPress([META_KEY, "Enter"]);
+        Comments.getCommentByText("World").should("be.visible");
         cy.findByText("Hello").should("not.exist");
       });
+
+      Comments.closeSidebar();
+      Comments.getSidebar().should("not.exist");
+      Comments.getDocumentNodeButtons()
+        .filter(":visible")
+        .should("have.length", 2)
+        .and(($buttons) => {
+          expect($buttons.eq(0)).to.have.text("1");
+          expect($buttons.eq(1)).to.have.text("1");
+        });
     });
   });
 
@@ -217,6 +236,7 @@ describe("document comments", () => {
     cy.findByRole("textbox", { name: "Document Title" })
       .should("be.visible")
       .and("have.value", "Lorem ipsum");
+    H.getParagraph().should("be.visible");
     cy.findByRole("button", { name: "Save" }).should("not.exist");
   });
 
@@ -500,6 +520,8 @@ describe("document comments", () => {
       .should("be.visible")
       .and("have.value", "Lorem ipsum");
 
+    cy.findByRole("link", { name: "Show all comments" }).should("be.visible");
+
     cy.get<DocumentId>("@documentId").then((targetId) => {
       cy.findByPlaceholderText("New document").realClick();
       Comments.getDocumentNodeButton({
@@ -513,7 +535,9 @@ describe("document comments", () => {
     createLoremIpsumDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
-      cy.log("resolved 3-comments thread");
+      cy.log(
+        "a thread with comments from two users, and a comment on another node",
+      );
 
       createComment(documentId, HEADING_1_ID, "Test X");
 
@@ -558,6 +582,7 @@ describe("document comments", () => {
       });
 
       cy.log("does not allow to edit or delete other people's comments");
+      H.popover().findByText("Copy link").should("be.visible");
       H.popover().findByText(/edit/i).should("not.exist");
       H.popover()
         .findByText(/delete|remove/i)
@@ -582,7 +607,7 @@ describe("document comments", () => {
     });
   });
 
-  it("allows editing the document when comments are open", () => {
+  it("allows editing the document with comments open, and opening comments with unsaved changes", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -601,65 +626,47 @@ describe("document comments", () => {
         cy.findByRole("button", { name: "Save" }).should("exist");
 
         H.documentContent()
-          .get('[contenteditable="true"]')
+          .find('[contenteditable="true"]')
           .should("be.visible");
         H.documentFormattingMenu().should("not.exist");
       });
-    });
-  });
 
-  it("allows opening comments when document has changes", () => {
-    create1ParagraphDocument();
+      Comments.getNewThreadInput().click();
+      Comments.getNewThreadInput().find(".ProseMirror-focused").should("exist");
+      cy.realType("Test comment");
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getCommentByText("Test comment").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).should("be.visible");
+      H.getParagraph("Lorem ipsum dolor sit amet.test").should("be.visible");
 
-    cy.get<DocumentId>("@documentId").then((documentId) => {
-      createParagraphComment(documentId, "Test");
-      H.visitDocument("@documentId");
-      cy.findByRole("textbox", { name: "Document Title" })
-        .should("be.visible")
-        .and("have.value", "Lorem ipsum");
+      cy.log("allows opening comments when document has changes");
+      Comments.closeSidebar();
+      Comments.getSidebar().should("not.exist");
+      cy.findByRole("button", { name: "Save" }).should("be.visible");
 
-      H.getParagraph().realHover();
+      H.getParagraph("Lorem ipsum dolor sit amet.test").realHover();
       Comments.getDocumentNodeButton({
         targetId: documentId,
         childTargetId: PARAGRAPH_ID,
         hasComments: true,
       })
         .should("be.visible")
-        .and("not.be.disabled");
-
-      H.documentContent().click();
-      cy.realType("xyz");
-
-      H.getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
-
-      cy.findByLabelText("Comments").should("not.be.disabled").click();
+        .and("contain.text", "1")
+        .click();
       Comments.getSidebar().should("be.visible");
+      cy.findByRole("button", { name: "Save" }).should("be.visible");
 
-      cy.findByLabelText("Show all comments").should("not.be.disabled").click();
-      Comments.getSidebar().should("be.visible");
+      Comments.openAllComments();
+      Comments.getCommentByText("Test comment").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).should("be.visible");
     });
   });
 
   describe("comment editor", () => {
-    it("supports basic formatting with markdown", () => {
+    it("supports formatting via keyboard shortcuts, markdown, and the formatting menu, and emojis", () => {
       startNewCommentIn1ParagraphDocument();
 
-      cy.realType("**bold** *italic* ~~strike~~ `code`");
-      cy.realPress([META_KEY, "Enter"]);
-
-      Comments.getCommentInputs()
-        .first()
-        .within(() => {
-          cy.get("strong").should("have.text", "bold");
-          cy.get("em").should("have.text", "italic");
-          cy.get("s").should("have.text", "strike");
-          cy.get("code").should("have.text", "code");
-        });
-    });
-
-    it("supports basic formatting with keyboard shortcuts", () => {
-      startNewCommentIn1ParagraphDocument();
-
+      cy.log("supports basic formatting with keyboard shortcuts");
       cy.realType("bold italic strike code");
 
       selectCharactersLeft("code".length);
@@ -682,19 +689,33 @@ describe("document comments", () => {
 
       cy.findByRole("button", { name: "Send" }).click();
 
-      Comments.getCommentInputs()
-        .first()
+      Comments.getAllComments()
+        .should("have.length", 1)
+        .eq(0)
         .within(() => {
           cy.get("strong").should("have.text", "bold");
           cy.get("em").should("have.text", "italic");
           cy.get("s").should("have.text", "strike");
           cy.get("code").should("have.text", "code");
         });
-    });
 
-    it("supports basic formatting with formatting menu", () => {
-      startNewCommentIn1ParagraphDocument();
+      cy.log("supports basic formatting with markdown");
+      Comments.getNewThreadInput().click();
+      cy.realType("**bold** *italic* ~~strike~~ `code`");
+      cy.realPress([META_KEY, "Enter"]);
 
+      Comments.getAllComments()
+        .should("have.length", 2)
+        .eq(1)
+        .within(() => {
+          cy.get("strong").should("have.text", "bold");
+          cy.get("em").should("have.text", "italic");
+          cy.get("s").should("have.text", "strike");
+          cy.get("code").should("have.text", "code");
+        });
+
+      cy.log("supports basic formatting with formatting menu");
+      Comments.getNewThreadInput().click();
       cy.realType("bold italic strike code");
 
       selectCharactersLeft("code".length);
@@ -729,17 +750,73 @@ describe("document comments", () => {
 
       cy.realPress([META_KEY, "Enter"]);
 
-      Comments.getCommentInputs()
-        .first()
+      Comments.getAllComments()
+        .should("have.length", 3)
+        .eq(2)
         .within(() => {
           cy.get("strong").should("have.text", "bold");
           cy.get("em").should("have.text", "italic");
           cy.get("s").should("have.text", "strike");
           cy.get("code").should("have.text", "code");
         });
+
+      cy.log("supports emojis");
+      Comments.getNewThreadInput().click();
+      cy.realType(":s");
+      Comments.getEmojiPicker()
+        .should("be.visible")
+        .and("contain.text", "😄")
+        .and("contain.text", "💦");
+
+      cy.log("can filter emojis");
+      cy.realType("mile");
+      Comments.getEmojiPicker()
+        .should("be.visible")
+        .and("contain.text", "😄")
+        .and("not.contain.text", "💦");
+
+      cy.log("can use arrow keys for navigation within the emoji picker");
+      cy.realPress("ArrowDown");
+      cy.realPress("ArrowRight");
+      cy.realPress("Enter");
+
+      Comments.getEmojiPicker().should("not.exist");
+
+      cy.log("can submit first suggestion with Enter");
+      cy.realType(":eggplant{enter}");
+
+      cy.log("closes suggestion dialog but not the comments modal on Esc");
+      cy.realType(":eg");
+      Comments.getEmojiPicker().should("be.visible");
+      cy.realPress("Escape");
+      Comments.getEmojiPicker().should("not.exist");
+      Comments.getSidebar().should("be.visible");
+
+      cy.log("can use mouse to select emoji");
+      cy.realType("{backspace}{backspace}{backspace}:egg");
+      Comments.getEmojiPicker().findByText("🥚").click();
+
+      Comments.getSidebar().within(() => {
+        Comments.getNewThreadInput()
+          .should("contain.text", "😊")
+          .and("contain.text", "🍆")
+          .and("contain.text", "🥚");
+
+        cy.realPress([META_KEY, "Enter"]);
+      });
+
+      Comments.getAllComments()
+        .should("have.length", 4)
+        .eq(3)
+        .within(() => {
+          cy.contains("😊").should("be.visible");
+          cy.contains("🍆").should("be.visible");
+          cy.contains("🥚").should("be.visible");
+        });
     });
 
-    it("supports mentions and can mention yourself", () => {
+    it("supports mentions, including yourself and users without first and last names", () => {
+      cy.request("post", "/api/user", { email: "no-name@metabase.test" });
       cy.intercept({
         method: "GET",
         pathname: "/api/search",
@@ -776,7 +853,7 @@ describe("document comments", () => {
       cy.realPress("Enter");
       H.documentMentionDialog().should("not.exist");
 
-      cy.log("closes suggestion dialog but not the comments modal on Esc");
+      cy.log("closes mention dialog but not the comments modal on Esc");
       cy.realType(" @no");
       H.documentMentionDialog().should("be.visible");
       cy.realPress("Escape");
@@ -795,66 +872,32 @@ describe("document comments", () => {
           .should("be.visible");
 
         cy.realPress([META_KEY, "Enter"]);
-
-        cy.findByText("a few seconds ago").should("be.visible");
-        cy.findByText("@Bobby Tables").should("be.visible");
-        cy.findByText("@None Tableton").should("be.visible");
       });
-    });
 
-    it("supports emojis", () => {
-      startNewCommentIn1ParagraphDocument();
+      Comments.getAllComments()
+        .should("have.length", 1)
+        .eq(0)
+        .within(() => {
+          cy.findByText("a few seconds ago").should("be.visible");
+          cy.findByText("@Bobby Tables").should("be.visible");
+          cy.findByText("@None Tableton").should("be.visible");
+        });
 
-      cy.realType(":s");
-      Comments.getEmojiPicker()
-        .should("be.visible")
-        .and("contain.text", "😄")
-        .and("contain.text", "💦");
+      cy.log("handles mentioning users without first and last names");
+      Comments.getNewThreadInput().type("@No");
+      Comments.getMentionDialog().findByText("no-name@metabase.test").click();
+      Comments.getNewThreadInput().type("needs to see this");
+      cy.realPress([META_KEY, "Enter"]);
 
-      cy.log("can filter emojis");
-      cy.realType("mile");
-      Comments.getEmojiPicker()
-        .should("be.visible")
-        .and("contain.text", "😄")
-        .and("not.contain.text", "💦");
-
-      cy.log("can use arrow keys for navigation within the emoji picker");
-      cy.realPress("ArrowDown");
-      cy.realPress("ArrowRight");
-      cy.realPress("Enter");
-
-      Comments.getEmojiPicker().should("not.exist");
-
-      cy.log("can submit first suggestion with Enter");
-      cy.realType(":eggplant{enter}");
-
-      cy.log("closes suggestion dialog but not the comments modal on Esc");
-      cy.realType(":eg");
-      cy.realPress("Escape");
-      Comments.getEmojiPicker().should("not.exist");
-      Comments.getSidebar().should("be.visible");
-
-      cy.log("can use mouse to select emoji");
-      cy.realType("{backspace}{backspace}{backspace}:egg");
-      Comments.getEmojiPicker().findByText("🥚").click();
-
-      Comments.getSidebar().within(() => {
-        Comments.getNewThreadInput()
-          .should("contain.text", "😊")
-          .and("contain.text", "🍆")
-          .and("contain.text", "🥚");
-
-        cy.realPress([META_KEY, "Enter"]);
-
-        cy.contains("😊").should("be.visible");
-        cy.contains("🍆").should("be.visible");
-        cy.contains("🥚").should("be.visible");
-      });
+      Comments.getAllComments().should("have.length", 2);
+      // mention is it's own span, so we need to search for the pieces individually
+      Comments.getCommentByText("@no-name@metabase.test").should("exist");
+      Comments.getCommentByText("needs to see this").should("exist");
     });
   });
 
   describe("resolve / unresolve", () => {
-    it("should resolve / unresolve basic discussion", () => {
+    it("should resolve and unresolve a discussion, show the resolved tab only when needed, and block replies to resolved threads", () => {
       startNewCommentIn1ParagraphDocument();
 
       const commentText = "Test resolving";
@@ -862,49 +905,22 @@ describe("document comments", () => {
       cy.realType(commentText);
       cy.realPress([META_KEY, "Enter"]);
 
+      cy.log("does not show resolved tab when there are no resolved comments");
+      Comments.getCommentByText(commentText).should("be.visible");
+      cy.findByTestId("comments-resolved-tab").should("not.exist");
+
       Comments.resolveCommentByText(commentText);
 
-      cy.findByTestId("discussion").should("not.exist");
+      Comments.getSidebar().findByText(commentText).should("not.exist");
       cy.findByTestId("comments-resolved-tab").should("be.visible");
       cy.findByTestId("comments-resolved-tab")
         .should("contain.text", "Resolved (1)")
         .click();
 
+      cy.log("does not allow replies for resolved threads");
+      Comments.getCommentInputs().should("have.length", 1); // only the comment content
+
       Comments.reopenCommentByText(commentText);
-
-      cy.findByTestId("comments-resolved-tab").should("not.exist");
-    });
-
-    it("only first comment in a thread can be resolved", () => {
-      startNewCommentIn1ParagraphDocument();
-
-      cy.realType("Main comment");
-      cy.realPress([META_KEY, "Enter"]);
-
-      Comments.getCommentInputs().should("have.length", 2).last().click();
-      cy.realType("Reply 1");
-      cy.realPress([META_KEY, "Enter"]);
-
-      Comments.getCommentByText("Reply 1")
-        .realHover()
-        .within(() => {
-          cy.findByTestId("comment-action-panel").should("be.visible");
-          cy.findByTestId("comment-action-panel-resolve").should("not.exist");
-        });
-
-      Comments.getCommentByText("Main comment")
-        .realHover()
-        .within(() => {
-          cy.findByTestId("comment-action-panel").should("be.visible");
-          cy.findByTestId("comment-action-panel-resolve").should("be.visible");
-        });
-    });
-
-    it("does not show resolved tab when there are no resolved comments", () => {
-      startNewCommentIn1ParagraphDocument();
-
-      cy.realType("Main comment");
-      cy.realPress([META_KEY, "Enter"]);
 
       cy.findByTestId("comments-resolved-tab").should("not.exist");
     });
@@ -926,7 +942,7 @@ describe("document comments", () => {
       Comments.getCommentByText("Reply 1").should("be.visible");
     });
 
-    it("should be possible to resolve and unresolve a thread when the first comment is deleted", () => {
+    it("allows resolving only via the first comment, and resolving and unresolving a thread whose first comment is deleted", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("Main comment");
@@ -935,6 +951,23 @@ describe("document comments", () => {
       Comments.getCommentInputs().should("have.length", 2).last().click();
       cy.realType("Reply 1");
       cy.realPress([META_KEY, "Enter"]);
+
+      cy.log("only first comment in a thread can be resolved");
+      Comments.getCommentByText("Reply 1")
+        .realHover()
+        .within(() => {
+          cy.findByTestId("comment-action-panel").should("be.visible");
+          cy.findByTestId("comment-action-panel-resolve").should("not.exist");
+        });
+
+      Comments.getCommentByText("Main comment")
+        .realHover()
+        .within(() => {
+          cy.findByTestId("comment-action-panel").should("be.visible");
+          cy.findByTestId("comment-action-panel-resolve").should("be.visible");
+        });
+
+      cy.log("resolving a thread when the first comment is deleted");
 
       Comments.getCommentByText("Main comment")
         .realHover()
@@ -987,18 +1020,6 @@ describe("document comments", () => {
       cy.findByTestId("comments-resolved-tab").should("be.visible");
       cy.findByTestId("discussion-comment").should("not.exist");
     });
-
-    it("should not allow replies for resolved threads", () => {
-      startNewCommentIn1ParagraphDocument();
-
-      cy.realType("Main comment");
-      cy.realPress([META_KEY, "Enter"]);
-
-      Comments.resolveCommentByText("Main comment");
-      cy.findByTestId("comments-resolved-tab").should("be.visible").click();
-
-      Comments.getCommentInputs().should("have.length", 1); // only the comment content
-    });
   });
 
   describe("links", () => {
@@ -1019,7 +1040,7 @@ describe("document comments", () => {
       });
     });
 
-    it("copies and opens a link to a comment", () => {
+    it("copies and opens a comment link, switching between open and resolved tabs as its thread is resolved and unresolved", () => {
       H.visitDocument("@documentId");
 
       cy.get<number>("@documentId").then((documentId) => {
@@ -1055,13 +1076,10 @@ describe("document comments", () => {
         "aria-current",
         "location",
       );
-    });
 
-    it("opens a comment link in its thread vs. 'All comments'", () => {
-      cy.get<number>("@headingCommentId").then((commentId) => {
-        H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
-      });
-
+      cy.log("opens a comment link in its thread vs. 'All comments'");
+      // Visiting the copied link only changes the hash, so reload to open it cold
+      cy.reload();
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "All comments" }).should("not.exist");
         cy.findByRole("heading", { name: "Comments about this" }).should(
@@ -1074,6 +1092,23 @@ describe("document comments", () => {
           "location",
         );
       });
+
+      cy.log(
+        "changes between open/resolved tabs when resolving/unresolving a linked comment",
+      );
+      Comments.getSidebar()
+        .findByTestId("comments-resolved-tab")
+        .should("not.exist");
+      Comments.resolveCommentByText("Foo");
+
+      Comments.getSidebar()
+        .findByTestId("comments-resolved-tab")
+        .should("be.visible");
+
+      Comments.reopenCommentByText("Foo");
+      Comments.getSidebar()
+        .findByTestId("comments-resolved-tab")
+        .should("not.exist");
     });
 
     it("opens a link to a resolved comment correctly", () => {
@@ -1094,30 +1129,10 @@ describe("document comments", () => {
         );
       });
     });
-
-    it("changes between open/resolved tabs when resolving/unresolving a linked comment", () => {
-      cy.get<number>("@headingCommentId").then((commentId) => {
-        H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
-      });
-
-      Comments.getSidebar()
-        .findByTestId("comments-resolved-tab")
-        .should("not.exist");
-      Comments.resolveCommentByText("Foo");
-
-      Comments.getSidebar()
-        .findByTestId("comments-resolved-tab")
-        .should("be.visible");
-
-      Comments.reopenCommentByText("Foo");
-      Comments.getSidebar()
-        .findByTestId("comments-resolved-tab")
-        .should("not.exist");
-    });
   });
 
   describe("all comments sidebar", () => {
-    it("should all threads new to old", () => {
+    it("should show all threads newest first and not allow creating new threads", () => {
       startNewCommentIn1ParagraphDocument();
       cy.realType("thread 1");
       cy.realPress([META_KEY, "Enter"]);
@@ -1133,40 +1148,43 @@ describe("document comments", () => {
         expect(comments.eq(0)).to.contain.text("thread 2");
         expect(comments.eq(1)).to.contain.text("thread 1");
       });
-    });
 
-    it("does not allow to create new threads", () => {
-      startNewCommentIn1ParagraphDocument();
-      cy.realType("thread 1");
-      cy.realPress([META_KEY, "Enter"]);
-
-      Comments.openAllComments();
-
+      cy.log("does not allow to create new threads");
       Comments.getNewThreadInput().should("not.exist");
     });
 
-    it("should render placeholder when no comments", () => {
+    it("should render a placeholder when there are no comments and when all comments are resolved", () => {
       create1ParagraphDocument();
-      H.visitDocument("@documentId");
+      H.visitDocumentComment("@documentId", "all");
 
-      cy.location().then((loc) => {
-        cy.visit(`${loc.pathname}/comments/all`);
+      Comments.getSidebar()
+        .should("contain", "All comments")
+        .should("contain", "No comments");
 
-        Comments.getSidebar()
-          .should("contain", "All comments")
-          .should("contain", "No comments");
+      cy.log("no open comments, but resolved");
+      Comments.closeSidebar();
+      Comments.getSidebar().should("not.exist");
+
+      H.getParagraph().realHover();
+      cy.get<DocumentId>("@documentId").then((targetId) => {
+        Comments.getDocumentNodeButton({
+          targetId,
+          childTargetId: PARAGRAPH_ID,
+        })
+          .should("be.visible")
+          .click();
       });
-    });
 
-    it("should render placeholder when no open comments, but resolved", () => {
-      create1ParagraphDocument();
-      cy.get<DocumentId>("@documentId").then((documentId) => {
-        createParagraphComment(documentId, "Test 1");
+      Comments.getSidebar().within(() => {
+        cy.findByRole("heading", { name: "Comments about this" }).should(
+          "be.visible",
+        );
+        Comments.getNewThreadInput().click();
       });
+      cy.realType("Test 1");
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getCommentByText("Test 1").should("be.visible");
 
-      H.visitDocument("@documentId");
-
-      Comments.getDocumentNodeButtons().eq(0).click();
       Comments.resolveCommentByText("Test 1");
       Comments.openAllComments();
 
@@ -1177,7 +1195,7 @@ describe("document comments", () => {
   });
 
   describe("comment reactions", () => {
-    it("should allow to add multiple reactions to a comment", () => {
+    it("should allow adding multiple reactions to a comment and removing own reactions", () => {
       create1ParagraphDocument();
       cy.get<DocumentId>("@documentId").then((documentId) => {
         createParagraphComment(documentId, "Test 1");
@@ -1192,20 +1210,8 @@ describe("document comments", () => {
           cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
           cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}1`);
         });
-      });
-    });
 
-    it("should allow to remove own reactions from a comment", () => {
-      create1ParagraphDocument();
-      cy.get<DocumentId>("@documentId").then((documentId) => {
-        createParagraphComment(documentId, "Test 1");
-      });
-
-      H.visitDocumentComment("@documentId", PARAGRAPH_ID);
-
-      Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
-      Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
-      Comments.getSidebar().within(() => {
+        cy.log("removes own reactions");
         cy.findByTestId("discussion-reactions").within(() => {
           cy.findByText(`${FIRST_REACTION_EMOJI}`).should("exist");
           cy.findByText(`${FIRST_REACTION_EMOJI}`).click();
@@ -1275,6 +1281,11 @@ describe("document comments", () => {
       H.visitDocumentComment("@documentId", PARAGRAPH_ID);
 
       Comments.getSidebar().within(() => {
+        Comments.getCommentByText("Test II").realHover();
+        Comments.getCommentByText("Test II")
+          .findByRole("button", { name: "Add reaction" })
+          .should("be.visible");
+
         cy.findByTestId("discussion-comment-deleted")
           .realHover()
           .within(() => {
@@ -1288,148 +1299,151 @@ describe("document comments", () => {
   });
 
   describe("top level blocks", () => {
-    describe("with markdown", () => {
-      it("should support blockquotes", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.log("verify blockquote is rendered during typing");
-        cy.realType("> blockquote");
-        H.getBlockquote("blockquote", Comments.getSidebar()).should(
-          "be.visible",
-        );
-
-        cy.log("verify blockquote is rendered after submitting");
-        cy.realPress([META_KEY, "Enter"]);
-        H.getBlockquote("blockquote", Comments.getSidebar()).should(
-          "be.visible",
-        );
-      });
-
-      it("should support ordered lists", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.realType("1. one");
-        cy.realPress("Enter");
-        cy.realType("two");
-        cy.log("verify ordered list is rendered during typing");
-        H.getOrderedList("one", Comments.getSidebar()).should("be.visible");
-        H.getOrderedList("two", Comments.getSidebar()).should("be.visible");
-
-        cy.log("verify ordered list is rendered after submitting");
-        cy.realPress([META_KEY, "Enter"]);
-
-        H.getOrderedList("one", Comments.getSidebar()).should("be.visible");
-        H.getOrderedList("two", Comments.getSidebar()).should("be.visible");
-      });
-
-      it("should support unordered lists", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.realType("- a");
-        cy.realPress("Enter");
-        cy.realType("b");
-        cy.log("verify bullet list is rendered during typing");
-        H.getBulletList("a", Comments.getSidebar()).should("be.visible");
-        H.getBulletList("b", Comments.getSidebar()).should("be.visible");
-
-        cy.log("verify bullet list is rendered after submitting");
-        cy.realPress([META_KEY, "Enter"]);
-
-        H.getBulletList("a", Comments.getSidebar()).should("be.visible");
-        H.getBulletList("b", Comments.getSidebar()).should("be.visible");
-      });
-
-      it("should support code blocks", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.realType("```");
-        cy.realPress("Enter");
-        cy.log("verify code block is rendered during typing");
-        cy.realType("code");
-        H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
-
-        cy.log("verify code block is rendered after submitting");
-        cy.realPress([META_KEY, "Enter"]);
-
-        H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
-      });
-    });
-
-    describe("with shortcuts", () => {
-      it("should support ordered list", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.realType("ol");
-        cy.realPress([META_KEY, "Shift", "7"]);
-
-        H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");
-      });
-
-      it("should support bullet list", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.realType("ul");
-        cy.realPress([META_KEY, "Shift", "8"]);
-
-        H.getBulletList("ul", Comments.getSidebar()).should("be.visible");
-      });
-
-      it("should support code block", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.realType("code");
-        cy.realPress([META_KEY, "Alt", "c"]);
-
-        H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
-      });
-
-      // explicitly disabled in CustomStarterKit to keep default browser behavior
-      it.skip("should support blockquote", () => {
-        startNewCommentIn1ParagraphDocument();
-
-        cy.realType("blockquote");
-        cy.realPress([META_KEY, "Shift", "k"]);
-
-        H.getBlockquote("blockquote", Comments.getSidebar()).should(
-          "be.visible",
-        );
-      });
-    });
-
-    it("should render saved top level blocks", () => {
+    it("should support top level blocks with markdown and shortcuts and render them after submitting and reloading", () => {
       startNewCommentIn1ParagraphDocument();
 
+      cy.log("blockquote");
       cy.realType("> blockquote");
+      H.getBlockquote("blockquote", Comments.getNewThreadInput()).should(
+        "be.visible",
+      );
       cy.realPress([META_KEY, "Enter"]);
       Comments.getAllComments().should("have.length", 1);
+      H.getBlockquote("blockquote", Comments.getAllComments().eq(0)).should(
+        "be.visible",
+      );
 
+      cy.log("ordered list");
       Comments.getNewThreadInput().type("1. ol");
       cy.realPress("Enter");
       cy.realType("two");
+      H.getOrderedList("ol", Comments.getNewThreadInput()).should("be.visible");
+      H.getOrderedList("two", Comments.getNewThreadInput()).should(
+        "be.visible",
+      );
       cy.realPress([META_KEY, "Enter"]);
       Comments.getAllComments().should("have.length", 2);
+      H.getOrderedList("ol", Comments.getAllComments().eq(1)).should(
+        "be.visible",
+      );
+      H.getOrderedList("two", Comments.getAllComments().eq(1)).should(
+        "be.visible",
+      );
 
+      cy.log("bullet list");
       Comments.getNewThreadInput().type("- ul");
       cy.realPress("Enter");
       cy.realType("b");
+      H.getBulletList("ul", Comments.getNewThreadInput()).should("be.visible");
+      H.getBulletList("b", Comments.getNewThreadInput()).should("be.visible");
       cy.realPress([META_KEY, "Enter"]);
       Comments.getAllComments().should("have.length", 3);
+      H.getBulletList("ul", Comments.getAllComments().eq(2)).should(
+        "be.visible",
+      );
+      H.getBulletList("b", Comments.getAllComments().eq(2)).should(
+        "be.visible",
+      );
 
+      cy.log("code block");
       Comments.getNewThreadInput().type("```");
       cy.realPress("Enter");
       cy.realType("code");
+      H.getCodeBlock("code", Comments.getNewThreadInput()).should("be.visible");
       cy.realPress([META_KEY, "Enter"]);
       Comments.getAllComments().should("have.length", 4);
+      H.getCodeBlock("code", Comments.getAllComments().eq(3)).should(
+        "be.visible",
+      );
+
+      cy.log("ordered list shortcut");
+      Comments.getNewThreadInput().click();
+      cy.realType("ol shortcut");
+      cy.realPress([META_KEY, "Shift", "7"]);
+
+      H.getOrderedList("ol shortcut", Comments.getNewThreadInput()).should(
+        "be.visible",
+      );
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 5);
+      H.getOrderedList("ol shortcut", Comments.getAllComments().eq(4)).should(
+        "be.visible",
+      );
+
+      cy.log("bullet list shortcut");
+      Comments.getNewThreadInput().click();
+      cy.realType("ul shortcut");
+      cy.realPress([META_KEY, "Shift", "8"]);
+
+      H.getBulletList("ul shortcut", Comments.getNewThreadInput()).should(
+        "be.visible",
+      );
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 6);
+      H.getBulletList("ul shortcut", Comments.getAllComments().eq(5)).should(
+        "be.visible",
+      );
+
+      cy.log("blockquote shortcut is disabled");
+      // CustomBlockquote and CustomBold leave Mod-Shift-b to the browser.
+      // Shift+b is sent as key "B", like a real keyboard: a lowercase "b" with
+      // shiftKey makes ProseMirror fall back to the Mod-b (bold) binding.
+      Comments.getNewThreadInput().click();
+      cy.realType("not a quote");
+      cy.realPress([META_KEY, "Shift", "B"]);
+      cy.realType(" after shortcut");
+      Comments.getNewThreadInput()
+        .find("p")
+        .should("have.text", "not a quote after shortcut");
+      Comments.getNewThreadInput().find("blockquote").should("not.exist");
+      Comments.getNewThreadInput().find("strong").should("not.exist");
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 7);
+      Comments.getCommentByText("not a quote after shortcut")
+        .find("blockquote")
+        .should("not.exist");
+
+      cy.log("code block shortcut");
+      Comments.getNewThreadInput().click();
+      cy.realType("code shortcut");
+      cy.realPress([META_KEY, "Alt", "c"]);
+
+      H.getCodeBlock("code shortcut", Comments.getNewThreadInput()).should(
+        "be.visible",
+      );
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 8);
+      H.getCodeBlock("code shortcut", Comments.getAllComments().eq(7)).should(
+        "be.visible",
+      );
 
       cy.intercept("GET", "/api/document/*").as("reloadedDocument");
       cy.intercept("GET", "/api/comment?*").as("reloadedComments");
       cy.reload();
       cy.wait(["@reloadedDocument", "@reloadedComments"]);
 
-      H.getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
-      H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");
-      H.getBulletList("ul", Comments.getSidebar()).should("be.visible");
-      H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
+      // The thread is taller than the sidebar, so scroll each block into view
+      H.getBlockquote("blockquote", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getOrderedList("ol", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getBulletList("ul", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getCodeBlock("code", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getOrderedList("ol shortcut", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getBulletList("ul shortcut", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
+      H.getCodeBlock("code shortcut", Comments.getSidebar())
+        .scrollIntoView()
+        .should("be.visible");
     });
   });
 
@@ -1438,7 +1452,7 @@ describe("document comments", () => {
       H.setupSMTP();
     });
 
-    it("a new thread group notifies the owner of the document", () => {
+    it("notifies the document owner of a new thread, thread participants of a reply, and an @mentioned user", () => {
       create1ParagraphDocument();
 
       cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -1464,85 +1478,97 @@ describe("document comments", () => {
           },
         );
       });
-    });
 
-    it("a new reply in a thread notifies anyone in the thread", () => {
+      cy.log("a new reply in a thread notifies anyone in the thread");
+      cy.signInAsAdmin();
+      H.clearInbox();
       create1ParagraphDocument();
 
       cy.get<DocumentId>("@documentId").then((documentId) => {
-        createParagraphComment(documentId, "Test 1").then((comment) => {
-          cy.signInAsNormalUser();
+        createParagraphComment(documentId, "Test 1").then(
+          ({ body: threadComment }) => {
+            cy.signInAsNormalUser();
+            createParagraphComment(documentId, "Test 2", threadComment.id).then(
+              ({ body: normalUserReply }) => {
+                cy.signInAsImpersonatedUser();
+                createParagraphComment(
+                  documentId,
+                  "Test 3",
+                  threadComment.id,
+                ).then(({ body: impersonatedUserReply }) => {
+                  H.getInbox(3).then((response: any) => {
+                    const emails = response.body;
+                    cy.log(
+                      "you should not get notified about your own comments",
+                    );
+                    expect(emails).to.have.length(3);
 
-          createParagraphComment(documentId, "Test 2", comment.body.id).then(
-            ({ body: comment }) => {
-              H.getInbox(1).then((response: any) => {
-                const emails = response.body;
-                cy.log("you should not get notified about your own comments");
-                expect(emails).to.have.length(1);
+                    const getHeading = (email: any) =>
+                      new DOMParser()
+                        .parseFromString(email.html, "text/html")
+                        .querySelector("h1")?.textContent ?? "";
+                    const findEmail = (address: string, heading: string) =>
+                      emails.find(
+                        (email: any) =>
+                          email.to[0].address === address &&
+                          getHeading(email).includes(heading),
+                      );
 
-                verifyEmail({
-                  email: emails[0],
-                  expected: {
-                    address: "admin@metabase.test",
-                    subject: "Comment on Lorem ipsum",
-                    heading: "Robert Tableton replied to a thread",
-                    documentTitle: "Lorem ipsum",
-                    documentHref: `http://localhost:4000/document/${documentId}`,
-                    commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
-                  },
+                    verifyEmail({
+                      email: findEmail(
+                        "admin@metabase.test",
+                        "Robert Tableton replied to a thread",
+                      ),
+                      expected: {
+                        address: "admin@metabase.test",
+                        subject: "Comment on Lorem ipsum",
+                        heading: "Robert Tableton replied to a thread",
+                        documentTitle: "Lorem ipsum",
+                        documentHref: `http://localhost:4000/document/${documentId}`,
+                        commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${normalUserReply.id}`,
+                      },
+                    });
+
+                    verifyEmail({
+                      email: findEmail(
+                        "admin@metabase.test",
+                        "User Impersonated replied to a thread",
+                      ),
+                      expected: {
+                        address: "admin@metabase.test",
+                        subject: "Comment on Lorem ipsum",
+                        heading: "User Impersonated replied to a thread",
+                        documentTitle: "Lorem ipsum",
+                        documentHref: `http://localhost:4000/document/${documentId}`,
+                        commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${impersonatedUserReply.id}`,
+                      },
+                    });
+
+                    verifyEmail({
+                      email: findEmail(
+                        "normal@metabase.test",
+                        "User Impersonated replied to a thread",
+                      ),
+                      expected: {
+                        address: "normal@metabase.test",
+                        subject: "Comment on Lorem ipsum",
+                        heading: "User Impersonated replied to a thread",
+                        documentTitle: "Lorem ipsum",
+                        documentHref: `http://localhost:4000/document/${documentId}`,
+                        commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${impersonatedUserReply.id}`,
+                      },
+                    });
+                  });
                 });
-              });
-            },
-          );
-
-          H.clearInbox();
-
-          cy.signInAsImpersonatedUser();
-          createParagraphComment(documentId, "Test 3", comment.body.id).then(
-            ({ body: comment }) => {
-              H.getInbox(2).then((response: any) => {
-                const emails = response.body;
-                expect(emails).to.have.length(2);
-
-                const emailToAdmin = emails.find(
-                  (email: any) => email.to[0].address === "admin@metabase.test",
-                );
-                const emailToNormalUser = emails.find(
-                  (email: any) =>
-                    email.to[0].address === "normal@metabase.test",
-                );
-
-                verifyEmail({
-                  email: emailToAdmin,
-                  expected: {
-                    address: "admin@metabase.test",
-                    subject: "Comment on Lorem ipsum",
-                    heading: "User Impersonated replied to a thread",
-                    documentTitle: "Lorem ipsum",
-                    documentHref: `http://localhost:4000/document/${documentId}`,
-                    commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
-                  },
-                });
-
-                verifyEmail({
-                  email: emailToNormalUser,
-                  expected: {
-                    address: "normal@metabase.test",
-                    subject: "Comment on Lorem ipsum",
-                    heading: "User Impersonated replied to a thread",
-                    documentTitle: "Lorem ipsum",
-                    documentHref: `http://localhost:4000/document/${documentId}`,
-                    commentHref: `http://localhost:4000/document/${documentId}/comments/${PARAGRAPH_ID}#comment-${comment.id}`,
-                  },
-                });
-              });
-            },
-          );
-        });
+              },
+            );
+          },
+        );
       });
-    });
 
-    it("an explicit @mention notifies that person", () => {
+      cy.log("an explicit @mention notifies that person");
+      cy.signInAsAdmin();
+      H.clearInbox();
       create1ParagraphDocument();
 
       cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -1593,21 +1619,6 @@ describe("document comments", () => {
         });
       });
     });
-  });
-
-  it("handles commenting with users without first and last names", () => {
-    cy.request("post", "/api/user", { email: "no-name@metabase.test" });
-    startNewCommentIn1ParagraphDocument();
-    Comments.getNewThreadInput().type("@No");
-    Comments.getMentionDialog().findByText("no-name@metabase.test").click();
-    Comments.getNewThreadInput().type("needs to see this");
-    cy.realPress([META_KEY, "Enter"]);
-
-    // assert that the comment was created
-    Comments.getAllComments().should("have.length", 1);
-    // mention is it's own span, so we need to search for the pieces individually
-    Comments.getCommentByText("@no-name@metabase.test").should("exist");
-    Comments.getCommentByText("needs to see this").should("exist");
   });
 });
 

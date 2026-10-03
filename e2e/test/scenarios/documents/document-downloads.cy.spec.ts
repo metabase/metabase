@@ -10,72 +10,15 @@ describe("scenarios > documents > downloads", () => {
     cy.signInAsAdmin();
   });
 
-  it("shows Download results for read-only document access", () => {
+  it("shows the full card menu for write access, only Download results for read-only access, and no document without collection access", () => {
     H.createDocument({
       name: "Download Test Document",
       document: DOCUMENT_WITH_TWO_CARDS,
       collection_id: null,
-      alias: "document",
       idAlias: "documentId",
     });
 
-    H.visitDocument("@documentId");
-
-    // Wait for card to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-
-    // Sign in as read-only user
-    cy.signIn("readonly");
-    H.visitDocument("@documentId");
-
-    // Wait for card to load as readonly user
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-
-    // Open card menu
-    H.openDocumentCardMenu("Orders");
-
-    // Verify menu shows only "Download results" and it's enabled
-    H.popover().within(() => {
-      cy.findByRole("menuitem", { name: /Download results/i }).should(
-        "be.visible",
-      );
-      // Verify all menu items: only Download results should be enabled
-      cy.findAllByRole("menuitem").each(($item) => {
-        const text = $item.text();
-        if (text.includes("Download results")) {
-          cy.wrap($item).should("not.be.disabled");
-        } else {
-          cy.wrap($item).should("be.disabled");
-        }
-      });
-    });
-
-    // Click Download results
-    cy.findByRole("menuitem", { name: /Download results/i }).click();
-
-    // Verify format options appear
-    H.popover().within(() => {
-      cy.findByText(".csv").should("be.visible");
-      cy.findByText(".xlsx").should("be.visible");
-      cy.findByText(".json").should("be.visible");
-    });
-  });
-
-  it("shows full menu including Download results for write access", () => {
-    H.createDocument({
-      name: "Admin Download Test Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-
+    cy.log("Write access shows the full menu including Download results");
     H.visitDocument("@documentId");
 
     // Wait for card to load
@@ -109,26 +52,52 @@ describe("scenarios > documents > downloads", () => {
       cy.findByText(".xlsx").should("be.visible");
       cy.findByText(".json").should("be.visible");
     });
-  });
 
-  it("does not show download when permissions are 'none'", () => {
-    H.createDocument({
-      name: "No Access Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-
+    cy.log("Read-only access shows only Download results");
+    cy.signIn("readonly");
     H.visitDocument("@documentId");
 
-    // Wait for card to load
+    H.documentContent()
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "false");
+
+    // Wait for card to load as readonly user
     H.getDocumentCard("Orders")
       .should("be.visible")
       .findByTestId("table-root")
       .should("exist");
 
-    // Sign in as user with no collection access
+    // Open card menu
+    H.openDocumentCardMenu("Orders");
+
+    // Verify only "Download results" is enabled
+    H.popover().within(() => {
+      cy.findByRole("menuitem", { name: /Download results/i })
+        .should("be.visible")
+        .and("be.enabled");
+      [
+        /Add supporting text/,
+        /Edit Visualization/,
+        /Edit Query/,
+        /Replace/,
+        /Remove Chart/,
+      ].forEach((name) => {
+        cy.findByRole("menuitem", { name }).should("be.disabled");
+      });
+      cy.findAllByRole("menuitem").should("have.length", 6);
+    });
+
+    // Click Download results
+    cy.findByRole("menuitem", { name: /Download results/i }).click();
+
+    // Verify format options appear
+    H.popover().within(() => {
+      cy.findByText(".csv").should("be.visible");
+      cy.findByText(".xlsx").should("be.visible");
+      cy.findByText(".json").should("be.visible");
+    });
+
+    cy.log("No collection access shows a permission error");
     cy.signIn("nocollection");
     H.visitDocument("@documentId");
 
@@ -150,17 +119,8 @@ describe("scenarios > documents > downloads", () => {
       name: "No Download Permission Document",
       document: DOCUMENT_WITH_TWO_CARDS,
       collection_id: null,
-      alias: "document",
       idAlias: "documentId",
     });
-
-    H.visitDocument("@documentId");
-
-    // Wait for card to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
 
     // Remove download permission but keep view-data unrestricted
     const { READONLY_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
@@ -193,6 +153,7 @@ describe("scenarios > documents > downloads", () => {
 
     // Verify that Download results is not shown
     H.popover().within(() => {
+      cy.findByRole("menuitem", { name: /Edit Query/ }).should("be.disabled");
       cy.findByRole("menuitem", { name: /Download results/i }).should(
         "not.exist",
       );
