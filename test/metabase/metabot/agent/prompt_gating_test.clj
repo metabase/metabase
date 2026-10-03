@@ -11,11 +11,13 @@
   ["create_sql_query"])
 
 (defn- render-internal-template
-  "Render internal.selmer for `perms` and `active-tool-names` (default [[active-sql-tool-names]]).
-  The prompt builder reads only tool names, so a name->nil map stands in for the real name->var one."
+  "Render internal.selmer for `perms`, the scopes they grant, and `active-tool-names` (default
+  [[active-sql-tool-names]]). The prompt builder reads only tool names, so a name->nil map stands in for the real
+  name->var one."
   ([perms] (render-internal-template perms active-sql-tool-names))
   ([perms active-tool-names]
-   (binding [scope/*current-user-metabot-permissions* perms]
+   (binding [scope/*current-user-metabot-permissions* perms
+             scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
      (prompts/build-system-message-content
       {:prompt-template "internal.selmer"}
       {:current_time "2026-03-25T12:00:00Z"}
@@ -339,4 +341,18 @@
     (testing "without the SQL tools the setting does not tell the model to write SQL"
       (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
         (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
-          (is (not (re-find #"write SQL with `create_sql_query`" rendered))))))))
+          (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"write SQL with `create_sql_query`" rendered))))))
+    (testing "without Metabot's SQL generation permission the setting does not tell the model to run SQL"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (let [rendered (render-internal-template no-sql-perms tools)]
+          (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"write SQL with `create_sql_query`" rendered))))))
+    (testing "without the agent:sql:run scope the setting does not tell the model to run SQL"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                  scope/*current-user-scope*               #{"agent:query:*" "agent:sql:create"}]
+          (let [rendered (prompts/build-system-message-content
+                          {:prompt-template "internal.selmer"} {} (zipmap tools (repeat nil)) [])]
+            (is (re-find #"`run_query` runs notebook queries only" rendered))
+            (is (not (re-find #"write SQL with `create_sql_query`" rendered)))))))))

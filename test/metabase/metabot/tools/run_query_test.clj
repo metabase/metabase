@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.permissions.core :as perms]
@@ -22,10 +23,15 @@
         (run-query/run-query-tool args)))))
 
 (defn- run-sql-tool!
-  "[[run-tool!]] with SQL execution turned on too."
-  [queries args]
-  (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
-    (run-tool! queries args)))
+  "[[run-tool!]] with SQL execution turned on, for a user holding `metabot-perms` (default all of them) and the scopes
+  they grant, as the agent loop binds them."
+  ([queries args]
+   (run-sql-tool! scope/all-yes-permissions queries args))
+  ([metabot-perms queries args]
+   (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+     (binding [scope/*current-user-metabot-permissions* metabot-perms
+               scope/*current-user-scope*               (scope/user-metabot-perms->scopes metabot-perms)]
+       (run-tool! queries args)))))
 
 (defn- venues-by-id
   []
@@ -156,6 +162,19 @@
   "The database of query q1 was not found.")
 
 (deftest run-query-sql-refusals-test
+  (testing "a user without Metabot's SQL generation permission is refused, though they may write SQL on the database"
+    (let [nlq-only {:permission/metabot                :yes
+                    :permission/metabot-sql-generation :no
+                    :permission/metabot-nlq            :yes
+                    :permission/metabot-other-tools    :yes}]
+      (is (=? {:output #"run_query only runs notebook queries.*"}
+              (run-sql-tool! nlq-only {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"})))))
+  (testing "a request without the agent:sql:run scope is refused, though the user has the SQL generation permission"
+    (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                scope/*current-user-scope*               #{"agent:query:run"}]
+        (is (=? {:output #"run_query only runs notebook queries.*"}
+                (run-tool! {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))))
   (mt/with-temp [:model/Database {builder-db :id}    {:engine :h2}
                  :model/Database {unreadable-db :id} {:engine :h2}]
     (mt/with-no-data-perms-for-all-users!

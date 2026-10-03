@@ -93,13 +93,14 @@
            {:agent-error? true}))
 
 (defn- check-sql-runnable!
-  "Refuse a query with a native stage unless SQL execution is on and the current user may run SQL against its
-   database. The same gates as MCP's `execute_sql`, in the same order. The QP permissions middleware re-checks
+  "Refuse a query with a native stage unless Metabot may run SQL for the current user
+   ([[scope/sql-execution-allowed?]]) and the user may run SQL against its database. The same gates as MCP's
+   `execute_sql`, in the same order. The QP permissions middleware re-checks
    inside `process-query`; checking here first lets the model read why a run was refused.
    An unreadable database reads exactly like a missing one, so the refusal is no existence oracle. The permission
    refusal is reachable only for a database the user can already read, so its distinct message discloses nothing."
   [query-id query]
-  (when-not (metabot.settings/metabot-sql-execution-enabled?)
+  (when-not (scope/sql-execution-allowed?)
     (throw (ex-info (str "run_query only runs notebook queries, and this one is a SQL query. "
                          "To get values, rebuild the question with construct_notebook_query, "
                          "then run that query with run_query.")
