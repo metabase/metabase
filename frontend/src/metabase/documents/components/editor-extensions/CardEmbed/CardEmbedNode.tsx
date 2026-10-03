@@ -73,7 +73,7 @@ import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { NativeQueryModal } from "./modals/NativeQueryModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
-import { getEmbedIndex } from "./utils";
+import { canAddSupportingText, getEmbedIndex } from "./utils";
 
 const STATIC_CARD_SORTS: ReadonlyArray<StoredResultSort> = [
   "value_asc",
@@ -338,29 +338,10 @@ export const CardEmbedComponent = memo(
 
     const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
 
-    const shouldAllowAddingSupportingText = () => {
-      const pos = getPos();
-      if (!pos) {
-        return false;
-      }
-      const resolvedPos = editor.state.doc.resolve(pos);
-      const match = findParentNodeClosestToPos(
-        resolvedPos,
-        (n) => n.type.name === "flexContainer",
-      );
-      if (!match) {
-        return true;
-      }
-      if (match.node.content.childCount >= MAX_GROUP_SIZE) {
-        return false;
-      }
-      const hasSupportingText = match?.node.content.content.some(
-        (n) => n.type.name === "supportingText",
-      );
-      return !hasSupportingText;
-    };
-
-    const handleAddSupportingText = !shouldAllowAddingSupportingText()
+    const handleAddSupportingText = !canAddSupportingText(
+      editor.state.doc,
+      getPos(),
+    )
       ? undefined
       : async () => {
           await Promise.resolve(); // Wait for the menu to close. The transaction below may cause this item to disable and the mouseup isn't registered (so the menu stays open).

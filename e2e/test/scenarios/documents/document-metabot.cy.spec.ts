@@ -59,10 +59,8 @@ describe("documents > metabot (#73690)", () => {
     cy.findByRole("button", { name: "Run" }).click();
 
     H.getDocumentCard(GENERATED_CARD_NAME).should("be.visible");
-    H.documentContent().should(
-      "contain.text",
-      "Feature requests mentioned at least twice.",
-    );
-    H.documentContent().should("contain.text", "Created with Metabot");
+    H.documentContent()
+      .should("contain.text", "Feature requests mentioned at least twice.")
+      .and("contain.text", "Created with Metabot");
   });
 });

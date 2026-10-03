@@ -13,7 +13,6 @@ export const Comments = {
   getEmojiPicker,
   resolveCommentByText,
   reopenCommentByText,
-  openAllComments,
   reactToComment,
   getSidebar,
   closeSidebar,
@@ -65,11 +64,6 @@ function getCommentByText(text: string | RegExp) {
 
 function getAllComments() {
   return cy.findAllByTestId("discussion-comment");
-}
-
-function openAllComments() {
-  cy.findByRole("link", { name: "Show all comments" }).click();
-  getSidebar().should("contain.text", "All comments");
 }
 
 function getEmojiPicker() {

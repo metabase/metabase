@@ -7,8 +7,9 @@ import {
   setupDatabaseEndpoints,
   setupDocumentEndpoints,
   setupTableEndpoints,
+  setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { RouterProviderMemory } from "metabase/router";
 import {
   createMockCard,
@@ -100,6 +101,17 @@ describe("SmartLink", () => {
       await waitFor(() => {
         expect(screen.getByText("My Card")).toBeInTheDocument();
       });
+    });
+
+    it("renders 'No access' with a crossed-out eye when the card request is forbidden", async () => {
+      const card = createMockCard({ name: "Secret card" });
+      setupUnauthorizedCardEndpoints(card);
+      setup({ model: "card", entity: card, label: "Cached Card Name" });
+
+      expect(await screen.findByText("No access")).toBeInTheDocument();
+      expect(getIcon("eye_crossed_out")).toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(screen.queryByText("Cached Card Name")).not.toBeInTheDocument();
     });
   });
 

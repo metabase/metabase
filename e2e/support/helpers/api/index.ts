@@ -37,7 +37,6 @@ export { createTransform } from "./createTransform";
 export { createTransformJob } from "./createTransformJob";
 export { createTransformTag } from "./createTransformTag";
 export * from "./customVizPlugin";
-export { deleteComment } from "./deleteComment";
 export { editDashboardCard } from "./editDashboardCard";
 export { addUserToGroup } from "./groupPermissions";
 export { getCurrentUser } from "./getCurrentUser";
@@ -48,7 +47,6 @@ export type { SecurityAdvisorySpec } from "./seedSecurityAdvisories";
 export { setMetricDefaultDimension } from "./setMetricDefaultDimension";
 export { unpublishTables } from "./unpublishTables";
 export { updateAdvancedPermissionsGraph } from "./updateAdvancedPermissionsGraph";
-export { updateComment } from "./updateComment";
 export { updateDashboardCards } from "./updateDashboardCards";
 export {
   updateEnterpriseSetting,
