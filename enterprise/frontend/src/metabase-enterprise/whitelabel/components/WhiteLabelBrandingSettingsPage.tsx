@@ -12,6 +12,7 @@ import { getLoadingMessageOptions } from "../lib/loading-message";
 
 import { ColorSettingsWidget } from "./ColorSettingsWidget";
 import { FontWidget } from "./FontWidget";
+import { IllustrationWidget } from "./IllustrationWidget";
 import { ImageUploadWidget } from "./IllustrationWidget/ImageUploadWidget";
 
 export function WhiteLabelBrandingSettingsPage() {
@@ -38,6 +39,11 @@ export function WhiteLabelBrandingSettingsPage() {
           title={t`Logo`}
           description={t`For best results, use an SVG file with a transparent
             background.`}
+        />
+        <IllustrationWidget
+          name="pdf-export-logo"
+          title={t`Logo in PDF exports`}
+          description={t`Shown at the top of the first page of dashboards exported to PDF.`}
         />
         <ImageUploadWidget name="application-favicon-url" title={t`Favicon`} />
       </SettingsSection>

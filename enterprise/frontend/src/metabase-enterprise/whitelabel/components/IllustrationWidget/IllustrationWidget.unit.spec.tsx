@@ -21,6 +21,7 @@ type IllustrationSetting = Extract<
   | "landing-page-illustration"
   | "no-data-illustration"
   | "no-object-illustration"
+  | "pdf-export-logo"
 >;
 
 interface SetupOpts {
@@ -45,6 +46,8 @@ async function setup({
     "no-data-illustration-custom": "",
     "no-object-illustration": "default",
     "no-object-illustration-custom": "",
+    "pdf-export-logo": "default",
+    "pdf-export-logo-custom": null,
     ...settingOverrides,
   });
   setupPropertiesEndpoints(settings);
@@ -213,6 +216,54 @@ describe("IllustrationWidget", () => {
 
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(0);
+    });
+  });
+
+  describe("PDF export logo", () => {
+    const CUSTOM_APPLICATION_LOGO = "data:image/png;base64,YXBwLWxvZ28=";
+
+    it("offers the application logo, no logo, or a custom one", async () => {
+      await setup({ name: "pdf-export-logo", title: "Logo in PDF exports" });
+
+      expect(
+        await screen.findByDisplayValue("Application logo"),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("textbox"));
+      expect(screen.getByText("No logo")).toBeInTheDocument();
+      expect(screen.getByText("Custom")).toBeInTheDocument();
+    });
+
+    it("previews the customized application logo by default", async () => {
+      await setup({
+        name: "pdf-export-logo",
+        title: "Logo in PDF exports",
+        settings: { "application-logo-url": CUSTOM_APPLICATION_LOGO },
+      });
+
+      expect(await screen.findByAltText("Logo preview")).toHaveAttribute(
+        "src",
+        CUSTOM_APPLICATION_LOGO,
+      );
+    });
+
+    it("previews nothing by default while the application uses the stock logo", async () => {
+      await setup({ name: "pdf-export-logo", title: "Logo in PDF exports" });
+
+      expect(
+        await screen.findByDisplayValue("Application logo"),
+      ).toBeInTheDocument();
+      expect(screen.queryByAltText("Logo preview")).not.toBeInTheDocument();
+    });
+
+    it("saves 'none' when choosing no logo", async () => {
+      await setup({ name: "pdf-export-logo", title: "Logo in PDF exports" });
+
+      await userEvent.click(screen.getByRole("textbox"));
+      await userEvent.click(screen.getByText("No logo"));
+
+      const [put] = await findRequests("PUT");
+      expect(put.url).toMatch(/\/api\/setting\/pdf-export-logo$/);
+      expect(put.body).toEqual({ value: "none" });
     });
   });
 });

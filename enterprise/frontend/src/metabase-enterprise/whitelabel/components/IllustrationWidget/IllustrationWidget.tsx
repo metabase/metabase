@@ -6,18 +6,27 @@ import { t } from "ttag";
 import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/redux";
 import { useAdminSetting } from "metabase/settings";
 import {
   BasicAdminSettingInput,
   SettingHeader,
 } from "metabase/settings-components";
-import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Image, Paper, Text } from "metabase/ui";
+import {
+  getIsDefaultMetabaseLogo,
+  getLogoUrl,
+} from "metabase-enterprise/settings/selectors";
 import type {
   EnterpriseSettingKey,
   IllustrationSettingValue,
 } from "metabase-types/api";
 
-import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
+import { ACCEPTED_IMAGE_TYPES, readImageFile } from "../../lib/image-file";
+import {
+  type IllustrationType,
+  ImageUploadInfoDot,
+} from "../ImageUploadInfoDot";
 
 import { PreviewImage, SailboatImage } from "./IllustrationWidget.styled";
 export interface StringSetting {
@@ -25,18 +34,14 @@ export interface StringSetting {
   default: IllustrationSettingValue;
 }
 
-type IllustrationType = "background" | "icon";
-
 type IllustrationSetting = Extract<
   EnterpriseSettingKey,
   | "login-page-illustration"
   | "landing-page-illustration"
   | "no-data-illustration"
   | "no-object-illustration"
+  | "pdf-export-logo"
 >;
-
-const MB = 1024 * 1024;
-const IMAGE_SIZE_LIMIT = 2 * MB;
 
 interface SelectOption {
   label: string;
@@ -53,6 +58,8 @@ const getIllustrationType = (
     case "no-data-illustration":
     case "no-object-illustration":
       return "icon";
+    case "pdf-export-logo":
+      return "logo";
   }
 };
 
@@ -65,6 +72,11 @@ const getSelectOptions = (): Record<IllustrationType, SelectOption[]> => ({
   icon: [
     { label: t`Sailboat`, value: "default" },
     { label: t`No illustration`, value: "none" },
+    { label: t`Custom`, value: "custom" },
+  ],
+  logo: [
+    { label: t`Application logo`, value: "default" },
+    { label: t`No logo`, value: "none" },
     { label: t`Custom`, value: "custom" },
   ],
 });
@@ -83,6 +95,8 @@ export function IllustrationWidget({
   const [fileName, setFileName] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const applicationLogoUrl = useSelector(getLogoUrl);
+  const isDefaultMetabaseLogo = useSelector(getIsDefaultMetabaseLogo);
   const type = getIllustrationType(name);
   const options = getSelectOptions()[type];
   const customIllustrationSettingName =
@@ -123,41 +137,29 @@ export function IllustrationWidget({
     }
   }
 
-  function handleFileUpload(fileEvent: ChangeEvent<HTMLInputElement>) {
-    if (fileEvent.target.files && fileEvent.target.files.length > 0) {
-      const file = fileEvent.target.files[0];
-      if (file.size > IMAGE_SIZE_LIMIT) {
-        setErrorMessage(
-          t`The image you chose is larger than 2MB. Please choose another one.`,
-        );
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = async (readerEvent) => {
-        // Unjustified type cast. FIXME
-        const dataUri = readerEvent.target?.result as string;
-        if (!(await isFileIntact(dataUri))) {
-          setErrorMessage(
-            t`The image you chose is corrupted. Please choose another one.`,
-          );
-          return;
-        }
-        setErrorMessage("");
-        setFileName(file.name);
-        // Setting 2 setting values at the same time could result in one of them not being saved
-        await updateSetting({
-          key: name,
-          value: "custom",
-        });
-        await updateSetting({
-          key: customIllustrationSettingName,
-          value: dataUri,
-          toast: false,
-        });
-      };
-      reader.readAsDataURL(file);
+  async function handleFileUpload(fileEvent: ChangeEvent<HTMLInputElement>) {
+    const file = fileEvent.target.files?.[0];
+    if (!file) {
+      return;
     }
+
+    const result = await readImageFile(file);
+    if (result.status === "error") {
+      setErrorMessage(result.message);
+      return;
+    }
+    setErrorMessage("");
+    setFileName(file.name);
+    // Setting 2 setting values at the same time could result in one of them not being saved
+    await updateSetting({
+      key: name,
+      value: "custom",
+    });
+    await updateSetting({
+      key: customIllustrationSettingName,
+      value: result.dataUri,
+      toast: false,
+    });
   }
 
   async function handleRemoveCustomIllustration() {
@@ -199,6 +201,9 @@ export function IllustrationWidget({
               // Unjustified type cast. FIXME
               customSource: customIllustrationSource as string,
               defaultPreviewType: type,
+              customApplicationLogoUrl: isDefaultMetabaseLogo
+                ? null
+                : applicationLogoUrl,
             })}
           </Flex>
           <Flex p="xl" gap="lg" direction="column" justify="center" w="100%">
@@ -236,7 +241,7 @@ export function IllustrationWidget({
                     onChange={handleFileUpload}
                     type="file"
                     id={name}
-                    accept="image/jpeg,image/png,image/svg+xml"
+                    accept={ACCEPTED_IMAGE_TYPES}
                     multiple={false}
                   />
                   <Text ml="xl" truncate="end">
@@ -267,42 +272,62 @@ export function IllustrationWidget({
   );
 }
 
-async function isFileIntact(dataUri: string) {
-  return new Promise((resolve) => {
-    const image = document.createElement("img");
-    image.src = dataUri;
-    image.onerror = () => resolve(false);
-    image.onload = () => resolve(true);
-  });
-}
+const LOGO_PREVIEW_WIDTH = 100;
+const LOGO_PREVIEW_HEIGHT = 90;
 
-const PREVIEW_ELEMENTS: Record<IllustrationType, JSX.Element> = {
-  background: <LighthouseIllustrationThumbnail />,
-  icon: <SailboatImage />,
-};
+function LogoPreview({ src }: { src: string }) {
+  return (
+    <Image
+      src={src}
+      w={LOGO_PREVIEW_WIDTH}
+      h={LOGO_PREVIEW_HEIGHT}
+      fit="contain"
+      alt={t`Logo preview`}
+    />
+  );
+}
 
 interface GetPreviewImageProps {
   value: IllustrationSettingValue;
   customSource: string | undefined;
   defaultPreviewType: IllustrationType;
+  /** `null` while the application still uses the stock Metabase logo, which never appears in PDF exports. */
+  customApplicationLogoUrl: string | null;
 }
 
 function getPreviewImage({
   value,
   customSource,
   defaultPreviewType,
+  customApplicationLogoUrl,
 }: GetPreviewImageProps) {
   if (value === "default") {
-    return PREVIEW_ELEMENTS[defaultPreviewType];
+    return getDefaultPreviewImage(defaultPreviewType, customApplicationLogoUrl);
   }
 
-  if (value === "none") {
+  if (value === "none" || !customSource) {
     return null;
   }
 
-  if (value === "custom" && customSource) {
-    return <PreviewImage src={customSource} />;
+  if (defaultPreviewType === "logo") {
+    return <LogoPreview src={customSource} />;
   }
 
-  return null;
+  return <PreviewImage src={customSource} />;
+}
+
+function getDefaultPreviewImage(
+  type: IllustrationType,
+  customApplicationLogoUrl: string | null,
+) {
+  switch (type) {
+    case "background":
+      return <LighthouseIllustrationThumbnail />;
+    case "icon":
+      return <SailboatImage />;
+    case "logo":
+      return customApplicationLogoUrl ? (
+        <LogoPreview src={customApplicationLogoUrl} />
+      ) : null;
+  }
 }

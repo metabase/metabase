@@ -38,6 +38,7 @@ describe("branding settings", () => {
     "User interface colors",
     "Chart colors",
     "Logo",
+    "Logo in PDF exports",
     "Font",
     "Favicon",
     "Loading message",

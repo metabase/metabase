@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { HoverCard, Icon, Stack, Text } from "metabase/ui";
 
-type IllustrationType = "background" | "icon";
+export type IllustrationType = "background" | "icon" | "logo";
 
 interface CustomFileUploadInfoDot {
   type: IllustrationType;
@@ -11,6 +11,7 @@ interface CustomFileUploadInfoDot {
 const DESCRIPTIONS_WIDTHS: Record<IllustrationType, number> = {
   background: 400,
   icon: 250,
+  logo: 400,
 };
 
 const getDescriptions = (): Record<IllustrationType, string[]> => ({
@@ -20,6 +21,10 @@ const getDescriptions = (): Record<IllustrationType, string[]> => ({
   ],
   icon: [
     t`For best results, upload an SVG file. Other accepted formats are JPG and PNG.`,
+    t`Your file should not be larger than 2MB.`,
+  ],
+  logo: [
+    t`For best results, choose a horizontally oriented logo with a transparent background and upload it as an SVG or PNG file. JPG is also accepted.`,
     t`Your file should not be larger than 2MB.`,
   ],
 });
