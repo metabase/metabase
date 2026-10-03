@@ -42,6 +42,13 @@
    [:table_name :string]
    [:field_name {:optional true} :string]])
 
+(defn with-one-connection
+  "Calls `thunk` with one app-DB connection held, so that the queries in it use that connection and do not each check
+  one out of the pool."
+  [thunk]
+  (t2/with-connection [_conn]
+    (thunk)))
+
 (mu/defn eligible-children
   "The instances of `model-key` whose `fk` column equals `model-id`, additionally matching `conditions` (a map of
   column to value or Toucan 2 operator-vector value, or nil for none)."

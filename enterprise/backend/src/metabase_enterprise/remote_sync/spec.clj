@@ -1290,24 +1290,27 @@
   model tells the two apart exactly as a full export would."
   [targets serdes-paths]
   (let [target-sets (update-vals targets set)
-        wanted      (reduce (fn [acc path]
-                              (let [model (:model (last path))
-                                    ids   (get target-sets model)]
-                                (if (or (empty? ids) (= ::all (get acc model)))
-                                  acc
-                                  (let [local (try
-                                                (serdes/load-find-local path)
-                                                (catch Exception e
-                                                  (log/debugf e "Could not resolve %s locally; extracting all %s targets"
-                                                              (pr-str path) model)
-                                                  nil))
-                                        pk    (when local (get local (serdes/primary-key model)))]
-                                    (cond
-                                      (nil? pk)          (assoc acc model ::all)
-                                      (contains? ids pk) (update acc model (fnil conj #{}) pk)
-                                      :else              acc)))))
-                            {}
-                            serdes-paths)]
+        ;; one connection for all lookups: otherwise each lookup checks out its own (and on Postgres each check-in
+        ;; sends DISCARD ALL)
+        wanted      (remote-sync.db/with-one-connection
+                      #(reduce (fn [acc path]
+                                 (let [model (:model (last path))
+                                       ids   (get target-sets model)]
+                                   (if (or (empty? ids) (= ::all (get acc model)))
+                                     acc
+                                     (let [local (try
+                                                   (serdes/load-find-local path)
+                                                   (catch Exception e
+                                                     (log/debugf e "Could not resolve %s locally; extracting all %s targets"
+                                                                 (pr-str path) model)
+                                                     nil))
+                                           pk    (when local (get local (serdes/primary-key model)))]
+                                       (cond
+                                         (nil? pk)          (assoc acc model ::all)
+                                         (contains? ids pk) (update acc model (fnil conj #{}) pk)
+                                         :else              acc)))))
+                               {}
+                               serdes-paths))]
     (into {}
           (map (fn [[model ids]] [model (if (= ::all ids) (get targets model) (vec ids))]))
           wanted)))
