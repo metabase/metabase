@@ -1,0 +1,2 @@
+{% if has_query_execution %}{% include "metabot/prompts/shared/prompt_snippets/results_visible.selmer" %}
+{% if has_sql_execution %}{% include "metabot/prompts/shared/prompt_snippets/results_sql.selmer" %}{% else %}{% include "metabot/prompts/shared/prompt_snippets/results_notebook_only.selmer" %}{% endif %}{% else %}{% include "metabot/prompts/shared/prompt_snippets/results_hidden.selmer" %}{% endif %}
