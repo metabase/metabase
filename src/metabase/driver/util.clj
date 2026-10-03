@@ -1,6 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:refer-clojure :exclude [mapv empty? some])
+  (:refer-clojure :exclude [mapv empty? not-empty some])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -23,7 +23,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? some]]
+   [metabase.util.performance :refer [mapv empty? not-empty some]]
    [metabase.warehouses.schema :as warehouses.schema])
   (:import
    (java.io ByteArrayInputStream)
@@ -233,6 +233,24 @@
                       (throw (unknown-connection-hosts-exception e))))]
         (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
           (throw (blocked-network-address-exception)))))))
+
+(defn validate-connection-parameters!
+  "Throw a 400 if `details` set a connection parameter named in [[driver/disallowed-connection-parameters]], either in
+  `:additional-options` or as a detail key. Returns nil when the details are acceptable.
+
+  Reads the details a user supplied rather than the connection spec built from them: the spec also carries properties
+  Metabase sets itself, which are not the user's to have chosen."
+  [driver details]
+  (when-let [disallowed (not-empty (mapv u/lower-case-en (driver/disallowed-connection-parameters driver)))]
+    (let [find-disallowed (fn [s] (let [s (u/lower-case-en s)]
+                                    (some #(when (str/includes? s %) %) disallowed)))
+          refuse!         (fn [where match]
+                            (throw (ex-info (str "Potentially dangerous keys in " where)
+                                            {:status-code 400, :disallowed-key match})))]
+      (when-let [match (some-> (:additional-options details) str find-disallowed)]
+        (refuse! "additional options" match))
+      (when-let [match (some #(find-disallowed (if (keyword? %) (name %) (str %))) (keys details))]
+        (refuse! "connection details" match)))))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT

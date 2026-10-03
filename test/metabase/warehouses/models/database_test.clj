@@ -816,6 +816,27 @@
              #"private or internal network address"
              (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
 
+(deftest disallowed-connection-parameters-are-refused-on-save-test
+  ;; like the network policy, enforced on the model so serialization import and config-file provisioning -- which
+  ;; write a Database without testing a connection -- cannot store one either
+  (testing "a disallowed connection parameter cannot be stored"
+    (doseq [details [{:host "db.example.com" :additional-options "socketFactory=a.b.C"}
+                     {:host "db.example.com" :sslfactory "a.b.C"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (mt/with-temp [:model/Database _ {:engine :postgres :details details}]))))))
+  (testing "...including by adding it to an existing database"
+    (mt/with-temp [:model/Database db {:engine :postgres :details {:host "db.example.com"}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"dangerous"
+           (t2/update! :model/Database (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}})))))
+  (testing "a database whose driver isn't registered (e.g. an uninstalled plugin) can still be saved"
+    (mt/with-temp [:model/Database db {:engine "not-a-registered-driver" :details {:host "db.example.com"}}]
+      (t2/update! :model/Database (:id db) {:details {:host "db2.example.com"}})
+      (is (=? {:details {:host "db2.example.com"}}
+              (t2/select-one :model/Database (:id db)))))))
+
 (deftest audit-db-is-not-subject-to-the-network-policy-test
   ;; The Audit DB is a clone of the *application* database, not a warehouse an admin pointed somewhere: it carries no
   ;; `:details` and is reached over the app-db connection. Under the policy its empty details read as `localhost` --

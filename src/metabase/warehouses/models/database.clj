@@ -493,9 +493,10 @@
   (and (:is_audit database)
        (every? #(empty? (get database %)) details-keys)))
 
-(defn- validate-connection-hosts!
-  "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
-  the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
+(defn- validate-connection-details!
+  "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
+  disallows (see [[driver/disallowed-connection-parameters]]). Enforcing this on the model, and not just on the
+  endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
   import, config-file provisioning, and destination databases.
 
   `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
@@ -510,8 +511,11 @@
         (doseq [k     keys-to-check
                 :let  [details (get database k)]
                 :when (map? details)]
-          (driver.u/validate-connection-hosts! engine (cond->> details
-                                                        (not= k :details) (merge (:details database)))))))))
+          (let [details (cond->> details
+                          (not= k :details) (merge (:details database)))]
+            (driver.u/validate-connection-hosts! engine details)
+            (when (driver.impl/registered? engine)
+              (driver.u/validate-connection-parameters! engine details))))))))
 
 (t2/define-before-update :model/Database
   [database]
@@ -522,11 +526,11 @@
     ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
     ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
     ;; it accompanies rather than on its own.
-    (validate-connection-hosts! (or (:engine changes) (:engine original))
-                                (merge original changes)
-                                (if (contains? changes :engine)
-                                  details-keys
-                                  (filterv #(contains? changes %) details-keys))))
+    (validate-connection-details! (or (:engine changes) (:engine original))
+                                  (merge original changes)
+                                  (if (contains? changes :engine)
+                                    details-keys
+                                    (filterv #(contains? changes %) details-keys))))
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
@@ -584,7 +588,7 @@
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
-  (validate-connection-hosts! engine database details-keys)
+  (validate-connection-details! engine database details-keys)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)

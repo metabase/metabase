@@ -280,6 +280,28 @@
 
 (defmethod validate-db-details! :default [_driver _details] nil)
 
+(defmulti disallowed-connection-parameters
+  "The names of client connection parameters a user may never set for this driver, whether written into
+  `:additional-options` or sent as a detail key -- several drivers hand detail keys they do not recognize to the client
+  as connection properties. Typically parameters whose value the client loads and instantiates as a Java class. Defaults
+  to none.
+
+  Matched case-insensitively, and as substrings, so a name here also catches its longer spellings (`socketFactory`
+  covers `socketFactoryClass`). Enforced by [[metabase.driver.util/validate-connection-parameters!]], which runs when a
+  connection is tested, a connection pool is created, and a Database is saved. Extend a parent's list rather than
+  replacing it:
+
+    (defmethod driver/disallowed-connection-parameters :mysql
+      [driver]
+      (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) [\"autoDeserialize\"]))"
+  {:added "0.65.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod disallowed-connection-parameters :default
+  [_driver]
+  [])
+
 (def default-host-detail-keys
   "Detail keys that hold a warehouse host across the drivers we ship. `:host` is the near-universal one;
   `:hostname` is Athena's."
