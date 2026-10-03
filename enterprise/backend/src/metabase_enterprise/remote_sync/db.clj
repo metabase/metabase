@@ -509,6 +509,13 @@
         (t2/select [:model/RemoteSyncObject :file_path :content_hash]
                    :file_path [:not= nil] :content_hash [:not= nil])))
 
+(mu/defn rso-content-hashes :- [:map-of [:tuple :string ModelId] :string]
+  "{[model_type model_id] content_hash} of every RemoteSyncObject that has a content hash."
+  []
+  (into {}
+        (map (juxt (juxt :model_type :model_id) :content_hash))
+        (t2/select [:model/RemoteSyncObject :model_type :model_id :content_hash] :content_hash [:not= nil])))
+
 (mu/defn departed-rso-keys
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
   []

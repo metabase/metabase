@@ -13,7 +13,8 @@
    [metabase.models.db :as models.db]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,6 +31,9 @@
      (fn [tree]
        (let [src (rs.test/versioned-source :trees {"v0" tree} :current "v0")]
          (is (= :success (:status (cost/import-at! src "v0" :force? true))) "baseline load")
+         ;; A reload keeps the stored hash of any entity whose file hashes to it, and does not serialize it again. Clear
+         ;; the hashes, so that the reload serializes every card and looks up its field paths.
+         (t2/update! :model/RemoteSyncObject {} {:content_hash nil})
          (let [calls (atom 0)
                real  (mt/original-fn #'models.db/field-hierarchy-rows)]
            (mt/with-dynamic-fn-redefs [models.db/field-hierarchy-rows (fn [& args] (swap! calls inc) (apply real args))]
