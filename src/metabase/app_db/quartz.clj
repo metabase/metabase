@@ -44,8 +44,18 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
 
+;; Quartz stores each job's class name in the app DB, and moving a job's namespace renames its class. Without an
+;; entry here, the first upgraded node deletes the stored job as classless at startup, even while an old node is
+;; running it, and reschedules it under the new name, which old nodes can't load. With one, stored rows keep the old
+;; name, which old nodes load, and upgraded nodes load the current class under it.
+;;
+;; Keep entries: the rows keep the old name for good, so a removed entry brings the deletion back.
+(def renamed-job-classes
+  "Map of the old name of a renamed Quartz job class to its current name."
+  {})
+
 (defn- load-class ^Class [^String class-name]
-  (Class/forName class-name true (classloader/the-classloader)))
+  (Class/forName (get renamed-job-classes class-name class-name) true (classloader/the-classloader)))
 
 (defrecord ^:private ClassLoadHelper []
   org.quartz.spi.ClassLoadHelper
