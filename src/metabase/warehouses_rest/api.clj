@@ -34,6 +34,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -572,6 +573,43 @@
                             (filter :active tables))
                           identity)))))
 
+(defn- compact-db-metadata
+  [id table-selector]
+  (let [selectors (try
+                    (when (<= (count table-selector) 50000)
+                      (json/decode (if (str/starts-with? table-selector "%")
+                                     (java.net.URLDecoder/decode table-selector "UTF-8")
+                                     table-selector)))
+                    (catch Exception _ nil))
+        valid?    (and (vector? selectors)
+                       (<= 1 (count selectors) 100)
+                       (every? (fn [selector]
+                                 (and (vector? selector)
+                                      (= 2 (count selector))
+                                      (or (nil? (first selector))
+                                          (and (string? (first selector)) (<= (count (first selector)) 255)))
+                                      (string? (second selector))
+                                      (<= (count (second selector)) 255)
+                                      (not (str/blank? (second selector)))))
+                               selectors))]
+    (when-not valid?
+      (throw (ex-info "table_selector must be a JSON array of 1 to 100 [schema, table] pairs."
+                      {:status-code 400})))
+    (let [database (warehouses/get-database id)
+          wanted   (set (map (fn [[schema table]] [(when-not (str/blank? schema) schema) table]) selectors))
+          _        (perms/prime-table-perms-cache {:db-ids #{id}})
+          tables   (->> (warehouses-rest.db/compact-metadata-tables id)
+                        (filter #(contains? wanted [(when-not (str/blank? (:schema %)) (:schema %)) (:name %)]))
+                        (filter #(and (:active %) (nil? (:visibility_type %)) (mi/can-read? %)))
+                        vec)
+          fields   (->> (warehouses-rest.db/compact-metadata-fields (map :id tables))
+                        (filter #(and (:active %) (not (#{:sensitive :retired} (:visibility_type %)))))
+                        (group-by :table_id))
+          tables   (mapv #(assoc % :fields (get fields (:id %) [])) tables)]
+      {:id (:id database)
+       :name (:name database)
+       :tables (apply-sandbox-column-filter tables)})))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -587,20 +625,27 @@
   Passing include_editable_data_model will only return tables for which the current user has data model editing
   permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
   advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the
-  DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata."
+  DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata.
+
+  With compact=true, table_selector is required as a JSON array of up to 100 [schema, table-name] pairs. This mode
+  returns only the selected readable tables and their effective field metadata, without values or fingerprints."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
+   {:keys [include_hidden include_editable_data_model remove_inactive skip_fields compact table_selector]}
    :- [:map {:closed true}
        [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
        [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
-       [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]]]
-  (db-metadata id
-               include_hidden
-               include_editable_data_model
-               remove_inactive
-               skip_fields))
+       [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]
+       [:compact                     {:optional true} [:maybe ms/BooleanValue]]
+       [:table_selector              {:optional true} [:maybe ms/NonBlankString]]]]
+  (if compact
+    (compact-db-metadata id table_selector)
+    (db-metadata id
+                 include_hidden
+                 include_editable_data_model
+                 remove_inactive
+                 skip_fields)))
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 

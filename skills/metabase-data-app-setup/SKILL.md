@@ -77,6 +77,8 @@ A data app is a *subdirectory* of the remote-sync repo, not its own repository â
 
 The copy includes two root-level directories, `queries/` and `actions/`, each holding only a `README.md`. Keep both, even while empty: every query the app runs is a `defineQuery(...)` export in `queries/`, every action a `defineAction(...)` export in `actions/`, and the hooks refuse anything else at compile time. Read both READMEs before writing the first `useMetabaseQuery` / `useMetabaseQueryObject` / `useAction` call.
 
+The template also includes `npm run generate-schema -- <scope>` for repository-backed tables, fields, segments, and measures. When app content needs a schema, follow the semantic-layer skill to choose the scope and generate `src/metabase.data.ts`.
+
 ## Step 4 â€” Customize
 
 Once the template is in `<repo>/data_apps/<slug>/` (run everything below from that directory):

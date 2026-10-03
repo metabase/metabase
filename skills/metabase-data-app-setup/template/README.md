@@ -13,7 +13,8 @@ import Metabase materializes the app and serves it.
 
 ```bash
 npm install                           # or yarn / pnpm / bun — no lockfile shipped
-cp .env.local.example .env.local      # set DATA_APP_MB_URL + DATA_APP_MB_API_KEY
+test -f ../../.env.local || cp .env.local.example ../../.env.local
+# Set DATA_APP_MB_URL and DATA_APP_MB_API_KEY in ../../.env.local.
 npm run dev                           # preview at http://localhost:5174
 ```
 
@@ -23,6 +24,23 @@ Edit anything under `src/` — the preview soft-reloads.
 
 If the dev preview hits CORS, add `http://localhost:5174` under
 Admin → Embedding → Embedded analytics SDK → CORS.
+
+## Generate a repository-backed schema
+
+Run this from the app directory after the connected repository has exported
+representations under `databases/` or `collections/`:
+
+```bash
+npm run generate-schema -- --database "Sample Database"
+# Or select the whole Data library:
+npm run generate-schema -- --include-data-library
+```
+
+The command reads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repository
+root's `.env.local`, fetches scoped field metadata, and writes
+`src/metabase.data.ts`. Use `--library-collections <id-or-entity-id>` to select
+specific Data library collections. It currently generates tables, fields,
+segments, and measures. The semantic-layer skill defers metrics and actions.
 
 ## Ship
 

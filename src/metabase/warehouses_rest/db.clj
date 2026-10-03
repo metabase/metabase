@@ -222,6 +222,23 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-fn-set :id :model/Table, :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
+(defn compact-metadata-tables
+  "Select only table columns needed by repository schema generation."
+  [database-id]
+  (t2/select [:model/Table :id :db_id :name :schema :active :visibility_type]
+             :db_id database-id
+             {:from [(warehouse-schema-overlay/table-query)]}))
+
+(defn compact-metadata-fields
+  "Select effective field metadata for the requested tables without large field payloads."
+  [table-ids]
+  (when (seq table-ids)
+    (t2/select [:model/Field :id :table_id :name :display_name :description
+                :base_type :effective_type :semantic_type :visibility_type
+                :active :parent_id :fk_target_field_id]
+               :table_id [:in table-ids]
+               {:from [(warehouse-schema-overlay/field-query)]})))
+
 (mu/defn non-sensitive-fields-for-tables
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
