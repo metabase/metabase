@@ -263,6 +263,9 @@
   SemanticIndexCleanup [_ctx]
   (cleanup-stale-indexes-and-gate-tombstones!))
 
+(task/register-renamed-job-class!
+ "metabase_enterprise.semantic_search.task.index_cleanup.SemanticIndexCleanup" SemanticIndexCleanup)
+
 (defmethod task/init! ::SemanticIndexCleanup [_]
   (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
