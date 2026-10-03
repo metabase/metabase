@@ -9,6 +9,7 @@
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import (java.io File)
+           (java.net SocketTimeoutException)
            (java.nio.file Files Paths)
            (java.nio.file.attribute FileAttribute)
            (java.util.concurrent CyclicBarrier TimeUnit)
@@ -933,6 +934,35 @@
               (is (= 2 @attempts) "the waiter makes its own clone attempt")
               (is (not (contains? @@#'git/first-uses (.getPath ^File (#'git/repo-path {:remote-url url}))))
                   "no first-use entry stays")))
+          (finally (forget-clones! url)))))))
+
+(deftest concurrent-first-uses-share-a-network-timeout-test
+  (testing (str "concurrent first uses share a clone attempt that fails on a network timeout: no thread was interrupted, "
+                "so the waiters do not clone again")
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url      (remote-url (init-remote! remote-dir))
+            attempts (atom 0)
+            start    (promise)]
+        (try
+          (mt/with-dynamic-fn-redefs [git/clone-repository! (fn [_path _args]
+                                                              (swap! attempts inc)
+                                                              (Thread/sleep 1000)
+                                                              (throw (ex-info "Failed to clone git repository: connect timed out"
+                                                                              {}
+                                                                              (SocketTimeoutException. "connect timed out"))))]
+            (let [t0      (System/nanoTime)
+                  uses    (mapv (fn [_] (future
+                                          (deref start 10000 nil)
+                                          (try (git/git-source url "master" nil ingest/legal-top-level-paths)
+                                               (catch Exception e (str "threw: " (ex-message e))))))
+                                (range 4))
+                  _       (deliver start true)
+                  results (mapv #(deref % 30000 ::timeout) uses)
+                  ms      (quot (- (System/nanoTime) t0) 1000000)]
+              (is (every? #(and (string? %) (str/includes? % "connect timed out")) results)
+                  "each first use fails with the timeout")
+              (is (= 1 @attempts) "a network timeout is shared like any other clone failure")
+              (is (< ms 2500) (str "the four first uses took " ms " ms"))))
           (finally (forget-clones! url)))))))
 
 (deftest concurrent-stale-cache-recoveries-clone-once-test
