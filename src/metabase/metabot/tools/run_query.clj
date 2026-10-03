@@ -132,7 +132,9 @@
 
 (defn- runnable-query
   "The serialized MBQL 5 form of the query stored under `query-id`, which state may hold as MBQL 4 (the user's
-   viewing context) or MBQL 5. A SQL query passes [[check-sql-runnable!]] before anything else touches it."
+   viewing context) or MBQL 5. A SQL query passes [[check-sql-runnable!]] before anything else touches it.
+   The query's parameters, its bound filter and template-tag values, are kept: serializing strips them as runtime-only,
+   and without them the model would read a broader result than the one the user sees."
   [query-id query]
   (let [native? (native-query? query)]
     (when native?
@@ -148,7 +150,8 @@
       ;; A native stage deeper in the query, such as a join's, shows only once the query is normalized.
       (when (and (not native?) (lib/any-native-stage? normalized))
         (check-sql-runnable! query-id (:database normalized)))
-      (lib/prepare-for-serialization normalized))))
+      (cond-> (lib/prepare-for-serialization normalized)
+        (seq (:parameters normalized)) (assoc :parameters (:parameters normalized))))))
 
 (defn- cell-text
   [value]

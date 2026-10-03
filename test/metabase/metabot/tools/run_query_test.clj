@@ -77,7 +77,17 @@
                         :type     :query
                         :query    {:source-table (mt/id :venues), :limit 3}}
           {:keys [structured-output]} (run-tool! {"ctx" legacy-query} {:query_id "ctx"})]
-      (is (=? {:returned 3 :truncated? false} structured-output)))))
+      (is (=? {:returned 3 :truncated? false} structured-output))))
+  (testing "a viewed query's bound filter parameter still filters the rows"
+    (let [query {:database   (mt/id)
+                 :type       "query"
+                 :query      {:source-table (mt/id :venues)
+                              :aggregation  [["count"]]}
+                 :parameters [{:type   "category"
+                               :target ["dimension" ["field" (mt/id :venues :price) nil]]
+                               :value  [1]}]}]
+      (is (= ["| Count |" "| --- |" "| 22 |"]
+             (data-lines (:output (run-tool! {"ctx" query} {:query_id "ctx"}))))))))
 
 (deftest run-query-records-a-metabot-run-test
   (let [info (atom nil)]
@@ -162,6 +172,19 @@
         (is (str/includes? out "Only the first 30 of 40 columns are shown."))))))
 
 (deftest run-query-sql-test
+  (testing "a value bound to an optional template tag still filters the rows"
+    (let [query {:database   (mt/id)
+                 :type       "native"
+                 :native     {:query         "SELECT COUNT(*) AS N FROM VENUES [[WHERE PRICE = {{price}}]]"
+                              :template-tags {"price" {:id           "price-tag"
+                                                       :name         "price"
+                                                       :display-name "Price"
+                                                       :type         "number"}}}
+                 :parameters [{:type   "number/="
+                               :target ["variable" ["template-tag" "price"]]
+                               :value  [1]}]}]
+      (is (= ["| N |" "| --- |" "| 22 |"]
+             (data-lines (:output (run-sql-tool! {"ctx" query} {:query_id "ctx"})))))))
   (testing "with SQL execution on, a stored SQL query returns its first rows as a table"
     (let [query {"q1" (mt/native-query {:query "SELECT ID, NAME FROM VENUES ORDER BY ID"})}
           {:keys [output structured-output]} (run-sql-tool! query {:query_id "q1" :row_limit 2})]
