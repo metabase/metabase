@@ -852,6 +852,7 @@ export interface EnterpriseSettings extends Settings {
   "python-runner-test-run-timeout-seconds"?: number | null;
   "llm-metabot-provider"?: string | null;
   "llm-mini-model"?: string | null;
+  "ee-embedding-provider"?: string | null;
   "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-proxy-configured?"?: boolean | null;

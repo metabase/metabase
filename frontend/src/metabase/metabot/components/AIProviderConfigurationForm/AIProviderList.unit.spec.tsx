@@ -26,11 +26,18 @@ import { AIProviderList } from "./AIProviderList";
 const setup = ({
   usable = true,
   models = [],
-}: { usable?: boolean; models?: LlmConnectionModels[] } = {}) => {
+  embeddingProvider = "ai-service",
+}: {
+  usable?: boolean;
+  models?: LlmConnectionModels[];
+  embeddingProvider?: string;
+} = {}) => {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
-  const sessionProperties = createMockSettings();
+  const sessionProperties = createMockSettings({
+    "ee-embedding-provider": embeddingProvider,
+  });
   setupPropertiesEndpoints(sessionProperties);
   setupSettingsEndpoints([]);
   setupLlmProviderTypesEndpoint([createMockLlmProviderType()]);
@@ -127,8 +134,8 @@ describe("AIProviderList", () => {
     );
   });
 
-  it("warns that removing the openai connection also turns off semantic search", async () => {
-    setup();
+  it("warns that semantic search runs on the connection ee-embedding-provider names", async () => {
+    setup({ embeddingProvider: "openai" });
 
     const modal = await openRemoveDialog("openai");
 
@@ -140,10 +147,10 @@ describe("AIProviderList", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not warn about dependent features when removing the anthropic connection", async () => {
-    setup();
+  it("does not warn about semantic search when it embeds through something else", async () => {
+    setup({ embeddingProvider: "ai-service" });
 
-    const modal = await openRemoveDialog("anthropic");
+    const modal = await openRemoveDialog("openai");
 
     expect(
       within(modal).getByText(/saved credentials will be deleted/),
