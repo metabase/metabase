@@ -814,13 +814,14 @@
             (is (identical? recovered-git (:git later))
                 "a new source for the same URL and token uses the clone that the recovery made")
             (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))
-            (testing "the recovery retires the stale clone and the fresh clone, and installs the hook that deletes them"
-              (is (contains? @@#'git/retired-clones (#'git/git-dir (:git source)))
-                  "the stale clone is retired")
-              (is (contains? @@#'git/retired-clones (#'git/git-dir recovered-git))
-                  "the fresh clone is retired")
+            (testing "the shutdown hook deletes the stale clone and the fresh clone"
+              (let [deleted-at-exit (into #{} (map #(.getCanonicalPath ^File %)) (#'git/clones-deleted-at-exit))]
+                (is (contains? deleted-at-exit (.getCanonicalPath (#'git/git-dir (:git source))))
+                    "the stale clone is deleted at exit")
+                (is (contains? deleted-at-exit (.getCanonicalPath (#'git/git-dir recovered-git)))
+                    "the fresh clone is deleted at exit"))
               (is (realized? @#'git/retired-clones-reaper)
-                  "the shutdown hook that deletes the retired clones is installed"))))))))
+                  "the shutdown hook is installed"))))))))
 
 (defn- remote-url
   "The file:// URL of a test 'remote' repo."
