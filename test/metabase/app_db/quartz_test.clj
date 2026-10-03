@@ -1,10 +1,13 @@
 (ns metabase.app-db.quartz-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.quartz :as mdb.quartz]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [toucan2.connection :as t2.conn])
   (:import
    (com.mchange.v2.c3p0 DataSources)
@@ -69,28 +72,50 @@
                 (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
                 (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))))))))))
 
-(deftest add-renamed-job-class-test
-  (let [add #'mdb.quartz/add-renamed-job-class]
-    (testing "adds a rename, and adding the same one again changes nothing"
-      (is (= {"a.Old" "a.New", "b.Old" "b.New"}
-             (add {"a.Old" "a.New"} "b.Old" "b.New")))
-      (is (= {"a.Old" "a.New"}
-             (add {"a.Old" "a.New"} "a.Old" "a.New"))))
-    (testing "a class renamed twice maps both old names to its current one"
-      (is (= {"a.Older" "a.New", "a.Old" "a.New"}
-             (add {"a.Older" "a.New"} "a.Old" "a.New"))))
-    (testing "rejects a rename that conflicts"
-      (are [renames old-name current-name message] (thrown-with-msg? clojure.lang.ExceptionInfo message
-                                                                     (add renames old-name current-name))
-        ;; same name on both sides
-        {}                "a.New" "a.New" #"can't be registered as its own old name"
-        ;; one old name for two classes
-        {"a.Old" "a.New"} "a.Old" "b.New" #"already registered as an old name of a\.New"
-        ;; a current name that is registered as old
-        {"a.Old" "a.New"} "b.Old" "a.Old" #"registered as an old name, so no class can have it now"
-        ;; an old name that is registered as current
-        {"a.Old" "a.New"} "a.New" "b.New" #"belongs to a current class, so it can't be an old name"))))
+(deftest current-class-name-test
+  (let [history [["a.Oldest" "a.Old" "a.Current"]
+                 ["b.Old" "b.Current"]]]
+    (are [stored-name expected] (= expected (mdb.quartz/current-class-name history stored-name))
+      ;; every old name maps to the current one
+      "a.Oldest"  "a.Current"
+      "a.Old"     "a.Current"
+      "b.Old"     "b.Current"
+      ;; current and unlisted names stay as they are
+      "a.Current" "a.Current"
+      "c.Other"   "c.Other")))
 
-(deftest register-renamed-job-class!-rejects-a-name-that-still-names-a-class-test
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"still names a class"
-                        (mdb.quartz/register-renamed-job-class! "java.lang.String" Object))))
+(defn- class-exists? [class-name]
+  (letfn [(loaded? []
+            (try
+              (some? (Class/forName class-name false (classloader/the-classloader)))
+              (catch ClassNotFoundException _
+                false)))]
+    ;; a job class is a `deftype`, which exists only once its namespace has loaded
+    (or (loaded?)
+        (and (try
+               (require (symbol (str/replace (str/replace class-name #"\.[^.]+$" "") "_" "-")))
+               true
+               (catch java.io.FileNotFoundException _
+                 false))
+             (loaded?)))))
+
+(defn- simple-name [class-name]
+  (last (str/split class-name #"\.")))
+
+(deftest job-class-history-test
+  (testing "no name belongs to two jobs, or twice to one"
+    (let [names (mapcat identity mdb.quartz/job-class-history)]
+      (is (= [] (for [[class-name n] (frequencies names) :when (> n 1)] class-name)))))
+  ;; only a namespace move keeps the job, so every name of one job has the same simple name, and no two jobs share one
+  (testing "each job keeps its simple name"
+    (is (= [] (remove #(apply = (map simple-name %)) mdb.quartz/job-class-history))))
+  (testing "no two jobs share a simple name"
+    (let [simple-names (map (comp simple-name peek) mdb.quartz/job-class-history)]
+      (is (= [] (for [[s n] (frequencies simple-names) :when (> n 1)] s)))))
+  (doseq [names mdb.quartz/job-class-history
+          :when (or config/ee-available?
+                    (not (str/starts-with? (peek names) "metabase_enterprise.")))]
+    (testing (peek names)
+      (is (= {:current-exists? true, :old-names-that-exist []}
+             {:current-exists?      (class-exists? (peek names))
+              :old-names-that-exist (filterv class-exists? (pop names))})))))
