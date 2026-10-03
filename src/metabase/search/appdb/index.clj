@@ -134,26 +134,25 @@
                       (orphan-indexes))]
     (log/infof "Dropped %d orphan indexes: %s" (count dropped) dropped)))
 
-(defn- isolate-ddl!
-  "Run `f` on its own connection when the caller holds a transaction that h2 DDL would commit out from under it."
-  [f]
-  ;; Dropping a table commits implicitly on h2, taking the caller's transaction with it. Postgres keeps DDL
-  ;; inside the transaction, where it does no harm, so we never hold two connections at once there.
-  (if (and (mdb/in-transaction?) (= :h2 (mdb/db-type)))
-    (t2/with-connection [_ (mdb/data-source)]
-      (f))
-    (f)))
+(defn- ddl-commits-caller-transaction?
+  "Whether dropping a table here would commit the transaction the caller is holding."
+  []
+  ;; Dropping a table is DDL, which commits implicitly on h2. Postgres keeps DDL inside the transaction, where
+  ;; it does no harm.
+  (and (mdb/in-transaction?) (= :h2 (mdb/db-type))))
 
 (defn delete-obsolete-tables!
   "Drop index tables that are no longer needed. Best effort: failures are logged and never propagate. Does nothing
-  while mocking tables, where the pending table is tracked in an atom and has no metadata row to find it by."
+  while mocking tables, where the pending table is tracked in an atom and has no metadata row to find it by, nor
+  where the drop would commit the caller's transaction."
   []
   (when-not *mocking-tables*
     (try
       ;; Delete metadata around indexes that are no longer needed.
       (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
-      ;; Drop any indexes that are no longer referenced.
-      (isolate-ddl! drop-orphan-indexes!)
+      ;; Drop any indexes that are no longer referenced. A sweep outside the caller's transaction gets the rest.
+      (when-not (ddl-commits-caller-transaction?)
+        (drop-orphan-indexes!))
       (catch Exception e
         (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))
 
