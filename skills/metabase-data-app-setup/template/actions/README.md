@@ -52,15 +52,20 @@ export function CreateOrderForm({ onCreated }: { onCreated: () => void }) {
 
 Rules:
 
-- This directory sits beside `package.json`, not under `src/`.
+- This directory sits beside `package.json`, not under `src/`. The CLI scans
+  only `queries/` and `actions/`, so a definition anywhere else never gets a
+  copy, and the authored action is refused for the app's viewers in production.
 - Actions exist only when the generated schema includes models
-  (`include-models=true`).
+  (`include-models=true`). The app runs a copy of each action, on a copy of its
+  model, both written from what `npm run print-resources` prints; it never
+  creates actions.
 - Pass the export itself to `useAction`. Never pass
   `schema.models.<model>.actions.<action>` or its `.id`.
 - `copiedActionEntityId` is the entity ID of the action's copy in
-  `resources/actions/`. Production runs that copy instead of the action the
-  schema names; the dev preview runs the schema's action, so the app works
-  before the copy exists.
+  `resources/actions/`. After adding a definition, copy the action and its
+  model into `resources/`, run `npm run check-resources`, and commit the
+  definitions and `resources/` together. `npm run build` fails until they
+  match.
 - Never copy a `copiedActionEntityId` to another definition, or remove it while
   its copy exists.
 - After `execute` resolves, refresh every query on screen the action could have
