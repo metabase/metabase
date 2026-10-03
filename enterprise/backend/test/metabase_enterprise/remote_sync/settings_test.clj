@@ -1,7 +1,9 @@
 (ns metabase-enterprise.remote-sync.settings-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -252,6 +254,81 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
                               (settings/check-git-settings! {:remote-sync-url   url
                                                              :remote-sync-token nil})))))))
+
+(defn- init-no-head-remote!
+  "Creates a git repo in `dir` that has only the `branches` (default: main), and whose HEAD names the missing branch
+  master. Returns its file:// URL. A bare repository that `git init --bare` makes with the initial branch master,
+  followed by a push of other branches only, is in this state."
+  [^String dir & {:keys [branches] :or {branches ["main"]}}]
+  (let [url (test-helpers/init-local-git-remote! dir :branches branches)]
+    (with-open [remote-git (Git/open (io/file dir))]
+      (let [remote-repo (.getRepository remote-git)
+            link-head!  (fn [^String target] (.link (.updateRef remote-repo "HEAD") target))]
+        (link-head! (str "refs/heads/" (first branches)))
+        (-> (.updateRef remote-repo "refs/heads/master") (doto (.setForceUpdate true)) (.delete))
+        (link-head! "refs/heads/master")
+        (is (nil? (.resolve remote-repo "HEAD")) "Precondition: the remote HEAD resolves to no commit")))
+    (is (= (sort branches) (git/remote-branches url nil)) "Precondition: the remote has only the given branches")
+    url))
+
+(defn- forget-clone!
+  "Removes the cached Git instance of `url` and deletes its clone directory, so that a test leaves no clone."
+  [url]
+  (let [^File path (#'git/repo-path {:remote-url url})]
+    (swap! @#'git/jgit dissoc (.getPath path))
+    (FileUtils/deleteQuietly path)))
+
+(deftest check-git-settings-accepts-only-cloneable-remote-without-head-test
+  (testing "a remote whose HEAD names a missing branch is either rejected by the check or can be cloned"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url (init-no-head-remote! remote-dir)]
+        (try
+          (let [accepted?   (try
+                              (settings/check-git-settings! {:remote-sync-url    url
+                                                             :remote-sync-token  nil
+                                                             :remote-sync-branch "main"
+                                                             :remote-sync-type   :read-write})
+                              true
+                              (catch clojure.lang.ExceptionInfo _ false))
+                clone-error (when accepted?
+                              (try
+                                (git/git-source url "main" nil nil)
+                                nil
+                                (catch Exception e (ex-message e))))]
+            (is (nil? clone-error) "A remote that the settings check accepts can be cloned"))
+          (finally
+            (forget-clone! url)))))))
+
+(deftest blank-branch-read-only-save-of-remote-without-head-test
+  (testing "a read-only save with a blank branch of a remote whose HEAD names a missing branch succeeds, and the setup
+            fills in the branch that a clone of the remote gets"
+    (mt/with-temp-dir [remote-dir nil]
+      ;; With several branches, the test shows which branch the setup picks, not only that it picks one.
+      (let [url (init-no-head-remote! remote-dir :branches ["zeta" "alpha" "main"])]
+        (try
+          (mt/with-temporary-setting-values [remote-sync-url    nil
+                                             remote-sync-branch nil
+                                             remote-sync-type   nil
+                                             remote-sync-token  nil]
+            (is (nil? (try
+                        (settings/check-and-update-remote-settings! {:remote-sync-url    url
+                                                                     :remote-sync-token  nil
+                                                                     :remote-sync-branch ""
+                                                                     :remote-sync-type   :read-only})
+                        nil
+                        (catch Exception e (ex-message e))))
+                "The check accepts the remote")
+            (is (nil? (try
+                        (mt/with-dynamic-fn-redefs [impl/async-import! (constantly {:id 1})]
+                          (impl/finish-remote-config!))
+                        nil
+                        (catch Exception e (ex-message e))))
+                "The setup does not fail")
+            (is (= "alpha" (settings/remote-sync-branch)) "The setup fills in the first branch of the remote")
+            (is (= "refs/heads/alpha" (.getFullBranch (.getRepository ^Git (:git (git/git-source url "alpha" nil nil)))))
+                "A clone of the remote gets the same branch"))
+          (finally
+            (forget-clone! url)))))))
 
 (deftest settings-save-rejects-wrong-token-with-cached-clone-test
   (testing "a read-write settings save with a wrong token fails even when this process already holds a clone of the URL"
