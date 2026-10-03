@@ -78,6 +78,19 @@ export const TABLE_DEFINITION = {
       widget: "toggle",
       getDefault: () => false,
     },
+    "table.show_subtotal": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Show subtotals for numeric columns`;
+      },
+      inline: true,
+      widget: "toggle",
+      default: false,
+      getDefault: () => false,
+      getHidden: (series: Series, settings: ComputedVisualizationSettings) =>
+        isPivoted(series, settings),
+      readDependencies: ["table.pivot"],
+    },
     "table.freeze_columns": {
       getSection: () => t`Display`,
       get title() {

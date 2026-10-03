@@ -455,4 +455,59 @@ describe("DataGrid", () => {
       expect(cells.length).toBeGreaterThan(0);
     });
   });
+
+  it("renders sticky footer row when a column defines a footer", () => {
+    const FOOTER_COLUMN_ORDER = ["name", "price"];
+    const FOOTER_COLUMN_SIZING = { name: 150, price: 120 };
+
+    const TestDataGridWithFooter = () => {
+      const columns: ColumnOptions<SampleDataType>[] = useMemo(
+        () => [
+          {
+            id: "name",
+            name: "Name",
+            accessorFn: (row) => row.name,
+            footer: () => "Subtotal",
+          },
+          {
+            id: "price",
+            name: "Price",
+            accessorFn: (row) => row.price,
+            footer: () => "$369.0",
+          },
+        ],
+        [],
+      );
+      const tableProps = useDataGridInstance({
+        data: sampleData,
+        columnsOptions: columns,
+        columnOrder: FOOTER_COLUMN_ORDER,
+        columnSizingMap: FOOTER_COLUMN_SIZING,
+        pinnedLeftColumnsCount: 1,
+      });
+      return <DataGrid {...tableProps} />;
+    };
+
+    renderWithProviders(<TestDataGridWithFooter />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(screen.getByTestId("table-footer-container")).toBeInTheDocument();
+    expect(screen.getByTestId("footer-pinned-quadrant")).toBeInTheDocument();
+    expect(screen.getByTestId("footer-center-quadrant")).toBeInTheDocument();
+    expect(screen.getByText("Subtotal")).toBeInTheDocument();
+    expect(screen.getByText("$369.0")).toBeInTheDocument();
+  });
+
+  it("does not render footer container when no columns define a footer", () => {
+    renderWithProviders(<TestDataGrid />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    expect(
+      screen.queryByTestId("table-footer-container"),
+    ).not.toBeInTheDocument();
+  });
 });
