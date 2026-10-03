@@ -6,7 +6,11 @@ import type {
   RenderingContext,
 } from "../../../types";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
-import { CHART_STYLE, getSplitPanelGap } from "../constants/style";
+import {
+  CHART_STYLE,
+  HORIZONTAL_TICKS_GAP,
+  getSplitPanelGap,
+} from "../constants/style";
 import {
   isCategoryAxis,
   isNumericAxis,
@@ -23,6 +27,10 @@ import type {
   YAxisModel,
 } from "../model/types";
 import { getPaddedAxisLabel } from "../option/utils";
+import {
+  getXAxisEndpointInset,
+  hasHorizontalXAxisLabels,
+} from "../option/x-axis-endpoint-labels";
 
 import type { ChartBoundsCoords, ChartLayout, TicksDimensions } from "./types";
 
@@ -555,6 +563,9 @@ const getTicksOverflow = (
   const { seriesModels, xAxisModel } = input;
 
   const maxOverflow = chartWidth * MAX_OVERFLOW_PERCENTAGE;
+  const endpointInset = getXAxisEndpointInset(
+    chartWidth - padding.left - padding.right,
+  );
 
   // We handle non-categorical scatter plots differently, because echarts places
   // the tick labels on the very edge of the x-axis for scatter plots only.
@@ -569,18 +580,14 @@ const getTicksOverflow = (
   if (isScatterPlot && xAxisModel.axisType !== "category") {
     const firstTickOverflow = Math.min(
       Math.max(
-        ticksDimensions.firstXTickWidth / 2 -
-          padding.left +
-          TICK_OVERFLOW_BUFFER,
+        ticksDimensions.firstXTickWidth / 2 - padding.left + endpointInset,
         0,
       ),
       maxOverflow,
     );
     const lastTickOverflow = Math.min(
       Math.max(
-        ticksDimensions.lastXTickWidth / 2 -
-          padding.right +
-          TICK_OVERFLOW_BUFFER,
+        ticksDimensions.lastXTickWidth / 2 - padding.right + endpointInset,
         0,
       ),
       maxOverflow,
@@ -590,6 +597,19 @@ const getTicksOverflow = (
 
   const currentBoundaryWidth = chartWidth - padding.left - padding.right;
   const dimensionWidth = getDimensionWidth(input, currentBoundaryWidth);
+
+  // Horizontal category and time-series endpoint labels are aligned inward by
+  // the axis instead of shrinking the plot; see getCategoryEndpointLabelOptions
+  // and getTimeAxisEndpointLabelOptions.
+  const hasInwardAlignedEndpointLabels =
+    hasHorizontalXAxisLabels(axisEnabledSetting) &&
+    ((isCategoryAxis(xAxisModel) &&
+      !xAxisModel.isHistogram &&
+      xAxisModel.valuesCount > 1) ||
+      (isTimeSeriesAxis(xAxisModel) && xAxisModel.intervalsCount >= 1));
+  if (hasInwardAlignedEndpointLabels) {
+    return { firstTickOverflow: 0, lastTickOverflow: 0 };
+  }
 
   // labels rotated at 45 degrees have their right edge aligned with the tick mark, so need different treatment
   if (axisEnabledSetting === "rotate-45") {
@@ -626,7 +646,7 @@ const getTicksOverflow = (
       ticksDimensions.firstXTickWidth / 2 -
         dimensionWidth / 2 -
         padding.left +
-        TICK_OVERFLOW_BUFFER,
+        endpointInset,
       0,
     ),
     maxOverflow,
@@ -636,7 +656,7 @@ const getTicksOverflow = (
       ticksDimensions.lastXTickWidth / 2 -
         dimensionWidth / 2 -
         padding.right +
-        TICK_OVERFLOW_BUFFER,
+        endpointInset,
       0,
     ),
     maxOverflow,
@@ -752,8 +772,6 @@ const getDimensionWidth = (
 
   return boundaryWidth / xValuesCount;
 };
-
-const HORIZONTAL_TICKS_GAP = 6;
 
 const areHorizontalXAxisTicksOverlapping = (
   dataset: ChartDataset,

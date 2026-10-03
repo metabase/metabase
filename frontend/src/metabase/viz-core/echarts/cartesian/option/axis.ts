@@ -14,6 +14,7 @@ import { CHART_STYLE } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
 import { getScaledMinAndMax } from "../model/axis";
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
+import { getDisplaySeriesSettingsByDataKey } from "../model/series";
 import type {
   AxisFormatter,
   BaseCartesianChartModel,
@@ -24,7 +25,12 @@ import type {
 } from "../model/types";
 
 import { getTicksOptions } from "./ticks";
+import { getTimeAxisEndpointLabelOptions } from "./time-axis-endpoint-labels";
 import { getPaddedAxisLabel } from "./utils";
+import {
+  getCategoryEndpointLabelOptions,
+  getNumericEndpointLabelOptions,
+} from "./x-axis-endpoint-labels";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -201,6 +207,22 @@ const getCommonDimensionAxisOptions = (
   };
 };
 
+const hasVisibleBarSeries = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+) => {
+  const displaySettingsByDataKey = getDisplaySeriesSettingsByDataKey(
+    chartModel.seriesModels,
+    chartModel.stackModels,
+    settings,
+  );
+  return chartModel.seriesModels.some(
+    (series) =>
+      series.visible &&
+      displaySettingsByDataKey[series.dataKey]?.display === "bar",
+  );
+};
+
 export const buildDimensionAxis = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -226,6 +248,7 @@ export const buildDimensionAxis = (
       settings,
       chartLayout,
       renderingContext,
+      hasVisibleBarSeries(chartModel, settings),
     );
   }
 
@@ -266,6 +289,7 @@ export const buildNumericDimensionAxis = (
     axisLabel: {
       margin: renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
+      ...getNumericEndpointLabelOptions(xAxisModel, chartLayout),
       formatter: (rawValue: number) => {
         if (isPadded && (rawValue < min || rawValue > max)) {
           return "";
@@ -290,9 +314,25 @@ export const buildTimeSeriesDimensionAxis = (
   settings: ComputedVisualizationSettings,
   chartLayout: ChartLayout,
   renderingContext: RenderingContext,
+  hasBarSeries = false,
 ): XAXisOption => {
   const { formatter, maxInterval, minInterval, canRender, xDomainPadded } =
     getTicksOptions(xAxisModel, chartLayout);
+  const formatLabel = (rawValue: number) =>
+    getPaddedAxisLabel(
+      formatter(
+        xAxisModel
+          .fromEChartsAxisValue(rawValue)
+          .format("YYYY-MM-DDTHH:mm:ss[Z]"),
+      ),
+    );
+  const endpointLabelOptions = getTimeAxisEndpointLabelOptions(
+    xAxisModel,
+    chartLayout,
+    formatLabel,
+    hasBarSeries,
+  );
+  const hasEndpointLabels = endpointLabelOptions.customValues != null;
 
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
@@ -303,14 +343,15 @@ export const buildTimeSeriesDimensionAxis = (
         : renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
-        const value = xAxisModel.fromEChartsAxisValue(rawValue);
-        if (canRender(value)) {
-          return getPaddedAxisLabel(
-            formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]")),
-          );
+        if (
+          hasEndpointLabels ||
+          canRender(xAxisModel.fromEChartsAxisValue(rawValue))
+        ) {
+          return formatLabel(rawValue);
         }
         return "";
       },
+      ...endpointLabelOptions,
     },
     min: xDomainPadded[0],
     max: xDomainPadded[1],
@@ -336,6 +377,15 @@ export const buildCategoricalDimensionAxis = (
     ...originalSettings,
     "graph.x_axis.axis_enabled": autoAxisEnabled,
   };
+  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+  const formatLabel = (value: string) => {
+    const numberValue = parseNumberValue(value);
+    if (column && isNumericBaseType(column) && numberValue !== null) {
+      return getPaddedAxisLabel(formatter(numberValue));
+    }
+
+    return getPaddedAxisLabel(formatter(value));
+  };
 
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
@@ -343,21 +393,20 @@ export const buildCategoricalDimensionAxis = (
     axisLabel: {
       margin: renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
-      ...getHistogramTicksOptions(
-        datasetLength,
-        settings,
-        chartLayout,
-        renderingContext,
-      ),
       interval: () => true,
-      formatter: (value: string) => {
-        const numberValue = parseNumberValue(value);
-        if (column && isNumericBaseType(column) && numberValue !== null) {
-          return getPaddedAxisLabel(formatter(numberValue));
-        }
-
-        return getPaddedAxisLabel(formatter(value));
-      },
+      formatter: formatLabel,
+      ...(isHistogram
+        ? getHistogramTicksOptions(
+            datasetLength,
+            settings,
+            chartLayout,
+            renderingContext,
+          )
+        : getCategoryEndpointLabelOptions(
+            datasetLength,
+            chartLayout,
+            formatLabel,
+          )),
       ...(chartLayout.ticksDimensions.xTickWidthCap < Infinity
         ? {
             width: chartLayout.ticksDimensions.xTickWidthCap,
