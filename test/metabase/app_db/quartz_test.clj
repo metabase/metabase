@@ -68,3 +68,29 @@
               (finally
                 (DataSources/destroy ^javax.sql.DataSource (:data-source app-db))
                 (DataSources/destroy ^javax.sql.DataSource (:quartz-data-source app-db))))))))))
+
+(deftest add-renamed-job-class-test
+  (let [add #'mdb.quartz/add-renamed-job-class]
+    (testing "adds a rename, and adding the same one again changes nothing"
+      (is (= {"a.Old" "a.New", "b.Old" "b.New"}
+             (add {"a.Old" "a.New"} "b.Old" "b.New")))
+      (is (= {"a.Old" "a.New"}
+             (add {"a.Old" "a.New"} "a.Old" "a.New"))))
+    (testing "a class renamed twice maps both old names to its current one"
+      (is (= {"a.Older" "a.New", "a.Old" "a.New"}
+             (add {"a.Older" "a.New"} "a.Old" "a.New"))))
+    (testing "rejects a rename that conflicts"
+      (are [renames old-name current-name message] (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                                                     (add renames old-name current-name))
+        ;; same name on both sides
+        {}                "a.New" "a.New" #"can't be registered as its own old name"
+        ;; one old name for two classes
+        {"a.Old" "a.New"} "a.Old" "b.New" #"already registered as an old name of a\.New"
+        ;; a current name that is registered as old
+        {"a.Old" "a.New"} "b.Old" "a.Old" #"registered as an old name, so no class can have it now"
+        ;; an old name that is registered as current
+        {"a.Old" "a.New"} "a.New" "b.New" #"belongs to a current class, so it can't be an old name"))))
+
+(deftest register-renamed-job-class!-rejects-a-name-that-still-names-a-class-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"still names a class"
+                        (mdb.quartz/register-renamed-job-class! "java.lang.String" Object))))
