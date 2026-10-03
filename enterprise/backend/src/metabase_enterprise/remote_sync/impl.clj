@@ -1687,8 +1687,12 @@
         (serdes/with-cache
           (let [targets (spec/exportable-entities)]
             (if (seq targets)
-              (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil
-                                           :synced-hashes (remote-sync.db/synced-content-hashes-by-path))
+              ;; only the entities the remote changed decide the preview, so extract and serialize just those
+              (assoc (source/preview-merge-changes
+                      (fn [changed-paths]
+                        (spec/extract-entities-for-export (spec/targets-for-paths targets changed-paths)))
+                      snapshot base-snapshot
+                      :synced-hashes (remote-sync.db/synced-content-hashes-by-path))
                      :diverged? true)
               (assoc no-changes :diverged? true))))
         ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
