@@ -39,13 +39,13 @@ You handle one self-contained question or implementation at a time. If a task sp
 
 `metabase_enterprise.search.semantic`:
 
-- **Embedding** (`semantic_search.embedding`): Generates embeddings via external service.
-- **Vector index** (`semantic_search.index`): pgvector-based index for similarity queries. Creation, updates, migrations.
-- **Indexer** (`semantic_search.indexer`): Background continuous indexing.
-- **DLQ** (`semantic_search.dlq`): Dead letter queue for embedding failures — retries with backoff, permanent failure tracking.
-- **Gate** (`semantic_search.gate`): Usage metering and gating for embedding service.
-- **Scoring** (`semantic_search.scoring`): Blends vector similarity with traditional signals.
-- **Repair** (`semantic_search.repair`): Index repair and consistency checking.
+- **Embedding** (`search.semantic.embedding`): Generates embeddings via external service.
+- **Vector index** (`search.semantic.index`): pgvector-based index for similarity queries. Creation, updates, migrations.
+- **Indexer** (`search.semantic.indexer`): Background continuous indexing.
+- **DLQ** (`search.semantic.dlq`): Dead letter queue for embedding failures — retries with backoff, permanent failure tracking.
+- **Gate** (`search.semantic.gate`): Usage metering and gating for embedding service.
+- **Scoring** (`search.semantic.scoring`): Blends vector similarity with traditional signals.
+- **Repair** (`search.semantic.repair`): Index repair and consistency checking.
 - **Background tasks**: Index cleanup, repair, metric collection, usage trimming.
 
 ### X-rays & Auto-analysis
