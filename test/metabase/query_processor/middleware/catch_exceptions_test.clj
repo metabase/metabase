@@ -32,27 +32,28 @@
 (deftest ^:parallel exception-response-test
   (testing "Should nicely format a chain of exceptions, with the top-level Exception appearing first"
     (testing "lowest-level error `:type` should be pulled up to the top-level"
-      (let [e1 (ex-info "1" {:level 1})
+      (let [e1 (ex-info "1" {:level 1, :status-code 400})
             e2 (ex-info "2" {:level 2, :type qp.error-type/qp :is-curated true} e1)
-            e3 (ex-info "3" {:level 3} e2)]
+            e3 (ex-info "3" {:level 3, :errors {:x "bad"}} e2)]
+        ;; `:ex-data` carries only the keys clients are meant to read; `:level` is server-side context
         (is (= {:status     :failed
                 :class      clojure.lang.ExceptionInfo
                 :error      "1"
                 :stacktrace true
                 :error_type :qp
-                :ex-data    {:level 1}
+                :ex-data    {:status-code 400}
                 :via        [{:status        :failed
                               :class         clojure.lang.ExceptionInfo
                               :error         "2"
                               :stacktrace    true
-                              :ex-data       {:level 2, :type :qp, :is-curated true}
+                              :ex-data       {}
                               :error_type    :qp
                               :error_is_curated true}
                              {:status     :failed
                               :class      clojure.lang.ExceptionInfo
                               :error      "3"
                               :stacktrace true
-                              :ex-data    {:level 3}}]}
+                              :ex-data    {:errors {:x "bad"}}}]}
                (-> (#'catch-exceptions/exception-response e3)
                    (update :stacktrace sequential?)
                    (update :via (fn [causes]
@@ -66,7 +67,7 @@
               :class      clojure.lang.ExceptionInfo
               :error      "mock sql exception"
               :stacktrace true
-              :ex-data    {:level 1}
+              :ex-data    {}
               :via        [{:status        :failed
                             :class         java.sql.SQLException,
                             :error         "mock sql exception\n\tat line1\n\tat line2\n\tat line3",
@@ -76,7 +77,7 @@
                             :class      clojure.lang.ExceptionInfo
                             :error      "mock exception"
                             :stacktrace true
-                            :ex-data    {:level 3}}]}
+                            :ex-data    {}}]}
              (-> (#'catch-exceptions/exception-response e3)
                  (update :stacktrace sequential?)
                  (update :via (fn [causes]
@@ -158,13 +159,13 @@
                     query)]
         (is (=? [{:level :error, :message "Error processing query: boom"}]
                 (messages)))
-        (testing "the userland response still has the full detail"
+        (testing "the userland response has the error and the user's own query, but not the ex-data"
           (is (=? {:status     :failed
                    :error      "boom"
                    :stacktrace vector?
-                   :ex-data    {:secret-in-ex-data "hunter2-ex-data"}
                    :json_query map?}
-                  result)))))))
+                  result))
+          (is (not (contains? (:ex-data result) :secret-in-ex-data))))))))
 
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
@@ -214,20 +215,26 @@
       (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
       (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                     "the query in the error response")
-        (is (=? {:native nil, :preprocessed map?}
-                (test.users/with-test-user :rasta
-                  (qp/process-query
-                   (qp/userland-query
-                    (mt/mbql-query venues {:fields [!month.id]})))))))
+        (let [result (test.users/with-test-user :rasta
+                       (qp/process-query
+                        (qp/userland-query
+                         (mt/mbql-query venues {:fields [!month.id]}))))]
+          (is (=? {:native nil, :preprocessed map?} result))
+          (testing "nor the SQL the driver attaches to its exception"
+            (is (=? {:status :failed, :error_type :invalid-query} result))
+            (is (empty? (keep (comp :sql :ex-data) (cons result (:via result))))))))
       (testing "They should see it if they have ad-hoc native query perms"
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
         ;; this is not actually a valid query
-        (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
-                                             " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
-                                :params nil}
-                 :preprocessed map?}
-                (test.users/with-test-user :rasta
-                  (qp/process-query
-                   (qp/userland-query
-                    (mt/mbql-query venues {:fields [!month.id]}))))))))))
+        (let [result (test.users/with-test-user :rasta
+                       (qp/process-query
+                        (qp/userland-query
+                         (mt/mbql-query venues {:fields [!month.id]}))))]
+          (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
+                                               " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
+                                  :params nil}
+                   :preprocessed map?}
+                  result))
+          (testing "including the SQL the driver attaches to its exception"
+            (is (seq (keep (comp :sql :ex-data) (cons result (:via result)))))))))))

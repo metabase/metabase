@@ -726,6 +726,21 @@
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
 
+(deftest create-question-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "The 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+    (mt/with-temp [:model/Card {secret-id :id} {:collection_id (:id (collection/user->personal-collection
+                                                                     (mt/user->id :crowberto)))
+                                                :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+      (let [q    {:database (mt/id) :type :query :query {:source-table (str "card__" secret-id)}}
+            body (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                       {:name  "Should Not Save"
+                                        :query (u/encode-base64 (json/encode q))})]
+        (is (= "You cannot save this Question because you do not have permissions to run its query."
+               (:message body)))
+        (is (not (contains? body :query)))
+        (is (not (contains? (:data body) :query)))
+        (is (not (str/includes? (pr-str body) "sec_1173_marker")))))))
+
 ;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
 
 (deftest construct-native-query-test

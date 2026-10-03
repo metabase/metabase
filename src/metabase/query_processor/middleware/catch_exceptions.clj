@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:refer-clojure :exclude [some get-in])
+  (:refer-clojure :exclude [some get-in mapv select-keys])
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.response :as api.response]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
@@ -18,7 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some get-in]])
+   [metabase.util.performance :refer [some get-in mapv select-keys]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))
@@ -41,6 +42,15 @@
   [^InterruptedException _e]
   {:status :interrupted})
 
+(defn- response-ex-data
+  "The part of an exception's `ex-data` that goes into the userland error response: the keys any API error may carry,
+  plus `:status-code` (read by [[metabase.query-processor.streaming]]) and the `:sql`/`:params` a driver attaches to
+  an execution error (the FE uses it to position native query errors; [[format-exception*]] strips it again for users
+  who cannot run native queries, like `:native`)."
+  [data]
+  (merge (api.response/ex-data->response-data data)
+         (select-keys data [:status-code :sql :params])))
+
 (defmethod format-exception ExceptionInfo
   [e]
   ;; `:is-curated` is a flag that signals whether the error message in `e` was approved by product
@@ -53,7 +63,7 @@
      (when is-curated
        {:error_is_curated is-curated})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
-     {:ex-data data})))
+     {:ex-data (response-ex-data data)})))
 
 (defmethod format-exception SQLException
   [^SQLException e]
@@ -133,6 +143,15 @@
    [:native       {:optional true} [:maybe :metabase.query-processor.compile/compiled]]
    [:preprocessed {:optional true} [:maybe :metabase.lib.schema/query]]])
 
+(defn- strip-native-from-ex-data
+  "Remove the compiled SQL a driver attached to its exception from `response` and its `:via` chain."
+  [response]
+  (let [strip (fn [m]
+                (cond-> m
+                  (:ex-data m) (update :ex-data dissoc :sql :params)))]
+    (cond-> (strip response)
+      (:via response) (update :via #(mapv strip %)))))
+
 (mu/defn- format-exception* :- [:map [:status :keyword]]
   "Format a `Throwable` into the usual userland error-response format."
   [query        :- ::qp.schema/any-query
@@ -146,10 +165,11 @@
              (format-exception* query (ex-cause e) extra-info))
       (merge
        {:data {:rows [], :cols []}, :row_count 0}
-       (exception-response e)
+       (cond-> (exception-response e)
+         (not (qp.perms/current-user-has-adhoc-native-query-perms? query)) strip-native-from-ex-data)
        (query-info query extra-info)))
     (catch Throwable e
-      (assoc (Throwable->map e) :status :failed))))
+      (assoc (api.response/throwable->response-map e) :status :failed))))
 
 (mu/defn catch-exceptions :- ::qp.schema/qp
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards

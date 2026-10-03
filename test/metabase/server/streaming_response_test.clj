@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [compojure.response]
@@ -397,8 +398,8 @@
                 "Stacktrace should be a vector")
             (is (contains? error-response :via)
                 "Response should contain :via key")
-            (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")))))))
+            (is (not (contains? error-response :data))
+                "ex-data is server-side context and never written to the client")))))))
 
 (deftest write-error-omits-stacktrace-when-hide-stacktraces-enabled-test
   (testing "write-error! omits stacktrace and exception chain when hide-stacktraces is true"
@@ -413,8 +414,8 @@
                 "Response should not contain :trace key")
             (is (not (contains? error-response :via))
                 "Response should not contain :via key")
-            (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")))))))
+            (is (not (contains? error-response :data))
+                "ex-data is server-side context and never written to the client")))))))
 
 (deftest write-error-nested-exception-with-stacktraces-disabled-test
   (testing "write-error! includes nested exception details when hide-stacktraces is false"
@@ -427,7 +428,23 @@
             (is (contains? error-response :via)
                 "Response should contain :via key")
             (is (> (count (:via error-response)) 1)
-                "Exception chain should include multiple exceptions")))))))
+                "Exception chain should include multiple exceptions")
+            (is (every? #(not (contains? % :data)) (:via error-response))
+                "no exception in the chain has its ex-data written")
+            (is (not (str/includes? (String. (.toByteArray os) "UTF-8") "secret")))))))))
+
+(deftest write-error-exception-echoes-contract-ex-data-keys-test
+  (testing "write-error! writes the ex-data keys that are part of the API error contract, and nothing else from ex-data"
+    (mt/with-temporary-setting-values [hide-stacktraces false]
+      (with-open [os (java.io.ByteArrayOutputStream.)]
+        (let [exception (ex-info "Invalid" {:status-code 400
+                                            :errors      {:name "required"}
+                                            :query       {:native "SELECT salary FROM payroll"}})]
+          (#'streaming-response/write-error! os exception :api)
+          (let [body           (String. (.toByteArray os) "UTF-8")
+                error-response (json/decode body true)]
+            (is (= {:name "required"} (:errors error-response)))
+            (is (not (str/includes? body "payroll")))))))))
 
 (deftest write-error-nested-exception-with-stacktraces-enabled-test
   (testing "write-error! omits nested exception details when hide-stacktraces is true"
