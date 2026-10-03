@@ -15,6 +15,7 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
+   [clojure.set :as set]
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
    [dev.module-graph :as module-graph]
@@ -209,9 +210,80 @@
   (or (last (sort-by second (map vector module-sizes namespace-sizes)))
       [0 0]))
 
+(defn- on-big-stack
+  "Call `f` on a thread with a 512 MB stack and return its result."
+  [f]
+  ;; The namespace graph has about 2,000 nodes, and the recursive cycle search goes one level deeper per node on
+  ;; its path, which can outgrow the default 2 MB stack.
+  (let [result (promise)
+        thread (Thread. nil
+                        #(deliver result (try {:ok (f)} (catch Throwable e {:error e})))
+                        "module-history-scc"
+                        (* 512 1024 1024))]
+    (.start thread)
+    (let [{:keys [ok error]} @result]
+      (when error
+        (throw error))
+      ok)))
+
+(defn- structure-metrics
+  "The measures stats dashboard 9805 tracks, defined as when it was built: cycle sizes in
+  [[module-graph/cyclic-components]] order, the largest namespace-level cycle, module pairs that require each other,
+  and cross-module requires past a module's `:api`, including those a `:friends` grant allows."
+  [deps modules stats]
+  (let [existing    (into #{} (map :namespace) deps)
+        ns-graph    (into {}
+                          (map (fn [{:keys [namespace deps]}]
+                                 [namespace (into #{} (comp (map :namespace) (filter existing)) deps)]))
+                          deps)
+        graph       (deps-graph/module-dependencies deps)
+        ;; The declared API: nil for `:api :any`, else the declared set, else the default namespaces that exist.
+        api-of      (memoize (fn [module]
+                               (let [api (get-in modules [module :api])]
+                                 (cond
+                                   (= :any api) nil
+                                   (set? api)   api
+                                   :else        (let [prefix (modules/module-ns-prefix modules module)]
+                                                  (set/intersection existing
+                                                                    #{(symbol (str prefix ".api"))
+                                                                      (symbol (str prefix ".core"))
+                                                                      (symbol (str prefix ".init"))}))))))
+        non-api     (for [{:keys [module namespace], :as row} deps
+                          {to-ns :namespace, to :module} (:deps row)
+                          :when (not= module to)
+                          :let  [api (api-of to)]
+                          :when (and (some? api) (not (contains? api to-ns)))]
+                      {:from-ns namespace, :from module, :to-ns to-ns, :to to})
+        via-friends (filter (fn [{:keys [from to]}] (contains? (set (get-in modules [to :friends])) from)) non-api)
+        mutual      (for [[a bs] graph
+                          b      bs
+                          :when  (and (neg? (compare (str a) (str b)))
+                                      (contains? (get graph b) a)
+                                      (not (modules/descendant-of? modules a b))
+                                      (not (modules/descendant-of? modules b a)))]
+                      [a b])
+        size-at     (fn [sizes i] (get sizes i 0))]
+    {:distinct-namespaces           (count existing)
+     :configured-top-level-modules  (count (remove #(modules/parent-module modules %) (keys modules)))
+     :scc1-modules                  (size-at (:scc-module-sizes stats) 0)
+     :scc1-namespaces               (size-at (:scc-namespace-sizes stats) 0)
+     :scc2-modules                  (size-at (:scc-module-sizes stats) 1)
+     :scc2-namespaces               (size-at (:scc-namespace-sizes stats) 1)
+     :scc3-modules                  (size-at (:scc-module-sizes stats) 2)
+     :scc3-namespaces               (size-at (:scc-namespace-sizes stats) 2)
+     :largest-ns-level-scc          (count (first (on-big-stack #(module-graph/cyclic-components ns-graph))))
+     :mutual-dependency-pairs       (count mutual)
+     :friend-internal-namespaces    (count (into #{} (map :to-ns) via-friends))
+     :friend-internal-requires      (count (into #{} (map (juxt :from-ns :to-ns)) via-friends))
+     :non-api-cross-module-requires (count (into #{} (map (juxt :from-ns :to-ns)) non-api))
+     :total-api-namespaces          (transduce (map #(count (or (api-of %) #{}))) + 0 (keys modules))
+     :ns-prefixes                   (count (keep :ns-prefix (vals modules)))
+     :model-imports-bypass          (count (filter #(= :bypass (:model-imports %)) (vals modules)))
+     :legacy-rest-modules           (count (filter #(re-find #"-rest$" (str %)) (keys modules)))}))
+
 (defn commit-metrics
   "Flat metrics for one commit's dependency rows and module map: [[deps-graph/module-boundary-stats]] plus the
-  sizes, cycle, exposure and `:friends` measures the history report tracks."
+  sizes, cycle, exposure and `:friends` measures the history report tracks, and the [[structure-metrics]]."
   [deps modules]
   (let [stats            (deps-graph/module-boundary-stats deps modules)
         mod->nses        (update-vals (group-by :module deps) #(into #{} (map :namespace) %))
@@ -240,6 +312,7 @@
         ns->mod          (into {} (map (juxt :namespace :module)) deps)
         namespaces       (count deps)]
     (merge
+     (structure-metrics deps modules stats)
      (select-keys stats [:api-any-namespaces
                          :upward-requires
                          :upward-module-edges
@@ -309,12 +382,17 @@
   "Commits to measure on the first-parent history of `ref` (default `origin/master`), oldest first:
 
   - every one since `since` that changed the module config, which changes on every boundary shift
+  - every one since `backend-since` that changed a backend source or the module config
   - the last commit before the first of each month from `monthly-since`
   - each of `extra`, and the tip of `ref`"
-  [{:keys [ref since monthly-since extra], :or {ref "origin/master"}}]
-  (let [config-commits (when since
-                         (str/split-lines (git! "log" "--first-parent" "--format=%H" (str "--since=" since) ref
-                                                "--" ".clj-kondo/config/modules/config.edn")))
+  [{:keys [ref since backend-since monthly-since extra], :or {ref "origin/master"}}]
+  (let [log-since      (fn [date & paths]
+                         (when date
+                           (str/split-lines (apply git! "log" "--first-parent" "--format=%H" (str "--since=" date) ref
+                                                   "--" paths))))
+        config-commits (concat (log-since since ".clj-kondo/config/modules/config.edn")
+                               (log-since backend-since "src" "enterprise/backend/src" "modules/drivers/*/src"
+                                          "modules/embedder/src" ".clj-kondo/config/modules/config.edn"))
         months         (when monthly-since
                          (take-while #(not (.isAfter ^LocalDate % (LocalDate/now)))
                                      (iterate #(.plusMonths ^LocalDate % 1)
@@ -341,7 +419,11 @@
    :upward-requires :upward-module-edges :upward-internal-requires :upward-cycle-requires
    :exposed-namespaces :hidden-modules :hidden-namespaces :cross-top-level-required-namespaces
    :api-any-modules :api-any-namespaces :uses-any-modules
-   :friend-grants :cross-top-level-friend-grants :friend-exposed-namespaces :friend-access-paths])
+   :friend-grants :cross-top-level-friend-grants :friend-exposed-namespaces :friend-access-paths
+   :distinct-namespaces :configured-top-level-modules
+   :scc1-modules :scc1-namespaces :scc2-modules :scc2-namespaces :scc3-modules :scc3-namespaces
+   :largest-ns-level-scc :mutual-dependency-pairs :friend-internal-namespaces :friend-internal-requires
+   :non-api-cross-module-requires :total-api-namespaces :ns-prefixes :model-imports-bypass :legacy-rest-modules])
 
 (defn backfill!
   "Measure every commit [[sample-commits]] picks for `opts`, plus any explicit `:commits`, and return the rows.
@@ -351,7 +433,7 @@
       :since '\"2025-10-01\"' :monthly-since '\"2023-12-01\"' :out '\"history.csv\"'"
   [{:keys [commits out], :as opts}]
   (let [shas   (if (seq commits)
-                 (vec (distinct (concat commits (when (or (:since opts) (:monthly-since opts))
+                 (vec (distinct (concat commits (when (some opts [:since :backend-since :monthly-since])
                                                   (sample-commits opts)))))
                  (sample-commits opts))
         reader (open-object-reader)

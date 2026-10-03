@@ -92,5 +92,25 @@
             :friend-grants                       1
             :cross-top-level-friend-grants       1
             :friend-exposed-namespaces           1
-            :friend-access-paths                 1}
+            :friend-access-paths                 1
+            :distinct-namespaces                 6
+            :configured-top-level-modules        3
+            :scc1-modules                        3
+            :scc1-namespaces                     5
+            :scc2-modules                        0
+            :scc2-namespaces                     0
+            :scc3-modules                        0
+            :scc3-namespaces                     0
+            ;; x.core and x.y.core require each other.
+            :largest-ns-level-scc                2
+            ;; x and z; x and x.y also require each other, but one is nested in the other.
+            :mutual-dependency-pairs             1
+            ;; x.core requiring z.impl, past z's API, which z's friend grant allows.
+            :friend-internal-namespaces          1
+            :friend-internal-requires            1
+            :non-api-cross-module-requires       1
+            :total-api-namespaces                3
+            :ns-prefixes                         0
+            :model-imports-bypass                0
+            :legacy-rest-modules                 0}
            (module-history/commit-metrics deps modules)))))
