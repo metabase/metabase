@@ -137,14 +137,15 @@
 (defn- ddl-commits-caller-transaction?
   "Whether dropping a table here would commit the transaction the caller is holding."
   []
-  ;; Dropping a table is DDL, which commits implicitly on h2. Postgres keeps DDL inside the transaction, where
-  ;; it does no harm.
+  ;; Dropping a table is DDL, which commits implicitly on h2.
+  ;; Postgres keeps DDL inside the transaction, where it does no harm.
   (and (mdb/in-transaction?) (= :h2 (mdb/db-type))))
 
 (defn delete-obsolete-tables!
-  "Drop index tables that are no longer needed. Best effort: failures are logged and never propagate. Does nothing
-  while mocking tables, where the pending table is tracked in an atom and has no metadata row to find it by, nor
-  where the drop would commit the caller's transaction."
+  "Drop index tables that are no longer needed.
+  Best effort: failures are logged and never propagate.
+  Does nothing while mocking tables, where the pending table lives in an atom with no metadata row.
+  Does nothing either when the drop would commit the caller's transaction, leaving those to a later sweep."
   []
   (when-not *mocking-tables*
     (try

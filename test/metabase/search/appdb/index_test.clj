@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
@@ -662,6 +663,27 @@
             (is (not (search.index/exists? orphan)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "sweep-in-transaction-test")
+          (search.index/delete-obsolete-tables!))))))
+
+(deftest sweep-under-the-cluster-lock-still-drops-orphans-test
+  (when (search/supports-index?)
+    (binding [search.spec/*testing-only-index-version-hash* "sweep-under-lock-test"]
+      (try
+        (reset! @#'search.index/next-sync-at nil)
+        (search.index/reset-index!)
+        (let [orphan (search.index/gen-table-name)]
+          (search.index/create-table! orphan)
+          ;; The scheduled reindex sweeps from inside this lock, and deferring the drops when the caller holds a
+          ;; transaction is only safe while production never holds one here. That rests on the lock: postgres
+          ;; wraps the body in a transaction the drop can safely join, and h2 takes an in-process lock with no
+          ;; transaction at all. Pin it, so making the h2 lock transactional fails here instead of quietly
+          ;; stopping the sweep and leaking index tables again.
+          (testing "the lock leaves the sweep able to drop an orphan"
+            (cluster-lock/with-cluster-lock ::sweep-test-lock
+              (search.index/delete-obsolete-tables!))
+            (is (not (search.index/exists? orphan)))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "sweep-under-lock-test")
           (search.index/delete-obsolete-tables!))))))
 
 (deftest strip-junk-chars-test
