@@ -731,7 +731,7 @@
 (deftest targets-for-paths-test
   (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :is_remote_synced true}
                  :model/Card {exported :id exported-eid :entity_id} {:name "Exported" :collection_id coll-id}
-                 :model/Card {other :id other-eid :entity_id} {:name "Not exported"}]
+                 :model/Card {other-eid :entity_id} {:name "Not exported"}]
     (let [targets {"Card" [exported 999999] "Collection" [coll-id]}
           path    (fn [model eid] [{:model model :id eid}])]
       (testing "a path that names an exported entity keeps just that entity"
@@ -743,3 +743,14 @@
       (testing "a path that resolves to no local row keeps every target of its model, so full extraction decides"
         (is (= {"Card" [exported 999999]}
                (spec/targets-for-paths targets [(path "Card" "no-such-entity-id000") (path "Card" exported-eid)])))))))
+
+(deftest targets-for-paths-action-test
+  (testing "the path of an Action (model Action and its entity_id, as a file in the collection directory has) keeps
+            just that Action"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :is_remote_synced true}
+                   :model/Card {model-id :id} {:name "Model" :type :model :collection_id coll-id}
+                   :model/Action {action-id :id action-eid :entity_id} {:name "Action" :type :implicit :model_id model-id}
+                   :model/Action {other-id :id} {:name "Other action" :type :implicit :model_id model-id}]
+      (let [targets {"Card" [model-id] "Action" [action-id other-id]}]
+        (is (= {"Action" [action-id]}
+               (spec/targets-for-paths targets [[{:model "Action" :id action-eid}]])))))))
