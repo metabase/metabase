@@ -103,7 +103,7 @@
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase.lib.core :as lib]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
@@ -291,8 +291,9 @@
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
    :ok))
 
-(defn boot-initialize!
+(defenterprise boot-initialize!
   "Boot-time entry point: read the config file from disk and run [[initialize!]]
    with `{{env VAR}}` template expansion enabled. No-op when no file is present."
+  :feature :none
   []
   (initialize! (config-from-disk) {:expand-templates? true}))
