@@ -16,6 +16,7 @@
   check-data-perms
   check-result-metadata-data-perms
   check-run-permissions-for-query
+  check-snippet-read-perms
   has-perm-for-query?
   perms-exception
   query->resolved-source-ids

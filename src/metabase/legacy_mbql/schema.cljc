@@ -2415,6 +2415,7 @@
     [:qp.pivot/num-remapped-breakouts          {:optional true} [:int {:min 0}]]
     [:qp.pivot/remapped-indexes                {:optional true} [:map-of [:int {:min 0}] [:int {:min 0}]]]
     [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]
+    [:query-permissions/referenced-snippet-ids {:optional true} [:maybe [:set ::lib.schema.id/snippet]]]
     [:destination-database/id               {:optional true} ::DatabaseID]
     [:metabase.query-processor.middleware.add-remaps/external-remaps {:optional true} :metabase.lib.schema/external-remappings]
     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata

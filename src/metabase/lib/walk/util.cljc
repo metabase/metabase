@@ -266,13 +266,14 @@
 
 ;;; TODO (Cam 10/1/25) -- overlapping responsibilities with [[metabase.lib.template-tags/template-tags->snippet-ids]]
 (mu/defn all-template-tag-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/snippet]]
-  "Set of all Native Query Snippet IDs used in template tags."
+  "Set of all Native Query Snippet IDs used in template tags. Reads each native stage's own template tags rather than
+  [[all-template-tags]], which keeps only one tag per name: two stages can use the same tag name for different
+  Snippets, and each stage is substituted from its own tags."
   [query :- ::lib.schema/query]
-  (not-empty
-   (into #{}
-         (comp (filter #(= (:type %) :snippet))
-               (keep :snippet-id))
-         (all-template-tags query))))
+  (stage-values-set query (comp (filter #(= (:lib/type %) :mbql.stage/native))
+                                (mapcat :template-tags)
+                                (filter #(= (:type %) :snippet))
+                                (keep :snippet-id))))
 
 (mr/def ::referenced-entity-ids
   [:map {:closed true}
