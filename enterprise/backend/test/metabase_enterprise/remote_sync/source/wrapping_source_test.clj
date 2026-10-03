@@ -26,12 +26,6 @@
   (create-branch [_ _branch _base]
     nil)
 
-  (branches [_]
-    ["main"])
-
-  (default-branch [_]
-    "main")
-
   (snapshot [_]
     (->MockSourceSnapshot files))
 

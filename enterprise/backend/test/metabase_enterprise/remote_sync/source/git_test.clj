@@ -604,6 +604,16 @@
     (let [[master _remote] (init-source! "master" remote-dir)]
       (is (= "master" (git/default-branch master))))))
 
+(deftest source-and-remote-answer-the-same-test
+  (testing "a GitSource (with a clone) and a GitRemote (with none) for the same URL give the same answers"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :branches ["branch-1" "branch-2"])
+            remote           (git/git-remote (:remote-url source) nil)]
+        (is (= ["branch-1" "branch-2" "master"] (source.p/branches remote)))
+        (is (= (source.p/branches source) (source.p/branches remote)))
+        (is (= "master" (source.p/default-branch remote)))
+        (is (= (source.p/default-branch source) (source.p/default-branch remote)))))))
+
 (deftest write-files-top-level-exports-replaced-test
   (let [old-col-path  (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_mycol/")
         new-col-path  (str "collections/" "s" (subs (u/generate-nano-id "b") 1) "_othercol/")

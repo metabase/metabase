@@ -274,10 +274,12 @@
   [stream snapshot]
   (remote-sync.merge/force-push-casualties [] (serialize-specs stream nil) (snapshot->specs snapshot)))
 
-(defn default-branch-from-settings
-  "The default branch of the repository at the configured remote-sync-url, asked of the remote without cloning it."
+(defn remote-from-settings
+  "The [[source.p/Remote]] for the configured remote-sync-url and remote-sync-token, or nil when no URL is configured.
+  Unlike [[source-from-settings]], it does not clone the repository."
   []
-  (git/remote-default-branch (setting/get :remote-sync-url) (setting/get :remote-sync-token)))
+  (when-let [url (setting/get :remote-sync-url)]
+    (git/git-remote url (setting/get :remote-sync-token))))
 
 (defn source-from-settings
   "Creates a git source from the current remote sync settings.

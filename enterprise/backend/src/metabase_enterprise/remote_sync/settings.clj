@@ -5,6 +5,7 @@
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -182,9 +183,8 @@
                  (str/starts-with? remote-sync-url "https://"))
      (throw (ex-info "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                      {:url remote-sync-url})))
-   ;; List branches straight from the remote rather than through `git/git-source`, which would clone the whole
-   ;; repository first when no clone exists yet for this url and token.
-   (let [branches (git/remote-branches remote-sync-url remote-sync-token)]
+   ;; Ask a remote, not a `git/git-source`: a source clones the whole repository when no clone exists yet.
+   (let [branches (source.p/branches (git/git-remote remote-sync-url remote-sync-token))]
      (when (empty? branches)
        (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-sync-url})))
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} branches)))

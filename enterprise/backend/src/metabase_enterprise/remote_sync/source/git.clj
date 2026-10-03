@@ -424,25 +424,13 @@
         (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
 (defn default-branch
-  "Retrieves the default branch name of the git repository.
-
-  Takes a git-source map containing a :git Git instance.
-
-  Returns the default branch name as a string (without 'refs/heads/' prefix).
-  Throws ExceptionInfo if no default branch is found."
-  [{:keys [^Git git] :as git-source}]
-  ;; Query the remote directly to get HEAD - lsRemote returns symbolic refs
-  (ref-head-branch (call-remote-command (.lsRemote git) git-source)))
-
-(defn remote-default-branch
-  "The default branch name of the repository at `remote-url`, read straight from the remote with the optional
-  `token`. Unlike [[default-branch]], it needs no local clone, so filling in a blank branch setting does not first
-  download the repository's whole history. Throws ExceptionInfo if no default branch is found."
-  [^String remote-url ^String token]
+  "The default branch name (without 'refs/heads/') of the repository at `remote-url`, read from the remote with the
+  optional `token`. Needs no local clone. Throws ExceptionInfo if no default branch is found."
+  [{:keys [^String remote-url] :as remote}]
   ;; not `setHeads true`: that would filter out the symbolic HEAD ref this reads
   (ref-head-branch (call-remote-command (-> (Git/lsRemoteRepository)
                                             (.setRemote remote-url))
-                                        {:remote-url remote-url :token token})))
+                                        remote)))
 
 (defn- close-commit-resources! [inserter reader rev-walk]
   (.close ^ObjectInserter inserter)
@@ -533,31 +521,32 @@
                  (when parent-tree (.copy ^RevTree parent-tree)) (atom nil))))
 
 (defn branches
-  "Retrieves all branch names from the remote repository.
-
-  Takes a source map containing a :git Git instance and optional :token for authentication.
-  Uses the 'origin' remote which is configured by ensure-origin-configured!.
-
-  Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
-  [{:keys [^Git git] :as source}]
-  (ref-branch-names (call-remote-command (.lsRemote git) source)))
-
-(defn remote-branches
-  "Lists the branch names of the repository at `remote-url` straight from the remote, authenticating with the
-  optional `token`. Unlike [[branches]], it needs no local clone, so validating a URL or token does not first
-  download the repository's whole history.
-
-  Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
-  [^String remote-url ^String token]
+  "The branch names (without 'refs/heads/') of the repository at `remote-url`, read from the remote with the optional
+  `token`, sorted. Needs no local clone."
+  [{:keys [^String remote-url] :as remote}]
   (ref-branch-names (call-remote-command (-> (Git/lsRemoteRepository)
                                              (.setRemote remote-url)
                                              (.setHeads true))
-                                         {:remote-url remote-url :token token})))
+                                         remote)))
+
+(defrecord GitRemote [remote-url token]
+  source.p/Remote
+  (branches [this]
+    (branches this))
+
+  (default-branch [this]
+    (default-branch this)))
+
+(defn git-remote
+  "The [[source.p/Remote]] for the git repository at `url`, authenticated with the optional `token`. Makes no network
+  call and no clone."
+  [url token]
+  (->GitRemote url token))
 
 (defn has-data?
   "Checks if the remote git repository has any commits/data.
 
-  Takes a source map to check for data.
+  Takes a map with the :remote-url and the optional :token of the repository.
 
   Returns true if the repository has at least one commit, false otherwise."
   [source]
@@ -867,15 +856,18 @@
     (when-let [sha (commit-sha source version)]
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) sha (:token source) (:managed-dirs source)))))
 
+;; A GitSource also answers the remote questions, from its URL and token, as a GitRemote does.
 (defrecord GitSource [git remote-url branch token managed-dirs]
-  source.p/Source
-  (branches [source] (branches source))
-
-  (create-branch [source branch-name base-commit-ish]
-    (create-branch source branch-name base-commit-ish))
+  source.p/Remote
+  (branches [this]
+    (branches this))
 
   (default-branch [this]
     (default-branch this))
+
+  source.p/Source
+  (create-branch [source branch-name base-commit-ish]
+    (create-branch source branch-name base-commit-ish))
 
   (snapshot [this]
     (snapshot this))

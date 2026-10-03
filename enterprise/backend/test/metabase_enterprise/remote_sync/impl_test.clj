@@ -697,7 +697,9 @@
       (mt/with-temporary-setting-values [remote-sync-enabled true
                                          remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-branch ""]
-        (mt/with-dynamic-fn-redefs [source/default-branch-from-settings (constantly "main")
+        (mt/with-dynamic-fn-redefs [source/remote-from-settings (constantly (reify source.p/Remote
+                                                                              (branches [_] ["main"])
+                                                                              (default-branch [_] "main")))
                                     impl/async-import! (constantly 123)]
           (impl/finish-remote-config!)
           (is (= "main" (setting/get :remote-sync-branch))
@@ -1876,9 +1878,7 @@ serdes/meta:
   "A minimal Source whose snapshot-at returns a snapshot at the requested version."
   []
   (reify source.p/Source
-    (branches [_] ["main"])
     (create-branch [_ _ _] nil)
-    (default-branch [_] "main")
     (snapshot [_] (export-test-snapshot "remote-R"))
     (snapshot-at [_ v] (export-test-snapshot v))))
 
@@ -1960,9 +1960,7 @@ serdes/meta:
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :version "base-B"}]
       (let [reconciled?       (atom false)
             no-resolve-source (reify source.p/Source
-                                (branches [_] ["main"])
                                 (create-branch [_ _ _] nil)
-                                (default-branch [_] "main")
                                 (snapshot [_] (export-test-snapshot "remote-R"))
                                 (snapshot-at [_ _] nil))]
         (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
@@ -2106,9 +2104,7 @@ serdes/meta:
 (deftest preview-export-merge-history-rewritten-test
   (testing "preview reports :history-rewritten when the merge base is gone"
     (let [no-base-source (reify source.p/Source
-                           (branches [_] ["main"])
                            (create-branch [_ _ _] nil)
-                           (default-branch [_] "main")
                            (snapshot [_] (export-test-snapshot "remote-R"))
                            (snapshot-at [_ _] nil))]
       (mt/with-dynamic-fn-redefs [remote-sync.task/last-version        (constantly "gone-base")
