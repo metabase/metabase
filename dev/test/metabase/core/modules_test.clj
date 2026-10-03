@@ -395,13 +395,67 @@
                  c {}
                  d {}}]
     (testing "stats list each cycle's sizes, rounded density, and cycle rank"
-      (is (= {:api-any-namespaces  2
-              :module-count        4
-              :scc-module-sizes    [3]
-              :scc-namespace-sizes [4]
-              :scc-densities       [0.67]
-              :scc-cycle-ranks     [2]}
+      (is (= {:api-any-namespaces       2
+              :module-count             4
+              :scc-module-sizes         [3]
+              :scc-namespace-sizes      [4]
+              :scc-densities            [0.67]
+              :scc-cycle-ranks          [2]
+              :upward-requires          0
+              :upward-module-edges      0
+              :upward-internal-requires 0
+              :upward-cycle-requires    0}
              (dev.deps-graph/module-boundary-stats deps config))))))
+
+(deftest ^:parallel upward-references-test
+  (let [deps   '[{:namespace metabase.x.core
+                  :module    x
+                  :deps      [{:namespace metabase.x.y.core, :module x.y}]}
+                 {:namespace metabase.x.y.core
+                  :module    x.y
+                  :deps      [{:namespace metabase.x.core, :module x}
+                              {:namespace metabase.x.impl, :module x}]}
+                 {:namespace metabase.w.v.core
+                  :module    w.v
+                  :deps      [{:namespace metabase.w.core, :module w}]}
+                 {:namespace metabase-enterprise.x.core
+                  :module    enterprise/x
+                  :deps      [{:namespace metabase.x.impl, :module x}]}
+                 {:namespace metabase.z.core
+                  :module    z
+                  :deps      [{:namespace metabase.x.core, :module x}]}]
+        config '{enterprise/x {}
+                 w            {}
+                 w.v          {}
+                 x            {}
+                 x.y          {}
+                 z            {}}]
+    (testing "only child-to-ancestor requires count, minus an enterprise companion requiring its OSS module"
+      (is (= '[{:namespace          metabase.x.y.core
+                :module             x.y
+                :required-namespace metabase.x.core
+                :ancestor           x
+                :api?               true
+                :cycle?             true}
+               {:namespace          metabase.x.y.core
+                :module             x.y
+                :required-namespace metabase.x.impl
+                :ancestor           x
+                :api?               false
+                :cycle?             true}
+               {:namespace          metabase.w.v.core
+                :module             w.v
+                :required-namespace metabase.w.core
+                :ancestor           w
+                :api?               true
+                :cycle?             false}]
+             (dev.deps-graph/upward-references deps config))))
+    (testing "stats count the requires, the module pairs behind them, and the internal and cycle-closing subsets"
+      (is (=? {:upward-requires          3
+               :upward-module-edges      2
+               :upward-internal-requires 1
+               :upward-cycle-requires    2}
+              (dev.deps-graph/module-boundary-stats deps config))))))
 
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
   (testing "Module boundary keys have the shapes the ratchet counts expect"
