@@ -2290,6 +2290,29 @@
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 
+(deftest anonymous-tile-query-runs-as-admin-test
+  (testing "anonymous requests with a valid JWT token get tiles from the static-embed tile endpoints (metabase#63687)"
+    (with-embedding-enabled-and-new-secret-key!
+      (testing "card tile endpoint"
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)
+                                                  :enable_embedding true}]
+          (let [token (card-token card-id)]
+            (is (png? (client/client
+                       :get 200 (format "embed/tiles/card/%s/1/1/1" token)
+                       :latField (tiles.api-test/encoded-lat-field-ref)
+                       :lonField (tiles.api-test/encoded-lon-field-ref)))))))
+      (testing "dashcard tile endpoint"
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                       :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                       :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                                :dashboard_id dashboard-id}]
+          (let [token (dash-token dashboard-id)]
+            (is (png? (client/client
+                       :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                        token dashcard-id card-id)
+                       :latField (tiles.api-test/encoded-lat-field-ref)
+                       :lonField (tiles.api-test/encoded-lon-field-ref))))))))))
+
 (deftest dashcard-tile-archived-card-test
   (testing "GET api/embed/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y refuses a trashed Card"
     (with-embedding-enabled-and-new-secret-key!
