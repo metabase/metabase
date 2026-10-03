@@ -96,9 +96,16 @@
 (def job-history
   "Every name each renamed Quartz job's class has had, by the job's key, oldest first, so the last is its
   current name."
-  {"metabase-enterprise.cache.job"
+  {;; the key's stem is itself a job key, whose string form starts with its group
+   "DEFAULT.metabase-enterprise.semantic-search.indexer.job"
+   ["metabase_enterprise.semantic_search.task.indexer.SemanticSearchIndexer"
+    "metabase_enterprise.search.semantic.task.indexer.SemanticSearchIndexer"]
+   "metabase-enterprise.cache.job"
    ["metabase_enterprise.task.cache.Cache"
     "metabase_enterprise.cache.task.refresh_cache_configs.Cache"]
+   "metabase-enterprise.entity-retrieval.sync.job"
+   ["metabase_enterprise.entity_retrieval.task.sync.OsiAiContextSync"
+    "metabase_enterprise.search.entity_retrieval.task.sync.OsiAiContextSync"]
    "metabase.task.IndexValues.job"
    ["metabase.task.index_values.ModelIndexRefresh"
     "metabase.indexed_entities.task.index_values.ModelIndexRefresh"]
@@ -135,6 +142,18 @@
    "metabase.task.search-index.reindex.job"
    ["metabase.task.search_index.SearchIndexReindex"
     "metabase.search.task.search_index.SearchIndexReindex"]
+   "metabase.task.semantic-index-cleanup.job"
+   ["metabase_enterprise.semantic_search.task.index_cleanup.SemanticIndexCleanup"
+    "metabase_enterprise.search.semantic.task.index_cleanup.SemanticIndexCleanup"]
+   "metabase.task.semantic-index-repair.job"
+   ["metabase_enterprise.semantic_search.task.index_repair.SemanticIndexRepair"
+    "metabase_enterprise.search.semantic.task.index_repair.SemanticIndexRepair"]
+   "metabase.task.semantic-metric-collector.job"
+   ["metabase_enterprise.semantic_search.task.metric_collector.SemanticMetricCollector"
+    "metabase_enterprise.search.semantic.task.metric_collector.SemanticMetricCollector"]
+   "metabase.task.semantic-search.usage-trimmer.job"
+   ["metabase_enterprise.semantic_search.task.usage_trimmer.SemanticSearchUsageTrimmer"
+    "metabase_enterprise.search.semantic.task.usage_trimmer.SemanticSearchUsageTrimmer"]
    "metabase.task.send-pulses.init-send-pulse-triggers.job"
    ["metabase.task.send_pulses.InitSendPulseTriggers"
     "metabase.pulse.task.send_pulses.InitSendPulseTriggers"]

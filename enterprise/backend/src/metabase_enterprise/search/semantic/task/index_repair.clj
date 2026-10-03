@@ -44,9 +44,6 @@
     (log/with-context {:quartz-job-type 'SemanticIndexRepair}
       (repair-index!))))
 
-(task/register-renamed-job-class!
- "metabase_enterprise.semantic_search.task.index_repair.SemanticIndexRepair" SemanticIndexRepair)
-
 (defmethod task/init! ::SemanticIndexRepair [_]
   (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
