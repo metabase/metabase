@@ -34,11 +34,9 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
@@ -268,10 +266,12 @@
                                                                 :archived   false
                                                                 :created_at :%now
                                                                 :updated_at :%now})]
+        ;; delete via the table name: the FK cascade under test lives in the database schema, and the model's delete
+        ;; hooks query tables (e.g. search_index_metadata) that don't exist at this schema version
         (is (thrown? clojure.lang.ExceptionInfo
-                     (t2/delete! :model/Database :id db-id)))
+                     (t2/delete! (t2/table-name :model/Database) :id db-id)))
         (migrate!)
-        (is (t2/delete! :model/Database :id db-id))))))
+        (is (t2/delete! (t2/table-name :model/Database) :id db-id))))))
 
 (deftest ^:mb/old-migrations-test backfill-permission-id-test
   (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
@@ -420,8 +420,12 @@
 (deftest ^:mb/old-migrations-test migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
     (let [user         (create-raw-user! (mt/random-email))
-          dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
-                                                                          :creator_id (:id user)}))
+          dashboard-id (first (t2/insert-returning-pks! (t2/table-name :model/Dashboard)
+                                                        {:name       "A dashboard"
+                                                         :creator_id (:id user)
+                                                         :parameters "[]"
+                                                         :created_at :%now
+                                                         :updated_at :%now}))
           ;; this layout is from magic dashboard for order table
           cases        [{:row 15 :col 0  :size_x 12 :size_y 8}
                         {:row 7  :col 12 :size_x 6  :size_y 8}
@@ -438,10 +442,12 @@
                         ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove these cards
                         {:row 36 :col 0  :size_x 17 :size_y 1}
                         {:row 36 :col 17 :size_x 1  :size_y 1}]
-          dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
-                                                 (map #(merge % {:dashboard_id dashboard-id
-                                                                 :visualization_settings {}
-                                                                 :parameter_mappings     {}}) cases))]
+          dashcard-ids (t2/insert-returning-pks! (t2/table-name :model/DashboardCard)
+                                                 (map #(merge % {:dashboard_id           dashboard-id
+                                                                 :visualization_settings "{}"
+                                                                 :parameter_mappings     "[]"
+                                                                 :created_at             :%now
+                                                                 :updated_at             :%now}) cases))]
       (testing "forward migration migrate correctly"
         (migrate!)
         (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
@@ -891,7 +897,9 @@
 
 (deftest ^:mb/old-migrations-test populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
-    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
+    ;; note: range endpoints must not be dbms-scoped changesets (like v49.2024-06-27T00:00:00, mysql/mariadb only) --
+    ;; they are invisible in the parsed changelog on other app DBs
+    (impl/test-migrations ["v49.2024-06-27T00:00:01" "v49.2024-06-27T00:00:08"] [migrate!]
       (when (= (mdb/db-type) :postgres)
         ;; This is to test what happens when Postgres is rolled back to 48 from 49, and
         ;; then rolled back to 49 again. The rollback to 48 will cause the
@@ -972,7 +980,7 @@
 
 (deftest ^:mb/old-migrations-test is-defective-duplicate-constraint-test
   (testing "Migrations for H2 and MySQL to prevent duplicate fields"
-    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
+    (impl/test-migrations ["v49.2024-06-27T00:00:01" "v49.2024-06-27T00:00:08"] [migrate!]
       (let [db-id (t2/insert-returning-pk! :metabase_database
                                            {:details    "{}"
                                             :created_at :%now
@@ -1052,7 +1060,7 @@
       (let [original-app-db-type (mdb/db-type)]
         (impl/test-migrations-for-driver!
          :h2
-         ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"]
+         ["v49.2024-06-27T00:00:01" "v49.2024-06-27T00:00:08"]
          (fn [migrate!]
            (let [db-id (t2/insert-returning-pk! :metabase_database
                                                 {:details    "{}"
@@ -1154,17 +1162,21 @@
             nonexistent-read-path "/collection/99123456/read/"
 
             both-perms-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
-                                                                      {:slug "foo"}))]
+                                                                      {:slug "foo"}))
+
+            ;; look the group up by name rather than via [[perms-group/all-users]]: the model fn selects
+            ;; `magic_group_type`, which doesn't exist at this schema version
+            all-users-group-id (t2/select-one-pk :permissions_group :name "All Users")]
         (t2/insert! :permissions {:object nonexistent-path
-                                  :group_id (u/the-id (perms-group/all-users))})
+                                  :group_id all-users-group-id})
         (t2/insert! :permissions {:object nonexistent-read-path
-                                  :group_id (u/the-id (perms-group/all-users))})
-        (t2/insert! :permissions {:object read-coll-path :group_id (u/the-id (perms-group/all-users))})
-        (t2/insert! :permissions {:object write-coll-path :group_id (u/the-id (perms-group/all-users))})
+                                  :group_id all-users-group-id})
+        (t2/insert! :permissions {:object read-coll-path :group_id all-users-group-id})
+        (t2/insert! :permissions {:object write-coll-path :group_id all-users-group-id})
         (t2/insert! :permissions {:object (perms/collection-readwrite-path both-perms-id)
-                                  :group_id (u/the-id (perms-group/all-users))})
+                                  :group_id all-users-group-id})
         (t2/insert! :permissions {:object (perms/collection-read-path both-perms-id)
-                                  :group_id (u/the-id (perms-group/all-users))})
+                                  :group_id all-users-group-id})
         (migrate!)
         (testing "the valid permissions objects got updated correctly"
           (is (= [{:collection_id read-coll-id
@@ -1847,7 +1859,7 @@
 
 (deftest ^:mb/old-migrations-test cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
-    (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
+    (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
@@ -2327,7 +2339,9 @@
                                                    :created_at #t "2020"
                                                    :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! :permissions_group {:name "Test Group"})]
-      (perms/add-user-to-group! user-id group-id)
+      ;; insert the membership row directly: [[perms/add-user-to-group!]] goes through the model layer, which
+      ;; selects columns that don't exist at this schema version
+      (t2/insert! :permissions_group_membership {:user_id user-id :group_id group-id})
       (migrate!)
       (clear-permissions!)
       ;; set one table to be unrestricted
@@ -2459,7 +2473,9 @@
         (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
 
 (deftest ^:mb/old-migrations-test trash-migrations-test
-  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
+  ;; note: range endpoints must not be dbms-scoped changesets (like v50.2024-05-29T18:42:15, mariadb only) -- they are
+  ;; invisible in the parsed changelog on other app DBs
+  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-30T16:04:20"] [migrate!]
     (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
                                                       {:name     "Silly Collection"
@@ -2490,7 +2506,7 @@
                    (t2/select-one-fn :location :model/Collection :id subcollection-id)))))))))
 
 (deftest ^:mb/old-migrations-test trash-migrations-make-archive-operation-ids-correctly
-  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
+  (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-30T16:04:20"] [migrate!]
     (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
       (let [relevant-collection-ids (atom #{})
             parent-id (fn [id]
