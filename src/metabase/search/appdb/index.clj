@@ -139,16 +139,17 @@
 (defn- ddl-commits-caller-transaction?
   "Whether dropping a table here would commit the transaction the caller is holding."
   []
-  ;; Dropping a table is DDL, which commits implicitly on h2.
+  ;; Dropping a table is DDL, which h2 and mysql commit implicitly.
   ;; Postgres keeps DDL inside the transaction, where it does no harm.
-  (and (mdb/in-transaction?) (= :h2 (mdb/db-type))))
+  ;; Mysql cannot reach this while the appdb engine supports postgres and h2 only, but listing it means
+  ;; adding support does not quietly bring the rollback failure back.
+  (and (mdb/in-transaction?) (contains? #{:h2 :mysql} (mdb/db-type))))
 
 (defn delete-obsolete-tables!
-  "Drop index tables that are no longer needed.
+  "Prune obsolete index metadata, then drop the index tables that leaves unreferenced.
   Best effort: failures are logged and never propagate.
   Does nothing while mocking tables, where the pending table lives in an atom with no metadata row.
-  Does nothing either when the drop would commit the caller's transaction.
-  Those tables wait for a later sweep."
+  Skips the drops when they would commit the caller's transaction, leaving those tables to a later sweep."
   []
   (when-not *mocking-tables*
     (try
