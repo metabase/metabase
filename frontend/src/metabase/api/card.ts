@@ -205,6 +205,8 @@ export const cardApi = Api.injectEndpoints({
             idTag("table", `card__${payload.id}`),
             listTag("revision"),
             listTag("table"), // table listings include information about published models
+            // archiving a card resolves any content-diagnostics finding for it
+            listTag("content-diagnostics-finding"),
           ];
 
           if (payload.dashboard_id != null) {

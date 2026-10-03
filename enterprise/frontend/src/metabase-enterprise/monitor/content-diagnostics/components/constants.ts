@@ -1,0 +1,1 @@
+export const DEFAULT_INCLUDE_PERSONAL_COLLECTIONS = true;
