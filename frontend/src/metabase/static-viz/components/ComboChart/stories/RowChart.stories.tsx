@@ -1,15 +1,15 @@
 import type { StoryFn } from "@storybook/react";
 
-import {
-  METRIC_COLUMN_WITH_SCALING,
-  MULTIPLE_SERIES,
-} from "metabase/static-viz/components/RowChart/stories-data";
 import { color } from "metabase/ui/colors";
 
 import {
   type StaticChartProps,
   StaticVisualization,
-} from "../StaticVisualization";
+} from "../../StaticVisualization";
+import {
+  METRIC_COLUMN_WITH_SCALING,
+  MULTIPLE_SERIES,
+} from "../stories-data/row-chart";
 
 export default {
   title: "Viz/Static Viz/RowChart",

@@ -19,6 +19,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import {
   type TimelineEventGroup,
   getLegendItems,
+  isRowChartSeries,
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
@@ -33,7 +34,11 @@ import {
 } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
-  const { timelineEvents } = useTimelineEvents(props);
+  // Row charts don't offer timeline events (UXW-4833).
+  const { timelineEvents } = useTimelineEvents({
+    ...props,
+    skip: isRowChartSeries(props.rawSeries),
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,

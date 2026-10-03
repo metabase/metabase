@@ -10,7 +10,6 @@ import { ComboChart } from "../ComboChart";
 import { FunnelBarChart } from "../FunnelBarChart";
 import { PieChart } from "../PieChart/PieChart";
 import { ProgressBar } from "../ProgressBar";
-import { StaticRowChart } from "../RowChart/RowChart";
 import { SankeyChart } from "../SankeyChart";
 import { ScalarChart } from "../ScalarChart";
 import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
@@ -28,7 +27,7 @@ export const StaticVisualization = ({
   width,
   height,
   fitWithinBounds,
-}: StaticVisualizationProps) => {
+}: StaticVisualizationProps): JSX.Element => {
   const display = rawSeries[0].card.display;
   const transformedSeries = getVisualizationTransformed(rawSeries).series;
   const settings = getComputedSettingsForSeries(transformedSeries);
@@ -48,6 +47,7 @@ export const StaticVisualization = ({
     case "area":
     case "bar":
     case "combo":
+    case "row":
       return <ComboChart {...props} />;
     case "scatter":
       return <ScatterPlot {...props} />;
@@ -69,9 +69,6 @@ export const StaticVisualization = ({
       return <TreemapChart {...props} />;
     case "progress":
       return <ProgressBar {...props} />;
-    case "row":
-      // TODO: replace with an ECharts implementation
-      return <StaticRowChart {...props} />;
   }
 
   throw new Error(`Unsupported display type: ${display}`);

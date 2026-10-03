@@ -66,9 +66,7 @@
         "@tiptap/starter-kit": "^3.31.3",
         "@tiptap/suggestion": "^3.31.3",
         "@uiw/react-codemirror": "^4.23.6",
-        "@visx/axis": "^3.10.1",
         "@visx/clip-path": "^3.3.0",
-        "@visx/grid": "^3.5.0",
         "@visx/group": "^3.3.0",
         "@visx/scale": "^3.5.0",
         "@visx/shape": "^3.5.0",
@@ -2035,17 +2033,11 @@
 
     "@unrs/resolver-binding-win32-x64-msvc": ["@unrs/resolver-binding-win32-x64-msvc@1.11.1", "", { "os": "win32", "cpu": "x64" }, "sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g=="],
 
-    "@visx/axis": ["@visx/axis@3.10.1", "", { "dependencies": { "@types/react": "*", "@visx/group": "3.3.0", "@visx/point": "3.3.0", "@visx/scale": "3.5.0", "@visx/shape": "3.5.0", "@visx/text": "3.3.0", "classnames": "^2.3.1", "prop-types": "^15.6.0" } }, "sha512-HBEDLcpZoJ16hFbkYu3S6mN5mbwlFmUWY5yN967X06RdIL4LmAG3gnZ7u4F9buA3LQo+trJXW78moN005odD4Q=="],
-
     "@visx/clip-path": ["@visx/clip-path@3.3.0", "", { "dependencies": { "@types/react": "*", "prop-types": "^15.5.10" } }, "sha512-uMuI2M05qZTgUdTSHJGg4VDr2gytGmGyuaC89iByHqNaeMHkrJqQi/cOFAZi4D0dn75p7lVirJijEgDgSpcrMQ=="],
 
     "@visx/curve": ["@visx/curve@3.3.0", "", { "dependencies": { "@types/d3-shape": "^1.3.1", "d3-shape": "^1.0.6" } }, "sha512-G1l1rzGWwIs8ka3mBhO/gj8uYK6XdU/3bwRSoiZ+MockMahQFPog0bUkuVgPwwzPSJfsA/E5u53Y/DNesnHQxg=="],
 
-    "@visx/grid": ["@visx/grid@3.5.0", "", { "dependencies": { "@types/react": "*", "@visx/curve": "3.3.0", "@visx/group": "3.3.0", "@visx/point": "3.3.0", "@visx/scale": "3.5.0", "@visx/shape": "3.5.0", "classnames": "^2.3.1", "prop-types": "^15.6.2" } }, "sha512-i1pdobTE223ItMiER3q4ojIaZWja3vg46TkS6FotnBZ4c0VRDHSrALQPdi0na+YEgppASWCQ2WrI/vD6mIkhSg=="],
-
     "@visx/group": ["@visx/group@3.3.0", "", { "dependencies": { "@types/react": "*", "classnames": "^2.3.1", "prop-types": "^15.6.2" } }, "sha512-yKepDKwJqlzvnvPS0yDuW13XNrYJE4xzT6xM7J++441nu6IybWWwextyap8ey+kU651cYDb+q1Oi6aHvQwyEyw=="],
-
-    "@visx/point": ["@visx/point@3.3.0", "", {}, "sha512-03eBBIJarkmX79WbeEGTUZwmS5/MUuabbiM9KfkGS9pETBTWkp1DZtEHZdp5z34x5TDQVLSi0rk1Plg3/8RtDg=="],
 
     "@visx/scale": ["@visx/scale@3.5.0", "", { "dependencies": { "@visx/vendor": "3.5.0" } }, "sha512-xo3zrXV2IZxrMq9Y9RUVJUpd93h3NO/r/y3GVi5F9AsbOzOhsLIbsPkunhO9mpUSR8LZ9TiumLEBrY+3frRBSg=="],
 
@@ -5721,11 +5713,7 @@
 
     "@unrs/resolver-binding-wasm32-wasi/@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@0.2.12", "", { "dependencies": { "@emnapi/core": "^1.4.3", "@emnapi/runtime": "^1.4.3", "@tybys/wasm-util": "^0.10.0" } }, "sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ=="],
 
-    "@visx/axis/classnames": ["classnames@2.5.1", "", {}, "sha512-saHYOzhIQs6wy2sVxTM6bUDsQO4F50V9RQ22qBpEdCW+I+/Wmke2HOl6lS6dTpdxVhb88/I6+Hs+438c3lfUow=="],
-
     "@visx/curve/@types/d3-shape": ["@types/d3-shape@1.3.12", "", { "dependencies": { "@types/d3-path": "^1" } }, "sha512-8oMzcd4+poSLGgV0R1Q1rOlx/xdmozS4Xab7np0eamFFUYq71AU9pOCJEFnkXW2aI/oXdVYJzw6pssbSut7Z9Q=="],
-
-    "@visx/grid/classnames": ["classnames@2.5.1", "", {}, "sha512-saHYOzhIQs6wy2sVxTM6bUDsQO4F50V9RQ22qBpEdCW+I+/Wmke2HOl6lS6dTpdxVhb88/I6+Hs+438c3lfUow=="],
 
     "@visx/group/classnames": ["classnames@2.5.1", "", {}, "sha512-saHYOzhIQs6wy2sVxTM6bUDsQO4F50V9RQ22qBpEdCW+I+/Wmke2HOl6lS6dTpdxVhb88/I6+Hs+438c3lfUow=="],
 

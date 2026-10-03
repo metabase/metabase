@@ -13,6 +13,7 @@ import {
   type EChartsSeriesMouseEvent,
   INDEX_KEY,
   X_AXIS_DATA_KEY,
+  foldRowChartModel,
   getDatasetKey,
 } from "metabase/viz-core";
 import {
@@ -28,6 +29,7 @@ import {
   getBrushClickObject,
   getEventDimensions,
   getSeriesClickData,
+  getSeriesHovered,
   getTooltipModel,
   normalizeDimensionValue,
 } from "./events";
@@ -855,5 +857,85 @@ describe("getTooltipModel", () => {
       "Doohickey",
       "Gadget",
     ]);
+  });
+});
+
+describe("row chart folded Other row", () => {
+  const COUNT_KEY = "count";
+  const CATEGORIES = ["A", "B", "C", "D", "E"];
+
+  // Five rows in a chart tall enough for two: one kept row plus "Other (4)".
+  const getFoldedChartModel = () => {
+    const dataset: Datum[] = CATEGORIES.map((category, index) => ({
+      [X_AXIS_DATA_KEY]: category,
+      [COUNT_KEY]: 10 * (index + 1),
+    }));
+    return foldRowChartModel(
+      {
+        ...createMockCartesianChartModel({
+          seriesModels: [createMockSeriesModel({ dataKey: COUNT_KEY })],
+          seriesIdToDataKey: { [COUNT_KEY]: COUNT_KEY },
+          dataset,
+          transformedDataset: dataset.map((datum, index) => ({
+            ...datum,
+            [INDEX_KEY]: index,
+          })),
+        }),
+        stackedLabelsFormatters: {},
+        dataDensity: {
+          type: "combo",
+          seriesDataKeysWithLabels: [],
+          stackedDisplayWithLabels: [],
+          numberOfDotsBySeriesKey: {},
+          averageLabelWidth: 0,
+          totalNumberOfLabels: 0,
+        },
+      },
+      48,
+      createMockVisualizationSettings(),
+    );
+  };
+
+  const createMouseEvent = (dataIndex: number) =>
+    // A partial ECharts event: only these fields are read by the helpers under test.
+    ({
+      dataIndex,
+      seriesId: COUNT_KEY,
+      event: { event: new MouseEvent("click") },
+    }) as unknown as EChartsSeriesMouseEvent;
+
+  const OTHER_INDEX = 1;
+
+  it("names the Other row in its tooltip", () => {
+    const chartModel = getFoldedChartModel();
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings(),
+      OTHER_INDEX,
+      "row",
+      COUNT_KEY,
+    );
+
+    expect(tooltipModel?.header).toBe("Other (4)");
+  });
+
+  it("reports hovering the Other row, so the rest of the chart dims", () => {
+    const chartModel = getFoldedChartModel();
+
+    expect(getSeriesHovered(chartModel, createMouseEvent(OTHER_INDEX))).toEqual(
+      { index: 0, datumIndex: OTHER_INDEX },
+    );
+  });
+
+  it("does not drill into the Other row, like the legacy renderer", () => {
+    const chartModel = getFoldedChartModel();
+
+    expect(
+      getSeriesClickData(chartModel, {}, createMouseEvent(OTHER_INDEX)),
+    ).toBeNull();
+    expect(
+      getSeriesClickData(chartModel, {}, createMouseEvent(0)),
+    ).not.toBeNull();
   });
 });

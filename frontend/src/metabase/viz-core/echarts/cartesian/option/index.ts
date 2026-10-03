@@ -32,7 +32,12 @@ import type { SplitPanelYExtent } from "../timeline-events/option";
 import { getTimelineEventsSelectionSeries } from "../timeline-events/option";
 import type { TimelineEventsModel } from "../timeline-events/types";
 
-import { buildAxes, buildDimensionAxis, buildMetricAxis } from "./axis";
+import {
+  buildAxes,
+  buildDimensionAxis,
+  buildMetricAxis,
+  getAxisNameGap,
+} from "./axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
@@ -116,7 +121,7 @@ const isNonCategoryYAxisOption = (
 
 export const ensureRoomForLabels = (
   axes: Axes,
-  { leftAxisModel, rightAxisModel }: CartesianChartModel,
+  { leftAxisModel, rightAxisModel, isRowChart }: CartesianChartModel,
   chartLayout: ChartLayout,
   seriesOption: EChartsSeriesOption[],
 ): Axes => ({
@@ -133,6 +138,19 @@ export const ensureRoomForLabels = (
       return axis;
     }
     const [min] = axisModel.extent;
+    if (min < 0 && isRowChart) {
+      // Rotated, negative labels sit left of their bars
+      const labelWidth = chartLayout.negativeDataLabelsWidth ?? 0;
+      const { padding, outerWidth } = chartLayout;
+      const plotWidth = outerWidth - padding.left - padding.right;
+      if (labelWidth === 0 || !isNonCategoryYAxisOption(axis)) {
+        return axis;
+      }
+      return {
+        ...axis,
+        boundaryGap: [labelWidth / Math.max(plotWidth - labelWidth, 1), 0],
+      };
+    }
     if (min < 0) {
       const { bounds } = chartLayout;
       const innerHeight = Math.abs(bounds.bottom - bounds.top);
@@ -166,7 +184,7 @@ export function buildGridAndSeriesOption(
   const isSplitPanels = chartLayout.panelHeight != null;
 
   const baseGoalSeriesOption = getGoalLineSeriesOption(
-    getGoalLineParams(chartModel),
+    { ...getGoalLineParams(chartModel), isRowChart: chartModel.isRowChart },
     settings,
     renderingContext,
   );
@@ -196,7 +214,13 @@ export function buildGridAndSeriesOption(
 
   const grid: GridOption | GridOption[] = isSplitPanels
     ? buildSplitPanelGrid(chartLayout, panelCount)
-    : { ...chartLayout.padding, outerBoundsMode: "none" };
+    : {
+        ...chartLayout.padding,
+        // Row charts let ECharts keep metric tick labels in bounds
+        ...(chartModel.isRowChart
+          ? { outerBoundsMode: "auto", outerBoundsContain: "axisLabel" }
+          : { outerBoundsMode: "none" }),
+      };
 
   const splitPanelOverrides = isSplitPanels
     ? buildSplitPanelOverrides(
@@ -295,8 +319,39 @@ export const getCartesianChartOption = (
       chartLayout,
       dataSeriesOptions,
     );
-    xAxis = axes.xAxis;
-    yAxis = axes.yAxis;
+    if (chartModel.isRowChart) {
+      // The rotation: metric axes become x, the dimension axis becomes y
+      // (`inverse` keeps the first row on top). Axis names are re-sited to match.
+      const { ticksDimensions } = chartLayout;
+
+      xAxis = axes.yAxis.map(({ mainType: _omitMainType, ...axis }) => ({
+        ...axis,
+        position: axis.position === "right" ? "top" : "bottom",
+        nameGap:
+          getAxisNameGap(ticksDimensions.xTicksHeight) +
+          CHART_STYLE.rowChartAxisName.metricGapExtra,
+        // Metric axes hide their line; rotated it runs along the bottom, where
+        // the legacy renderer drew one.
+        axisLine: {
+          show: !!settings["graph.y_axis.axis_enabled"],
+          lineStyle: {
+            color: renderingContext.getColor("border-neutral"),
+          },
+        },
+      }));
+      const { mainType: _omitMainType, ...dimensionAxis } = axes.xAxis;
+      yAxis = [
+        {
+          ...dimensionAxis,
+          position: "left",
+          inverse: true,
+          nameGap: getAxisNameGap(ticksDimensions.yTicksWidthLeft),
+        },
+      ];
+    } else {
+      xAxis = axes.xAxis;
+      yAxis = axes.yAxis;
+    }
   }
 
   return {

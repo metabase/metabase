@@ -16,34 +16,18 @@ import type {
   AxisFormatter,
   ChartDataset,
   NumericAxisScaleTransforms,
-  SeriesFormatters,
-  SeriesModel,
   StackModel,
   XAxisModel,
   YAxisModel,
 } from "../model/types";
 import { getPaddedAxisLabel } from "../option/utils";
 
-import type { ChartBoundsCoords, ChartLayout, TicksDimensions } from "./types";
+import { getRowChartLayout } from "./row";
+import type { ChartLayout, TicksDimensions } from "./types";
+import { type ChartLayoutInput, getChartBounds, getDataset } from "./utils";
 
-export interface ChartLayoutInput {
-  xAxisModel: XAxisModel;
-  leftAxisModel: YAxisModel | null;
-  rightAxisModel: YAxisModel | null;
-  splitPanelYAxisModels?: YAxisModel[];
-  yAxisScaleTransforms: NumericAxisScaleTransforms;
-  transformedDataset?: ChartDataset;
-  dataset?: ChartDataset;
-  seriesModels?: SeriesModel[];
-  stackModels?: StackModel[];
-  seriesLabelsFormatters?: SeriesFormatters;
-}
-
-// Cartesian charts use `transformedDataset` (scaled/transformed values) while simpler
-// charts like boxplot only have `dataset`. This helper provides unified access.
-const getDataset = (input: ChartLayoutInput): ChartDataset => {
-  return input.transformedDataset ?? input.dataset ?? [];
-};
+export type { ChartLayoutInput };
+export { getChartBounds };
 
 const getEvenlySpacedIndices = (
   length: number,
@@ -715,20 +699,6 @@ export const getCartesianChartPadding = (
   return padding;
 };
 
-export const getChartBounds = (
-  width: number,
-  height: number,
-  padding: Padding,
-  ticksDimensions: TicksDimensions,
-): ChartBoundsCoords => {
-  return {
-    top: padding.top,
-    bottom: height - padding.bottom - ticksDimensions.xTicksHeight,
-    left: padding.left + ticksDimensions.yTicksWidthLeft,
-    right: width - padding.right - ticksDimensions.yTicksWidthRight,
-  };
-};
-
 const getDimensionWidth = (
   { xAxisModel }: ChartLayoutInput,
   boundaryWidth: number,
@@ -899,6 +869,10 @@ export const getChartLayout = (
       height,
       renderingContext,
     );
+  }
+
+  if (input.isRowChart) {
+    return getRowChartLayout(input, settings, width, height, renderingContext);
   }
 
   const { ticksDimensions, axisEnabledSetting } = getTicksDimensions(

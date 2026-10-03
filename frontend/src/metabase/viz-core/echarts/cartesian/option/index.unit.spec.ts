@@ -1,3 +1,4 @@
+import type { BarSeriesOption } from "echarts/charts";
 import { BarChart } from "echarts/charts";
 import {
   BrushComponent,
@@ -8,7 +9,11 @@ import * as echarts from "echarts/core";
 import { SVGRenderer } from "echarts/renderers";
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 
-import type { RawSeries, SingleSeries } from "metabase-types/api";
+import type {
+  RawSeries,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -18,13 +23,21 @@ import {
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import type { RenderingContext } from "../../../types";
+import { registerEChartsModules } from "../../index";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
+import { CHART_STYLE } from "../constants/style";
 import { getChartLayout } from "../layout";
 import { getCartesianChartModel } from "../model";
+import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { buildAxes } from "./axis";
 import { buildEChartsSeries } from "./series";
 
-import { ensureRoomForLabels, getSharedEChartsOptions } from "./index";
+import {
+  ensureRoomForLabels,
+  getCartesianChartOption,
+  getSharedEChartsOptions,
+} from "./index";
 
 echarts.use([
   BarChart,
@@ -207,5 +220,183 @@ describe("brushSelected / brushEnd ordering", () => {
 
     expect(order).toEqual(["brushSelected", "brushEnd"]);
     chart.dispose();
+  });
+});
+
+describe("row chart bands", () => {
+  beforeAll(() => registerEChartsModules());
+
+  const CATEGORIES = ["Doohickey", "Gadget", "Gizmo", "Widget"];
+
+  // Bars render as `<path d="M{x} {y}l{w} 0l0 {h}l-{w} 0Z">`; returns each
+  // series-0 bar's top, length and thickness.
+  const getBarRects = (svg: string) =>
+    [
+      ...svg.matchAll(
+        /<path d="M[\d.]+ ([\d.]+)l([\d.]+) 0l0 ([\d.]+)l-[\d.]+ 0Z"[^>]*ecmeta_series_index="0"/g,
+      ),
+    ].map((match) => ({
+      top: Number(match[1]),
+      length: Number(match[2]),
+      thickness: Number(match[3]),
+    }));
+
+  const getRowChartOption = (
+    values = CATEGORIES.map((_, index) => 100 * (index + 1)),
+    extraSettings: VisualizationSettings = {},
+  ) => {
+    const renderingContext: RenderingContext = {
+      ...mockRenderingContext,
+      getColor: () => "#509EE3",
+    };
+    const rowSettings = createMockVisualizationSettings({
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
+      "graph.x_axis.scale": "ordinal",
+      series: () => ({ display: "bar" }),
+      ...extraSettings,
+    });
+    const rawSeries: RawSeries = [
+      {
+        card: createMockCard({ display: "row" }),
+        data: createMockDatasetData({
+          rows: CATEGORIES.map((category, index) => [category, values[index]]),
+          cols: [
+            createMockColumn({ name: "CATEGORY", base_type: "type/Text" }),
+            createMockColumn({ name: "count", base_type: "type/Integer" }),
+          ],
+        }),
+      },
+    ];
+    const chartModel = getCartesianChartModel(
+      rawSeries,
+      rowSettings,
+      hiddenSeries,
+      renderingContext,
+    );
+    const chartLayout = getChartLayout(
+      chartModel,
+      rowSettings,
+      hasTimelineEvents,
+      chartWidth,
+      chartHeight,
+      renderingContext,
+    );
+
+    return getCartesianChartOption(
+      chartModel,
+      chartLayout,
+      hasTimelineEvents,
+      null,
+      [],
+      rowSettings,
+      chartWidth,
+      false,
+      renderingContext,
+    );
+  };
+
+  const renderRowChartBars = (values?: number[]) => {
+    const chart = echarts.init(null, null, {
+      renderer: "svg",
+      ssr: true,
+      width: chartWidth,
+      height: chartHeight,
+    });
+    chart.setOption(getRowChartOption(values));
+    const bars = getBarRects(chart.renderToSVGString());
+    chart.dispose();
+
+    expect(bars).toHaveLength(CATEGORIES.length);
+    return { bars, pitch: bars[1].top - bars[0].top };
+  };
+
+  it("gives each bar 80% of its category band, like the legacy renderer", () => {
+    const { bars, pitch } = renderRowChartBars();
+
+    for (const { thickness } of bars) {
+      expect(thickness / pitch).toBeCloseTo(0.8, 2);
+    }
+  });
+
+  it("keeps 20% of a band clear above the first bar, like the legacy renderer", () => {
+    const { bars, pitch } = renderRowChartBars();
+
+    // With no goal label, the plot starts at the base top padding.
+    expect((bars[0].top - CHART_STYLE.padding.y) / pitch).toBeCloseTo(0.2, 2);
+  });
+
+  it("draws near-zero bars at least 1px long", () => {
+    const { bars } = renderRowChartBars([1_000_000, 1, 2, 3]);
+
+    for (const { length } of bars) {
+      expect(length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("puts value labels at the end of each bar, on the side it grows", () => {
+    const option = getRowChartOption([120, -80, 60, -40], {
+      "graph.show_values": true,
+      series: () => ({ display: "bar", show_series_values: true }),
+    });
+    // Row charts build an array of series options; the bar series comes first.
+    const [barSeries, ...labelSeries] = option.series as BarSeriesOption[];
+    const labelFor = (sign: "+" | "-") =>
+      labelSeries.find((series) =>
+        String(series.id).endsWith(getBarSeriesDataLabelKey("1:count", sign)),
+      );
+
+    // The bar's own label only shows on hover, in place of the label series.
+    expect(barSeries.label?.position).toBe("outside");
+    expect(labelFor("+")?.label?.position).toBe("right");
+    expect(labelFor("-")?.label?.position).toBe("left");
+    expect(labelFor("-")?.encode).toEqual({
+      x: getBarSeriesDataLabelKey("1:count", "-"),
+      y: X_AXIS_DATA_KEY,
+    });
+  });
+
+  it("lets ECharts keep metric tick labels inside the chart, but not move axis names", () => {
+    expect(getRowChartOption().grid).toMatchObject({
+      outerBoundsMode: "auto",
+      outerBoundsContain: "axisLabel",
+    });
+  });
+});
+
+describe("chart grid bounds", () => {
+  it("keeps upright charts inside the layout's own padding", () => {
+    seriesFn.mockReturnValue({ display: "bar" });
+    const renderingContext: RenderingContext = {
+      ...mockRenderingContext,
+      getColor: () => "#509EE3",
+    };
+    const chartModel = getCartesianChartModel(
+      [mockSeries],
+      mockSettings,
+      hiddenSeries,
+      renderingContext,
+    );
+    const chartLayout = getChartLayout(
+      chartModel,
+      mockSettings,
+      hasTimelineEvents,
+      chartWidth,
+      chartHeight,
+      renderingContext,
+    );
+    const option = getCartesianChartOption(
+      chartModel,
+      chartLayout,
+      hasTimelineEvents,
+      null,
+      [],
+      mockSettings,
+      chartWidth,
+      false,
+      renderingContext,
+    );
+
+    expect(option.grid).toMatchObject({ outerBoundsMode: "none" });
   });
 });

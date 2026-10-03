@@ -163,12 +163,14 @@ export function getDataLabelFormatter(
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
   accessor?: (datum: Datum) => RowValue,
+  isRowChart = false,
 ) {
   const getShowLabel = getShowLabelFn(
     chartWidth,
     dataKey,
     chartDataDensity,
     settings,
+    isRowChart,
   );
 
   return (params: CallbackDataParams) => {
@@ -189,8 +191,14 @@ function getShowLabelFn(
   dataKey: DataKey,
   chartDataDensity?: ChartDataDensity,
   settings?: ComputedVisualizationSettings,
+  isRowChart = false,
 ): (params: CallbackDataParams) => boolean {
   if (!settings || !chartDataDensity) {
+    return () => true;
+  }
+  // Width-based thinning is the wrong axis for rotated labels; the row fold
+  // already limits density.
+  if (isRowChart) {
     return () => true;
   }
   if (settings["graph.label_value_frequency"] === "all") {
@@ -292,6 +300,7 @@ export const buildEChartsLabelOptions = (
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
   position?: LabelOption["position"],
+  isRowChart = false,
 ): SeriesLabelOption => {
   const { fontSize } = renderingContext.theme.cartesian.label;
 
@@ -315,6 +324,8 @@ export const buildEChartsLabelOptions = (
         chartWidth,
         settings,
         chartDataDensity,
+        undefined,
+        isRowChart,
       ),
   };
 };
@@ -512,9 +523,15 @@ function getDataLabelSeriesOption(
   formatter: (params: CallbackDataParams) => string,
   position: LabelOption["position"],
   renderingContext: RenderingContext,
+  isRowChart: boolean,
   showInBlur = true,
 ) {
   const stackName = seriesOption.stack;
+
+  // Callers pass upright positions; rotated, top/bottom become right/left.
+  const rotatedPosition =
+    position === "top" ? "right" : position === "bottom" ? "left" : position;
+  const labelPosition = isRowChart ? rotatedPosition : position;
 
   const dataLabelSeriesOption = {
     xAxisIndex: seriesOption.xAxisIndex,
@@ -526,14 +543,13 @@ function getDataLabelSeriesOption(
     },
     id: `${stackName}_${dataKey}`,
     stack: stackName,
-    encode: {
-      y: dataKey,
-      x: X_AXIS_DATA_KEY,
-    },
+    encode: isRowChart
+      ? { x: dataKey, y: X_AXIS_DATA_KEY }
+      : { y: dataKey, x: X_AXIS_DATA_KEY },
     label: {
       ...seriesOption.label,
       show: true,
-      position,
+      position: labelPosition,
       formatter,
       fontFamily: renderingContext.fontFamily,
       fontWeight: CHART_STYLE.seriesLabels.weight,
@@ -579,6 +595,7 @@ const buildEChartsBarSeries = (
   renderingContext: RenderingContext,
   stackModel: StackModel | undefined,
   xAxisIndex?: number,
+  isRowChart = false,
 ): BarSeriesOption | BarSeriesOption[] => {
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
   const isStacked = settings["stackable.stack_type"] != null;
@@ -603,7 +620,11 @@ const buildEChartsBarSeries = (
     xAxisIndex,
     yAxisIndex,
     barGap: 0,
+    // Minimum length along the value axis, whichever way the bars run.
     barMinHeight: 1,
+    ...(isRowChart && {
+      barCategoryGap: CHART_STYLE.series.rowBarCategoryGap,
+    }),
     stack,
     barWidth: computeBarWidth(
       xAxisModel,
@@ -612,10 +633,9 @@ const buildEChartsBarSeries = (
       isStacked,
       settings["graph.x_axis.scale"],
     ),
-    encode: {
-      y: seriesModel.dataKey,
-      x: X_AXIS_DATA_KEY,
-    },
+    encode: isRowChart
+      ? { x: seriesModel.dataKey, y: X_AXIS_DATA_KEY }
+      : { y: seriesModel.dataKey, x: X_AXIS_DATA_KEY },
     label: isStacked
       ? buildEChartsStackLabelOptions(
           seriesModel,
@@ -625,33 +645,39 @@ const buildEChartsBarSeries = (
           settings,
           stackModel,
         )
-      : buildEChartsLabelOptions(
-          seriesModel,
-          yAxisScaleTransforms,
-          renderingContext,
-          chartWidth,
-          labelFormatter,
-          settings,
-          chartDataDensity,
-          ["50%", 0],
-        ),
-    labelLayout: isStacked
-      ? getBarInsideLabelLayout(
-          dataset,
-          settings,
-          seriesModel.dataKey,
-          chartLayout.stackedBarTicksRotation,
-        )
-      : getBarLabelLayout({
-          settings,
-          getNegativeBarYOffset: ({ rect }) => rect.height,
-          getBarDirection: ({ dataIndex }) => {
-            if (dataIndex == null) {
-              return null;
-            }
-            return dataset[dataIndex][seriesModel.dataKey];
-          },
-        }),
+      : {
+          ...buildEChartsLabelOptions(
+            seriesModel,
+            yAxisScaleTransforms,
+            renderingContext,
+            chartWidth,
+            labelFormatter,
+            settings,
+            chartDataDensity,
+            undefined,
+            isRowChart,
+          ),
+          position: isRowChart ? "outside" : ["50%", 0],
+        },
+    labelLayout: isRowChart
+      ? undefined
+      : isStacked
+        ? getBarInsideLabelLayout(
+            dataset,
+            settings,
+            seriesModel.dataKey,
+            chartLayout.stackedBarTicksRotation,
+          )
+        : getBarLabelLayout({
+            settings,
+            getNegativeBarYOffset: ({ rect }) => rect.height,
+            getBarDirection: ({ dataIndex }) => {
+              if (dataIndex == null) {
+                return null;
+              }
+              return dataset[dataIndex][seriesModel.dataKey];
+            },
+          }),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -685,16 +711,21 @@ const buildEChartsBarSeries = (
               const isZero = value === null && datum[labelDataKey] != null;
               return isZero ? 0 : value;
             },
+            isRowChart,
           ),
-          ["50%", 0],
+          // Negative rotated bars grow leftward, so their labels go on the left.
+          isRowChart ? (sign === "+" ? "right" : "left") : ["50%", 0],
           renderingContext,
+          isRowChart,
           false,
         ),
-        labelLayout: getBarLabelLayout({
-          settings,
-          getBarDirection: () => (sign === "+" ? 1 : -1),
-          getNegativeBarYOffset: () => 0,
-        }),
+        labelLayout: isRowChart
+          ? undefined
+          : getBarLabelLayout({
+              settings,
+              getBarDirection: () => (sign === "+" ? 1 : -1),
+              getNegativeBarYOffset: () => 0,
+            }),
         type: "bar", // ensure type is bar for typescript
       };
     },
@@ -850,12 +881,14 @@ function getStackedDataLabelFormatter(
   chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   settings: ComputedVisualizationSettings,
+  isRowChart = false,
 ) {
   const getShowStackedLabel = getShowStackedLabelFn(
     chartWidth,
     stackName,
     chartDataDensity,
     settings,
+    isRowChart,
   );
 
   return (params: CallbackDataParams) => {
@@ -889,8 +922,13 @@ function getShowStackedLabelFn(
   stackName: string | undefined,
   chartDataDensity: ComboChartDataDensity,
   settings: ComputedVisualizationSettings,
+  isRowChart = false,
 ): (params: CallbackDataParams) => boolean {
   if (!settings || !chartDataDensity) {
+    return () => true;
+  }
+  // See `getShowLabelFn`: width is the wrong axis for rotated totals.
+  if (isRowChart) {
     return () => true;
   }
   if (settings["graph.label_value_frequency"] === "all") {
@@ -964,6 +1002,7 @@ export const getStackTotalsSeries = (
   chartWidth: number,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
   renderingContext: RenderingContext,
+  isRowChart = false,
 ) => {
   const seriesByStackName = _.groupBy(
     seriesOptions.filter((s) => s.stack != null),
@@ -1005,9 +1044,11 @@ export const getStackTotalsSeries = (
             chartModel.dataDensity,
             chartWidth,
             settings,
+            isRowChart,
           ),
         "top",
         renderingContext,
+        isRowChart,
       ),
       getDataLabelSeriesOption(
         NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -1024,9 +1065,11 @@ export const getStackTotalsSeries = (
             chartModel.dataDensity,
             chartWidth,
             settings,
+            isRowChart,
           ),
         "bottom",
         renderingContext,
+        isRowChart,
       ),
     ];
   });
@@ -1131,6 +1174,7 @@ export const buildEChartsSeries = (
             renderingContext,
             stackModel,
             panelIndex,
+            chartModel.isRowChart,
           );
         }
       }
@@ -1172,6 +1216,7 @@ export const buildEChartsSeries = (
         chartWidth,
         series,
         renderingContext,
+        chartModel.isRowChart,
       ),
     );
   }

@@ -10,6 +10,7 @@ import {
   type ScatterPlotModel,
   type WaterfallChartModel,
   extractRemappings,
+  foldRowChartModel,
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
@@ -61,7 +62,7 @@ export function useModelsAndOption(
     ? timelineEvents.length !== 0
     : false;
 
-  const chartModel = useMemo(() => {
+  const baseChartModel = useMemo(() => {
     let getModel;
 
     settings["graph.x_axis.title_text"] = tc(
@@ -106,6 +107,20 @@ export function useModelsAndOption(
     gridSize,
     tc,
   ]);
+
+  // Fold before layout: the fold decides which category labels get measured.
+  const chartModel = useMemo(
+    () =>
+      baseChartModel.isRowChart
+        ? foldRowChartModel(
+            // Row charts always produce a plain cartesian model.
+            baseChartModel as CartesianChartModel,
+            height,
+            settings,
+          )
+        : baseChartModel,
+    [baseChartModel, height, settings],
+  );
 
   const chartLayout = useMemo(
     () =>

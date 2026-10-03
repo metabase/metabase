@@ -4,13 +4,21 @@ import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 import { useMount } from "react-use";
 
-import { VisualizationWrapper } from "__support__/storybook";
+import {
+  IsomorphicVisualizationStory,
+  SdkVisualizationStory,
+  VisualizationWrapper,
+  createWaitForChartsDecorator,
+} from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualization } from "metabase/viz-core";
 import type { RawSeries, Series } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 import { RowChart } from "./RowChart";
 
@@ -104,4 +112,45 @@ export const WithLongNames = () => {
 
 WithLongNames.parameters = {
   loki: { skip: true },
+};
+
+const TWO_METRICS_SERIES: RawSeries = [
+  {
+    card: createMockCard({
+      name: "Two metrics",
+      display: "row",
+      visualization_settings: {
+        "graph.dimensions": ["Category"],
+        "graph.metrics": ["Count", "Average"],
+      },
+    }),
+    data: createMockDatasetData({
+      cols: [
+        StringColumn({ name: "Category" }),
+        NumberColumn({ name: "Count" }),
+        NumberColumn({ name: "Average" }),
+      ],
+      rows: [
+        ["Gizmo", 110, 45],
+        ["Gadget", 120, 46],
+        ["Doohickey", 30, 56],
+        ["Widget", 80, 60],
+      ],
+    }),
+  },
+];
+
+export const TwoMetrics = {
+  render: () => <IsomorphicVisualizationStory rawSeries={TWO_METRICS_SERIES} />,
+  decorators: [createWaitForChartsDecorator({ count: 1 })],
+};
+
+export const HugeFont = {
+  render: () => (
+    <SdkVisualizationStory
+      rawSeries={TWO_METRICS_SERIES}
+      theme={{ fontSize: "20px" }}
+    />
+  ),
+  decorators: [createWaitForChartsDecorator({ count: 1 })],
 };

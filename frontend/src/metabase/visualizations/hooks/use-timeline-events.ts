@@ -7,7 +7,10 @@ import type { TimelineEvent } from "metabase-types/api";
 type UseTimelineEventsProps = Pick<
   VisualizationProps,
   "timelineEvents" | "settings"
->;
+> & {
+  // Neither fetch nor return events, even ones passed in.
+  skip?: boolean;
+};
 
 interface UseTimelineEventsResult {
   timelineEvents: TimelineEvent[];
@@ -21,12 +24,14 @@ const EMPTY_EVENTS: TimelineEvent[] = [];
 export function useTimelineEvents({
   timelineEvents: timelineEventsProp,
   settings,
+  skip = false,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
   const selectedTimelineIds = settings["timeline.selected_timeline_ids"];
   const excludedTimelineEventIds =
     settings["timeline.excluded_timeline_event_ids"];
 
   const shouldFetch =
+    !skip &&
     !timelineEventsProp &&
     selectedTimelineIds != null &&
     selectedTimelineIds.length > 0;
@@ -44,6 +49,10 @@ export function useTimelineEvents({
   );
 
   const timelineEvents = useMemo(() => {
+    if (skip) {
+      return EMPTY_EVENTS;
+    }
+
     if (timelineEventsProp) {
       return timelineEventsProp;
     }
@@ -64,6 +73,7 @@ export function useTimelineEvents({
       );
     });
   }, [
+    skip,
     timelineEventsProp,
     timelines,
     selectedTimelineIds,

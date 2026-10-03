@@ -18,7 +18,7 @@ import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
 
-import { getStore } from "./entities-store";
+import { getMainStore, getStore } from "./entities-store";
 import { TestWrapper } from "./ui";
 
 export const ReduxProvider = ({
@@ -44,7 +44,8 @@ export const VisualizationWrapper = ({
   displayTheme?: "light" | "dark";
   initialStore?: State;
 }) => {
-  const store = getStore(mainReducers, initialStore);
+  // Visualizations call RTK Query hooks, which need the `Api` reducer and middleware.
+  const store = getMainStore(initialStore);
 
   return (
     <TestWrapper

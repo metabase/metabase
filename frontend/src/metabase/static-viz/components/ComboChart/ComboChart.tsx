@@ -6,6 +6,7 @@ import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getChartHeight } from "metabase/static-viz/lib/utils";
 import {
+  foldRowChartModel,
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
@@ -34,14 +35,14 @@ export const ComboChart = ({
   hasDevWatermark = false,
   fitWithinBounds = false,
 }: StaticChartProps) => {
-  const chartModel = getCartesianChartModel(
+  const baseChartModel = getCartesianChartModel(
     rawSeries,
     settings,
     [],
     renderingContext,
   );
 
-  const legendItems = getLegendItems(chartModel.seriesModels);
+  const legendItems = getLegendItems(baseChartModel.seriesModels);
   const isReversed = settings["legend.is_reversed"];
   const { height: legendHeight, items: legendLayoutItems } =
     calculateLegendRows({
@@ -53,6 +54,11 @@ export const ComboChart = ({
     });
 
   const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
+  // Fold before layout, off the chart height, as the interactive path does.
+  const chartModel = baseChartModel.isRowChart
+    ? foldRowChartModel(baseChartModel, chartHeight, settings)
+    : baseChartModel;
 
   const chart = init(null, null, {
     renderer: "svg",

@@ -32,6 +32,8 @@ export interface GoalLineParams {
   isNormalized: boolean;
   toEChartsAxisValue: (value: RowValue) => number | null;
   labelOnLeft: boolean;
+  /** Row charts: the goal is an x-coordinate and the line runs vertically. */
+  isRowChart?: boolean;
 }
 
 interface GoalLineParamsSource {
@@ -53,7 +55,13 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
 }
 
 export function getGoalLineSeriesOption(
-  { dataset, isNormalized, toEChartsAxisValue, labelOnLeft }: GoalLineParams,
+  {
+    dataset,
+    isNormalized,
+    toEChartsAxisValue,
+    labelOnLeft,
+    isRowChart = false,
+  }: GoalLineParams,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
@@ -71,27 +79,35 @@ export function getGoalLineSeriesOption(
   return {
     id: GOAL_LINE_SERIES_ID,
     type: "custom",
-    data: [[getFirstNonNullXValue(dataset), scaleTransformedGoalValue]],
+    // Anchors the series; the goal sits on whichever axis carries the metric.
+    data: [
+      isRowChart
+        ? [scaleTransformedGoalValue, getFirstNonNullXValue(dataset)]
+        : [getFirstNonNullXValue(dataset), scaleTransformedGoalValue],
+    ],
     z: Z_INDEXES.goalLine,
     blur: {
       opacity: 1,
     },
     renderItem: (params, api) => {
-      const [_x, y] = api.coord([null, scaleTransformedGoalValue]);
       const coordSys =
         // Unjustified type cast. FIXME
         params.coordSys as unknown as EChartsCartesianCoordinateSystem;
       const xStart = coordSys.x;
       const xEnd = coordSys.width + coordSys.x;
+      const yStart = coordSys.y;
+      const yEnd = coordSys.height + coordSys.y;
+
+      const [goalX] = api.coord([scaleTransformedGoalValue, null]);
+      const [, goalY] = api.coord([null, scaleTransformedGoalValue]);
+
+      const shape = isRowChart
+        ? { x1: goalX, x2: goalX, y1: yStart, y2: yEnd }
+        : { x1: xStart, x2: xEnd, y1: goalY, y2: goalY };
 
       const line = {
         type: "line" as const,
-        shape: {
-          x1: xStart,
-          x2: xEnd,
-          y1: y,
-          y2: y,
-        },
+        shape,
         blur: {
           style: {
             opacity: 1,
@@ -105,9 +121,31 @@ export function getGoalLineSeriesOption(
         },
       };
 
-      const align = labelOnLeft ? ("left" as const) : ("right" as const);
-      const labelX = labelOnLeft ? xStart : xEnd;
-      const labelY = y - fontSize - CHART_STYLE.goalLine.label.margin;
+      // Rotated, the label sits above the line and flips left near the right
+      // edge, as the legacy renderer did.
+      const labelMargin = CHART_STYLE.goalLine.label.margin;
+      const labelText = settings["graph.goal_label"] ?? "";
+      const flipLabel =
+        isRowChart &&
+        goalX +
+          renderingContext.measureText(labelText, {
+            family: renderingContext.fontFamily,
+            size: fontSize,
+            weight: CHART_STYLE.goalLine.label.weight,
+          }) >
+          xEnd;
+
+      const align: "left" | "right" = isRowChart
+        ? flipLabel
+          ? "right"
+          : "left"
+        : labelOnLeft
+          ? "left"
+          : "right";
+      const labelX = isRowChart ? goalX : labelOnLeft ? xStart : xEnd;
+      const labelY = isRowChart
+        ? yStart - fontSize - labelMargin
+        : goalY - fontSize - labelMargin;
 
       const label = {
         type: "text" as const,
@@ -120,7 +158,7 @@ export function getGoalLineSeriesOption(
         },
         style: {
           align,
-          text: settings["graph.goal_label"] ?? "",
+          text: labelText,
           fontFamily: renderingContext.fontFamily,
           fontSize,
           fontWeight: CHART_STYLE.goalLine.label.weight,

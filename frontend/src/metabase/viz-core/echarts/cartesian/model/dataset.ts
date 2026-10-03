@@ -939,6 +939,7 @@ const sortByDimension = (
 export const getSortedSeriesModels = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
+  isRowChart = false,
 ): SeriesModel[] => {
   const breakoutSeriesOrder = settings["graph.series_order"];
   if (breakoutSeriesOrder == null || breakoutSeriesOrder.length === 0) {
@@ -967,7 +968,8 @@ export const getSortedSeriesModels = (
   // On stacked charts we reverse the order of series so that the series
   // order in the sidebar matches series order on the chart.
   // Also it produces historically correct order of series on already saved questions.
-  const isReversed = !isEmpty(settings["stackable.stack_type"]);
+  // Row stacks grow left to right, so their order already matches.
+  const isReversed = !isRowChart && !isEmpty(settings["stackable.stack_type"]);
   if (isReversed) {
     orderedSeriesModels.reverse();
   }

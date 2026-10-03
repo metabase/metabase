@@ -20,16 +20,6 @@ export interface TooltipRowModel {
   formatter?: (value: RowValue) => string;
 }
 
-export interface StackedTooltipModel {
-  headerTitle?: string;
-  headerRows: TooltipRowModel[];
-  bodyRows?: TooltipRowModel[];
-  totalFormatter?: (value: unknown) => string;
-  showTotal?: boolean;
-  showPercentages?: boolean;
-  grandTotal?: number;
-}
-
 export interface HoveredObject {
   index?: number;
   seriesIndex?: number;
@@ -43,7 +33,6 @@ export interface HoveredObject {
   settings?: ComputedVisualizationSettings;
   element?: Element;
   event?: MouseEvent;
-  stackedTooltipModel?: StackedTooltipModel;
   isAlreadyScaled?: boolean;
   pieSliceKeyPath?: string[];
   pieLegendHoverIndex?: number;

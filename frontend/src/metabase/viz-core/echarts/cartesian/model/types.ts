@@ -227,6 +227,7 @@ export type ComboChartDataDensity = BaseChartDataDensity & {
 };
 
 export type BaseCartesianChartModel = {
+  isRowChart?: boolean;
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   dataset: ChartDataset;

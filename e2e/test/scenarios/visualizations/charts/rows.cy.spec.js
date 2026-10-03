@@ -88,16 +88,15 @@ describe("scenarios > visualizations > rows", () => {
     });
 
     // Verify hovering bars does not change their size (metabase#43631)
-    cy.findAllByRole("graphics-symbol").eq(0).as("firstBar");
+    H.chartPathWithFillColor("#F2A86F").first().as("firstBar");
     cy.get("@firstBar")
-      .invoke("width")
+      .then(([bar]) => bar.getBoundingClientRect().width)
       .then((prevWidth) => {
         cy.get("@firstBar")
           .realHover()
-          .invoke("width")
-          .then((newWidth) => {
+          .then(([bar]) => {
             // eslint-disable-next-line metabase/no-unsafe-element-filtering
-            expect(prevWidth).eq(newWidth);
+            expect(bar.getBoundingClientRect().width).eq(prevWidth);
           });
       });
   });
@@ -140,19 +139,28 @@ describe("scenarios > visualizations > rows", () => {
 
     cy.findByTestId("query-visualization-root").within(() => {
       // Check that the visualization renders without errors
-      cy.findAllByRole("graphics-symbol").should("have.length.greaterThan", 0);
+      H.chartPathWithFillColor("#509EE3").should("have.length.greaterThan", 0);
 
-      // Check chart bars section - it should take 50% of width
-      cy.get(".visx-columns")
-        .should("exist")
-        .invoke("width")
-        .should("be.gt", 500);
+      H.echartsContainer().then(([container]) => {
+        const chartWidth = container.getBoundingClientRect().width;
+        const widest = (elements) =>
+          Math.max(
+            ...[...elements].map((el) => el.getBoundingClientRect().width),
+          );
 
-      // Check that axis labels are present
-      cy.get(".visx-axis-left")
-        .should("exist")
-        .invoke("width")
-        .should("be.gt", 500);
+        // The labels don't crowd out the bars
+        H.chartPathWithFillColor("#509EE3").should((bars) => {
+          expect(widest(bars)).to.be.gt(chartWidth / 3);
+        });
+
+        // Long labels are truncated to at most half the chart, not hidden
+        cy.wrap(container)
+          .find("text")
+          .should((labels) => {
+            expect(widest(labels)).to.be.gt(chartWidth / 3);
+            expect(widest(labels)).to.be.at.most(chartWidth / 2);
+          });
+      });
     });
   });
 

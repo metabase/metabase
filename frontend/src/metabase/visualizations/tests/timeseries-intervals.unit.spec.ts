@@ -3,7 +3,7 @@ import { dayjs } from "metabase/dayjs";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   type CartesianChartDateTimeAbsoluteUnit,
-  type ContinuousDomain,
+  type Extent,
   type TimeSeriesInterval,
   computeTimeseriesDataInterval,
   computeTimeseriesTicksInterval,
@@ -307,7 +307,7 @@ describe("timeseries intervals", () => {
     const mockFormatter = (value: RowValue) => String(value);
 
     type TickInput = {
-      xDomain: ContinuousDomain;
+      xDomain: Extent;
       xInterval: TimeSeriesInterval;
       outerWidth: number;
       xTickWidth: number;

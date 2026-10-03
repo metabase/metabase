@@ -59,6 +59,11 @@ export const getSeriesDefaultDisplay = (cardDisplay: string, index: number) => {
     return index === 0 ? "line" : "bar";
   }
 
+  // Row charts are rotated bars; "row" matches no series builder.
+  if (cardDisplay === "row") {
+    return "bar";
+  }
+
   return cardDisplay;
 };
 
