@@ -184,7 +184,7 @@ const modelPersistence = () =>
     Component: ModelPersistenceConfiguration,
   }));
 
-// `route.lazy` supplies a component and no props, so the three routes that
+// `route.lazy` supplies a component and no props, so the four routes that
 // share this layout bind theirs here.
 const metabotLayout =
   (props: ComponentProps<typeof MetabotAdminLayout> = {}) =>
@@ -446,6 +446,15 @@ export const getRoutes = (
             })}
           >
             <Route path="mcp/authorizations" lazy={oauthAuthorizations} />
+          </Route>
+          <Route
+            key="mcp-tools-access-layout"
+            lazy={metabotLayout({
+              fullWidth: true,
+              innerContentProps: { fullWidth: true, fullHeight: true },
+            })}
+          >
+            {PLUGIN_AI_CONTROLS.getMcpToolsAccessRoutes()}
           </Route>
           <Route
             key="layout"

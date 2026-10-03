@@ -46,6 +46,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "support-access-grant-current",
   "library-collection",
   "ai-controls-permissions",
+  "ai-controls-mcp-permissions",
   "ai-controls-usage-instance-limit",
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",

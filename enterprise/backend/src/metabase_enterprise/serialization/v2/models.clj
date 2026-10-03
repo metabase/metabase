@@ -102,6 +102,7 @@
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"
+   "McpGroupPermission"
    "McpQueryHandle"
    "McpSessionLog"
    "McpToolCallLog"

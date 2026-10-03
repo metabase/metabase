@@ -15,6 +15,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.core :as mcp]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as v2.common]
@@ -73,6 +74,12 @@
             :capabilities    capabilities
             :serverInfo      server-info}
      instructions (assoc :instructions instructions))))
+
+(def mcp-access-disabled-message
+  "The refusal for a user whose groups grant no MCP access, at `initialize` and on requests of a session opened
+  before an admin turned MCP off."
+  (message/msg [(str "MCP access is not enabled for your account. "
+                     "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]))
 
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
@@ -367,6 +374,10 @@
       ;; MCP spec: "The initialize request MUST NOT be part of a JSON-RPC batch"
       (and batch? (some #(and (valid-message? %) (= "initialize" (:method %))) body))
       (json-response 400 (jsonrpc-error nil -32600 (message/msg ["initialize must not be batched"])))
+
+      (and (not batch?) (valid-message? body) (= "initialize" (:method body))
+           (not (mcp.perms/enabled? (mcp.perms/policy-for-current-user))))
+      (json-response 403 (jsonrpc-error (:id body) v2.common/error-code-invalid-request mcp-access-disabled-message))
 
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))

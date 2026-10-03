@@ -452,10 +452,11 @@
   archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, changing
   its delivery or its schedule, resuming a paused one, or clearing send_once additionally requires the agent:query:run
   scope — the alert runs the question and delivers its results. Pausing one never does. Alerts are for saved questions; use subscription_write to schedule a whole dashboard."
-  {:name         "alert_write"
-   :scope        metabot.scope/agent-delivery-write
-   :annotations  {:readOnlyHint false :destructiveHint false}
-   :args         alert-write-args-schema}
+  {:name           "alert_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-delivery-write
+   :annotations    {:readOnlyHint false :destructiveHint false}
+   :args           alert-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write {:create-required [:card_id :schedule]} args)]
     (common/success-content
