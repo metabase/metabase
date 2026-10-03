@@ -8,8 +8,9 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -18,9 +19,21 @@
 (def ^:private Slug (mu/with-api-error-message tenant/Slug
                                                (deferred-tru "invalid slug")))
 
+(def ^:private max-pdf-export-logo-length
+  ;; a base64 data URI of a little over 2 MB of image
+  (* 3 1024 1024))
+
+(def ^:private PdfExportLogo
+  (mu/with-api-error-message
+   [:and
+    [:string {:max max-pdf-export-logo-length}]
+    [:re #"^data:image/(png|jpeg|svg\+xml);base64,[A-Za-z0-9+/]*={0,2}\z"]]
+   (deferred-tru "must be a base64 PNG, JPEG, or SVG image data URI of at most about 2 MB")))
+
 (def ^:private CreateTenantArguments [:map {:closed true}
                                       [:name ms/NonBlankString]
                                       [:attributes {:optional true} [:maybe tenant/Attributes]]
+                                      [:pdf_export_logo {:optional true} [:maybe PdfExportLogo]]
                                       [:slug Slug]])
 
 (def ^:private Tenant [:map {:closed true}
@@ -30,6 +43,7 @@
                        [:is_active ms/BooleanValue]
                        [:member_count {:optional true} ms/Int]
                        [:attributes {:optional true} [:maybe [:map-of :string :string]]]
+                       [:pdf_export_logo {:optional true} [:maybe :string]]
                        [:tenant_collection_id ms/PositiveInt]])
 
 (defn- present-tenants
@@ -40,7 +54,13 @@
     (map #(select-keys % [:id :name :slug :is_active :tenant_collection_id]) tenants)))
 
 (defn- present-tenant [tenant]
-  (first (present-tenants [tenant])))
+  (cond-> (first (present-tenants [tenant]))
+    api/*is-superuser?* (assoc :pdf_export_logo (tenants.db/tenant-pdf-export-logo (:id tenant)))))
+
+(defn- check-pdf-export-logo-licensed
+  [{logo :pdf_export_logo}]
+  (when (some? logo)
+    (premium-features/assert-has-feature :whitelabel (tru "Whitelabeling"))))
 
 (defn create-tenant!
   "Creates a new tenant, validating it, verifying that it does not already exist and publishing audit events as
@@ -51,6 +71,7 @@
                     {:status-code 400
                      :errors (mr/explain CreateTenantArguments tenant)})))
   (api/check-403 api/*is-superuser?*)
+  (check-pdf-export-logo-licensed tenant)
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
   (let [new-tenant (tenants.db/insert-tenant! tenant)]
@@ -80,7 +101,8 @@
   [:map {:closed true}
    [:name {:optional true} [:maybe ms/NonBlankString]]
    [:attributes {:optional true} [:maybe tenant/Attributes]]
-   [:is_active {:optional true} [:maybe ms/BooleanValue]]])
+   [:is_active {:optional true} [:maybe ms/BooleanValue]]
+   [:pdf_export_logo {:optional true} [:maybe PdfExportLogo]]])
 
 (mu/defn update-tenant!
   "Updates a tenant, publishing any necessary events after doing so"
@@ -104,11 +126,12 @@
         tenant-after-update))))
 
 (api.macros/defendpoint :put "/:id" :- Tenant
-  "Update a tenant, can set name, attributes, or whether this tenant is active."
+  "Update a tenant, can set name, attributes, PDF export logo, or whether this tenant is active."
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    tenant :- UpdateTenantArguments]
   (api/check-403 api/*is-superuser?*)
+  (check-pdf-export-logo-licensed tenant)
   (when (:name tenant)
     (api/check-400 (not (tenants.db/other-tenant-named? (:name tenant) id))
                    "This name is already taken."))
@@ -118,7 +141,7 @@
   "Get info about a tenant"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))
-  (present-tenant (tenants.db/tenant id)))
+  (present-tenant (api/check-404 (tenants.db/tenant id))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/tenant` routes"

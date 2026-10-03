@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util.jvm :as u.jvm]
    [toucan2.core :as t2]))
 
 (defn with-premium-feature-fixture [f]
@@ -850,3 +851,75 @@
                                           {:name            (mt/random-name)
                                            :parent_id       shared-id
                                            :authority_level "official"})))))))))
+
+(defn- png-data-uri [content]
+  (str "data:image/png;base64," (u.jvm/encode-base64 content)))
+
+(deftest ^:synchronized pdf-export-logo-set-and-clear-test
+  (mt/with-premium-features #{:tenants :whitelabel}
+    (mt/with-temp [:model/Tenant {id :id} {:name "Toucan Tenant" :slug "toucan"}]
+      (let [logo (png-data-uri "toucan")]
+        (testing "PUT sets it and returns it"
+          (is (=? {:id id :pdf_export_logo logo}
+                  (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:pdf_export_logo logo}))))
+        (testing "GET /:id returns it to admins"
+          (is (=? {:id id :pdf_export_logo logo}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id)))))
+        (testing "GET /:id leaves it out for other users"
+          (is (not (contains? (mt/user-http-request :rasta :get 200 (str "ee/tenant/" id)) :pdf_export_logo))))
+        (testing "the list leaves it out"
+          (let [tenants (:data (mt/user-http-request :crowberto :get 200 "ee/tenant/"))]
+            (is (some #(= id (:id %)) tenants))
+            (is (not-any? #(contains? % :pdf_export_logo) tenants))))
+        (testing "PUT null clears it"
+          (is (=? {:id id :pdf_export_logo nil}
+                  (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:pdf_export_logo nil}))))))))
+
+(deftest ^:synchronized pdf-export-logo-create-test
+  (mt/with-premium-features #{:tenants :whitelabel}
+    (mt/with-model-cleanup [:model/Tenant]
+      (let [logo (png-data-uri "pelican")]
+        (is (=? {:name "Pelican Tenant" :pdf_export_logo logo}
+                (mt/user-http-request :crowberto :post 200 "ee/tenant/"
+                                      {:name "Pelican Tenant" :slug "pelican" :pdf_export_logo logo})))))))
+
+(deftest ^:synchronized pdf-export-logo-validation-test
+  (mt/with-premium-features #{:tenants :whitelabel}
+    (mt/with-temp [:model/Tenant {id :id} {:name "Toucan Tenant" :slug "toucan"}]
+      (testing "anything but a base64 PNG, JPEG, or SVG data URI of about 2 MB at most is refused"
+        (doseq [bad-logo ["https://example.com/toucan.png"
+                          "data:image/gif;base64,R0lGODlh"
+                          "data:image/png;base64,not base64!"
+                          (png-data-uri (apply str (repeat (* 3 1024 1024) "a")))]]
+          (testing (subs bad-logo 0 (min 40 (count bad-logo)))
+            (mt/user-http-request :crowberto :put 400 (str "ee/tenant/" id) {:pdf_export_logo bad-logo}))))
+      (testing "SVG and JPEG are accepted"
+        (doseq [content-type ["image/svg+xml" "image/jpeg"]]
+          (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id)
+                                {:pdf_export_logo (str "data:" content-type ";base64," (u.jvm/encode-base64 "toucan"))}))))))
+
+(deftest ^:synchronized pdf-export-logo-requires-whitelabel-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temp [:model/Tenant {id :id} {:name "Toucan Tenant" :slug "toucan"}]
+      (testing "a logo is refused"
+        (mt/user-http-request :crowberto :put 402 (str "ee/tenant/" id) {:pdf_export_logo (png-data-uri "toucan")})
+        (mt/user-http-request :crowberto :post 402 "ee/tenant/"
+                              {:name "Pelican Tenant" :slug "pelican" :pdf_export_logo (png-data-uri "pelican")})
+        (is (nil? (t2/select-one-fn :pdf_export_logo [:model/Tenant :pdf_export_logo] :id id)))
+        (is (not (t2/exists? :model/Tenant :slug "pelican"))))
+      (testing "clearing it is allowed"
+        (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:pdf_export_logo nil})))))
+
+(deftest ^:synchronized pdf-export-logo-audit-log-test
+  (mt/with-premium-features #{:tenants :whitelabel :audit-app}
+    (mt/with-temp [:model/Tenant {id :id} {:name "Toucan Tenant" :slug "toucan"}]
+      (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "Toucan Tenant 2"
+                                                                       :pdf_export_logo (png-data-uri "toucan")})
+      (let [entries (t2/select :model/AuditLog :topic :tenant-update :model_id id)]
+        (is (seq entries))
+        (is (not-any? #(re-find #"pdf_export_logo|base64" (pr-str (:details %))) entries))))))
+
+(deftest ^:synchronized tenant-default-select-omits-pdf-export-logo-test
+  (mt/with-premium-features #{:tenants :whitelabel}
+    (mt/with-temp [:model/Tenant {id :id} {:name "Toucan Tenant" :slug "toucan" :pdf_export_logo (png-data-uri "toucan")}]
+      (is (not (contains? (t2/select-one :model/Tenant :id id) :pdf_export_logo))))))
