@@ -122,6 +122,12 @@ export interface SearchResult<
   based_on_upload?: TableId | null;
   "last-edit-info"?: LastEditInfo;
   result_metadata?: Field[];
+  scores?: {
+    name: string;
+    score: number;
+    weight: number;
+    contribution: number;
+  }[];
   collection_id?: CollectionId;
 }
 

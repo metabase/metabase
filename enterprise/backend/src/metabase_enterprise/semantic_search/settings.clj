@@ -314,3 +314,17 @@
   :export? false
   :visibility :internal
   :doc false)
+
+(defsetting semantic-duplicates-backfill-status
+  (deferred-tru "Internal status for the semantic duplicate question backfill.")
+  :type :json
+  :default {:state "pending"
+            :processed_questions 0
+            :total_questions 0
+            :last_successful_completion nil
+            :last_error nil
+            :snapshot_revision nil}
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :doc false)

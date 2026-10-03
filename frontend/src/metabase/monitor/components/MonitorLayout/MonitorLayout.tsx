@@ -18,6 +18,7 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
+import { PLUGIN_MONITOR } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { FixedSizeIcon, Flex } from "metabase/ui";
@@ -31,6 +32,10 @@ function getActiveSection(pathname: string): MonitorSection | null {
     .with(
       P.string.startsWith(Urls.dependencyDiagnostics()),
       () => "diagnostics",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorRelatedQuestions()),
+      () => "semantic-duplicates",
     )
     .with(
       P.string.startsWith(Urls.monitorErroringQuestions()),
@@ -77,6 +82,7 @@ export function MonitorLayout() {
   const { pathname } = useLocation();
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
+  const hasSemanticSearchFeature = useHasTokenFeature("semantic_search");
   const hasAiControlsFeature = useHasTokenFeature("ai_controls");
   const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
   const canAccessTools = useSelector(canAccessMonitoringTools);
@@ -106,6 +112,17 @@ export function MonitorLayout() {
               showLabel={isNavbarOpened}
               isGated={!hasDependenciesFeature}
               onClick={() => trackMonitorSectionClicked("diagnostics")}
+            />
+          )}
+          {canAccessDiagnostics && PLUGIN_MONITOR.isRelatedQuestionsEnabled && (
+            <AreaTab
+              label={t`Related questions`}
+              icon="search"
+              to={Urls.monitorRelatedQuestions()}
+              isSelected={activeSection === "semantic-duplicates"}
+              showLabel={isNavbarOpened}
+              isGated={!hasSemanticSearchFeature}
+              onClick={() => trackMonitorSectionClicked("semantic-duplicates")}
             />
           )}
           {canAccessTools && (

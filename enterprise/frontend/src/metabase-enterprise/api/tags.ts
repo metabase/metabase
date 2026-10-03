@@ -50,6 +50,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
   "data-complexity-scores",
+  "related-questions",
   "security-advisory",
 ] as const;
 
