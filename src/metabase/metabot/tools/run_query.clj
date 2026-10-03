@@ -87,6 +87,10 @@
         (throw (ex-info (str "No query with id " query-id ". Known query ids: [" (str/join ", " (keys queries)) "].")
                         {:agent-error? true})))))
 
+(def ^:private notebook-query-hint
+  "Ends every refusal the model can recover from by building a notebook query instead."
+  "To get values, build the question with construct_notebook_query, then run that query with run_query.")
+
 (defn- database-not-found
   [query-id]
   (ex-info (str "The database of query " query-id " was not found.")
@@ -113,16 +117,13 @@
    refusal is reachable only for a database the user can already read, so its distinct message discloses nothing."
   [query-id database-id]
   (when-not (scope/sql-execution-allowed?)
-    (throw (ex-info (str "run_query only runs notebook queries, and this one is a SQL query. "
-                         "To get values, rebuild the question with construct_notebook_query, "
-                         "then run that query with run_query.")
+    (throw (ex-info (str "run_query only runs notebook queries, and this one is a SQL query. " notebook-query-hint)
                     {:agent-error? true})))
   (when-not (and (int? database-id) (mi/can-read? :model/Database database-id))
     (throw (database-not-found query-id)))
   (when-not (sql.common/native-query-access? database-id)
     (throw (ex-info (str "You do not have permission to run SQL against the database of query " query-id ". "
-                         "To get values, build the question with construct_notebook_query, "
-                         "then run that query with run_query.")
+                         notebook-query-hint)
                     {:agent-error? true}))))
 
 (defn- runnable-query

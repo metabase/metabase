@@ -33,6 +33,13 @@
                scope/*current-user-scope*               (scope/user-metabot-perms->scopes metabot-perms)]
        (run-tool! queries args)))))
 
+(def ^:private notebook-query-hint
+  "The tail every recoverable refusal shares."
+  "To get values, build the question with construct_notebook_query, then run that query with run_query.")
+
+(def ^:private sql-refused-output
+  (str "run_query only runs notebook queries, and this one is a SQL query. " notebook-query-hint))
+
 (defn- venues-by-id
   []
   (let [mp (mt/metadata-provider)]
@@ -108,8 +115,8 @@
                                                                        :type     :query
                                                                        :query    {:source-query {:native "SELECT 1"}}}}]
           (testing shape
-            (is (=? {:output #"run_query only runs notebook queries.*construct_notebook_query.*"}
-                    (run-tool! {"q1" query} {:query_id "q1"}))))))))
+            (is (= {:output sql-refused-output}
+                   (run-tool! {"q1" query} {:query_id "q1"}))))))))
   (testing "a user without data access gets a failure, not rows"
     (mt/with-no-data-perms-for-all-users!
       (let [result (run-tool! {"q1" (venues-by-id)} {:query_id "q1"})]
@@ -183,14 +190,14 @@
                     :permission/metabot-sql-generation :no
                     :permission/metabot-nlq            :yes
                     :permission/metabot-other-tools    :yes}]
-      (is (=? {:output #"run_query only runs notebook queries.*"}
-              (run-sql-tool! nlq-only {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"})))))
+      (is (= {:output sql-refused-output}
+             (run-sql-tool! nlq-only {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"})))))
   (testing "a request without the agent:sql:run scope is refused, though the user has the SQL generation permission"
     (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
                 scope/*current-user-scope*               #{"agent:query:run"}]
-        (is (=? {:output #"run_query only runs notebook queries.*"}
-                (run-tool! {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))))
+        (is (= {:output sql-refused-output}
+               (run-tool! {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))))
   (mt/with-temp [:model/Database {builder-db :id}    {:engine :h2}
                  :model/Database {unreadable-db :id} {:engine :h2}]
     (mt/with-no-data-perms-for-all-users!
@@ -206,8 +213,7 @@
                                       {:query_id "q1"})))]
         (testing "a database the user can read but not query natively is refused before anything runs"
           (is (= {:output (str "You do not have permission to run SQL against the database of query q1. "
-                               "To get values, build the question with construct_notebook_query, "
-                               "then run that query with run_query.")}
+                               notebook-query-hint)}
                  (sql-on builder-db))))
         (testing "a database the user cannot read reads exactly like one that does not exist"
           (is (= {:output unreadable-database-output} (sql-on unreadable-db)))
