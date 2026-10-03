@@ -15,6 +15,7 @@
    [mage.bot.pr-env-test]
    [mage.bot.prompt-test]
    [mage.bot.repl-eval-test]
+   [mage.clj-ts-test]
    [mage.doctor-test]
    [mage.fix-unused-requires-test]
    [mage.kondo-ratchet-test]
