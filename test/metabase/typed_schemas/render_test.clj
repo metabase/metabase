@@ -74,23 +74,47 @@
                                                              :baseType "type/DateTime"
                                                              :jsType   "Date"}}}}})
 
-(deftest typescript-renderer-emits-comments-and-runtime-metadata-test
+(deftest typescript-renderer-emits-metadata-blocks-and-runtime-data-test
   (let [body (typed-schemas/render-typescript compacting-schema)]
-    ;; Emit comments to provide context for agents
-    (is (str/includes? body "// Description: Saved orders"))
-    (is (str/includes? body "// Description: Total order revenue"))
-    (is (re-find #"// Filters:\n\s*// - Status is paid\n\s*// - Created At is in the previous 30 days\n" body))
-    (is (str/includes? body "// Display name: Payment Method"))
-    (is (str/includes? body "// Semantic type: type/Category"))
-    ;; Emit metadata needed for the Lib.createTestQuery DSL
-    (is (str/includes? body "ordersQuestion: {\n    type: \"card\""))
-    (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
-    (is (str/includes? body "databaseId: 1"))
-    (is (str/includes? body "sourceTableId: 10"))
-    (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
-    ;; Comment-only metadata should not become runtime fields.
-    (is (not (str/includes? body "displayName: \"Payment Method\"")))
-    (is (not (str/includes? body "filters:")))))
+    (testing "context for agents is a metadata block, never a line comment"
+      (is (not (re-find #"(?m)^\s*//" body)))
+      (is (re-find #"(?s)type: \"card\"\n\s*/\* metadata: \{\n\s*\"description\": \"Saved orders\"\n\s*\} \*/" body))
+      (is (str/includes? body "\"description\": \"Total order revenue\""))
+      (is (str/includes? body "\"filters\": [\"Status is paid\", \"Created At is in the previous 30 days\"]"))
+      (is (re-find (re-pattern (str "(?s)tableId: 10\\n\\s*/\\* metadata: \\{\\n"
+                                    "\\s*\"displayName\": \"Payment Method\",\\n"
+                                    "\\s*\"semanticType\": \"type/Category\"\\n\\s*\\} \\*/"))
+                   body)))
+    (testing "data for the Lib.createTestQuery DSL stays runtime"
+      (is (str/includes? body "ordersQuestion: {\n    type: \"card\""))
+      (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
+      (is (str/includes? body "databaseId: 1"))
+      (is (str/includes? body "sourceTableId: 10"))
+      (is (str/includes? body "mappedTableIds: [ 10, 20 ]")))
+    (testing "metadata-only keys never become runtime fields"
+      (is (not (str/includes? body "displayName: \"Payment Method\"")))
+      (is (not (str/includes? body "filters:"))))))
+
+(deftest typescript-renderer-omits-what-a-metadata-block-has-nothing-to-say-test
+  (let [body (typed-schemas/render-typescript
+              {:schemaVersion 2
+               :tables        {"orders" {:type        "table"
+                                         :id          10
+                                         :name        "Orders"
+                                         :description "   "
+                                         :fields      {}}}
+               :metrics       {"revenue" {:type        "metric"
+                                          :id          31
+                                          :sourceTable {:databaseName "Sample Database"
+                                                        :schemaName   nil
+                                                        :tableName    "ORDERS"}}}})]
+    (testing "a table in a database without schemas has no schema key, not a null one"
+      (is (re-find (re-pattern (str "(?s)\"sourceTable\": \\{\\n\\s*\"databaseName\": \"Sample Database\",\\n"
+                                    "\\s*\"tableName\": \"ORDERS\"\\n\\s*\\}"))
+                   body))
+      (is (not (str/includes? body "null"))))
+    (testing "a blank description is not written"
+      (is (not (str/includes? body "description"))))))
 
 (deftest typescript-renderer-compacts-metric-dimensions-test
   (let [body (typed-schemas/render-typescript compacting-schema)]
@@ -143,16 +167,16 @@
             [:obj ["sourceFieldId" [:lit 42]]]]
            (obj-entry dimensions "franchises")))))
 
-(deftest schema->ast-splits-runtime-keys-from-comments-test
+(deftest schema->ast-splits-runtime-keys-from-metadata-test
   (let [ast    (render/schema->ast compacting-schema)
         fields (-> (module-const ast "tables")
                    (obj-entry "orders")
                    (obj-entry :fields))
         [entry-key options field-node] (-> fields rest first)]
-    (testing "comment-only policy keys become entry comments"
+    (testing "metadata-only policy keys become the entry's metadata"
       (is (= "paymentMethod" entry-key))
-      (is (= {:comments ["Display name: Payment Method"
-                         "Semantic type: type/Category"]}
+      (is (= {:metadata {"displayName"  "Payment Method"
+                         "semanticType" "type/Category"}}
              options)))
     (testing "runtime policy keys become object entries"
       (is (= [:lit "payment_method"] (obj-entry field-node :name)))
