@@ -94,15 +94,15 @@
                           (events/publish-event! :event/card-update
                                                  {:object c :previous-object c :user-id (mt/user->id :rasta)}))
                 src0   (test-helpers/versioned-source :trees {"empty" {}} :current "empty")
-                base   (:version (sync! "export" #(impl/export! (source.p/snapshot src0) % "initial" :force? true)))
+                _      (sync! "export" #(impl/export! (source.p/snapshot src0) % "initial" :force? true))
                 t0     (tree (source.p/snapshot src0))
                 ;; the remote changes only a card, so the merge pull can load only that change
                 path   (some (fn [[p c]] (when (str/includes? c "name: Remote Card") p)) t0)
                 t1     (update t0 path str/replace "description: original" "description: remote edit")
-                src    (test-helpers/versioned-source :trees {base t0 "v1" t1} :current base)
+                src    (test-helpers/versioned-source :trees {"v0" t0 "v1" t1} :current "v0")
                 ;; a forced pull of the base records the file paths and hashes in the ledger
                 _      (sync! "import" #(impl/import! (source.p/snapshot src) % :force? true))
-                src    (test-helpers/versioned-source :trees {base t0 "v1" t1} :current "v1")]
+                src    (test-helpers/versioned-source :trees {"v0" t0 "v1" t1} :current "v1")]
             (t2/update! :model/Card local-id {:description "local edit"})
             (save!)
             (is (= "update" (status)))
@@ -110,7 +110,7 @@
                   real       (mt/original-fn #'impl/load-snapshot!)]
               (mt/with-dynamic-fn-redefs [impl/load-snapshot! (fn [& args] (swap! full-loads inc) (apply real args))]
                 (sync! "import" #(impl/import! (source.p/snapshot src) %
-                                               :merge? true :base-snapshot (source.p/snapshot-at src base))))
+                                               :merge? true :base-snapshot (source.p/snapshot-at src "v0"))))
               (is (zero? @full-loads) "the merge pull loaded only the remote changes"))
             (is (= "remote edit" (t2/select-one-fn :description :model/Card remote-id)))
             (is (= "local edit" (t2/select-one-fn :description :model/Card local-id)))
