@@ -175,4 +175,6 @@
           ;; (100 statements here); throttled it is the first write plus the forced final one.
           (is (= 4 (- reporting baseline)))
           (testing "the final progress still reflects the whole stream"
-            (is (= 0.95 (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id))))))))))
+            ;; MySQL and MariaDB store progress as a single-precision float, so 0.95 reads back as 0.9499999880...
+            (let [progress (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id))]
+              (is (< (abs (- 0.95 progress)) 1e-6) (str "progress " progress)))))))))
