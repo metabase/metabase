@@ -30,31 +30,6 @@ describe("scenarios > dashboard > filters > text/category", () => {
     });
   });
 
-  it("should drill to a question with multi-value 'contains' filter applied (metabase#42999)", () => {
-    H.setFilter("Text or Category", "Contains");
-    cy.findAllByRole("radio", { name: "Multiple values" }).should("be.checked");
-    cy.findByTestId("visualization-root").findByText("Select…").click();
-    H.popover().contains("Source").click();
-    H.saveDashboard();
-    waitDashboardCardQuery();
-
-    H.filterWidget().eq(0).click();
-    applyFilterByType("Contains", "oo,aa");
-    waitDashboardCardQuery();
-
-    H.getDashboardCard().findByText("test question").click();
-
-    cy.location("href").should("contain", "/question#");
-    cy.findByTestId("filter-pill").should(
-      "contain.text",
-      "User → Source contains 2 selections",
-    );
-    cy.findByTestId("app-bar").should(
-      "contain.text",
-      "Started from test question",
-    );
-  });
-
   it("should work when set through the filter widget", () => {
     DASHBOARD_TEXT_FILTERS.forEach(({ operator, single }) => {
       cy.log(`Make sure we can connect ${operator} filter`);
@@ -98,6 +73,29 @@ describe("scenarios > dashboard > filters > text/category", () => {
         waitDashboardCardQuery();
       },
     );
+
+    cy.log(
+      "drill to a question with multi-value 'contains' filter applied (metabase#42999)",
+    );
+    const containsIndex = DASHBOARD_TEXT_FILTERS.findIndex(
+      ({ operator, single }) => operator === "Contains" && !single,
+    );
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.filterWidget().eq(containsIndex).click();
+    applyFilterByType("Contains", "oo,aa");
+    waitDashboardCardQuery();
+
+    H.getDashboardCard().findByText("test question").click();
+
+    cy.location("href").should("contain", "/question#");
+    cy.findByTestId("filter-pill").should(
+      "contain.text",
+      "User → Source contains 2 selections",
+    );
+    cy.findByTestId("app-bar").should(
+      "contain.text",
+      "Started from test question",
+    );
   });
 
   it("should reset filter state when all values are unselected (metabase#25533)", () => {
@@ -116,6 +114,10 @@ describe("scenarios > dashboard > filters > text/category", () => {
     H.filterWidget().click();
     applyFilterByType(filterType, filterValue);
     waitDashboardCardQuery();
+    H.filterWidget()
+      .should("contain", filterValue)
+      .icon("close")
+      .should("be.visible");
 
     H.filterWidget().click();
     cy.log("uncheck all values");
@@ -126,9 +128,13 @@ describe("scenarios > dashboard > filters > text/category", () => {
       waitDashboardCardQuery();
     });
 
-    H.filterWidget().within(() => {
-      cy.icon("close").should("not.exist");
-    });
+    H.filterWidget()
+      .should("contain", "Text")
+      .and("not.contain", filterValue)
+      .within(() => {
+        cy.icon("close").should("not.exist");
+      });
+    cy.location("search").should("eq", "?text=");
   });
 
   it("should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)", () => {
@@ -199,67 +205,74 @@ describe("scenarios > dashboard > filters > text/category", () => {
     );
 
     // Updates the filter value
-    selectDefaultValueFromPopover("Twitter", { buttonLabel: "Update filter" });
+    selectDefaultValueFromPopover("Organic", { buttonLabel: "Update filter" });
     H.saveDashboard();
     waitDashboardCardQuery();
-    H.ensureDashboardCardHasText("37.65");
+    assertOrganicOnly();
 
     // Resets the value back by clicking widget icon
-    H.toggleFilterWidgetValues(["Google", "Organic"], {
+    H.toggleFilterWidgetValues(["Google", "Twitter"], {
       buttonLabel: "Update filter",
     });
     waitDashboardCardQuery();
+    H.ensureDashboardCardHasText("37.65");
     H.resetFilterWidgetToDefault();
     waitDashboardCardQuery();
-    H.filterWidget().findByText("Twitter");
+    H.filterWidget().findByText("Organic");
+    assertOrganicOnly();
 
     // Removing value resets back to default
-    H.toggleFilterWidgetValues(["Twitter"], {
+    H.toggleFilterWidgetValues(["Organic"], {
       buttonLabel: "Set to default",
     });
-    H.filterWidget().findByText("Twitter").should("be.visible");
+    H.popover().should("not.exist");
+    H.filterWidget().findByText("Organic").should("be.visible");
+    assertOrganicOnly();
   });
 
-  it("should use the list value picker for single-value category filters (metabase#49323)", () => {
-    H.setFilter("Text or Category", "Is");
-
+  it("should use the list value picker for single- and multi-value category filters (metabase#49323)", () => {
+    H.setFilter("Text or Category", "Is", "Single title");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
-
     H.sidebar().findByText("A single value").click();
-    H.saveDashboard();
 
-    waitDashboardCardQuery();
-
-    H.filterWidget().contains("Text").click();
-    H.popover().within(() => {
-      cy.findByRole("combobox").should("not.exist");
-      cy.findByText("Aerodynamic Concrete Bench").should("be.visible").click();
-      cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
-      cy.button("Add filter").click();
-    });
-    H.filterWidget().findByText("Aerodynamic Bronze Hat").should("be.visible");
-  });
-
-  it("should use the list value picker for multi-value category filters (metabase#49323)", () => {
-    H.setFilter("Text or Category", "Is");
-
+    H.setFilter("Text or Category", "Is", "Multiple titles");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
-
-    H.sidebar().findByText("Multiple values").click();
     H.saveDashboard();
-
     waitDashboardCardQuery();
 
-    H.filterWidget().contains("Text").click();
-    H.popover().within(() => {
-      cy.findByRole("combobox").should("not.exist");
-      cy.findByText("Aerodynamic Concrete Bench").should("be.visible").click();
-      cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
-      cy.button("Add filter").click();
+    [
+      {
+        name: "Single title",
+        listTestId: "single-select-list-field",
+        widgetText: "Aerodynamic Bronze Hat",
+      },
+      {
+        name: "Multiple titles",
+        listTestId: "list-field",
+        widgetText: "2 selections",
+      },
+    ].forEach(({ name, listTestId, widgetText }, index) => {
+      cy.log(name);
+      H.filterWidget({ name }).click();
+      H.popover().within(() => {
+        cy.findByTestId(listTestId).should("be.visible");
+        cy.findByText("Aerodynamic Concrete Bench").should("be.visible");
+        cy.findByRole("combobox").should("not.exist");
+        cy.findByText("Aerodynamic Concrete Bench").click();
+        cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
+        cy.button("Add filter").click();
+      });
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      H.filterWidget().eq(index).findByText(widgetText).should("be.visible");
     });
-    H.filterWidget().findByText("2 selections").should("be.visible");
   });
 });
+
+function assertOrganicOnly() {
+  cy.findByTestId("dashcard")
+    .should("contain", "39.58")
+    .and("not.contain", "37.65");
+}
 
 function waitDashboardCardQuery() {
   cy.get("@dashCardId").then((id) => {

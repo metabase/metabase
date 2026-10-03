@@ -30,17 +30,19 @@ describe("scenarios > dashboard > filters > location", () => {
       H.popover().contains("City").click();
     });
     H.saveDashboard();
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetStringFilter(value);
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.findByTestId("dashcard").within(() => {
-          cy.contains(representativeResult);
-        });
+        cy.findByTestId("dashcard")
+          .should("contain", representativeResult)
+          .and("not.contain", "39.72");
 
         H.clearFilterWidget(index);
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);

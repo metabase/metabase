@@ -3,6 +3,36 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetStringFilter } from "../native/helpers/e2e-field-filter-helpers";
 
+const ID_FILTERS = [
+  {
+    name: "Order ID",
+    selectColumn: () => H.popover().contains("ID").first().click(),
+    value: "15",
+    representativeResult: "114.42",
+  },
+  {
+    name: "User ID",
+    selectColumn: () => H.popover().contains("User ID").click(),
+    value: "4",
+    representativeResult: "47.68",
+    remappedValue: "Arnold Adams - 4",
+  },
+  {
+    name: "Product ID",
+    // There are three of these, and the order is fixed:
+    // "own" column first, then implicit join on People and User alphabetically.
+    // We select index 1 to get the Product.ID.
+    selectColumn: () =>
+      H.popover().within(() => {
+        cy.findAllByText("ID").eq(1).click();
+      }),
+    value: "10",
+    representativeResult: "6.75",
+  },
+];
+
+const [PRIMARY_KEY, FOREIGN_KEY, IMPLICIT_JOIN] = ID_FILTERS;
+
 describe("scenarios > dashboard > filters > ID", () => {
   beforeEach(() => {
     H.restore();
@@ -11,10 +41,6 @@ describe("scenarios > dashboard > filters > ID", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     H.editDashboard();
-    H.setFilter("ID");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
 
     /**
      * Even though we're already intercepting this route in the visitDashboard helper,
@@ -29,100 +55,73 @@ describe("scenarios > dashboard > filters > ID", () => {
     );
   });
 
-  describe("should work for the primary key", () => {
-    beforeEach(() => {
-      H.popover().contains("ID").first().click();
-    });
+  it("should work for the primary key, the foreign key and the implicit join when set through the filter widget", () => {
+    ID_FILTERS.forEach((filter) => addIdFilter(filter));
 
-    it("when set through the filter widget", () => {
-      H.saveDashboard();
-      cy.wait("@dashboardData");
+    H.saveDashboard();
+    cy.wait("@dashboardData");
 
-      H.filterWidget().click();
-      addWidgetStringFilter("15");
-      cy.wait("@dashboardData");
-      cy.findByTestId("loading-indicator").should("not.exist");
+    ID_FILTERS.forEach(
+      ({ name, value, representativeResult, remappedValue }, index) => {
+        cy.log(name);
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        H.filterWidget().eq(index).click();
+        addWidgetStringFilter(value);
+        cy.wait("@dashboardData");
+        cy.findByTestId("loading-indicator").should("not.exist");
 
-      cy.findByTestId("dashcard").should("contain", "114.42");
-    });
+        assertDashcardResult(representativeResult);
+        if (remappedValue) {
+          H.checkFilterLabelAndValue(name, remappedValue);
+        }
 
-    it("when set as the default filter", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Default value").next().click();
-      addWidgetStringFilter("15");
-
-      H.saveDashboard();
-      cy.wait("@dashboardData");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findByTestId("dashcard").should("contain", "114.42");
-    });
+        H.clearFilterWidget(index);
+        cy.wait("@dashboardData");
+      },
+    );
   });
 
-  describe("should work for the foreign key", () => {
-    beforeEach(() => {
-      H.popover().contains("User ID").click();
-    });
+  it("should work for the primary key when set as the default filter", () => {
+    addIdFilter(PRIMARY_KEY);
+    setDefaultValueAndSave(PRIMARY_KEY.value);
 
-    it("when set through the filter widget", () => {
-      H.saveDashboard();
-      cy.wait("@dashboardData");
-
-      H.filterWidget().click();
-      addWidgetStringFilter("4");
-      cy.wait("@dashboardData");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findByTestId("dashcard").should("contain", "47.68");
-      H.checkFilterLabelAndValue("ID", "Arnold Adams - 4");
-    });
-
-    it("when set as the default filter", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Default value").next().click();
-      addWidgetStringFilter("4");
-
-      H.saveDashboard();
-      cy.wait("@dashboardData");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findByTestId("dashcard").should("contain", "47.68");
-      H.checkFilterLabelAndValue("ID", "Arnold Adams - 4");
-    });
+    assertDashcardResult(PRIMARY_KEY.representativeResult);
   });
 
-  describe("should work on the implicit join", () => {
-    beforeEach(() => {
-      H.popover().within(() => {
-        // There are three of these, and the order is fixed:
-        // "own" column first, then implicit join on People and User alphabetically.
-        // We select index 1 to get the Product.ID.
-        cy.findAllByText("ID").eq(1).click();
-      });
-    });
+  it("should work for the foreign key when set as the default filter", () => {
+    addIdFilter(FOREIGN_KEY);
+    setDefaultValueAndSave(FOREIGN_KEY.value);
 
-    it("when set through the filter widget", () => {
-      H.saveDashboard();
-      cy.wait("@dashboardData");
+    assertDashcardResult(FOREIGN_KEY.representativeResult);
+    H.checkFilterLabelAndValue(FOREIGN_KEY.name, FOREIGN_KEY.remappedValue);
+  });
 
-      H.filterWidget().click();
-      addWidgetStringFilter("10");
-      cy.wait("@dashboardData");
-      cy.findByTestId("loading-indicator").should("not.exist");
+  it("should work on the implicit join when set as the default filter", () => {
+    addIdFilter(IMPLICIT_JOIN);
+    setDefaultValueAndSave(IMPLICIT_JOIN.value);
 
-      cy.findByTestId("dashcard").should("contain", "6.75");
-    });
-
-    it("when set as the default filter", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Default value").next().click();
-      addWidgetStringFilter("10");
-
-      H.saveDashboard();
-      cy.wait("@dashboardData");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findByTestId("dashcard").should("contain", "6.75");
-    });
+    assertDashcardResult(IMPLICIT_JOIN.representativeResult);
   });
 });
+
+function addIdFilter({ name, selectColumn }) {
+  H.setFilter("ID", undefined, name);
+
+  cy.findByText("Select…").click();
+  selectColumn();
+}
+
+function setDefaultValueAndSave(value) {
+  cy.findByText("Default value").next().click();
+  addWidgetStringFilter(value);
+
+  H.saveDashboard();
+  cy.wait("@dashboardData");
+  cy.findByTestId("loading-indicator").should("not.exist");
+}
+
+function assertDashcardResult(representativeResult) {
+  cy.findByTestId("dashcard")
+    .should("contain", representativeResult)
+    .and("not.contain", "39.72");
+}

@@ -7,8 +7,6 @@ import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
 
 describe("scenarios > dashboard > filters > number", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -48,14 +46,16 @@ describe("scenarios > dashboard > filters > number", () => {
     cy.wait("@dashboardData");
 
     DASHBOARD_NUMBER_FILTERS.forEach(
-      ({ operator, value, representativeResult }, index) => {
+      ({ operator, value, representativeResult, negativeAssertion }, index) => {
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
         cy.wait("@dashboardData");
 
         cy.log(`Make sure ${operator} filter returns correct result`);
-        cy.findByTestId("dashcard").should("contain", representativeResult);
+        cy.findByTestId("dashcard")
+          .should("contain", representativeResult)
+          .and("not.contain", negativeAssertion);
 
         H.clearFilterWidget(index);
         cy.wait("@dashboardData");
@@ -116,7 +116,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
     H.saveDashboard();
     cy.wait("@dashboardData");
-    H.ensureDashboardCardHasText("37.65");
+    assertDefaultTaxApplied();
 
     // Updates the filter value
     H.setFilterWidgetValue("5.27", "Enter a number");
@@ -127,14 +127,18 @@ describe("scenarios > dashboard > filters > number", () => {
     H.resetFilterWidgetToDefault();
     H.filterWidget().findByText("2.07");
     cy.wait("@dashboardData");
-    H.ensureDashboardCardHasText("37.65");
+    assertDefaultTaxApplied();
 
     // Removing value resets back to default
+    H.setFilterWidgetValue("5.27", "Enter a number");
+    cy.wait("@dashboardData");
+    H.ensureDashboardCardHasText("95.77");
     H.setFilterWidgetValue(null, "Enter a number", {
       buttonLabel: "Set to default",
     });
+    cy.wait("@dashboardData");
     H.filterWidget().findByText("2.07");
-    H.ensureDashboardCardHasText("37.65");
+    assertDefaultTaxApplied();
   });
 
   it("should allow between filters without min or max (metabase#54364)", () => {
@@ -178,3 +182,10 @@ describe("scenarios > dashboard > filters > number", () => {
     H.getDashboardCard().within(() => H.assertTableRowsCount(166));
   });
 });
+
+function assertDefaultTaxApplied() {
+  cy.findByTestId("dashcard")
+    .should("contain", "37.65")
+    .and("not.contain", "110.93")
+    .and("not.contain", "95.77");
+}

@@ -10,17 +10,13 @@ import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 
 describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
-
     H.restore();
     cy.signInAsAdmin();
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
   });
 
   it("should work when set through the filter widget", () => {
+    visitOrdersDashboardInEditMode();
+
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
@@ -31,6 +27,7 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     H.saveDashboard();
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
@@ -42,11 +39,12 @@ describe("scenarios > dashboard > filters > date", () => {
           filterType: filter,
           filterValue: value,
         });
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.findByTestId("dashcard").within(() => {
-          cy.findByText(representativeResult);
-        });
+        cy.findByTestId("dashcard")
+          .should("contain", representativeResult)
+          .and("not.contain", "39.72");
 
         H.clearFilterWidget(index);
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
@@ -57,6 +55,8 @@ describe("scenarios > dashboard > filters > date", () => {
   // Rather than going through every single filter type,
   // make sure the default filter works for just one of the available options
   it("should work when set as the default filter", () => {
+    visitOrdersDashboardInEditMode();
+
     H.setFilter("Date picker", "Month and Year");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
@@ -86,6 +86,8 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should support being required", () => {
+    visitOrdersDashboardInEditMode();
+
     H.setFilter("Date picker", "Month and Year", "Month and Year");
 
     // Can't save without a default value
@@ -114,6 +116,8 @@ describe("scenarios > dashboard > filters > date", () => {
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
     H.saveDashboard();
 
+    H.ensureDashboardCardHasText("27.74");
+
     // Updates the filter value
     H.filterWidget().should("contain.text", "November 2026").click();
     H.popover().findByText("Dec").click();
@@ -127,8 +131,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
+    visitOrdersDashboardInEditMode();
 
     H.setFilter("Date picker", "All Options");
 
@@ -184,6 +187,11 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 });
 
+function visitOrdersDashboardInEditMode() {
+  H.visitDashboard(ORDERS_DASHBOARD_ID);
+  H.editDashboard();
+}
+
 function dateFilterSelector({ filterType, filterValue } = {}) {
   switch (filterType) {
     case "Month and Year":
@@ -205,12 +213,13 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
       cy.findByText("Add filter").click();
       break;
 
-    case "Relative Date":
-      DateFilter.setRelativeDate(filterValue);
-      break;
-
     case "All Options":
-      DateFilter.setAdHocFilter(filterValue);
+      H.popover().within(() => {
+        cy.findByText("Fixed date range…").click();
+        cy.findByText("Before").click();
+        cy.findByLabelText("Date").clear().type(filterValue).blur();
+        cy.button("Add filter").click();
+      });
       break;
 
     default:
