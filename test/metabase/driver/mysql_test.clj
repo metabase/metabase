@@ -54,6 +54,51 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ssl-cert-path-must-be-readable-test
+  ;; the "Server SSL certificate chain" field takes inline PEM, a `classpath:` resource, or a path to a file on the
+  ;; Metabase host -- and a path has to be somewhere `readable-paths` allows
+  (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          spec    #(sql-jdbc.conn/connection-details->spec :mysql (merge details %))]
+      (testing "a certificate path outside the allowed directories is refused"
+        (doseq [cert ["/etc/server-ca.pem" "/allowed-dir/../etc/server-ca.pem"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:ssl-cert cert}))
+              cert)))
+      (testing "inline PEM, a classpath resource, an allowed path, or a certificate SSL does not use, are accepted"
+        (doseq [extra [{:ssl-cert "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"}
+                       {:ssl-cert "classpath:server-ca.pem"}
+                       {:ssl-cert "/allowed-dir/server-ca.pem"}
+                       {:ssl false :ssl-cert "/etc/server-ca.pem"}]]
+          (is (map? (spec extra)) (pr-str extra)))))))
+
+(deftest ssl-cert-url-must-be-readable-test
+  ;; the client opens the value as a URL before falling back to a file path, so `file:/etc/x` reads `/etc/x` -- not a
+  ;; file named `file:/etc/x` under the working directory, which is allowed here
+  (mt/with-temp-env-var-value! [mb-readable-paths (str "/allowed-dir," (System/getProperty "user.dir"))]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          spec    #(sql-jdbc.conn/connection-details->spec :mysql (merge details {:ssl-cert %}))]
+      (testing "a URL the client would read from somewhere other than an allowed local file is refused"
+        (doseq [cert ["file:/etc/server-ca.pem"
+                      "file:///etc/server-ca.pem"
+                      "file:/allowed-dir/%2E%2E/etc/server-ca.pem"
+                      "file://other-host/allowed-dir/server-ca.pem"
+                      "jar:file:/allowed-dir/certs.jar!/server-ca.pem"
+                      "http://example.com/server-ca.pem"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec cert))
+              cert)))
+      (testing "a file URL for an allowed path is accepted"
+        (doseq [cert ["file:/allowed-dir/server-ca.pem"
+                      "file:///allowed-dir/server-ca.pem"
+                      "file://localhost/allowed-dir/server-ca.pem"]]
+          (is (map? (spec cert)) cert)))))
+  (testing "any URL is accepted when every path is readable"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/"]
+      (is (map? (sql-jdbc.conn/connection-details->spec
+                 :mysql
+                 {:host "h" :port 3306 :dbname "db" :user "u" :ssl true :ssl-cert "http://example.com/server-ca.pem"}))))))
+
 (deftest default-schema-test
   (mt/test-driver :mysql
     (is (nil? (driver.sql/default-schema :mysql (mt/db))))))

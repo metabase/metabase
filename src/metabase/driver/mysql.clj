@@ -31,7 +31,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
@@ -40,6 +40,7 @@
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
+   (java.net MalformedURLException URL URLDecoder)
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
@@ -751,6 +752,29 @@
   [spec allowed?]
   (sql-jdbc.common/handle-additional-options spec {:additional-options (str "allowLocalInfile=" allowed?)}))
 
+(defn- ssl-cert-url-local-path
+  "The local path a `file:` URL reads, or nil if `url` reads from somewhere else. A `file:` URL naming any host but
+  `localhost` is fetched over FTP."
+  [^URL url]
+  (when (and (= "file" (.getProtocol url))
+             (#{"" "localhost"} (u/lower-case-en (.getHost url))))
+    ;; the URL path is percent-encoded, but a `+` in it is a literal `+`
+    (URLDecoder/decode (str/replace (.getPath url) "+" "%2B") "UTF-8")))
+
+(defn- ensure-ssl-cert-readable!
+  "Throw unless `readable-paths` allows what the client reads for `ssl-cert`. Mirrors the client's own reading of
+  `serverSslCert`: inline PEM only when it starts with exactly `-----BEGIN CERTIFICATE-----`, a classpath resource
+  with `classpath:`, then a URL if it parses as one, and only otherwise a file on the Metabase host. A `file:` URL
+  reads its local path; any other URL reads from outside the allowlist, so is allowed only if every path is."
+  [^String ssl-cert]
+  (when-not (or (str/starts-with? ssl-cert "-----BEGIN CERTIFICATE-----")
+                (str/starts-with? ssl-cert "classpath:"))
+    (if-let [url (try (URL. ssl-cert) (catch MalformedURLException _ nil))]
+      (when-not (driver-api/readable-path? (or (ssl-cert-url-local-path url) "/"))
+        (throw (ex-info (tru "Reading from path is disallowed: {0}" ssl-cert)
+                        {:file-path ssl-cert, :access :read, :status-code 400})))
+      (driver-api/ensure-readable-path! ssl-cert))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert auth-provider], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
@@ -765,6 +789,8 @@
       (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
     (when (and use-iam? (not ssl?))
       (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
+    (when (and ssl-cert? (string? ssl-cert))
+      (ensure-ssl-cert-readable! ssl-cert))
     (when (and use-iam?
                (contains? addl-opts-map "sslMode")
                (not= (get addl-opts-map "sslMode") "VERIFY_CA"))
