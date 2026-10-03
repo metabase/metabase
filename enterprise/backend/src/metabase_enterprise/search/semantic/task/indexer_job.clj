@@ -1,9 +1,7 @@
 (ns metabase-enterprise.search.semantic.task.indexer-job
   "The semantic search indexer's Quartz job class.
-
-  This is `gen-class` rather than `deftype` so the class keeps a name independent of this namespace, see
-  [[metabase-enterprise.search.semantic.task.indexer/job-class]] for why. It is AOT-compiled in the uberjar and
-  runtime-compiled in dev. Keep it tiny: all logic lives in [[metabase-enterprise.search.semantic.task.indexer]]."
+  Its name is pinned, see [[metabase-enterprise.search.semantic.task.indexer/job-class-name]].
+  All logic lives in [[metabase-enterprise.search.semantic.task.indexer]], so keep this namespace tiny."
   (:gen-class :name ^{org.quartz.DisallowConcurrentExecution true}
               metabase_enterprise.semantic_search.task.indexer.SemanticSearchIndexer
               :implements [org.quartz.InterruptableJob])
