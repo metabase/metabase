@@ -28,7 +28,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "vite build && cp -r src/templates dist/templates",
+    "build": "vite build",
     "check:package-versions": "bun run scripts/check-package-versions.ts",
     "dev": "vite build --watch",
     "format": "prettier --write .",
