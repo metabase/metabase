@@ -73,7 +73,8 @@
   [_driver details]
   (sql-jdbc/reject-dangerous-additional-options! details)
   (when-let [opts (not-empty (:additional-options details))]
-    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths" opts)
+    ;; `StagingAllowedLocalPaths` is the older spelling of the same setting, and the client still honors it
+    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths|StagingAllowedLocalPaths" opts)
       (throw (Exception. "Potentially dangerous keys in connection details")))))
 
 (defn- catalog-present?

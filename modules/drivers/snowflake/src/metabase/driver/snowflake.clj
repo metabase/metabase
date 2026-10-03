@@ -447,6 +447,10 @@
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
         (maybe-add-role-to-spec-url details)
+        ;; `PUT` and `GET` move files between the Metabase host and a stage. Details are merged into the spec above, and
+        ;; the client reads property names case-insensitively, so a detail key such as `Enableputget` would otherwise
+        ;; sit beside ours and, depending on hash order, win.
+        (as-> spec (m/remove-keys #(= "enableputget" (u/lower-case-en (str/trim (name %)))) spec))
         (assoc :enablePutGet "false"))))
 
 (mu/defn- database-type->base-type
