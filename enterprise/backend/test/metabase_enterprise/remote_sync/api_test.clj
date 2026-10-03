@@ -193,6 +193,22 @@
       (is (= "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
              (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
 
+(deftest branches-endpoint-does-not-clone-test
+  (testing "GET /api/ee/remote-sync/branches lists the remote's branches without cloning it"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url                 (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
+            ^java.io.File clone (#'source.git/repo-path {:remote-url url})]
+        (try
+          (mt/with-temporary-setting-values [remote-sync-url    url
+                                             remote-sync-token  nil
+                                             remote-sync-branch "master"]
+            (is (not (.exists clone)) "Precondition: no local clone yet")
+            (is (= {:items ["develop" "master"]}
+                   (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches")))
+            (is (not (.exists clone)) "Listing the branches must not clone the repository"))
+          (finally
+            (org.apache.commons.io.FileUtils/deleteQuietly clone)))))))
+
 (deftest branches-endpoint-handles-repository-errors-test
   (testing "GET /api/ee/remote-sync/branches handles git repository errors"
     (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source :error-on-branches? true))]
