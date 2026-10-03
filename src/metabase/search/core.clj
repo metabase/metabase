@@ -5,6 +5,7 @@
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
    [metabase.search.debug :as search.debug]
@@ -248,6 +249,21 @@
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/ingest-maybe-async! updates))))
 
+(defn after-commit!
+  "Run `thunk` once the enclosing transaction commits; a rollback discards it.
+  It runs off the committing thread unless ingestion is forced synchronous, and a failure is logged, not thrown.
+  `description` names the work in that log line."
+  [description thunk]
+  (mdb/do-after-commit
+   (fn []
+     (let [run #(try
+                  (thunk)
+                  (catch Throwable e
+                    (log/errorf e "Failed search-index handoff: %s" description)))]
+       (if search.ingestion/*force-sync*
+         (run)
+         (future (run)))))))
+
 (defn bulk-update!
   "Enqueue re-indexing derived from `instances` unconditionally, e.g. the pre-images of deleted rows.
   Enqueued messages only ask ingestion to re-derive the affected search entries: rows that no longer
@@ -306,15 +322,15 @@
                (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
                (partition-all reindex-batch-size alive))))
       (when (seq gone)
-        (doseq [e (search.engine/active-engines)]
-          (search.engine/delete! e search-model (into #{} (map str) gone)))))))
+        (search.ingestion/ingest-maybe-async!
+         [(search.ingestion/tombstone search-model gone)])))))
 
 (defn delete!
-  "Given a model and a list of model's ids, remove corresponding search entries."
+  "Queue removal of a model's corresponding search entries after all earlier re-index messages."
   [model ids]
   (when (supports-index?)
-    (doseq [e            (search.engine/active-engines)
-            search-model (->> (vals (search.spec/specifications))
-                              (filter (comp #{model} :model))
-                              (map :name))]
-      (search.engine/delete! e search-model ids))))
+    (search.ingestion/ingest-maybe-async!
+     (for [search-model (->> (vals (search.spec/specifications))
+                             (filter (comp #{model} :model))
+                             (map :name))]
+       (search.ingestion/tombstone search-model ids)))))
