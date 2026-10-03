@@ -1,0 +1,381 @@
+(ns dev.module-history
+  "Module-boundary metrics at any commit, read from git without a checkout.
+
+  Every commit is measured with the code in this tree: its sources and module config come from git, and today's
+  [[dev.deps-graph]] resolves and measures them, so every data point follows the same rules.
+
+  Results are cached outside the repo, under `$MB_MODULE_HISTORY_CACHE` or `~/.cache/metabase/module-history`, so
+  worktrees and runs share them. Parsed files are keyed by git blob and a hash of [[dev.module-source]]; per-commit
+  metrics are keyed by commit and a hash of every namespace that computes them. Changing that code starts a fresh
+  cache layer instead of serving stale results.
+
+    (backfill! {:since \"2025-10-01\", :monthly-since \"2023-12-01\", :out \"history.csv\"})"
+  (:require
+   [clojure.data.csv :as csv]
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.java.shell :as sh]
+   [clojure.string :as str]
+   [dev.deps-graph :as deps-graph]
+   [dev.module-graph :as module-graph]
+   [dev.module-source :as module-source]
+   [hooks.common.modules :as modules])
+  (:import
+   (java.io BufferedInputStream File OutputStream)
+   (java.nio.charset StandardCharsets)
+   (java.nio.file CopyOption Files StandardCopyOption)
+   (java.security MessageDigest)
+   (java.time LocalDate)))
+
+(set! *warn-on-reflection* true)
+
+;;;; Git
+
+(defn- git!
+  "Run git with `args` in the repo and return its output, throwing when it fails."
+  [& args]
+  (let [{:keys [exit out err]} (apply sh/sh "git" args)]
+    (when-not (zero? exit)
+      (throw (ex-info (format "git %s failed: %s" (str/join " " args) err) {:args args})))
+    out))
+
+(defn- open-object-reader
+  "A running `git cat-file --batch` for reading object contents with [[read-object]]. Close it with
+  [[close-object-reader]]."
+  []
+  (let [process (.start (ProcessBuilder. ^"[Ljava.lang.String;" (into-array String ["git" "cat-file" "--batch"])))]
+    {:process process
+     :in      (BufferedInputStream. (.getInputStream process))
+     :out     (.getOutputStream process)}))
+
+(defn- close-object-reader [{:keys [^Process process ^OutputStream out]}]
+  (.close out)
+  (.waitFor process))
+
+(defn- read-line-bytes
+  "One `\\n`-terminated line from `in`, without the newline."
+  [^BufferedInputStream in]
+  (let [buffer (java.io.ByteArrayOutputStream.)]
+    (loop []
+      (let [b (.read in)]
+        (if (or (= b -1) (= b (int \newline)))
+          (String. (.toByteArray buffer) StandardCharsets/UTF_8)
+          (do (.write buffer b) (recur)))))))
+
+(defn- read-object
+  "Contents of the object `spec` names, a blob sha or `commit:path`, as a string; `nil` when it does not exist."
+  [{:keys [^BufferedInputStream in ^OutputStream out]} spec]
+  (.write out (.getBytes (str spec "\n") StandardCharsets/UTF_8))
+  (.flush out)
+  (let [header (read-line-bytes in)]
+    (when-not (str/ends-with? header " missing")
+      (let [size  (parse-long (last (str/split header #" ")))
+            bytes (.readNBytes in (int size))]
+        ;; Each object is followed by a newline.
+        (.read in)
+        (String. bytes StandardCharsets/UTF_8)))))
+
+(def ^:private source-path
+  "Paths [[dev.deps-graph/dependencies]] scans: OSS and EE sources, every driver, and the plugin modules."
+  #"^(?:src|enterprise/backend/src|modules/drivers/[^/]+/src|modules/embedder/src)/.+\.cljc?$")
+
+(defn- source-blobs
+  "The `{:path, :blob}` of each backend source file in `commit`."
+  [commit]
+  (into []
+        (keep (fn [entry]
+                ;; Each entry is `<mode> <type> <sha>\t<path>`.
+                (let [[meta-part path] (str/split entry #"\t" 2)
+                      [_mode kind blob] (str/split meta-part #" ")]
+                  (when (and (= kind "blob") path (re-matches source-path path))
+                    {:path path, :blob blob}))))
+        (str/split (git! "ls-tree" "-r" "-z" commit
+                         "--" "src" "enterprise/backend/src" "modules/drivers" "modules/embedder")
+                   #"\u0000")))
+
+;;;; Module config
+
+(defn- legacy-modules
+  "Module map from the `:metabase/ns-module-checker` linter that predates `:metabase/modules`. It keyed
+  `:api-namespaces` by the module's root namespace (`metabase.lib`) and had no `:uses`, friends or nesting."
+  [config-source]
+  ;; Before #53583 an unlisted module's API was its root namespace; today's default is `.api`, `.core` and `.init`,
+  ;; so exposure measured against this config is approximate.
+  (let [config (binding [*read-eval* false] (read-string config-source))]
+    (into {}
+          (keep (fn [[root-ns api]]
+                  (when-let [[_ enterprise module] (re-matches #"metabase(-enterprise)?\.(.+)" (str root-ns))]
+                    [(if enterprise (symbol "enterprise" module) (symbol module))
+                     (cond-> {}
+                       (some? api) (assoc :api (if (= :any api) :any (set api))))])))
+          (get-in config [:linters :metabase/ns-module-checker :api-namespaces]))))
+
+(defn- commit-modules
+  "The `:metabase/modules` map at `commit`. Before #53583 it is translated from the older linter config, and before
+  #42250 there is no config, so every module is undeclared and resolves by its first namespace segment."
+  [reader commit]
+  (if-let [config (read-object reader (str commit ":.clj-kondo/config/modules/config.edn"))]
+    ;; Same exclusion as [[deps-graph/kondo-config]].
+    (dissoc (:metabase/modules (edn/read-string config)) 'connection-pool)
+    (or (some-> (read-object reader (str commit ":.clj-kondo/config.edn")) legacy-modules)
+        {})))
+
+;;;; Cache
+
+(defn cache-dir
+  "Root of the on-disk cache: `$MB_MODULE_HISTORY_CACHE`, else `~/.cache/metabase/module-history`."
+  ^File []
+  (io/file (or (System/getenv "MB_MODULE_HISTORY_CACHE")
+               (str (System/getProperty "user.home") "/.cache/metabase/module-history"))))
+
+(defn- code-hash
+  "A short hash over the source of classpath `resources`, naming a cache layer computed by that code."
+  [& resources]
+  (let [digest (MessageDigest/getInstance "SHA-1")]
+    (doseq [resource resources]
+      (.update digest (.getBytes (slurp (or (io/resource resource)
+                                            (throw (ex-info (str "Not on the classpath: " resource) {}))))
+                                 StandardCharsets/UTF_8)))
+    (subs (format "%040x" (BigInteger. 1 (.digest digest))) 0 12)))
+
+(def ^:private parse-version
+  (delay (code-hash "dev/module_source.clj")))
+
+(def ^:private metrics-version
+  (delay (code-hash "dev/module_source.clj" "dev/deps_graph.clj" "dev/module_graph.clj" "hooks/common/modules.clj"
+                    "dev/module_history.clj")))
+
+(defn- read-cached [^File file]
+  (when (.exists file)
+    (edn/read-string (slurp file))))
+
+(defn- write-cached!
+  "Write `value` to `file` through a temporary file, so concurrent runs never read half a file."
+  [^File file value]
+  (io/make-parents file)
+  (let [tmp (File/createTempFile "entry" ".tmp" (.getParentFile file))]
+    (spit tmp (pr-str value))
+    (Files/move (.toPath tmp) (.toPath file) (into-array CopyOption [StandardCopyOption/ATOMIC_MOVE]))
+    value))
+
+(defn- parse-file ^File [blob]
+  (io/file (cache-dir) "parse" @parse-version (subs blob 0 2) (str blob ".edn")))
+
+(defn- metrics-file ^File [commit]
+  (io/file (cache-dir) "metrics" @metrics-version (str commit ".edn")))
+
+(defn- parse-source
+  "The [[module-source/source-requires]] map for `source`, or `{:error message}` when it does not parse."
+  [source]
+  (try
+    (module-source/source-requires source)
+    (catch Exception e
+      {:error (ex-message e)})))
+
+(defn- blob-requires
+  "Requires for each of `blobs`, from the cache where possible. Missing blobs are read in turn and parsed in
+  parallel."
+  [reader blobs]
+  (let [cached  (into {} (keep (fn [blob] (some->> (read-cached (parse-file blob)) (vector blob)))) blobs)
+        missing (remove cached blobs)
+        sources (mapv (fn [blob] [blob (read-object reader blob)]) missing)
+        parsed  (into {} (pmap (fn [[blob source]]
+                                 [blob (write-cached! (parse-file blob) (parse-source source))])
+                               sources))]
+    (merge cached parsed)))
+
+;;;; Metrics
+
+(defn commit-dependencies
+  "Dependency rows, as [[deps-graph/dependencies]] returns them, for the sources at `commit` under `modules`."
+  [reader commit modules]
+  (let [prefix->module (modules/build-prefix->module modules)
+        files          (source-blobs commit)
+        requires       (blob-requires reader (distinct (map :blob files)))]
+    (into []
+          (keep (fn [{:keys [path blob]}]
+                  (let [{ns-symb :namespace, :as parsed} (requires blob)]
+                    ;; Unparseable files and namespaces outside every module are skipped, as a checkout scan cannot
+                    ;; place them either.
+                    (when (and ns-symb
+                               (not (:error parsed))
+                               (modules/resolve-module prefix->module ns-symb))
+                      (deps-graph/resolve-requires prefix->module path parsed)))))
+          files)))
+
+(defn- largest-cycle
+  "The `[modules namespaces]` sizes of the cycle with the most namespaces, or `[0 0]` without cycles."
+  [module-sizes namespace-sizes]
+  (or (last (sort-by second (map vector module-sizes namespace-sizes)))
+      [0 0]))
+
+(defn commit-metrics
+  "Flat metrics for one commit's dependency rows and module map: [[deps-graph/module-boundary-stats]] plus the
+  sizes, cycle, exposure and `:friends` measures the history report tracks."
+  [deps modules]
+  (let [stats            (deps-graph/module-boundary-stats deps modules)
+        mod->nses        (update-vals (group-by :module deps) #(into #{} (map :namespace) %))
+        ns-count         #(count (get mod->nses % #{}))
+        with-nses        (set (keys mod->nses))
+        root-of          (memoize (fn [m] (last (take-while some? (iterate #(modules/parent-module modules %) m)))))
+        api-nses         (fn [m]
+                           (let [nses (get mod->nses m #{})]
+                             (if (= :any (get-in modules [m :api]))
+                               nses
+                               (into #{} (filter (set (modules/module-api-namespaces modules m))) nses))))
+        ;; A module outside every subtree may name exactly the modules visible across top-level modules.
+        exported?        #(nil? (modules/namability-error modules 'module-history/outsider %))
+        non-api          #(- (ns-count %) (count (api-nses %)))
+        cross-friends    (fn [m] (remove #(= (root-of %) (root-of m)) (get-in modules [m :friends])))
+        [largest-m largest-n] (largest-cycle (:scc-module-sizes stats) (:scc-namespace-sizes stats))
+        static-graph     (deps-graph/module-dependencies (map (fn [row] (update row :deps #(remove :dynamic %))) deps))
+        static-n         (transduce (map (fn [component] (reduce + (map ns-count component)))) max 0
+                                    (module-graph/cyclic-components static-graph))
+        graph            (deps-graph/module-dependencies deps)
+        top-graph        (into #{}
+                               (for [[from tos] graph
+                                     to         tos
+                                     :when      (not= (root-of from) (root-of to))]
+                                 [(root-of from) (root-of to)]))
+        ns->mod          (into {} (map (juxt :namespace :module)) deps)
+        namespaces       (count deps)]
+    (merge
+     (select-keys stats [:api-any-namespaces
+                         :upward-requires
+                         :upward-module-edges
+                         :upward-internal-requires
+                         :upward-cycle-requires])
+     {:namespaces                          namespaces
+      :modules                             (count with-nses)
+      :configured-modules                  (count modules)
+      :top-level-modules                   (count (into #{} (map root-of) with-nses))
+      :nested-modules                      (count (remove #(= % (root-of %)) with-nses))
+      :module-edges                        (reduce + (map count (vals graph)))
+      :top-level-edges                     (count top-graph)
+      :scc-largest-modules                 largest-m
+      :scc-largest-namespaces              largest-n
+      :scc-largest-pct                     (if (pos? namespaces) (* 100.0 (/ largest-n namespaces)) 0.0)
+      :scc-cyclic-modules                  (reduce + (:scc-module-sizes stats))
+      :scc-cyclic-namespaces               (reduce + (:scc-namespace-sizes stats))
+      :scc-components                      (count (:scc-module-sizes stats))
+      :scc-static-largest-namespaces       static-n
+      :scc-dynamic-only-namespaces         (- largest-n static-n)
+      :api-any-modules                     (count (filter #(= :any (get-in modules [% :api])) with-nses))
+      :uses-any-modules                    (count (filter #(= :any (:uses %)) (vals modules)))
+      ;; Namespaces another top-level module may require: the API of every module visible outside its subtree.
+      :exposed-namespaces                  (reduce + (map #(count (api-nses %)) (filter exported? with-nses)))
+      :hidden-modules                      (count (remove exported? with-nses))
+      :hidden-namespaces                   (reduce + (map ns-count (remove exported? with-nses)))
+      :cross-top-level-required-namespaces (count (into #{}
+                                                        (for [{:keys [module], :as row} deps
+                                                              {required :namespace} (:deps row)
+                                                              :let  [to (ns->mod required)]
+                                                              :when (and to (not= (root-of module) (root-of to)))]
+                                                          required)))
+      :friend-grants                       (reduce + (map #(count (:friends %)) (vals modules)))
+      :cross-top-level-friend-grants       (reduce + (map #(count (cross-friends %)) (keys modules)))
+      ;; Non-API namespaces opened to another top-level module through `:friends`.
+      :friend-exposed-namespaces           (reduce + (map non-api (filter #(seq (cross-friends %)) with-nses)))
+      :friend-access-paths                 (reduce + (map #(* (count (cross-friends %)) (non-api %)) with-nses))})))
+
+;;;; Commits
+
+(defn- commit-info
+  "The `:sha`, `:committed-at` and `:subject` of each of `commits`."
+  [commits]
+  (when (seq commits)
+    (mapv (fn [line]
+            (let [[sha committed-at subject] (str/split line #"\u0000" 3)]
+              {:sha sha, :committed-at committed-at, :subject subject}))
+          (str/split-lines (apply git! "show" "-s" "--format=%H%x00%cI%x00%s" commits)))))
+
+(defn measure
+  "Metrics for `commit`, from the cache when this code has measured it before."
+  ([commit]
+   (let [reader (open-object-reader)]
+     (try
+       (measure reader commit)
+       (finally
+         (close-object-reader reader)))))
+  ([reader commit]
+   (let [sha  (str/trim (git! "rev-parse" (str commit "^{commit}")))
+         file (metrics-file sha)]
+     (or (read-cached file)
+         (let [modules (commit-modules reader sha)]
+           (write-cached! file (merge (first (commit-info [sha]))
+                                      (commit-metrics (commit-dependencies reader sha modules) modules))))))))
+
+(defn sample-commits
+  "Commits to measure on the first-parent history of `ref` (default `origin/master`), oldest first:
+
+  - every one since `since` that changed the module config, which changes on every boundary shift
+  - the last commit before the first of each month from `monthly-since`
+  - each of `extra`, and the tip of `ref`"
+  [{:keys [ref since monthly-since extra], :or {ref "origin/master"}}]
+  (let [config-commits (when since
+                         (str/split-lines (git! "log" "--first-parent" "--format=%H" (str "--since=" since) ref
+                                                "--" ".clj-kondo/config/modules/config.edn")))
+        months         (when monthly-since
+                         (take-while #(not (.isAfter ^LocalDate % (LocalDate/now)))
+                                     (iterate #(.plusMonths ^LocalDate % 1)
+                                              (.withDayOfMonth (LocalDate/parse monthly-since) 1))))
+        anchors        (keep #(not-empty (str/trim (git! "rev-list" "-1" "--first-parent" (str "--before=" %) ref)))
+                             months)
+        resolved       (map #(str/trim (git! "rev-parse" (str % "^{commit}")))
+                            (concat config-commits anchors extra [ref]))
+        order          (into {}
+                             (map-indexed (fn [i sha] [sha i]))
+                             (str/split-lines (git! "rev-list" "--first-parent" "--reverse" ref)))]
+    (->> (distinct (remove str/blank? resolved))
+         (sort-by #(order % Long/MAX_VALUE))
+         vec)))
+
+;;;; Backfill
+
+(def ^:private columns
+  "Output columns, in order."
+  [:sha :committed-at :subject
+   :namespaces :modules :configured-modules :top-level-modules :nested-modules :module-edges :top-level-edges
+   :scc-largest-modules :scc-largest-namespaces :scc-largest-pct :scc-cyclic-modules :scc-cyclic-namespaces
+   :scc-components :scc-static-largest-namespaces :scc-dynamic-only-namespaces
+   :upward-requires :upward-module-edges :upward-internal-requires :upward-cycle-requires
+   :exposed-namespaces :hidden-modules :hidden-namespaces :cross-top-level-required-namespaces
+   :api-any-modules :api-any-namespaces :uses-any-modules
+   :friend-grants :cross-top-level-friend-grants :friend-exposed-namespaces :friend-access-paths])
+
+(defn backfill!
+  "Measure every commit [[sample-commits]] picks for `opts`, plus any explicit `:commits`, and return the rows.
+  With `:out`, also write them there as CSV, or as one EDN map per line when the name ends in `.edn`.
+
+    clojure -X:dev dev.module-history/backfill! \\
+      :since '\"2025-10-01\"' :monthly-since '\"2023-12-01\"' :out '\"history.csv\"'"
+  [{:keys [commits out], :as opts}]
+  (let [shas   (if (seq commits)
+                 (vec (distinct (concat commits (when (or (:since opts) (:monthly-since opts))
+                                                  (sample-commits opts)))))
+                 (sample-commits opts))
+        reader (open-object-reader)
+        rows   (try
+                 (into []
+                       (map-indexed (fn [i sha]
+                                      (let [row (measure reader sha)]
+                                        (println (format "%d/%d %s %s largest cycle %d" (inc i) (count shas)
+                                                         (subs sha 0 11) (:committed-at row)
+                                                         (:scc-largest-namespaces row)))
+                                        row)))
+                       shas)
+                 (finally
+                   (close-object-reader reader)))]
+    (when out
+      (if (str/ends-with? (str out) ".edn")
+        (spit out (str/join (map #(str (pr-str %) "\n") rows)))
+        (with-open [writer (io/writer out)]
+          (csv/write-csv writer (cons (map name columns)
+                                      (map (fn [row] (map #(get row % "") columns)) rows)))))
+      (println "Wrote" (count rows) "rows to" out))
+    rows))
+
+(comment
+  (measure "origin/master")
+  (sample-commits {:since "2026-09-01"})
+  (backfill! {:since "2025-10-01", :monthly-since "2023-12-01", :out "/tmp/module-history.csv"}))
