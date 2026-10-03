@@ -1,4 +1,6 @@
 import {
+  type ThunkDispatch,
+  type UnknownAction,
   createSlice,
   isAnyOf,
   isFulfilled,
@@ -9,6 +11,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { datasetApi } from "metabase/api/dataset";
+import { sessionApi } from "metabase/api/session";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -24,6 +27,7 @@ import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
 import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
+  type PdfBranding,
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getCardKey } from "metabase/viz-core";
@@ -186,16 +190,40 @@ export const downloadToImage = createAsyncThunk(
   },
 );
 
+const getPdfBranding = async (
+  isWhitelabeled: boolean,
+  dispatch: ThunkDispatch<State, unknown, UnknownAction>,
+): Promise<PdfBranding> => {
+  if (!isWhitelabeled) {
+    return { type: "metabase" };
+  }
+
+  // Admins change the logo while users keep the app open, so never reuse a cached response.
+  const request = dispatch(
+    sessionApi.endpoints.getPdfExportLogo.initiate(undefined, {
+      forceRefetch: true,
+      subscribe: false,
+    }),
+  );
+  try {
+    const { logo } = await request.unwrap();
+    return logo ? { type: "logo", src: logo } : { type: "none" };
+  } catch {
+    // An export must never fail because the logo could not be fetched.
+    return { type: "none" };
+  }
+};
+
 export const downloadDashboardToPdf = createAsyncThunk(
   "metabase/downloads/downloadDashboardToPdf",
   async (
     { dashboard, id }: { dashboard: Dashboard; id: number },
-    { getState },
+    { getState, dispatch },
   ) => {
     const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
-    const includeBranding = !isWhitelabeled;
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    const fileName = getDashboardPdfFileName(dashboard, includeBranding);
+    const fileName = getDashboardPdfFileName(dashboard, !isWhitelabeled);
+    const branding = await getPdfBranding(isWhitelabeled, dispatch);
 
     // Long-running main thread blocking operation incoming; wait until the loader is painted.
     await waitUntilNextFramePainted();
@@ -205,7 +233,7 @@ export const downloadDashboardToPdf = createAsyncThunk(
       selector: cardNodeSelector,
       parametersNodeSelector: `#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`,
       dashboardName: dashboard.name,
-      includeBranding,
+      branding,
     });
 
     trackExportDashboardToPDF({

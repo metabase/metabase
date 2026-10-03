@@ -1,4 +1,5 @@
 import Color from "color";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { isStorybookActive } from "metabase/env";
@@ -12,7 +13,10 @@ import {
 import type { Dashboard } from "metabase-types/api";
 
 import {
+  type BrandingSize,
+  type LoadedLogo,
   createBrandingElement,
+  createLogoBrandingElement,
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
@@ -25,6 +29,53 @@ export const DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID =
   "Dashboard-Parameters-Content";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
+
+const METABASE_BRANDING_URL =
+  "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=pdf_export";
+
+export type PdfBranding =
+  | { type: "metabase" }
+  | { type: "logo"; src: string }
+  | { type: "none" };
+
+interface BrandingBand {
+  element: HTMLElement;
+  height: number;
+  linkUrl: string | null;
+}
+
+const loadImage = (src: string) =>
+  new Promise<LoadedLogo | null>((resolve) => {
+    const image = document.createElement("img");
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+
+const createBrandingBand = (
+  branding: PdfBranding,
+  size: BrandingSize,
+  bandWidth: number,
+): Promise<BrandingBand | null> =>
+  match(branding)
+    .with({ type: "metabase" }, async () => ({
+      element: createBrandingElement(size),
+      height: getBrandingConfig(size).h,
+      linkUrl: METABASE_BRANDING_URL,
+    }))
+    .with({ type: "logo" }, async ({ src }) => {
+      const logo = await loadImage(src);
+      if (!logo) {
+        return null;
+      }
+      return {
+        element: createLogoBrandingElement(size, logo, bandWidth),
+        height: getBrandingConfig(size).h,
+        linkUrl: null,
+      };
+    })
+    .with({ type: "none" }, async () => null)
+    .exhaustive();
 
 interface DashCardBounds {
   top: number;
@@ -169,7 +220,7 @@ interface SavePdfProps {
   selector: string;
   parametersNodeSelector: string;
   dashboardName: string;
-  includeBranding: boolean;
+  branding: PdfBranding;
 }
 
 async function isValidColor(str: string) {
@@ -189,7 +240,7 @@ export const saveDashboardPdf = async ({
   selector,
   parametersNodeSelector,
   dashboardName,
-  includeBranding,
+  branding,
 }: SavePdfProps) => {
   const dashboardRoot = document.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
@@ -222,10 +273,13 @@ export const saveDashboardPdf = async ({
   const contentWidth = gridNode.offsetWidth;
   const width = contentWidth + PAGE_PADDING * 2;
 
-  const size = getBrandingSize(width);
-  const brandingHeight = getBrandingConfig(size).h;
+  const brandingBand = await createBrandingBand(
+    branding,
+    getBrandingSize(width),
+    contentWidth,
+  );
   const verticalOffset =
-    headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
+    headerHeight + parametersHeight + (brandingBand?.height ?? 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
   const rawBackgroundColor = getComputedStyle(document.documentElement)
@@ -276,9 +330,8 @@ export const saveDashboardPdf = async ({
       }
       node.insertBefore(pdfHeader, node.firstChild);
 
-      if (includeBranding) {
-        const branding = createBrandingElement(size);
-        node.insertBefore(branding, node.firstChild);
+      if (brandingBand) {
+        node.insertBefore(brandingBand.element, node.firstChild);
       }
 
       resolveSvgVarPaint(node);
@@ -374,13 +427,16 @@ export const saveDashboardPdf = async ({
         sourceHeight,
       );
 
-      if (isFirstPage && includeBranding) {
-        const url =
-          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=pdf_export";
-
-        pdf.link(PAGE_PADDING, PAGE_PADDING, contentWidth, brandingHeight, {
-          url,
-        });
+      if (isFirstPage && brandingBand?.linkUrl) {
+        pdf.link(
+          PAGE_PADDING,
+          PAGE_PADDING,
+          contentWidth,
+          brandingBand.height,
+          {
+            url: brandingBand.linkUrl,
+          },
+        );
       }
     }
 

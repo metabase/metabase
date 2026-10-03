@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import BrandingLogo from "metabase/embedding/components/LogoBadge/metabase_logo_with_text.svg?component";
 
-type BrandingSize = "xs" | "s" | "m" | "l" | "xl" | "xxl" | "xxxl";
+export type BrandingSize = "xs" | "s" | "m" | "l" | "xl" | "xxl" | "xxxl";
 
 export const getBrandingSize = (width: number): BrandingSize => {
   const sizes: [number, BrandingSize][] = [
@@ -115,6 +115,70 @@ export const createBrandingElement = (size: BrandingSize) => {
   logo.height = LOGO_HEIGHT;
 
   container.appendChild(logo);
+
+  return container;
+};
+
+type ImageSize = {
+  width: number;
+  height: number;
+};
+
+/**
+ * Fits a logo into `maxHeight` by its natural aspect ratio, then shrinks it
+ * further when that would be wider than `maxWidth`.
+ */
+export const getLogoSize = (
+  natural: ImageSize,
+  maxHeight: number,
+  maxWidth: number,
+): ImageSize => {
+  const hasIntrinsicSize = natural.width > 0 && natural.height > 0;
+  const aspectRatio = hasIntrinsicSize ? natural.width / natural.height : 1;
+  const width = maxHeight * aspectRatio;
+
+  if (width <= maxWidth) {
+    return { width: Math.round(width), height: maxHeight };
+  }
+
+  return { width: maxWidth, height: Math.round(maxWidth / aspectRatio) };
+};
+
+export type LoadedLogo = Pick<
+  HTMLImageElement,
+  "src" | "naturalWidth" | "naturalHeight"
+>;
+
+export const createLogoBrandingElement = (
+  size: BrandingSize,
+  logo: LoadedLogo,
+  bandWidth: number,
+) => {
+  const { h, ly, p } = getBrandingConfig(size);
+  const maxLogoWidth = Math.max(bandWidth - p * 2, 0);
+  const { width, height } = getLogoSize(
+    { width: logo.naturalWidth, height: logo.naturalHeight },
+    ly,
+    maxLogoWidth,
+  );
+
+  const container = document.createElement("div");
+  container.style.cssText = `
+    height: ${h}px;
+    width: 100%;
+    padding-inline: ${p}px;
+    background-color: var(--mb-color-bg-dashboard);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  `;
+
+  const image = document.createElement("img");
+  image.src = logo.src;
+  image.width = width;
+  image.height = height;
+  image.style.objectFit = "contain";
+  container.appendChild(image);
 
   return container;
 };

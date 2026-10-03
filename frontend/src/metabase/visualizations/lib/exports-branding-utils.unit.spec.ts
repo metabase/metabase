@@ -1,7 +1,9 @@
 import {
   createBrandingElement,
+  createLogoBrandingElement,
   getBrandingConfig,
   getBrandingSize,
+  getLogoSize,
 } from "./exports-branding-utils";
 
 describe("getBrandingSize", () => {
@@ -97,5 +99,64 @@ describe("createBrandingElement", () => {
     expect((logo as HTMLImageElement).src).toMatch(
       /^data:image\/svg\+xml;base64,/,
     );
+  });
+});
+
+describe("getLogoSize", () => {
+  it("scales the logo to the band's logo height by its aspect ratio", () => {
+    expect(getLogoSize({ width: 400, height: 100 }, 20, 1000)).toEqual({
+      width: 80,
+      height: 20,
+    });
+  });
+
+  it("shrinks a logo that would be wider than the band", () => {
+    expect(getLogoSize({ width: 2000, height: 100 }, 20, 300)).toEqual({
+      width: 300,
+      height: 15,
+    });
+  });
+
+  it("falls back to a square box when the image has no intrinsic size", () => {
+    expect(getLogoSize({ width: 0, height: 0 }, 20, 300)).toEqual({
+      width: 20,
+      height: 20,
+    });
+  });
+});
+
+describe("createLogoBrandingElement", () => {
+  const LOGO_SRC = "data:image/png;base64,bG9nbw==";
+
+  it("renders the logo left-aligned in a band sized by the branding config", () => {
+    const element = createLogoBrandingElement(
+      "m",
+      { src: LOGO_SRC, naturalWidth: 300, naturalHeight: 100 },
+      800,
+    );
+
+    expect(element).toHaveStyle({
+      height: "52px",
+      paddingInline: "24px",
+      justifyContent: "flex-start",
+    });
+    expect(element.children).toHaveLength(1);
+
+    const image = element.querySelector("img");
+    expect(image).toHaveAttribute("src", LOGO_SRC);
+    expect(image).toHaveAttribute("width", "60");
+    expect(image).toHaveAttribute("height", "20");
+  });
+
+  it("keeps a very wide logo inside the band's padding", () => {
+    const element = createLogoBrandingElement(
+      "m",
+      { src: LOGO_SRC, naturalWidth: 10000, naturalHeight: 100 },
+      400,
+    );
+
+    const image = element.querySelector("img");
+    expect(image).toHaveAttribute("width", "352");
+    expect(image).toHaveAttribute("height", "4");
   });
 });

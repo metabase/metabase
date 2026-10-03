@@ -1,15 +1,42 @@
+import fetchMock from "fetch-mock";
+
 import { setupBasename } from "__support__/basename";
+import { getMainStore } from "__support__/entities-store";
+import { createMockSettingsState, createMockState } from "__support__/state";
+import { Api } from "metabase/api";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDashboard,
+  createMockDataset,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import {
+  downloadDashboardToPdf,
   getChartFileName,
   getDatasetDownloadUrl,
   getDatasetParams,
   readDownloadBlob,
 } from "./downloads";
+
+jest.mock("metabase/visualizations/lib/save-dashboard-pdf", () => ({
+  ...jest.requireActual("metabase/visualizations/lib/save-dashboard-pdf"),
+  saveDashboardPdf: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock("metabase/utils/dom", () => ({
+  ...jest.requireActual("metabase/utils/dom"),
+  waitUntilNextFramePainted: jest.fn(() => Promise.resolve()),
+}));
+
+jest.mock("./analytics", () => ({
+  ...jest.requireActual("./analytics"),
+  trackExportDashboardToPDF: jest.fn(),
+}));
 
 describe("getDatasetResponse", () => {
   describe("normal deployment", () => {
@@ -211,5 +238,86 @@ describe("getChartFileName", () => {
   it("should return an unbranded filename with default name when question has no name", () => {
     const fileName = getChartFileName(noNameQuestion, false);
     expect(fileName).toBe(`New question-${getDatePart()}.png`);
+  });
+});
+
+describe("downloadDashboardToPdf branding", () => {
+  const PDF_EXPORT_LOGO_PATH = "path:/api/session/pdf-export-logo";
+  const LOGO = "data:image/png;base64,bG9nbw==";
+
+  const setup = ({ isWhitelabeled }: { isWhitelabeled: boolean }) => {
+    const store = getMainStore(
+      createMockState({
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures({
+            whitelabel: isWhitelabeled,
+          }),
+        }),
+      }),
+    );
+
+    const exportPdf = () =>
+      store.dispatch(
+        downloadDashboardToPdf({ dashboard: createMockDashboard(), id: 1 }),
+      );
+
+    return { store, exportPdf };
+  };
+
+  const getBranding = () =>
+    jest.mocked(saveDashboardPdf).mock.lastCall?.[0].branding;
+
+  afterEach(() => {
+    jest.mocked(saveDashboardPdf).mockClear();
+    fetchMock.removeRoutes().clearHistory();
+  });
+
+  it("keeps the Metabase band without asking for a logo when not whitelabeled", async () => {
+    fetchMock.get(PDF_EXPORT_LOGO_PATH, { logo: LOGO });
+    const { exportPdf } = setup({ isWhitelabeled: false });
+
+    await exportPdf();
+
+    expect(getBranding()).toEqual({ type: "metabase" });
+    expect(fetchMock.callHistory.calls(PDF_EXPORT_LOGO_PATH)).toHaveLength(0);
+  });
+
+  it("uses the resolved logo when whitelabeled", async () => {
+    fetchMock.get(PDF_EXPORT_LOGO_PATH, { logo: LOGO });
+    const { exportPdf } = setup({ isWhitelabeled: true });
+
+    await exportPdf();
+
+    expect(getBranding()).toEqual({ type: "logo", src: LOGO });
+  });
+
+  it("exports without branding when whitelabeled and there is no logo", async () => {
+    fetchMock.get(PDF_EXPORT_LOGO_PATH, { logo: null });
+    const { exportPdf } = setup({ isWhitelabeled: true });
+
+    await exportPdf();
+
+    expect(getBranding()).toEqual({ type: "none" });
+  });
+
+  it("exports without branding when the logo request fails", async () => {
+    fetchMock.get(PDF_EXPORT_LOGO_PATH, 500);
+    const { exportPdf } = setup({ isWhitelabeled: true });
+
+    const result = await exportPdf();
+
+    expect(result.meta.requestStatus).toBe("fulfilled");
+    expect(getBranding()).toEqual({ type: "none" });
+  });
+
+  it("fetches the logo again on every export", async () => {
+    fetchMock.get(PDF_EXPORT_LOGO_PATH, { logo: LOGO });
+    const { store, exportPdf } = setup({ isWhitelabeled: true });
+
+    await exportPdf();
+    await exportPdf();
+
+    expect(fetchMock.callHistory.calls(PDF_EXPORT_LOGO_PATH)).toHaveLength(2);
+    store.dispatch(Api.util.resetApiState());
   });
 });
