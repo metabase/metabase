@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.activity-test-util :as activity]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -34,8 +35,8 @@
     (let [counts (activity/with-db-activity!
                    (t2/with-transaction [_]
                      (select-1!)))]
-      (is (= {:statements 1 :transactions 1 :savepoints 1 :releases 0 :commits 1 :rollbacks 0 :checkouts 1 :checkins 1}
-             (select-keys (this-thread counts) [:statements :transactions :savepoints :releases :commits :rollbacks :checkouts :checkins]))))))
+      (is (=? {:statements 1 :transactions 1 :savepoints 1 :releases 0 :commits 1 :rollbacks 0 :checkouts 1 :checkins 1}
+              (this-thread counts))))))
 
 (deftest transaction-savepoint-and-statements-test
   (testing "one transaction containing one nested transaction and two statements"
@@ -44,8 +45,8 @@
                      (select-1!)
                      (t2/with-transaction [_]
                        (select-1!))))]
-      (is (= {:statements 2 :transactions 1 :savepoints 2 :releases 1 :commits 1 :rollbacks 0 :checkouts 1 :checkins 1}
-             (select-keys (this-thread counts) [:statements :transactions :savepoints :releases :commits :rollbacks :checkouts :checkins]))))))
+      (is (=? {:statements 2 :transactions 1 :savepoints 2 :releases 1 :commits 1 :rollbacks 0 :checkouts 1 :checkins 1}
+              (this-thread counts))))))
 
 (deftest rollback-test
   (testing "a transaction that throws rolls back instead of committing"
@@ -56,8 +57,8 @@
                        (throw (ex-info "boom" {})))
                      (catch clojure.lang.ExceptionInfo _ :caught)))]
       (is (= :caught (:result counts)))
-      (is (= {:statements 1 :transactions 1 :commits 0 :rollbacks 2}
-             (select-keys (this-thread counts) [:statements :transactions :commits :rollbacks]))))))
+      (is (=? {:statements 1 :transactions 1 :commits 0 :rollbacks 2}
+              (this-thread counts))))))
 
 (deftest statements-outside-transactions-test
   (testing "each statement outside a transaction checks a connection out and back in"
@@ -65,8 +66,8 @@
                    (select-1!)
                    (select-1!)
                    (select-1!))]
-      (is (= {:statements 3 :checkouts 3 :checkins 3 :transactions 0}
-             (select-keys (this-thread counts) [:statements :checkouts :checkins :transactions]))))))
+      (is (=? {:statements 3 :checkouts 3 :checkins 3 :transactions 0}
+              (this-thread counts))))))
 
 (deftest raw-jdbc-test
   (testing "raw JDBC, which t2/with-call-count cannot see, is counted"
@@ -74,8 +75,8 @@
                    (with-open [^Connection conn (.getConnection ^DataSource (mdb/app-db))
                                stmt             (.createStatement conn)]
                      (.execute stmt "SELECT 1")))]
-      (is (= {:statements 1 :prepares 1 :checkouts 1 :checkins 1}
-             (select-keys (this-thread counts) [:statements :prepares :checkouts :checkins]))))))
+      (is (=? {:statements 1 :prepares 1 :checkouts 1 :checkins 1}
+              (this-thread counts))))))
 
 (deftest other-threads-test
   (testing "activity on other threads is counted (async imports/exports run on virtual threads)"
@@ -103,7 +104,61 @@
     (mt/with-empty-h2-app-db!
       (let [before (mdb/app-db)
             counts (activity/with-db-activity! (select-1!))]
-        (is (= {:statements 1 :checkouts 1 :checkins 1}
-               (select-keys (this-thread counts) [:statements :checkouts :checkins])))
+        (is (=? {:statements 1 :checkouts 1 :checkins 1}
+                (this-thread counts)))
         (testing "and the calling thread's binding is restored afterwards"
           (is (identical? before (mdb/app-db))))))))
+
+(deftest connection-checked-out-before-the-count-test
+  (testing "inside a default mt/with-temp, a statement is counted or the counter throws; never a silent zero"
+    (mt/with-temp [:model/Collection _ {}]
+      (let [result (try
+                     (activity/with-db-activity! (select-1!))
+                     (catch Exception e e))]
+        (if (instance? Exception result)
+          (is (some? (ex-message result)))
+          (is (=? {:statements 1} (this-thread result))))))))
+
+(deftest overlapping-counts-on-two-threads-test
+  (testing "two counts that overlap on two threads and end out of order leave the original application DB in the root"
+    (let [app-db-var #'mdb.connection/*application-db*
+          original   (.getRawRoot app-db-var)
+          a-started  (promise)
+          a-may-end  (promise)]
+      (try
+        (let [a (future (activity/count-db-activity! (fn [] (deliver a-started true) (deref a-may-end 10000 ::timeout))))
+              _ (deref a-started 10000 ::timeout)
+              ;; the second count may run, or it may refuse to start; either way the first count must end
+              b (future (try
+                          (activity/count-db-activity! (fn [] (deliver a-may-end true) (deref a 10000 ::timeout)))
+                          (catch Exception e e)
+                          (finally (deliver a-may-end true))))]
+          (deref b 10000 ::timeout)
+          (deref a 10000 ::timeout)
+          (is (identical? original (.getRawRoot app-db-var))))
+        (finally
+          (alter-var-root app-db-var (constantly original)))))))
+
+(deftest statement-get-connection-test
+  (testing "a statement made on the connection that Statement.getConnection returns is counted"
+    (let [counts (activity/with-db-activity!
+                   (with-open [^Connection conn (.getConnection ^DataSource (mdb/app-db))
+                               stmt             (.createStatement conn)]
+                     (.execute stmt "SELECT 1")
+                     (with-open [stmt2 (.createStatement (.getConnection stmt))]
+                       (.execute stmt2 "SELECT 1"))))]
+      (is (=? {:statements 2 :prepares 2} (this-thread counts))))))
+
+(deftest uncounted-statements-test
+  (testing "the statements that the ns docstring says the counter does not see are not counted"
+    (let [counts (activity/with-db-activity!
+                   (with-open [^Connection conn (.getConnection ^DataSource (mdb/app-db))
+                               stmt             (.createStatement conn)
+                               rs               (.executeQuery stmt "SELECT 1")]
+                     (doseq [^Connection other [(.getConnection (.getStatement rs))
+                                                (.getConnection (.getMetaData conn))
+                                                (.unwrap conn Connection)]]
+                       (with-open [other-stmt (.createStatement other)]
+                         (.execute other-stmt "SELECT 1")))))]
+      (testing "only the statement on the counting connection counts"
+        (is (=? {:statements 1 :prepares 1} (this-thread counts)))))))
