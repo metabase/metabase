@@ -61,6 +61,13 @@
     (catch Exception _
       nil)))
 
+(defn stored-template-tags
+  "The template tags of the stored native `query`, or nil when it has none or isn't a native query."
+  [query]
+  (when-let [normalized (maybe-normalize-query query)]
+    (when (lib/native-only-query? normalized)
+      (not-empty (lib/template-tags normalized)))))
+
 (defn update-query-sql
   "Update a dataset_query map with new SQL content.
   Handles both legacy MBQL (`{:type :native, :native {:query ...}}`) and
