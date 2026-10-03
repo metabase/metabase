@@ -1,4 +1,5 @@
 import type {
+  BlockerFunction,
   DataRouter,
   NavigateFunction,
   NavigateOptions,
@@ -78,6 +79,46 @@ export function getIsNavigationPending(): boolean {
   return (
     currentRouter != null && currentRouter.state.navigation.state !== "idle"
   );
+}
+
+/**
+ * The URL of the navigation the router has accepted but not committed yet, or
+ * `null` when none is in flight.
+ *
+ * A `route.lazy` destination is only committed once its module resolves, so
+ * while one is loading `window.location` still holds the URL the user is
+ * leaving. Anything recovering from a module that never arrives has to read the
+ * destination here, or it sends the user back where they came from.
+ *
+ * Built by the router so the basename is applied the same way a `<Link>` would.
+ */
+export function getPendingNavigationHref(): string | null {
+  const navigation = currentRouter?.state.navigation;
+  if (!currentRouter || !navigation || navigation.state === "idle") {
+    return null;
+  }
+  return navigation.location
+    ? currentRouter.createHref(navigation.location)
+    : null;
+}
+
+/**
+ * The pending navigation described the way a `BlockerFunction` receives it, for
+ * asking the leave guards about a navigation that react-router has already let
+ * through.
+ */
+export function getPendingBlockerArgs(): Parameters<BlockerFunction>[0] | null {
+  const navigation = currentRouter?.state.navigation;
+  if (!currentRouter || !navigation || navigation.state === "idle") {
+    return null;
+  }
+  return navigation.location
+    ? {
+        currentLocation: currentRouter.state.location,
+        nextLocation: navigation.location,
+        historyAction: currentRouter.state.historyAction,
+      }
+    : null;
 }
 
 export function setRouterNavigate(navigate: NavigateFunction | null): void {

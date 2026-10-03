@@ -7,6 +7,7 @@ import {
 } from "react-router";
 
 import { AppShell } from "./AppShell";
+import { type ChunkErrorFallback, withChunkErrorRecovery } from "./lazy-route";
 import { setRouter, setRouterExpected } from "./navigator";
 
 export type MemoryTestRouter = DataRouter;
@@ -33,6 +34,7 @@ export type MemoryTestRouterHolder = { current: MemoryTestRouter | null };
 function withAppShell(
   routes: RouteObject[],
   hydrateFallback?: ReactNode,
+  chunkErrorFallback?: ChunkErrorFallback,
 ): RouteObject[] {
   // Every router this module builds gets an `AppShell`, and every `AppShell`
   // registers a `navigate`. That is what lets the navigator hold a navigation
@@ -42,7 +44,7 @@ function withAppShell(
     {
       element: <AppShell />,
       hydrateFallbackElement: hydrateFallback,
-      children: routes,
+      children: withChunkErrorRecovery(routes, chunkErrorFallback),
     },
   ];
 }
@@ -60,9 +62,13 @@ export function createAppRouter(
   routes: RouteObject[],
   basename?: string,
   hydrateFallback?: ReactNode,
+  chunkErrorFallback?: ChunkErrorFallback,
 ): DataRouter {
   return register(
-    createBrowserRouter(withAppShell(routes, hydrateFallback), { basename }),
+    createBrowserRouter(
+      withAppShell(routes, hydrateFallback, chunkErrorFallback),
+      { basename },
+    ),
   );
 }
 
@@ -71,14 +77,18 @@ export function createMemoryAppRouter(
   initialRoute: string,
   basename?: string,
   hydrateFallback?: ReactNode,
+  chunkErrorFallback?: ChunkErrorFallback,
 ): DataRouter {
   const entry = initialRoute.startsWith("/")
     ? initialRoute
     : `/${initialRoute}`;
   return register(
-    createMemoryRouter(withAppShell(routes, hydrateFallback), {
-      basename,
-      initialEntries: [entry],
-    }),
+    createMemoryRouter(
+      withAppShell(routes, hydrateFallback, chunkErrorFallback),
+      {
+        basename,
+        initialEntries: [entry],
+      },
+    ),
   );
 }

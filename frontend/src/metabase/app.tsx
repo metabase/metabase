@@ -30,6 +30,7 @@ import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
+import { ChunkLoadFailed } from "metabase/common/components/ErrorPages";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import { getUserId } from "metabase/current-user";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
@@ -141,6 +142,7 @@ function _init(
                   routes={routes}
                   onLocationChange={mirrorLocation}
                   hydrateFallback={<DelayedLoadingSpinner />}
+                  chunkErrorFallback={ChunkLoadFailed}
                 />
               </MetabotProvider>
             </AppThemeProvider>
