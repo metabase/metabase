@@ -90,7 +90,9 @@
   [query]
   (let [normalized (lib-be/normalize-query query)]
     (when (lib/any-native-stage? normalized)
-      (throw (ex-info "run_query only runs notebook queries, and this one is a SQL query."
+      (throw (ex-info (str "run_query only runs notebook queries, and this one is a SQL query. "
+                           "To get values, rebuild the question with construct_notebook_query, "
+                           "then run that query with run_query.")
                       {:agent-error? true})))
     (lib/prepare-for-serialization normalized)))
 
