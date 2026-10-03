@@ -31,6 +31,7 @@ import {
   GRID_WIDTH,
   MIN_ROW_HEIGHT,
 } from "metabase/utils/dashboard_grid";
+import { DashboardAutoHeight } from "metabase/visualizations/components/DashboardAutoHeight";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import { isVisualizerSupportedVisualization } from "metabase/visualizer/utils";
@@ -57,6 +58,7 @@ import {
   showClickBehaviorSidebar,
   trashDashboardQuestion,
 } from "../actions";
+import { applyAutoHeights } from "../auto-height";
 import { type DashboardContextReturned, useDashboardContext } from "../context";
 import {
   getInitialCardSizes,
@@ -79,6 +81,7 @@ type ExplicitSizeProps = {
 };
 
 interface DashboardGridInnerState {
+  autoHeights: Record<string, number>;
   visibleCardIds: Set<number>;
   initialCardSizes: { [key: string]: { w: number; h: number } };
   layouts: {
@@ -184,6 +187,7 @@ class DashboardGridInner extends Component<
     );
 
     this.state = {
+      autoHeights: {},
       visibleCardIds,
       dashcardCountByCardId: this.getDashcardCountByCardId(
         props.dashboard.dashcards,
@@ -358,6 +362,27 @@ class DashboardGridInner extends Component<
       dc.card_id &&
       this.state.dashcardCountByCardId[dc.card_id] <= 1,
     );
+  };
+
+  onAutoHeightChange = (id: number, height: number | null) => {
+    this.setState(({ autoHeights }) => {
+      if (height === null) {
+        if (!(id in autoHeights)) {
+          return null;
+        }
+        const next = { ...autoHeights };
+        delete next[id];
+        return { autoHeights: next };
+      }
+      if (
+        !Number.isFinite(height) ||
+        height <= 0 ||
+        autoHeights[id] === height
+      ) {
+        return null;
+      }
+      return { autoHeights: { ...autoHeights, [id]: height } };
+    });
   };
 
   getRowHeight() {
@@ -618,20 +643,33 @@ class DashboardGridInner extends Component<
           },
         )}
       >
-        {this.renderDashCard(dc, {
-          isMobile: breakpoint === "mobile",
-          gridItemWidth,
-          totalNumGridCols,
-          shouldAutoScrollTo,
-        })}
+        <DashboardAutoHeight
+          id={dc.id}
+          onHeightChange={this.onAutoHeightChange}
+        >
+          {this.renderDashCard(dc, {
+            isMobile: breakpoint === "mobile",
+            gridItemWidth,
+            totalNumGridCols,
+            shouldAutoScrollTo,
+          })}
+        </DashboardAutoHeight>
       </Box>
     );
   };
 
   renderGrid() {
     const { width } = this.props;
-    const { layouts, visualizerModalStatus } = this.state;
+    const { layouts, visualizerModalStatus, autoHeights } = this.state;
     const rowHeight = this.getRowHeight();
+    // Adaptive sizing is a view-time layout. Editing retains the saved geometry,
+    // so filter results and collapsed groups never overwrite dashboard positions.
+    const displayLayouts = this.props.isEditing
+      ? layouts
+      : {
+          desktop: applyAutoHeights(layouts.desktop, autoHeights, rowHeight, 6),
+          mobile: applyAutoHeights(layouts.mobile, autoHeights, rowHeight, 10),
+        };
 
     return (
       <GridLayout<DashboardCard>
@@ -643,7 +681,7 @@ class DashboardGridInner extends Component<
           // panel during dragging
           [DashCardS.DashboardCardRootDragging]: this.state.isDragging,
         })}
-        layouts={layouts}
+        layouts={displayLayouts}
         breakpoints={GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
         width={width}
