@@ -8,7 +8,9 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [methodical.core :as methodical]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (set! *warn-on-reflection* true)
 
@@ -538,3 +540,17 @@
               models (set (map :model dirty-items))]
           (is (= 8 (count dirty-items)))
           (is (= #{"collection" "card" "dashboard" "document" "nativequerysnippet" "table" "field" "segment"} models)))))))
+
+;;; ------------------------------------------------------------------------------------------------
+;;; Guard: bulk ledger writes
+;;; ------------------------------------------------------------------------------------------------
+
+(deftest remote-sync-object-has-no-before-update-test
+  (testing (str "A before-update on :model/RemoteSyncObject makes toucan2 select every matching row before a bulk "
+                "update, and send one UPDATE per row when the hook changes rows differently. Then the bulk ledger "
+                "writes (for example `mark-all-rsos-synced!`) stop being one statement. Keep the bulk writes at one "
+                "statement, or give them a path that skips the hook.")
+    (is (not (isa? :model/RemoteSyncObject ::t2.before-update/before-update)))
+    (is (= []
+           (filterv #(isa? :model/RemoteSyncObject %)
+                    (keys (methodical/primary-methods t2.before-update/before-update)))))))
