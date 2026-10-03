@@ -36,6 +36,7 @@ export function SliceNameWidget({
         description={
           row.name !== row.originalName ? row.originalName : undefined
         }
+        resetOnEsc
         onBlurChange={(event) => {
           const newName = event.target.value;
 

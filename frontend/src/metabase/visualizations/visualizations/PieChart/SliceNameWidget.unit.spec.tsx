@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { render, screen } from "__support__/ui";
 
 import { SliceNameWidget } from "./SliceNameWidget";
@@ -38,5 +40,43 @@ describe("SliceNameWidget", () => {
     );
 
     expect(screen.getByTestId("test-container")).toBeEmptyDOMElement();
+  });
+
+  it("should discard an in-progress edit on Esc instead of committing it (metabase#75868)", async () => {
+    const updateRowName = jest.fn();
+
+    render(
+      <SliceNameWidget
+        initialKey={MOCK_PIE_ROW.key}
+        pieRows={[MOCK_PIE_ROW]}
+        updateRowName={updateRowName}
+      />,
+    );
+
+    const input = screen.getByDisplayValue(MOCK_PIE_ROW.name);
+    await userEvent.clear(input);
+    await userEvent.type(input, "a new name{Escape}");
+
+    expect(updateRowName).not.toHaveBeenCalled();
+    expect(input).toHaveValue(MOCK_PIE_ROW.name);
+  });
+
+  it("should commit an edit on blur when Esc was not pressed", async () => {
+    const updateRowName = jest.fn();
+
+    render(
+      <SliceNameWidget
+        initialKey={MOCK_PIE_ROW.key}
+        pieRows={[MOCK_PIE_ROW]}
+        updateRowName={updateRowName}
+      />,
+    );
+
+    const input = screen.getByDisplayValue(MOCK_PIE_ROW.name);
+    await userEvent.clear(input);
+    await userEvent.type(input, "a new name");
+    await userEvent.tab();
+
+    expect(updateRowName).toHaveBeenCalledWith("a new name", MOCK_PIE_ROW.key);
   });
 });
