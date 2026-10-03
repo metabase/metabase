@@ -106,24 +106,26 @@
     [field search-field]))
 
 (mu/defn search-values-from-field-id :- ms/FieldValuesResult
-  "Search for values of a field given by `field-id` that contain `query`.
+  "Search for values of a field given by `field-id` that contain `query-string`.
 
-  `:has_more_values` is a heuristic here, not a measurement: `true` whenever a `query-string` narrowed the search,
-  `false` otherwise. A no-query fetch that fills the underlying `default-max-field-search-limit` cap is still reported
-  `false`. Callers that must not present a capped list as complete -- e.g. so an agent isn't handed a truncated value
-  set believing it is the whole column -- should use [[search-values-from-field-id-strict]], which reports a truthful
-  floor when the cap is hit and surfaces fetch errors rather than swallowing them to `[]`."
+  Fetch one extra value to detect truncation without returning more than `default-max-field-search-limit` values.
+  Searches with a nonblank query always report `:has_more_values true` so the UI continues using server-side search.
+  Callers that need measured search completeness and propagated fetch errors should use
+  [[search-values-from-field-id-strict]]."
   [field-id     :- ::lib.schema.id/field
    query-string :- [:maybe :string]]
-  (let [[field search-field] (resolve-search-fields field-id)]
-    {:values          (search-values field search-field query-string)
-     ;; assume there are more if doing a search, otherwise there are no more values
-     :has_more_values (not (str/blank? query-string))
+  (let [[field search-field] (resolve-search-fields field-id)
+        limit                default-max-field-search-limit
+        blank-query?         (str/blank? query-string)
+        values               (search-values field search-field (when-not blank-query? query-string) (inc limit))]
+    {:values          (vec (take limit values))
+     :has_more_values (or (not blank-query?)
+                          (> (count values) limit))
      :field_id        field-id}))
 
 (mu/defn search-values-from-field-id-strict :- ms/FieldValuesResult
-  "Like [[search-values-from-field-id]], but honest about the two things that fn papers over, for callers (the MCP
-  `get_parameter_values` tool) that must not mislead an agent:
+  "Like [[search-values-from-field-id]], but with measured search completeness and propagated fetch errors for
+  callers such as the MCP `get_parameter_values` tool:
 
     1. `:has_more_values` is a floor: `true` exactly when the underlying query filled the
        `default-max-field-search-limit` cap, so a column with more distinct values than the cap reads as truncated
