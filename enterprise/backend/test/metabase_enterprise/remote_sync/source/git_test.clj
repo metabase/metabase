@@ -1157,3 +1157,21 @@
         (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir))]
           (#'git/delete-clones-at-exit!))
         (is (not (contains? (into #{} (map #(.getCanonicalPath ^File %)) @deleted) clone-dir)))))))
+
+(deftest stale-clone-and-leftover-siblings-are-deleted-with-a-tolerant-delete-test
+  (testing "a first use deletes a leftover sibling and the stale clone at the repo path with delete-clone-dir!"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url        (:remote-url source)
+            ^File path (#'git/repo-path {:remote-url url})
+            leftover   (io/file (.getParentFile path) (str (.getName path) "-leftover"))
+            deleted    (atom [])
+            delete!    (mt/original-fn #'git/delete-clone-dir!)]
+        (try
+          ;; As after a process that stopped with no shutdown hook: a clone at the path, a fresh sibling, no cache.
+          (forget-clones! url :keep-dirs? true)
+          (.mkdirs leftover)
+          (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj (str dir)) (delete! dir))]
+            (#'git/first-use! path {:remote-url url}))
+          (is (= #{(str leftover) (str path)} (set @deleted)))
+          (finally (forget-clones! url)))))))
