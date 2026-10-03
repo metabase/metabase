@@ -71,7 +71,11 @@
                                           :metric  #{}
                                           :card    #{}}
                                          (library.db/unarchived-card-collection-types-reducible))]
-    (collection/collections->tree collection-type-ids collections)))
+    ;; `/api/collection/tree` marks the Library and its magic top-level collections, and the FE keys off that flag to
+    ;; find them. Without it the sidebar cannot tell a real Library root from an ordinary library-typed collection.
+    (collection/collections->tree
+     collection-type-ids
+     (map collection/maybe-mark-collection-as-library-root collections))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library` routes."

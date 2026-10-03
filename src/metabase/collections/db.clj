@@ -282,6 +282,13 @@
   (t2/select-fn-set :id :model/Collection
                     {:where [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
 
+(defn collection-locations-matching
+  "The distinct `:location` values of the Collections matching the Honey SQL `query` map. Like
+  [[collections-matching]], the caller builds the query because the clause builders it needs live in a namespace that
+  already requires this one."
+  [query]
+  (t2/select-fn-set :location :model/Collection query))
+
 (defn collections-matching
   "The Collections matching the Honey SQL `query` map. The caller builds the whole query because it needs clause
   builders like `visible-collection-filter-clause`, which live in `metabase.collections.models.collection` and so

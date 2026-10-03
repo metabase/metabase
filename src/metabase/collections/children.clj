@@ -64,10 +64,71 @@
                                  (personal-ids first-parent-collection-id)))]
     (remove personal-descendant? collections)))
 
+(defn- collection-filter-clause
+  "The `:where` clause shared by every collection listing. See [[select-collections]] for what the options mean."
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           locations]}]
+  [:and
+   (case archived
+     nil nil
+     false [:and
+            [:not= :id (collection/trash-collection-id)]
+            [:not :archived]]
+     true [:or
+           [:= :id (collection/trash-collection-id)]
+           :archived])
+   (when shallow
+     (location-from-collection-id-clause collection-id))
+   (when (seq locations)
+     [:in :location locations])
+   (when personal-only
+     [:!= :personal_owner_id nil])
+   (when exclude-other-user-collections
+     [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
+   (when-not include-library?
+     [:or [:= nil :type]
+      [:not-in :type [collection/library-collection-type
+                      collection/library-data-collection-type
+                      collection/library-metrics-collection-type]]])
+   [:or
+    (when (contains? namespaces nil)
+      [:= :namespace nil])
+    (when (seq namespaces)
+      [:in :namespace namespaces])]
+   (collection/visible-collection-filter-clause
+    :id
+    {:include-archived-items    (if archived
+                                  :only
+                                  :exclude)
+     :include-trash-collection? true
+     :permission-level          :read
+     :archive-operation-id      nil})])
+
+(defn select-collections*
+  "Like [[select-collections]], but skips the post-query filtering. Callers that pass a `:limit` need this so they can
+  tell whether the limit was actually hit, which the filtered count cannot tell them."
+  [{:keys [limit offset] :as options}]
+  (collections.db/collections-matching
+   (cond-> {:where (collection-filter-clause options)
+            ;; Order NULL collection types first so that audit collections are last
+            :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+                       [[[:case
+                          [:= :type nil] 0
+                          [:= :type collection/trash-collection-type] 1
+                          :else 2]] :asc]
+                       [:%lower.name :asc]]}
+     limit  (assoc :limit limit)
+     offset (assoc :offset offset))))
+
 (defn select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
+
+  If `locations` is a non-empty set of location paths, only collections sitting directly in one of those locations are
+  returned. This is how the lazy tree fetches a level at a time.
+
+  If `limit` is set, at most that many collections are read.
 
   For archived, we can either include only archived items (when archived is truthy) or exclude archived items (when
   archived is falsey).
@@ -78,51 +139,33 @@
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
   By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
-  (cond->>
-   (collections.db/collections-matching
-    {:where [:and
-             (case archived
-               nil nil
-               false [:and
-                      [:not= :id (collection/trash-collection-id)]
-                      [:not :archived]]
-               true [:or
-                     [:= :id (collection/trash-collection-id)]
-                     :archived])
-             (when shallow
-               (location-from-collection-id-clause collection-id))
-             (when personal-only
-               [:!= :personal_owner_id nil])
-             (when exclude-other-user-collections
-               [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
-             (when-not include-library?
-               [:or [:= nil :type]
-                [:not-in :type [collection/library-collection-type
-                                collection/library-data-collection-type
-                                collection/library-metrics-collection-type]]])
-             [:or
-              (when (contains? namespaces nil)
-                [:= :namespace nil])
-              (when (seq namespaces)
-                [:in :namespace namespaces])]
-             (collection/visible-collection-filter-clause
-              :id
-              {:include-archived-items    (if archived
-                                            :only
-                                            :exclude)
-               :include-trash-collection? true
-               :permission-level          :read
-               :archive-operation-id      nil})]
-     ;; Order NULL collection types first so that audit collections are last
-     :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-                [[[:case
-                   [:= :type nil] 0
-                   [:= :type collection/trash-collection-type] 1
-                   :else 2]] :asc]
-                [:%lower.name :asc]]})
+  [{:keys [exclude-other-user-collections] :as options}]
+  (cond->> (select-collections* options)
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
+
+(defn occupied-locations
+  "Of `locations`, the ones holding at least one collection this user can see. Lets us set `:has_children` on nodes
+  whose children we have deliberately not read."
+  [locations options]
+  (when (seq locations)
+    (collections.db/collection-locations-matching
+     {:select-distinct [:location]
+      :where (collection-filter-clause (assoc options :locations locations))})))
+
+(defn select-collections-up-to
+  "Reads at most `limit` collections. Returns `[collections complete?]`, where `complete?` is false when there may be
+  more collections than we read.
+
+  We read one extra row rather than running a separate `count` so that the common case, an instance comfortably under
+  the budget, costs a single query."
+  [options limit]
+  (let [candidates (select-collections* (assoc options :limit (inc limit)))
+        complete?  (<= (count candidates) limit)]
+    [(cond->> (take limit candidates)
+       (:exclude-other-user-collections options)
+       (remove-other-users-personal-subcollections api/*current-user-id*))
+     complete?]))
 
 (defn prep-collection-for-export
   "Given a collection, tweaks it to be ready for returning to the FE.
@@ -133,6 +176,17 @@
       collection/personal-collection-with-ui-details
       collection/maybe-localize-tenant-collection-name
       collection/maybe-mark-collection-as-library-root))
+
+(defn prep-collections-for-export
+  "[[prep-collection-for-export]] over a sequence.
+
+  Batched on purpose. The personal-collection and tenant-collection helpers are themselves wrappers around batch
+  functions, so calling the singular version per collection costs one `core_user` SELECT per personal collection."
+  [collections]
+  (->> collections
+       collection/personal-collections-with-ui-details
+       collection/maybe-localize-tenant-collection-names
+       (map collection/maybe-mark-collection-as-library-root)))
 
 (defn shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
