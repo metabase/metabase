@@ -3,10 +3,14 @@
   check-ins, transaction starts, savepoints, commits and rollbacks.
 
   How: for the duration of [[count-db-activity!]], the root value of `metabase.app-db.connection/*application-db*` is
-  replaced by a copy whose `:data-source` hands out counting proxies of the real (pooled) connections. Every
-  app-DB connection goes through that data source, so the counts cover every library (toucan, raw JDBC, the
-  query processor) and every thread that uses the root binding, including the virtual threads async
-  imports/exports run on. Quartz's separate data source is not counted.
+  replaced by a copy whose `:data-source` hands out counting proxies of the real (pooled) connections. Each app-DB
+  connection that a thread gets during the count goes through that data source, so the counts cover every library
+  (toucan, raw JDBC, the query processor) and every thread that uses the root binding, including the virtual threads
+  async imports/exports run on.
+
+  Not counted: work on a connection that a thread got before the count (so [[count-db-activity!]] throws when the
+  calling thread holds one, as in the body of a default `mt/with-temp`); a statement that a `ResultSet` or
+  `DatabaseMetaData` hands out; and Quartz's separate data source.
 
   Because the swap is JVM-wide, anything else using the app DB at the same time is counted too. Tests that use
   this MUST NOT be marked `^:parallel`, and the totals include background work (scheduler, heartbeats, async
@@ -17,25 +21,11 @@
     threads you control (see `metabase.app-db.activity-counter-test`) or to see where unexpected activity came
     from.
 
-  Keys in the result (all totals across threads, plus `:by-thread {thread-id counts}` and `:result`):
-  - :statements    Statement executions (`execute`, `executeQuery`, `executeUpdate`, `executeLargeUpdate`,
-                   `executeBatch`; a batch counts once)
-  - :prepares      `prepareStatement` / `prepareCall` / `createStatement` calls
-  - :checkouts     connections obtained from the pool
-  - :checkins      connections closed (returned to the pool). On Postgres each one also sends `DISCARD ALL`
-                   (`metabase.app-db.connection-pool-setup`), which H2 never shows
-  - :transactions  `setAutoCommit false` calls, i.e. transaction starts (a Postgres `BEGIN`)
-  - :savepoints    `setSavepoint` calls. Metabase sets one at the start of EVERY transaction scope, top-level
-                   included (`metabase.app-db.connection/do-transaction`), so a plain transaction is
-                   BEGIN + SAVEPOINT + COMMIT on Postgres
-  - :releases      `releaseSavepoint` calls (a nested scope that succeeded)
-  - :commits       `commit` calls
-  - :rollbacks     `rollback` calls, whole transaction or to a savepoint; a failed transaction does both
-
-  On Postgres, round trips ≈ :statements + :commits + :rollbacks + :savepoints + :releases + :checkins
-  (+ :transactions, unless the driver bundles `BEGIN` with the next statement)."
+  The result holds the total of each key of [[count-keys]] across threads, the same counts for each thread under
+  `:by-thread {thread-id counts}`, and the thunk's value under `:result`."
   (:require
-   [metabase.app-db.connection :as mdb.connection])
+   [metabase.app-db.connection :as mdb.connection]
+   [toucan2.connection :as t2.conn])
   (:import
    (java.lang.reflect InvocationHandler InvocationTargetException Method Proxy)
    (java.sql CallableStatement Connection PreparedStatement Statement)
@@ -43,17 +33,37 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private count-keys
-  [:statements :prepares :checkouts :checkins :transactions :savepoints :releases :commits :rollbacks])
+(def count-keys
+  "The count keys of a [[count-db-activity!]] result, in order. On Postgres, the round trips are about
+  `:statements` + `:commits` + `:rollbacks` + `:savepoints` + `:releases` + `:checkins`, plus `:transactions` unless
+  the driver sends `BEGIN` with the next statement."
+  [;; statement executions: each method in `execute-methods`; a batch counts once
+   :statements
+   ;; `prepareStatement`, `prepareCall` and `createStatement` calls
+   :prepares
+   ;; connections that the data source hands out
+   :checkouts
+   ;; connections closed (returned to the pool). On Postgres each one also sends `DISCARD ALL`
+   ;; (`metabase.app-db.connection-pool-setup`), which H2 never shows
+   :checkins
+   ;; `setAutoCommit false` calls: transaction starts (a Postgres `BEGIN`)
+   :transactions
+   ;; `setSavepoint` calls. Metabase sets one at the start of each transaction scope, the top-level one included
+   ;; (`metabase.app-db.connection/do-transaction`), so a plain transaction is BEGIN + SAVEPOINT + COMMIT on Postgres
+   :savepoints
+   ;; `releaseSavepoint` calls (a nested scope that succeeded)
+   :releases
+   ;; `commit` calls
+   :commits
+   ;; `rollback` calls, of a whole transaction or to a savepoint; a failed transaction does both
+   :rollbacks])
+
+(def ^:private zero-counts (zipmap count-keys (repeat 0)))
 
 (defn- bump
-  "Increment `k` in the totals and in the calling thread's own counts. Thread-safe."
+  "Increment `k` in the calling thread's counts. Thread-safe."
   [counts k]
-  (let [tid (.threadId (Thread/currentThread))]
-    (swap! counts (fn [c]
-                    (-> c
-                        (update-in [:totals k] inc)
-                        (update-in [:by-thread tid k] (fnil inc 0)))))))
+  (swap! counts update-in [(.threadId (Thread/currentThread)) k] (fnil inc 0)))
 
 (defn- invoke
   "Invoke `method` on `target`, rethrowing the real exception rather than the reflection wrapper, so callers that
@@ -66,24 +76,27 @@
 
 (defn- proxy-of
   "A java.lang.reflect.Proxy of `target` implementing `iface`, calling `(on-call method-name args)` before each
-  call and returning `(wrap-result method-name result)`."
+  call and returning `(wrap-result method-name result proxy)`."
   [^Class iface target on-call wrap-result]
   (Proxy/newProxyInstance
    (.getClassLoader iface)
    (into-array Class [iface])
    (reify InvocationHandler
-     (invoke [_ _proxy method args]
+     (invoke [_ proxy method args]
        (let [n (.getName ^Method method)]
          (on-call n args)
-         (wrap-result n (invoke target method args)))))))
+         (wrap-result n (invoke target method args) proxy))))))
 
 (def ^:private execute-methods
   #{"execute" "executeQuery" "executeUpdate" "executeLargeUpdate" "executeBatch" "executeLargeBatch"})
 
-(defn- counting-statement [counts ^Class iface stmt]
+(defn- counting-statement
+  "A counting proxy of `stmt`, made on the counting connection `conn`. Its `getConnection` returns `conn`, not the
+  real connection, so that statements made on that connection count too."
+  [counts ^Class iface stmt conn]
   (proxy-of iface stmt
             (fn [n _] (when (execute-methods n) (bump counts :statements)))
-            (fn [_ result] result)))
+            (fn [n result _] (if (= "getConnection" n) conn result))))
 
 (defn- counting-connection [counts ^Connection conn]
   (proxy-of Connection conn
@@ -97,11 +110,11 @@
                 "close"            (bump counts :checkins)
                 ("prepareStatement" "prepareCall" "createStatement") (bump counts :prepares)
                 nil))
-            (fn [n result]
+            (fn [n result conn]
               (case n
-                "prepareStatement" (counting-statement counts PreparedStatement result)
-                "prepareCall"      (counting-statement counts CallableStatement result)
-                "createStatement"  (counting-statement counts Statement result)
+                "prepareStatement" (counting-statement counts PreparedStatement result conn)
+                "prepareCall"      (counting-statement counts CallableStatement result conn)
+                "createStatement"  (counting-statement counts Statement result conn)
                 result))))
 
 (defn- counting-data-source ^DataSource [counts ^DataSource ds]
@@ -125,9 +138,15 @@
   [counts app-db]
   (assoc app-db :data-source (counting-data-source counts (:data-source app-db))))
 
+(defonce ^:private ^{:doc "Whether a count runs now. The count replaces the JVM-wide root application DB, so two
+  counts at the same time would restore each other's counting copy."}
+  counting?
+  (atom false))
+
 (defn count-db-activity!
   "Run `thunk` with app-DB activity counted JVM-wide (see the ns docstring). Returns the counts map with the
-  thunk's return value under `:result`. Not reentrant; not for `^:parallel` tests.
+  thunk's return value under `:result`. Not for `^:parallel` tests. Throws when the calling thread holds an app-DB
+  connection already, or when another count runs.
 
   If the calling thread has bound `*application-db*` (for example inside `mt/with-empty-h2-app-db!`), that bound
   value is counted too, for the calling thread and for threads that convey its bindings. Then the totals can add two
@@ -135,21 +154,29 @@
   itself makes is not counted. A conveyed thread that runs after this returns still uses the counting copy, and its
   activity is not reported."
   [thunk]
+  (when (instance? Connection t2.conn/*current-connectable*)
+    (throw (ex-info (str "The calling thread already holds an app-DB connection (for example inside a default "
+                         "mt/with-temp), and the counter cannot see work on it. Use rs.test/commit-with-temp, or "
+                         "start the count outside the transaction.")
+                    {:connection t2.conn/*current-connectable*})))
+  (when-not (compare-and-set! counting? false true)
+    (throw (ex-info "Another app-DB count runs now; counts cannot overlap" {})))
   (let [app-db-var #'mdb.connection/*application-db*
-        counts     (atom {:totals (zipmap count-keys (repeat 0)) :by-thread {}})
+        counts     (atom {})
         original   (.getRawRoot app-db-var)]
-    (alter-var-root app-db-var (constantly (counting-app-db counts original)))
     (try
-      (let [result (if (thread-bound? app-db-var)
-                     (with-bindings {app-db-var (counting-app-db counts mdb.connection/*application-db*)}
-                       (thunk))
-                     (thunk))
-            {:keys [totals by-thread]} @counts]
-        (assoc totals
-               :by-thread (update-vals by-thread #(merge (zipmap count-keys (repeat 0)) %))
+      (alter-var-root app-db-var (constantly (counting-app-db counts original)))
+      (let [result    (if (thread-bound? app-db-var)
+                        (with-bindings {app-db-var (counting-app-db counts mdb.connection/*application-db*)}
+                          (thunk))
+                        (thunk))
+            by-thread (update-vals @counts #(merge zero-counts %))]
+        (assoc (apply merge-with + zero-counts (vals by-thread))
+               :by-thread by-thread
                :result    result))
       (finally
-        (alter-var-root app-db-var (constantly original))))))
+        (alter-var-root app-db-var (constantly original))
+        (reset! counting? false)))))
 
 (defmacro with-db-activity!
   "Run `body` with app-DB activity counted; returns the counts map with body's value under `:result`.

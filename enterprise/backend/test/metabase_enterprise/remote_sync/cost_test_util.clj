@@ -47,8 +47,8 @@
 
 (defn measure!
   "Run `thunk` and return its result under `:result`, with every JDBC-level count from
-  [[metabase.app-db.activity-test-util/count-db-activity!]] (`:statements`, `:prepares`, `:checkouts`, `:checkins`,
-  `:transactions`, `:savepoints`, `:releases`, `:commits`, `:rollbacks`, `:by-thread`) and two domain counts:
+  [[metabase.app-db.activity-test-util/count-db-activity!]] (see [[metabase.app-db.activity-test-util/count-keys]]) and
+  two domain counts:
 
   - `:metadata-inferences` Card `result_metadata` inferences (QP preprocessing). Counted with a thread-local redef,
                            so only the inferences made on the calling thread count.
@@ -66,8 +66,7 @@
                :rows-rewritten      (rewritten-since before))))))
 
 (def ^:private cost-keys
-  [:statements :prepares :checkouts :checkins :transactions :savepoints :releases :commits :rollbacks
-   :metadata-inferences :rows-rewritten])
+  (into activity/count-keys [:metadata-inferences :rows-rewritten]))
 
 (defn per-entity
   "Per-entity cost from two [[measure!]] results `small` and `large` of the same scenario at sizes `n-small` and

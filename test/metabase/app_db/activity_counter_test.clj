@@ -35,8 +35,8 @@
     (let [counts (activity/with-db-activity!
                    (t2/with-transaction [_]
                      (select-1!)))]
-      (is (= {:statements 1 :transactions 1 :savepoints 1 :releases 0 :commits 1 :rollbacks 0 :checkouts 1 :checkins 1}
-             (select-keys (this-thread counts) [:statements :transactions :savepoints :releases :commits :rollbacks :checkouts :checkins]))))))
+      (is (=? {:statements 1 :transactions 1 :savepoints 1 :releases 0 :commits 1 :rollbacks 0 :checkouts 1 :checkins 1}
+              (this-thread counts))))))
 
 (deftest transaction-savepoint-and-statements-test
   (testing "one transaction containing one nested transaction and two statements"
@@ -45,8 +45,8 @@
                      (select-1!)
                      (t2/with-transaction [_]
                        (select-1!))))]
-      (is (= {:statements 2 :transactions 1 :savepoints 2 :releases 1 :commits 1 :rollbacks 0 :checkouts 1 :checkins 1}
-             (select-keys (this-thread counts) [:statements :transactions :savepoints :releases :commits :rollbacks :checkouts :checkins]))))))
+      (is (=? {:statements 2 :transactions 1 :savepoints 2 :releases 1 :commits 1 :rollbacks 0 :checkouts 1 :checkins 1}
+              (this-thread counts))))))
 
 (deftest rollback-test
   (testing "a transaction that throws rolls back instead of committing"
@@ -57,8 +57,8 @@
                        (throw (ex-info "boom" {})))
                      (catch clojure.lang.ExceptionInfo _ :caught)))]
       (is (= :caught (:result counts)))
-      (is (= {:statements 1 :transactions 1 :commits 0 :rollbacks 2}
-             (select-keys (this-thread counts) [:statements :transactions :commits :rollbacks]))))))
+      (is (=? {:statements 1 :transactions 1 :commits 0 :rollbacks 2}
+              (this-thread counts))))))
 
 (deftest statements-outside-transactions-test
   (testing "each statement outside a transaction checks a connection out and back in"
@@ -66,8 +66,8 @@
                    (select-1!)
                    (select-1!)
                    (select-1!))]
-      (is (= {:statements 3 :checkouts 3 :checkins 3 :transactions 0}
-             (select-keys (this-thread counts) [:statements :checkouts :checkins :transactions]))))))
+      (is (=? {:statements 3 :checkouts 3 :checkins 3 :transactions 0}
+              (this-thread counts))))))
 
 (deftest raw-jdbc-test
   (testing "raw JDBC, which t2/with-call-count cannot see, is counted"
@@ -75,8 +75,8 @@
                    (with-open [^Connection conn (.getConnection ^DataSource (mdb/app-db))
                                stmt             (.createStatement conn)]
                      (.execute stmt "SELECT 1")))]
-      (is (= {:statements 1 :prepares 1 :checkouts 1 :checkins 1}
-             (select-keys (this-thread counts) [:statements :prepares :checkouts :checkins]))))))
+      (is (=? {:statements 1 :prepares 1 :checkouts 1 :checkins 1}
+              (this-thread counts))))))
 
 (deftest other-threads-test
   (testing "activity on other threads is counted (async imports/exports run on virtual threads)"
@@ -104,8 +104,8 @@
     (mt/with-empty-h2-app-db!
       (let [before (mdb/app-db)
             counts (activity/with-db-activity! (select-1!))]
-        (is (= {:statements 1 :checkouts 1 :checkins 1}
-               (select-keys (this-thread counts) [:statements :checkouts :checkins])))
+        (is (=? {:statements 1 :checkouts 1 :checkins 1}
+                (this-thread counts)))
         (testing "and the calling thread's binding is restored afterwards"
           (is (identical? before (mdb/app-db))))))))
 
@@ -117,8 +117,7 @@
                      (catch Exception e e))]
         (if (instance? Exception result)
           (is (some? (ex-message result)))
-          (is (= {:statements 1}
-                 (select-keys (this-thread result) [:statements]))))))))
+          (is (=? {:statements 1} (this-thread result))))))))
 
 (deftest overlapping-counts-on-two-threads-test
   (testing "two counts that overlap on two threads and end out of order leave the original application DB in the root"
@@ -148,5 +147,4 @@
                      (.execute stmt "SELECT 1")
                      (with-open [stmt2 (.createStatement (.getConnection stmt))]
                        (.execute stmt2 "SELECT 1"))))]
-      (is (= {:statements 2 :prepares 2}
-             (select-keys (this-thread counts) [:statements :prepares]))))))
+      (is (=? {:statements 2 :prepares 2} (this-thread counts))))))
