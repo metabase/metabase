@@ -218,3 +218,23 @@
         (testing "a database the user cannot read reads exactly like one that does not exist"
           (is (= {:output unreadable-database-output} (sql-on unreadable-db)))
           (is (= {:output unreadable-database-output} (sql-on Integer/MAX_VALUE))))))))
+
+(deftest run-query-unreadable-query-test
+  (mt/with-temp [:model/Database {readable-db :id}   {:engine :h2}
+                 :model/Database {unreadable-db :id} {:engine :h2}]
+    (mt/with-no-data-perms-for-all-users!
+      (doseq [db-id [readable-db unreadable-db]]
+        (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
+      (perms/set-database-permission! (perms-group/all-users) readable-db :perms/create-queries :query-builder)
+      (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
+      ;; MBQL 4 and 5 keys together, which normalizing rejects whatever the database.
+      (let [malformed (fn [db-id]
+                        {"q1" {:database db-id :type :query :query {:source-table 1} :stages []}})]
+        (testing "a notebook query that can't be normalized on a readable database is reported as unreadable"
+          (is (= {:output (str "Query q1 could not be read. " notebook-query-hint)}
+                 (run-tool! (malformed readable-db) {:query_id "q1"}))))
+        (testing "the same query on an unreadable or missing database reads as not found, so neither is an oracle"
+          (is (= {:output unreadable-database-output}
+                 (run-tool! (malformed unreadable-db) {:query_id "q1"})))
+          (is (= {:output unreadable-database-output}
+                 (run-tool! (malformed Integer/MAX_VALUE) {:query_id "q1"}))))))))

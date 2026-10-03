@@ -96,6 +96,10 @@
   (ex-info (str "The database of query " query-id " was not found.")
            {:agent-error? true}))
 
+(defn- readable-database?
+  [database-id]
+  (and (int? database-id) (mi/can-read? :model/Database database-id)))
+
 (defn- native-query?
   "Whether `query`, as state holds it, is a SQL query: an MBQL 4 query of type native, or an MBQL 5 query with a
    native stage. Read off the stored form because normalizing needs the query's database, and a SQL query must be
@@ -119,7 +123,7 @@
   (when-not (scope/sql-execution-allowed?)
     (throw (ex-info (str "run_query only runs notebook queries, and this one is a SQL query. " notebook-query-hint)
                     {:agent-error? true})))
-  (when-not (and (int? database-id) (mi/can-read? :model/Database database-id))
+  (when-not (readable-database? database-id)
     (throw (database-not-found query-id)))
   (when-not (sql.common/native-query-access? database-id)
     (throw (ex-info (str "You do not have permission to run SQL against the database of query " query-id ". "
@@ -134,10 +138,13 @@
     (when native?
       (check-sql-runnable! query-id (:database query)))
     (let [normalized (lib-be/normalize-query query)]
-      ;; Normalizing loads the database's metadata and recovers to an empty map when it can't, as for a database
-      ;; that doesn't exist. That reads like an unreadable database, so neither tells the model the other exists.
+      ;; Normalizing recovers to an empty map from any failure, a missing database or a malformed query alike.
+      ;; Only a database the user can read gets the distinct message, so a missing and an unreadable one still
+      ;; read the same.
       (when (empty? normalized)
-        (throw (database-not-found query-id)))
+        (throw (if (readable-database? (:database query))
+                 (ex-info (str "Query " query-id " could not be read. " notebook-query-hint) {:agent-error? true})
+                 (database-not-found query-id))))
       ;; A native stage deeper in the query, such as a join's, shows only once the query is normalized.
       (when (and (not native?) (lib/any-native-stage? normalized))
         (check-sql-runnable! query-id (:database normalized)))
