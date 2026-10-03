@@ -37,8 +37,28 @@ export const getHeadMajorVersion = (currentVersion: string): string => {
   return String(Number(currentVersion) + 1);
 };
 
-/** Docker image for HEAD builds. */
-export const HEAD_DOCKER_IMAGE = "metabase/metabase-enterprise-head:latest";
+const HEAD_DOCKER_REPO = "metabase/metabase-enterprise-head";
+const PR_DOCKER_REPO = "metabase/metabase-dev";
+
+/**
+ * Docker image for HEAD builds.
+ *
+ * When HEAD_DIGEST is set (the digest of the image built for the current
+ * commit), pin to that digest so we test exactly that image. PR images are
+ * pushed to metabase-dev, everything else to metabase-enterprise-head.
+ * Otherwise fall back to the :latest tag.
+ */
+export const getHeadDockerImage = (): string => {
+  const digest = process.env.HEAD_DIGEST?.trim();
+  if (digest) {
+    const repo =
+      process.env.GITHUB_EVENT_NAME === "pull_request"
+        ? PR_DOCKER_REPO
+        : HEAD_DOCKER_REPO;
+    return `${repo}@${digest.startsWith("sha256:") ? digest : `sha256:${digest}`}`;
+  }
+  return `${HEAD_DOCKER_REPO}:latest`;
+};
 
 // ============================================================================
 // Pure helpers for rolling .x tags
@@ -138,11 +158,11 @@ export const compareVersions = (
 
 /**
  * Get the Docker image for a version.
- * Supports HEAD and rolling .x tags.
+ * Supports HEAD (along with digest) and rolling .x tags.
  */
 export const getDockerImage = (version: string): string => {
   if (isHead(version)) {
-    return HEAD_DOCKER_IMAGE;
+    return getHeadDockerImage();
   }
 
   if (!isRollingTag(version) && !isValidVersionString(version)) {
