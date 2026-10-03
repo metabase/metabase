@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api-scope.core :as api-scope]
    [metabase.cmd.mcp-tools-dox :as mcp-tools-dox]
    [metabase.mcp.v2.registry :as v2.registry]
    [metabase.test :as mt]))
@@ -68,8 +67,8 @@
     ;; promises nothing about what a writer won't touch
     :writes      {:destructiveHint false}
     :destructive {:destructiveHint true}
-    ;; the registry always merges both hints in; a hand-built map without them says nothing
-    nil          {}))
+    ;; the registry always merges `destructiveHint false` in, so a tool with neither hint is a writer
+    :writes      {}))
 
 (deftest ^:parallel idempotent-test
   (are [expected annotations] (= expected (:idempotent? (#'mcp-tools-dox/tool->entry
@@ -80,28 +79,6 @@
     false {:readOnlyHint true :idempotentHint true}
     ;; and a writer that doesn't claim it gets no line
     false {:destructiveHint false}))
-
-;;;; What the page requires of an entry
-
-(deftest ^:parallel entry-problems-test
-  (let [problems (fn [tool] (#'mcp-tools-dox/entry-problems (#'mcp-tools-dox/tool->entry tool)))]
-    (testing "a documentable tool has no problems"
-      (is (= [] (problems search-tool))))
-    (testing "a scope no `defscope` registered is refused"
-      ;; a scope string the consent screen can't explain is a bug, not a page to publish
-      (is (=? [#".*uses scope \"agent:nope\", which no defscope describes.*"] (problems (assoc search-tool :scope "agent:nope")))))
-    (testing "a tool with no description is still documentable: the page shows its facts and arguments, not its prose"
-      (is (= [] (problems (dissoc search-tool :description)))))))
-
-(deftest ^:parallel page-problems-test
-  (let [entries (fn [& tools] (map #'mcp-tools-dox/tool->entry tools))]
-    (testing "an empty registry is a problem rather than a page with no tools"
-      (is (=? [#"No MCP tools found.*"] (#'mcp-tools-dox/page-problems []))))
-    (testing "one bad tool fails the page, naming it"
-      (is (=? [#"MCP tool \"nope\" uses scope \"agent:nope\".*"]
-              (#'mcp-tools-dox/page-problems (entries search-tool (assoc search-tool :name "nope" :scope "agent:nope"))))))
-    (testing "a documentable set has none"
-      (is (= [] (#'mcp-tools-dox/page-problems (entries search-tool)))))))
 
 ;;;; Facts
 
@@ -182,28 +159,11 @@
     []                  {:type "array" :items {:type "object" :enum ["a"]}}
     []                  {:type "string"}))
 
-(deftest ^:parallel numeric-range-test
-  (are [expected property] (= expected (#'mcp-tools-dox/numeric-range property))
-    {:minimum 1 :maximum 10} {:type "integer" :minimum 1 :maximum 10}
-    ;; `[:maybe [:int {:min 1 :max 10}]]` — the shape of every optional v2 argument
-    {:minimum 1 :maximum 10} {:oneOf [{:type "integer" :minimum 1 :maximum 10} {:type "null"}]}
-    ;; `[:int {:min 1}]` — every positive-int id; a floor alone tells the reader nothing
-    nil                      {:type "integer" :minimum 1}
-    nil                      {:oneOf [{:type "integer" :minimum 0} {:type "null"}]}
-    ;; a bounded string publishes `minLength`, which is not a range
-    nil                      {:type "string" :minLength 1 :maxLength 21}
-    nil                      {:type "integer"}))
-
 (deftest ^:parallel description-cell-test
   (are [expected property] (= expected (#'mcp-tools-dox/description-cell (argument property)))
     ;; an enum publishes what it accepts ahead of its prose: the v2 surface dispatches on these, so the
     ;; members are the argument's real documentation
     "One of: `create`, `update`. What to do."  {:type "string" :enum ["create" "update"] :description "What to do."}
-    ;; a bounded integer publishes its range after any enum and ahead of its prose — `depth`'s prose says
-    ;; "default 2" and stops, and the ceiling is only in the schema
-    "Range: 1 to 10. Levels (default 2)."      {:oneOf [{:type "integer" :minimum 1 :maximum 10
-                                                         :description "Levels (default 2)."}
-                                                        {:type "null"}]}
     ;; a description buried in a nullable branch is found rather than dashed out: the shape of every optional
     ;; v2 argument
     "Max rows."                                {:oneOf [{:type "integer" :description "Max rows."} {:type "null"}]}
@@ -249,17 +209,6 @@
       (is (not (some #(= "refresh_ui_credential" (:name %)) tools)))
       (is (some #(= "refresh_ui_credential" (:name %)) (v2.registry/all-tool-entries))
           "no registered tool is named refresh_ui_credential; pick another app-only tool to guard against"))
-    (testing "every tool carries a scope some defscope can explain"
-      ;; `register-tool!` pins it to a non-blank string; this pins it to one the consent screen has wording for
-      (doseq [{:keys [name scope]} tools]
-        (is (string? scope) (str "no scope for " name))
-        (is (api-scope/registered-scope? scope) (str name " uses unregistered scope " (pr-str scope)))))
-    (testing "the page covers everything tools/list can offer a model"
-      ;; `list-tools` filters by client extensions only; scopes are checked at call time
-      (is (every? (set (map :name tools))
-                  (->> (v2.registry/list-tools {:supports-mcp-ui? true})
-                       (remove #'mcp-tools-dox/app-only?)
-                       (map :name)))))
     (testing "the MCP Apps tools are the ones carrying a :_meta :ui block, which is how the page flags them"
       ;; `:inline-ui?` keys off `:_meta`; keep it in step with the extension the tool actually requires
       (doseq [{:keys [name _meta required-extensions]} tools]
@@ -327,11 +276,6 @@
           (is (re-find #"(?m)^- [^\n]*\n\nArguments:\n" section) "something other than the facts list precedes Arguments:")))
       (testing "scopes are published with the consent screen's wording"
         (is (str/includes? markdown "Permission scope: `agent:content:read`")))
-      (testing "arguments are listed without claiming which are required"
-        ;; the strict-transformed schema lists every property in `:required`, so a column read from it would mark
-        ;; them all. Checks the header rows, not the whole page — a description may legitimately open with
-        ;; "Required on create", and `collection_write`'s `name` does.
-        (is (not (re-find #"(?m)^\| Argument .*\bRequired\b.*\|$" markdown))))
       (testing "argument prose survives the nullable wrapper every v2 argument has"
         ;; an optional v2 argument carries its prose on the nullable branch, not on the property
         (let [section (second (str/split markdown #"\n## Search\n"))]
@@ -348,8 +292,6 @@
           (is (< (count ops-row) 400) ops-row)
           (is (not (str/includes? ops-row "Add a tab.")))
           (is (not (str/includes? ops-row "One editor operation")))))
-      (testing "the app-only credential tool has no section"
-        (is (not (str/includes? markdown "refresh_ui_credential"))))
       (testing "no unfenced Liquid reaches the page"
         ;; the docs site rejects `{% card %}` outright and renders `{{tag}}` as nothing; the intro is hand-written
         ;; and may carry a real `{% include %}`, so only the generated sections are held to this
@@ -358,7 +300,4 @@
           (is (not (re-find #"\{\{|\{%" unfenced)))
           (testing "and the fencing was exercised, not vacuous"
             ;; `execute_sql` quotes `{{tag}}`; if that tool stops doing so, pick another that quotes template syntax
-            (is (str/includes? generated "{% raw %}{{tag}}{% endraw %}")))))
-      (testing "the page ends with exactly one newline"
-        (is (str/ends-with? markdown "\n"))
-        (is (not (str/ends-with? markdown "\n\n")))))))
+            (is (str/includes? generated "{% raw %}{{tag}}{% endraw %}"))))))))

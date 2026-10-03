@@ -482,12 +482,11 @@
     [:maybe [:or
              [:int {:description "Numeric id of the document to update."}]
              [:string {:description "21-character entity_id of the document to update."}]]]]
-   ;; `DocumentName` carries a `:json-schema` override, which Malli's JSON Schema walker returns
-   ;; verbatim — a `:description` beside it would never be published — so the prose goes inside it.
+   ;; `DocumentName`'s `:json-schema` override is published verbatim and carries its length bounds, so the
+   ;; prose goes on the `:maybe` rather than inside the override, which would drop them.
    [:name {:optional true}
-    [:maybe (mu/with documents/DocumentName
-                     {:json-schema {:type        "string"
-                                    :description "Document title. Required on create; on update, renames it."}})]]
+    [:maybe {:description "Document title. Required on create; on update, renames it."}
+     documents/DocumentName]]
    [:content_markdown {:optional true}
     [:maybe [:string {:description (str "The full body in Metabase-flavored Markdown: CommonMark plus card "
                                         "embeds, entity links, and ::: layout containers (learn(\"documents\")). "

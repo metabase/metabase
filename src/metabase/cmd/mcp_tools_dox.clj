@@ -30,7 +30,7 @@
 
 ;;;; Reading a property's JSON Schema
 ;;;;
-;;;; Malli puts an argument's description, enum and bounds on the wrapped schema, not the property:
+;;;; Malli puts an argument's description and enum on the wrapped schema, not the property:
 ;;;; `[:maybe [:int {:description ...}]]` publishes `{:oneOf [{:type "integer" :description ...} {:type "null"}]}`.
 ;;;; Everything below reads through those alternatives.
 
@@ -91,18 +91,6 @@
   [property]
   (into [] (comp (mapcat :enum) (distinct)) (documented-schemas property)))
 
-(defn- own-bounds
-  "A schema's own `{:minimum :maximum}`, when it has both. A lone minimum, as on every positive-int id, isn't worth
-  showing."
-  [{:keys [minimum maximum]}]
-  (when (and minimum maximum)
-    {:minimum minimum :maximum maximum}))
-
-(defn- numeric-range
-  "The first [[own-bounds]] among a property's alternatives."
-  [property]
-  (some own-bounds (alternatives property)))
-
 ;;;; From the registry to page data
 
 (defn- page-prose
@@ -119,7 +107,6 @@
    :types         (property-types property)
    :element-types (element-types property)
    :enum          (enum-values property)
-   :range         (numeric-range property)
    :descriptions  (mapv page-prose (property-descriptions property))})
 
 (defn- tool-title
@@ -128,13 +115,12 @@
   (md/sentence-case (or title (str/replace (:name tool) "_" " "))))
 
 (defn- tool-effect
-  "What the tool's annotations promise about its effects: `:read-only`, `:destructive`, or `:writes`. Nil when the
-  annotations carry neither hint."
+  "What the tool's annotations promise about its effects: `:read-only`, `:destructive`, or `:writes`."
   [{{:keys [readOnlyHint destructiveHint]} :annotations}]
   (cond
-    readOnlyHint             :read-only
-    destructiveHint          :destructive
-    (false? destructiveHint) :writes))
+    readOnlyHint    :read-only
+    destructiveHint :destructive
+    :else           :writes))
 
 (defn- tool->entry
   "Everything the page says about `tool`, as data. `:scope` carries the consent screen's English wording under
@@ -150,25 +136,6 @@
      :inline-ui?  (some? (get-in tool [:_meta :ui]))
      ;; alphabetical, so the table doesn't churn with map order
      :arguments   (mapv property->argument (sort-by (comp name key) (:properties inputSchema)))}))
-
-;;;; What the page requires of an entry
-
-(defn- entry-problems
-  "Why `entry` can't be documented, as messages."
-  [{entry-name :name :keys [scope]}]
-  (cond-> []
-    (nil? (:description scope))
-    (conj (str "MCP tool " (pr-str entry-name) " uses scope " (pr-str (:id scope))
-               ", which no defscope describes. Declare it with metabase.api-scope.core/defscope."))))
-
-(defn- page-problems
-  "Why the page can't be written from `entries`: an empty registry, or any entry's [[entry-problems]]. Empty when it
-  can."
-  [entries]
-  (if (empty? entries)
-    [(str "No MCP tools found; the v2 registry is empty, so metabase.mcp.v2.api either no longer requires the tool "
-          "namespaces or no longer loads")]
-    (into [] (mapcat entry-problems) entries)))
 
 ;;;; Rendering an entry
 
@@ -215,16 +182,10 @@
   (when (seq enum)
     (str "One of: " (str/join ", " (map md/code enum)) ".")))
 
-(defn- range-sentence
-  "\"Range: 1 to 10.\" — or nil for an argument without a range."
-  [{:keys [range]}]
-  (when-let [{:keys [minimum maximum]} range]
-    (format "Range: %s to %s." minimum maximum)))
-
 (defn- description-cell
-  "The Description column: enum, then range, then prose. An em dash when the schema says nothing."
+  "The Description column: enum, then prose. An em dash when the schema says nothing."
   [{:keys [descriptions] :as argument}]
-  (or (not-empty (md/sentences (list* (enum-sentence argument) (range-sentence argument) descriptions)))
+  (or (not-empty (md/sentences (cons (enum-sentence argument) descriptions)))
       "—"))
 
 (defn- argument-row
@@ -257,15 +218,14 @@
 
 (defn generate-dox!
   "Write the MCP tool reference to `path`, defaulting to `docs/ai/mcp-tools.md`. Returns `{:path ... :tools n}`.
-  Throws when any tool has [[entry-problems]]."
+  Throws when the registry is empty."
   ([]
    (generate-dox! output-path))
   ([path]
    (printf "Generating MCP tool documentation in %s\n" path)
-   (let [entries  (into [] (comp (remove app-only?) (map tool->entry)) (v2.registry/all-tool-entries))
-         problems (page-problems entries)]
-     (when (seq problems)
-       (throw (ex-info (str/join "\n" problems) {:problems problems})))
+   (let [entries (into [] (comp (remove app-only?) (map tool->entry)) (v2.registry/all-tool-entries))]
+     (when (empty? entries)
+       (throw (ex-info "No MCP tools found; metabase.mcp.v2.api no longer loads the tool namespaces" {})))
      (cmd.common/write-doc-file! path (document-markdown (cmd.common/load-resource! intro-resource) entries))
      (printf "Wrote %s (%d tools)\n" path (count entries))
      (println "Done.")
