@@ -69,9 +69,33 @@
 ;;         new  metabase.task.search-index.reindex.job
 ;;              metabase.task.search_index.SearchIndexReindex
 ;;         > became durable, when a separate job for incremental updates was added beside it
+;;
+;;   0.59  old  metabase-enterprise.transforms.canceling
+;;              metabase_enterprise.transforms.canceling.CancelOldTransformRuns
+;;         new  metabase.transforms.canceling
+;;              metabase.transforms.canceling.CancelOldTransformRuns
+;;         > moved out of enterprise, with no change to the job
+;;
+;;   0.59  old  metabase-enterprise.transforms.jobs.timeout-job
+;;              metabase_enterprise.transforms.jobs.TimeoutOldRuns
+;;         new  metabase.transforms.jobs.timeout-job
+;;              metabase.transforms.jobs.TimeoutOldRuns
+;;         > moved out of enterprise, with no change to the job, which was removed in 0.63
+;;
+;;   0.59  old  metabase-enterprise.transforms.timeout
+;;              metabase_enterprise.transforms.timeout.TimeoutTransforms
+;;         new  metabase.transforms.timeout
+;;              metabase.transforms.timeout.TimeoutTransforms
+;;         > moved out of enterprise, with no change to the job
+;;
+;;   0.60  old  metabase.task.metabot-v3.suggested-prompts-generator.job
+;;              metabase_enterprise.metabot_v3.task.suggested_prompts_generator.SuggestedPromptsGenerator
+;;         new  metabase.task.metabot.suggested-prompts-generator.job
+;;              metabase.metabot.task.suggested_prompts_generator.SuggestedPromptsGenerator
+;;         > moved out of enterprise with the rest of Metabot
 (def job-history
-  "Every name each renamed Quartz job's class has had, by the job's key, oldest first, so the last is its current
-  name."
+  "Every name each renamed Quartz job's class has had, by the job's key, oldest first, so the last is its
+  current name."
   {"metabase-enterprise.cache.job"
    ["metabase_enterprise.task.cache.Cache"
     "metabase_enterprise.cache.task.refresh_cache_configs.Cache"]
