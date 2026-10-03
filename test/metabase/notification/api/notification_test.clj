@@ -626,6 +626,54 @@
             (is (t2/exists? :model/NotificationCard :id existing-payload-id))
             (is (= 1 (t2/count :model/NotificationSubscription :notification_id existing-id)))))))))
 
+(deftest send-notification-audit-test
+  (testing "sending a notification records an :event/notification-send audit entry naming who sent it and to whom"
+    (mt/with-premium-features #{:audit-app}
+      (let [expected-recipients [{:channel_type "channel/email"
+                                  :recipients   [{:type  "notification-recipient/raw-value"
+                                                  :value "exfil@rogue.example"}]}]]
+        (testing "POST /api/notification/:id/send (manual send of a saved notification)"
+          (notification.tu/with-channel-fixtures [:channel/email]
+            (notification.tu/with-card-notification
+              [notification {:handlers [{:channel_type :channel/email
+                                         :recipients   [{:type    :notification-recipient/raw-value
+                                                         :details {:value "exfil@rogue.example"}}]}]}]
+              (let [card-id (get-in notification [:payload :card_id])]
+                (notification.tu/with-captured-channel-send!
+                  (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))))
+                (is (=? {:topic    :notification-send
+                         :user_id  (mt/user->id :crowberto)
+                         :model    "Card"
+                         :model_id card-id
+                         :details  {:notification_id (:id notification)
+                                    :payload_type    "notification/card"
+                                    :card_id         card-id
+                                    :recipients      expected-recipients}}
+                        (mt/latest-audit-log-entry)))))))
+        (testing "POST /api/notification/send (unsaved \"Send now\") is audited even though nothing is persisted"
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+            (notification.tu/with-channel-fixtures [:channel/email]
+              (notification.tu/with-captured-channel-send!
+                (mt/user-http-request :crowberto :post 204 "notification/send"
+                                      {:handlers      [{:channel_type :channel/email
+                                                        :recipients   [{:type    :notification-recipient/raw-value
+                                                                        :details {:value "exfil@rogue.example"}}]}]
+                                       :payload_type  :notification/card
+                                       :payload       {:card_id        card-id
+                                                       :send_condition :has_result
+                                                       :send_once      false}
+                                       :subscriptions [{:type          :notification-subscription/cron
+                                                        :cron_schedule "0 0 0 * * ?"}]}))
+              (is (=? {:topic    :notification-send
+                       :user_id  (mt/user->id :crowberto)
+                       :model    "Card"
+                       :model_id card-id
+                       :details  {:notification_id nil
+                                  :payload_type    "notification/card"
+                                  :card_id         card-id
+                                  :recipients      expected-recipients}}
+                      (mt/latest-audit-log-entry))))))))))
+
 (deftest get-notification-permissions-test
   (mt/with-temp
     [:model/User {third-user-id :id} {:is_superuser false}]
