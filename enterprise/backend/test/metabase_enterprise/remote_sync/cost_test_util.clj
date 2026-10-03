@@ -17,10 +17,6 @@
                 10 20)"
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.app-db.activity-test-util :as activity]
    [metabase.lib.core :as lib]
@@ -87,14 +83,9 @@
 
 ;;; ------------------------------------------------ content ------------------------------------------------
 
-(defn synced-tree
-  "The files that a fresh export of the remote-synced content would write, as a map of path to content."
-  []
-  (into {} (map (juxt :path :content)) (source/serialize-specs (spec/extract-entities-for-export) nil)))
-
 (defn do-with-content!
   "Create a remote-synced collection with `cards` MBQL cards (3 field refs each) and `dashboards` dashboards of
-  `dashcards` dashboard cards each, then call `f` with the serialized tree (see [[synced-tree]]). Sets
+  `dashcards` dashboard cards each, then call `f` with the serialized tree (see [[rs.test/synced-tree]]). Sets
   `remote-sync-type` to `:read-write` and `remote-sync-transforms` to false for the duration, and deletes the
   content that it created afterwards."
   [{:keys [cards dashboards dashcards] :or {dashboards 0 dashcards 0}} f]
@@ -126,18 +117,9 @@
                             {:dashboard_id dash :card_id (card-ids (mod (+ d k) (count card-ids)))
                              :row (* 4 k) :col 0 :size_x 12 :size_y 4
                              :parameter_mappings [] :visualization_settings {}})))))
-        (f (synced-tree))))))
+        (f (rs.test/synced-tree))))))
 
 ;;; ------------------------------------------------ scenarios ------------------------------------------------
-
-(defn import-at!
-  "Run `impl/import!` synchronously on the calling thread (so that thread-bound counters see it) against the
-  source `src` at `version`, and record the result on a new RemoteSyncTask row. Returns the import result."
-  [src version & {:keys [force?]}]
-  (let [task   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-        result (impl/import! (source.p/snapshot-at src version) task :force? (boolean force?))]
-    (impl/handle-task-result! result task)
-    result))
 
 (defn forced-reload-of-unchanged!
   "Load the content `shape` (the options of [[do-with-content!]]) once, then [[measure!]] a forced pull of the same
@@ -147,5 +129,5 @@
     (do-with-content! shape
                       (fn [tree]
                         (let [src (rs.test/versioned-source :trees {"v0" tree} :current "v0")]
-                          (is (= :success (:status (import-at! src "v0" :force? true))) "baseline load")
-                          (measure! #(import-at! src "v0" :force? true)))))))
+                          (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "baseline load")
+                          (measure! #(rs.test/import-at! src "v0" :force? true)))))))
