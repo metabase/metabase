@@ -272,9 +272,11 @@
     url))
 
 (defn- forget-clone!
-  "Removes the cached Git instance of `url` and deletes its clone directory, so that a test leaves no clone."
+  "Closes and removes the cached Git instance of `url` and deletes its clone directory, so that a test leaves no
+  clone."
   [url]
   (let [^File path (#'git/repo-path {:remote-url url})]
+    (some-> ^Git (get @@#'git/jgit (.getPath path)) .close)
     (swap! @#'git/jgit dissoc (.getPath path))
     (FileUtils/deleteQuietly path)))
 
@@ -359,9 +361,7 @@
               (is (nil? (settings/remote-sync-url)) "The rejected settings are not saved")
               (is (nil? (settings/remote-sync-token)) "The rejected token is not saved"))
             (finally
-              (some-> ^Git (get @@#'git/jgit (.getPath clone-dir)) .close)
-              (swap! @#'git/jgit dissoc (.getPath clone-dir))
-              (FileUtils/deleteQuietly clone-dir))))
+              (forget-clone! url))))
         (testing "the test leaves no clone directory and no cached Git instance for the URL"
           (is (not (.exists clone-dir)))
           (is (not (contains? @@#'git/jgit (.getPath clone-dir)))))))))

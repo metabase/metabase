@@ -1049,7 +1049,10 @@
           (recover-stale-clone! source)
           (let [^File fresh (#'git/git-dir (get @@#'git/jgit (.getPath path)))]
             (is (not= (str path) (str fresh)) "precondition: the recovery cached a fresh sibling")
-            (FileUtils/deleteDirectory fresh))
+            ;; Not FileUtils/deleteDirectory: a JGit gc that the recovery's fetch started can remove gc.log.lock while
+            ;; that delete runs, and the delete then throws.
+            (#'git/delete-clone-dir! fresh)
+            (is (not (.exists fresh)) "precondition: the fresh clone is deleted"))
           (let [later (git/git-source url "master" nil ingest/legal-top-level-paths)]
             (is (not (contains? (set (map str @@#'git/retired-clones)) (str (#'git/git-dir (:git later)))))
                 "the source does not use a retired clone")
@@ -1142,3 +1145,15 @@
           (is (= [path] @deleted))
           (is (not (.exists path)) "the clone directory is gone")
           (finally (FileUtils/deleteQuietly path)))))))
+
+(deftest shutdown-hook-keeps-clones-in-place-test
+  (testing "the shutdown hook does not delete a clone that lives at its repo-path"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            clone-dir        (.getCanonicalPath (#'git/git-dir (:git source)))
+            deleted          (atom [])]
+        (is (contains? @@#'git/jgit (.getPath ^File (#'git/repo-path source)))
+            "precondition: the clone is cached at its repo-path")
+        (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir))]
+          (#'git/delete-clones-at-exit!))
+        (is (not (contains? (into #{} (map #(.getCanonicalPath ^File %)) @deleted) clone-dir)))))))
