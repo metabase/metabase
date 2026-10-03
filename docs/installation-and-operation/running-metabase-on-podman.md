@@ -173,7 +173,7 @@ If all looks good, start the service:
 
 The service should start up and you should be able to visit `http://localhost:3000` and see a welcome screen. If that works, your last step is to ensure that Metabase will start automatically on reboot:
 
-`systemctl --user eanble metabase.service`
+`systemctl --user enable metabase.service`
 
 To verify that systemd is managing Metabase correctly, reboot the system. Upon reboot the Metabase container should be operational as intended.
 
