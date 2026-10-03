@@ -353,6 +353,7 @@
   {:team "UX West"
    :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
            metabase.app-db.core
+           metabase.app-db.hugsql
            metabase.app-db.init
            metabase.app-db.quartz
            metabase.app-db.setting
@@ -2702,6 +2703,7 @@
               metabase.sso.init
               metabase.sso.settings}
    :uses    #{api
+              app-db
               lib.schema
               permissions
               premium-features

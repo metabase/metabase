@@ -15,12 +15,29 @@
   "Matches `metabase.driver.<driver>.db`; individual drivers are not modules."
   #"^metabase\.driver\.[^.]+\.db$")
 
+(def ^:private sql-in-files-namespaces
+  "Module namespaces converted to SQL-in-files, which are data-access namespaces the same way
+  `<module>.db` is. Add one here when its module's reads move into a `.sql` file."
+  '#{metabase.sso.queries})
+
 (defn- db-namespace? [config ns-sym]
   (let [ns-str (name ns-sym)]
     (boolean
      ;; Resolve ownership first: a nested `.db` name alone does not make a module.
      (or (when-let [module (modules/module config ns-sym)]
-           (= ns-str (str (modules/module-ns-prefix (:metabase/modules config) module) ".db")))
+           (let [prefix (str (modules/module-ns-prefix (:metabase/modules config) module))]
+             (or (= ns-str (str prefix ".db"))
+                 ;; `.queries` is the SQL-in-files equivalent of `.db`: same one-namespace-per-module
+                 ;; confinement, reads as statements in a co-located `.sql` file. Writes stay on
+                 ;; `t2/*` there, because Toucan's hooks and the dml-capture seam need the pipeline.
+                 ;;
+                 ;; Opt-in by name rather than inferred from the suffix. `.queries` is not a reserved
+                 ;; word -- `metabase-enterprise.metabot-analytics.queries` is an MBQL namespace with
+                 ;; no app-db access at all -- so matching the suffix would hand unrelated namespaces
+                 ;; a data-access exemption they never asked for. The hook sees only a call node and
+                 ;; a namespace name, so it cannot tell the two apart by inspection; the list is the
+                 ;; only honest way to say which ones mean it.
+                 (contains? sql-in-files-namespaces ns-sym))))
          (re-matches driver-db-namespace ns-str)))))
 
 (defn- test-file?

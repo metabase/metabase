@@ -1,0 +1,213 @@
+(ns metabase.app-db.hugsql
+  "Execute HugSQL-authored queries against the app-db as a small middleware stack, reusing the
+  pure map transforms a model already declares with `t2/deftransforms`.
+
+  A HugSQL `.sql` file is loaded with `hugsql.core/def-sqlvec-fns`; each generated fn turns a
+  param map into a `[sql & params]` vector. This ns wraps such a builder into a
+  `params -> rows` executor whose stages are:
+
+    in-transform  -> execute (bare sqlvec, via Toucan 2) -> out-transform + instance
+
+  The in/out transforms are lifted straight out of the model's `t2/deftransforms` registry, so
+  the model definition stays the single declaration of which columns transform how, and nothing
+  is re-stated here. Execution is `t2/query` on a compiled sqlvec vector -- connection handling
+  and nothing more; it does NOT go through `t2/select`'s polymorphic queryable, so request data
+  can never reach query *structure* on this path.
+
+  ## Raw-splice param types are disarmed process-wide
+
+  HugSQL's `:sql`/`:snip`/`:sqlvec`/`:i`(dentifier) params splice unescaped text (identifiers are
+  unquoted by default) -- each a SQL injection hole. Requiring this ns overrides
+  `apply-hugsql-param` for those types to throw at query-build time, so Metabase `.sql` files use
+  `:value`/`:value*` only and anything else fails loudly rather than relying on review. Re-arming
+  a type means deleting it from `disarmed-param-types` -- a global, loud diff.
+
+  Not every param type is a splice, and the distinction is worth stating because it is easy to
+  ban by vibe. Reading `hugsql.parameters`, they fall into three classes:
+
+  - **value**: `:value`/`:v`/`:value*`/`:v*` and `:tuple`/`:t`/`:tuple*`/`:t*` emit only `?`
+    placeholders (`tuple-param` is `value-param-list` wrapped in parens). Structurally incapable
+    of carrying text into a statement, so they are allowed.
+  - **text**: `:sql` puts its value directly in the SQL position; `:i`/`:identifier` quote per the
+    `:quoting` option, which we do not set, so they reduce to `identity`. Both are sinks.
+  - **composition**: `:snip`/`:sqlvec` return the value *as an sqlvec*. Here the param type is not
+    the sink -- the *producer* of that vector is. An sqlvec from a `.sql`-defined snippet is
+    dev-authored; one from `(str ...)` is attacker-authored; they are indistinguishable by the
+    time `apply-hugsql-param` sees them. Banned because that provenance is not checkable at this
+    layer, not because splicing a pre-parsed snippet is inherently unsafe. Lifting the ban needs a
+    provenance mechanism (a marker the `.sql` loader attaches, or symbol-keyed arm vars), not just
+    a decision to trust callers.
+
+  ## Clojure expressions are banned too, and not from here
+
+  `--~ (...)` / `/*~ ... ~*/` in a `.sql` file are worse than any of the above: `hugsql.core/def-expr`
+  builds a string of Clojure source and `load-string`s it, so an expression is arbitrary code
+  execution at query-build time whose return value is also spliced into the SQL text. It is not a
+  param type, so it cannot be disarmed from here -- it needs a static scan of the `.sql` files, which
+  this branch does not yet carry. Until that lands, no `.sql` file here uses one and review is the
+  only thing stopping the first."
+  (:require
+   [hugsql.parameters :as hugsql.params]
+   [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]
+   [toucan2.tools.transformed :as t2.transformed]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private disarmed-param-types
+  "HugSQL param types that splice raw/unquoted text or compose caller-supplied sqlvecs, and are
+  therefore forbidden in Metabase SQL files. Building a query with one throws.
+
+  Deliberately absent: `:value`/`:v`/`:value*`/`:v*` and `:tuple`/`:t`/`:tuple*`/`:t*`. Those emit
+  only `?` placeholders, so they cannot carry text into a statement -- see the ns docstring. The
+  tuple types are unused today but are safe to reach for."
+  [:sql :snip :snip* :sqlvec :sqlvec* :i :identifier :i* :identifier*])
+
+(doseq [param-type disarmed-param-types]
+  (defmethod hugsql.params/apply-hugsql-param param-type
+    [param _data _options]
+    (throw (ex-info (str "Raw-splice HugSQL param " (pr-str param-type)
+                         " is not allowed in Metabase SQL files; use :value/:value*")
+                    {:param param}))))
+
+(defn- model-transforms
+  "The model's `t2/deftransforms` map, or `{}` when it declares none. `deftransforms` derives the
+  model from `::transformed.model`; without that marker `transforms` has no matching method and
+  throws, so only call it when the marker is present."
+  [model]
+  (if (isa? model :toucan2.tools.transformed/transformed.model)
+    (t2.transformed/transforms model)
+    {}))
+
+(defn non-empty-ids
+  "Coerce an id collection for use in an `IN (:value*:x)` or `NOT IN (:value*:x)` param: `[]`/`nil`
+  -> `[0]`. Pure value coercion -- takes a seq, returns a seq; builds no SQL.
+
+  The empty case has to bind something, because both `IN ()` and `NOT IN ()` are syntax errors, and
+  that something has to be correct under *either* operator. `0` is, on a positive-id column:
+  `x IN (0)` matches no row, and `x NOT IN (0)` excludes no row. Both are what an empty list means.
+
+  NULL is not, which is why there is one helper here and not two. `x IN (NULL)` is fine, but
+  `x NOT IN (NULL)` is NULL under SQL's three-valued logic rather than true, so it filters out every
+  row -- a silently wrong answer. A caller cannot pick the wrong sentinel because there is only one,
+  and the operator lives in the `.sql` file where it cannot drift from this call.
+
+  Only valid for positive-id columns. For a column that can legitimately hold 0, guard the empty
+  case at the call site instead of binding a sentinel.
+
+  Use this only when the query must still run on an empty list. When an empty list means \"nothing to
+  do\", prefer an early `(when (seq ids) ...)` at the call site -- it skips a pointless query."
+  [ids]
+  (or (seq ids) [0]))
+
+(defn- direction-fns
+  "`{column transform-fn}` for one `direction` (`:in` or `:out`) of `model`'s declared transforms."
+  [model direction]
+  (into {} (keep (fn [[col fns]] (when-let [f (direction fns)] [col f])))
+        (model-transforms model)))
+
+(defn- apply-transform-value
+  "Apply transform `f` to one param value.
+
+  A collection is transformed element-wise, because a collection in a param map is what a
+  `:value*:x` list param binds -- N placeholders, one per element -- so the transform belongs on
+  each element rather than on the collection. Applying `f` to the collection itself would send one
+  mangled parameter where the statement expects N.
+
+  This is the same intent as Toucan's `transform-condition-value`, but not the same shape: there the
+  value is a HoneySQL clause whose first element is an operator (`[:in 1 2 3]`) that must be left
+  alone. A HugSQL param has no operator head, so every element transforms.
+
+  nil is returned untransformed. Toucan does the same -- `wrapped-transforms` guards every xform
+  with `(if-not (some? v) v ...)` -- because NULL needs no wire representation."
+  [f v]
+  (cond
+    ;; `mapv`, not `(into (empty v) ...)`: a seq's `empty` is a list, which `into` conjes onto the
+    ;; front and so reverses the order. Param order is positional in a sqlvec, so reversing it
+    ;; silently misbinds every element. (`non-empty-ids` returns a seq, so this path is live.)
+    (or (sequential? v) (set? v)) (mapv #(apply-transform-value f %) v)
+    (some? v)                     (f v)
+    :else                         nil))
+
+(defn- apply-transforms
+  "Apply `col->fn` to the matching keys of `m`.
+
+  Matching is by key name, and `col->fn` is keyed by the model's *column* names while `m` is a
+  HugSQL *param* map. So a param named for a transformed column inherits that column's transform --
+  which is what you want for a column param, and a trap for a param that merely shares the name.
+  Name `.sql` params after the column they bind."
+  [col->fn m]
+  (reduce-kv (fn [m col f]
+               (cond-> m (contains? m col) (update col #(apply-transform-value f %))))
+             m col->fn))
+
+;;; The `deftransforms` registry is populated when the *model* ns loads, which is after this ns, so
+;;; a stage cannot resolve its transform map at wrap time. It resolves per call instead of caching
+;;; the first resolution: a `delay` here would memoize the `{}` seen by any executor built before
+;;; its model ns loaded, and then silently skip that model's transforms forever -- a decrypted
+;;; column served as its raw stored string. `direction-fns` is a walk over a handful of declared
+;;; columns, which is nothing beside the database round-trip it accompanies.
+
+(defn- wrap-in-transforms
+  "Middleware: apply `model`'s `:in` transforms to the param map before `handler` sees it."
+  [handler model]
+  (fn [params] (handler (apply-transforms (direction-fns model :in) params))))
+
+(defn- wrap-out-transforms
+  "Middleware: apply `model`'s `:out` transforms to each row `handler` returns, and tag it as a
+  Toucan instance of `model` (so `t2/hydrate` and instance-based logic compose downstream)."
+  [handler model]
+  (fn [params]
+    (let [outs (direction-fns model :out)]
+      (map #(t2.instance/instance model (apply-transforms outs %)) (handler params)))))
+
+(defn- reducible-executor
+  "Innermost handler: build a sqlvec from `params` and execute it, returning raw rows. Bare
+  `t2/query` on a vector -- connection handling only, no model, no build pipeline, no queryable
+  that request data could poison."
+  [builder]
+  (fn [params] (t2/query (builder params))))
+
+;;; ADOPTION RULE, for every read path below -- `select-executor`, `scalar` and `rows` alike.
+;;;
+;;; A model's reads may move here only if every read-firing behavior it declares is re-applied on
+;;; the path you pick. Two things are not:
+;;;
+;;; - `define-after-select` is a separate Toucan mechanism (a `pipeline/results-transform`, not a
+;;;   `deftransforms` entry) and is re-applied by none of these paths. A model declaring one loses
+;;;   it silently, which for several models means leaking a field the hook exists to scrub. Check
+;;;   `(isa? model :toucan2.tools.after-select/after-select)` first; GHY-4609 has the fix and the
+;;;   audited list of 42 seams.
+;;; - `scalar` and `rows` return plain maps and apply NO `:out` transforms at all, by design. Only
+;;;   `select-executor` re-applies them. So "the model's transforms are re-applied" is true of
+;;;   `select-executor` and false of the other two -- pick the path that matches what the caller
+;;;   needs, rather than the one that happens to return the right shape.
+;;;
+;;; The two SSO models this namespace serves declare no after-select, and its three reads use
+;;; `rows`/`scalar` on columns that declare no transforms.
+
+(defn select-executor
+  "A `params -> [instance]` fn for a read query: in-transforms, execute, out-transforms + instance.
+  `builder` is a `def-sqlvec-fns`-generated fn (turns a param map into a sqlvec)."
+  [model builder]
+  (-> (reducible-executor builder)
+      (wrap-in-transforms model)
+      (wrap-out-transforms model)))
+
+(defn scalar
+  "Run a read `builder` returning a single aggregate/value row (`:? :1`), out-transforming it and
+  returning the map. No instance wrapper -- these rows aren't model instances (COUNT(*), a single
+  column). `nil` when there is no row."
+  [model builder params]
+  (let [ins  (direction-fns model :in)
+        outs (direction-fns model :out)]
+    (some->> (t2/query-one (builder (apply-transforms ins params)))
+             (apply-transforms outs))))
+
+(defn rows
+  "Run a read `builder` returning plain maps (aggregations, projections that aren't model rows).
+  In-transforms the params; does NOT out-transform or instance the results, since these rows are
+  not model instances. Use [[select-executor]] when you want instances."
+  [model builder params]
+  (let [ins (direction-fns model :in)]
+    (t2/query (builder (apply-transforms ins params)))))
