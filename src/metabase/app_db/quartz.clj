@@ -49,11 +49,11 @@
 ;; even while an old node is running it, and reschedules it under the new name. With it, upgraded nodes load the
 ;; stored row under the current class.
 ;;
-;; Entries are keyed by the job's current key, because a stored row belongs to a job only under the same key.
-;; Each value lists the names the class has had under that key. When a job's key changes, replace its entry with
-;; one for the new key that starts the names again: a row under the old key has to be deleted as classless, or it
-;; would keep running beside the newly scheduled one. Otherwise keep entries for good: stored rows keep the old
-;; name.
+;; Each entry is keyed by the job's key, to record which job the names belong to, and lists the names the class
+;; has had under that key. The lookup goes by class name alone, because Quartz asks for a class by name only. So
+;; when a job's key changes, remove its entry: a row under the old key would otherwise still load, and keep running
+;; beside the newly scheduled job. Without the entry the row is deleted as classless. Otherwise keep entries for
+;; good: stored rows keep the old name.
 ;;
 ;; Job keys renamed in the past, to help explain a stored row under a key no job uses.
 ;; Add to it when a key changes, with the release, each key above the class it had, and how the job changed:
@@ -150,7 +150,8 @@
    "metabase.task.task-history-cleanup.job"
    ["metabase.task.task_history_cleanup.TaskHistoryCleanup"
     "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"]
-   ;; one job per transform job, keyed by this prefix and the transform job's ID
+   ;; There is one job per transform job, so this is the prefix their keys share. Nothing looks an entry up by
+   ;; its key, so a prefix works here.
    "metabase.task.transforms.schedule."
    ["metabase_enterprise.transforms.schedule.RunTransforms"
     "metabase.transforms.schedule.RunTransforms"]
