@@ -98,9 +98,14 @@
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
+(defn- path-dir
+  "The directory part of repo `path`, trailing slash included (\"\" for a top-level file)."
+  [path]
+  (or (re-find #"^.*/" path) ""))
+
 (defn- resolve-status
-  "Suppresses a no-op 'update' whose content_hash and stored file_path both still match, otherwise keeps status
-  unchanged."
+  "Suppresses a no-op 'update' whose content_hash still matches and whose stored file_path is still in the
+  directory the entity now serializes to, otherwise keeps status unchanged."
   [model-type model-id status existing]
   (if (or (not= "update" status)
           (nil? (:content_hash existing)))
@@ -108,7 +113,14 @@
     (let [{:keys [path content-hash]} (source/row->file-info {:model_type model-type :model_id model-id})]
       (if (and (= (:content_hash existing) content-hash)
                (or (nil? (:file_path existing))
-                   (= (:file_path existing) path)))
+                   ;; Compare only the directory. It comes from the entity's parents (collection, dashboard,
+                   ;; transform), which can be renamed with no change to the entity's own serialization; then the
+                   ;; file must move. The file name comes from the entity's label, which is in its serialization,
+                   ;; plus a dedup suffix (`_2`) that an export adds when a sibling has the same name;
+                   ;; `row->file-info` adds no suffix. So with an equal hash the stored file name can still differ,
+                   ;; e.g. by a dedup suffix or by a `name:` edited in the repo without a rename of the file, and the
+                   ;; push has nothing to write.
+                   (and path (= (path-dir (:file_path existing)) (path-dir path)))))
         "synced"
         status))))
 
