@@ -3,6 +3,7 @@ display_name: V Ai Usage Log
 created_at: '2026-04-24T19:39:27.514962Z'
 db_id: Internal Metabase Database
 schema: public
+entity_type: entity/EventTable
 active: true
 field_order: database
 initial_sync_status: complete
