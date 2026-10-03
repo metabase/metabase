@@ -13,7 +13,9 @@
 (defn- models-file? [filename]
   (boolean
    (and filename
-        (re-find #"/(?:metabase|metabase_enterprise)/[^/]+(?:/[^/]+)*/models(?:/|\.clj[cs]?$)"
+        ;; anchored at the source root so a `metabase` directory above it can't match, and one level of nesting so
+        ;; nested module directories like `search/semantic/models` pass
+        (re-find #"(?:^|/)(?:src|test)/(?:metabase|metabase_enterprise)/[^/]+(?:/[^/]+)?/models(?:/|\.clj[cs]?$)"
                  filename))))
 
 (defn- table-name-dispatch? [sym]
