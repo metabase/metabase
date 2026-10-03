@@ -12,6 +12,7 @@ import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 import { useSendProductFeedbackMutation } from "../../api/product-feedback";
 
 import { EmbedHomepageView } from "./EmbedHomepageView";
+import type { FeedbackModalValues } from "./FeedbackModal";
 import { FeedbackModal } from "./FeedbackModal";
 import { dismissEmbeddingHomepage } from "./actions";
 
@@ -56,22 +57,20 @@ export const EmbedHomepage = () => {
     }
   };
 
-  const onFeedbackSubmit = ({
-    comment,
-    email,
-  }: {
-    comment?: string;
-    email?: string;
-  }) => {
+  const onFeedbackSubmit = async (values: FeedbackModalValues) => {
+    const comment = values.comments?.trim() || undefined;
+    const email = values.email?.trim() || undefined;
+    if (comment || email) {
+      await sendProductFeedback({
+        comment,
+        email: email,
+        source: "embedding-homepage-dismiss",
+      }).unwrap();
+    }
     dispatch(dismissEmbeddingHomepage("dismissed-run-into-issues"));
 
     setFeedbackModalOpened(false);
     if (comment || email) {
-      sendProductFeedback({
-        comment,
-        email: email,
-        source: "embedding-homepage-dismiss",
-      });
       dispatch(
         addUndo({ message: t`Your feedback was submitted, thank you.` }),
       );
