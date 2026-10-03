@@ -15,6 +15,7 @@
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -105,25 +106,32 @@
        (metabot.db/database-exists? database-id)
        (mi/can-read? :model/Database database-id)))
 
+(defn- token
+  "`x`'s name as the query normalizer reads a key or marker: namespace kept, lowercased, `_` read as `-`. nil for
+   anything but a keyword or string."
+  [x]
+  (when (or (keyword? x) (string? x))
+    (-> x u/qualified-name u/lower-case-en (str/replace \_ \-))))
+
 (defn- native-query?
   "Whether `query`, as state holds it, holds SQL anywhere along its nesting: an MBQL 4 query of type native or with a
    native source query, or an MBQL 5 native stage, in the query itself or in a join. Read off the stored form because
    normalizing needs the query's database, and a SQL query must be refused as SQL even when that database is gone.
    Only the nesting keys are followed, since template tags and expressions are keyed by names a user picks. Keys
-   and values may be keywords or, after a JSON round trip, strings."
+   and markers are read through [[token]], as the normalizer reads them, so `source_query`, `\"Joins\"` and
+   `NATIVE` count."
   [query]
-  (letfn [(entry [m k]
-            (let [v (get m k)]
-              (if (some? v) v (get m (subs (str k) 1)))))
-          (sql? [node]
+  (letfn [(sql? [node]
             (and (map? node)
-                 (or (some? (entry node :native))
-                     (contains? #{:native "native"} (entry node :type))
-                     (contains? #{:mbql.stage/native "mbql.stage/native"} (entry node :lib/type))
-                     (some #(sql? (entry node %)) [:query :source-query])
-                     (some #(let [nodes (entry node %)]
-                              (and (sequential? nodes) (some sql? nodes)))
-                           [:stages :joins]))))]
+                 (some (fn [[k v]]
+                         (case (token k)
+                           "native"                 (some? v)
+                           "type"                   (= "native" (token v))
+                           "lib/type"               (= "mbql.stage/native" (token v))
+                           ("query" "source-query") (sql? v)
+                           ("stages" "joins")       (and (sequential? v) (some sql? v))
+                           false))
+                       node)))]
     (boolean (sql? query))))
 
 (defn- check-sql-runnable!
