@@ -7,6 +7,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.util.malli.registry :as mr]))
 
+(set! *warn-on-reflection* true)
+
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
   [n]
@@ -395,3 +397,73 @@
            clojure.lang.ExceptionInfo
            #"Invalid input.*:template-tags"
            (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel same-stored-value?-test
+  (let [same? #'serdes/same-stored-value?]
+    (testing "equal values"
+      (is (same? 1 1))
+      (is (same? {:a 1} {:a 1}))
+      (is (same? nil nil))
+      (is (not (same? 1 2))))
+    (testing "timestamps compare by instant"
+      (let [offset (java.time.OffsetDateTime/parse "2024-08-28T09:46:18.671622Z")
+            zoned  (java.time.ZonedDateTime/parse "2024-08-28T11:46:18.671622+02:00[Europe/Berlin]")]
+        (is (same? offset zoned))
+        (is (same? offset (.toInstant offset)))
+        (is (not (same? offset (.plusNanos zoned 1000))))
+        (testing "a timestamp is not the same as a value that is not a timestamp"
+          (is (not (same? offset "2024-08-28T09:46:18.671622Z")))
+          (is (not (same? offset nil))))
+        (testing "a LocalDateTime is not recognized, so it compares as changed"
+          (is (not (same? (.toLocalDateTime offset) (.toLocalDateTime zoned)))))))
+    (testing "a stored keyword is the same as its name"
+      (is (same? :line "line"))
+      (is (same? :type/Text "type/Text"))
+      (is (not (same? :line "table")))
+      (is (not (same? "line" :line)) "only a stored keyword against an incoming string"))
+    (testing "MBQL 5 queries compare without :lib/metadata and without the :lib/uuid values no aggregation ref uses"
+      (let [query (fn [count-uuid filter-uuid ref-uuid]
+                    {:lib/type     :mbql/query
+                     :lib/metadata ::metadata-provider
+                     :database     1
+                     :stages       [{:lib/type     :mbql.stage/mbql
+                                     :source-table 2
+                                     :aggregation  [[:count {:lib/uuid count-uuid}]]
+                                     :filters      [[:> {:lib/uuid filter-uuid} [:field {:lib/uuid (fake-uuid 9)} 3] 1]]
+                                     :order-by     [[:asc {:lib/uuid ref-uuid} [:aggregation {} count-uuid]]]}]})]
+        (is (same? (query (fake-uuid 1) (fake-uuid 2) (fake-uuid 3))
+                   (dissoc (query (fake-uuid 1) (fake-uuid 4) (fake-uuid 5)) :lib/metadata))
+            "new uuids that no aggregation ref uses do not count")
+        (is (not (same? (query (fake-uuid 1) (fake-uuid 2) (fake-uuid 3))
+                        (query (fake-uuid 6) (fake-uuid 2) (fake-uuid 3))))
+            "a new uuid for an aggregation that a ref uses counts, so the query compares as changed")
+        (is (not (same? (query (fake-uuid 1) (fake-uuid 2) (fake-uuid 3))
+                        (assoc-in (query (fake-uuid 1) (fake-uuid 2) (fake-uuid 3)) [:stages 0 :source-table] 7)))
+            "a real change counts")
+        (testing "maps that are not MBQL 5 queries compare by equality"
+          (is (not (same? {:a {:lib/uuid (fake-uuid 1)}} {:a {:lib/uuid (fake-uuid 2)}}))))))))
+
+(deftest ^:parallel drop-unchanged-columns-test
+  (let [drop-unchanged #'serdes/drop-unchanged-columns
+        local          {:id         1
+                        :name       "Card"
+                        :display    :line
+                        :created_at (java.time.OffsetDateTime/parse "2024-08-28T09:46:18Z")}]
+    (testing "keeps only the columns whose value changed"
+      (is (= {:name "New name"}
+             (drop-unchanged local {:name       "New name"
+                                    :display    "line"
+                                    :created_at (java.time.ZonedDateTime/parse "2024-08-28T09:46:18Z")}))))
+    (testing "returns an empty map when nothing changed"
+      (is (= {} (drop-unchanged local {:name "Card" :display "line"}))))
+    (testing "keeps a column that the stored row does not have"
+      (is (= {:bundle "bytes"} (drop-unchanged local {:name "Card" :bundle "bytes"}))))
+    (testing "keeps a column that changes to nil"
+      (is (= {:display nil} (drop-unchanged local {:display nil}))))))
+
+(deftest ^:parallel import-visualization-settings-drops-nil-column-settings-test
+  (testing "an exported `column_settings: null` imports as no column_settings key, which the app DB reads as {}"
+    (is (not (contains? (serdes/import-visualization-settings {:column_settings nil}) :column_settings)))
+    (is (= {} (serdes/import-visualization-settings {:column_settings nil}))))
+  (testing "a column_settings map is still imported"
+    (is (contains? (serdes/import-visualization-settings {:column_settings {}}) :column_settings))))
