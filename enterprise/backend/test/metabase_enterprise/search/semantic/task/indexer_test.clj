@@ -55,8 +55,8 @@
        semantic.env/get-index-metadata                      (constantly ::index-metadata)
        semantic.index-metadata/get-active-index-state       (constantly {:index {:table-name "index_1"}})
        semantic.settings/semantic-search-vector-strategy    (constantly :hnsw)
-       semantic.core/build-hnsw-index-async!                 #(swap! builds inc)
-       semantic.indexer/quartz-job-run!                      (fn [& _] (swap! runs inc))]
+       semantic.core/build-hnsw-index-async!                #(swap! builds inc)
+       semantic.indexer/quartz-job-run!                     (fn [& _] (swap! runs inc))]
       (doseq [[state expected-builds] [[nil 1] [:invalid 1] [:building 0] [:ready 0]]]
         (reset! builds 0)
         (mt/with-dynamic-fn-redefs [semantic.u/index-state (constantly state)]
