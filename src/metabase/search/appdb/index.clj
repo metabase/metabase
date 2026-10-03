@@ -157,7 +157,8 @@
       (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
       ;; Drop any indexes that are no longer referenced.
       ;; A sweep outside the caller's transaction gets the rest.
-      (when-not (ddl-commits-caller-transaction?)
+      (if (ddl-commits-caller-transaction?)
+        (log/debug "Deferring orphan index drops: dropping here would commit the caller's transaction")
         (drop-orphan-indexes!))
       (catch Exception e
         (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))

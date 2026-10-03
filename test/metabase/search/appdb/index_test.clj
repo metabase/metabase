@@ -31,12 +31,13 @@
 (defmacro ^:private with-temp-index-version
   "Run `body` under index version `version`, then drop its metadata rows and any tables they tracked."
   [version & body]
-  `(binding [search.spec/*testing-only-index-version-hash* ~version]
-     (try
-       ~@body
-       (finally
-         (t2/delete! :model/SearchIndexMetadata :version ~version)
-         (search.index/delete-obsolete-tables!)))))
+  `(let [version# ~version]
+     (binding [search.spec/*testing-only-index-version-hash* version#]
+       (try
+         ~@body
+         (finally
+           (t2/delete! :model/SearchIndexMetadata :version version#)
+           (search.index/delete-obsolete-tables!))))))
 
 (defn- index-hits [term]
   (count (search.index/search term)))
