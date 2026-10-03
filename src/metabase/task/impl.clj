@@ -80,7 +80,7 @@
       (log/info "Initializing task" (u/format-color 'green (name k)) (u/emoji "📆"))
       (f k)
       (catch Throwable e
-        (log/errorf "Error initializing task %s: %s" k (ex-message e))))))
+        (log/errorf e "Error initializing task %s" k)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          STARTING/STOPPING SCHEDULER                                           |

@@ -92,7 +92,7 @@
       (println "Dump complete")
       (system-exit! 0))
     (catch Throwable e
-      (log/errorf "Failed to dump application database to H2 file: %s" (ex-message e))
+      (log/error e "Failed to dump application database to H2 file")
       (system-exit! 1))))
 
 (defn ^:command reset-password
@@ -226,7 +226,7 @@
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/errorf "ERROR ROTATING KEY: %s" (ex-message e))
+      (log/error e "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
 (defn ^:command enable-encryption
@@ -259,7 +259,7 @@
     (log/info "Encryption removed OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/errorf "ERROR REMOVING ENCRYPTION: %s" (ex-message e))
+      (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
