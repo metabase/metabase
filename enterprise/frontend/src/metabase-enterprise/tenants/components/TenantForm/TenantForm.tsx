@@ -12,7 +12,10 @@ import {
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { LoginAttributesWidget } from "metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Tenant } from "metabase-types/api";
+
+import { PdfExportLogoField } from "./PdfExportLogoField";
 
 const MAX_SLUG_LENGTH = 255;
 
@@ -90,6 +93,7 @@ export const TenantForm = ({
             disabled={!!initialValues.slug}
             mb="xxl"
           />
+          {hasPremiumFeature("whitelabel") && <PdfExportLogoField />}
           <LoginAttributesWidget
             name="attributes"
             title={t`Default attributes`}

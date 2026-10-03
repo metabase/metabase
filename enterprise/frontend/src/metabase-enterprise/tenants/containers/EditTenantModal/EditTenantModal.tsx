@@ -11,6 +11,7 @@ import {
   useGetTenantQuery,
   useUpdateTenantMutation,
 } from "metabase-enterprise/api";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Tenant } from "metabase-types/api";
 
 import { TenantForm } from "../../components/TenantForm";
@@ -31,10 +32,15 @@ export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
   } = useGetTenantQuery(tenantId ?? skipToken);
   const [updateTenant] = useUpdateTenantMutation();
 
-  const initialValues = useMemo(
-    () => _.pick(tenant, ["id", "name", "slug", "attributes"]),
-    [tenant],
-  );
+  const initialValues = useMemo(() => {
+    const keys: (keyof Tenant)[] = ["id", "name", "slug", "attributes"];
+    // The API refuses a logo without whitelabel, so a logo left over from an
+    // earlier license must not be sent back with unrelated edits.
+    if (hasPremiumFeature("whitelabel")) {
+      keys.push("pdf_export_logo");
+    }
+    return _.pick(tenant, keys);
+  }, [tenant]);
 
   const handleSubmit = async (vals: Partial<Tenant>) => {
     if (typeof vals.id !== "number") {
