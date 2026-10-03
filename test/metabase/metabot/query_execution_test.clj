@@ -6,7 +6,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.tools.util :as tools.util]
-   [metabase.query-processor.core :as qp]
+   ;; Tests redefine `process-query` here, not in `metabase.query-processor.core`. The core var is a potemkin copy of
+   ;; this one, so once other tests have patched both, redefining the copy no longer takes effect.
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (defn- venues-query

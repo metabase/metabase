@@ -6,7 +6,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.query-processor.core :as qp]
+   ;; Tests redefine `process-query` here, not in `metabase.query-processor.core`. The core var is a potemkin copy of
+   ;; this one, so once other tests have patched both, redefining the copy no longer takes effect.
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (defn- run-tool!
@@ -50,7 +52,10 @@
       (is (= ["| Count |" "| --- |" "| 100 |"] (data-lines output)))
       (is (not (str/includes? output "Only the first")))))
   (testing "an MBQL 4 query from the user's viewing context runs too"
-    (let [{:keys [structured-output]} (run-tool! {"ctx" (mt/mbql-query venues {:limit 3})} {:query_id "ctx"})]
+    (let [legacy-query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues), :limit 3}}
+          {:keys [structured-output]} (run-tool! {"ctx" legacy-query} {:query_id "ctx"})]
       (is (=? {:returned 3 :truncated? false} structured-output)))))
 
 (deftest run-query-records-a-metabot-run-test
