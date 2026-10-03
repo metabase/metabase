@@ -26,23 +26,17 @@
 
 (set! *warn-on-reflection* true)
 
-(defn mock-git-source
-  "Create a mock git source for testing"
+(defn mock-git-remote
+  "Create a mock git remote for testing"
   [& {:keys [branches error-on-branches?]
       :or {branches ["main" "develop"]}}]
-  (reify source.p/Source
-    (create-branch [_ _branch _base]
-      nil)
+  (reify source.p/Remote
     (branches [_]
       (if error-on-branches?
         (throw (Exception. "Repository not found"))
         branches))
     (default-branch [_]
-      "main")
-    (snapshot [_]
-      nil)
-    (snapshot-at [_ _version]
-      nil)))
+      "main")))
 
 (use-fixtures :once
   (fixtures/initialize :db)
@@ -74,7 +68,7 @@
                                        remote-sync-token  "valid-token"
                                        remote-sync-branch "main"
                                        remote-sync-type   :read-only]
-      (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [_ _] ["main"])]
+      (mt/with-dynamic-fn-redefs [source.git/branches (fn [_] ["main"])]
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})))))))
 
@@ -87,7 +81,7 @@
                                          remote-sync-token  "valid-token"
                                          remote-sync-branch ""
                                          remote-sync-type   :read-write]
-        (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [_ _] (swap! branches-calls inc) ["main"])]
+        (mt/with-dynamic-fn-redefs [source.git/branches (fn [_] (swap! branches-calls inc) ["main"])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})
           (is (= 1 @branches-calls)
               "Test Connection must list the remote's branches even when the branch-existence check is skipped"))))))
@@ -98,7 +92,7 @@
                                        remote-sync-token  "rotated-token"
                                        remote-sync-branch ""
                                        remote-sync-type   :read-write]
-      (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [_ _] (throw (ex-info "Authentication failed" {})))]
+      (mt/with-dynamic-fn-redefs [source.git/branches (fn [_] (throw (ex-info "Authentication failed" {})))]
         (is (= "Authentication failed: Please check your git credentials"
                (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))))
 
@@ -109,7 +103,7 @@
                                          remote-sync-token  "saved-token"
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [url token]
+        (mt/with-dynamic-fn-redefs [source.git/branches (fn [{url :remote-url token :token}]
                                                                  (reset! captured {:url url :token token})
                                                                  ["main"])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
@@ -125,7 +119,7 @@
                                          remote-sync-token  full-token
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [_ token]
+        (mt/with-dynamic-fn-redefs [source.git/branches (fn [{token :token}]
                                                                  (reset! captured token)
                                                                  ["main"])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
@@ -177,25 +171,41 @@
 
 (deftest branches-endpoint-returns-branches-test
   (testing "GET /api/ee/remote-sync/branches returns list of branches"
-    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source :branches ["main" "develop" "feature-branch"]))]
+    (mt/with-dynamic-fn-redefs [source/remote-from-settings (constantly (mock-git-remote :branches ["main" "develop" "feature-branch"]))]
       (is (= {:items ["main" "develop" "feature-branch"]}
              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches"))))))
 
 (deftest branches-endpoint-requires-superuser-test
   (testing "GET /api/ee/remote-sync/branches requires superuser permissions"
-    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source))]
+    (mt/with-dynamic-fn-redefs [source/remote-from-settings (constantly (mock-git-remote))]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "ee/remote-sync/branches"))))))
 
 (deftest branches-endpoint-errors-when-git-not-configured-test
   (testing "GET /api/ee/remote-sync/branches errors when git source not configured"
-    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly nil)]
+    (mt/with-dynamic-fn-redefs [source/remote-from-settings (constantly nil)]
       (is (= "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
              (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
 
+(deftest branches-endpoint-does-not-clone-test
+  (testing "GET /api/ee/remote-sync/branches lists the remote's branches without cloning it"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url                 (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
+            ^java.io.File clone (#'source.git/repo-path {:remote-url url})]
+        (try
+          (mt/with-temporary-setting-values [remote-sync-url    url
+                                             remote-sync-token  nil
+                                             remote-sync-branch "master"]
+            (is (not (.exists clone)) "Precondition: no local clone yet")
+            (is (= {:items ["develop" "master"]}
+                   (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches")))
+            (is (not (.exists clone)) "Listing the branches must not clone the repository"))
+          (finally
+            (org.apache.commons.io.FileUtils/deleteQuietly clone)))))))
+
 (deftest branches-endpoint-handles-repository-errors-test
   (testing "GET /api/ee/remote-sync/branches handles git repository errors"
-    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source :error-on-branches? true))]
+    (mt/with-dynamic-fn-redefs [source/remote-from-settings (constantly (mock-git-remote :error-on-branches? true))]
       (is (= "Repository not found: Please check the repository URL"
              (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
 
@@ -2111,9 +2121,7 @@
    configured branch that has been deleted upstream."
   [branch]
   (reify source.p/Source
-    (branches [_] ["main"])
     (create-branch [_ _ _] nil)
-    (default-branch [_] "main")
     (snapshot [_]
       (throw (ex-info (str "Invalid branch: " branch)
                       {:error-type :missing-branch
@@ -2171,9 +2179,7 @@
 (deftest has-remote-changes-still-propagates-other-errors-test
   (testing "Non-missing-branch failures still propagate (the graceful handler is :missing-branch-only)"
     (let [failing-source (reify source.p/Source
-                           (branches [_] ["main"])
                            (create-branch [_ _ _] nil)
-                           (default-branch [_] "main")
                            (snapshot [_] (throw (RuntimeException. "boom")))
                            (snapshot-at [_ _version] (throw (RuntimeException. "boom"))))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"

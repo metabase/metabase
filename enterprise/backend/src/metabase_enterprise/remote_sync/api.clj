@@ -323,10 +323,10 @@
   Requires superuser permissions."
   []
   (api/check-superuser)
-  (let [source (source/source-from-settings)]
-    (api/check-400 source "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable.")
+  (let [remote (source/remote-from-settings)]
+    (api/check-400 remote "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable.")
     (try
-      (let [branch-list (source.p/branches source)]
+      (let [branch-list (source.p/branches remote)]
         {:items branch-list})
       (catch Exception e
         (log/errorf "Failed to get branches from source: %s" (ex-message e))

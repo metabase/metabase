@@ -2,14 +2,17 @@
   (:require
    [methodical.core :as methodical]))
 
+(defprotocol Remote
+  "Questions that the remote repository answers by itself. An implementation needs no local copy of the repository,
+  so asking one is cheap."
+  (branches [remote]
+    "The branch names of the remote, as a sorted collection of strings.")
+
+  (default-branch [remote]
+    "The name of the default branch of the remote. Throws when the remote has none."))
+
 (defprotocol Source
-  (branches [source]
-    "Gets all available branch names from the remote source.
-
-    Takes a source instance implementing this protocol.
-
-    Returns a collection of branch name strings available in the source.")
-
+  "Operations on a local copy of the remote repository: reads at a version, writes, and branch creation."
   (create-branch [source branch-name base-commit-ish]
     "Creates a new branch from an existing branch.
 
@@ -17,13 +20,6 @@
     a base-commit-ish (the name of the existing branch or commit hash to use as the base).
 
     Returns the name of the newly created branch.")
-
-  (default-branch [source]
-    "Gets the default branch name from the remote source.
-
-    Takes a source instance implementing this protocol.
-
-    Returns the default branch name as a string, or nil if no default branch is found.")
 
   (snapshot [source]
     "Creates a snapshot from the source for consistent reads and writes.

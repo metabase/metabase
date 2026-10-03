@@ -244,10 +244,7 @@ width: fixed
     "mock-version"))
 
 (defrecord MockSource [source-id base-url branch fail-mode files-atom branches-atom managed-dirs]
-  source.p/Source
-  (create-branch [_this branch _base]
-    (swap! branches-atom conj [branch (str branch "-ref")]))
-
+  source.p/Remote
   (branches [_this]
     (case fail-mode
       :branches-error (throw (java.net.UnknownHostException. "Network error"))
@@ -258,6 +255,10 @@ width: fixed
 
   (default-branch [_this]
     "main")
+
+  source.p/Source
+  (create-branch [_this branch _base]
+    (swap! branches-atom conj [branch (str branch "-ref")]))
 
   (snapshot [_this]
     (->MockSourceSnapshot source-id base-url branch fail-mode files-atom managed-dirs))
@@ -295,7 +296,7 @@ width: fixed
     (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom managed-dirs)))
 
 (defn versioned-source
-  "A fake Source for exercising the `async-import!`/`async-export!` base-snapshot resolution end-to-end.
+  "A fake Source (and Remote) for exercising the `async-import!`/`async-export!` base-snapshot resolution end-to-end.
 
   Unlike [[create-mock-source]] (which always reports \"mock-version\"), this lets a test control
   versions: `:current` is the version `snapshot` reports, and `:trees` maps version -> {path content}.
@@ -355,10 +356,13 @@ width: fixed
                                   new-version))
                               (abort-commit! [_] nil))))
                         (version [_] version)))]
-    (reify source.p/Source
+    (reify
+      source.p/Remote
       (branches [_] [branch])
-      (create-branch [_ _ _] nil)
       (default-branch [_] branch)
+
+      source.p/Source
+      (create-branch [_ _ _] nil)
       (snapshot [_] (mk-snapshot (:current @state)))
       (snapshot-at [_ v] (when (contains? (:trees @state) v) (mk-snapshot v))))))
 

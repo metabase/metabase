@@ -114,7 +114,7 @@
                                                          :remote-sync-branch "main"
                                                          :remote-sync-type  :read-only}))))
   (testing "Non-GitHub HTTPS URLs are accepted"
-    (mt/with-dynamic-fn-redefs [git/remote-branches (fn [_ _] ["main"])]
+    (mt/with-dynamic-fn-redefs [git/branches (fn [_] ["main"])]
       (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
                                                :remote-sync-token nil
                                                :remote-sync-branch "main"
@@ -268,7 +268,7 @@
         (-> (.updateRef remote-repo "refs/heads/master") (doto (.setForceUpdate true)) (.delete))
         (link-head! "refs/heads/master")
         (is (nil? (.resolve remote-repo "HEAD")) "Precondition: the remote HEAD resolves to no commit")))
-    (is (= (sort branches) (git/remote-branches url nil)) "Precondition: the remote has only the given branches")
+    (is (= (sort branches) (git/branches {:remote-url url})) "Precondition: the remote has only the given branches")
     url))
 
 (defn- forget-clone!
