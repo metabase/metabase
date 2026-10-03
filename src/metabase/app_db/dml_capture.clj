@@ -7,7 +7,7 @@
 
   Event shape (see [[captured!]]):
 
-    {:op :delete, :model model, :rows [pre-image, ...]}
+    {:op :delete, :model model, :rows [pre-image, ...], :dependents (see [[dependents]], optional)}
 
   `:rows` are narrow pre-image snapshots: plain maps of raw column values, only the columns named by
   [[capture-fields]], selected with the statement's own conditions immediately before it executes.
@@ -72,6 +72,24 @@
   consumer's convergence backstop."
   {:arglists '([model event])}
   (fn [model _event] (keyword model)))
+
+(defmulti dependents
+  "Identify whatever else the statement is about to destroy, while it still exists.
+  Called with the pre-image `rows`, before the statement runs; the return value rides on the event as
+  `:dependents`, and nil (the default) leaves the key off.
+
+  This exists because Toucan cannot see database-level `ON DELETE CASCADE`. A consumer that tracks rows of
+  *other* tables has no way to learn which ones a delete took with it: by the time the event arrives they are
+  already gone, and their identity was never derivable from the deleted rows alone.
+
+  Implementations run on the calling thread inside the statement's transaction. They may query — nothing has
+  failed yet at this point — but their failures propagate and abort the caller's delete, so keep them narrow."
+  {:arglists '([model rows])}
+  (fn [model _rows] (keyword model)))
+
+(defmethod dependents :default
+  [_model _rows]
+  nil)
 
 (defn- deliver-captured!
   [model event]
@@ -152,10 +170,13 @@
     (if (empty? fields)
       (next-method rf query-type model parsed-args resolved-query)
       (let [rows (pre-image-rows :toucan.query-type/select.instances
-                                 model fields parsed-args resolved-query)]
+                                 model fields parsed-args resolved-query)
+            deps (when (seq rows)
+                   (dependents model rows))]
         (u/prog1 (next-method rf query-type model (assoc parsed-args ::captured? true) resolved-query)
           (when (seq rows)
-            (deliver-captured! model {:op :delete, :model model, :rows rows})))))))
+            (deliver-captured! model (cond-> {:op :delete, :model model, :rows rows}
+                                       deps (assoc :dependents deps)))))))))
 
 ;;; A model may mix capture with toucan2's row-level tools; methodical needs to be told the capture method is
 ;;; the innermost of the pack, i.e. closest to the statement actually executing. Tools that re-dispatch an
