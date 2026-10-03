@@ -1,9 +1,19 @@
 (ns metabase-enterprise.remote-sync.test-helpers-test
-  "Tests for the MockSource implementation in test-helpers."
+  "Tests for test-helpers: the MockSource implementation and the clean-remote-sync-state fixture."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.remote-sync.test-helpers :as th]))
+   [metabase-enterprise.remote-sync.test-helpers :as th]
+   [metabase.actions.models :as action]
+   [metabase.actions.schema :as actions.schema]
+   [metabase.lib.core :as lib]
+   [metabase.search.core :as search]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- write-files!
   "Wholesale-write `files` ({:path :content}) to `snapshot` via the commit builder (clear managed dirs,
@@ -55,3 +65,69 @@
       (is (= #{"collections/abc/file1.yaml"}
              (set (source.p/list-files snapshot)))
           "Snippets dir should be cleaned even though no snippet files were written"))))
+
+(defn- content-ids
+  "Ids of the main app's cards, dashboards and non-personal collections (test users' personal collections
+  are created lazily, so they are left out)."
+  []
+  {:cards       (t2/select-pks-set :model/Card)
+   :dashboards  (t2/select-pks-set :model/Dashboard)
+   :collections (t2/select-pks-set :model/Collection :personal_owner_id nil)})
+
+(deftest clean-remote-sync-state-removes-imported-content-test
+  (testing "content a test imports into the main app is gone once the clean-remote-sync-state fixture ends"
+    (mt/dataset test-data
+      (mt/id) ; the mock source's card references test-data
+      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+        (let [before (content-ids)]
+          (th/clean-remote-sync-state
+           (fn []
+             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
+                                                                           :initiated_by   (mt/user->id :rasta)})]
+               (is (= :success (:status (impl/import! (source.p/snapshot (th/create-mock-source)) task-id))))
+               (is (t2/exists? :model/Card :name "Some Question")))))
+          (is (= before (content-ids))))))))
+
+(deftest clean-remote-sync-state-removes-collection-contents-test
+  (testing "the actions, documents and data apps that a test creates are gone once the clean-remote-sync-state fixture ends"
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (let [ids (atom {})]
+        (try
+          (th/clean-remote-sync-state
+           (fn []
+             (let [coll-id (t2/insert-returning-pk! :model/Collection {:name "Imported" :location "/"})
+                   ;; this action has no model, so no cascade from a deleted card removes it
+                   act-id  (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                          {:type          :query
+                                                           :name          "No model"
+                                                           :collection_id coll-id
+                                                           :database_id   (mt/id)
+                                                           :dataset_query (mt/native-query {:query "select 1"})}))
+                   doc-id  (t2/insert-returning-pk! :model/Document
+                                                    (merge (mt/with-temp-defaults :model/Document)
+                                                           {:collection_id coll-id
+                                                            :creator_id    (mt/user->id :rasta)}))
+                   app     (t2/insert-returning-instance! :model/DataApp {:name         "imported-app"
+                                                                          :display_name "Imported app"
+                                                                          :bundle_path  "app.js"})]
+               (reset! ids {:collection coll-id
+                            :action     act-id
+                            :document   doc-id
+                            :data-app   (:id app)
+                            :group      (t2/select-one-fn :permission_group_id :model/DataApp :id (:id app))}))))
+          (let [{:keys [collection action document data-app]} @ids]
+            (testing "the collection is gone"
+              (is (not (t2/exists? :model/Collection :id collection))))
+            (testing "a model-less action in the collection is gone"
+              (is (not (t2/exists? :model/Action :id action))))
+            (testing "a document in the collection is gone"
+              (is (not (t2/exists? :model/Document :id document))))
+            (testing "a data app is gone"
+              (is (not (t2/exists? :model/DataApp :id data-app)))))
+          (finally
+            (let [{:keys [action document data-app group]} @ids]
+              (when action (t2/delete! :model/Action :id action))
+              (when document (t2/delete! :model/Document :id document))
+              (when data-app (t2/delete! :model/DataApp :id data-app))
+              ;; a raw delete of the data app skips the hook that deletes its permission group
+              (when group (t2/delete! :model/PermissionsGroup :id group)))))))))
