@@ -721,7 +721,7 @@
   recovery found stale. Call this with the [[clone-lock]] of `path` held."
   [^File path]
   (let [prefix    (str (.getName path) "-")
-        in-use    (into #{} (map canonical-path) (concat @retired-clones (cached-sibling-clones)))
+        in-use    (into #{} (map canonical-path) (clones-deleted-at-exit))
         leftovers (->> (.listFiles (.getParentFile path))
                        (filter #(str/starts-with? (.getName ^File %) prefix))
                        (remove #(contains? in-use (canonical-path %))))]
