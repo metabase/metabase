@@ -719,7 +719,7 @@
                        (remove #(contains? in-use (canonical-path %))))]
     (doseq [^File dir leftovers]
       (log/info "Deleting a git clone that an earlier process left" {:path (str dir)})
-      (FileUtils/deleteQuietly dir))
+      (delete-clone-dir! dir))
     (boolean (seq leftovers))))
 
 (defn- clone-into-fresh-sibling!
@@ -755,7 +755,7 @@
 
                              leftovers?
                              (do (log/info "Deleting a stale git clone that an earlier process left" {:path (str path)})
-                                 (FileUtils/deleteQuietly path)
+                                 (delete-clone-dir! path)
                                  (open-checked! path args))
 
                              :else
