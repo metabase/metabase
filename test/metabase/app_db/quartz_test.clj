@@ -190,18 +190,19 @@
         renamed   (set (map peek (vals mdb.quartz/job-history)))
         unrenamed (cond->> unrenamed-job-classes
                     (not config/ee-available?) (remove #(str/starts-with? % "metabase_enterprise.")))]
-    (testing (str "These job classes are not listed.\n"
-                  "- An existing job's class under a new name, with the same job key: add the new name to the end"
-                  " of the job's entry in `metabase.app-db.quartz/job-history`. If the job has no entry, add one"
-                  " under its job key with the old name first, and remove the old name from"
-                  " `unrenamed-job-classes`.\n"
-                  "- A new job, or a job whose key changed too: add the class to `unrenamed-job-classes`. For a"
-                  " changed key, also add the rename to the comment above `job-history`.\n")
-      (is (= [] (remove (into renamed unrenamed-job-classes) current))))
-    (testing (str "These names in `unrenamed-job-classes` are not job classes.\n"
-                  "- The job was renamed and kept its job key: move the name into an entry in"
-                  " `metabase.app-db.quartz/job-history`, before the new name.\n"
-                  "- The job was removed, or its key changed too: remove the name.\n")
-      (is (= [] (remove current unrenamed))))
-    (testing "These job classes are listed as both renamed and unrenamed"
+    (testing "every job class is listed"
+      (is (= [] (remove (into renamed unrenamed-job-classes) current))
+          (str "For an existing job's class under a new name, with the same job key: add the new name to the end"
+               " of the job's entry in `metabase.app-db.quartz/job-history`. If the job has no entry, add one"
+               " under its job key with the old name first, and remove the old name from"
+               " `unrenamed-job-classes`.\n"
+               "For a new job, or a job whose key changed too: add the class to `unrenamed-job-classes`. For a"
+               " changed key, also remove the job's entry from `job-history` and add the rename to the comment"
+               " above it.")))
+    (testing "every name in `unrenamed-job-classes` is a job class"
+      (is (= [] (remove current unrenamed))
+          (str "For a job that was renamed and kept its job key: move the name into an entry in"
+               " `metabase.app-db.quartz/job-history`, before the new name.\n"
+               "For a job that was removed, or whose key changed too: remove the name.")))
+    (testing "no job class is listed as both renamed and unrenamed"
       (is (= [] (filter renamed unrenamed-job-classes))))))
