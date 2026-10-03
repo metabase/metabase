@@ -44,18 +44,60 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
 
-;; Quartz stores each job's class name in the app DB, and moving a job's namespace renames its class. Without an
-;; entry here, the first upgraded node deletes the stored job as classless at startup, even while an old node is
-;; running it, and reschedules it under the new name, which old nodes can't load. With one, stored rows keep the old
-;; name, which old nodes load, and upgraded nodes load the current class under it.
-;;
-;; Keep entries: the rows keep the old name for good, so a removed entry brings the deletion back.
-(def renamed-job-classes
-  "Map of the old name of a renamed Quartz job class to its current name."
-  {})
+;; Quartz stores each job's class name in the app DB, and moving a job's namespace renames its class. Without a
+;; registered rename, the first upgraded node deletes the stored job as classless at startup, even while an old node
+;; is running it, and reschedules it under the new name, which old nodes can't load. With one, stored rows keep the
+;; old name, which old nodes load, and upgraded nodes load the current class under it.
+(defonce ^:private renamed-job-classes
+  ;; old class name -> current class name. Registrations stay for good: stored rows keep the old name.
+  (atom {}))
+
+(defn- add-renamed-job-class
+  "Returns `renames`, a map of old job class names to current ones, with `old-name` mapped to `current-name`.
+  Throws when the names are equal, when `old-name` already maps to another class, or when either name is already
+  registered on the other side."
+  [renames old-name current-name]
+  (cond
+    (= old-name current-name)
+    (throw (ex-info (format "Job class %s can't be registered as its own old name" old-name)
+                    {:old-name old-name}))
+
+    (not= current-name (get renames old-name current-name))
+    (throw (ex-info (format "Job class name %s is already registered as an old name of %s"
+                            old-name (get renames old-name))
+                    {:old-name old-name, :current-name current-name}))
+
+    (contains? renames current-name)
+    (throw (ex-info (format "Job class name %s is registered as an old name, so no class can have it now"
+                            current-name)
+                    {:old-name old-name, :current-name current-name}))
+
+    (some #{old-name} (vals renames))
+    (throw (ex-info (format "Job class name %s belongs to a current class, so it can't be an old name" old-name)
+                    {:old-name old-name, :current-name current-name}))
+
+    :else
+    (assoc renames old-name current-name)))
+
+(defn- class-exists? [^String class-name]
+  (try
+    (some? (Class/forName class-name false (classloader/the-classloader)))
+    (catch ClassNotFoundException _
+      false)))
+
+(defn register-renamed-job-class!
+  "Makes Quartz load `job-class` for jobs stored under `old-name`, the name the class had before its namespace moved.
+  Call it at the top level of the job's namespace, which loads before the scheduler starts.
+  Throws when `old-name` still names a class, or when it conflicts with another registered rename."
+  [^String old-name ^Class job-class]
+  (when (class-exists? old-name)
+    (throw (ex-info (format "Job class name %s still names a class, so jobs stored under it already load" old-name)
+                    {:old-name old-name, :current-name (.getName job-class)})))
+  (swap! renamed-job-classes add-renamed-job-class old-name (.getName job-class))
+  nil)
 
 (defn- load-class ^Class [^String class-name]
-  (Class/forName (get renamed-job-classes class-name class-name) true (classloader/the-classloader)))
+  (Class/forName (get @renamed-job-classes class-name class-name) true (classloader/the-classloader)))
 
 (defrecord ^:private ClassLoadHelper []
   org.quartz.spi.ClassLoadHelper
