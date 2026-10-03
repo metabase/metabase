@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/common/components/QuestionDownloadWidget/use-download-data.ts b/frontend/src/metabase/common/components/QuestionDownloadWidget/use-download-data.ts
+index 5dd711310e2..61dc3c9448c 100644
+--- a/frontend/src/metabase/common/components/QuestionDownloadWidget/use-download-data.ts
++++ b/frontend/src/metabase/common/components/QuestionDownloadWidget/use-download-data.ts
+@@ -62,7 +62,6 @@ export const useDownloadData = ({
+           documentUuid,
+           documentId,
+           params,
+-          visualizationSettings,
+         }),
+       );
+     },

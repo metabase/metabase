@@ -1,0 +1,25 @@
+id: reg-35561
+origin:
+  kind: regression
+  issue: 35561
+  fix_commit: 71f7fe60f16b0537b488eb6f0225ef0e7caf6fc0
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 35561 should display a functional fk drill for both null and non-null values"
+    - "metabase.lib.drill-thru.fk-filter-test/return-fk-filter-for-null-fk-test"
+bug:
+  statement: "Clicking an empty (null) foreign-key cell offers no drill to filter the table by that key."
+  odc: {type: Checking, qualifier: Extraneous}
+  module: lib/drill-thru
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.lib.drill-thru.fk-filter-test/return-fk-filter-for-null-fk-test"
+  expected_failure: "NULL-value branch: test-returns-drill expects {:type :drill-thru/fk-filter}, actual nil (2 of 4 assertions fail)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the e2e was removed from master by 4701e5f8dc5 (backend test parity), so its id comes from HEAD and the July base; July expected the sibling fk-filter-availability-test to fail on the mutant too but didn't run it; it was added by #38297 before the fix, which changed its NULL case to expect the drill"

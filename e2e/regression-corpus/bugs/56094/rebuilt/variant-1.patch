@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/query_builder/store/selectors.ts b/frontend/src/metabase/query_builder/store/selectors.ts
+index 57379a3f965..27540f91b23 100644
+--- a/frontend/src/metabase/query_builder/store/selectors.ts
++++ b/frontend/src/metabase/query_builder/store/selectors.ts
+@@ -1050,7 +1050,7 @@ export const getIsVisualized = createSelector(
+       question.display() !== "list") ||
+       (settings != null &&
+         (settings["table.pivot"] ||
+-          (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
++          (question.display() === "pivot" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
+ );
+ 
+ export const getIsLiveResizable = createSelector(

@@ -1,0 +1,28 @@
+id: reg-32075
+origin:
+  kind: regression
+  issue: 32075
+  fix_commit: 443a8ced4e898f3f6fad7b8294d2d43d74b43364
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 32075 should still display visualization as a map after adding a filter (metabase#32075)"
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 32075 should still display visualization as a map after adding another column to group by"
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 32075 should still display visualization as a map after adding another aggregation"
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 32075 should change display to default after removing a column to group by when map is not sensible anymore"
+    - "frontend/src/metabase-lib/v1/Question.unit.spec.ts::Question VISUALIZATION METHODS maybeResetDisplay should keep any sensible display when display was not locked (metabase#32075)"
+bug:
+  statement: "Adding a filter to a summarized map question switches the visualization from the map back to a table."
+  odc: {type: Checking, qualifier: Missing}
+  module: metabase-lib
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase-lib/v1/Question.unit.spec.ts::Question VISUALIZATION METHODS maybeResetDisplay should keep any sensible display when display was not locked (metabase#32075)"
+  expected_failure: "expect(question.display()).not.toBe(\"table\"); Received \"table\""
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the jest test shipped in frontend/test/metabase-lib/lib/Question.unit.spec.js and now lives in frontend/src/metabase-lib/v1/Question.unit.spec.ts (.js at HEAD and the July base); also killed by \"setDefaultDisplay should not set the display to scalar if another scalar display was selected and display is locked\", not written for this bug; fe_be_boundary inferred"

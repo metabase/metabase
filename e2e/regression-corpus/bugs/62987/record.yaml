@@ -1,0 +1,27 @@
+id: reg-62987
+origin:
+  kind: regression
+  issue: 62987
+  fix_commit: 6ce3e4b2505e20af126949f3f0520bf84bf59f56
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::issue 62987 should be possible to complete non-aggregation functions in custom aggregation (metabase#62987)"
+    - "frontend/src/metabase/querying/expressions/suggestions/aggregations.unit.spec.ts::suggestAggregations expressionMode = aggregation should suggest aggregations"
+    - "frontend/src/metabase/querying/expressions/suggestions/aggregations.unit.spec.ts::suggestAggregations expressionMode = aggregation should suggest aggregations, inside a word"
+    - "frontend/src/metabase/querying/expressions/suggestions/aggregations.unit.spec.ts::suggestAggregations expressionMode = aggregation should suggest aggregatoins, before parenthesis"
+bug:
+  statement: "When writing a custom aggregation, autocomplete doesn't suggest non-aggregation functions such as concat or coalesce."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: metabase-lib
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/suggestions/aggregations.unit.spec.ts::suggestAggregations expressionMode = aggregation should suggest aggregations"
+  expected_failure: "expect(results).toEqual(RESULTS); received options lack the non-aggregation completions (concat, contains, coalesce, hour, month, ...)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the three jest tests assert expected-completion lists the fix extended; the function table moved from querying/expressions/config.ts to metabase-lib/query/clauses/clauses.ts after the fix; fe_be_boundary inferred"

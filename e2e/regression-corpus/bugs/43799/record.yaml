@@ -1,0 +1,25 @@
+id: reg-43799
+origin:
+  kind: regression
+  issue: 43799
+  fix_commit: 6dff2dfe7ee2d7608510772f917f5195e02de511
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-1.cy.spec.js::issue 43799 should be able to map a parameter to an explicitly joined column in the model query"
+    - "metabase.query-processor.middleware.parameters.mbql-test/param-targeting-explicit-join-column-test"
+bug:
+  statement: "Connecting a dashboard filter to a model offers the underlying table's columns instead of the model's, losing the model's column metadata."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: metabase-lib/parameters/targets
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase-lib/v1/parameters/utils/targets.unit.spec.ts"
+  expected_failure: "getParameterColumns model cases: toEqual mismatch, columns report table \"Orders\" instead of \"Question\" (7 of 29 tests fail)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the e2e was removed from master by 4701e5f8dc5 (backend test parity), so its id comes from HEAD and the July base; param-targeting-explicit-join-column-test is a later backend parity test naming this issue; July's oracle is the getParameterColumns model blocks of targets.unit.spec.ts, added after the fix (#46529 and later) and not specific to this bug, so they're not in fix_tests, and hint.test is a spec path because July recorded only that 7 of the 9 model tests fail, not which ones; the three getParameterTargetField assertions the fix edited use numeric field ids and hit the id-match path, so they don't discriminate the bug"

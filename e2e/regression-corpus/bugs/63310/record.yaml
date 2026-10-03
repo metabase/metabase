@@ -1,0 +1,25 @@
+id: reg-63310
+origin:
+  kind: regression
+  issue: 63310
+  fix_commit: 814dd5c80051af00c49e87b247fece020f0e3a76
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js::scenarios > embedding > static embedding dashboard should not call `GET /api/database` (metabase#63310)"
+    - "frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.database-request.unit.spec.tsx::PublicOrEmbeddedDashboardPage > database requests should not call `GET /api/database` in a static embedding (metabase#63310)"
+bug:
+  statement: "Statically embedded dashboards call GET /api/database while loading, which fails for anonymous viewers."
+  odc: {type: Checking, qualifier: Missing}
+  module: dashboard
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.database-request.unit.spec.tsx::PublicOrEmbeddedDashboardPage > database requests should not call `GET /api/database` in a static embedding (metabase#63310)"
+  expected_failure: "expect(received).toHaveLength(expected) -- Expected length: 0, Received length: 1 (GET http://localhost/api/database) at database-request.unit.spec.tsx:25"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant ab83069bd51 (run 29135024785); the fix skipped the databases query for logged-out users; that code was later refactored to user selectors (#66262), so the mutant restores an unconditional useListDatabasesQuery; fe_be_boundary inferred"

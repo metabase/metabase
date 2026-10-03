@@ -1,0 +1,28 @@
+id: reg-53556
+origin:
+  kind: regression
+  issue: 53556
+  fix_commit: f617c871735914be8d812f06d6dc6648dc16ec40
+  fix_tests:
+    - "e2e/test/scenarios/models/reproductions.cy.spec.js::issue 53556 - nested question based on native model with remapped values Sort drill-through should work (metabase#53556)"
+    - "e2e/test/scenarios/models/reproductions.cy.spec.js::issue 53556 - nested question based on native model with remapped values Underlying records drill-through should work (metabase#53556)"
+    - "e2e/test/scenarios/models/reproductions.cy.spec.js::issue 53556 - nested question based on native model with remapped values Zoom in binning drill-through should work (metabase#53556)"
+    - "e2e/test/scenarios/models/reproductions.cy.spec.js::issue 53556 - nested question based on native model with remapped values Zoom in timeseries drill-through should work (metabase#53556)"
+    - "metabase.lib.card-test/source-card-is-model?-test"
+bug:
+  statement: "Drill-throughs on a question built from a native model whose renamed columns are mapped to table columns fail with a \"Column not found\" SQL error."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: "lib/card + drill-thru"
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.lib.card-test/source-card-is-model?-test"
+  expected_failure: "expected (lib.card/source-card-is-model? (lib.tu/query-with-source-model)), actual false"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the mutant makes source-card-is-model? compare against a sentinel keyword so it never matches, which reproduces the pre-fix effect across all drills without restoring the literal pre-fix code; the oracle checks the predicate rather than the drill SQL; three of the four e2e tests were removed on master by 4701e5f8dc5, so their ids are from 56879decb0a; source-card-type-test, also added by the fix, doesn't fail"

@@ -1,0 +1,27 @@
+id: reg-25614
+origin:
+  kind: regression
+  issue: 25614
+  fix_commit: 13f589c08303576ec146f070ce7e67004eeef59a
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/trendline.cy.spec.js::scenarios > question > trendline should display trend line for stack-100% chart (metabase#25614)"
+    - "frontend/src/metabase/visualizations/echarts/cartesian/model/trend-line.unit.spec.ts::getTrendLines (metabase#25614) builds a trend series for each numeric series"
+    - "frontend/src/metabase/visualizations/echarts/cartesian/model/trend-line.unit.spec.ts::getTrendLines (metabase#25614) normalizes trend values to [0, 1] for a Stack-100% chart"
+    - "frontend/src/metabase/visualizations/echarts/cartesian/model/trend-line.unit.spec.ts::getTrendLines (metabase#25614) leaves trend values un-normalized when the chart is not Stack-100%"
+bug:
+  statement: "On a bar or area chart stacked to 100%, the trend line doesn't show because its values aren't scaled to the 0–100% axis."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.unit.spec.ts::getTrendLines (metabase#25614) normalizes trend values to [0, 1] for a Stack-100% chart"
+  expected_failure: "expect(datum.count_trend).toBeCloseTo(0.75) -- Expected: 0.75, Received: 30"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's reconstruction.patch at b8673198cd4c3aa9f70782f41526dd009f27b933; July's mutant hit the other half of the fix: it removed the division in the shared getNormalizedDatasetTransform, which the bars use too, so bars and trend line stayed in the same units and the line stayed visible; the rebuild drops only the Stack-100% transform in getTrendLines; Mutant mismatch: reconstruction.patch drops the division in the shared getNormalizedDatasetTransform, so the bars lose their Stack-100% scaling along with the trend line and the trend line stays visible; that is why July's e2e pilot run stayed green, which July took to mean the e2e was vacuous; a rebuild following 13f589c should drop only the Stack-100% transform in getTrendLines (trend-line.ts), which the landed witness checks; the shipped trends.unit.spec.js was deleted in the ECharts migration (#41395); the July oracle \"dataset transform functions applyVisualizationSettingsDataTransformations should return an array of normalized datasets\" (dataset.unit.spec.ts) catches the July mutant but tests bar normalization, not this bug; the three getTrendLines tests were landed on this branch by the land-and-cull pass (b6c3f328367), which also culled the e2e; expected_failure inferred from the witness's assertion; fe_be_boundary inferred; base_commit is the parent of July's CI mutant c21ed82cea8 (run 29125377382)"

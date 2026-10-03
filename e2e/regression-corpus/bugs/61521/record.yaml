@@ -1,0 +1,25 @@
+id: reg-61521
+origin:
+  kind: regression
+  issue: 61521
+  fix_commit: 8bd9ea4b3ffce4fab532fb8a579d94f1645df3f3
+  fix_tests:
+    - "e2e/test/scenarios/dashboard/visualizer/reproductions.cy.spec.ts::issue 61521 should preserve column settings when use visualizer (metabase#61521)"
+    - "frontend/src/metabase/visualizer/visualizations/cartesian.unit.spec.ts::cartesian combineWithCartesianChart should remap the incoming card's column_settings onto the new column refs (metabase#61521)"
+bug:
+  statement: "Adding a second data source to a chart in the visualizer drops the added card's column formatting, such as percent."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: visualizer/cartesian
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/visualizer/visualizations/cartesian.unit.spec.ts::cartesian combineWithCartesianChart should remap the incoming card's column_settings onto the new column refs (metabase#61521)"
+  expected_failure: "expect(nextState.settings.column_settings).toEqual({\"[\\\"name\\\",\\\"COLUMN_3\\\"]\": {number_style: \"percent\"}}); Received: undefined"
+notes: "no mutant patch: the bug reconstructs by deleting the column_settings remap block in combineWithCartesianChart, but the fix's jest edits were an arity change with no assertion, so July found no oracle and saved no patch; the hole-closer test (hole-closer-test.patch, landed on this branch) fails on that deletion, with column_settings undefined instead of remapped onto COLUMN_3"

@@ -1,0 +1,7 @@
+id: reg-25885
+origin:
+  kind: regression
+  issue: 25885
+  alias_of: 39993
+  fix_commit: 28513ae8866e42960b781d48bb27b8d55cdf808a
+notes: "same fix commit as 39993 (#45180), which GitHub also names as this issue's fix; the mutant, statement and hint live in reg-39993, whose fix_tests include this issue's e2e repro"

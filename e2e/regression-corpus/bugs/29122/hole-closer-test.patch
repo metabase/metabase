@@ -1,0 +1,34 @@
+diff --git a/frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts b/frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts
+index b9d8965a89b..49a3e4ac441 100644
+--- a/frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts
++++ b/frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts
+@@ -1,3 +1,6 @@
++import dayjs from "dayjs";
++import "dayjs/locale/fr";
++
+ import type { DateFilterValue } from "metabase/querying/common/types";
+ import type { ParameterValueOrArray } from "metabase-types/api";
+ 
+@@ -460,6 +463,22 @@ describe("date parameters", () => {
+   ])("should ignore invalid value %s", (value) => {
+     expect(deserializeDateParameterValue(value)).toBeNull();
+   });
++
++  it("should serialize exclude-months with English month names regardless of the active locale (metabase#29122)", () => {
++    const originalLocale = dayjs.locale();
++    try {
++      dayjs.locale("fr");
++      const value: DateFilterValue = {
++        type: "exclude",
++        operator: "!=",
++        unit: "month-of-year",
++        values: [3],
++      };
++      expect(serializeDateParameterValue(value)).toEqual("exclude-months-Mar");
++    } finally {
++      dayjs.locale(originalLocale);
++    }
++  });
+ });
+ 
+ describe("temporal unit parameters", () => {

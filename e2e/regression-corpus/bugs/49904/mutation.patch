@@ -1,0 +1,24 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx b/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
+index b0a19d5d4e3..c490a91beb9 100644
+--- a/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
++++ b/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
+@@ -15,8 +15,6 @@ import { useDispatch, useSelector } from "metabase/redux";
+ import { setUIControls } from "metabase/redux/query-builder";
+ import { Box, Flex, rem } from "metabase/ui";
+ 
+-import { canShowNativePreview } from "../../ViewHeader/utils";
+-
+ import { NotebookNativePreview } from "./NotebookNativePreview";
+ 
+ // There must exist some transition time, no matter how short,
+@@ -52,9 +50,7 @@ export const NotebookContainer = ({
+   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
+     useSelector(getUiControls);
+ 
+-  const renderNativePreview =
+-    isShowingNotebookNativePreview &&
+-    canShowNativePreview({ question, queryBuilderMode: "notebook" });
++  const renderNativePreview = isShowingNotebookNativePreview;
+ 
+   const minNotebookWidth = 640;
+   const minSidebarWidth = 428;

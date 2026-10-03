@@ -1,0 +1,23 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx b/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
+index 322cd802b1e..89434d4f77b 100644
+--- a/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
++++ b/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
+@@ -15,7 +15,6 @@ import { Box, Flex, rem } from "metabase/ui";
+ 
+ import { setNotebookNativePreviewSidebarWidth } from "../../../../actions";
+ import { getUiControls } from "../../../../store/selectors";
+-import { canShowNativePreview } from "../../ViewHeader/utils";
+ 
+ import { NotebookNativePreview } from "./NotebookNativePreview";
+ 
+@@ -52,9 +51,7 @@ export const NotebookContainer = ({
+   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
+     useSelector(getUiControls);
+ 
+-  const renderNativePreview =
+-    isShowingNotebookNativePreview &&
+-    canShowNativePreview({ question, queryBuilderMode: "notebook" });
++  const renderNativePreview = isShowingNotebookNativePreview;
+ 
+   const minNotebookWidth = 640;
+   const minSidebarWidth = 428;

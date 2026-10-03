@@ -1,0 +1,25 @@
+id: reg-29122
+origin:
+  kind: regression
+  issue: 29122
+  fix_commit: 3d0a2de200c1f27caf7e0f0f5ebe6977336026ed
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-filters/dashboard-filters-date.cy.spec.js::scenarios > dashboard > filters > date correctly serializes exclude filter on non-English locales (metabase#29122)"
+    - "frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts::date parameters should serialize exclude-months with English month names regardless of the active locale (metabase#29122)"
+bug:
+  statement: "With Metabase in a non-English language, a dashboard date filter that excludes days of the week or months fails because the values are sent with localized names."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: metabase-lib
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: true
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts::date parameters should serialize exclude-months with English month names regardless of the active locale (metabase#29122)"
+  expected_failure: "expect(serializeDateParameterValue(value)).toEqual(\"exclude-months-Mar\"); Received: \"exclude-months-mars\""
+notes: "no mutant patch: July's semantic revert (format month names with dayjs().month(n - 1).format(\"MMM\"), which follows the active locale, instead of the English MONTHS array in parsing.ts) flipped no jest spec because jest runs in English, so nothing was saved; the hole-closer test, landed on this branch, fails under that revert with \"exclude-months-mars\" instead of \"exclude-months-Mar\"; the jest spec the fix shipped (DatePicker.unit.spec.tsx) covered a different bundled bug (checkbox state for hour 0) and was deleted in the date-filter rewrite; a later July batch that replaced e2e repros with unit tests kept this e2e as obsoleted by the rewrite of query-time.js, which contradicts the closed hole; module from the fix's query-time.js, the logic now lives in querying/parameters/utils/parsing.ts; fe_be_boundary inferred: the frontend sends a parameter value the backend can't parse"

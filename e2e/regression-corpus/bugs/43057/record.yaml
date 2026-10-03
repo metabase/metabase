@@ -1,0 +1,26 @@
+id: reg-43057
+origin:
+  kind: regression
+  issue: 43057
+  fix_commit: e45f93fa2cea9ad5d03d9ca9e047db132462460f
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 43057 should differentiate between date and datetime filters with 00:00 time (metabase#43057)"
+    - "frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePicker.unit.spec.tsx::SingleDatePicker should be able to add time"
+    - "metabase.query-processor.filter-test/date-vs-datetime-equality-filter-test"
+bug:
+  statement: "Filtering on a specific date with the time set to midnight drops the time, so the filter matches the whole day instead of 12:00 AM."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePicker.unit.spec.tsx::SingleDatePicker should be able to add time"
+  expected_failure: "onChange toHaveBeenLastCalledWith({ date: DATE, hasTime: true }); received hasTime: false"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the fix reworked a dozen DatePicker specs to the new { date, hasTime } value shape; only the discriminating one is listed; its filter.unit.spec.ts cases are gone since the logic moved into src/metabase/lib/fe_util.cljc (5607cb71c07); the SingleDatePicker spec moved from querying/components to querying/common/components; date-vs-datetime-equality-filter-test is a later backend parity test naming this issue; fe_be_boundary inferred"

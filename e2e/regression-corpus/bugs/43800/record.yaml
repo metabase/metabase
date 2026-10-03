@@ -1,0 +1,25 @@
+id: reg-43800
+origin:
+  kind: regression
+  issue: 43800
+  fix_commit: f106ffa776bd621029e24f581ad605253442ac24
+  fix_tests:
+    - "e2e/test/scenarios/onboarding/home/homepage.cy.spec.js::scenarios > home > custom homepage custom homepage set should not redirect when already on the dashboard homepage (metabase#43800)"
+    - "e2e/test/scenarios/onboarding/home/homepage.cy.spec.js::scenarios > home > custom homepage custom homepage set should not load the homepage dashboard when visiting another dashboard directly (metabase#43800)"
+bug:
+  statement: "With a dashboard set as the homepage, clicking the Metabase logo while already on it stacks redirects and shows \"Something's gone wrong\"."
+  odc: {type: Checking, qualifier: Missing}
+  module: nav/homepage-redirect
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/onboarding/home/homepage.cy.spec.js::scenarios > home > custom homepage custom homepage set should not redirect when already on the dashboard homepage (metabase#43800)"
+  expected_failure: "the pathname should stay /dashboard/:id with one query_metadata request, but the app redirects again and shows \"Something's gone wrong\""
+notes: "no mutant patch: the behaviour is reconstructable (drop the isAtHomepageDashboard/preventDefault guard), but the fix's AppBar.unit.spec.tsx change was a render-to-renderWithProviders swap with no assertion, so July had no unit oracle and applied no revert; the guard has since moved to use-is-at-homepage-dashboard.ts; expected_failure paraphrases the e2e's assertions (the pathname stays /dashboard/:id, query_metadata and the dashcard query fire once, and \"Something's gone wrong\" never shows)"

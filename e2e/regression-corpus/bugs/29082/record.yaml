@@ -1,0 +1,25 @@
+id: reg-29082
+origin:
+  kind: regression
+  issue: 29082
+  fix_commit: decc8b7d5733944e5e11e8822e88f9b6ccdd9a4c
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-2.cy.spec.js::issue 29082 should handle nulls in quick filters (metabase#29082)"
+    - "metabase.lib.drill-thru.quick-filter-test/quick-filter-null-numeric-cell-test"
+bug:
+  statement: "Choosing = or ≠ on an empty table cell adds a broken filter instead of \"is empty\" or \"is not empty\", and it vanishes when another filter is added."
+  odc: {type: Checking, qualifier: Missing}
+  module: metabase-lib
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/question-reproductions/reproductions-2.cy.spec.js::issue 29082 should handle nulls in quick filters (metabase#29082)"
+  expected_failure: "cy.findByText(\"Discount is empty\").should(\"exist\") fails after choosing = on an empty Discount cell"
+notes: "no mutant patch: the drill was rewritten onto the Clojure lib, the null-to-is-null/not-null decision now lives in src/metabase/lib/drill_thru/quick_filter.cljc, and July's over-revert of the only JS remnant (the Is empty/Not empty titles) tripped no jest spec; module from the fix commit's metabase-lib file; the e2e was removed from master by 4701e5f8dc5 (backend test parity) and exists only at HEAD and 56879decb0a; quick-filter-null-numeric-cell-test is the parity deftest that replaced it, never run against a mutant, so lowest_level stays integration; the fix's jest spec QuickFilterDrill.unit.spec.js was deleted in the lib migration and is left out; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

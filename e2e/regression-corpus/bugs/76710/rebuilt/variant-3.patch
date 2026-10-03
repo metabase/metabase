@@ -1,0 +1,19 @@
+diff --git a/frontend/src/metabase/redux/tables.ts b/frontend/src/metabase/redux/tables.ts
+index 6857eaf401c..9d80e832cf9 100644
+--- a/frontend/src/metabase/redux/tables.ts
++++ b/frontend/src/metabase/redux/tables.ts
+@@ -77,10 +77,12 @@ export const fetchTableMetadataAndForeignKeys =
+     const fields = getTableFields(state, id);
+     const storeFields = getShallowFields(state, UNFILTERED);
+ 
+-    await Promise.allSettled([
+-      ...getForeignKeyTableIds(fields, storeFields).map((tableId) =>
++    await Promise.all(
++      getForeignKeyTableIds(fields, storeFields).map((tableId) =>
+         dispatch(fetchTableMetadata({ id: tableId }, options)),
+       ),
++    );
++    await Promise.allSettled([
+       // overridden model FK columns have fk_target_field_id but the target
+       // field is not in the store — load the field instead of the table
+       ...getMissingTargetFieldIds(fields, storeFields).map((fieldId) =>

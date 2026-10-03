@@ -1,0 +1,49 @@
+diff --git a/frontend/src/metabase/visualizations/components/TableInteractive/cells/HeaderCellWithColumnInfo.tsx b/frontend/src/metabase/visualizations/components/TableInteractive/cells/HeaderCellWithColumnInfo.tsx
+index f65860b3477..66320e9d02c 100644
+--- a/frontend/src/metabase/visualizations/components/TableInteractive/cells/HeaderCellWithColumnInfo.tsx
++++ b/frontend/src/metabase/visualizations/components/TableInteractive/cells/HeaderCellWithColumnInfo.tsx
+@@ -45,6 +45,8 @@ export const HeaderCellWithColumnInfo = memo(
+     renderTableHeader,
+   }: HeaderCellWithColumnInfoProps) {
+     const { infoPopoversDisabled } = useTableInteractiveContext();
++    const query = question?.query();
++    const stageIndex = -1;
+ 
+     const headerCellOverride = useMemo(() => {
+       return renderTableHeader != null
+@@ -67,10 +69,6 @@ export const HeaderCellWithColumnInfo = memo(
+     if (infoPopoversDisabled) {
+       headerContent = cellContent;
+     } else {
+-      // question.query will throw when used in the visualizer
+-      // we don't go down this code path in the visualizer because isDashboard is true
+-      const query = question?.query();
+-      const stageIndex = -1;
+       headerContent = (
+         <QueryColumnInfoPopover
+           position="bottom-start"
+diff --git a/frontend/src/metabase/visualizer/selectors.ts b/frontend/src/metabase/visualizer/selectors.ts
+index 52237674705..7d4e65c9099 100644
+--- a/frontend/src/metabase/visualizer/selectors.ts
++++ b/frontend/src/metabase/visualizer/selectors.ts
+@@ -11,7 +11,7 @@ import {
+   isCartesianChart,
+ } from "metabase/viz-core";
+ import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+-import type { DatasetData, RawSeries } from "metabase-types/api";
++import type { Card, DatasetData, RawSeries } from "metabase-types/api";
+ 
+ import {
+   createDataSource,
+@@ -251,9 +251,9 @@ export const getTabularPreviewSeries = createSelector(
+         ...rest,
+         card: {
+           display: "table",
+-          dataset_query: STRUCTURED_QUERY_TEMPLATE,
++          dataset_query: {},
+           visualization_settings: {},
+-        },
++        } as Card,
+       },
+     ] satisfies RawSeries;
+   },

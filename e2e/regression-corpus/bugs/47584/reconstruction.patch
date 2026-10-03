@@ -1,0 +1,13 @@
+diff --git a/src/metabase/lib/field/util.cljc b/src/metabase/lib/field/util.cljc
+index 193d772c36e..e7c8f10aaf2 100644
+--- a/src/metabase/lib/field/util.cljc
++++ b/src/metabase/lib/field/util.cljc
+@@ -70,7 +70,7 @@
+ 
+   The zero arity is a transducer version."
+   ([]
+-   (let [deduplicated-name-fn (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
++   (let [deduplicated-name-fn (lib.util.unique-name-generator/unique-name-generator)]
+      (map (fn [col]
+             (assoc col
+                    :lib/original-name     ((some-fn :lib/original-name :name) col)

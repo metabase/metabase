@@ -1,0 +1,27 @@
+id: reg-47570
+origin:
+  kind: regression
+  issue: 47570
+  fix_commit: 063023140b5463c3f5759ac1baac10c450750bb5
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js::scenarios > embedding > dashboard parameters with defaults locked parameters should still render results in the preview by default (metabase#47570)"
+    - "e2e/test/scenarios/embedding/embedding-native.cy.spec.js::scenarios > embedding > native questions locked parameters locked parameters should still render results in the preview by default (metabase#47570)"
+    - "frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/tests/common.unit.spec.tsx::Static Embed Setup phase $resourceType Parameters tab should highlight changed code on parameters change"
+    - "frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/tests/common.unit.spec.tsx::Static Embed Setup phase should preserve highlighted code on tabs navigation"
+bug:
+  statement: "In static embed setup, a locked parameter with no value is sent as null, so the preview renders no results."
+  odc: {type: Assignment/Initialization, qualifier: Incorrect}
+  module: embedding
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/tests/common.unit.spec.tsx::Static Embed Setup phase should preserve highlighted code on tabs navigation"
+  expected_failure: "toHaveTextContent: expected params: { \"month_and_year\": [] }, received params: { \"month_and_year\": null }"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the \"$resourceType\" jest id is a describe.each title kept as the source writes it; both jest tests had their expected params changed from null to [] by the fix; the code moved from public/components/EmbedModal to embedding/components/EmbedModal/.../lib/get-preview-params-by-slug.ts; fe_be_boundary inferred"

@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase/query_builder/actions/core/initializeQB.ts b/frontend/src/metabase/query_builder/actions/core/initializeQB.ts
+index 8bf27a4f1af..3fb15246124 100644
+--- a/frontend/src/metabase/query_builder/actions/core/initializeQB.ts
++++ b/frontend/src/metabase/query_builder/actions/core/initializeQB.ts
+@@ -427,11 +427,8 @@ async function handleQBInit(
+   }
+ 
+   if (question.isSaved()) {
+-    const type = question.type();
+-
+-    if (type === "question") {
+-      question = question.lockDisplay();
+-    }
++    // Don't set viz automatically for saved questions
++    question = question.lockDisplay();
+ 
+     if (currentUser?.is_qbnewb) {
+       uiControls.isShowingNewbModal = true;

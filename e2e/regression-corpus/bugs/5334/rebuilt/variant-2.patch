@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts b/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
+index fe7332e398f..9c92440818c 100644
+--- a/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
++++ b/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
+@@ -133,12 +133,7 @@ function hasObjectDimensionValue(
+     return false;
+   }
+ 
+-  const values = node.isOther
+-    ? getArrayFromMapValues(node.children)
+-        .map((childNode) => childNode.rowIndex)
+-        .filter((rowIndex) => rowIndex != null)
+-        .map((rowIndex) => dataProp.rows[rowIndex]?.[columnIndex])
+-    : [row?.[columnIndex]];
++  const values = [row?.[columnIndex]];
+ 
+   return values.some((value) => value != null && typeof value === "object");
+ }

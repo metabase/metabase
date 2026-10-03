@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/value-formatting/date.tsx b/frontend/src/metabase/value-formatting/date.tsx
+index da03c0560f4..ad9366aedac 100644
+--- a/frontend/src/metabase/value-formatting/date.tsx
++++ b/frontend/src/metabase/value-formatting/date.tsx
+@@ -798,10 +798,6 @@ export function formatDateToRangeForParameter(
+     return String(value);
+   }
+ 
+-  if (unit === "hour" || unit === "minute") {
+-    return `${start.format("YYYY-MM-DDTHH:mm")}~${end.format("YYYY-MM-DDTHH:mm")}`;
+-  }
+-
+   const isSameDay = start.isSame(end, "day");
+   return isSameDay
+     ? start.format("YYYY-MM-DD")

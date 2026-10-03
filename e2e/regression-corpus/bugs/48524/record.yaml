@@ -1,0 +1,25 @@
+id: reg-48524
+origin:
+  kind: regression
+  issue: 48524
+  fix_commit: b43945927a1dd688369f9f0f1d0d607cc6d1c530
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 48524 should not apply last used parameter values when some parameters have values set in the URL (metabase#48524)"
+    - "frontend/src/metabase/parameters/utils/parameter-parsing.unit.spec.ts::parameters/utils/parameter-values getParameterValueFromQueryParams last used param value should not allow mixed query and last used parameter values (metabase#48524)"
+bug:
+  statement: "Opening a dashboard link that sets some filters in the URL still prefills the other filters with the user's last-used values."
+  odc: {type: Checking, qualifier: Missing}
+  module: parameters
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/parameters/utils/parameter-parsing.unit.spec.ts::parameters/utils/parameter-values getParameterValueFromQueryParams last used param value should not allow mixed query and last used parameter values (metabase#48524)"
+  expected_failure: "expect(received).toEqual(expected); Expected: null, Received: \"last used value\""
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the jest test shipped under metabase-lib/v1/parameters/utils and moved with the module; July named the spec parameter-parsing.unit.spec.js, which is .ts at 8317274709c; fe_be_boundary inferred"

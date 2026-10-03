@@ -1,0 +1,25 @@
+id: reg-46714
+origin:
+  kind: regression
+  issue: 46714
+  fix_commit: 07767290f57633da90331fd32fe32fe8ed315dfd
+  fix_tests:
+    - "e2e/test/scenarios/admin/admin-reproductions.cy.spec.js::(metabase#46714) should allow users to apply relative date options in the segment date picker"
+    - "e2e/test/scenarios/admin/admin-reproductions.cy.spec.js::(metabase#46714) should not hide operator select menu behind the main filter popover"
+bug:
+  statement: "In the admin segment editor, choosing \"Starting from\" or \"Include (period)\" in the relative date picker closes the popover without applying the filter."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: admin
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/admin/admin-reproductions.cy.spec.js::(metabase#46714) should allow users to apply relative date options in the segment date picker"
+  expected_failure: "cy.findByTestId(\"filter-pill\").should(\"have.text\", \"Created At is in the previous 68 days, starting 70 days ago\") fails"
+notes: "fix_commit: July recorded none; GitHub closes the issue with #46723 (07767290f57), which July's reconstruction names too; no mutant patch: dead target, the legacy segment filter UI (FilterPopover, FilterWidget, OperatorSelector) and its jest spec were deleted when the segment editor moved to MBQL lib (#50311); odc judged from the fix, which moved the nested pickers to Mantine popovers so clicks inside them stop counting as outside clicks; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

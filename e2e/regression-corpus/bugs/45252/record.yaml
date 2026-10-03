@@ -1,0 +1,31 @@
+id: reg-45252
+origin:
+  kind: regression
+  issue: 45252
+  fix_commit: 96e60529c971f21fdb32124058627cc49c02d1a8
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 45252 should allow using is-null and not-null operators with unsupported data types (metabase#45252,metabase#38111)"
+    - "frontend/src/metabase/querying/filters/components/FilterPicker/DefaultFilterPicker/DefaultFilterPicker.unit.spec.tsx::DefaultFilterPicker new filter should create a new filter with the initial operator"
+    - "frontend/src/metabase/querying/filters/components/FilterPicker/DefaultFilterPicker/DefaultFilterPicker.unit.spec.tsx::DefaultFilterPicker new filter should create a new filter with 'is-empty' operator"
+    - "frontend/src/metabase/querying/filters/components/FilterPicker/DefaultFilterPicker/DefaultFilterPicker.unit.spec.tsx::DefaultFilterPicker new filter should create a new filter with 'not-empty' operator"
+    - "frontend/src/metabase/querying/filters/components/FilterPicker/DefaultFilterPicker/DefaultFilterPicker.unit.spec.tsx::DefaultFilterPicker new filter should go back"
+    - "frontend/src/metabase/querying/filters/components/FilterPicker/DefaultFilterPicker/DefaultFilterPicker.unit.spec.tsx::DefaultFilterPicker existing filter should update a filter with 'is-empty' operator"
+    - "frontend/src/metabase/querying/filters/components/FilterPicker/DefaultFilterPicker/DefaultFilterPicker.unit.spec.tsx::DefaultFilterPicker existing filter should update a filter with 'not-empty' operator"
+    - "frontend/src/metabase/querying/filters/components/FilterPicker/DefaultFilterPicker/DefaultFilterPicker.unit.spec.tsx::DefaultFilterPicker existing filter should go back"
+bug:
+  statement: "Filtering on a column of an unsupported type, such as a Postgres array, offers operators that don't work, and picking one does nothing."
+  odc: {type: Function/Class/Object, qualifier: Missing}
+  module: lib/filter/operator
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 45252 should allow using is-null and not-null operators with unsupported data types (metabase#45252,metabase#38111)"
+  expected_failure: null
+notes: "no mutant patch: dead target for July's backend attempt, lib/filter/operator.cljc and the operator assertions in filterable-columns-test were removed when operator selection moved to the frontend (#69051); July never tried the frontend fallback picker, whose DefaultFilterPicker spec shipped with the fix and survives relocated; the fix's other jest specs (DefaultFilterEditor, use-default-filter, metabase-lib filter.unit.spec.ts, FilterModal, FilterPicker) are not at their shipped paths at 8317274709c and weren't traced; the e2e also names 38111; odc Function/Class/Object because the fix added a fallback filter widget for unknown types; July recorded no failure message"

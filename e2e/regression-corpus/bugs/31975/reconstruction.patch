@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx b/frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx
+index 7a70b0bfb7b..4a194705719 100644
+--- a/frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx
++++ b/frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.tsx
+@@ -102,9 +102,7 @@ export class TextWidget extends Component<TextWidgetProps, State> {
+         }}
+         onBlur={() => {
+           changeFocus(false);
+-          if (this.state.value !== this.props.value) {
+-            setValue(this.state.value ?? null);
+-          }
++          this.setState({ value: this.props.value });
+         }}
+         placeholder={isEditing ? t`Enter a default value…` : defaultPlaceholder}
+         disabled={disabled}

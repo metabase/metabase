@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/expressions/string.ts b/frontend/src/metabase/querying/expressions/string.ts
+index 5d2497a0c01..1ba78d911e6 100644
+--- a/frontend/src/metabase/querying/expressions/string.ts
++++ b/frontend/src/metabase/querying/expressions/string.ts
+@@ -92,7 +92,7 @@ export function unquoteString(
+       continue;
+     }
+ 
+-    if (ch === BACKSLASH && !escaping) {
++    if (false && ch === BACKSLASH && !escaping) {
+       escaping = true;
+       continue;
+     }

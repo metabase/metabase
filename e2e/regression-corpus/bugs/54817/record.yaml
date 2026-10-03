@@ -1,0 +1,24 @@
+id: reg-54817
+origin:
+  kind: regression
+  issue: 54817
+  fix_commit: da5e954e630eed369414b138f680856770581c32
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 54817 should allow to navigate to the search input in the filter picker via keyboard (metabase#54817)"
+bug:
+  statement: "Keyboard users can't reach the column search input in the filter modal, because it isn't focused first and is hidden from tab navigation."
+  odc: {type: Assignment/Initialization, qualifier: Incorrect}
+  module: querying
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 54817 should allow to navigate to the search input in the filter picker via keyboard (metabase#54817)"
+  expected_failure: null
+notes: "no mutant patch: dead target, because FilterModal and FilterSearchInput, where the fix removed aria-hidden and added an initial focus target, were deleted by #55052 along with the shipped jest test; 54817 is the fix's own PR number and GitHub lists no separate issue; the surviving e2e now exercises the replacement filter picker; July recorded no failure message; fe_be_boundary inferred"

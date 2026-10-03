@@ -1,0 +1,27 @@
+id: reg-14595
+origin:
+  kind: regression
+  issue: 14595
+  fix_commit: e0633df84c72657591664146dbef8ac73a4a7448
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 14595 should not see parameters that cannot be linked to the current parameter in parameter settings (metabase#14595)"
+    - "frontend/src/metabase/dashboard/components/ParameterLinkedFilters/utils.unit.spec.ts::getLinkedParametersInfo should return linked parameters with fields info"
+    - "frontend/src/metabase/dashboard/components/ParameterLinkedFilters/utils.unit.spec.ts::getFilterFieldsRequest should return the correct request"
+    - "frontend/src/metabase/dashboard/components/ParameterLinkedFilters/ParameterLinkedFilters.unit.spec.tsx::ParameterLinkedFilters should display parameters that cannot be linked in a separate section"
+bug:
+  statement: "A dashboard filter's linked-filter settings offer other filters that can't actually limit it, so the link silently has no effect."
+  odc: {type: Checking, qualifier: Missing}
+  module: dashboard
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/components/ParameterLinkedFilters/utils.unit.spec.ts::getLinkedParametersInfo should return linked parameters with fields info"
+  expected_failure: "expect(received).toEqual(expected): parameter p5 expected \"isCompatible\": false, received true"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, b8673198cd4c3aa9f70782f41526dd009f27b933; base_commit is the parent of July's CI mutant 447cc09d6c2 (run 29125372340); the fix shipped utils.unit.spec.ts and ParameterLinkedFilters.unit.spec.tsx under frontend/src/metabase/parameters/components/ParameterLinkedFilters/, since moved to dashboard/components; fe_be_boundary inferred (the fix calls an existing valid-filter-fields endpoint and changes no backend code)"

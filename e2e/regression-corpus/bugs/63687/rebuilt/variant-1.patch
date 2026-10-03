@@ -1,0 +1,15 @@
+diff --git a/src/metabase/embedding_rest/api/common.clj b/src/metabase/embedding_rest/api/common.clj
+index a6336df84b0..972ca15b0ef 100644
+--- a/src/metabase/embedding_rest/api/common.clj
++++ b/src/metabase/embedding_rest/api/common.clj
+@@ -517,8 +517,8 @@
+   the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
+   [dashboard dashcard card parameters zoom x y lat-field lon-field]
+   (database-routing/with-database-routing-off
+-    (api.public/process-tiles-query-for-dashcard dashboard dashcard card
+-                                                 parameters zoom x y lat-field lon-field)))
++    (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
++                                                parameters zoom x y lat-field lon-field)))
+ 
+ (defn card-param-values
+   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param

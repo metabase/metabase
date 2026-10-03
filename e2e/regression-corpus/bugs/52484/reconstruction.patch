@@ -1,0 +1,19 @@
+diff --git a/frontend/src/metabase/parameters/utils/parameter-parsing.ts b/frontend/src/metabase/parameters/utils/parameter-parsing.ts
+index 7f0409c4b76..5c89caca525 100644
+--- a/frontend/src/metabase/parameters/utils/parameter-parsing.ts
++++ b/frontend/src/metabase/parameters/utils/parameter-parsing.ts
+@@ -110,7 +110,13 @@ function parseParameterValueForNumber(
+     }
+   }
+ 
+-  return normalizeNumberParameterValue(type, value);
++  if (Array.isArray(value)) {
++    const numbers = value.map((number) => parseFloat(number as string));
++    return numbers.every((number) => !isNaN(number)) ? numbers : null;
++  }
++
++  const number = parseFloat(value as string);
++  return isNaN(number) ? null : number;
+ }
+ 
+ function parseParameterValueForFields(

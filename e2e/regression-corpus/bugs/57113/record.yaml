@@ -1,0 +1,24 @@
+id: reg-57113
+origin:
+  kind: regression
+  issue: 57113
+  fix_commit: 4578d66e2e4f2c2fd73f15a2fb1e772bada1731c
+  fix_tests:
+    - "e2e/test/scenarios/monitor/tools/tools.cy.spec.ts::monitor > tools issue 57113 should navigate to /monitor/tasks/list when clicking Back to Tasks even with no browser history"
+bug:
+  statement: "Modals such as an admin task's details can't be closed properly when opened from a direct link, because closing navigates back in browser history."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: modals/close
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/monitor/tools/tools.cy.spec.ts::monitor > tools issue 57113 should navigate to /monitor/tasks/list when clicking Back to Tasks even with no browser history"
+  expected_failure: "cy.location(\"pathname\").should(\"eq\", \"/monitor/tasks/list\") fails after closing a task opened without history"
+notes: "no mutant patch: July's revert (Cancel wired back to a goBack onCancel handler instead of the route's onClose) left both jest specs green and wasn't saved; stratum wiring: the fix rewires about 20 modals' close actions from their own goBack handler to the onClose prop; the fix's jest edits only deleted an unused onCancel mock; the e2e moved from admin/tools/tools.cy.spec.ts (issue 57113, /admin/tools/tasks/list) to monitor/tools/tools.cy.spec.ts at 8317274709c; expected_failure inferred from the e2e's assertion"

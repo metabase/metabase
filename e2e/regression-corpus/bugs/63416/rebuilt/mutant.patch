@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx b/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
+index c30bd0c8118..624f704b65c 100644
+--- a/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
++++ b/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
+@@ -320,7 +320,6 @@ export function DashCardVisualization({
+         // This guarantees a visualization always rerenders on changes
+         started_at: new Date().toISOString(),
+         columnValuesMapping,
+-        json_query: rawSeries[0].json_query,
+         _isVisualizer: true,
+       },
+     ];
+@@ -494,7 +493,7 @@ export function DashCardVisualization({
+     const cardId = dashcard.card_id ?? dashcard.card?.id;
+     const cardResult = cardId ? datasets?.[cardId] : undefined;
+     // Unjustified type cast. FIXME
+-    const result = cardResult ?? (series[0] as unknown as Dataset);
++    const result = series[0] as unknown as Dataset;
+     const isVisualizerCard = isVisualizerDashboardCard(dashcard);
+     const openUnderlyingQuestionItems =
+       onChangeCardAndRun && !cardTitle ? titleMenuItems : undefined;

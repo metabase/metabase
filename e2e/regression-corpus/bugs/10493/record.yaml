@@ -1,0 +1,26 @@
+id: reg-10493
+origin:
+  kind: regression
+  issue: 10493
+  fix_commit: 23d9096d0b1e564e4f97f7c10676225c943e8a2c
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts::issue 10493 should display bar chart for binned column distribution after applying filter (metabase#10493)"
+    - "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 10493 should not reset chart axes after adding a new query stage (metabase#10493)"
+    - "frontend/src/metabase/viz-core/shared/settings/cartesian-chart.unit.spec.ts::getDefaultColumns should return valid dimension"
+bug:
+  statement: "Adding a filter after summarizing by a binned number breaks the bar or line chart, because the binned column is no longer treated as the x-axis."
+  odc: {type: Checking, qualifier: Missing}
+  module: visualizations
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts::issue 10493 should display bar chart for binned column distribution after applying filter (metabase#10493)"
+  expected_failure: "after the post-aggregation filter, cy.findByTestId(\"visualization-placeholder\").should(\"not.exist\") fails; the bar chart isn't drawn"
+notes: "no mutant patch: July's target was dead, because July's fix ffbad1d6ae2 (#44053) was reverted by #44535 a week later, which removed its restoration logic and left its e2e @skip; fix_commit: GitHub also closes the issue with #67573 (23d9096d0b1, 2026-01-15), which is the fix that ships today (binned columns count as dimensions, not metrics), so it replaces July's reverted one; the reproductions-3 e2e belongs to the reverted fix, was @skip and is absent at 8317274709c (id from HEAD); the #67573 unit test getDefaultColumns should return valid dimension was never run against a mutant, so lowest_level stays integration; module and odc from #67573; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

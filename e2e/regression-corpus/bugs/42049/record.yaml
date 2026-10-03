@@ -1,0 +1,26 @@
+id: reg-42049
+origin:
+  kind: regression
+  issue: 42049
+  fix_commit: 28513ae8866e42960b781d48bb27b8d55cdf808a
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js::issue 42049 should not mess up columns order (metabase#42049)"
+    - "frontend/src/metabase-lib/v1/queries/utils/dataset.unit.spec.ts::dataset utils findColumnIndexesForColumnSettings finds findColumnIndexesForColumnSettings for Columns with different base-type"
+    - "frontend/src/metabase-lib/v1/queries/utils/dataset.unit.spec.ts::dataset utils findColumnSettingIndexesForColumns finds columnSettingsIndex for Columns with different base-type"
+bug:
+  statement: "Changing a filter value on a saved question reorders its table columns instead of keeping the saved order."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: metabase-lib/dataset
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js::issue 42049 should not mess up columns order (metabase#42049)"
+  expected_failure: "cy.get(\"@headerCells\").eq(1).should(\"have.text\", \"Created At\") fails after the filter update"
+notes: "fix_commit: GitHub closes the issue with #45180 (28513ae8866, name-based column matching); July mapped 1fe63c52bfe (#42344, \"Partially fix columns and viz settings mismatch\"), which added the e2e and the base-type tests, and the issue body says a full fix needed the field-ref RFC that #45180 implements; #45180 is also the fix for 39993 and 25885, so this entry may belong with them; no mutant patch: dead target, #45180 removed #42344's ignoreBaseType matching (columns now match settings by name) and the spec's base-type data; the two base-type tests shipped with #42344 and no longer discriminate; expected_failure inferred from the e2e's assertion"

@@ -1,0 +1,13 @@
+diff --git a/src/metabase/revisions/impl/dashboard.clj b/src/metabase/revisions/impl/dashboard.clj
+index 71f6615be0e..c6008deff69 100644
+--- a/src/metabase/revisions/impl/dashboard.clj
++++ b/src/metabase/revisions/impl/dashboard.clj
+@@ -85,7 +85,7 @@
+       parameters
+       (mapv (fn [param]
+               (if (contains? invalid-card-ids (get-in param [:values_source_config :card_id]))
+-                (dissoc param :values_source_type :values_source_config)
++                (dissoc param :values_source_config)
+                 param))
+             parameters))))
+ 

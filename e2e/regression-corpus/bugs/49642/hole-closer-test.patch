@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.unit.spec.tsx b/frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.unit.spec.tsx
+index c7e89cd391d..20ab1b27ccc 100644
+--- a/frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.unit.spec.tsx
++++ b/frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.unit.spec.tsx
+@@ -86,6 +86,16 @@ describe("SingleSelectListField", () => {
+     expect(screen.getAllByText("false")).toHaveLength(1);
+   });
+ 
++  it("reports the search term and clears the current selection when typing in the search box", async () => {
++    const { onChange, onSearchChange } = setup();
++
++    const input = screen.getByPlaceholderText("Find...");
++    await userEvent.type(input, firstOption);
++
++    expect(onSearchChange).toHaveBeenCalledWith(firstOption);
++    expect(onChange).toHaveBeenLastCalledWith([]);
++  });
++
+   it("should not create duplicate options on pressing Enter for non-string values", async () => {
+     setup({ value: [], options: [[true], [false]] });
+     const input = screen.getByPlaceholderText("Find...");

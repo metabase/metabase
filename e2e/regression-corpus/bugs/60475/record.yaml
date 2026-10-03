@@ -1,0 +1,25 @@
+id: reg-60475
+origin:
+  kind: regression
+  issue: 60475
+  fix_commit: cf9868d50980b049749b598e10164b687e20d971
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/bar_chart.cy.spec.js::scenarios > visualizations > bar chart should display all axis labels for 12 months of data (metabase#60475)"
+    - "frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions - monthly ticks (metabase#60475) forces daily tick generation filtered to month starts so no month is skipped"
+bug:
+  statement: "A time-series bar chart of 12 months skips some month labels on the x-axis even when there's room for all of them."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions should give every month of a 12-month series a tick label (metabase#60475)"
+  expected_failure: "expect(minInterval).toBeUndefined(); Received: 2678400000 (ticks.unit.spec.ts:99)"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 33fc66e6202 (run 29133473688); fe_be_boundary inferred"

@@ -1,0 +1,12 @@
+diff --git a/src/metabase/embedding_rest/api/embed.clj b/src/metabase/embedding_rest/api/embed.clj
+index 13c2cb2c341..930935170fe 100644
+--- a/src/metabase/embedding_rest/api/embed.clj
++++ b/src/metabase/embedding_rest/api/embed.clj
+@@ -413,7 +413,6 @@
+   (let [unsigned (unsign-and-translate-ids token)
+         card-id (api.embed.common/unsigned-token->card-id unsigned)
+         card (api/check-404 (embedding-rest.db/card card-id))]
+-    (api.embed.common/check-embedding-enabled-for-card card)
+     (request/as-admin
+       (api.embed.common/process-tiles-query-for-card
+        card

@@ -1,0 +1,30 @@
+id: reg-54603
+origin:
+  kind: regression
+  issue: 54603
+  fix_commit: 2c58286958e2c84fefbd00b0886e82cf51079eb0
+  fix_tests:
+    - "e2e/test/scenarios/sharing/sharing-reproductions.cy.spec.js::issue 54603 warns before removing a filter that has active subscriptions (metabase#54603)"
+    - "e2e/test/scenarios/sharing/sharing-reproductions.cy.spec.js::issue 54603 removes a filter immediately when no subscription references it (metabase#54603)"
+    - "frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx::ParameterSidebar removing a parameter that affects active subscriptions (metabase#54603) removes the parameter immediately when no active subscriptions reference it"
+    - "frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx::ParameterSidebar removing a parameter that affects active subscriptions (metabase#54603) warns before removing a parameter that is used by an active subscription"
+    - "frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx::ParameterSidebar removing a parameter that affects active subscriptions (metabase#54603) removes the parameter when the user confirms in the warning dialog"
+    - "frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx::ParameterSidebar removing a parameter that affects active subscriptions (metabase#54603) does not remove the parameter when the user cancels the warning dialog"
+    - "frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx::ParameterSidebar removing a parameter that affects active subscriptions (metabase#54603) ignores archived subscriptions when deciding whether to warn"
+bug:
+  statement: "Removing a dashboard filter that active subscriptions use deletes it without any warning, silently changing those subscriptions."
+  odc: {type: Checking, qualifier: Missing}
+  module: dashboard/ParameterSidebar
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx::ParameterSidebar removing a parameter that affects active subscriptions (metabase#54603) warns before removing a parameter that is used by an active subscription"
+  expected_failure: "expect(removeParameter).not.toHaveBeenCalled(); Received number of calls: 1; findByRole(\"dialog\") not found"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; GitHub labels the issue a new feature; the e2e tests were culled on this branch against the shipped jest tests (commit da261afed6f)"

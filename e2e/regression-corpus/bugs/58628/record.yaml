@@ -1,0 +1,25 @@
+id: reg-58628
+origin:
+  kind: regression
+  issue: 58628
+  fix_commit: 509225c8d217de98ba9e95b23623c959f58ad98e
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 58628 should show the unauthorized page when accessing the notebook editor without data perms (metabase#58628)"
+    - "frontend/src/metabase/query_builder/actions/core/initializeQB.unit.spec.ts::QB Actions > initializeQB notebook mode without data access (metabase#58628) redirects to the unauthorized page and bails when the user cannot create queries"
+bug:
+  statement: "A user with view-only data permission can open a question's notebook editor by adding /notebook to the URL instead of seeing the unauthorized page."
+  odc: {type: Checking, qualifier: Missing}
+  module: qb/initializeQB
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/query_builder/actions/core/initializeQB.unit.spec.ts::QB Actions > initializeQB notebook mode without data access (metabase#58628) redirects to the unauthorized page and bails when the user cannot create queries"
+  expected_failure: "expect(dispatch).toHaveBeenCalledWith(replace(Urls.unauthorized())) fails; init proceeds without the redirect"
+notes: "no mutant patch: removing the notebook redirect guard in initializeQB.ts reproduces the bug, but the jest tests the fix touched run with data permissions and stay green, so July saved no patch; the fix's jest edit was mock plumbing; the hole-closer test (hole-closer-test.patch, landed on this branch) fails on the reverted guard, because replace(Urls.unauthorized()) is never dispatched"

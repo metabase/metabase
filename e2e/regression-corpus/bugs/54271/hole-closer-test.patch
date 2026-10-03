@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/visualizations/lib/renderer_utils.unit.spec.ts b/frontend/src/metabase/visualizations/lib/renderer_utils.unit.spec.ts
+index 261d93902da..9a42f857769 100644
+--- a/frontend/src/metabase/visualizations/lib/renderer_utils.unit.spec.ts
++++ b/frontend/src/metabase/visualizations/lib/renderer_utils.unit.spec.ts
+@@ -224,6 +224,10 @@ describe("getXValues", () => {
+         "graph.x_axis.scale": "timeseries",
+       },
+     );
++    // The unparseable "abc" must be dropped entirely, not leaked as a null into
++    // xValues. Assert on the raw array so a leaked null flips the test.
++    expect(xValues).toHaveLength(2);
++    expect(xValues).not.toContain(null);
+     const formattedXValues = xValues
+       .filter((value): value is Dayjs => isObject(value) && "format" in value)
+       .map((value) => value.format("YYYY-MM-DD"));

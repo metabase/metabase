@@ -1,0 +1,48 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/Table/Table.unit.spec.tsx b/frontend/src/metabase/visualizations/visualizations/Table/Table.unit.spec.tsx
+index dc1b536d38c..cc240d78756 100644
+--- a/frontend/src/metabase/visualizations/visualizations/Table/Table.unit.spec.tsx
++++ b/frontend/src/metabase/visualizations/visualizations/Table/Table.unit.spec.tsx
+@@ -185,6 +185,43 @@ const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
+ });
+ 
+ describe("table.pivot", () => {
++  // Witness for metabase#69038: the visualizer's "View as table" preview feeds
++  // the Table viz a card whose dataset_query is `{}` (see getTabularPreviewSeries).
++  // Computing the `table.pivot` default calls `isNative(card)`, which builds a
++  // Question from that empty query and throws ("Invalid query: query cannot be
++  // empty"). The `isNative` call is only reached when the data has exactly 3
++  // columns (earlier `||` clauses short-circuit otherwise). The fix guards the
++  // call so the default resolves to `false` instead of crashing the preview.
++  describe("getDefault with a visualizer preview card (metabase#69038)", () => {
++    const getDefault = Table.settings["table.pivot"].getDefault;
++
++    it("should not throw for a 3-column visualizer preview card (empty dataset_query)", () => {
++      if (!getDefault) {
++        throw new Error("table.pivot getDefault should be defined");
++      }
++
++      const visualizerPreviewSeries = [
++        {
++          card: createMockCard({
++            display: "table",
++            dataset_query: {} as never,
++            visualization_settings: {},
++          }),
++          data: createMockDatasetData({
++            cols: [
++              createMockNumericColumn({ name: "Count" }),
++              createMockNumericColumn({ name: "Sum" }),
++              createMockNumericColumn({ name: "Avg" }),
++            ],
++            rows: [[1, 2, 3]],
++          }),
++        },
++      ] as unknown as Series;
++
++      expect(getDefault(visualizerPreviewSeries)).toBe(false);
++    });
++  });
++
+   describe("getHidden", () => {
+     const createMockSeriesWithCols = (cols: string[]): Series => [
+       createMockSingleSeries(

@@ -1,0 +1,25 @@
+id: reg-47097
+origin:
+  kind: regression
+  issue: 47097
+  fix_commit: a283c947aa0f5d15af2054a348a154739ce25dda
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 47097 should be able to use filters without \"create-queries\" permissions when coming from a dashboard (metabase#47097)"
+    - "metabase.parameters.dashboard-test/field-values-without-create-queries-perms-test"
+bug:
+  statement: "After clicking through from a dashboard to a question, a user without query-creation permission gets no values in the question's filter dropdown."
+  odc: {type: Interface/O-O Messages, qualifier: Missing}
+  module: parameters
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 47097 should be able to use filters without \"create-queries\" permissions when coming from a dashboard (metabase#47097)"
+  expected_failure: null
+notes: "stratum wiring: the fix passes the drilled question's card and dashboard ids down the parameter widget tree so the widget uses the dashboard param-values endpoint; no mutant patch: forcing both endpoint-selection helpers to false tripped 0 of 74 jest tests, so July saved nothing; fix_commit: July recorded none, and July's reconstruction and GitHub both name #63074 (a283c947aa0); the fix's two jest edits (DataModel flake fix, ResponsiveParameterList prop rename) aren't about this bug and are left out; field-values-without-create-queries-perms-test is a later backend parity test naming this issue and checks the endpoint the fix routes to, not the frontend's choice of endpoint; July recorded no failure message; fe_be_boundary inferred"

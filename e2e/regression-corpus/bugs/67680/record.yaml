@@ -1,0 +1,30 @@
+id: reg-67680
+origin:
+  kind: regression
+  issue: 67680
+  fix_commit: 42312e5fc258eb6c2c688b27fd6a28f246722c0b
+  fix_tests:
+    - "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 67680 when the user has create queries permission should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)"
+    - "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 67680 when the user has create queries permission should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)"
+    - "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 67680 when the user does not have create queries permission should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)"
+    - "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 67680 when the user does not have create queries permission should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)"
+    - "metabase.lib.metadata.result-metadata-test/model-metadata-id-preservation-test"
+    - "metabase.lib.card-test/source-model-card-test"
+    - "metabase.queries-rest.api.card-test/model-source-table-change-uses-fresh-ids-for-permissions-test"
+bug:
+  statement: "After an MBQL model's source table is changed, it keeps column ids from the old table, so users blocked from that table get a permission error on the model."
+  odc: {type: Checking, qualifier: Missing}
+  module: lib/card
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.lib.metadata.result-metadata-test/model-metadata-id-preservation-test"
+  expected_failure: "\"MBQL query: stale :id from model metadata should be ignored\": expected 44400, actual 44600"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the e2e tests exist at the July base and HEAD but not at 8317274709c; source-model-card-test was renamed from source-model-cols-test by the fix and doesn't fail on this patch; model-source-table-change-uses-fresh-ids-for-permissions-test is a later test naming this issue; July's fe_be_boundary false kept though the fix also changed frontend model-saving code"

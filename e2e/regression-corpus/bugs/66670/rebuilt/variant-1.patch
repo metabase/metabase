@@ -1,0 +1,13 @@
+diff --git a/src/metabase/revisions/db.clj b/src/metabase/revisions/db.clj
+index 925ede6fd42..14007f600ab 100644
+--- a/src/metabase/revisions/db.clj
++++ b/src/metabase/revisions/db.clj
+@@ -119,7 +119,7 @@
+ (mu/defn active-card-ids
+   "The ids among `card-ids` of unarchived Cards."
+   [card-ids :- [:set ::lib.schema.id/card]]
+-  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
++  (t2/select-pks-set :model/Card {:where [:in :id card-ids]}))
+ 
+ (mu/defn lock-revisions!
+   "Lock the Revisions of the `model-name` row with `model-id` for update."

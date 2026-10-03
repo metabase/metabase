@@ -1,0 +1,31 @@
+id: reg-5334
+origin:
+  kind: regression
+  issue: 5334
+  fix_commit: 4cc540400eb72498ef785fce1e64283a69f68807
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/drillthroughs/chart_drill.cy.spec.js::scenarios > visualizations > drillthroughs > chart drill should only show the 'See these records' option for the 'Other' pie slice (metabase#5334)"
+    - "frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.unit.spec.ts::useChartEvents emits grouped dimensions when the Other slice is clicked (#5334)"
+    - "frontend/src/metabase/querying/drills/utils/query-drill.unit.spec.ts::isGroupedDimensionClick detects clicks with grouped dimension values"
+    - "frontend/src/metabase/querying/drills/utils/query-drill.unit.spec.ts::isGroupedDimensionClick ignores clicks with regular dimension values"
+    - "frontend/src/metabase/querying/drills/utils/query-drill.unit.spec.ts::shouldHideDrill keeps underlying records for grouped dimension clicks"
+    - "frontend/src/metabase/querying/drills/utils/query-drill.unit.spec.ts::shouldHideDrill hides other drills for grouped dimension clicks"
+    - "frontend/src/metabase/querying/click-actions/actions/CopyValueAction/CopyValueAction.unit.spec.tsx::CopyValueAction returns no actions for clicks that group several rows, like the pie 'Other' slice (metabase#5334)"
+    - "metabase.lib.drill-thru.underlying-records-test/chart-other-slice-click-test"
+bug:
+  statement: "Clicking the \"Other\" slice of a pie chart opens no drill-through menu, so you can't see the records behind it."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.unit.spec.ts::useChartEvents emits grouped dimensions when the Other slice is clicked (#5334)"
+  expected_failure: "expect(jest.fn()).toHaveBeenCalledWith(...expected) -- Expected: ObjectContaining {value: 93, dimensions: [{value: [\"Gizmo\", \"Doohickey\"], ...}]} -- Number of calls: 0"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's inverse.patch at 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the fix spans the pie chart click handler, the drill filter in lib (cljc) and drill filtering in querying; module taken from the pie chart click handler, where the Other slice click is dropped; July's fe_unit kill on query-drill.unit.spec.ts is an import failure under this mutant (the patch removes isGroupedDimensionClick and shouldHideDrill, which that spec imports), so those four tests don't fail as assertions; CopyValueAction's #5334 test was added to master after the July base; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred (the lib drill code runs client-side, no API contract changes)"

@@ -1,0 +1,29 @@
+diff --git a/frontend/src/metabase/query_builder/store/reducer.unit.spec.ts b/frontend/src/metabase/query_builder/store/reducer.unit.spec.ts
+new file mode 100644
+index 00000000000..850ebb37942
+--- /dev/null
++++ b/frontend/src/metabase/query_builder/store/reducer.unit.spec.ts
+@@ -0,0 +1,23 @@
++import { onOpenQuestionInfo } from "./actions";
++import { queryBuilderReducer } from "./reducer";
++
++describe("queryBuilderReducer uiControls", () => {
++  it("should close the native variables sidebar when opening the question info sidebar (metabase#51717)", () => {
++    const initialState = queryBuilderReducer(undefined, { type: "@@INIT" });
++    const stateWithVariablesSidebarOpen = {
++      ...initialState,
++      uiControls: {
++        ...initialState.uiControls,
++        isShowingTemplateTagsEditor: true,
++      },
++    };
++
++    const nextState = queryBuilderReducer(
++      stateWithVariablesSidebarOpen,
++      onOpenQuestionInfo(),
++    );
++
++    expect(nextState.uiControls.isShowingQuestionInfoSidebar).toBe(true);
++    expect(nextState.uiControls.isShowingTemplateTagsEditor).toBe(false);
++  });
++});

@@ -1,0 +1,89 @@
+diff --git a/frontend/src/metabase/archive/hooks/use-delete-item.ts b/frontend/src/metabase/archive/hooks/use-delete-item.ts
+index d6c1662d273..94f23c7472d 100644
+--- a/frontend/src/metabase/archive/hooks/use-delete-item.ts
++++ b/frontend/src/metabase/archive/hooks/use-delete-item.ts
+@@ -52,7 +52,10 @@ export function useDeleteItem() {
+   const [deleteDocument] = useDeleteDocumentMutation();
+ 
+   return useCallback(
+-    async (item: DeletableItem) => {
++    async (
++      item: DeletableItem,
++      { notify = true }: { notify?: boolean } = {},
++    ) => {
+       await match(item)
+         .with(
+           { model: "card" },
+@@ -69,7 +72,9 @@ export function useDeleteItem() {
+         )
+         .exhaustive();
+ 
+-      sendToast({ message: t`This item has been permanently deleted.` });
++      if (notify) {
++        sendToast({ message: t`This item has been permanently deleted.` });
++      }
+     },
+     [sendToast, deleteCard, deleteDashboard, deleteCollection, deleteDocument],
+   );
+diff --git a/frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx b/frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx
+index 337f7f2ad78..1d685726063 100644
+--- a/frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx
++++ b/frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx
+@@ -82,18 +82,30 @@ export const ArchivedBulkActions = ({
+   };
+ 
+   const handleBulkDeletePermanently = async () => {
+-    const actions = selected.filter(canDelete).map((item) => deleteItem(item));
+-    Promise.all(actions).finally(unselect);
+-    dispatch(
+-      addUndo({
+-        message: ngettext(
+-          msgid`${selected.length} item has been permanently deleted.`,
+-          `${selected.length} items have been permanently deleted.`,
+-          selected.length,
+-        ),
+-        canDismiss: true,
+-      }),
+-    );
++    const itemsToDelete = selected.filter(canDelete);
++    try {
++      await Promise.all(
++        itemsToDelete.map((item) => deleteItem(item, { notify: false })),
++      );
++      dispatch(
++        addUndo({
++          message: ngettext(
++            msgid`${itemsToDelete.length} item has been permanently deleted.`,
++            `${itemsToDelete.length} items have been permanently deleted.`,
++            itemsToDelete.length,
++          ),
++          canDismiss: true,
++        }),
++      );
++    } catch {
++      dispatch(
++        addUndo({
++          message: t`There was an error permanently deleting these items.`,
++        }),
++      );
++    } finally {
++      unselect();
++    }
+   };
+ 
+   // move
+diff --git a/src/metabase/collections_rest/api.clj b/src/metabase/collections_rest/api.clj
+index 654f09d2c4f..7183835e91d 100644
+--- a/src/metabase/collections_rest/api.clj
++++ b/src/metabase/collections_rest/api.clj
+@@ -1622,8 +1622,8 @@
+         new-children-location (:location collection)]
+     (api/check-400 (:archived collection)
+                    "Collection must be trashed before deletion.")
+-    (api/check-400 (contains? #{:tenant-specific :shared-tenant-collections nil} (:namespace collection))
+-                   "Collections in non-nil namespaces cannot be deleted.")
++    (api/check-400 (contains? #{:tenant-specific collection/shared-tenant-ns nil} (:namespace collection))
++                   "Only collections in the default or tenant namespaces can be deleted.")
+     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
+     (api/check-400 (nil? (:personal_owner_id collection))
+                    "Personal collections cannot be deleted.")

@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+index fe7b83b539e..ba1e69c5a1a 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+@@ -93,9 +93,7 @@ export const getTicksOptions = (
+   // Instead, we force ECharts to generate daily ticks and filter to month starts.
+   if (largestInterval.unit === "month") {
+     canRender = (date: Dayjs) =>
+-      isWithinRange(date) &&
+-      date.date() === 1 &&
+-      date.month() % largestInterval.count === 0;
++      isWithinRange(date) && date.date() === 1;
+     maxInterval = getTimeSeriesIntervalDuration({
+       count: 1,
+       unit: "day",

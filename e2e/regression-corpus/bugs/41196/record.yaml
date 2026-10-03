@@ -1,0 +1,27 @@
+id: reg-41196
+origin:
+  kind: regression
+  issue: 41196
+  fix_commit: 9d19c4b69c2d7e904ee38657da9dac4f0a3e4ba5
+  fix_tests:
+    - "e2e/test/scenarios/question/new.cy.spec.js::scenarios > question > new should preserve the original question name (metabase#41196)"
+    - "frontend/src/metabase/common/components/SaveQuestionModal/SaveQuestionModal.unit.spec.tsx::SaveQuestionModal saving as a new question should switch to the new question form"
+    - "frontend/src/metabase/common/components/SaveQuestionModal/SaveQuestionModal.unit.spec.tsx::SaveQuestionModal saving as a new question should allow to save a question with default form values"
+    - "frontend/src/metabase/common/components/SaveQuestionForm/util.unit.spec.ts::SaveQuestionForm utils getInitialValues should return modified name for existing question"
+bug:
+  statement: "Saving a modified saved question as a new question suggests an auto-generated name instead of the original name followed by \" - Modified\"."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: common
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/common/components/SaveQuestionForm/util.unit.spec.ts::SaveQuestionForm utils getInitialValues should return modified name for existing question"
+  expected_failure: "expect(received).toBe(expected); Expected: \"Original Question - Modified\", Received: \"Test Question\""
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the e2e is gone at 8317274709c (removed on master by 0b7aa11b153 and on this branch by bf3736f0270), so its id is from 56879decb0a; the two SaveQuestionModal tests are the ones the fix changed; the util.unit.spec.ts test is the fix's assertion extracted with the naming logic into SaveQuestionForm; fe_be_boundary inferred"

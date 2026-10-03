@@ -1,0 +1,29 @@
+id: reg-41056
+origin:
+  kind: regression
+  issue: 41056
+  fix_commit: a304019cf6c161d66768a12c6720f64ccdfa3fc9
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/maps.cy.spec.js::scenarios > visualizations > maps Pin Map brush filters should apply brush filters by dragging map when zoomed out (metabase#41056)"
+    - "e2e/test/scenarios/visualizations-charts/maps.cy.spec.js::scenarios > visualizations > maps Pin Map brush filters should handle brush filters that select zero data points (metabase#41056)"
+    - "e2e/test/scenarios/visualizations-charts/maps.cy.spec.js::scenarios > visualizations > maps Pin Map brush filters should handle brush filters that exceed 360 deg of longitude (metabase#41056)"
+    - "e2e/test/scenarios/visualizations-charts/maps.cy.spec.js::scenarios > visualizations > maps Pin Map brush filters should handle brush filters that cross the 180th meridian (metabase#41056)"
+    - "metabase.lib.filter.update-test/update-lat-lon-filter-antimerdian-test"
+    - "metabase.lib.filter.update-test/update-lat-lon-filter-remove-existing-antimerdian-test"
+bug:
+  statement: "Brushing a pin map across the 180th meridian filters to the opposite side of the globe, so the zoomed map shows the wrong points."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: lib/filter/update
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.lib.filter.update-test/update-lat-lon-filter-antimerdian-test"
+  expected_failure: "expected [:or [:inside ... 10 179 -10 180] [:inside ... 10 -180 -10 -179]], actual a single [:inside ... 10 -179 -10 179]"
+notes: "base_commit is 8317274709c, where the patch applies only with git apply --3way (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the \"cross the 180th meridian\" e2e was removed from master by 4701e5f8dc5 (backend test parity), so its id comes from HEAD and the July base; the fix also touched LeafletMap.jsx, but the mutant reverts only the cljc filter update (both the antimeridian split and the subclause-aware removal of existing filters)"

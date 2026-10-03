@@ -1,0 +1,47 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.unit.spec.ts b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.unit.spec.ts
+index c993c20c787..f63002455e4 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.unit.spec.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.unit.spec.ts
+@@ -59,4 +59,42 @@ describe("getTicksOptions", () => {
+     expect(model.toEChartsAxisValue(first)).toBe("2025-03-30T00:00:00Z");
+     expect(model.toEChartsAxisValue(last)).toBe("2025-04-01T00:00:00Z");
+   });
++
++  it("should label a single-year x-axis only once (metabase#63671)", () => {
++    const dateColumn = createMockDatetimeColumn({ unit: "year" });
++    const dimensionModel: DimensionModel = {
++      column: dateColumn,
++      columnIndex: 0,
++      columnByCardId: { 1: dateColumn },
++      columns: [dateColumn],
++    };
++    const dataset = [{ [X_AXIS_DATA_KEY]: "2025-01-01T00:00:00Z", "0": 10 }];
++    const rawSeries = [createMockSingleSeries({ display: "bar" })];
++    const settings = createMockVisualizationSettings({
++      "graph.x_axis.scale": "timeseries",
++    });
++
++    const model = getXAxisModel(
++      dimensionModel,
++      rawSeries,
++      dataset,
++      settings,
++    ) as TimeSeriesXAxisModel;
++    expect(isTimeSeriesAxis(model)).toBe(true);
++
++    const { canRender, formatter } = getTicksOptions(
++      model,
++      createMockChartLayout(),
++    );
++    const echartsTicks = [
++      dayjs.utc("2025-01-01T00:00:00Z").valueOf(),
++      dayjs.utc("2025-07-01T00:00:00Z").valueOf(),
++    ];
++    const labels = echartsTicks
++      .map((rawValue) => model.fromEChartsAxisValue(rawValue))
++      .filter((value) => canRender(value))
++      .map((value) => formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]")));
++
++    expect(labels).toEqual(["2025"]);
++  });
+ });

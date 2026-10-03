@@ -1,0 +1,31 @@
+id: reg-52236
+origin:
+  kind: regression
+  issue: 52236
+  fix_commit: 9b4a09181767a99d09a1c29962480b13b32748b6
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/drillthroughs/table_drills.cy.spec.js::scenarios > visualizations > drillthroughs > table_drills pivot drill should allow category pivot drills on single-stage queries (metabase#52236)"
+    - "e2e/test/scenarios/visualizations-tabular/drillthroughs/table_drills.cy.spec.js::scenarios > visualizations > drillthroughs > table_drills pivot drill should allow category pivot drills on multi-stage queries (metabase#52236)"
+    - "e2e/test/scenarios/visualizations-tabular/drillthroughs/table_drills.cy.spec.js::scenarios > visualizations > drillthroughs > table_drills pivot drill should allow timeseries pivot drills on single-stage queries (metabase#52236)"
+    - "e2e/test/scenarios/visualizations-tabular/drillthroughs/table_drills.cy.spec.js::scenarios > visualizations > drillthroughs > table_drills pivot drill should allow timeseries pivot drills on multi-stage queries (metabase#52236)"
+    - "metabase.lib.drill-thru.pivot-test/returns-pivot-test-2a-cat+loc-with-date"
+    - "metabase.lib.drill-thru.pivot-test/returns-pivot-test-2b-cat+loc-with-date+category"
+    - "metabase.lib.drill-thru.pivot-test/pivot-application-test-1"
+    - "metabase.lib.drill-thru.pivot-test/returns-pivot-test-2c-explicit-join-cat+loc-with-cat"
+bug:
+  statement: "The \"Break out by…\" drill doesn't work on questions that filter after summarizing, such as a join plus a filter on the aggregate."
+  odc: {type: Checking, qualifier: Extraneous}
+  module: lib/drill-thru/pivot
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.lib.drill-thru.pivot-test/returns-pivot-test-2a-cat+loc-with-date"
+  expected_failure: "\"multi-stage query\" variant: expected {:type :drill-thru/pivot, :dimensions (...)}, actual nil"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; fix_commit: GitHub closes the issue with #52925 (9b4a0918176), which removed the multi-stage guard, fixed the drill's stage handling and re-enabled the multi-stage test variants; July mapped 3e046e5735e (#52239), the stopgap that added the guard and disabled the drill for multi-stage queries while the issue stayed open; the patch re-adds that guard, so the drill is missing rather than erroring as first reported; the two multi-stage e2e tests exist at the July base and HEAD but not at 8317274709c; July's deftests had their multi-stage variants re-enabled by #52925; returns-pivot-test-2c-explicit-join-cat+loc-with-cat was added by #52925"

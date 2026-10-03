@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/redux/tables.ts b/frontend/src/metabase/redux/tables.ts
+index 6857eaf401c..47e3a541890 100644
+--- a/frontend/src/metabase/redux/tables.ts
++++ b/frontend/src/metabase/redux/tables.ts
+@@ -126,7 +126,7 @@ function getMissingTargetFieldIds(
+   storeFields: FieldsById,
+ ): FieldId[] {
+   const fieldIds = fields
+-    .filter((field) => targetField(field, storeFields) == null)
++    .filter((field) => targetField(field, storeFields) != null)
+     .map((field) => field.fk_target_field_id)
+     .filter(isNotNull);
+   return Array.from(new Set(fieldIds));

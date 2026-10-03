@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase/querying/parameters/utils/parsing.ts b/frontend/src/metabase/querying/parameters/utils/parsing.ts
+index 9f38bba3856..655f8963f2c 100644
+--- a/frontend/src/metabase/querying/parameters/utils/parsing.ts
++++ b/frontend/src/metabase/querying/parameters/utils/parsing.ts
+@@ -60,12 +60,7 @@ export function deserializeNumberParameterValue(
+     return null;
+   }, []);
+ 
+-  // allow "between" values without min or max, e.g. `[1, null]` or `[null, 2]`
+-  return type === "number/between" &&
+-    values.length === 2 &&
+-    values.some(isNotNull)
+-    ? values
+-    : values.filter(isNotNull);
++  return values.filter(isNotNull);
+ }
+ 
+ export function normalizeNumberParameterValue(

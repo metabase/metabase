@@ -1,0 +1,28 @@
+id: reg-74461
+origin:
+  kind: regression
+  issue: 74461
+  fix_commit: b6fe71475dc1aa119937e489aaa3f386412ea664
+  fix_tests:
+    - "e2e/test/scenarios/collections/tenant-collection-trash.cy.spec.ts::scenarios > collections > tenant collection trash can permanently delete a trashed shared tenant collection (metabase#74461)"
+    - "frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.unit.spec.tsx::ArchivedBulkActions shows a single success message and closes the modal when all deletes succeed"
+    - "frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.unit.spec.tsx::ArchivedBulkActions shows an error message instead of success when a delete fails"
+    - "metabase.collections-rest.api-test/collection-deletion-prohibitions"
+    - "metabase-enterprise.tenants.api-test/tenant-collections-can-be-permanently-deleted-from-trash-test"
+bug:
+  statement: "Permanently deleting a trashed shared tenant collection fails, while the trash still says the item was deleted and its modal hangs."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: collections-rest
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: true
+mutant:
+  base_commit: "8317274709c"
+  patch: inverse.patch
+  method: inverse
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.unit.spec.tsx::ArchivedBulkActions shows an error message instead of success when a delete fails"
+  expected_failure: "findByText(\"There was an error permanently deleting these items.\") finds nothing; the success message shows instead"
+notes: "base_commit is 8317274709c, where the patch applies only with git apply --3way (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the fix spans the backend delete check (a misspelled shared tenant namespace in the allowed set) and the trash's bulk delete, which reported success before the requests finished; module from the backend check; July's be_unit kill of collection-deletion-prohibitions only compares the 400 error message the fix reworded, so it's a wording kill rather than a behaviour kill; the enterprise deftest the fix added (its testing string cites #74148) wasn't run by July; the e2e was culled on this branch and resolves at 8317274709c; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred (one behaviour fixed on both sides)"

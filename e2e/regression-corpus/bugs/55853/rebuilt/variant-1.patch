@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts b/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
+index 277be58d0df..afdc696bf3f 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
+@@ -203,7 +203,7 @@ const getYAxisTicksWidth = (
+   const measuredValues = valuesToMeasure.map((rawValue) => {
+     let value = rawValue;
+ 
+-    if (!isPercent && !areDecimalTicksExpected) {
++    if (isPercent || !areDecimalTicksExpected) {
+       value = Math.round(rawValue);
+     }
+ 

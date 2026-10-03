@@ -1,0 +1,24 @@
+id: reg-31340
+origin:
+  kind: regression
+  issue: 31340
+  fix_commit: fa02c752984f4bbf8ff17292d4dd5359ba20c897
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 31340 should properly display long column names in filter options search results (metabase#31340)"
+bug:
+  statement: "In a filter's value search, a long column name in the \"No matching … found\" message overflows the popover instead of being truncated."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: components
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 31340 should properly display long column names in filter options search results (metabase#31340)"
+  expected_failure: null
+notes: "no mutant patch: July's minimal revert (plain <strong> instead of the truncating Ellipsified in FieldValuesWidget NoMatchState) tripped no jest spec and wasn't saved; the fix's jest spec FieldValuesWidget.unit.spec.js was converted to .tsx in #32202 and deleted in #56461; July counted this as the one genuine jsdom-layout limit among its frontend holes (CSS truncation); contradiction: July said the e2e keeps the fix's scrollbar/height assertions, but at 56879decb0a and 8317274709c the e2e only types a search term and waits, asserting nothing about overflow, and it now opens the newer filter picker rather than FieldValuesWidget, so the current e2e likely can't catch this bug; expected_failure null because the current e2e has no assertion for it; module from the fix's components/FieldValuesWidget, now under parameters/components/widgets; fe_be_boundary inferred"

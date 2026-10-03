@@ -1,0 +1,59 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.unit.spec.ts b/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.unit.spec.ts
+index 36edb3c2dbb..126e6351786 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.unit.spec.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.unit.spec.ts
+@@ -106,4 +106,54 @@ describe("getChartLayout", () => {
+         CHART_STYLE.padding.x,
+     );
+   });
++
++  it("measures the actual low-percentage tick labels instead of rounded ones (metabase#55853)", () => {
++    const formatPercent = (value: unknown) =>
++      `${(Number(value) * 100).toFixed(2)}%`;
++
++    const percentAxisModel: YAxisModel = {
++      seriesKeys: ["value"],
++      extent: [0, 0.0002],
++      column: createMockColumn({ name: "value" }),
++      formatter: formatPercent,
++      formatGoal: formatPercent,
++      splitNumber: 5,
++    };
++
++    const percentInput: ChartLayoutInput = {
++      ...input,
++      leftAxisModel: percentAxisModel,
++    };
++
++    const percentSettings = createMockVisualizationSettings({
++      ...settings,
++      column: () => ({ number_style: "percent" }),
++    });
++
++    const measureText = jest.fn((text: string) =>
++      text === "0.02%" ? WIDEST_MEASURED_TICK_WIDTH : 20,
++    );
++
++    const chartContext: RenderingContext = {
++      getColor: (name) => name,
++      measureText,
++      measureTextHeight: () => 0,
++      fontFamily: "",
++      theme: DEFAULT_VISUALIZATION_THEME,
++    };
++
++    const chartLayout = getChartLayout(
++      percentInput,
++      percentSettings,
++      false,
++      480,
++      274,
++      chartContext,
++    );
++
++    expect(measureText).toHaveBeenCalledWith("0.02%", expect.anything());
++    expect(chartLayout.ticksDimensions.yTicksWidthLeft).toBe(
++      WIDEST_MEASURED_TICK_WIDTH + CHART_STYLE.axisTicksMarginY,
++    );
++  });
+ });

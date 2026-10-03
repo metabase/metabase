@@ -1,0 +1,24 @@
+id: reg-51934
+origin:
+  kind: regression
+  issue: 51934
+  fix_commit: b1bcf3240602c41671b2d71745389d746a1ff107
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js::issue 51934 (EMB-189) should set the starting join step based on the query source"
+bug:
+  statement: "In interactive embedding, the join data picker always opens on the table list instead of starting where the query's source lives, such as its model's collection."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: EE/embedding-data-picker
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js::issue 51934 (EMB-189) should set the starting join step based on the query source"
+  expected_failure: "cy.findByRole(\"menuitem\", { name: COLLECTION_NAME }).should(\"have.css\", \"background-color\", \"rgb(80, 158, 226)\") fails in the join popover"
+notes: "no mutant patch: July's revert of the join-step branch in DataSelector hydrateActiveStep left both jest specs green and wasn't saved; the fix's jest edits only deleted two tests and added a required prop, and no jest test passes a model or question querySourceType; expected_failure inferred from the e2e's assertion"

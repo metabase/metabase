@@ -1,0 +1,28 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.ts b/frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.ts
+index 6dc5aef785c..ffefc74e3c5 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.ts
+@@ -14,7 +14,6 @@ import { msToDays, tryGetDate } from "../utils/timeseries";
+ import { getScaledMinAndMax } from "./axis";
+ import {
+   getKeyBasedDatasetTransform,
+-  getNormalizedDatasetTransform,
+   scaleDataset,
+   transformDataset,
+ } from "./dataset";
+@@ -183,15 +182,6 @@ export const getTrendLines = (
+ 
+   const scaledTrendDataset = scaleDataset(dataset, trendSeriesModels, settings);
+   const transformedDataset = transformDataset(scaledTrendDataset, [
+-    {
+-      condition: settings["stackable.stack_type"] === "normalized",
+-      fn: getNormalizedDatasetTransform(
+-        stackModels.map((stackModel) => ({
+-          ...stackModel,
+-          seriesKeys: stackModel.seriesKeys.map(getTrendKeyForSeries),
+-        })),
+-      ),
+-    },
+     getKeyBasedDatasetTransform(dataKeys, (value) =>
+       yAxisScaleTransforms.toEChartsAxisValue(value),
+     ),

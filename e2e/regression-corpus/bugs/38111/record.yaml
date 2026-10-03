@@ -1,0 +1,25 @@
+id: reg-38111
+origin:
+  kind: regression
+  issue: 38111
+  fix_commit: 03905e7940bf86067e46bee66c34b60f2fade0be
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 45252 should allow using is-null and not-null operators with unsupported data types (metabase#45252,metabase#38111)"
+    - "metabase.lib.types.isa-test/string?-test"
+bug:
+  statement: "The bulk filter modal offers value filters for JSON columns, and the query errors when one is applied."
+  odc: {type: Relationship, qualifier: Extraneous}
+  module: types
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.lib.types.isa-test/string?-test"
+  expected_failure: "(false? (string? {:effective-type :type/JSON :semantic-type :type/SerializedJSON})) -> actual true"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the e2e sits under issue 45252's describe, but the fix extended it with the JSON-column filter-modal check for this issue; the fix removed the Structured-to-Text type derivation from types.cljc, now types/core.cljc"

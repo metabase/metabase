@@ -1,0 +1,17 @@
+diff --git a/frontend/src/metabase/querying/expressions/tokenizer/tokens.ts b/frontend/src/metabase/querying/expressions/tokenizer/tokens.ts
+index 538690c308a..c5798a7ef92 100644
+--- a/frontend/src/metabase/querying/expressions/tokenizer/tokens.ts
++++ b/frontend/src/metabase/querying/expressions/tokenizer/tokens.ts
+@@ -99,10 +99,9 @@ export const field = new ExternalTokenizer((input) => {
+     if (current === OPEN_BRACKET) {
+       // this is another opening bracket that will start a new token,
+       // return the current one
+-      if (wasOpenedByBracket) {
+-        input.acceptToken(Field);
++      if (!wasOpenedByBracket) {
++        return;
+       }
+-      return;
+     }
+ 
+     if (current === CLOSE_BRACKET) {

@@ -1,0 +1,29 @@
+id: reg-68819
+origin:
+  kind: regression
+  issue: 68819
+  fix_commit: c3715127e2c48ea8779027ac65e85ec20bad360f
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts::issue #68819 should not crash when renaming an aggregation changes sibling column deduplication (metabase#68819)"
+    - "frontend/src/metabase/viz-core/shared/settings/cartesian-chart.unit.spec.ts::cartesian-chart defaults ignores previous metrics that reference missing columns"
+    - "frontend/src/metabase/viz-core/shared/settings/cartesian-chart.unit.spec.ts::cartesian-chart defaults ignores previous dimensions that reference missing columns"
+    - "frontend/src/metabase/viz-core/shared/settings/cartesian-chart.unit.spec.ts::cartesian-chart defaults reuses previous dimensions when defaults are unavailable but columns are valid"
+    - "frontend/src/metabase/viz-core/shared/settings/cartesian-chart.unit.spec.ts::cartesian-chart defaults reuses previous metrics when defaults are unavailable but columns are valid"
+    - "frontend/src/metabase/visualizations/shared/settings/cartesian-chart.unit.spec.ts::cartesian-chart defaults returns all metrics for a bar chart with multiple same-type aggregations, ignoring stale settings (metabase#68819)"
+bug:
+  statement: "A stacked bar chart whose question has several aggregations of the same type crashes instead of rendering, for example after an aggregation is renamed."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: viz/cartesian-defaults
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/visualizations/shared/settings/cartesian-chart.unit.spec.ts::cartesian-chart defaults returns all metrics for a bar chart with multiple same-type aggregations, ignoring stale settings (metabase#68819)"
+  expected_failure: "expect(result).toEqual([\"sum\", \"sum_2\"]) fails; the default metrics come back as [null]"
+notes: "no mutant patch: July's revert of the getSingleSeriesDimensionsAndMetrics guard and the columnsAreValid reuse check flipped none of the four fix-added cartesian-chart tests, so it wasn't saved; July recorded an fe_unit hole for this bug, but the land-and-cull pass (da261afed6f) landed a discriminating witness and culled the e2e on this branch; the witness sits at the pre-move path on HEAD, while the shipped tests are resolved at the viz-core path on 8317274709c; expected_failure inferred from the witness's assertion and July's finding that the reverted guard gives [null] for 2 metrics and 2 breakouts"

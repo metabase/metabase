@@ -1,0 +1,25 @@
+id: reg-56094
+origin:
+  kind: regression
+  issue: 56094
+  fix_commit: 3ca4c5a2ee024772007e646607a29f8372ea31ee
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js::issue 56094 should allow to switch between automatic pivot table and usual table visualization (metabase#56094)"
+    - "frontend/src/metabase/query_builder/selectors.unit.spec.ts::getIsVisualized should be true when display is table and only `table.pivot_column` is set (metabase#56094)"
+bug:
+  statement: "After switching an automatic pivot table to the raw data view, the data/visualization toggle disappears, so users can't switch back."
+  odc: {type: Checking, qualifier: Missing}
+  module: query_builder
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/query_builder/store/selectors.unit.spec.ts::getIsVisualized should stay truthy when an implicit pivot table is switched to the raw data view (metabase#56094)"
+  expected_failure: "expect(received).toBeTruthy() Received: false at selectors.unit.spec.ts:522 expect(getIsVisualized(state)).toBeTruthy()"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at an unrecorded base commit; mutation.patch also carries an unrelated hunk exporting getTimeseriesDataInterval, from the agent worktree's divergent base; July skipped the CI e2e run because the patch didn't apply to master (its agent worktree had drifted), so base_commit is unrecorded; the fix's QuestionDisplayToggle change only added a test id; witness landed and e2e culled on this branch; fe_be_boundary inferred"

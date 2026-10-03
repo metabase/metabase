@@ -1,0 +1,27 @@
+id: reg-62053
+origin:
+  kind: regression
+  issue: 62053
+  fix_commit: dcb4ce2aec5ba2cadd8e5ba3d46e1ec88e672620
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/table-column-settings.cy.spec.js::scenarios > visualizations > table column settings should handle duplicated values in table.columns viz settings (metabase#62053)"
+    - "metabase.channel.render.body-test/order-data-handles-duplicated-table-columns-test"
+    - "metabase.channel.render.body-test/order-data-respect-table-columns-order-test"
+    - "metabase.channel.render.body-test/render-table-with-remapped-with-custom-columns-order-test"
+bug:
+  statement: "Duplicated entries in a table's column settings make a column such as ID repeat, both in the table view and in subscription emails."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: channel/render
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.channel.render.body-test/order-data-handles-duplicated-table-columns-test"
+  expected_failure: "expected 2 cols, actual 3; expected [1 \"Alice\"], actual (1 1 \"Alice\")"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the fix deduplicated table columns on both sides; July's mutant reverts only the backend render path used by subscriptions, so the in-app table half isn't covered by this mutant; the two other body-test deftests have testing strings naming this issue but weren't added by the fix and pass on the mutant"

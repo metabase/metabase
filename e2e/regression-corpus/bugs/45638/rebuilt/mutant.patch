@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion.tsx b/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion.tsx
+index 48d194a9c89..15a161c2c36 100644
+--- a/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion.tsx
++++ b/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion.tsx
+@@ -15,7 +15,6 @@ import {
+ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+ import { useEmbedFrameOptions } from "metabase/public/hooks";
+ import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
+-import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
+ import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
+ import { useDispatch, useSelector, useStore } from "metabase/redux";
+ import { setErrorPage } from "metabase/redux/app";
+@@ -48,8 +47,6 @@ export const PublicOrEmbeddedQuestion = () => {
+     {},
+   );
+ 
+-  useSetEmbedFont({ location });
+-
+   const { bordered, hide_parameters, theme, titled, downloadsEnabled, locale } =
+     useEmbedFrameOptions({ location });
+ 

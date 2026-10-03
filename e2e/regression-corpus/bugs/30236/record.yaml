@@ -1,0 +1,26 @@
+id: reg-30236
+origin:
+  kind: regression
+  issue: 30236
+  fix_commit: af138e85153cb8c65a62862612c2014b5edf507c
+  fix_tests:
+    - "e2e/test/scenarios/organization/official-collections.cy.spec.js::official collections premium token with paid features should be able to manage collection authority level for personal collections and their children (metabase#30236)"
+    - "metabase-enterprise.content-verification.api.collection-test/update-collection-authority-happy-path-test"
+    - "frontend/src/metabase/collections/components/CollectionMenu/tests/premium.unit.spec.tsx::CollectionMenu should be able to make the collection official if it's a personal collection"
+bug:
+  statement: "Admins can't mark a personal collection or one of its sub-collections as official, although official collections can still end up inside personal ones."
+  odc: {type: Checking, qualifier: Extraneous}
+  module: collections-rest/api
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/organization/official-collections.cy.spec.js::official collections premium token with paid features should be able to manage collection authority level for personal collections and their children (metabase#30236)"
+  expected_failure: null
+notes: "no mutant patch: July's backend revert (require `(not (collection/is-personal-collection-or-descendant-of-one? collection-before-update))` alongside the superuser check-403 on authority_level changes in collections_rest/api.clj) didn't flip any deftest, because the fix only deleted the negative 403 block from update-collection-authority-happy-path-test, so it wasn't saved; the GitHub issue reported that official collections could live in personal ones, and the fix resolved it by allowing that everywhere, so the bug reintroduced by reverting is the restriction; the fix also lifted the same restriction in the frontend (CollectionMenu, FormAuthorityLevelFieldContainer) and shipped the CollectionMenu jest test, which July never ran against a revert; fe_be_boundary kept as July's false although the fix changed both sides; July recorded no failure message"

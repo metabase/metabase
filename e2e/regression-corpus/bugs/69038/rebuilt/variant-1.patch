@@ -1,0 +1,23 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/Table/definition.ts b/frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+index fe2c69d8634..59762814af3 100644
+--- a/frontend/src/metabase/visualizations/visualizations/Table/definition.ts
++++ b/frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+@@ -150,17 +150,10 @@ export const TABLE_DEFINITION = {
+       getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
+       getDefault: ([series]: Series) => {
+         const { card, data } = series;
+-        let native: boolean;
+-        try {
+-          native = isNative(card);
+-        } catch (error) {
+-          // isNative throws when used in the visualizer
+-          native = false;
+-        }
+         if (
+           !data ||
+           data.cols.length !== 3 ||
+-          native ||
++          isNative(card) ||
+           data.cols.filter(isMetric).length !== 1 ||
+           data.cols.filter(isDimension).length !== 2
+         ) {

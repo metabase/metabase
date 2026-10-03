@@ -1,0 +1,25 @@
+id: reg-40999
+origin:
+  kind: regression
+  issue: 40999
+  fix_commit: 6a3d185b2b2fc5f2b1f30fe5601c9b210eae08f9
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/maps.cy.spec.js::scenarios > visualizations > maps should display pins type viz setting (metabase#40999)"
+    - "frontend/src/metabase/visualizations/visualizations/Map/Map.unit.spec.ts::Map viz settings (metabase#40999) should expose the 'Pin type' setting as an editable widget"
+bug:
+  statement: "The pin map's \"Pin type\" setting is hidden, so users can't switch a large pin map to markers that show tooltips."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/visualizations/Map/Map.unit.spec.ts::Map viz settings (metabase#40999) should expose the 'Pin type' setting as an editable widget"
+  expected_failure: "expect(received).toContain(expected) // indexOf; Expected value: \"map.pin_type\"; Received array: []"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 02f57954179 (run 29135027787); stratum wiring: the mutant drops the setting's widget, so the settings sidebar never registers the Pin type control; the witness is July-written (witness.patch, landed on this branch) and the e2e is culled on this branch; fe_be_boundary inferred"

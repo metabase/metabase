@@ -1,0 +1,25 @@
+id: reg-21528
+origin:
+  kind: regression
+  issue: 21528
+  fix_commit: 524ed311740fbf69b53d58ddf8d90a678c7423ce
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-1.cy.spec.js::issue 21528 should show dashboard ID filter values when mapped to a native question with a foreign key field filter"
+    - "metabase.parameters.chain-filter-test/use-cached-field-values-for-remapped-field-test"
+bug:
+  statement: "A dashboard filter on a foreign key remapped to a display field lists bare IDs instead of the remapped names."
+  odc: {type: Checking, qualifier: Missing}
+  module: parameters/chain-filter
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.parameters.chain-filter-test/use-cached-field-values-for-remapped-field-test"
+  expected_failure: "expected {:values [[2 \"American\"] [3 \"Artisan\"] [4 \"Asian\"]]}, actual {:values ([2] [3] [4])}"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; GitHub has no closing PR and closed the issue on 2025-03-11, well after this 2023 fix, so kept July's fix_commit; the fix's targets.unit.spec.ts change is for #20656, not this issue"

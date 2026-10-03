@@ -1,0 +1,30 @@
+diff --git a/src/metabase/embedding_rest/api/embed.clj b/src/metabase/embedding_rest/api/embed.clj
+index 13c2cb2c341..1fdf0eca193 100644
+--- a/src/metabase/embedding_rest/api/embed.clj
++++ b/src/metabase/embedding_rest/api/embed.clj
+@@ -28,7 +28,6 @@
+    [metabase.query-processor.middleware.constraints :as qp.constraints]
+    [metabase.query-processor.pivot :as qp.pivot]
+    [metabase.query-processor.schema :as qp.schema]
+-   [metabase.request.core :as request]
+    [metabase.tiles.api :as api.tiles]
+    [metabase.util :as u]
+    [metabase.util.malli :as mu]
+@@ -414,12 +413,11 @@
+         card-id (api.embed.common/unsigned-token->card-id unsigned)
+         card (api/check-404 (embedding-rest.db/card card-id))]
+     (api.embed.common/check-embedding-enabled-for-card card)
+-    (request/as-admin
+-      (api.embed.common/process-tiles-query-for-card
+-       card
+-       (api.embed.common/tile-parameters-for-card
+-        card (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
+-       zoom x y latField lonField))))
++    (api.embed.common/process-tiles-query-for-card
++     card
++     (api.embed.common/tile-parameters-for-card
++      card (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:params]) parameters)
++     zoom x y latField lonField)))
+ 
+ ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+ ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

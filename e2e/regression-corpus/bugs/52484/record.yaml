@@ -1,0 +1,25 @@
+id: reg-52484
+origin:
+  kind: regression
+  issue: 52484
+  fix_commit: a82a38652547349ca56ee6986552d767cb2844c7
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 52484 should allow to use click behaviors with numeric columns that are not database fields (metabase#52484)"
+    - "frontend/src/metabase/parameters/utils/parameter-parsing.unit.spec.ts::parameters/utils/parameter-values getParameterValueFromQueryParams should parse number parameter value $value"
+bug:
+  statement: "A click behavior that sets a number dashboard filter from a numeric column that isn't a database field doesn't apply the clicked value."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: parameters
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/parameters/utils/parameter-parsing.unit.spec.ts::parameters/utils/parameter-values getParameterValueFromQueryParams should parse number parameter value $value"
+  expected_failure: "should parse number parameter value abc: expect(received).toEqual(expected); Expected [], Received null"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; 52484 is the fix PR's own number (GitHub shows a merged PR, not an issue), so there is no separate issue text; the jest id is parameterized (it.each table the fix changed), kept as the template title the source writes; the spec moved from metabase-lib/v1/parameters/utils (.js) to metabase/parameters/utils (.ts at 8317274709c); fe_be_boundary inferred"

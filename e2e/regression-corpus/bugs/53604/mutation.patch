@@ -1,0 +1,14 @@
+diff --git a/src/metabase/lib/drill_thru/underlying_records.cljc b/src/metabase/lib/drill_thru/underlying_records.cljc
+index 7e9c30db16f..4f7aad2c5b5 100644
+--- a/src/metabase/lib/drill_thru/underlying_records.cljc
++++ b/src/metabase/lib/drill_thru/underlying_records.cljc
+@@ -161,8 +161,7 @@
+                         ;; instead of
+                         ;;
+                         ;;    month(col) = March 2023
+-                        (let [bucket (or (::lib.underlying/temporal-unit column)
+-                                         (lib.temporal-bucket/temporal-bucket column))
++                        (let [bucket (::lib.underlying/temporal-unit column)
+                               unit   (cond-> bucket
+                                        (map? bucket) :unit)
+                               column (if unit

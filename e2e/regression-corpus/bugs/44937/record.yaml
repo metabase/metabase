@@ -1,0 +1,25 @@
+id: reg-44937
+origin:
+  kind: regression
+  issue: 44937
+  fix_commit: 722fc1a45f5e07c88a823e2365dcbc966b55caeb
+  fix_tests:
+    - "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js::issue 44937 dashboard empty state should not suggest creating a new question when users have no creation permission (metabase#44937)"
+    - "frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.unit.spec.tsx::DashboardEmptyState renders %s empty state in editing mode without create questions permission"
+bug:
+  statement: "An empty dashboard in edit mode prompts users without query-creation permission to create a new question."
+  odc: {type: Checking, qualifier: Missing}
+  module: dashboard
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.unit.spec.tsx::DashboardEmptyState renders %s empty state in editing mode without create questions permission"
+  expected_failure: "getByRole(\"heading\", { name: \"Browse your collections to find and add existing questions.\" }) not found; heading reads \"Create a new question or browse...\""
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the jest id is parameterized (it.each over dashboard and dashboard tab), kept as the template title the source writes; fe_be_boundary inferred"

@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/value-formatting/date.tsx b/frontend/src/metabase/value-formatting/date.tsx
+index da03c0560f4..77f25b9504a 100644
+--- a/frontend/src/metabase/value-formatting/date.tsx
++++ b/frontend/src/metabase/value-formatting/date.tsx
+@@ -774,7 +774,7 @@ export function formatDateTimeForParameter(
+   } else if (unit === "day") {
+     return m.format("YYYY-MM-DD");
+   } else if (unit === "hour" || unit === "minute") {
+-    return m.format("YYYY-MM-DDTHH:mm");
++    return m.format("YYYY-MM-DD");
+   } else if (unit) {
+     return formatDateToRangeForParameter(value, unit);
+   }

@@ -1,0 +1,27 @@
+id: reg-34129
+origin:
+  kind: regression
+  issue: 34129
+  fix_commit: 77620a0e23ea25137f431a6c7ee1ba7241ff9277
+  fix_tests:
+    - "e2e/test/scenarios/native-filters/native-filters-reproductions.cy.spec.js::issue 34129 should support mismatching date filter parameter values when navigating from a dashboard (metabase#34129)"
+    - "frontend/src/metabase/parameters/utils/formatting.unit.spec.ts::metabase/parameters/utils/formatting formatParameterValue without settings should format $type parameter"
+    - "frontend/src/metabase/parameters/utils/formatting.unit.spec.ts::metabase/parameters/utils/formatting formatParameterValue with settings should format $type parameter"
+    - "frontend/src/metabase/parameters/utils/formatting.unit.spec.ts::metabase/parameters/utils/formatting formatParameterValue with settings and abbreviated dates should format $type parameter"
+bug:
+  statement: "Opening a question from a dashboard whose date filter holds a value of a different date type shows the filter without a readable value."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: parameters/date-formatting
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/parameters/utils/formatting.unit.spec.ts::metabase/parameters/utils/formatting formatParameterValue without settings should format $type parameter"
+  expected_failure: "expect(received).toEqual(expected); Received: null for mismatching types (date/month-year \"thisday\" expected \"Today\")"
+notes: "base_commit is 8317274709c, where the patch applies only with git apply --3way (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the jest ids are parameterized ($type tables the fix extended with mismatching-type cases), kept as the template titles the source writes; the fix's per-type formatters no longer exist, so the mutant expresses the pre-fix type-restricted formatting as a guard in formatDateValue that returns null when the value's filter type doesn't match the parameter's date type; the fix's initializeQB.ts change is not reconstructed"

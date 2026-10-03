@@ -1,0 +1,24 @@
+id: reg-57557
+origin:
+  kind: regression
+  issue: 57557
+  fix_commit: 6e6449b724bbf861e882d25afd5a95d937b87628
+  fix_tests:
+    - "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 57557 should not allow to see the query definition for a user without data permissions (metabase#57557)"
+bug:
+  statement: "Users without data permissions can open a model's query definition and see the SQL behind it."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: qb/QuestionActions-permissions
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 57557 should not allow to see the query definition for a user without data permissions (metabase#57557)"
+  expected_failure: "cy.findByTestId(\"editor-tabs-query\").should(\"be.disabled\") fails for the user without data permissions"
+notes: "stratum wiring: the fix feeds the permission check from the underlying, non-composed question selector instead of the composed question prop; no mutant patch: July's faithful revert passed all 17 QuestionActions.unit.spec.tsx tests because that spec never composes the model, and the fix's spec edit was setup only, so nothing was saved; the e2e now lives in reproductions-2.cy.spec.ts; expected_failure is the e2e's own assertion on the query editor tab"

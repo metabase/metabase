@@ -1,0 +1,25 @@
+id: reg-63687
+origin:
+  kind: regression
+  issue: 63687
+  fix_commit: c56432c2f7b2bbd98bb0e664c488bcc7641f9cdf
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js::issue 63687 should properly display pin map tiles without auth errors for a valid JWT token"
+    - "metabase.embedding-rest.api.embed-test/anonymous-tile-query-runs-as-admin-test"
+bug:
+  statement: "Pin map tiles in statically embedded questions and dashboards fail to load with an unauthorized error."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: embedding-rest
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.embedding-rest.api.embed-test/anonymous-tile-query-runs-as-admin-test"
+  expected_failure: "GET /api/embed/tiles/card/<token>/1/1/1 expected a status code of 200, got 400. Response body: You don't have permissions to do that. / actual: (not (png? \"You don't have permissions to do that.\"))"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 79c990a5eeb (run 29135072742); stratum wiring: the mutant removes the request/as-admin call around both static-embed tile endpoints; July classed this no_witness_backend, but the land-and-cull pass (d3835864f16) landed anonymous-tile-query-runs-as-admin-test, whose commit message says the existing tile tests use an admin session and can't see the bug; expected_failure inferred from the landed deftest and that commit message; fe_be_boundary inferred"

@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.ts b/frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.ts
+index 6dc5aef785c..59cbbace282 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/model/trend-line.ts
+@@ -185,12 +185,7 @@ export const getTrendLines = (
+   const transformedDataset = transformDataset(scaledTrendDataset, [
+     {
+       condition: settings["stackable.stack_type"] === "normalized",
+-      fn: getNormalizedDatasetTransform(
+-        stackModels.map((stackModel) => ({
+-          ...stackModel,
+-          seriesKeys: stackModel.seriesKeys.map(getTrendKeyForSeries),
+-        })),
+-      ),
++      fn: getNormalizedDatasetTransform(stackModels),
+     },
+     getKeyBasedDatasetTransform(dataKeys, (value) =>
+       yAxisScaleTransforms.toEChartsAxisValue(value),

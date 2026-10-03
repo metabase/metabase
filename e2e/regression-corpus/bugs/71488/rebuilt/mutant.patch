@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizations/components/FunnelNormal.tsx b/frontend/src/metabase/visualizations/components/FunnelNormal.tsx
+index a317def7851..d72b0e0c780 100644
+--- a/frontend/src/metabase/visualizations/components/FunnelNormal.tsx
++++ b/frontend/src/metabase/visualizations/components/FunnelNormal.tsx
+@@ -61,7 +61,7 @@ export function getSortedRows(
+   return funnelRows
+     .filter((fr) => fr.enabled)
+     .map((fr) => {
+-      const idx = rowsForKeys.findIndex(
++      const idx = rows.findIndex(
+         (row) => formatNullable(row[dimensionIndex]) === fr.key,
+       );
+       return idx !== -1 ? rows[idx] : undefined;

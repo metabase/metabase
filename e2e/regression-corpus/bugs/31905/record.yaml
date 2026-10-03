@@ -1,0 +1,24 @@
+id: reg-31905
+origin:
+  kind: regression
+  issue: 31905
+  fix_commit: 3d45def8cae123e32c6c88fbcce4689d9e6ddca6
+  fix_tests:
+    - "e2e/test/scenarios/models/reproductions-3.cy.spec.ts::issue 31905 should not send more than one same api requests to load a model (metabase#31905)"
+bug:
+  statement: "Opening a question or model sends the same GET /api/card request twice."
+  odc: {type: Timing/Serialization, qualifier: Missing}
+  module: lib
+  lowest_level: integration
+  stratum: state
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/models/reproductions-3.cy.spec.ts::issue 31905 should not send more than one same api requests to load a model (metabase#31905)"
+  expected_failure: "cy.get(\"@card.all\").should(\"have.length.lte\", 2) fails"
+notes: "no mutant patch: dead target, the request-dedup code (withCachedData/setRequestPromise, requests reducer) and its jest spec were deleted by later refactors (#72832, #74896, #74994); stratum state: the fix stored the in-flight request promise in the requests cache so a second load reuses it; the fix's lib/redux/utils.unit.spec.js assertions were deleted with the code; the e2e now tolerates two requests (a TODO blames MainNavbar's RTK fetch plus loadCard), so it only fails at three or more; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

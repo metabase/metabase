@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/Map/definition.tsx b/frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
+index 55ad9834606..235e620798c 100644
+--- a/frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
++++ b/frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
+@@ -107,7 +107,6 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
+       get title() {
+         return t`Pin type`;
+       },
+-      widget: "select",
+       getProps: () => ({
+         options: [
+           {

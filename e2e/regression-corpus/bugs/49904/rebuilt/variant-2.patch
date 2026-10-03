@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/ViewHeader/utils.ts b/frontend/src/metabase/query_builder/components/view/ViewHeader/utils.ts
+index 27895c88a7d..7e1d6c65acd 100644
+--- a/frontend/src/metabase/query_builder/components/view/ViewHeader/utils.ts
++++ b/frontend/src/metabase/query_builder/components/view/ViewHeader/utils.ts
+@@ -39,7 +39,6 @@ export const canShowNativePreview = ({
+   return (
+     !isNative &&
+     !isMetric &&
+-    question.database()?.native_permissions === "write" &&
+     queryBuilderMode === "notebook" &&
+     !question.isArchived()
+   );

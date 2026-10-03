@@ -1,0 +1,26 @@
+id: reg-52611
+origin:
+  kind: regression
+  issue: 52611
+  fix_commit: 18e423c8df60e7f108c18eb31c50ca9f64354c6b
+  fix_tests:
+    - "e2e/test/scenarios/question/notebook.cy.spec.js::scenarios > question > notebook should allow using aggregation functions inside expressions in aggregation (metabase#52611)"
+    - "frontend/src/metabase/querying/expressions/pratt/compiler.unit.spec.ts::resolve for CASE expressions should allow sum inside expression in aggregation"
+    - "metabase.query-processor.expression-aggregations-test/aggregation-function-inside-expression-in-aggregation-test"
+bug:
+  statement: "A custom aggregation that uses aggregation functions inside an expression, like case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal])), is rejected as invalid."
+  odc: {type: Checking, qualifier: Missing}
+  module: metabase-lib
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/question/notebook.cy.spec.js::scenarios > question > notebook should allow using aggregation functions inside expressions in aggregation (metabase#52611)"
+  expected_failure: null
+notes: "no mutant patch: dead target on the frontend, because the JS type checker the fix patched (resolver.js isCompatible) was deleted by #56350 and the check now lives in the Clojure lib schema (lib/schema/expression.cljc via diagnose-expression), which the jest harness can't recompile; the shipped jest test survives in compiler.unit.spec.ts but uses a stub resolver and can't fail; aggregation-function-inside-expression-in-aggregation-test is a later backend parity test naming this issue, never run against a mutant; module from the fix commit's metabase-lib file; July recorded no failure message; fe_be_boundary inferred"

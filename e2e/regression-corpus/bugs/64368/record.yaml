@@ -1,0 +1,26 @@
+id: reg-64368
+origin:
+  kind: regression
+  issue: 64368
+  fix_commit: 75f3c9fc01bf0ebfe77f4247c8d6c495bb4585e1
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-cards/click-behavior-reproductions.cy.spec.ts::issue 64368 should reset to default value when unsetting a required filter with a default through click behavior (metabase#64368)"
+    - "frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts::setOrUnsetParameterValues should set parameter value to default when parameter is required and has a default value"
+    - "frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts::setOrUnsetParameterValues should set parameter to provided value when parameter does not have a default value"
+bug:
+  statement: "Clicking a chart again to remove a click-behavior filter value leaves a required dashboard filter empty instead of resetting it to its default."
+  odc: {type: Assignment/Initialization, qualifier: Incorrect}
+  module: dashboard
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: inverse.patch
+  method: inverse
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts::setOrUnsetParameterValues should set parameter value to default when parameter is required and has a default value"
+  expected_failure: "expect(state.dashboard.parameterValues[\"123\"]).toBe(\"default-value\"); received null"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; July's killed_by names only spec files; the setOrUnsetParameterValues tests are the ones the fix added; July also lists DashboardName.unit.spec.tsx as a kill, but it only renders a dashboard name and doesn't reach filter values, so that looks like a false positive; the e2e was culled on this branch and resolves at 8317274709c; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred"

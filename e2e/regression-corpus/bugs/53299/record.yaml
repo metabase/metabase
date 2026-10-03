@@ -1,0 +1,26 @@
+id: reg-53299
+origin:
+  kind: regression
+  issue: 53299
+  fix_commit: 495776dc1e354c733246001966e5cf11c06cadec
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 53299 should be possible to switch to mongodb when editing an sql question (metabase#53299)"
+    - "metabase.lib.native-test/with-different-database-test"
+    - "metabase.lib.native-test/native-query+collection-test"
+bug:
+  statement: "Switching the database of a SQL question to MongoDB in the native editor fails, because the query is rejected for missing a collection."
+  odc: {type: Algorithm/Method, qualifier: Extraneous}
+  module: lib/native
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 53299 should be possible to switch to mongodb when editing an sql question (metabase#53299)"
+  expected_failure: "H.nativeEditorDataSource().should(\"contain\", \"QA Mongo\") fails; switching throws \"Missing extra, required keys for native query: #{:collection}\""
+notes: "no mutant patch: re-adding (with-native-extras nil) to with-different-database in lib/native.cljc reintroduces the bug (REPL-verified), but the fix deleted the throw assertion from with-different-database-test instead of adding a positive one, so no deftest flips and July saved nothing; expected_failure combines the e2e's assertion with the error July's REPL check of the revert threw"

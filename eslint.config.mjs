@@ -144,6 +144,7 @@ const configs = [
       "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",
       "e2e/tmp/**",
+      "e2e/regression-corpus/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "**/custom-viz/fixtures/example_custom_viz_plugin/**",
       // The data-app dev entry is served verbatim to the consumer's Vite (it

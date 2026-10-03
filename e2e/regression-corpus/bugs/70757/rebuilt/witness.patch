@@ -1,0 +1,97 @@
+diff --git a/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.unit.spec.tsx b/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.unit.spec.tsx
+new file mode 100644
+index 00000000000..0f6fe3d4612
+--- /dev/null
++++ b/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.unit.spec.tsx
+@@ -0,0 +1,91 @@
++import { renderWithProviders } from "__support__/ui";
++import type { UseDownloadDataParams } from "metabase/common/components/QuestionDownloadWidget";
++import { registerVisualizations } from "metabase/visualizations/register";
++import Question from "metabase-lib/v1/Question";
++import {
++  createMockColumn,
++  createMockDataset,
++  createMockDatasetData,
++  createMockUnsavedCard,
++} from "metabase-types/api/mocks";
++
++import { DownloadWidget } from "./DownloadWidget";
++
++registerVisualizations();
++
++const useDownloadDataMock = jest.fn(
++  (_params: UseDownloadDataParams) => [{}, jest.fn()] as const,
++);
++jest.mock("metabase/common/components/QuestionDownloadWidget", () => ({
++  QuestionDownloadWidget: () => <div data-testid="download-widget-stub" />,
++  useDownloadData: (params: UseDownloadDataParams) =>
++    useDownloadDataMock(params),
++}));
++
++jest.mock("metabase/embedding/context", () => ({
++  useEmbeddingEntityContext: () => ({ token: undefined }),
++}));
++
++const useSdkQuestionContextMock = jest.fn();
++jest.mock("../../context", () => ({
++  useSdkQuestionContext: () => useSdkQuestionContextMock(),
++}));
++
++const setup = () => {
++  const question = new Question(createMockUnsavedCard({ display: "pivot" }));
++  const result = createMockDataset({
++    data: createMockDatasetData({
++      rows: [
++        [10, "2024-01-01", 3],
++        [20, "2024-02-01", 5],
++      ],
++      cols: [
++        createMockColumn({
++          name: "SUBTOTAL",
++          display_name: "Subtotal",
++          source: "breakout",
++          base_type: "type/Float",
++        }),
++        createMockColumn({
++          name: "CREATED_AT",
++          display_name: "Created At",
++          source: "breakout",
++          base_type: "type/DateTime",
++        }),
++        createMockColumn({
++          name: "count",
++          display_name: "Count",
++          source: "aggregation",
++          base_type: "type/Integer",
++        }),
++      ],
++    }),
++  });
++
++  useSdkQuestionContextMock.mockReturnValue({
++    question,
++    queryResults: [result],
++    withDownloads: true,
++    parameterValues: {},
++  });
++
++  renderWithProviders(<DownloadWidget />);
++};
++
++describe("DownloadWidget", () => {
++  beforeEach(() => {
++    useDownloadDataMock.mockClear();
++  });
++
++  it("passes computed pivot visualization settings to the download request (metabase#70757)", () => {
++    setup();
++
++    expect(useDownloadDataMock).toHaveBeenCalledTimes(1);
++    const [passedParams] = useDownloadDataMock.mock.calls[0];
++
++    expect(passedParams.visualizationSettings).toBeDefined();
++    expect(
++      passedParams.visualizationSettings?.["pivot_table.column_split"],
++    ).toBeDefined();
++  });
++});

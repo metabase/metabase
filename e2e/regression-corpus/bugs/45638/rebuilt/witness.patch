@@ -1,0 +1,43 @@
+diff --git a/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/PublicOrEmbeddedQuestion.common.unit.spec.tsx b/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/PublicOrEmbeddedQuestion.common.unit.spec.tsx
+index 7d917b87bb8..3dbc13aef66 100644
+--- a/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/PublicOrEmbeddedQuestion.common.unit.spec.tsx
++++ b/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/PublicOrEmbeddedQuestion.common.unit.spec.tsx
+@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
+ 
+ import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+ import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
++import { getFont } from "metabase/styled-components/selectors";
+ import { createMockParameter } from "metabase-types/api/mocks";
+ import { PRODUCTS } from "metabase-types/api/mocks/presets";
+ 
+@@ -71,4 +72,10 @@ describe("PublicOrEmbeddedQuestion", () => {
+       { id: "category-id", value: ["Gizmo"] },
+     ]);
+   });
++
++  it("should apply the font from the `#font` hash parameter (metabase#45638)", async () => {
++    const { store } = await setupCommon({ hash: { font: "Roboto" } });
++
++    expect(getFont(store.getState())).toBe("Roboto");
++  });
+ });
+diff --git a/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/setup.tsx b/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/setup.tsx
+index cd429976553..8105bacc136 100644
+--- a/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/setup.tsx
++++ b/frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/setup.tsx
+@@ -101,7 +101,7 @@ export async function setup(
+     }),
+   );
+ 
+-  renderWithProviders(
++  const { store } = renderWithProviders(
+     <Route
+       path="public/question/:uuid"
+       element={<PublicOrEmbeddedQuestion />}
+@@ -114,4 +114,6 @@ export async function setup(
+   );
+   expect(await screen.findByText(questionName)).toBeInTheDocument();
+   await waitForLoaderToBeRemoved();
++
++  return { store };
+ }

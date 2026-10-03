@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/data-grid/utils/maybe-expand-column-widths.ts b/frontend/src/metabase/data-grid/utils/maybe-expand-column-widths.ts
+index f7ef24cb6f1..eb4d01d72b3 100644
+--- a/frontend/src/metabase/data-grid/utils/maybe-expand-column-widths.ts
++++ b/frontend/src/metabase/data-grid/utils/maybe-expand-column-widths.ts
+@@ -49,7 +49,7 @@ export const maybeExpandColumnWidths = (
+     .forEach((key) => {
+       newColumnSizingMap[key] = Math.max(
+         newColumnSizingMap[key],
+-        newColumnSizingMap[key] * factor,
++        newColumnSizingMap[key],
+       );
+     });
+ 

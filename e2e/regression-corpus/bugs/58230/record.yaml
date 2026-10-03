@@ -1,0 +1,28 @@
+id: reg-58230
+origin:
+  kind: regression
+  issue: 58230
+  fix_commit: d2541d2426258398c92f7f8a881657fc89d219aa
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::Issue 58230 should display an error when using an aggregation function in a custom column (metabase#58230)"
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::Issue 58230 should display an error when using an aggregation function in a custom filter (metabase#58230)"
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::Issue 58230 should not display an error when using an aggregation function in a custom aggregation (metabase#58230)"
+    - "frontend/src/metabase/querying/expressions/diagnostics/diagnostics.unit.spec.ts::diagnostics diagnose should reject aggregations functions in expression mode"
+    - "frontend/src/metabase/querying/expressions/diagnostics/diagnostics.unit.spec.ts::diagnostics diagnose should reject aggregations functions in filter mode"
+bug:
+  statement: "The custom expression editor accepts aggregation functions like avg([Total]) in a custom column or filter, and the query then fails."
+  odc: {type: Checking, qualifier: Missing}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/diagnostics/diagnostics.unit.spec.ts::diagnostics diagnose should reject aggregations functions in expression mode"
+  expected_failure: "Expected \"Aggregations like CumulativeCount are not allowed when building a custom expression\", Received \"Function CumulativeCount expects 0 arguments\""
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the fix's diagnostics spec moved from metabase-lib/v1/expressions to querying/expressions; fe_be_boundary inferred"

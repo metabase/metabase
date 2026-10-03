@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/dashboard/utils/click-behavior.ts b/frontend/src/metabase/dashboard/utils/click-behavior.ts
+index 1da653a7574..bb24c54ae33 100644
+--- a/frontend/src/metabase/dashboard/utils/click-behavior.ts
++++ b/frontend/src/metabase/dashboard/utils/click-behavior.ts
+@@ -305,9 +305,7 @@ export function formatSourceForTarget(
+     } else {
+       if (
+         typeof sourceDateUnit === "string" &&
+-        ["week", "month", "quarter", "year", "hour", "minute"].includes(
+-          sourceDateUnit,
+-        )
++        ["week", "month", "quarter", "year"].includes(sourceDateUnit)
+       ) {
+         return formatDateToRangeForParameter(datum.value, sourceDateUnit);
+       }

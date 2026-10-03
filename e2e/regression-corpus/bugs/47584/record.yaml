@@ -1,0 +1,29 @@
+id: reg-47584
+origin:
+  kind: regression
+  issue: 47584
+  fix_commit: 16e31051b0987f3e54ea92b2ae76146802265b54
+  fix_tests:
+    - "e2e/test/scenarios/models/models.cy.spec.js::scenarios > models allows to turn a native question with a long alias into a model (metabase#47584)"
+    - "metabase.query-processor.api-test/native-query-with-long-column-alias"
+    - "metabase.query-processor.nested-queries-test/card-id-native-source-query-with-long-alias-test"
+    - "metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test"
+    - "metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test"
+    - "metabase.query-processor.util.add-alias-info-test/respect-crazy-long-native-identifiers-test"
+bug:
+  statement: "A native question with a very long column alias fails with a column-not-found error once it's turned into a model or used as a source."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: lib/field-util
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "metabase.query-processor.api-test/native-query-with-long-column-alias"
+  expected_failure: "2 assertions fail; outer query references truncated alias \"..._00028d48\" while the native SQL emits the full name (Column not found)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; GitHub lists no closing PR; kept July's fix_commit (#47866, whose message names the e2e and both QP tests); the fix's annotate-native-cols no longer exists and the mutant flips the name generator in its Lib descendant (add-deduplicated-names in lib/field/util.cljc) from non-truncating to truncating; card-id-native-source-query-with-long-alias-test errors rather than failing an assertion on the mutant; the e2e was removed from master by 4701e5f8dc5 and culled on this branch (d9564dfe7d4), so its id is from the July base; the three lib/add-alias-info tests are later tests naming this issue"

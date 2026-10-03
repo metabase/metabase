@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/query_builder/defaults.ts b/frontend/src/metabase/query_builder/defaults.ts
+index e3ef2f4f14f..c4a5e5fbccf 100644
+--- a/frontend/src/metabase/query_builder/defaults.ts
++++ b/frontend/src/metabase/query_builder/defaults.ts
+@@ -64,7 +64,6 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
+ 
+ // this is used to close other sidebar when one is updated
+ export const CLOSED_NATIVE_EDITOR_SIDEBARS: Partial<QueryBuilderUIControls> = {
+-  isShowingTemplateTagsEditor: false,
+   isShowingSnippetSidebar: false,
+   isShowingDataReference: false,
+   isShowingTimelineSidebar: false,

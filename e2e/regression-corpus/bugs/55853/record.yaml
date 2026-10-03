@@ -1,0 +1,25 @@
+id: reg-55853
+origin:
+  kind: regression
+  issue: 55853
+  fix_commit: b99d3d186dd0acdb91f6a49e1ee325ede75e07ec
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts::issue 55853 should not have y-axis labels colliding with very low percentages (metabase#55853)"
+    - "frontend/src/metabase/visualizations/echarts/cartesian/layout/index.unit.spec.ts::getChartLayout measures the actual low-percentage tick labels instead of rounded ones (metabase#55853)"
+bug:
+  statement: "Y-axis labels for very small percentages with many decimals collide with the axis title because too little width is reserved for them."
+  odc: {type: Algorithm/Method, qualifier: Extraneous}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/viz-core/echarts/cartesian/layout/index.unit.spec.ts::getChartLayout measures the actual low-percentage tick labels instead of rounded ones (metabase#55853)"
+  expected_failure: "expect(jest.fn()).toHaveBeenCalledWith(...expected) Expected: \"0.02%\", Anything; Received: \"1.00%\" x3 (6 calls, only \"1.00%\"/\"0.00%\") at index.unit.spec.ts:154"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant b1cd82fffc8 (run 29135050086); the e2e checks pixel overlap, but the width reserved for ticks is a computed value, so July counted it unit-catchable rather than a browser-measurement bug; witness landed and e2e culled on this branch; fe_be_boundary inferred"

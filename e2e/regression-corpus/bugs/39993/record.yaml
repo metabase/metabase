@@ -1,0 +1,26 @@
+id: reg-39993
+origin:
+  kind: regression
+  issue: 39993
+  fix_commit: 28513ae8866e42960b781d48bb27b8d55cdf808a
+  fix_tests:
+    - "e2e/test/scenarios/models/reproductions-1.cy.spec.ts::issues with metadata editing on models with custom expressions can edit metadata of a model with a custom column (metabase#35711, metabase#39993)"
+    - "frontend/src/metabase/querying/viz-settings/utils/sync-viz-settings.unit.spec.tsx::syncVizSettings table.columns should handle adding new columns with column.name changes"
+    - "e2e/test/scenarios/models/reproductions-1.cy.spec.ts::issue 25885 should allow to edit metadata for mbql models with self joins columns (metabase#25885)"
+bug:
+  statement: "Reordering a model's custom column in the metadata editor isn't kept; after saving, the column shows up last."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: "8317274709c"
+  patch: reconstruction.patch
+  method: reconstructed
+  status: live
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/viz-settings/utils/sync-viz-settings.unit.spec.tsx::syncVizSettings table.columns should handle adding new columns with column.name changes"
+  expected_failure: "expect(received).toEqual(expected): expected [ID, ID_3 (disabled), ID_2]; received [ID, ID_2 (disabled)], the setting kept its stale name"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, b8673198cd4c3aa9f70782f41526dd009f27b933; base_commit is the parent of July's CI mutant c2911aef053 (run 29125392993); the mutant reverts only the rename-tracking half of #45180 (settings follow a renamed column), not the removal of field-ref matching; the jest test is the rewritten descendant of the fix's \"should handle name changes when a column with a duplicate name is added and ids are available\" in visualizations/lib/sync-settings.unit.spec.ts; the fix's other shipped spec edits (dataset.unit.spec.ts, TableColumnPanel.unit.spec.tsx) don't survive by name; July's CI run of the e2e passed on this mutant, which July took to mean the e2e was vacuous; fe_be_boundary inferred; fix_tests include the e2e repro of alias 25885"

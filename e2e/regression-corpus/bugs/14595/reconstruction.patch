@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/dashboard/components/ParameterLinkedFilters/utils.ts b/frontend/src/metabase/dashboard/components/ParameterLinkedFilters/utils.ts
+index 29105f864d5..9441e61067c 100644
+--- a/frontend/src/metabase/dashboard/components/ParameterLinkedFilters/utils.ts
++++ b/frontend/src/metabase/dashboard/components/ParameterLinkedFilters/utils.ts
+@@ -65,7 +65,7 @@ function getParametersInfoForMapping(
+       parameter,
+       filteredIds: Array.from(new Set(filteredIds)),
+       filteringIds,
+-      isCompatible: filteredIds.length > 0 && filteringIds.length > 0,
++      isCompatible: true,
+     };
+   });
+ }

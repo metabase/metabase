@@ -1,0 +1,29 @@
+diff --git a/src/metabase/embedding_rest/api/embed.clj b/src/metabase/embedding_rest/api/embed.clj
+index 895d6c4799d..2bc3841c83a 100644
+--- a/src/metabase/embedding_rest/api/embed.clj
++++ b/src/metabase/embedding_rest/api/embed.clj
+@@ -26,7 +26,6 @@
+    [metabase.query-processor.middleware.constraints :as qp.constraints]
+    [metabase.query-processor.pivot :as qp.pivot]
+    [metabase.query-processor.schema :as qp.schema]
+-   [metabase.request.core :as request]
+    [metabase.tiles.api :as api.tiles]
+    [metabase.util :as u]
+    [metabase.util.json :as json]
+@@ -410,8 +409,7 @@
+         lat-field (json/decode+kw latField)
+         lon-field (json/decode+kw lonField)]
+     (api.embed.common/check-embedding-enabled-for-card card)
+-    (request/as-admin
+-      (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
++    (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))
+ 
+ ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+ ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+@@ -441,5 +439,4 @@
+         lat-field (json/decode+kw latField)
+         lon-field (json/decode+kw lonField)]
+     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
+-    (request/as-admin
+-      (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field))))
++    (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field)))

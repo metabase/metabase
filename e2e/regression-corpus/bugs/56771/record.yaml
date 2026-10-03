@@ -1,0 +1,24 @@
+id: reg-56771
+origin:
+  kind: regression
+  issue: 56771
+  fix_commit: e53749f67c9c20c150b4e3aa0da1071f17011f31
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js::issue 56771 should apply correct column widths after changing query (metabase#56771)"
+bug:
+  statement: "Table column widths aren't re-measured when columns change, so resizing one column collapses the others and columns added by a join stay too narrow."
+  odc: {type: Timing/Serialization, qualifier: Missing}
+  module: data-grid/column-resizing
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js::issue 56771 should apply correct column widths after changing query (metabase#56771)"
+  expected_failure: "the joined column's measured width should exceed 174px after the query changes, but it keeps the old width"
+notes: "no mutant patch: July's revert of the re-measure effects in use-data-grid-instance.tsx flipped neither fix-touched jest spec (the fix's Dashcard and DataGrid spec edits were scoping and type-only changes) and wasn't saved; lowest_level browser-measurement because July classed it as hitting jsdom's layout-measurement limit, though the re-measure trigger alone could be unit-tested with a mocked getBoundingClientRect; expected_failure paraphrases the e2e's assertion on the joined column's width"
