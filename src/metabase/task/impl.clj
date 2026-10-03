@@ -228,11 +228,28 @@
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
 
+(defn- stored-as-is?
+  "Whether `scheduler` already stores `job` exactly as it is."
+  [^Scheduler scheduler ^JobDetail job]
+  (when-let [^JobDetail stored (try
+                                 (.getJobDetail scheduler (.getKey job))
+                                 (catch JobPersistenceException _
+                                   nil))]
+    (= [(.getJobClass stored) (.getDescription stored) (.isDurable stored) (.requestsRecovery stored)
+        (into {} (.getJobDataMap stored))]
+       [(.getJobClass job) (.getDescription job) (.isDurable job) (.requestsRecovery job)
+        (into {} (.getJobDataMap job))])))
+
 (mu/defn add-job!
-  "Add a job separately from a trigger, replace if the job is already there"
+  "Add a job separately from a trigger. Replaces a stored job only when its definition has changed, so a job stored
+  under an old class name keeps that name."
   [job :- (ms/InstanceOfClass JobDetail)]
   (when-let [scheduler (scheduler)]
-    (qs/add-job scheduler job true)))
+    ;; Replacing a job writes its current class name. A job stored under an old class name has to keep that name
+    ;; while nothing else about it changes, because old nodes in a rolling upgrade can only load the old name. See
+    ;; [[metabase.app-db.quartz/job-history]].
+    (when-not (stored-as-is? scheduler job)
+      (qs/add-job scheduler job true))))
 
 (mu/defn add-trigger!
   "Add a trigger. Assumes the trigger is already associated to a job (i.e. `trigger/for-job`)"

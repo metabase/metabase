@@ -30,7 +30,7 @@ A module is **all the code for one user-facing feature or one "lego brick"** (i1
 | `<module>.init`         | Pure `:require`-for-side-effects                               | Loaded from `metabase.core.init` / `metabase-enterprise.core.init`. Keep tiny; affects launch speed. |
 | `<module>.models.*`     | Toucan models                                                  | Mapped in `metabase.models.resolution`. Other modules refer via `:model/X` keyword.                  |
 | `<module>.settings`     | `defsetting` definitions                                       | Required by `<module>.init` so settings reach the FE on launch.                                      |
-| `<module>.task.*`       | Quartz jobs/triggers                                           | Required by `<module>.init`.                                                                         |
+| `<module>.task.*`       | Quartz jobs/triggers                                           | Required by `<module>.init`. Moving one renames its job classes: update `metabase.app-db.quartz/job-history`. |
 | `<module>.events.*`     | Event handlers                                                 | Required by `<module>.init`.                                                                         |
 | `<module>.commands`     | CLI commands                                                   | Replaces `metabase.cmd.*` for module-specific commands.                                              |
 
