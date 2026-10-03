@@ -316,6 +316,9 @@
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (let [notification (-> body
+                         ;; a client may send back the hydrated `:creator` it was handed, with JSON string timestamps.
+                         ;; Drop it so the real creator is hydrated from `:creator_id`.
+                         (dissoc :creator)
                          (assoc :creator_id api/*current-user-id*)
                          (assoc-in [:payload :disable_links]
                                    (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request))
