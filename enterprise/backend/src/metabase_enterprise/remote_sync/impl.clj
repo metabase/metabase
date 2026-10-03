@@ -438,6 +438,21 @@
       :else
       {:ingestable ingestable :deleted-rsos deleted-rsos})))
 
+(defn- cascaded-search-ids-of-cards
+  "The search-index ids, as strings and keyed by model, of the rows that a delete of the Cards with `card-ids` removes
+  by foreign-key cascade: the Actions of the models, and the values of their model indexes. A model with no such row
+  is absent. Each query takes at most [[app-db-batch-size]] ids."
+  [card-ids]
+  (let [{:keys [action-ids index-ids]} (transduce (map #(remote-sync.db/cascaded-action-and-index-ids (vec %)))
+                                                  (partial merge-with into)
+                                                  {:action-ids [] :index-ids []}
+                                                  (partition-all app-db-batch-size card-ids))
+        value-ids (into [] (mapcat #(remote-sync.db/model-index-value-search-ids (vec %)))
+                        (partition-all app-db-batch-size index-ids))]
+    (cond-> {}
+      (seq action-ids) (assoc :model/Action (mapv str action-ids))
+      (seq value-ids)  (assoc :model/ModelIndexValue value-ids))))
+
 (defn- incremental-load-snapshot!
   "Applies an incremental `plan` from [[incremental-import-plan]]: loads only its added/modified entities,
   deletes only those genuinely removed, and reconciles just those rows of the RemoteSyncObject table —
@@ -469,11 +484,19 @@
                             :when (not (loaded-eid? model_type eid))]
                         {:model_type model_type :model_id model_id})
         model-key-of  (fn [{:keys [model_type]}] (:model-key (spec/spec-for-model-type model_type)))
-        sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
+        sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)
+        ;; search model -> search-index ids (strings) of the rows that the deletes remove by cascade
+        cascaded-search-ids (atom {})]
     (report 0.7 {:force? true})
     ;; Before the transaction for the same reason as in [[load-snapshot!]].
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
+      ;; A delete of a model Card also deletes its Actions and model-index values, by foreign-key cascade. The ledger
+      ;; does not track model-index values (and can miss an Action), so note their search ids before the delete, and
+      ;; remove them from search below.
+      (when-let [card-ids (seq (keep (fn [{:keys [model_id] :as d}] (when (= :model/Card (model-key-of d)) model_id))
+                                     deletes))]
+        (reset! cascaded-search-ids (cascaded-search-ids-of-cards card-ids)))
       (doseq [[model-key ds] (group-by model-key-of deletes)]
         (remote-sync.db/delete-instances! model-key (mapv :model_id ds)))
       (when (seq deletes)
@@ -490,6 +513,9 @@
     (doseq [[model-key ds] (group-by model-key-of deletes)]
       ;; the search index stores model_id as text
       (search/delete! model-key (mapv (comp str :model_id) ds)))
+    (doseq [[model-key ids] @cascaded-search-ids
+            id-chunk        (partition-all app-db-batch-size ids)]
+      (search/delete! model-key (vec id-chunk)))
     (report 0.95 {:force? true})
     (log/info "Successfully reloaded entities from git repository")
     {:status :success

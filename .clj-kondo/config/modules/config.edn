@@ -4207,6 +4207,8 @@
                     :model/FieldUserSettings
                     :model/Glossary
                     :model/Measure
+                    :model/ModelIndex
+                    :model/ModelIndexValue
                     :model/NativeQuerySnippet
                     :model/PythonLibrary
                     :model/Segment

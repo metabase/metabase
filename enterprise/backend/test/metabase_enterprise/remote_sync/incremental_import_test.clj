@@ -29,6 +29,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -135,6 +136,9 @@
 (defn- path-with [tree slug]
   (some (fn [p] (when (str/includes? p slug) p)) (keys tree)))
 
+(defn- bench-collection []
+  (t2/select-one :model/Collection :name "Bench" :is_remote_synced true))
+
 ;;; --------------------------------------------------- Scenarios ----------------------------------------------------
 
 (deftest no-op-pull-equivalence-test
@@ -214,19 +218,105 @@
     ;; isn't queried here because its tracking state is order-sensitive across tests in a shared JVM.
     (search.tu/with-index-disabled
       (do-with-bench!
-       (fn [f0]
-         (let [b-path  (path-with f0 "card_b")
-               b-eid   (second (re-find #"entity_id: (\S+)" (get f0 b-path)))
-               f1      (dissoc f0 b-path)
-               src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
-               deleted (atom [])]
-           (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
-           (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
-             (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
-               (import-at! src "v1"))                      ; incremental delete of card_b
-             (is (some (fn [[model ids]] (and (= :model/Card model) (some #{(str b-id)} ids))) @deleted)
-                 "the removed card is deleted from the search index by id, as the string the index stores
-                  (an integer id fails on Postgres with `text = integer`)"))))))))
+       (fn [_f0]
+         (mt/with-temp [:model/Card       {model-id :id} {:name "Bench Model" :type :model
+                                                          :collection_id (:id (bench-collection))}
+                        :model/ModelIndex {mi-id :id}    {:model_id   model-id
+                                                          :pk_ref     [:field 1 nil]
+                                                          :value_ref  [:field 2 nil]
+                                                          :schedule   "0 0 0 * * ? *"
+                                                          :state      "indexed"
+                                                          :creator_id (mt/user->id :rasta)}]
+           ;; the model delete removes this row by cascade
+           (t2/insert! :model/ModelIndexValue {:model_index_id mi-id :model_pk 42 :name "Quokka value"})
+           (let [f0      (synced-tree)
+                 b-path  (path-with f0 "card_b")
+                 b-eid   (second (re-find #"entity_id: (\S+)" (get f0 b-path)))
+                 f1      (dissoc f0 b-path (path-with f0 "bench_model"))
+                 src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
+                 deleted (atom [])]
+             (import-at! src "v0" :force? true)            ; baseline (full) — local == v0
+             (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
+               (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
+                 (import-at! src "v1"))                    ; incremental delete of card_b and the model
+               (is (some (fn [[model ids]] (and (= :model/Card model) (some #{(str b-id)} ids))) @deleted)
+                   "the removed card is deleted from the search index by id, as the string the index stores
+                    (an integer id fails on Postgres with `text = integer`)")
+               (is (some (fn [[model ids]] (and (= :model/ModelIndexValue model) (some #{(str mi-id ":42")} ids)))
+                         @deleted)
+                   "the model-index value that the model delete removes by cascade leaves search too")
+               (is (every? string? (mapcat second @deleted))
+                   "every id sent to the search index is a string, also the ids of rows removed by cascade")))))))))
+
+(deftest model-delete-removes-cascaded-actions-and-indexed-entities-from-search-test
+  (testing (str "a pull that deletes a model card also deletes its actions and model-index values (foreign-key "
+                "cascade), and it must remove them from search, as the full import does")
+    (search.tu/with-appdb-search-if-available*
+      (do-with-bench!
+       (fn [_f0]
+         (let [bench (bench-collection)]
+           (mt/with-temp [:model/Card        {model-id :id}  {:name "Bench Model" :type :model :collection_id (:id bench)}
+                          :model/Action      {action-id :id} {:name "Zebra action" :type :query :model_id model-id}
+                          :model/QueryAction _               {:action_id     action-id
+                                                              :dataset_query (mt/native-query {:query "select 1"})}
+                          :model/ModelIndex  {mi-id :id}     {:model_id   model-id
+                                                              :pk_ref     [:field 1 nil]
+                                                              :value_ref  [:field 2 nil]
+                                                              :schedule   "0 0 0 * * ? *"
+                                                              :state      "indexed"
+                                                              :creator_id (mt/user->id :rasta)}]
+             ;; Inserted directly: ModelIndexValue has no id column, so with-temp cannot clean it up. The model delete
+             ;; removes it by cascade. Its search entry comes from the reindex of the baseline import.
+             (t2/insert! :model/ModelIndexValue {:model_index_id mi-id :model_pk 42 :name "Quokka value"})
+             (mt/with-model-cleanup [:model/Action]
+               (let [g0          (synced-tree)
+                     model-path  (path-with g0 "bench_model")
+                     action-path (path-with g0 "zebra_action")
+                     g1          (dissoc g0 model-path action-path)
+                     src         (rs.test/versioned-source :trees {"v0" g0 "v1" g1} :current "v0")
+                     action?     #(t2/exists? (search.index/active-table) :model "action" :model_id (str action-id))
+                     value?      #(t2/exists? (search.index/active-table) :model "indexed-entity"
+                                              :model_id (str mi-id ":" 42))]
+                 (is (some? model-path) "precondition: the model card is in the synced tree")
+                 (is (some? action-path) "precondition: the action is in the synced tree")
+                 (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+                 (is (action?) "precondition: the action is in the search index")
+                 (is (value?) "precondition: the model-index value is in the search index")
+                 (let [[result path] (import-v1-under-test! src)]
+                   (is (= :success (:status result)) "the pull that deletes the model succeeds")
+                   (is (= :incremental path) "a model delete stays on the incremental path")
+                   (is (not (t2/exists? :model/Card model-id)) "the pull deleted the model")
+                   (is (not (action?)) "the tracked action is gone from the search index")
+                   (is (not (value?)) "the cascaded model-index value is gone from the search index")))))))))))
+
+(deftest model-delete-removes-untracked-action-from-search-test
+  (testing (str "a pull that deletes a model card also removes from search an action of the model that the ledger "
+                "does not track, which the foreign-key cascade deletes")
+    (search.tu/with-appdb-search-if-available*
+      (do-with-bench!
+       (fn [_f0]
+         (let [bench (bench-collection)]
+           (mt/with-temp [:model/Card {model-id :id} {:name "Bench Model" :type :model :collection_id (:id bench)}]
+             (mt/with-model-cleanup [:model/Action]
+               (let [g0         (synced-tree)
+                     model-path (path-with g0 "bench_model")
+                     g1         (dissoc g0 model-path)
+                     src        (rs.test/versioned-source :trees {"v0" g0 "v1" g1} :current "v0")]
+                 (is (some? model-path) "precondition: the model card is in the synced tree")
+                 (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+                 ;; t2/insert! publishes no event, so the ledger does not track this action
+                 (let [action-id (t2/insert-returning-pk! :model/Action {:name "Zebra action" :type :query :model_id model-id})
+                       _         (t2/insert! :model/QueryAction {:action_id     action-id
+                                                                 :dataset_query (mt/native-query {:query "select 1"})})
+                       action?   #(t2/exists? (search.index/active-table) :model "action" :model_id (str action-id))]
+                   (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action" :model_id action-id))
+                       "precondition: the ledger does not track the action")
+                   (is (action?) "precondition: the action is in the search index")
+                   (let [[result path] (import-v1-under-test! src)]
+                     (is (= :success (:status result)) "the pull that deletes the model succeeds")
+                     (is (= :incremental path) "a model delete stays on the incremental path")
+                     (is (not (t2/exists? :model/Action action-id)) "the cascade deleted the action")
+                     (is (not (action?)) "the untracked action is gone from the search index"))))))))))))
 
 (deftest rename-card-equivalence-test
   (testing "GHY-3779: renaming a card (same entity_id at a new path) imports equivalently — the old
