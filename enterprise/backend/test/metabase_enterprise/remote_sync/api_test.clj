@@ -2274,24 +2274,26 @@
 (deftest settings-preserves-transforms-when-not-specified-test
   (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
     (let [mock-source        (test-helpers/create-mock-source)
-          auto-import-before (settings/remote-sync-auto-import)]
+          stored-auto-import #(t2/select-one-fn :value :model/Setting :key "remote-sync-auto-import")
+          auto-import-before (stored-auto-import)]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
                                   source/source-from-settings (constantly mock-source)]
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"
                                            remote-sync-type :read-write
-                                           remote-sync-transforms true
-                                           remote-sync-auto-import false]
-          ;; Toggle an unrelated setting (auto-import) so no branch switch is attempted and no import runs
-          ;; that could itself re-toggle remote-sync-transforms; the point is transforms is left untouched.
-          (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                           {:remote-sync-auto-import true})]
-            (is (=? {:success true} resp))
-            (is (true? (settings/remote-sync-transforms))
-                "Transforms setting should be preserved when not included in request"))))
-      (testing "the test restores the auto-import setting that the request changed"
-        (is (= auto-import-before (settings/remote-sync-auto-import)))))))
+                                           remote-sync-transforms true]
+          ;; raw, so that the stored row is restored, also when there was no row
+          (mt/with-temporary-raw-setting-values [remote-sync-auto-import "false"]
+            ;; Toggle an unrelated setting (auto-import) so no branch switch is attempted and no import runs
+            ;; that could itself re-toggle remote-sync-transforms; the point is transforms is left untouched.
+            (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                             {:remote-sync-auto-import true})]
+              (is (=? {:success true} resp))
+              (is (true? (settings/remote-sync-transforms))
+                  "Transforms setting should be preserved when not included in request")))))
+      (testing "the test restores the stored auto-import row that the request changed"
+        (is (= auto-import-before (stored-auto-import)))))))
 
 ;;; ------------------------------------------- Dirty Endpoint with Transforms Root Tests -------------------------------------------
 

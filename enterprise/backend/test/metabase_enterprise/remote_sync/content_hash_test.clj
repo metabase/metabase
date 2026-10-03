@@ -449,21 +449,24 @@
   (testing "After a real import, a no-op Transform update stays synced (GHY-3933)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/Transform :model/Collection]
-          ;; the transform YAML references the "test-data (h2)" database by name; force it to load so the
-          ;; import resolves the reference regardless of test order.
-          (mt/db)
-          (let [coll-eid "transforms-coll-xxxxx"
-                tr-eid   "test-transform-xxxxxx"
-                files {"main" {"collections/transforms/transforms/transforms.yaml"
-                               (test-helpers/generate-collection-yaml coll-eid "Transforms" :namespace "transforms")
-                               "collections/transforms/transforms/test_transform.yaml"
-                               (test-helpers/generate-transform-yaml tr-eid "Test Transform" :collection-id coll-eid)}}]
-            (is (= "synced"
-                   (import-then-noop-status!
-                    files "Transform"
-                    #(t2/select-one :model/Transform :entity_id tr-eid)
-                    :event/transform-update)))))))))
+        ;; the import stores `remote-sync-transforms` true; remove the stored value after the test
+        (test-helpers/clean-transforms-setting
+         (fn []
+           (mt/with-model-cleanup [:model/Transform :model/Collection]
+             ;; the transform YAML references the "test-data (h2)" database by name; force it to load so the
+             ;; import resolves the reference regardless of test order.
+             (mt/db)
+             (let [coll-eid "transforms-coll-xxxxx"
+                   tr-eid   "test-transform-xxxxxx"
+                   files {"main" {"collections/transforms/transforms/transforms.yaml"
+                                  (test-helpers/generate-collection-yaml coll-eid "Transforms" :namespace "transforms")
+                                  "collections/transforms/transforms/test_transform.yaml"
+                                  (test-helpers/generate-transform-yaml tr-eid "Test Transform" :collection-id coll-eid)}}]
+               (is (= "synced"
+                      (import-then-noop-status!
+                       files "Transform"
+                       #(t2/select-one :model/Transform :entity_id tr-eid)
+                       :event/transform-update)))))))))))
 
 (deftest transform-tag-import-then-noop-stays-synced-test
   (testing "After a real import, a no-op TransformTag update stays synced (GHY-3933)"
