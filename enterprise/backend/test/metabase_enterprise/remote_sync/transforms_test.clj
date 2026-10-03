@@ -368,7 +368,8 @@ is_sample: false
 (deftest import-transforms-from-transforms-namespace-collection-test
   (testing "Import brings in transforms located inside a transforms-namespace collection"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled    true
+                                         remote-sync-transforms false]
         (mt/with-model-cleanup [:model/Transform :model/Collection]
           (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 coll-entity-id      "transforms-coll-xxxxx"
@@ -388,7 +389,8 @@ is_sample: false
 (deftest import-python-transform-with-legacy-map-source-tables-test
   (testing "Import of a python transform with old map-format source-tables converts to vec format"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled    true
+                                         remote-sync-transforms false]
         (mt/with-model-cleanup [:model/Transform :model/Collection]
           (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 coll-entity-id      "xforms-coll-legacy-01"

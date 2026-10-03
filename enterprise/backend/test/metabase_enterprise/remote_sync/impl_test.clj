@@ -1637,28 +1637,29 @@ serdes/meta:
 
 (deftest no-conflict-when-no-local-namespace-collections-test
   (testing "no conflict when import has namespace collections but local has none (or all are synced)"
-    (mt/with-model-cleanup [:model/Collection :model/RemoteSyncObject :model/RemoteSyncTask]
-      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-        (doseq [coll-id (t2/select-pks-vec :model/Collection :namespace [:in ["transforms" "snippets"]])]
-          (when-not (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id)
-            (t2/insert! :model/RemoteSyncObject {:model_type "Collection"
-                                                 :model_id coll-id
-                                                 :model_name "pre-existing"
-                                                 :status "synced"
-                                                 :status_changed_at (t/offset-date-time)})))
-        (let [test-files {"main" {"collections/main/noloc_coll/noloc_coll.yaml"
-                                  (test-helpers/generate-collection-yaml "noloc-coll-xxxxxxxxx" "Noloc Coll")
-                                  "collections/transforms/remote_transforms/remote_transforms.yaml"
-                                  (test-helpers/generate-collection-yaml "noloc-tx-coll-xxxxxx" "Remote Transforms"
-                                                                         :namespace "transforms")
-                                  "collections/snippets/remote_snippets/remote_snippets.yaml"
-                                  (test-helpers/generate-collection-yaml "noloc-sn-coll-xxxxxx" "Remote Snippets"
-                                                                         :namespace "snippets")}}
-              mock-source (test-helpers/create-mock-source :initial-files test-files)
-              result (impl/import! (source.p/snapshot mock-source) task-id)]
-          (is (not= :conflict (:status result))
-              "Should not detect a conflict when local has no unsynced namespace collections")
-          (is (nil? (seq (:conflict-details result)))))))))
+    (mt/with-temporary-setting-values [remote-sync-transforms false]
+      (mt/with-model-cleanup [:model/Collection :model/RemoteSyncObject :model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+          (doseq [coll-id (t2/select-pks-vec :model/Collection :namespace [:in ["transforms" "snippets"]])]
+            (when-not (t2/exists? :model/RemoteSyncObject :model_type "Collection" :model_id coll-id)
+              (t2/insert! :model/RemoteSyncObject {:model_type "Collection"
+                                                   :model_id coll-id
+                                                   :model_name "pre-existing"
+                                                   :status "synced"
+                                                   :status_changed_at (t/offset-date-time)})))
+          (let [test-files {"main" {"collections/main/noloc_coll/noloc_coll.yaml"
+                                    (test-helpers/generate-collection-yaml "noloc-coll-xxxxxxxxx" "Noloc Coll")
+                                    "collections/transforms/remote_transforms/remote_transforms.yaml"
+                                    (test-helpers/generate-collection-yaml "noloc-tx-coll-xxxxxx" "Remote Transforms"
+                                                                           :namespace "transforms")
+                                    "collections/snippets/remote_snippets/remote_snippets.yaml"
+                                    (test-helpers/generate-collection-yaml "noloc-sn-coll-xxxxxx" "Remote Snippets"
+                                                                           :namespace "snippets")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (not= :conflict (:status result))
+                "Should not detect a conflict when local has no unsynced namespace collections")
+            (is (nil? (seq (:conflict-details result))))))))))
 
 (deftest import!-old-format-paths-test
   (testing "import! can load content stored at old-format paths (entity_id in name)"

@@ -3,12 +3,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.lib.core :as lib]
    [metabase.search.core :as search]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -131,3 +133,29 @@
               (when data-app (t2/delete! :model/DataApp :id data-app))
               ;; a raw delete of the data app skips the hook that deletes its permission group
               (when group (t2/delete! :model/PermissionsGroup :id group)))))))))
+
+(defn- transforms-ledger-rows
+  "The `[model_name status]` of each RemoteSyncObject row for the virtual Transforms root collection."
+  []
+  (t2/select-fn-vec (juxt :model_name :status) :model/RemoteSyncObject
+                    :model_type "Collection"
+                    :model_id   remote-sync.settings/transforms-root-id))
+
+(deftest clean-remote-sync-state-removes-stored-transforms-setting-test
+  (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
+                "ledger row when the settings cache restores it inside the test")
+    (try
+      (t2/delete! :model/Setting :key "remote-sync-transforms")
+      (setting/restore-cache!)
+      ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
+      (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
+      (th/clean-remote-sync-state
+       (fn []
+         (setting/restore-cache!)
+         (is (empty? (transforms-ledger-rows)))))
+      (finally
+        (t2/delete! :model/Setting :key "remote-sync-transforms")
+        (setting/restore-cache!)
+        (t2/delete! :model/RemoteSyncObject
+                    :model_type "Collection"
+                    :model_id   remote-sync.settings/transforms-root-id)))))

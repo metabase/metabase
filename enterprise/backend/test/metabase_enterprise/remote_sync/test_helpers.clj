@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
+   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -434,11 +435,39 @@ width: fixed
   (mt/with-model-cleanup [:model/Dashboard :model/Card :model/Action :model/Document :model/DataApp :model/Collection]
     (f)))
 
+(defn- remove-transforms-setting!
+  "Remove the stored `remote-sync-transforms` value, then delete the Transforms RemoteSyncObject rows that the
+  setting's `:on-change` hook adds while the value changes."
+  []
+  (remote-sync.settings/remote-sync-transforms! nil)
+  (t2/delete! :model/RemoteSyncObject
+              :model_type "Collection"
+              :model_id   remote-sync.settings/transforms-root-id))
+
+(defn clean-transforms-setting
+  "Test fixture that removes a stored `remote-sync-transforms` value before and after the test.
+
+  The settings cache calls the `:on-change` hook of this setting each time a cache restore changes its value, and
+  the hook adds a \"Transforms\" RemoteSyncObject row. An import that finds transforms in the source stores the
+  value as true. On a persistent app DB, that value can outlive the run, and then the first cache restore of the next
+  run adds the row in the middle of a test. A test that needs the setting uses `mt/with-temporary-setting-values`.
+
+  Compose after [[clean-object]], so that the rows the hook adds while this fixture resets the value are not in the
+  rows that [[clean-object]] restores."
+  [f]
+  (remove-transforms-setting!)
+  (try
+    (f)
+    (finally
+      (remove-transforms-setting!))))
+
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
-  model tables (Transform, TransformTag, PythonLibrary) are clean, and that content the test imported
-  (Dashboards, Cards, Actions, Documents, DataApps, Collections) does not outlive it."
-  (t/join-fixtures [clean-imported-content clean-object clean-task-table clean-optional-feature-models]))
+  model tables (Transform, TransformTag, PythonLibrary) are clean, that no stored `remote-sync-transforms` value
+  adds a ledger row, and that content the test imported (Dashboards, Cards, Actions, Documents, DataApps,
+  Collections) does not outlive it."
+  (t/join-fixtures [clean-imported-content clean-object clean-transforms-setting clean-task-table
+                    clean-optional-feature-models]))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
