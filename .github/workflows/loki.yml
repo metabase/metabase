@@ -4,16 +4,52 @@ on:
   workflow_call:
     inputs:
       skip:
+        description: "Skip the Loki visual tests."
         type: boolean
         default: false
+      test-plan-artifact-id:
+        description: "ID of this run's test-plan.json artifact, or '' to run the full suite."
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-loki
   cancel-in-progress: true
 
 jobs:
+  story-selection:
+    if: ${{ !inputs.skip && inputs.test-plan-artifact-id != '' }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      selection: ${{ steps.loki-selection.outputs.selection }}
+      test-plan-artifact-id: ${{ steps.loki-selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github
+            /.nvmrc
+            /package.json
+          sparse-checkout-cone-mode: false
+
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+
+      - name: Prepare Loki story selection
+        id: loki-selection
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: loki
+          test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
+
   visual-test:
-    if: ${{ !inputs.skip }}
+    name: loki-run
+    needs: story-selection
+    # A missing job output compares equal to '0' in GitHub expressions,
+    # so an empty selection is marked with a non-numeric value.
+    if: ${{ !cancelled() && !inputs.skip && needs.story-selection.outputs.selection != 'empty' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:
@@ -41,8 +77,22 @@ jobs:
       - name: Compile CLJS
         run: NODE_ENV=development bun run build-pure:cljs
 
+      - name: Prepare Loki story selection
+        id: loki-selection
+        if: ${{ needs.story-selection.outputs.test-plan-artifact-id != '' }}
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: loki
+          test-plan-artifact-id: ${{ needs.story-selection.outputs.test-plan-artifact-id }}
+
+      - name: Build Storybook
+        env:
+          STORYBOOK_STORY_PATHS_FILE: ${{ steps.loki-selection.outputs.paths-file }}
+        run: bun run build-storybook
+
       - name: Run Loki Visual Tests
-        run: bun run test-visual:loki:ci
+        # Loki drops stories with parameters.loki.skip, and exits non-zero when that leaves the selection empty.
+        run: bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer ${{ steps.loki-selection.outputs.paths-file && '--passWithNoStories --requireReference' || '' }}
 
       - name: Generate Visual Report on Failure
         if: failure()
@@ -57,3 +107,38 @@ jobs:
           include-hidden-files: true
           path: .loki/
           if-no-files-found: ignore
+
+  loki-tests-result:
+    name: visual-test
+    needs: [story-selection, visual-test]
+    if: always() && !cancelled()
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Check Loki job status
+        uses: actions/github-script@v9
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log('Some Loki jobs failed');
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+            process.exit(1);
