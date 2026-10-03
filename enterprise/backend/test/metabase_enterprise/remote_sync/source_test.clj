@@ -152,6 +152,12 @@
                        (let [counts (db-activity/with-db-activity! (source/serialize-specs entities task-id))]
                          (is (= n (count (:result counts))))
                          (get-in counts [:by-thread (.threadId (Thread/currentThread)) :statements] 0)))
+          ;; one unmeasured run of each kind first, so that one-time statements (for example the first read of a
+          ;; setting) count in neither measured run, whatever their order
+          _          (statements task-id)
+          _          (statements nil)
+          ;; so that the final progress below comes from the measured run
+          _          (t2/update! :model/RemoteSyncTask task-id {:progress 0.0})
           ;; serializing without a task id is the same work minus progress reporting, so the difference is exactly
           ;; the progress writes
           baseline   (statements nil)
