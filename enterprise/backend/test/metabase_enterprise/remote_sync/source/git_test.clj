@@ -7,7 +7,8 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import (java.io File)
            (java.net SocketTimeoutException)
            (java.nio.file Files Paths)
@@ -1049,7 +1050,10 @@
           (recover-stale-clone! source)
           (let [^File fresh (#'git/git-dir (get @@#'git/jgit (.getPath path)))]
             (is (not= (str path) (str fresh)) "precondition: the recovery cached a fresh sibling")
-            (FileUtils/deleteDirectory fresh))
+            ;; Not FileUtils/deleteDirectory: a JGit gc that the recovery's fetch started can remove gc.log.lock while
+            ;; that delete runs, and the delete then throws.
+            (#'git/delete-clone-dir! fresh)
+            (is (not (.exists fresh)) "precondition: the fresh clone is deleted"))
           (let [later (git/git-source url "master" nil ingest/legal-top-level-paths)]
             (is (not (contains? (set (map str @@#'git/retired-clones)) (str (#'git/git-dir (:git later)))))
                 "the source does not use a retired clone")
@@ -1123,3 +1127,101 @@
            (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token nil})))
     (is (not= (#'git/repo-path {:remote-url "https://example.com/org/repo.git"})
               (#'git/repo-path {:remote-url "https://example.com/org/other.git"})))))
+
+(deftest uninitialized-clone-is-deleted-with-a-tolerant-delete-test
+  (testing "when a clone has no data, it is deleted with delete-clone-dir!, and the error is the uninitialized-repository
+            error"
+    ;; A fetch can start a JGit gc in the background, which creates and removes gc.log.lock in the clone. A delete that
+    ;; lists the directory first then fails on the file that disappeared. delete-clone-dir! ignores that failure.
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            path       (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-" (random-uuid)))
+            deleted    (atom [])
+            delete!    (mt/original-fn #'git/delete-clone-dir!)]
+        (try
+          (mt/with-dynamic-fn-redefs [git/has-data?        (constantly false)
+                                      git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir) (delete! dir))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
+                                  (#'git/open-checked! path {:remote-url (:remote-url source)}))))
+          (is (= [path] @deleted))
+          (is (not (.exists path)) "the clone directory is gone")
+          (finally (FileUtils/deleteQuietly path)))))))
+
+(defn- chflags!
+  "Runs `chflags` with `flag` on `file` and returns its exit code, or nil when this system has no `chflags` command."
+  [flag ^File file]
+  (try
+    (.waitFor (.start (ProcessBuilder. ^java.util.List ["chflags" flag (str file)])))
+    (catch java.io.IOException _
+      nil)))
+
+(defn- immutable-flag-skip-reason!
+  "Returns nil when `chflags uchg` makes a file in the system temp dir immutable; otherwise the reason it does not."
+  []
+  (let [probe-dir (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-chflags-" (random-uuid)))
+        probe     (io/file probe-dir "probe")]
+    (try
+      (io/make-parents probe)
+      (spit probe "x")
+      (let [exit (chflags! "uchg" probe)]
+        (cond
+          (nil? exit)  "this system has no chflags command"
+          (zero? exit) nil
+          :else        "the file system of the temp dir does not support the uchg flag"))
+      (finally
+        (chflags! "nouchg" probe)
+        (FileUtils/deleteQuietly probe-dir)))))
+
+(deftest uninitialized-clone-with-an-undeletable-file-test
+  (testing "when a clone has no data and the delete cannot remove one of its files, the error is still the
+            uninitialized-repository error"
+    ;; Only an immutable flag stops the delete of commons-io: it makes a read-only directory writable first. The flag
+    ;; needs chflags (macOS and BSD); chattr +i on Linux needs root. So the test runs only where chflags exists and
+    ;; the file system supports the flag.
+    (if-let [skip-reason (immutable-flag-skip-reason!)]
+      (log/infof "Skipping uninitialized-clone-with-an-undeletable-file-test: %s" skip-reason)
+      (mt/with-temp-dir [remote-dir nil]
+        (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+              path       (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-" (random-uuid)))
+              locked     (io/file path "locked" "f")]
+          (try
+            (mt/with-dynamic-fn-redefs [git/has-data? (fn [_]
+                                                        (io/make-parents locked)
+                                                        (spit locked "x")
+                                                        (is (zero? (chflags! "uchg" locked)) "precondition: the file is immutable")
+                                                        false)]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
+                                    (#'git/open-checked! path {:remote-url (:remote-url source)}))))
+            (finally
+              (chflags! "nouchg" locked)
+              (FileUtils/deleteQuietly path))))))))
+
+(deftest shutdown-hook-keeps-clones-in-place-test
+  (testing "the shutdown hook does not delete a clone that lives at its repo-path"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            clone-dir        (.getCanonicalPath (#'git/git-dir (:git source)))
+            deleted          (atom [])]
+        (is (contains? @@#'git/jgit (.getPath ^File (#'git/repo-path source)))
+            "precondition: the clone is cached at its repo-path")
+        (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir))]
+          (#'git/delete-clones-at-exit!))
+        (is (not (contains? (into #{} (map #(.getCanonicalPath ^File %)) @deleted) clone-dir)))))))
+
+(deftest stale-clone-and-leftover-siblings-are-deleted-with-a-tolerant-delete-test
+  (testing "a first use deletes a leftover sibling and the stale clone at the repo path with delete-clone-dir!"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            url        (:remote-url source)
+            ^File path (#'git/repo-path {:remote-url url})
+            leftover   (io/file (.getParentFile path) (str (.getName path) "-leftover"))
+            deleted    (atom [])
+            delete!    (mt/original-fn #'git/delete-clone-dir!)]
+        (try
+          ;; As after a process that stopped with no shutdown hook: a clone at the path, a fresh sibling, no cache.
+          (forget-clones! url :keep-dirs? true)
+          (.mkdirs leftover)
+          (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj (str dir)) (delete! dir))]
+            (#'git/first-use! path {:remote-url url}))
+          (is (= #{(str leftover) (str path)} (set @deleted)))
+          (finally (forget-clones! url)))))))

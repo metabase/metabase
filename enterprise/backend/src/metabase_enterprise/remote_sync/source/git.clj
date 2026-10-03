@@ -649,9 +649,12 @@
   (concat @retired-clones (cached-sibling-clones)))
 
 (defn- delete-clone-dir!
-  "Deletes the clone directory `dir`, and ignores a failure."
+  "Deletes the clone directory `dir`. A failure, for example on a file that a JGit gc removes during the delete, does
+  not throw; a directory that remains is logged."
   [^File dir]
-  (FileUtils/deleteQuietly dir))
+  (FileUtils/deleteQuietly dir)
+  (when (.exists dir)
+    (log/warn "Could not delete a git clone directory" {:path (str dir)})))
 
 (defn- delete-clones-at-exit!
   "Deletes the [[clones-deleted-at-exit]]. The shutdown hook of [[retired-clones-reaper]] runs it."
@@ -686,7 +689,7 @@
   [^File path {:keys [remote-url token] :as args}]
   (u/prog1 (open-jgit path {:remote-url remote-url :token token})
     (when-not (has-data? (assoc args :git <>))
-      (FileUtils/deleteDirectory path)
+      (delete-clone-dir! path)
       (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
 
 (defn- usable-cached-jgit
@@ -716,7 +719,7 @@
                        (remove #(contains? in-use (canonical-path %))))]
     (doseq [^File dir leftovers]
       (log/info "Deleting a git clone that an earlier process left" {:path (str dir)})
-      (FileUtils/deleteQuietly dir))
+      (delete-clone-dir! dir))
     (boolean (seq leftovers))))
 
 (defn- clone-into-fresh-sibling!
@@ -752,7 +755,7 @@
 
                              leftovers?
                              (do (log/info "Deleting a stale git clone that an earlier process left" {:path (str path)})
-                                 (FileUtils/deleteQuietly path)
+                                 (delete-clone-dir! path)
                                  (open-checked! path args))
 
                              :else
