@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
@@ -425,9 +426,14 @@ width: fixed
         (ensure-builtin-python-library!)))))
 
 (defn clean-imported-content
-  "Test fixture that deletes the Dashboards, Cards, Actions, Documents, DataApps and Collections a test created,
-  e.g. by importing a mock source's content into the main app (imports commit, so `with-temp`'s rollback does not
-  undo them). Test users' personal collections are kept.
+  "Test fixture that deletes, after the test, each Dashboard, Card, Action, Document, DataApp and Collection whose id
+  is above the largest id at the start, e.g. the content that a test imports from a mock source (imports commit, so
+  `with-temp`'s rollback does not undo them). It deletes these rows from any writer, also from another thread or
+  from a dev server on the same app DB, and the rows that their foreign keys delete: a Card that existed before the
+  test is deleted when the test moved it into a new Dashboard or Document. Test users' personal collections are kept.
+
+  When the test publishes a Table into a new Collection, the delete of that Collection fails on the foreign key of
+  `metabase_table.collection_id`: the fixture throws, keeps the Collection, and does not reindex search.
 
   `mt/with-model-cleanup` refuses to run in a `^:parallel` test, so no test that uses this fixture can be
   parallel."
@@ -435,31 +441,47 @@ width: fixed
   (mt/with-model-cleanup [:model/Dashboard :model/Card :model/Action :model/Document :model/DataApp :model/Collection]
     (f)))
 
-(defn- remove-transforms-setting!
-  "Remove the stored `remote-sync-transforms` value, then delete the Transforms RemoteSyncObject rows that the
-  setting's `:on-change` hook adds while the value changes."
+(defn- stored-transforms-setting
+  "The stored `remote-sync-transforms` value, or nil when the setting has no row."
   []
-  (remote-sync.settings/remote-sync-transforms! nil)
+  (t2/select-one-fn :value :model/Setting :key "remote-sync-transforms"))
+
+(defn- write-transforms-setting!
+  "Store `value` as the `remote-sync-transforms` row (nil: no row) and restore the settings cache from the app DB.
+  Then delete the Transforms RemoteSyncObject rows, which the setting's `:on-change` hook writes when the restore
+  changes the cached value."
+  [value]
+  (t2/delete! :model/Setting :key "remote-sync-transforms")
+  (when value
+    (t2/insert! :model/Setting {:key "remote-sync-transforms" :value value}))
+  (setting/restore-cache!)
   (t2/delete! :model/RemoteSyncObject
               :model_type "Collection"
               :model_id   remote-sync.settings/transforms-root-id))
 
+(defn- remove-transforms-setting!
+  "Remove the stored `remote-sync-transforms` value, then delete the Transforms RemoteSyncObject rows."
+  []
+  (write-transforms-setting! nil))
+
 (defn clean-transforms-setting
-  "Test fixture that removes a stored `remote-sync-transforms` value before and after the test.
+  "Test fixture that removes a stored `remote-sync-transforms` value for the test, and writes it back after the test.
+  It deletes all Transforms RemoteSyncObject rows before and after the test.
 
   The settings cache calls the `:on-change` hook of this setting each time a cache restore changes its value, and
   the hook adds a \"Transforms\" RemoteSyncObject row. An import that finds transforms in the source stores the
   value as true. On a persistent app DB, that value can outlive the run, and then the first cache restore of the next
   run adds the row in the middle of a test. A test that needs the setting uses `mt/with-temporary-setting-values`.
 
-  Compose after [[clean-object]], so that the rows the hook adds while this fixture resets the value are not in the
-  rows that [[clean-object]] restores."
+  Compose inside [[clean-object]]: [[clean-object]] then restores a Transforms row that existed before the test,
+  after this fixture deletes it, so the row and the written-back value agree."
   [f]
-  (remove-transforms-setting!)
-  (try
-    (f)
-    (finally
-      (remove-transforms-setting!))))
+  (let [stored (stored-transforms-setting)]
+    (remove-transforms-setting!)
+    (try
+      (f)
+      (finally
+        (write-transforms-setting! stored)))))
 
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature

@@ -141,57 +141,39 @@
                     :model_type "Collection"
                     :model_id   remote-sync.settings/transforms-root-id))
 
-(deftest clean-remote-sync-state-removes-stored-transforms-setting-test
-  (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
-                "ledger row when the settings cache restores it inside the test")
-    (try
-      (t2/delete! :model/Setting :key "remote-sync-transforms")
-      (setting/restore-cache!)
-      ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
-      (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
-      (th/clean-remote-sync-state
-       (fn []
-         (setting/restore-cache!)
-         (is (empty? (transforms-ledger-rows)))))
-      (finally
-        (t2/delete! :model/Setting :key "remote-sync-transforms")
-        (setting/restore-cache!)
-        (t2/delete! :model/RemoteSyncObject
-                    :model_type "Collection"
-                    :model_id   remote-sync.settings/transforms-root-id)))))
-
-(defn- stored-transforms-setting
-  "The stored `remote-sync-transforms` value, or nil when the setting has no row."
-  []
-  (t2/select-one-fn :value :model/Setting :key "remote-sync-transforms"))
-
 (defn- transforms-state
   "The stored `remote-sync-transforms` value and the Transforms ledger rows."
   []
-  {:stored (stored-transforms-setting)
+  {:stored (#'th/stored-transforms-setting)
    :ledger (transforms-ledger-rows)})
 
 (defn- do-with-transforms-state-restored!
   "Runs `thunk`, then puts back the stored `remote-sync-transforms` value and the Transforms ledger rows that existed
   before it."
   [thunk]
-  (let [stored (stored-transforms-setting)
+  (let [stored (#'th/stored-transforms-setting)
         rows   (t2/select :model/RemoteSyncObject
                           :model_type "Collection"
                           :model_id   remote-sync.settings/transforms-root-id)]
     (try
       (thunk)
       (finally
-        (t2/delete! :model/Setting :key "remote-sync-transforms")
-        (when stored
-          (t2/insert! :model/Setting {:key "remote-sync-transforms" :value stored}))
-        ;; the cache restore runs the setting's :on-change hook, which writes ledger rows; replace them afterwards
-        (setting/restore-cache!)
-        (t2/delete! :model/RemoteSyncObject
-                    :model_type "Collection"
-                    :model_id   remote-sync.settings/transforms-root-id)
+        (#'th/write-transforms-setting! stored)
         (when (seq rows)
           (t2/insert! :model/RemoteSyncObject rows))))))
+
+(deftest clean-remote-sync-state-removes-stored-transforms-setting-test
+  (testing (str "a remote-sync-transforms value that an earlier run stored in the app DB does not add a Transforms "
+                "ledger row when the settings cache restores it inside the test")
+    (do-with-transforms-state-restored!
+     (fn []
+       (#'th/remove-transforms-setting!)
+       ;; store the value behind the cache's back, as an earlier JVM on a persistent app DB does
+       (t2/insert! :model/Setting {:key "remote-sync-transforms" :value "true"})
+       (th/clean-remote-sync-state
+        (fn []
+          (setting/restore-cache!)
+          (is (empty? (transforms-ledger-rows)))))))))
 
 (deftest clean-remote-sync-state-keeps-transforms-setting-and-ledger-in-step-test
   (testing "after clean-remote-sync-state, the remote-sync-transforms value and the Transforms ledger row agree when both
