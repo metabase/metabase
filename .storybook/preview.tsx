@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import "metabase/css/core/fonts.css";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { PortalContainer, ThemeProvider } from "metabase/ui";
 
@@ -35,20 +35,6 @@ import {
 
 import { initialize, mswLoader } from "msw-storybook-addon";
 
-// Inject @font-face declarations synchronously at preview load so that bundled
-// fonts are registered with `document.fonts` before any story's loaders run.
-// Without this, the Emotion <Global /> in the decorator below registers them
-// later, and the fontsReady loader has nothing to wait for on first render.
-if (
-  typeof document !== "undefined" &&
-  !document.head.querySelector("style[data-metabase-font-faces]")
-) {
-  const fontFaceStyle = document.createElement("style");
-  fontFaceStyle.dataset.metabaseFontFaces = "true";
-  fontFaceStyle.textContent = defaultFontFiles({ baseUrl: "/" }).styles;
-  document.head.appendChild(fontFaceStyle);
-}
-
 // Force every registered font to load before the story renders. This ensures we
 // use same fonts for tests every time, instead of using generic fallback
 // family like `sans-serif` which might resolve to different specific fonts (depending
@@ -56,10 +42,16 @@ if (
 // producing inconsistent behavior in code relying on measuring text (e.g., column
 // autosize in table visualization). Awaiting all loads here makes measurements
 // deterministic across platforms.
+//
+// The bundled @font-face rules arrive in the stylesheet fonts.css is extracted
+// into, so wait for the browser to have parsed it before reading document.fonts:
+// the set is empty until then, and there would be nothing to await.
 const fontsReady = async () => {
+  await document.fonts.ready;
   const loads: Promise<unknown>[] = [];
   document.fonts.forEach((face) => loads.push(face.load()));
   await Promise.all(loads);
+  await document.fonts.ready;
 };
 
 // Note: Changing the names of the stories may impact loki visual testing. Please ensure that
@@ -111,8 +103,6 @@ const argTypes = {
 };
 
 const globalStyles = css`
-  ${defaultFontFiles({ baseUrl: "/" })}
-
   body {
     font-size: 0.875em;
     ${rootStyle}

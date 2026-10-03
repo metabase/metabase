@@ -4,7 +4,7 @@ type PredefinedFontName = Exclude<MetabaseFontFamily, "Custom">;
 
 // NOTE: This map is NOT the source of truth for the fonts Metabase ships.
 // The canonical list is computed by `src/metabase/util/fonts.clj`, which
-// scans `resources/frontend_client/app/fonts/` at runtime and exposes the
+// scans `frontend/fonts/` at runtime and exposes the
 // result via the `available-fonts` setting — that's what populates the
 // main admin appearance dropdown.
 //
@@ -13,7 +13,7 @@ type PredefinedFontName = Exclude<MetabaseFontFamily, "Custom">;
 // per-font CSS fallback chain on a best-effort basis for cases when selected
 // font may lack some glyphs.
 //
-// When adding or removing a directory under `resources/frontend_client/app/fonts/`,
+// When adding or removing a directory under `frontend/fonts/`,
 // please keep this map and `MetabaseFontFamily` in sync.
 export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
   PredefinedFontName,
