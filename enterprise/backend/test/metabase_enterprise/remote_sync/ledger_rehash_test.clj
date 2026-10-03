@@ -15,6 +15,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -108,3 +109,33 @@
            (is (= "synced" (noop-card-save-status! "Cost card 004")))
            (is (= "synced" (noop-card-save-status! "Cost card 005")))
            (is (= "synced" (noop-card-save-status! "Cost card 006")))))))))
+
+(defn- data-app-tree
+  "Repo files of one data app: its `data_app.yaml`, and its bundle `bundle` at `dist/index.js`."
+  [bundle]
+  {"data_apps/sales/data_app.yaml" (yaml/generate-string {:serdes/meta [{:model "DataApp" :id "w8YkMQBwU4kOD0-pZ1nJk"
+                                                                         :label "sales"}]
+                                                          :entity_id   "w8YkMQBwU4kOD0-pZ1nJk"
+                                                          :slug        "sales"
+                                                          :name        "Sales"
+                                                          :path        "dist/index.js"})
+   "data_apps/sales/dist/index.js" bundle})
+
+(deftest forced-pull-serializes-each-data-app-again-test
+  (testing "the ledger hash of a data app covers its bundle, so a forced pull serializes the app again, and the stored
+            hash stays the hash of a fresh serialization"
+    (search.tu/with-index-disabled
+      (mt/with-premium-features #{:data-apps}
+        (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true remote-sync-transforms false]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+            (let [src (rs.test/versioned-source :trees {"v0" (data-app-tree "BUNDLE-V1")
+                                                        "v1" (data-app-tree "BUNDLE-V2")}
+                                                :current "v0")]
+              (is (= :success (:status (cost/import-at! src "v0" :force? true))) "baseline load")
+              (let [[result n] (counting-serializations #(cost/import-at! src "v0" :force? true))]
+                (is (= :success (:status result)))
+                (is (= 1 n) "the app is serialized again"))
+              (is (= {} (ledger-hashes-match-fresh-serialization)))
+              (testing "a forced pull of a changed bundle stores the hash of the new bundle"
+                (is (= :success (:status (cost/import-at! src "v1" :force? true))))
+                (is (= {} (ledger-hashes-match-fresh-serialization)))))))))))

@@ -43,7 +43,6 @@
     (let [small    (card-normalizations-on-forced-reload! 10)
           large    (card-normalizations-on-forced-reload! 20)
           per-card (double (/ (- large small) 10))]
-      ;; 1 read for the load, and 1 more when the ledger rebuild serializes each card again to hash it. A later change
-      ;; keeps the prior hash of an unchanged file and removes that second read; it then tightens this bound to 1.0.
-      (is (<= per-card 2.0)
+      ;; 1 read for the load. The ledger rebuild keeps the prior hash of an unchanged file, so it reads no card again.
+      (is (<= per-card 1.0)
           (format "Card normalizations per card: %s (10 cards: %d, 20 cards: %d)" per-card small large)))))
