@@ -178,12 +178,14 @@
       (t2/update! job-details job-name "metabase.task-test.job" {job-class-name old-class-name})
       (task/stop-scheduler!)
       (task/start-scheduler!)
-      ;; what the job's `task/init!` does at startup
-      (task/schedule-task! (job) (trigger-1))
+      ;; the trigger survives too, which matters for triggers no `init!` recreates, like per-database sync schedules
       (is (= {:stored-class-name old-class-name
-              :loaded-class-name "metabase.version.task.upgrade_checks.CheckForNewVersions"}
+              :loaded-class-name "metabase.version.task.upgrade_checks.CheckForNewVersions"
+              :triggers          #{{:cron-expression     "0 0 * * * ? *"
+                                    :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}}
              {:stored-class-name (t2/select-one-fn job-class-name job-details job-name "metabase.task-test.job")
-              :loaded-class-name (.getName (.getJobClass ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))))}))
+              :loaded-class-name (.getName (.getJobClass ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))))
+              :triggers          (triggers)}))
       (finally
         (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))
         (if scheduler-initialized?

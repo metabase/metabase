@@ -86,6 +86,10 @@
     "metabase.pulse.task.send_pulses.SendPulse"]
    ["metabase.task.session_cleanup.SessionCleanup"
     "metabase.session.task.session_cleanup.SessionCleanup"]
+   ["metabase.task.sync_databases.SyncAndAnalyzeDatabase"
+    "metabase.sync.task.sync_databases.SyncAndAnalyzeDatabase"]
+   ["metabase.task.sync_databases.UpdateFieldValues"
+    "metabase.sync.task.sync_databases.UpdateFieldValues"]
    ["metabase.task.task_history_cleanup.TaskHistoryCleanup"
     "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"]
    ["metabase.task.truncate_audit_tables.TruncateAuditTables"
