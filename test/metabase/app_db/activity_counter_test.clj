@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.activity-test-util :as activity]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -107,3 +108,45 @@
                (select-keys (this-thread counts) [:statements :checkouts :checkins])))
         (testing "and the calling thread's binding is restored afterwards"
           (is (identical? before (mdb/app-db))))))))
+
+(deftest connection-checked-out-before-the-count-test
+  (testing "inside a default mt/with-temp, a statement is counted or the counter throws; never a silent zero"
+    (mt/with-temp [:model/Collection _ {}]
+      (let [result (try
+                     (activity/with-db-activity! (select-1!))
+                     (catch Exception e e))]
+        (if (instance? Exception result)
+          (is (some? (ex-message result)))
+          (is (= {:statements 1}
+                 (select-keys (this-thread result) [:statements]))))))))
+
+(deftest overlapping-counts-on-two-threads-test
+  (testing "two counts that overlap on two threads and end out of order leave the original application DB in the root"
+    (let [app-db-var #'mdb.connection/*application-db*
+          original   (.getRawRoot app-db-var)
+          a-started  (promise)
+          a-may-end  (promise)]
+      (try
+        (let [a (future (activity/count-db-activity! (fn [] (deliver a-started true) (deref a-may-end 10000 ::timeout))))
+              _ (deref a-started 10000 ::timeout)
+              ;; the second count may run, or it may refuse to start; either way the first count must end
+              b (future (try
+                          (activity/count-db-activity! (fn [] (deliver a-may-end true) (deref a 10000 ::timeout)))
+                          (catch Exception e e)
+                          (finally (deliver a-may-end true))))]
+          (deref b 10000 ::timeout)
+          (deref a 10000 ::timeout)
+          (is (identical? original (.getRawRoot app-db-var))))
+        (finally
+          (alter-var-root app-db-var (constantly original)))))))
+
+(deftest statement-get-connection-test
+  (testing "a statement made on the connection that Statement.getConnection returns is counted"
+    (let [counts (activity/with-db-activity!
+                   (with-open [^Connection conn (.getConnection ^DataSource (mdb/app-db))
+                               stmt             (.createStatement conn)]
+                     (.execute stmt "SELECT 1")
+                     (with-open [stmt2 (.createStatement (.getConnection stmt))]
+                       (.execute stmt2 "SELECT 1"))))]
+      (is (= {:statements 2 :prepares 2}
+             (select-keys (this-thread counts) [:statements :prepares]))))))
