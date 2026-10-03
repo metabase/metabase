@@ -653,7 +653,7 @@
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
-  Returns the updated entity."
+  Returns the updated entity. The default returns `local` when no column changed."
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
@@ -712,9 +712,12 @@
         entity   (lib/normalize :metabase.models.db/model-row {:model model :row ingested})
         changes  (drop-unchanged-columns local (:row entity))]
     (log/tracef "Upserting %s %d" model-name id)
-    (when (seq changes)
-      (models.db/update-entity! id (assoc entity :row changes)))
-    (models.db/entity-by-pk model pk id)))
+    ;; Nothing changed, so return `local` (the row that load-find-local read) and don't read it again: re-reading a
+    ;; row runs its after-select, which for a Card normalizes the whole query.
+    (if (seq changes)
+      (do (models.db/update-entity! id (assoc entity :row changes))
+          (models.db/entity-by-pk model pk id))
+      local)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
