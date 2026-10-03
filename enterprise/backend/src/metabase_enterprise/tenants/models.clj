@@ -13,13 +13,18 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.default-fields :as t2.default-fields]))
 
 (methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
 
 (defmethod audit-app/model-details :model/Tenant
   [entity _event-type]
   (select-keys entity [:name :slug :is_active :attributes]))
+
+;; the PDF export logo is a multi-megabyte data URI, and tenant rows are read on hot paths like login
+(t2.default-fields/define-default-fields :model/Tenant
+  [:id :name :slug :is_active :attributes :tenant_collection_id :created_at :updated_at])
 
 (t2/deftransforms :model/Tenant
   {:attributes mi/transform-json-no-keywordization})

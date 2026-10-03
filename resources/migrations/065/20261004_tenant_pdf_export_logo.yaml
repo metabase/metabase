@@ -1,0 +1,21 @@
+## Lets each tenant brand its users' PDF exports with its own logo.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-04T00:00:00
+      author: alxnddr
+      comment: Add pdf_export_logo to tenant
+      changes:
+        - addColumn:
+            tableName: tenant
+            columns:
+              - column:
+                  name: pdf_export_logo
+                  type: ${text.type}
+                  remarks: The image data URI of the logo on PDF exports by this tenant's users; null to use the instance's
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: tenant
+            columnName: pdf_export_logo

@@ -15,6 +15,11 @@
   [tenant-id :- ms/PositiveInt]
   (t2/select-one :model/Tenant :id tenant-id))
 
+(mu/defn tenant-pdf-export-logo :- [:maybe :string]
+  "The PDF export logo of the Tenant with `tenant-id` as an image data URI, or nil."
+  [tenant-id :- ms/PositiveInt]
+  (t2/select-one-fn :pdf_export_logo [:model/Tenant :pdf_export_logo] :id tenant-id))
+
 (mu/defn tenant-by-slug
   "The Tenant with `slug`, or nil."
   [slug :- :string]
@@ -77,13 +82,13 @@
 
 (mu/defn insert-tenant!
   "Insert `tenant` and return the new instance."
-  [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes])]
+  [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes :pdf_export_logo])]
   (t2/insert-returning-instance! :model/Tenant tenant))
 
 (mu/defn update-tenant!
   "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."
   [tenant-id :- ms/PositiveInt
-   changes   :- (mut/select-keys ::tenants.schema/tenant.update [:name :attributes :is_active])]
+   changes   :- (mut/select-keys ::tenants.schema/tenant.update [:name :attributes :is_active :pdf_export_logo])]
   (t2/update! :model/Tenant {:id tenant-id} changes))
 
 (mu/defn active-member-counts

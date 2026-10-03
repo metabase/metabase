@@ -25,4 +25,5 @@
    [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:attributes           {:optional true} [:maybe ::tenant.attributes]]
-   [:tenant_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
+   [:tenant_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:pdf_export_logo      {:optional true} [:maybe :string]]])
