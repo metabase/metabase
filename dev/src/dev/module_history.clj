@@ -111,15 +111,26 @@
                        (some? api) (assoc :api (if (= :any api) :any (set api))))])))
           (get-in config [:linters :metabase/ns-module-checker :api-namespaces]))))
 
+(def ^:private whole-backend
+  "The module map before #42250, when there were no modules: the whole backend is one."
+  '{backend {}})
+
 (defn- commit-modules
   "The `:metabase/modules` map at `commit`. Before #53583 it is translated from the older linter config, and before
-  #42250 there is no config, so every module is undeclared and resolves by its first namespace segment."
+  #42250 there is no module config, so it is [[whole-backend]]."
   [reader commit]
   (if-let [config (read-object reader (str commit ":.clj-kondo/config/modules/config.edn"))]
     ;; Same exclusion as [[deps-graph/kondo-config]].
     (dissoc (:metabase/modules (edn/read-string config)) 'connection-pool)
-    (or (some-> (read-object reader (str commit ":.clj-kondo/config.edn")) legacy-modules)
-        {})))
+    (or (not-empty (some-> (read-object reader (str commit ":.clj-kondo/config.edn")) legacy-modules))
+        whole-backend)))
+
+(defn- prefix->module
+  "Namespace prefixes for `modules`; [[whole-backend]] owns every OSS and EE namespace."
+  [modules]
+  (if (= modules whole-backend)
+    {"metabase" 'backend, "metabase-enterprise" 'backend}
+    (modules/build-prefix->module modules)))
 
 ;;;; Cache
 
@@ -190,7 +201,7 @@
 (defn commit-dependencies
   "Dependency rows, as [[deps-graph/dependencies]] returns them, for the sources at `commit` under `modules`."
   [reader commit modules]
-  (let [prefix->module (modules/build-prefix->module modules)
+  (let [prefix->module (prefix->module modules)
         files          (source-blobs commit)
         requires       (blob-requires reader (distinct (map :blob files)))]
     (into []
@@ -377,7 +388,8 @@
           (str/split-lines (apply git! "show" "-s" "--format=%H%x00%cI%x00%s" commits)))))
 
 (defn measure
-  "Metrics for `commit`, from the cache when this code has measured it before."
+  "Metrics for `commit`, from the cache when this code has measured it before.
+  The `:module-system?` key is false before #42250, when the whole backend counts as one module."
   ([commit]
    (let [reader (open-object-reader)]
      (try
@@ -390,6 +402,7 @@
      (or (read-cached file)
          (let [modules (commit-modules reader sha)]
            (write-cached! file (merge (first (commit-info [sha]))
+                                      {:module-system? (not= modules whole-backend)}
                                       (commit-metrics (commit-dependencies reader sha modules) modules))))))))
 
 (defn sample-commits
@@ -426,7 +439,7 @@
 
 (def ^:private columns
   "Output columns, in order."
-  [:sha :committed-at :subject
+  [:sha :committed-at :subject :module-system?
    :namespaces :modules :configured-modules :top-level-modules :nested-modules :module-edges :top-level-edges
    :scc-largest-modules :scc-largest-namespaces :scc-largest-pct :scc-cyclic-modules :scc-cyclic-namespaces
    :scc-components :scc-static-largest-namespaces :scc-dynamic-only-namespaces

@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [dev.module-history :as module-history]
-   [dev.module-source :as module-source]))
+   [dev.module-source :as module-source]
+   [hooks.common.modules]))
 
 (deftest ^:parallel source-requires-test
   (testing "static requires come from the ns form, dynamic ones from require calls outside comments"
@@ -17,6 +18,13 @@
   (testing "a source without an ns form has no namespace"
     (is (= {:namespace nil, :static #{}, :dynamic #{}}
            (module-source/source-requires "(def x 1)")))))
+
+(deftest ^:parallel whole-backend-test
+  (testing "before the module system every OSS and EE namespace belongs to one module"
+    (let [prefix->module (#'module-history/prefix->module @#'module-history/whole-backend)]
+      (is (= '[backend backend backend]
+             (mapv #(hooks.common.modules/resolve-module prefix->module %)
+                   '[metabase.lib.core metabase.query-processor.middleware.x metabase-enterprise.sso.core]))))))
 
 (deftest ^:parallel legacy-modules-test
   (testing "the pre-:metabase/modules linter config translates root namespaces to module names"
