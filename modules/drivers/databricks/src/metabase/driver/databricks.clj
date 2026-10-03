@@ -46,6 +46,23 @@
   [_driver]
   ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
 
+(defmethod driver/file-path-parameters :databricks
+  [_driver]
+  {"SSLTrustStore"                    :read
+   "SSLKeyStore"                      :read
+   "Auth_JWT_Key_File"                :read
+   "GoogleCredentialsFile"            :read
+   "LogPath"                          :write
+   ;; local files a `PUT`/`GET` against a volume or staging location may read and write
+   "VolumeOperationAllowedLocalPaths" :read-write
+   "StagingAllowedLocalPaths"         :read-write})
+
+(defmethod driver/non-file-path-parameters :databricks
+  [_driver]
+  ["httppath"])
+
+(defmethod driver/additional-options-style :databricks [_driver] :semicolon)
+
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :database-routing                true

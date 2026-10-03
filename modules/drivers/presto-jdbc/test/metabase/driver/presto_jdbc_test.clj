@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
@@ -26,6 +27,21 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(driver.u/validate-connection-file-paths! :presto-jdbc (merge {:host "h" :port 8080 :catalog "c" :user "u"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:SSLKeyStorePath "/etc/secret.pem"})))
+          (doseq [param ["KerberosKeytabPath" "KerberosCredentialCachePath" "KerberosConfigPath"]]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (spec {:additional-options (str param "=/etc/krb5.conf")}))
+                param)))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (nil? (spec {:SSLKeyStorePath "/allowed-dir/ok.pem"})))
+          (is (nil? (spec {}))))))))
 
 (deftest ^:parallel describe-database-test
   (mt/test-driver :presto-jdbc

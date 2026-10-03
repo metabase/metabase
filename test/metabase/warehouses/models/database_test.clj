@@ -1223,3 +1223,20 @@
     (mt/with-temp [:model/Database {router-id :id} {}
                    :model/Database {dest-id :id} {:router_database_id router-id}]
       (is (t2/update! :model/Database dest-id {:name "renamed-destination"})))))
+
+(deftest file-path-parameters-are-validated-on-save-test
+  ;; checked on the model, as hosts are, so a database that never went through a connection test (serialization
+  ;; import, config files) cannot carry one either
+  (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Reading from path is disallowed"
+         (t2/insert! :model/Database {:engine  "postgres"
+                                      :name    "file-path-parameters"
+                                      :details {:host "localhost" :additional-options "sslrootcert=/etc/ca.pem"}})))
+    (mt/with-temp [:model/Database db {:engine "postgres" :details {:host "localhost"}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Reading from path is disallowed"
+           (t2/update! :model/Database (:id db) {:details {:host               "localhost"
+                                                           :additional-options "sslrootcert=/etc/ca.pem"}}))))))

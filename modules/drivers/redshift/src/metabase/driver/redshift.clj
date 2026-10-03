@@ -52,6 +52,23 @@
   ["assumeminserverversion" "hostrecheckseconds" "isserverless" "kerberosservername" "loadbalancehosts"
    "logservererrordetail" "serverlessacctid" "serverlessworkgroup" "sslhostnameverifier" "targetservertype"])
 
+(defmethod driver/file-path-parameters :redshift
+  [_driver]
+  {"sslcert"           :read
+   "sslkey"            :read
+   "sslrootcert"       :read
+   "ssltruststore"     :read
+   "ssltruststorepath" :read
+   "inifile"           :read
+   "logpath"           :write})
+
+(defmethod driver/non-file-path-parameters :redshift
+  [_driver]
+  ["authprofile" "databasemetadatacachefields" "databasemetadatacachefieldsmib" "dsiloglevel" "enablestatementcache"
+   "iamdisablecache" "jaaslogin" "kerberosservername" "logintimeout" "loglevel" "logservererrordetail"
+   "logunclosedconnections" "maxlogfilecount" "maxlogfilesize" "preparedstatementcachequeries"
+   "preparedstatementcachesizemib" "profile"])
+
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
                               :database-routing                 true

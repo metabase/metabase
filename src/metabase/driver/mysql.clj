@@ -60,6 +60,20 @@
   ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverSslCert" "serverTimezone"
    "tcpNoDelay" "trustServerCertificate" "useServerPrepStmts"])
 
+(defmethod driver/file-path-parameters :mysql
+  [_driver]
+  {"keyStore"               :read
+   "trustStore"             :read
+   "serverSslCert"          :read
+   "serverRsaPublicKeyFile" :read
+   "localSocket"            :read})
+
+(defmethod driver/non-file-path-parameters :mysql
+  [_driver]
+  ["allowLocalInfile" "cacheCallableStmts" "cachePrepStmts" "callableStmtCacheSize" "keyStorePassword" "keyStoreType"
+   "log" "maxQuerySizeToLog" "nullCatalogMeansCurrent" "prepStmtCacheSize" "prepStmtCacheSqlLimit" "profileSql"
+   "trustServerCertificate" "trustStorePassword" "trustStoreType"])
+
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
 

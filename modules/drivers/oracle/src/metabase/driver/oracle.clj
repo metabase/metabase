@@ -75,6 +75,41 @@
    "oracle.net.proxyRemoteDNS" "oracle.net.socksProxyPort" "oracle.net.ssl_server_cert_dn"
    "oracle.net.ssl_server_dn_match" "oracle.net.wallet_location" "server"])
 
+(defmethod driver/file-path-parameters :oracle
+  [_driver]
+  {"javax.net.ssl.keyStore"              :read
+   "javax.net.ssl.trustStore"            :read
+   "oracle.jdbc.clientCertificate"       :read
+   "oracle.jdbc.config.file"             :read
+   "oracle.jdbc.ociConfigFile"           :read
+   "oracle.jdbc.ons.walletfile"          :read
+   "oracle.jdbc.sqlErrorTranslationFile" :read
+   "oracle.jdbc.tokenLocation"           :read
+   "oracle.net.kerberos5_cc_name"        :read
+   "oracle.net.ldap.ssl.keyStore"        :read
+   "oracle.net.ldap.ssl.trustStore"      :read
+   "oracle.net.ldap.ssl.walletLocation"  :read
+   "oracle.net.profile"                  :read
+   "oracle.net.wallet_location"          :read})
+
+(defmethod driver/non-file-path-parameters :oracle
+  [_driver]
+  ["internal_logon" "javax.net.ssl.keyStorePassword" "javax.net.ssl.keyStoreType" "javax.net.ssl.trustStorePassword"
+   "javax.net.ssl.trustStoreType" "oracle.jdbc.allowedLogonVersion" "oracle.jdbc.clientCertificatePassword"
+   "oracle.jdbc.configurationProviders" "oracle.jdbc.diagnostic.enableLogging" "oracle.jdbc.diagnostic.loggerName"
+   "oracle.jdbc.diagnostic.writeLogsToDiagnoseFirstFailure" "oracle.jdbc.enableQueryResultCache"
+   "oracle.jdbc.enableResultSetCache" "oracle.jdbc.implicitStatementCacheSize" "oracle.jdbc.loginTimeout"
+   "oracle.jdbc.maxCachedBufferSize" "oracle.jdbc.ociProfile" "oracle.jdbc.ons.walletpassword"
+   "oracle.jdbc.parameterMetadataCacheIncludeParsing" "oracle.jdbc.parameterMetadataCacheSize"
+   "oracle.jdbc.provider.tlsConfiguration" "oracle.jdbc.queryResultCacheMaxLag" "oracle.jdbc.queryResultCacheMaxSize"
+   "oracle.jdbc.redirectUri" "oracle.jdbc.remoteConfigurationFiltering" "oracle.jdbc.sqlTranslationProfile"
+   "oracle.jdbc.useThreadLocalBufferCache" "oracle.jdbc.useTrueCacheDriverConnection"
+   "oracle.net.KerberosJaasLoginModule" "oracle.net.KerberosRealm" "oracle.net.kerberos5_mutual_authentication"
+   "oracle.net.ldap.ssl.keyStorePassword" "oracle.net.ldap.ssl.keyStoreType" "oracle.net.ldap.ssl.trustStorePassword"
+   "oracle.net.ldap.ssl.trustStoreType" "oracle.net.ldap.ssl.walletPassword" "oracle.net.sslContextCacheSize"
+   "oracle.net.ssl_certificate_alias" "oracle.net.ssl_certificate_thumbprint" "oracle.net.ssl_pem_private_key_index"
+   "oracle.net.ssl_server_cert_dn" "oracle.net.wallet_password"])
+
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
                               :datetime-diff                    true

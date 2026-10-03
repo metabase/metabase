@@ -5,11 +5,23 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
 
 (set! *warn-on-reflection* true)
+
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(driver.u/validate-connection-file-paths! :vertica (merge {:host "h" :port 5433 :db "db"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:keystorepath "/etc/secret.pem"}))))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (nil? (spec {:keystorepath "/allowed-dir/ok.pem"})))
+          (is (nil? (spec {}))))))))
 
 (deftest db-timezone-test
   (mt/test-driver :vertica
