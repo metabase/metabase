@@ -180,7 +180,7 @@ function UndoToast({
             </Ellipsified>
           )}
         </Flex>
-        <Flex className={S.controls} align="center" flex="0 0 auto">
+        <Flex className={S.controls} align="center" gap="sm" flex="0 0 auto">
           {undo.actions && undo.actions.length > 0 && (
             <Button
               className={S.actionButton}
@@ -212,7 +212,7 @@ function UndoToast({
               color={undo.dismissIconColor || "tooltip-text"}
               name="close"
               onClick={onDismiss}
-              ml="lg"
+              ml="sm"
             />
           )}
         </Flex>
