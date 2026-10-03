@@ -612,7 +612,11 @@
             (assoc :network-policy-floor :allow-private))
 
           :else
-          (throw (ex-info "Embedding service and ai service base URLs are not configured"
+          (throw (ex-info (if (setting/env-var-value :ee-embedding-service-api-key)
+                            (str "Set " (setting/env-var-name :ee-embedding-service-base-url)
+                                 " alongside " (setting/env-var-name :ee-embedding-service-api-key)
+                                 "; an environment API key needs an embedding service base URL.")
+                            "Embedding service and ai service base URLs are not configured")
                           {:settings ["ee-embedding-service-base-url"
                                       "ai-service-base-url"]})))))
 

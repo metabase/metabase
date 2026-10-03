@@ -614,6 +614,15 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"an environment API key cannot use an embedding URL stored"
                               (embedding/embedder-circuit-endpoint {:provider "ai-service"})))))))
 
+(deftest embedding-environment-key-with-no-base-url-names-both-settings-test
+  (mt/with-temporary-setting-values [ee-embedding-service-base-url nil
+                                     ee-embedding-service-api-key  nil]
+    (testing "an environment key with no base URL anywhere names the pair, not the generic fallback error"
+      (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "deployment-key"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Set MB_EE_EMBEDDING_SERVICE_BASE_URL alongside MB_EE_EMBEDDING_SERVICE_API_KEY"
+                              (#'embedding/embedding-service-resolve-config!)))))))
+
 (deftest test-embedding-service-snowplow-tracking
   (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
