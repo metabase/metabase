@@ -1,0 +1,33 @@
+## Adds explorations to v_content as the `exploration` entity type, so usage analytics can report on
+## them like any other content.
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-29T15:49:41
+      author: denisberezin
+      comment: Usage analytics; add explorations to the content view (v7)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/content/v7/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/content/v7/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/content/v7/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/content/v6/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/content/v6/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/content/v6/h2-content.sql
+            relativeToChangelogFile: true

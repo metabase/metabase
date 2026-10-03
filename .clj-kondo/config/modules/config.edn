@@ -1028,6 +1028,7 @@
            analytics.interface
            api
            app-db
+           audit-app.view-log
            collections
            comments
            documents
