@@ -282,10 +282,13 @@
      :legacy-rest-modules           (count (filter #(re-find #"-rest$" (str %)) (keys modules)))}))
 
 (defn commit-metrics
-  "Flat metrics for one commit's dependency rows and module map: [[deps-graph/module-boundary-stats]] plus the
-  sizes, cycle, exposure and `:friends` measures the history report tracks, and the [[structure-metrics]]."
+  "Metrics for one commit's dependency rows and module map: [[deps-graph/module-boundary-stats]] plus the sizes,
+  cycle, exposure and `:friends` measures the history report tracks, and the [[structure-metrics]].
+  All are numbers except `:cycles`, one map per module cycle with its `:modules`, `:namespaces`, `:edges`,
+  `:density`, `:cycle-rank` and `:strong-bridges` count, largest first."
   [deps modules]
-  (let [stats            (deps-graph/module-boundary-stats deps modules)
+  (let [cycles           (deps-graph/module-cycles deps)
+        stats            (deps-graph/module-boundary-stats deps modules cycles)
         mod->nses        (update-vals (group-by :module deps) #(into #{} (map :namespace) %))
         ns-count         #(count (get mod->nses % #{}))
         with-nses        (set (keys mod->nses))
@@ -313,6 +316,17 @@
         namespaces       (count deps)]
     (merge
      (structure-metrics deps modules stats)
+     ;; Each cycle's members, so a report can follow a cycle as it splits or merges.
+     {:cycles (mapv (fn [{:keys [modules edges density cycle-rank strong-bridges]} namespaces]
+                      {:modules        modules
+                       :namespaces     namespaces
+                       :edges          edges
+                       ;; Two decimals, as [[deps-graph/module-boundary-stats]] reports densities.
+                       :density        (/ (Math/round (* 100.0 density)) 100.0)
+                       :cycle-rank     cycle-rank
+                       :strong-bridges (count strong-bridges)})
+                    cycles
+                    (:scc-namespace-sizes stats))}
      (select-keys stats [:api-any-namespaces
                          :upward-requires
                          :upward-module-edges
