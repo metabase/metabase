@@ -382,6 +382,7 @@ const elements = [
     "frontend/src/metabase/LoadCurrentUser.unit.spec.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
+    "frontend/src/metabase/AppThemeProvider.unit.spec.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
