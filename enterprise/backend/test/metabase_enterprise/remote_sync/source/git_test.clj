@@ -1123,3 +1123,22 @@
            (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token nil})))
     (is (not= (#'git/repo-path {:remote-url "https://example.com/org/repo.git"})
               (#'git/repo-path {:remote-url "https://example.com/org/other.git"})))))
+
+(deftest uninitialized-clone-is-deleted-with-a-tolerant-delete-test
+  (testing "when a clone has no data, it is deleted with delete-clone-dir!, and the error is the uninitialized-repository
+            error"
+    ;; A fetch can start a JGit gc in the background, which creates and removes gc.log.lock in the clone. A delete that
+    ;; lists the directory first then fails on the file that disappeared. delete-clone-dir! ignores that failure.
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            path       (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-" (random-uuid)))
+            deleted    (atom [])
+            delete!    (mt/original-fn #'git/delete-clone-dir!)]
+        (try
+          (mt/with-dynamic-fn-redefs [git/has-data?        (constantly false)
+                                      git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir) (delete! dir))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
+                                  (#'git/open-checked! path {:remote-url (:remote-url source)}))))
+          (is (= [path] @deleted))
+          (is (not (.exists path)) "the clone directory is gone")
+          (finally (FileUtils/deleteQuietly path)))))))
