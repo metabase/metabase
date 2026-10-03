@@ -1508,6 +1508,18 @@ function(bin) {
               (into existing-projections (map f) new-projections)))]
     (update pipeline-ctx :projections update-projections)))
 
+(defn- maybe-add-no-op-limit
+  "Adds a `$limit` stage to the end of a join `pipeline` if the pipeline has a `$group` stage. The limit does not
+  remove documents.
+
+  MongoDB 9 and later can move the join condition `$match` to a position before the `$group` stage. MongoDB then
+  runs the `$group` stage again for each document on the left side of the join. This makes the query very slow.
+  MongoDB cannot move a `$match` stage to a position before a `$limit` stage. Thus the `$group` stage runs only one
+  time (QUE2-877)."
+  [pipeline]
+  (cond-> (vec pipeline)
+    (some #(contains? % $group) pipeline) (conj {$limit Long/MAX_VALUE})))
+
 (mu/defn- handle-join
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -1549,7 +1561,9 @@ function(bin) {
             ;; TODO (Cam 2026-08-11) not clear whether this should be `query` + `stage-number` here or `join-query` +
             ;; `-1` (for the last stage of the join?). Need to wrap my head around what's going on and then write a
             ;; note here to clarify.
-            pipeline  (-> (handle-filters query stage-number {:query pipeline} filters)
+            pipeline  (-> (handle-filters query stage-number
+                                          {:query (maybe-add-no-op-limit pipeline)}
+                                          filters)
                           :query)
             lookup-as (get-join-alias join-alias)
             stages    [{$lookup {:from     (find-source-collection query join)
