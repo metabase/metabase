@@ -10,7 +10,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.io File InterruptedIOException)
+   (java.io File)
    (java.net URI)
    (java.nio.channels ClosedByInterruptException)
    (org.apache.commons.io FileUtils)
@@ -728,13 +728,27 @@
             (swap! jgit assoc k git)
             git)))))
 
-(defn- interrupt?
-  "True when `e`, or one of its causes, is the result of a thread interrupt."
+(defn- interrupted?
+  "True when the current thread was interrupted while it ran the attempt that threw `e`: its interrupt flag is set, or
+  `e` or one of its causes is an InterruptedException or a ClosedByInterruptException. A timeout of a socket or of JGit
+  (an InterruptedIOException) is not an interrupt."
   [^Throwable e]
-  (some #(or (instance? InterruptedException %)
-             (instance? InterruptedIOException %)
-             (instance? ClosedByInterruptException %))
-        (take-while some? (iterate #(.getCause ^Throwable %) e))))
+  (or (.isInterrupted (Thread/currentThread))
+      (boolean (some #(or (instance? InterruptedException %)
+                          (instance? ClosedByInterruptException %))
+                     (take-while some? (iterate #(.getCause ^Throwable %) e))))))
+
+(defn- attempt-first-use!
+  "[[first-use!]], run by the thread that derefs the shared delay of [[get-jgit]] first. If that thread was interrupted,
+  the exception is wrapped with `::interrupted-thread`, so that [[get-jgit]] can tell the interrupted thread from the
+  waiters."
+  [^File path args]
+  (try
+    (first-use! path args)
+    (catch Throwable e
+      (if (interrupted? e)
+        (throw (ex-info "A first use of a git clone was interrupted" {::interrupted-thread (Thread/currentThread)} e))
+        (throw e)))))
 
 (defn- get-jgit
   "The Git instance for the [[repo-path]] `path`. It opens or clones the repository on first use (see [[first-use!]]).
@@ -743,23 +757,23 @@
   Git instance, or they all fail with the same exception after one clone attempt. The delay leaves [[first-uses]] when
   the attempt ends, so a later first use after a failure tries again.
 
-  An attempt that failed because its thread was interrupted is not shared: the interrupt belongs to that thread alone.
-  A waiter that was not interrupted removes that attempt and makes its own."
+  An attempt that failed because the thread that ran it was interrupted is not shared: the interrupt belongs to that
+  thread alone. That thread gets the original exception. Each other thread removes that attempt and makes its own."
   [^File path args]
   (let [k (.getPath path)]
     (loop []
       (let [result (or (usable-cached-jgit k)
-                       (let [mine   (delay (first-use! path args))
+                       (let [mine   (delay (attempt-first-use! path args))
                              shared (get (swap! first-uses update k #(or % mine)) k)
                              forget #(swap! first-uses (fn [m] (cond-> m (identical? (get m k) shared) (dissoc k))))]
                          (try
                            @shared
-                           (catch Throwable e
-                             (if (and (not (identical? shared mine))
-                                      (interrupt? e)
-                                      (not (.isInterrupted (Thread/currentThread))))
-                               (do (forget)
-                                   ::retry)
+                           (catch clojure.lang.ExceptionInfo e
+                             (if-let [interrupted-thread (::interrupted-thread (ex-data e))]
+                               (if (identical? interrupted-thread (Thread/currentThread))
+                                 (throw (ex-cause e))
+                                 (do (forget)
+                                     ::retry))
                                (throw e)))
                            (finally
                              (when (identical? shared mine)
