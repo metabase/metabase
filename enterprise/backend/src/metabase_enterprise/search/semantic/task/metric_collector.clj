@@ -90,6 +90,9 @@
 
 (def ^:private job-interval-ms (* 10 60 1000))
 
+(task/register-renamed-job-class!
+ "metabase_enterprise.semantic_search.task.metric_collector.SemanticMetricCollector" SemanticMetricCollector)
+
 (defmethod task/init! ::SemanticMetricCollector
   [_]
   ;; Boot-safe gate: plain env/feature checks, never a DB probe (pgvector-configured? would resolve

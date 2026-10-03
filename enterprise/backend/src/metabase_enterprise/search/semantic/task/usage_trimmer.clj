@@ -31,6 +31,9 @@
   SemanticSearchUsageTrimmer [_ctx]
   (trim-old-token-data!))
 
+(task/register-renamed-job-class!
+ "metabase_enterprise.semantic_search.task.usage_trimmer.SemanticSearchUsageTrimmer" SemanticSearchUsageTrimmer)
+
 (defmethod task/init! ::SemanticSearchUsageTrimmer
   [_]
   (when (semantic.u/semantic-search-configured?)
