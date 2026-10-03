@@ -34,15 +34,6 @@
 (defn- new-task! [sync-task-type]
   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type sync-task-type :initiated_by (mt/user->id :rasta)}))
 
-(defn- import-at!
-  "Run `import!` against the source's snapshot at `version`, complete the task (so `last-version` advances for the
-   next pull), and return the result."
-  [src version & {:keys [force?] :or {force? false}}]
-  (let [task   (new-task! "import")
-        result (impl/import! (source.p/snapshot-at src version) task :force? force?)]
-    (impl/handle-task-result! result task)
-    result))
-
 (defn- export!
   "Export to `mock` under a fresh task, complete it, and return the result."
   [mock]
@@ -69,12 +60,12 @@
                                                      "v1" {"README.md" "x"}}
                                              :current "v0")]
       (testing "a pull imports the app and its bundle"
-        (is (=? {:status :success :outcome {:kind "pulled" :count 1}} (import-at! src "v0" :force? true)))
+        (is (=? {:status :success :outcome {:kind "pulled" :count 1}} (test-helpers/import-at! src "v0" :force? true)))
         (is (=? {:entity_id sales-eid :display_name "Sales" :draft false :resource_collection_id pos-int?}
                 (t2/select-one :model/DataApp :name "sales")))
         (is (= "BUNDLE-V1" (bundle-text "sales"))))
       (testing "a pull whose repo no longer has the app removes it"
-        (is (= :success (:status (import-at! src "v1"))))
+        (is (= :success (:status (test-helpers/import-at! src "v1"))))
         (is (not (t2/exists? :model/DataApp :name "sales")))))))
 
 (deftest bundle-only-pull-updates-the-bundle-test
@@ -83,8 +74,8 @@
       (let [src (test-helpers/versioned-source :trees {"v0" (app-tree sales-eid "sales" "BUNDLE-V1")
                                                        "v1" (app-tree sales-eid "sales" "BUNDLE-V2")}
                                                :current "v0")]
-        (is (= :success (:status (import-at! src "v0" :force? true))))
-        (is (=? {:status :success :outcome {:kind "pulled"}} (import-at! src "v1")))
+        (is (= :success (:status (test-helpers/import-at! src "v0" :force? true))))
+        (is (=? {:status :success :outcome {:kind "pulled"}} (test-helpers/import-at! src "v1")))
         (is (= "v1" (remote-sync.task/last-version)))
         (is (= "BUNDLE-V2" (bundle-text "sales")))))))
 
@@ -125,7 +116,7 @@
             mock   (test-helpers/create-mock-source
                     :initial-files {"main" (merge (app-tree sales-eid "sales" "BUNDLE-V1") source)})
             repo   #(get @(:files-atom mock) "main")]
-        (is (= :success (:status (import-at! mock "main" :force? true))))
+        (is (= :success (:status (test-helpers/import-at! mock "main" :force? true))))
         (mt/user-http-request :crowberto :put 200 "apps/sales" {:bundle "BUNDLE-V2"})
         (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
                                                            :display_name "Ops"
@@ -145,10 +136,10 @@
     (with-data-apps-sync
       (let [app (app-tree sales-eid "sales" "BUNDLE")
             src (test-helpers/versioned-source :trees {"v0" app "v1" (assoc app "README.md" "x")} :current "v0")]
-        (is (= :success (:status (import-at! src "v0" :force? true))))
+        (is (= :success (:status (test-helpers/import-at! src "v0" :force? true))))
         (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
                                                            :display_name "Ops"
                                                            :bundle_path  "app.js"
                                                            :bundle       "OPS"})
-        (is (=? {:status :conflict} (import-at! src "v1")))
+        (is (=? {:status :conflict} (test-helpers/import-at! src "v1")))
         (is (t2/exists? :model/DataApp :name "ops"))))))

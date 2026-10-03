@@ -25,9 +25,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
-   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
@@ -39,13 +37,6 @@
 (use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
 
 ;;; ------------------------------------------------- State capture --------------------------------------------------
-
-(defn- synced-tree
-  "The current remote-synced set serialized to a {path content} map — what a fresh export would write.
-  After a correct import this equals the imported snapshot's content (round-trip), so it's a faithful,
-  pk-independent fingerprint of the loaded app-DB entities."
-  []
-  (into {} (map (juxt :path :content)) (source/serialize-specs (spec/extract-entities-for-export) nil)))
 
 (defn- rso-state
   "The RemoteSyncObject table as a pk-independent set of [model_type file_path status]. Keyed on file_path
@@ -60,7 +51,8 @@
   "Everything an import is responsible for reconciling. Two imports of the same snapshot must produce equal
   state vectors."
   []
-  {:files      (synced-tree)
+  ;; after a correct import, the export equals the imported snapshot (round trip): a pk-independent fingerprint
+  {:files      (rs.test/synced-tree)
    :rso        (rso-state)
    :transforms (settings/remote-sync-transforms)
    :version    (remote-sync.task/last-version)})
@@ -77,16 +69,6 @@
 
 ;;; --------------------------------------------------- Harness ------------------------------------------------------
 
-(defn- import-at!
-  "Runs `import!` against the source's snapshot at `version`, then completes the task (so `last-version`
-  picks up its version for the next import). Returns the import result."
-  [src version & {:keys [force?] :or {force? false}}]
-  (let [task   (t2/insert-returning-pk! :model/RemoteSyncTask
-                                        {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-        result (impl/import! (source.p/snapshot-at src version) task :force? force?)]
-    (impl/handle-task-result! result task)
-    result))
-
 (defn- import-v1-under-test!
   "Runs the under-test import of v1 (force? false), spying on incremental-load-snapshot! to report which
   path it took. Returns [result path], where path is :incremental (the fast-path ran) or :fallback (it
@@ -98,7 +80,7 @@
                                 (fn [& args] (let [r (apply real args)]
                                                (reset! path (if (= r :remote-sync/incremental-not-possible) :fallback :incremental))
                                                r))]
-      [(import-at! src "v1" :force? false) @path])))
+      [(rs.test/import-at! src "v1" :force? false) @path])))
 
 (defn- run-differential!
   "Imports `f0` as the baseline, then runs the full (oracle) and under-test imports of `f1` and asserts the
@@ -109,10 +91,10 @@
   ;; their (async) search ingestion can't bleed into the search-index integration test in this namespace.
   (search.tu/with-index-disabled
     (let [src (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")]
-      (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
-      (is (= :success (:status (import-at! src "v1" :force? true))) "oracle full import of v1 succeeds")
+      (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+      (is (= :success (:status (rs.test/import-at! src "v1" :force? true))) "oracle full import of v1 succeeds")
       (let [oracle (state-vector)]
-        (is (= :success (:status (import-at! src "v0" :force? true))) "reset back to v0 succeeds")
+        (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "reset back to v0 succeeds")
         (let [[result path] (import-v1-under-test! src)]
           (is (= :success (:status result)) "under-test import of v1 succeeds")
           (assert-equivalent oracle (state-vector))
@@ -130,7 +112,7 @@
                    :model/Card _a {:name "Card A" :collection_id coll-id}
                    :model/Card _b {:name "Card B" :collection_id coll-id}]
       (mt/with-model-cleanup [:model/Card :model/Collection]
-        (f (synced-tree))))))
+        (f (rs.test/synced-tree))))))
 
 (defn- path-with [tree slug]
   (some (fn [p] (when (str/includes? p slug) p)) (keys tree)))
@@ -199,10 +181,10 @@
                f1      (update f0 b-path str/replace "display: table" "display: line")
                src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
                indexed (atom #{})]
-           (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
+           (rs.test/import-at! src "v0" :force? true)              ; baseline (full) — local == v0
            (mt/with-dynamic-fn-redefs [search/update! (fn [inst] (swap! indexed conj (:entity_id inst)))
                                        search/delete! (fn [& _] nil)]
-             (import-at! src "v1"))                        ; incremental edit of card_b only
+             (rs.test/import-at! src "v1"))                        ; incremental edit of card_b only
            (is (contains? @indexed b-eid) "the edited card is re-indexed")
            (is (not (contains? @indexed a-eid)) "the unchanged card is NOT re-indexed")))))))
 
@@ -220,10 +202,10 @@
                f1      (dissoc f0 b-path)
                src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
                deleted (atom [])]
-           (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
+           (rs.test/import-at! src "v0" :force? true)              ; baseline (full) — local == v0
            (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
              (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
-               (import-at! src "v1"))                      ; incremental delete of card_b
+               (rs.test/import-at! src "v1"))                      ; incremental delete of card_b
              (is (some (fn [[model ids]] (and (= :model/Card model) (some #{(str b-id)} ids))) @deleted)
                  "the removed card is deleted from the search index by id, as the string the index stores
                   (an integer id fails on Postgres with `text = integer`)"))))))))
@@ -270,7 +252,7 @@
        (search.tu/with-index-disabled
          (let [f1  (update f0 (path-with f0 "card_b") str/replace "display: table" "display: line")
                src (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")]
-           (is (= :success (:status (import-at! src "v0" :force? true))))
+           (is (= :success (:status (rs.test/import-at! src "v0" :force? true))))
            (let [task (t2/insert-returning-pk! :model/RemoteSyncTask
                                                {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
              (is (= :success (:status (impl/import! (source.p/snapshot-at src "v1") task))))
@@ -278,7 +260,7 @@
              (remote-sync.task/cancel-sync-task! task)
              (is (=? {:cancelled true :version "v1"} (t2/select-one :model/RemoteSyncTask :id task))))
            (is (= "v1" (remote-sync.task/last-version)))
-           (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v1")))))))))
+           (is (=? {:status :success :outcome {:kind "pull-skipped"}} (rs.test/import-at! src "v1")))))))))
 
 (deftest first-import-no-force-uses-full-load-test
   (testing "GHY-3779: a first import (no prior version, so last-version is nil) with force? false must NOT
@@ -293,6 +275,6 @@
              called? (atom false)]
          (mt/with-dynamic-fn-redefs [impl/incremental-load-snapshot! (fn [& args] (reset! called? true) (apply real args))]
            ;; no baseline import has run, so this is the first import: first-import? is true
-           (is (= :success (:status (import-at! src "v0" :force? false))))
+           (is (= :success (:status (rs.test/import-at! src "v0" :force? false))))
            (is (not @called?)
                "incremental-load-snapshot! must not run on a first import")))))))

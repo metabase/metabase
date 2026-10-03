@@ -3,9 +3,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.settings.core :as setting]
@@ -358,6 +360,21 @@ width: fixed
       (default-branch [_] branch)
       (snapshot [_] (mk-snapshot (:current @state)))
       (snapshot-at [_ v] (when (contains? (:trees @state) v) (mk-snapshot v))))))
+
+(defn synced-tree
+  "The files that a fresh export of the remote-synced content would write, as a map of path to content."
+  []
+  (into {} (map (juxt :path :content)) (source/serialize-specs (spec/extract-entities-for-export) nil)))
+
+(defn import-at!
+  "Run `impl/import!` synchronously on the calling thread against the source `src` at `version`, and record the
+  result on a new RemoteSyncTask row (so that `last-version` advances for the next import). Returns the import
+  result."
+  [src version & {:keys [force?] :or {force? false}}]
+  (let [task   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+        result (impl/import! (source.p/snapshot-at src version) task :force? force?)]
+    (impl/handle-task-result! result task)
+    result))
 
 (defn clean-object
   "Test fixture that resets the RemoteSyncObject table before running tests to prevent existing

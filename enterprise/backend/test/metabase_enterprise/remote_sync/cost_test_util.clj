@@ -17,10 +17,6 @@
                 10 20)"
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.app-db.activity-test-util :as activity]
    [metabase.lib.core :as lib]
@@ -41,18 +37,27 @@
   {:card      (t2/select-one-fn :m :model/Card {:select [[:%max.updated_at :m]]})
    :dashboard (t2/select-one-fn :m :model/Dashboard {:select [[:%max.updated_at :m]]})})
 
-(defn- rewritten-since [{:keys [card dashboard]}]
-  (+ (t2/count :model/Card :updated_at [:> card])
-     (t2/count :model/Dashboard :updated_at [:> dashboard])))
+(defn- rewritten-since
+  "The cards and dashboards with an `updated_at` later than the values of [[max-updated-at]]. A nil value is an empty
+  table, so all of its rows count."
+  [{:keys [card dashboard]}]
+  (letfn [(newer [model latest]
+            (if latest
+              (t2/count model :updated_at [:> latest])
+              (t2/count model)))]
+    (+ (newer :model/Card card)
+       (newer :model/Dashboard dashboard))))
 
 (defn measure!
   "Run `thunk` and return its result under `:result`, with every JDBC-level count from
   [[metabase.app-db.activity-test-util/count-db-activity!]] (see [[metabase.app-db.activity-test-util/count-keys]]) and
   two domain counts:
 
-  - `:metadata-inferences` Card `result_metadata` inferences (QP preprocessing). Counted with a thread-local redef,
-                           so only the inferences made on the calling thread count.
-  - `:rows-rewritten`      cards and dashboards whose `updated_at` moved during the thunk."
+  - `:metadata-inferences` Card `result_metadata` inferences (QP preprocessing) on the calling thread and on the
+                           threads that receive its bindings (`future`, `bound-fn`, `in-virtual-thread*`); not on a
+                           raw `Thread`.
+  - `:rows-rewritten`      cards and dashboards that the thunk inserted or updated: rows with an `updated_at` later
+                           than the latest one before the thunk."
   [thunk]
   (let [inferences (atom 0)
         before     (max-updated-at)]
@@ -78,14 +83,9 @@
 
 ;;; ------------------------------------------------ content ------------------------------------------------
 
-(defn synced-tree
-  "The files that a fresh export of the remote-synced content would write, as a map of path to content."
-  []
-  (into {} (map (juxt :path :content)) (source/serialize-specs (spec/extract-entities-for-export) nil)))
-
 (defn do-with-content!
   "Create a remote-synced collection with `cards` MBQL cards (3 field refs each) and `dashboards` dashboards of
-  `dashcards` dashboard cards each, then call `f` with the serialized tree (see [[synced-tree]]). Sets
+  `dashcards` dashboard cards each, then call `f` with the serialized tree (see [[rs.test/synced-tree]]). Sets
   `remote-sync-type` to `:read-write` and `remote-sync-transforms` to false for the duration, and deletes the
   content that it created afterwards."
   [{:keys [cards dashboards dashcards] :or {dashboards 0 dashcards 0}} f]
@@ -117,18 +117,9 @@
                             {:dashboard_id dash :card_id (card-ids (mod (+ d k) (count card-ids)))
                              :row (* 4 k) :col 0 :size_x 12 :size_y 4
                              :parameter_mappings [] :visualization_settings {}})))))
-        (f (synced-tree))))))
+        (f (rs.test/synced-tree))))))
 
 ;;; ------------------------------------------------ scenarios ------------------------------------------------
-
-(defn import-at!
-  "Run `impl/import!` synchronously on the calling thread (so that thread-bound counters see it) against the
-  source `src` at `version`, and record the result on a new RemoteSyncTask row. Returns the import result."
-  [src version & {:keys [force?]}]
-  (let [task   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-        result (impl/import! (source.p/snapshot-at src version) task :force? (boolean force?))]
-    (impl/handle-task-result! result task)
-    result))
 
 (defn forced-reload-of-unchanged!
   "Load the content `shape` (the options of [[do-with-content!]]) once, then [[measure!]] a forced pull of the same
@@ -138,5 +129,5 @@
     (do-with-content! shape
                       (fn [tree]
                         (let [src (rs.test/versioned-source :trees {"v0" tree} :current "v0")]
-                          (is (= :success (:status (import-at! src "v0" :force? true))) "baseline load")
-                          (measure! #(import-at! src "v0" :force? true)))))))
+                          (is (= :success (:status (rs.test/import-at! src "v0" :force? true))) "baseline load")
+                          (measure! #(rs.test/import-at! src "v0" :force? true)))))))
