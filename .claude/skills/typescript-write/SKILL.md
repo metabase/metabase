@@ -56,6 +56,7 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **Construct complete, well-typed objects where practical.** Prefer an object expression when it avoids partially initialised state or assertions. Incremental construction is fine when it is clearer and maintains the type's invariants.
 - **Treat `metabase-lib` opaque types as black boxes.** Use `metabase-lib` functions to work with types such as `Lib.Query`, rather than casting into their internal representation.
 - **Type async and error states explicitly** (a discriminated union or the data-layer's typed result) — never leave loading/error/empty implicit.
+- **Use the ambient `React` namespace for React types.** Reference React types via the global namespace (`React.CSSProperties`, `React.ReactNode`, `React.ComponentType`, …) without importing them — the namespace is ambient and this is preferred over named type imports from `"react"`.
 
 ## Function signatures
 
