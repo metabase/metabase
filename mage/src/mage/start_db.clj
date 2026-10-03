@@ -163,17 +163,24 @@
   {:arglists '([db port])}
   (fn [db _port] db))
 
-;; TODO: add other databases' commands here
 (defmethod client-cmd :default [_ _] nil)
 
 (defmethod client-cmd :mysql [_ port]
-  (format "mysql --host localhost --port %s --user root --password=\"\" metabase_test" port))
+  (format "mysql --host 127.0.0.1 --port %s --user root --password=\"\" metabase_test" port))
 
 (defmethod client-cmd :mariadb [_ port]
   (client-cmd :mysql port))
 
 (defmethod client-cmd :postgres [_ port]
   (format "PGPASSWORD=password psql --user metabase --host localhost --port %s -d metabase" port))
+
+(defmethod client-cmd :mongo [_ port]
+  (format "mongosh --host localhost --port %s -u metabase -p metasample123 --authenticationDatabase admin" port))
+
+(defmethod client-cmd :sqlserver [_ port]
+  (format "sqlcmd -S 127.0.0.1,%s -U SA -P 'P@ssw0rd' -C" port))
+
+;; Oracle service names differ between the Free and XE images, so it's more complicated
 
 (defn- app-db? [db]
   (contains? #{:postgres :mysql :mariadb} db))
@@ -194,7 +201,7 @@
         (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias))
         (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))
     (when-let [client-command (client-cmd database port)]
-      (println "\nUse this command to connect:")
+      (println "\nUse this command to connect: (once the server has started)")
       (println client-command))))
 
 (defn- usage
