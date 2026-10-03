@@ -323,12 +323,16 @@
 (defn embedder-circuit-untrusted?
   "Whether the breaker is enabled and not closed -- i.e. open or half-open, so it doesn't yet trust the
   embedding service (open short-circuits calls; half-open is on a single trial).
-  False when the breaker is disabled or the provider has no circuit endpoint."
+  False when the breaker is disabled or the provider has no circuit endpoint.
+  A misconfigured connection (resolving its endpoint throws) counts as untrusted too. Callers that only
+  want a yes/no on whether the embedder is safe to use must never see that exception."
   []
   (boolean
    (and (semantic-settings/semantic-search-embedder-circuit-breaker-enabled)
-        (when-let [state (embedder-circuit-state)]
-          (not= :closed state)))))
+        (try
+          (when-let [state (embedder-circuit-state)]
+            (not= :closed state))
+          (catch Exception _ true)))))
 
 (def ^:private request-specific-statuses
   "HTTP statuses caused by a particular input, rather than the embedding service as a whole."
@@ -592,8 +596,9 @@
               (throw (ex-info (str "The embedding service base URL is set in the application database and has no API "
                                    "key. Set " (setting/env-var-name :ee-embedding-service-base-url)
                                    " to use the instance token, or configure an API key in the application database.")
-                              {:settings ["ee-embedding-service-base-url"
-                                          "ee-embedding-service-api-key"]})))
+                              {:error-code :embedding-database-url-requires-api-key
+                               :settings   ["ee-embedding-service-base-url"
+                                            "ee-embedding-service-api-key"]})))
             (cond-> {:endpoint        (str (trim-trailing-slashes base-url)
                                            "/v1/embeddings")
                      :api-key         api-key
