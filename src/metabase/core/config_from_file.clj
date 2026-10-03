@@ -1,17 +1,9 @@
 (ns metabase.core.config-from-file
   (:require
-   [metabase.classloader.core :as classloader]
-   [metabase.util.log :as log]))
+   [metabase.premium-features.core :refer [defenterprise]]))
 
-(defn init-from-file-if-code-available!
-  "Shim for running the config-from-file code, used by [[metabase.core.core]]. The config-from-file code only ships in
-  the Enterprise Edition™ JAR, so this checks whether the namespace exists, and if it does,
-  invokes [[metabase-enterprise.advanced-config.file/boot-initialize!]]; otherwise, this no-ops."
-  []
-  (when (try
-          (classloader/require 'metabase-enterprise.advanced-config.file)
-          :ok
-          (catch Throwable _
-            (log/debug "metabase-enterprise.advanced-config.file not available; cannot initialize from file.")
-            nil))
-    ((resolve 'metabase-enterprise.advanced-config.file/boot-initialize!))))
+(defenterprise boot-initialize!
+  "Initialize Metabase from a `config.yml` file at boot.
+  Only the Enterprise Edition ships the config-file loader, so OSS does nothing."
+  metabase-enterprise.advanced-config.file
+  [])
