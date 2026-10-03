@@ -990,13 +990,15 @@
   These values are not ratcheted because any source change can move them. Use namespace sizes to track
   cycle reduction: splitting a module can grow a cycle's module count without removing namespaces.
   Density compares how tangled cycles of different sizes are.
-  Cycle rank is an upper bound on the edges to cut."
+  Cycle rank is an upper bound on the edges to cut.
+  Pass `cycles` from [[module-cycles]] for the same `deps` to reuse them."
   ([]
    (module-boundary-stats (dependencies) (kondo-config)))
   ([deps config]
+   (module-boundary-stats deps config (module-cycles deps)))
+  ([deps config cycles]
    (let [any-modules (into #{} (keep (fn [[module cfg]] (when (= :any (:api cfg)) module))) config)
          ns-counts   (frequencies (keep :module deps))
-         cycles      (module-cycles deps)
          upward      (upward-references* deps config cycles)]
      {:api-any-namespaces       (count (filter #(contains? any-modules (:module %)) deps))
       :module-count             (count config)

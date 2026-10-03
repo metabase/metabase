@@ -112,5 +112,12 @@
             :total-api-namespaces                3
             :ns-prefixes                         0
             :model-imports-bypass                0
-            :legacy-rest-modules                 0}
+            :legacy-rest-modules                 0
+            ;; One cycle of 4 edges, each the only way between its ends.
+            :cycles                              '[{:modules        [x x.y z]
+                                                    :namespaces     5
+                                                    :edges          4
+                                                    :density        0.67
+                                                    :cycle-rank     2
+                                                    :strong-bridges 4}]}
            (module-history/commit-metrics deps modules)))))
