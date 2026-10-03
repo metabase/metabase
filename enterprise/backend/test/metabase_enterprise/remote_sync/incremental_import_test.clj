@@ -386,3 +386,75 @@
            (is (= :success (:status (import-at! src "v0" :force? false))))
            (is (not @called?)
                "incremental-load-snapshot! must not run on a first import")))))))
+
+(defn- do-with-parent-and-child-card!
+  "Inside [[do-with-bench!]], inserts a `parent-model` (Dashboard or Document) named Parent Thing into Bench and a
+  Card named Kid Question that belongs to it (dashboard_id / document_id), then calls `f` with the synced tree and
+  the tree's path for the parent's own file. The Card's FK to its parent cascades on delete."
+  [parent-model f]
+  (do-with-bench!
+   (fn [_f0]
+     (mt/with-model-cleanup [:model/Dashboard :model/Document]
+       (let [bench     (bench-collection)
+             parent-id (t2/insert-returning-pk!
+                        parent-model
+                        (cond-> {:name "Parent Thing" :collection_id (:id bench) :creator_id (mt/user->id :rasta)}
+                          (= :model/Dashboard parent-model) (assoc :parameters [])
+                          (= :model/Document parent-model)  (assoc :document {:type "doc" :content []}
+                                                                   :content_type "application/json+vnd.prose-mirror")))]
+         (t2/insert! :model/Card (cond-> {:name "Kid Question" :collection_id (:id bench)
+                                          :creator_id (mt/user->id :rasta) :display :table
+                                          :visualization_settings {} :dataset_query (mt/native-query {:query "select 1"})}
+                                   (= :model/Dashboard parent-model) (assoc :dashboard_id parent-id)
+                                   (= :model/Document parent-model)  (assoc :document_id parent-id)))
+         (let [g0 (synced-tree)]
+           (f g0 (some #(when (str/ends-with? % "/parent_thing.yaml") %) (keys g0)))))))))
+
+(deftest parent-delete-cascading-to-a-kept-child-card-equivalence-test
+  (testing "A pull that deletes the file of a Dashboard or a Document, but not the file of a Card that belongs to it
+            (dashboard_id / document_id), deletes that Card by FK cascade. As in the full import, the ledger row of
+            the Card must go too"
+    (doseq [parent-model [:model/Dashboard :model/Document]]
+      (testing parent-model
+        (do-with-parent-and-child-card!
+         parent-model
+         (fn [g0 parent-path]
+           (is (some? parent-path) "precondition: the parent is in the synced tree")
+           (is (= :incremental (run-differential! g0 (dissoc g0 parent-path))))))))))
+
+(deftest dashboard-delete-removes-cascaded-dashboard-questions-from-search-test
+  (testing "A Card that the FK cascade deletes with its deleted Dashboard must leave search, as in the full import"
+    (search.tu/with-appdb-search-if-available*
+      (do-with-parent-and-child-card!
+       :model/Dashboard
+       (fn [g0 parent-path]
+         (let [src       (rs.test/versioned-source :trees {"v0" g0 "v1" (dissoc g0 parent-path)} :current "v0")
+               _         (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+               kid-id    (t2/select-one-pk :model/Card :name "Kid Question")
+               indexed?  #(t2/exists? (search.index/active-table) :model "card" :model_id (str kid-id))]
+           (is (indexed?) "precondition: the dashboard question is in the search index")
+           (let [[result path] (import-v1-under-test! src)]
+             (is (= :success (:status result)) "the pull deleting the dashboard succeeds")
+             (is (= :incremental path) "a dashboard delete stays on the incremental path")
+             (is (not (t2/exists? :model/Card kid-id)) "deleting the dashboard cascaded to its question")
+             (is (not (indexed?)) "the cascaded dashboard question is gone from the search index"))))))))
+
+(deftest dashboard-delete-without-questions-test
+  (testing "A pull that deletes a Dashboard with no questions of its own succeeds on the incremental path"
+    (do-with-bench!
+     (fn [_f0]
+       (mt/with-model-cleanup [:model/Dashboard]
+         (t2/insert! :model/Dashboard {:name          "Plain Board"
+                                       :collection_id (:id (bench-collection))
+                                       :creator_id    (mt/user->id :rasta)
+                                       :parameters    []})
+         (let [g0   (synced-tree)
+               path (some #(when (str/ends-with? % "/plain_board.yaml") %) (keys g0))]
+           (is (some? path) "precondition: the dashboard is in the synced tree")
+           (search.tu/with-index-disabled
+             (let [src (rs.test/versioned-source :trees {"v0" g0 "v1" (dissoc g0 path)} :current "v0")]
+               (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+               (let [[result route] (import-v1-under-test! src)]
+                 (is (= :success (:status result)) (pr-str (select-keys result [:status :message])))
+                 (is (= :incremental route) "a dashboard delete stays on the incremental path")
+                 (is (not (t2/exists? :model/Dashboard :name "Plain Board")) "the pull deleted the dashboard"))))))))))

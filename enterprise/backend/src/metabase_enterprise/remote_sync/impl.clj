@@ -483,8 +483,18 @@
                                   eid (when model-key (remote-sync.db/entity-id model-key model_id))]
                             :when (not (loaded-eid? model_type eid))]
                         {:model_type model_type :model_id model_id})
+        ;; A delete of a Dashboard or a Document cascades (by foreign key) to the Cards that belong to it. Those
+        ;; Cards have ledger rows of their own, and the same pull usually deletes them. When the remote kept the file
+        ;; of such a Card, delete the Card here too, so that its ledger row and search entry go, as in the full import.
+        ;; The lookup runs after the load, so a Card that the pull moved out of its parent is not included.
+        deleted-ids   (fn [model-type] (into [] (keep #(when (= model-type (:model_type %)) (:model_id %))) deletes))
+        cascaded      (into #{}
+                            (map (fn [card-id] {:model_type "Card" :model_id card-id}))
+                            (remote-sync.db/child-card-ids (deleted-ids "Dashboard") (deleted-ids "Document")))
+        deletes       (distinct (concat deletes cascaded))
         model-key-of  (fn [{:keys [model_type]}] (:model-key (spec/spec-for-model-type model_type)))
-        sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)
+        sync-rows     (into [] (remove #(cascaded (select-keys % [:model_type :model_id])))
+                            (spec/sync-all-entities! sync-timestamp imported-data))
         ;; search model -> search-index ids (strings) of the rows that the deletes remove by cascade
         cascaded-search-ids (atom {})]
     (report 0.7 {:force? true})
