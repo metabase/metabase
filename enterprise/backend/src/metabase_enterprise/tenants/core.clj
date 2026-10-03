@@ -37,6 +37,12 @@
   (or (nil? tenant-id)
       (tenants.db/active-tenant-exists? tenant-id)))
 
+(defenterprise tenant-pdf-export-logo
+  "The PDF export logo of the tenant with `tenant-id` as an image data URI, or nil if it has none."
+  :feature :whitelabel
+  [tenant-id]
+  (tenants.db/tenant-pdf-export-logo tenant-id))
+
 (defenterprise create-tenant!
   "Creates a tenant"
   :feature :tenants

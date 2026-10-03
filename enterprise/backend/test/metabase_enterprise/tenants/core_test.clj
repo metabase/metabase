@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.tenants.core :as tenants]
-   [metabase.test :as mt]))
+   [metabase.appearance.core :as appearance]
+   [metabase.test :as mt]
+   [metabase.util.jvm :as u.jvm]))
 
 (deftest login-attribute-keys-disabled-feature-test
   (testing "returns empty set when tenants feature is disabled"
@@ -122,3 +124,28 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (is (empty? (tenants/login-attributes {:tenant_id 99999})))))))
+
+(defn- png-data-uri [content]
+  (str "data:image/png;base64," (u.jvm/encode-base64 content)))
+
+(deftest ^:synchronized pdf-export-logo-for-tenant-test
+  (mt/with-premium-features #{:tenants :whitelabel}
+    (let [instance-logo (png-data-uri "instance")
+          tenant-logo   (png-data-uri "tenant")]
+      (mt/with-temp [:model/Tenant {with-logo :id}    {:name "Toucan" :slug "toucan" :pdf_export_logo tenant-logo}
+                     :model/Tenant {without-logo :id} {:name "Pelican" :slug "pelican"}]
+        (mt/with-temporary-setting-values [pdf-export-logo        "custom"
+                                           pdf-export-logo-custom instance-logo]
+          (testing "the tenant's logo wins over the instance's"
+            (is (= tenant-logo (appearance/pdf-export-logo-for-tenant with-logo))))
+          (testing "a tenant without a logo gets the instance's"
+            (is (= instance-logo (appearance/pdf-export-logo-for-tenant without-logo)))))
+        (testing "the tenant's logo is used when the instance has none"
+          (mt/with-temporary-setting-values [pdf-export-logo "none"]
+            (is (= tenant-logo (appearance/pdf-export-logo-for-tenant with-logo)))))))))
+
+(deftest ^:synchronized pdf-export-logo-for-tenant-without-whitelabel-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temp [:model/Tenant {id :id} {:name "Toucan" :slug "toucan" :pdf_export_logo (png-data-uri "tenant")}]
+      (is (nil? (tenants/tenant-pdf-export-logo id)))
+      (is (nil? (appearance/pdf-export-logo-for-tenant id))))))

@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.appearance.db :as appearance.db]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.tenants.core :as tenants]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -185,6 +186,9 @@ See [fonts](../configuring-metabase/fonts.md).")
   []
   (or (:accent3 (application-colors)) "#EF8C8C"))
 
+(def ^:private default-application-logo-url
+  "app/assets/img/logo.svg")
+
 (defsetting application-logo-url
   (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
   :encryption :no
@@ -193,7 +197,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    "app/assets/img/logo.svg"
+  :default    default-application-logo-url
   :doc "Inline styling and inline scripts are not supported.")
 
 (defsetting application-favicon-url
@@ -248,7 +252,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   #{:login-page-illustration-custom
     :landing-page-illustration-custom
     :no-data-illustration-custom
-    :no-object-illustration-custom})
+    :no-object-illustration-custom
+    :pdf-export-logo-custom})
 
 (def ^:private parsed-illustrations
   "The last raw value of each custom illustration setting and its parsed image, as `{setting-key [raw parsed]}`."
@@ -346,6 +351,49 @@ See [fonts](../configuring-metabase/fonts.md).")
   :audit      :getter
   :feature    :whitelabel
   :getter     (illustration-getter :no-object-illustration-custom))
+
+(def ^:private pdf-export-logo-options
+  #{"default" "custom" "none"})
+
+(defsetting pdf-export-logo
+  (deferred-tru "Options for the logo on PDF exports.")
+  :encryption :no
+  :visibility :public
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :default    "default"
+  :setter     (fn [new-value]
+                (when-not (or (nil? new-value) (pdf-export-logo-options new-value))
+                  (throw (ex-info (tru "Invalid PDF export logo option")
+                                  {:value         new-value
+                                   :valid-options pdf-export-logo-options
+                                   :status-code   400})))
+                (setting/set-value-of-type! :string :pdf-export-logo new-value)))
+
+(defsetting pdf-export-logo-custom
+  (deferred-tru "The custom logo for PDF exports.")
+  :encryption :no
+  :visibility :admin
+  :export?    true
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :getter     (illustration-getter :pdf-export-logo-custom))
+
+(defn pdf-export-logo-for-tenant
+  "The logo for PDF exports by a user of the tenant with `tenant-id` (nil for no tenant), as a data URI or URL, or nil
+  for no logo. The tenant's own logo wins over the instance's. Nil when whitelabeling is not licensed."
+  [tenant-id]
+  (or (some-> tenant-id tenants/tenant-pdf-export-logo)
+      (case (pdf-export-logo)
+        "default" (let [logo-url (application-logo-url)]
+                    (when (not= logo-url default-application-logo-url)
+                      logo-url))
+        ;; the raw value, the getter would turn an uploaded image into a URL that only admins can read
+        "custom"  (setting/get-value-of-type :string :pdf-export-logo-custom)
+        nil)))
 
 (defn illustration-image
   "The uploaded image of the custom illustration setting `setting-key` as `{:content-type :media-type :bytes :hash}`,

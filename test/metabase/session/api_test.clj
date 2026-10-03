@@ -634,11 +634,16 @@
 (defn- do-with-raw-value! [setting-key value thunk]
   (tu/do-with-temporary-setting-value! setting-key value thunk :raw-setting? true))
 
+(def ^:private illustration-reader
+  "The user who can read each custom illustration setting that is not public."
+  {:landing-page-illustration-custom :rasta
+   :pdf-export-logo-custom           :crowberto})
+
 (defn- illustration-request
-  "Call the API as rasta for the landing page illustration, which needs a logged in user, else anonymously."
+  "Call the API as a user who can read the illustration setting, or anonymously when it is public."
   [setting-key & args]
-  (if (= setting-key :landing-page-illustration-custom)
-    (apply mt/user-http-request-full-response :rasta args)
+  (if-let [user (illustration-reader setting-key)]
+    (apply mt/user-http-request-full-response user args)
     (apply mt/client-full-response args)))
 
 (defn- fetch-illustration [setting-key expected-status & args]
@@ -686,6 +691,13 @@
     (mt/with-premium-features #{:whitelabel}
       (mt/with-temporary-raw-setting-values [landing-page-illustration-custom (image-data-uri "image/png" "png bytes")]
         (mt/client-full-response :get 401 "session/illustration/landing-page-illustration-custom")))))
+
+(deftest illustration-admin-only-test
+  (testing "the custom PDF export logo is for admins"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-raw-setting-values [pdf-export-logo-custom (image-data-uri "image/png" "png bytes")]
+        (mt/client-full-response :get 401 "session/illustration/pdf-export-logo-custom")
+        (mt/user-http-request-full-response :rasta :get 401 "session/illustration/pdf-export-logo-custom")))))
 
 (deftest illustration-svg-test
   (testing "SVG images get a sandbox CSP"

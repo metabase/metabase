@@ -287,3 +287,52 @@
                               :date_abbreviate false}
                    :Number {:number_separators violating-separators}
                    :Currency {:currency "USD" :currency_style "symbol"}}))))))
+
+(deftest ^:synchronized pdf-export-logo-setting-test
+  (mt/discard-setting-changes [pdf-export-logo]
+    (mt/with-premium-features #{:whitelabel}
+      (testing "defaults to the application logo"
+        (is (= "default" (appearance.settings/pdf-export-logo))))
+      (doseq [option ["custom" "none" "default"]]
+        (appearance.settings/pdf-export-logo! option)
+        (is (= option (appearance.settings/pdf-export-logo))))
+      (testing "rejects other values"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid PDF export logo option"
+                              (appearance.settings/pdf-export-logo! "parrot")))))))
+
+(deftest ^:synchronized pdf-export-logo-default-mode-test
+  (mt/with-premium-features #{:whitelabel}
+    (mt/with-temporary-setting-values [pdf-export-logo "default"]
+      (testing "the stock Metabase logo is never used"
+        (mt/with-temporary-setting-values [application-logo-url nil]
+          (is (nil? (appearance.settings/pdf-export-logo-for-tenant nil)))))
+      (testing "a customized application logo is used"
+        (let [logo (image-data-uri "image/png" "toucan")]
+          (mt/with-temporary-setting-values [application-logo-url logo]
+            (is (= logo (appearance.settings/pdf-export-logo-for-tenant nil)))))))))
+
+(deftest ^:synchronized pdf-export-logo-custom-mode-test
+  (mt/with-premium-features #{:whitelabel}
+    (let [logo (image-data-uri "image/png" "pelican")]
+      (mt/with-temporary-setting-values [application-logo-url    (image-data-uri "image/png" "toucan")
+                                         pdf-export-logo         "custom"
+                                         pdf-export-logo-custom  logo]
+        (testing "the stored data URI, not the URL the getter returns"
+          (is (= logo (appearance.settings/pdf-export-logo-for-tenant nil))))))))
+
+(deftest ^:synchronized pdf-export-logo-none-mode-test
+  (mt/with-premium-features #{:whitelabel}
+    (mt/with-temporary-setting-values [application-logo-url   (image-data-uri "image/png" "toucan")
+                                       pdf-export-logo        "none"
+                                       pdf-export-logo-custom (image-data-uri "image/png" "pelican")]
+      (is (nil? (appearance.settings/pdf-export-logo-for-tenant nil))))))
+
+(deftest ^:synchronized pdf-export-logo-without-whitelabel-test
+  (mt/with-premium-features #{:whitelabel}
+    (doseq [mode ["default" "custom"]]
+      (testing mode
+        (mt/with-temporary-setting-values [application-logo-url   (image-data-uri "image/png" "toucan")
+                                           pdf-export-logo        mode
+                                           pdf-export-logo-custom (image-data-uri "image/png" "pelican")]
+          (mt/with-premium-features #{}
+            (is (nil? (appearance.settings/pdf-export-logo-for-tenant nil)))))))))

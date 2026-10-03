@@ -371,7 +371,10 @@
   {:team "UX West"
    :api  #{metabase.appearance.core
            metabase.appearance.init}
-   :uses #{lib.schema settings util}
+   :uses #{lib.schema
+           settings
+           users.tenants
+           util}
    :model-imports #{:model/Dashboard}}
 
   audit-app

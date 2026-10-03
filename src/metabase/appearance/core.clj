@@ -32,6 +32,9 @@
   no-data-illustration-custom
   no-object-illustration
   no-object-illustration-custom
+  pdf-export-logo
+  pdf-export-logo-custom
+  pdf-export-logo-for-tenant
   secondary-chart-color
   show-homepage-data
   show-homepage-pin-message

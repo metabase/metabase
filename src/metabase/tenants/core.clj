@@ -23,6 +23,12 @@
   [tenant-id]
   (nil? tenant-id))
 
+(defenterprise tenant-pdf-export-logo
+  "The PDF export logo of the tenant with `tenant-id` as an image data URI, or nil if it has none. Always nil in OSS."
+  metabase-enterprise.tenants.core
+  [_tenant-id]
+  nil)
+
 (defenterprise create-tenant!
   "Throws an exception in OSS because we can't create tenants there."
   metabase-enterprise.tenants.core
