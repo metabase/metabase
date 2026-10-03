@@ -40,11 +40,13 @@ export function WhiteLabelBrandingSettingsPage() {
           description={t`For best results, use an SVG file with a transparent
             background.`}
         />
-        <IllustrationWidget
-          name="pdf-export-logo"
-          title={t`Logo in PDF exports`}
-          description={t`Shown at the top of the first page of dashboards exported to PDF.`}
-        />
+        <Box maw="36rem">
+          <IllustrationWidget
+            name="pdf-export-logo"
+            title={t`Logo in PDF exports`}
+            description={t`Shown at the top of the first page of dashboards exported to PDF.`}
+          />
+        </Box>
         <ImageUploadWidget name="application-favicon-url" title={t`Favicon`} />
       </SettingsSection>
 

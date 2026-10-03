@@ -2,8 +2,16 @@ import { useField } from "formik";
 import { type ChangeEvent, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { FormField } from "metabase/common/components/FormField";
-import { Box, Button, Flex, Icon, Image, Paper, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Image,
+  Input,
+  Paper,
+  Text,
+} from "metabase/ui";
 import {
   ACCEPTED_IMAGE_TYPES,
   readImageFile,
@@ -45,13 +53,13 @@ export const PdfExportLogoField = () => {
 
   return (
     <Box mb="xxl">
-      <FormField
-        title={t`Logo in PDF exports`}
+      <Input.Wrapper
+        label={t`Logo in PDF exports`}
         description={t`Shown at the top of dashboards this tenant's users export to PDF. Leave it empty to use the instance's PDF export logo.`}
         error={errorMessage}
-        htmlFor={INPUT_ID}
+        id={INPUT_ID}
       >
-        <Paper withBorder shadow="none" p="md">
+        <Paper withBorder shadow="none" p="md" mt="xs">
           <Flex align="center" gap="lg">
             <Flex
               w={PREVIEW_WIDTH}
@@ -96,7 +104,7 @@ export const PdfExportLogoField = () => {
             )}
           </Flex>
         </Paper>
-      </FormField>
+      </Input.Wrapper>
     </Box>
   );
 };
