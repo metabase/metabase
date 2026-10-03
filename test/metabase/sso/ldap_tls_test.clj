@@ -10,10 +10,11 @@
                                 InMemoryDirectoryServerConfig
                                 InMemoryListenerConfig
                                 SelfSignedCertificateGenerator)
-   (com.unboundid.ldap.sdk LDAPConnectionOptions)
+   (com.unboundid.ldap.sdk LDAPConnectionOptions ResultCode)
    (com.unboundid.util ObjectPair)
    (com.unboundid.util.ssl HostNameSSLSocketVerifier KeyStoreKeyManager SSLUtil TrustAllTrustManager)
-   (java.io File)
+   (com.unboundid.util.ssl.cert ManageCertificates)
+   (java.io ByteArrayInputStream ByteArrayOutputStream File)
    (java.security KeyStore Security)))
 
 (set! *warn-on-reflection* true)
@@ -25,6 +26,31 @@
   []
   (SelfSignedCertificateGenerator/generateTemporarySelfSignedCertificate "localhost" (KeyStore/getDefaultType)))
 
+(defn- keystore-for-hostname!
+  "Generate a PKCS12 keystore holding a self-signed certificate whose only subject name is `hostname`.
+  Unlike [[self-signed-keystore]] this puts an arbitrary name in the certificate, so it can present a
+  name that does not match the host the client connects to. Returns the UnboundID pair of
+  [keystore-file password]."
+  ^ObjectPair [^String hostname]
+  (let [ks (doto (File/createTempFile "ldap-key" ".p12") (.delete))
+        pw "changeit"
+        rc (ManageCertificates/main
+            (ByteArrayInputStream. (byte-array 0))
+            (ByteArrayOutputStream.)
+            (ByteArrayOutputStream.)
+            (into-array String
+                        ["generate-self-signed-certificate"
+                         "--keystore" (.getPath ks)
+                         "--keystore-password" pw
+                         "--keystore-type" "PKCS12"
+                         "--alias" "server"
+                         "--subject-dn" (str "CN=" hostname)
+                         "--subject-alternative-name-dns" hostname
+                         "--days-valid" "365"]))]
+    (when-not (= ResultCode/SUCCESS rc)
+      (throw (ex-info "failed to generate certificate" {:result-code (str rc)})))
+    (ObjectPair. ks (.toCharArray pw))))
+
 (defn- start-ldaps-server!
   "Start an in-memory LDAPS directory whose listener presents `pair`'s self-signed certificate."
   ^InMemoryDirectoryServer [^ObjectPair pair]
@@ -35,6 +61,21 @@
                     "LDAPS" nil (int 0)
                     (.createSSLServerSocketFactory server-ssl)
                     (.createSSLSocketFactory client-ssl))
+        base-dns   ^"[Ljava.lang.String;" (into-array String ["dc=example,dc=com"])
+        listeners  ^"[Lcom.unboundid.ldap.listener.InMemoryListenerConfig;" (into-array InMemoryListenerConfig [listener])
+        cfg        (doto (InMemoryDirectoryServerConfig. base-dns)
+                     (.setListenerConfigs listeners))]
+    (doto (InMemoryDirectoryServer. cfg)
+      (.startListening))))
+
+(defn- start-starttls-server!
+  "Start an in-memory directory whose plaintext listener offers StartTLS backed by `pair`'s certificate."
+  ^InMemoryDirectoryServer [^ObjectPair pair]
+  (let [key-mgr    (KeyStoreKeyManager. ^File (.getFirst pair) ^chars (.getSecond pair))
+        server-ssl (SSLUtil. key-mgr (TrustAllTrustManager.))
+        listener   (InMemoryListenerConfig/createLDAPConfig
+                    "StartTLS" nil (int 0)
+                    (.createSSLSocketFactory server-ssl))
         base-dns   ^"[Ljava.lang.String;" (into-array String ["dc=example,dc=com"])
         listeners  ^"[Lcom.unboundid.ldap.listener.InMemoryListenerConfig;" (into-array InMemoryListenerConfig [listener])
         cfg        (doto (InMemoryDirectoryServerConfig. base-dns)
@@ -96,5 +137,49 @@
             (with-open [^java.lang.AutoCloseable conn (#'ldap/get-connection)]
               (is (some? conn)
                   "a certificate in the trust store must complete the handshake and connect")))))
+      (finally
+        (.shutDown ds true)))))
+
+(deftest ldaps-rejects-wrong-hostname-test
+  (testing "a trusted certificate issued for a different host than the one connected to is rejected"
+    ;; The server presents a certificate whose only name is `other.example`, and that certificate is in
+    ;; the client trust store — so it passes trust-store validation. Connecting to `localhost` must
+    ;; still fail, because the certificate name does not match the connected host.
+    (let [pair (keystore-for-hostname! "other.example")
+          ds   (start-ldaps-server! pair)]
+      (try
+        (let [port    (.getListenPort ds "LDAPS")
+              ks-path (trust-store-with-cert! pair)]
+          (mt/with-temporary-setting-values [ldap-host        "localhost"
+                                             ldap-port        port
+                                             ldap-security    :ssl
+                                             ldap-trust-store ks-path]
+            (is (thrown? Exception
+                         (with-open [^java.lang.AutoCloseable _conn (#'ldap/get-connection)]))
+                "a certificate whose name does not match the connected host must be rejected even when it is trusted")))
+        (finally
+          (.shutDown ds true))))))
+
+(deftest starttls-validates-server-certificate-test
+  (let [pair (self-signed-keystore)
+        ds   (start-starttls-server! pair)]
+    (try
+      (let [port    (.getListenPort ds "StartTLS")
+            ks-path (trust-store-with-cert! pair)]
+        (testing "a certificate absent from the trust store fails the StartTLS handshake"
+          (mt/with-temporary-setting-values [ldap-host     "localhost"
+                                             ldap-port     port
+                                             ldap-security :starttls]
+            (is (thrown? Exception
+                         (with-open [^java.lang.AutoCloseable _conn (#'ldap/get-connection)]))
+                "a certificate outside the trust store must not complete the StartTLS handshake")))
+        (testing "a certificate present in the configured trust store connects (positive control)"
+          (mt/with-temporary-setting-values [ldap-host        "localhost"
+                                             ldap-port        port
+                                             ldap-security    :starttls
+                                             ldap-trust-store ks-path]
+            (with-open [^java.lang.AutoCloseable conn (#'ldap/get-connection)]
+              (is (some? conn)
+                  "a certificate in the trust store must complete the StartTLS handshake and connect")))))
       (finally
         (.shutDown ds true)))))
