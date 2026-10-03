@@ -13,6 +13,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.app-db.activity-test-util :as db-activity]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.log :as log]))
@@ -32,21 +33,33 @@
     (assert path "card 000 not found in tree")
     (assoc tree path (str/replace content "display: line" "display: bar"))))
 
+(defn- edit-every-card
+  "`tree` with the display of every card changed, as a remote commit would."
+  [tree]
+  (update-vals tree #(str/replace % "display: line" "display: bar")))
+
+(defn- count-activity!
+  "[[db-activity/count-db-activity!]] of `thunk`. The settings cache checks for changes at most once a minute,
+  JVM-wide, so a check inside the count would add statements to one count only: force the check just before."
+  [thunk]
+  (setting/restore-cache-if-needed! :force-check? true)
+  (db-activity/count-db-activity! thunk))
+
 (defn- measure-preflight!
-  "Creates `n` remote-synced MBQL cards, makes the remote one commit ahead (one card edited), and measures
-  `preview-export-merge`: JDBC counts, plus :serialized (entities serialized to YAML) and :walk-statements (the
-  statements of the export dependency walk alone)."
-  [n]
+  "Creates `n` remote-synced MBQL cards, makes the remote one commit ahead with `edit` applied to the tree (by default
+  one card edited), and measures `preview-export-merge`: JDBC counts, plus :serialized (entities serialized to YAML)
+  and :walk-statements (the statements of the export dependency walk alone)."
+  [n & {:keys [edit] :or {edit edit-one-card}}]
   (cost/do-with-content!
    {:cards n}
    (fn [base]
-     (let [src        (rs.test/versioned-source :trees {"v0" base "v1" (edit-one-card base)} :current "v1")
+     (let [src        (rs.test/versioned-source :trees {"v0" base "v1" (edit base)} :current "v1")
            serialized (atom 0)]
        (mt/with-dynamic-fn-redefs [remote-sync.task/last-version (constantly "v0")
                                    source/source-from-settings   (constantly src)
                                    source/entity->file-spec      (counting serialized (mt/original-fn #'source/entity->file-spec))]
-         (let [walk   (db-activity/count-db-activity! spec/exportable-entities)
-               counts (db-activity/count-db-activity! #(impl/preview-export-merge "main"))]
+         (let [walk   (count-activity! spec/exportable-entities)
+               counts (count-activity! #(impl/preview-export-merge "main"))]
            (assoc counts
                   :serialized      @serialized
                   :walk-statements (:statements walk))))))))
@@ -73,3 +86,11 @@
              (-> (:result large)
                  (update-in [:force-push-casualties :overwritten]
                             (partial mapv #(subs % 0 (inc (str/index-of % "/")))))))))))
+
+(deftest preflight-checkouts-when-remote-changes-every-card-test
+  (testing "When the remote changed every card, the preflight checks out no more connections for each local card"
+    ;; the lookup of each changed path is the cost that grows: about 1 statement for each changed card
+    (let [small    (measure-preflight! 10 :edit edit-every-card)
+          large    (measure-preflight! 20 :edit edit-every-card)
+          per-card (per-entity small large 10 20)]
+      (is (= 0.0 (:checkouts per-card)) (pr-str per-card)))))
