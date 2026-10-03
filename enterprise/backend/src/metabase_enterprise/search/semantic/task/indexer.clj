@@ -1,6 +1,7 @@
 (ns metabase-enterprise.search.semantic.task.indexer
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -16,7 +17,8 @@
    [metabase.search.core :as search]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
-  (:import (java.time Duration Instant)
+  (:import (java.io File)
+           (java.time Duration Instant)
            (java.util Date)))
 
 (set! *warn-on-reflection* true)
@@ -37,7 +39,7 @@
              (semantic.settings/semantic-search-vector-strategy)))
 
 (defn execute!
-  "Run the indexer for a time, then return so Quartz reschedules it.
+  "Runs the indexer for a time, then returns so Quartz reschedules it.
   Entry point of the Quartz job class in [[metabase-enterprise.search.semantic.task.indexer-job]]."
   []
   (when (semantic.u/semantic-search-active?)
@@ -83,21 +85,40 @@
 ;; class, and the running job is never deleted as classless, so the indexer stays a cluster singleton.
 (def ^:private job-class-name "metabase_enterprise.semantic_search.task.indexer.SemanticSearchIndexer")
 
+(defn- load-job-class ^Class []
+  (Class/forName job-class-name false (classloader/the-classloader)))
+
+;; The compile also writes the namespace's own classes, which look newer than its source, so `require` prefers them.
+;; Left over from another JVM, they would load in place of the source. Left from this compile, they make an unload and
+;; reload (`refresh`, clj-reload) load the already-loaded class, and the namespace doesn't come back.
+(defn- delete-job-ns-classes! [dir]
+  (doseq [^File f (.listFiles (io/file dir "metabase_enterprise" "search" "semantic" "task"))
+          :when (str/starts-with? (.getName f) "indexer_job")]
+    (.delete f)))
+
+(defn- compile-job-class!
+  "Compiles the `gen-class` in [[metabase-enterprise.search.semantic.task.indexer-job]] into a directory on the
+  classpath, leaving only the job class there."
+  []
+  (let [dir (io/file (System/getProperty "java.io.tmpdir") "mb-quartz-jobs")]
+    (.mkdirs dir)
+    (classloader/add-url-to-classpath! (-> dir .toURI .toURL))
+    (delete-job-ns-classes! dir)
+    (binding [*compile-path* (str dir)]
+      (compile 'metabase-enterprise.search.semantic.task.indexer-job))
+    (delete-job-ns-classes! dir)))
+
 (defn- job-class
   "The indexer's Quartz job class, defined by the `gen-class` in
   [[metabase-enterprise.search.semantic.task.indexer-job]]."
   ^Class []
   (try
-    (Class/forName job-class-name false (classloader/the-classloader))
+    (load-job-class)
     (catch ClassNotFoundException _
-      ;; AOT-compiled in the uberjar; dev and tests compile nothing ahead of time, so compile the `gen-class`
-      ;; into a classpath directory first, as [[metabase.mq.quartz-affinity/ensure-delegate-loadable!]] does
-      (let [dir (io/file (System/getProperty "java.io.tmpdir") "mb-quartz-jobs")]
-        (.mkdirs dir)
-        (classloader/add-url-to-classpath! (-> dir .toURI .toURL))
-        (binding [*compile-path* (str dir)]
-          (compile (quote metabase-enterprise.search.semantic.task.indexer-job))))
-      (Class/forName job-class-name false (classloader/the-classloader)))))
+      ;; AOT-compiled in the uberjar; dev and tests compile nothing ahead of time, so compile the `gen-class` first,
+      ;; as [[metabase.mq.quartz-affinity/ensure-delegate-loadable!]] does
+      (compile-job-class!)
+      (load-job-class))))
 
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
 (def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
