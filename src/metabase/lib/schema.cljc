@@ -101,7 +101,8 @@
     [:map-of [:ref ::lib.schema.metadata/desired-column-alias] [:ref ::lib.schema.metadata/desired-column-alias]]]
    [:metabase.query-processor.util.add-alias-info/join-alias->escaped
     {:optional true}
-    [:map-of [:ref ::join/alias] :string]]])
+    [:map-of [:ref ::join/alias] :string]]
+   [:metabase.driver.sql.query-processor/cte-level {:optional true} nat-int?]])
 
 (mr/def ::stage.native
   [:and
