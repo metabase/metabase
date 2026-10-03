@@ -20,7 +20,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   application_permissions: "metabase-enterprise/application_permissions",
   auth: "metabase-enterprise/auth",
   "smtp-override": "metabase-enterprise/smtp-override",
-  embedding: "metabase-enterprise/embedding",
+  embedding: "metabase-enterprise/embedding/embedding-plugin",
   admin: "metabase-enterprise/admin",
   dependencies: "metabase-enterprise/dependencies",
   schema_viewer: "metabase-enterprise/schema_viewer",

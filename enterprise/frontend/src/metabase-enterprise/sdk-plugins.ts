@@ -11,7 +11,7 @@ import "./shared";
 
 // CORE APP PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
-import { initializePlugin as initializeEmbedding } from "./embedding";
+import { initializePlugin as initializeEmbedding } from "./embedding/embedding-plugin";
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeSharing } from "./sharing";
 import { initializePlugin as initializeTenants } from "./tenants";

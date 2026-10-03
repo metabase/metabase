@@ -54,7 +54,6 @@
     "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/iframe-vendors.ts": "entry",
     "enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationForm.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/dependencies/components/DependencyGraph/DependencyGraph.tsx": "self",
-    "enterprise/frontend/src/metabase-enterprise/embedding/index.ts": "global",
     "enterprise/frontend/src/metabase-enterprise/license/index.ts": "global",
     "enterprise/frontend/src/metabase-enterprise/moderation/constants.ts": "self",
     "enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/ConfirmCodeForm/ConfirmCodeForm.tsx": "self",

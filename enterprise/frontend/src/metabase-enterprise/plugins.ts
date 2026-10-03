@@ -25,7 +25,8 @@ import { initializePlugin as initializeDataApps } from "./data_apps";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
-import { initializePlugin as initializeEmbedding } from "./embedding";
+import { initializePlugin as initializeEmbeddingAdminSettings } from "./embedding/admin-settings-plugin";
+import { initializePlugin as initializeEmbedding } from "./embedding/embedding-plugin";
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeEmbeddingIframeSdk } from "./embedding_iframe_sdk";
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
@@ -80,6 +81,7 @@ export function initializePlugins() {
   initializeDatabaseRouting();
   initializeDependencies();
   initializeEmbedding();
+  initializeEmbeddingAdminSettings();
   initializeEmbeddingIframeSdk();
   initializeEmbeddingIframeSdkSetup();
   initializeEmbeddingSdk();
