@@ -414,10 +414,14 @@
                  {:namespace metabase.x.y.core
                   :module    x.y
                   :deps      [{:namespace metabase.x.core, :module x}
-                              {:namespace metabase.x.impl, :module x}]}
+                              {:namespace metabase.x.impl, :module x}
+                              {:namespace metabase.x.y.impl, :module x.y}]}
                  {:namespace metabase.w.v.core
                   :module    w.v
-                  :deps      [{:namespace metabase.w.core, :module w}]}
+                  :deps      [{:namespace metabase.w.impl, :module w}]}
+                 {:namespace metabase.x.y.z.core
+                  :module    x.y.z
+                  :deps      [{:namespace metabase.x.core, :module x}]}
                  {:namespace metabase-enterprise.x.core
                   :module    enterprise/x
                   :deps      [{:namespace metabase.x.impl, :module x}]}
@@ -425,12 +429,13 @@
                   :module    z
                   :deps      [{:namespace metabase.x.core, :module x}]}]
         config '{enterprise/x {}
-                 w            {}
+                 w            {:api :any}
                  w.v          {}
                  x            {}
                  x.y          {}
+                 x.y.z        {}
                  z            {}}]
-    (testing "only child-to-ancestor requires count, minus an enterprise companion requiring its OSS module"
+    (testing "requires into any ancestor count, except an enterprise companion requiring its OSS module"
       (is (= '[{:namespace          metabase.x.y.core
                 :module             x.y
                 :required-namespace metabase.x.core
@@ -445,14 +450,20 @@
                 :cycle?             true}
                {:namespace          metabase.w.v.core
                 :module             w.v
-                :required-namespace metabase.w.core
+                :required-namespace metabase.w.impl
                 :ancestor           w
+                :api?               true
+                :cycle?             false}
+               {:namespace          metabase.x.y.z.core
+                :module             x.y.z
+                :required-namespace metabase.x.core
+                :ancestor           x
                 :api?               true
                 :cycle?             false}]
              (dev.deps-graph/upward-references deps config))))
-    (testing "stats count the requires, the module pairs behind them, and the internal and cycle-closing subsets"
-      (is (=? {:upward-requires          3
-               :upward-module-edges      2
+    (testing "stats count upward requires, their module pairs, and the internal and cycle-closing subsets"
+      (is (=? {:upward-requires          4
+               :upward-module-edges      3
                :upward-internal-requires 1
                :upward-cycle-requires    2}
               (dev.deps-graph/module-boundary-stats deps config))))))

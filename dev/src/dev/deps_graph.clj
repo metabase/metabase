@@ -961,24 +961,37 @@
   (and (= "enterprise" (namespace module))
        (= ancestor (symbol (name module)))))
 
+(defn module-cycles
+  "Each module cycle with its members and [[module-graph/cycle-metrics]], largest first.
+  The strong bridges are the single dependency edges whose removal splits a cycle."
+  ([]
+   (module-cycles (dependencies)))
+  ([deps]
+   (module-graph/cycles (module-dependencies deps))))
+
 (defn upward-references
   "Requires from a module into one of its ancestors.
   An `enterprise/X` module requiring OSS `X` is expected and left out.
+  Pass `cycles` from [[module-cycles]] for the same `deps` to reuse them.
 
-  Each entry names the requiring `:namespace` and `:module`, the `:required-namespace` and its `:ancestor`.
-  `:api?` is true when the required namespace is part of the ancestor's `:api`.
-  `:cycle?` is true when the ancestor also reaches the requiring module, so the require closes a cycle."
+  Returns one map per require:
+
+  - `:namespace`, `:module`            the requiring side
+  - `:required-namespace`, `:ancestor` the required side
+  - `:api?`                            whether the required namespace is in the ancestor's `:api`
+  - `:cycle?`                          whether the ancestor also reaches the module, closing a cycle"
   ([]
    (upward-references (dependencies) (kondo-config)))
   ([deps config]
-   ;; A nested module may use its ancestors' internals, which no other module may, and a parent usually requires
-   ;; its children, so one require back up is enough to make a cycle. That makes these worth counting even
-   ;; though the linter allows them.
-   (let [module->scc (u/for-map [scc    (module-graph/strongly-connected-components (module-dependencies deps))
-                                 module scc]
-                       [module scc])]
+   (upward-references deps config (module-cycles deps)))
+  ([deps config cycles]
+   ;; A nested module may use its ancestors' internals, and a parent usually requires its children, so one
+   ;; require back up is enough to make a cycle.
+   ;; The linter allows these, so this is the only place they are counted.
+   (let [module->cycle (u/for-map [{:keys [modules]} cycles
+                                   module            modules]
+                         [module (set modules)])]
      (vec (for [{:keys [module], :as file} deps
-                :when module
                 dep  (:deps file)
                 :let [ancestor (:module dep)]
                 :when (and (not= module ancestor)
@@ -989,9 +1002,9 @@
              :module             module
              :required-namespace (:namespace dep)
              :ancestor           ancestor
-             ;; `nil` API means `:api :any`, where every namespace is public.
+             ;; A nil API means `:api :any`, where every namespace is public.
              :api?               (or (nil? api) (contains? api (:namespace dep)))
-             :cycle?             (contains? (module->scc module) ancestor)})))))
+             :cycle?             (contains? (module->cycle module) ancestor)})))))
 
 (defn module-boundary-stats
   "REPL diagnostics for the module graph:
@@ -1016,8 +1029,8 @@
   ([deps config]
    (let [any-modules (into #{} (keep (fn [[module cfg]] (when (= :any (:api cfg)) module))) config)
          ns-counts   (frequencies (keep :module deps))
-         cycles      (module-graph/cycles (module-dependencies deps))
-         upward      (upward-references deps config)]
+         cycles      (module-cycles deps)
+         upward      (upward-references deps config cycles)]
      {:api-any-namespaces       (count (filter #(contains? any-modules (:module %)) deps))
       :module-count             (count config)
       :scc-module-sizes         (mapv :size cycles)
@@ -1030,14 +1043,6 @@
       :upward-module-edges      (count (into #{} (map (juxt :module :ancestor)) upward))
       :upward-internal-requires (count (remove :api? upward))
       :upward-cycle-requires    (count (filter :cycle? upward))})))
-
-(defn module-cycles
-  "Each module cycle with its members and [[module-graph/cycle-metrics]], largest first.
-  The strong bridges are the single dependency edges whose removal splits a cycle."
-  ([]
-   (module-cycles (dependencies)))
-  ([deps]
-   (module-graph/cycles (module-dependencies deps))))
 
 (comment
   (module-boundary-stats)
