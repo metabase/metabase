@@ -162,6 +162,31 @@
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
 
+(deftest start-scheduler-reschedules-a-renamed-job-under-its-current-class-test
+  ;; Moving a job's namespace renames its Quartz class, and an upgraded app DB still holds the row naming the old
+  ;; class. Startup deletes that row before the tasks' inits run, so the job's init schedules it again under the
+  ;; class that exists now.
+  (let [scheduler-initialized? (some? (#'task/scheduler))
+        job-details            (capitalize-if-mysql :qrtz_job_details)
+        job-name               (capitalize-if-mysql :job_name)
+        job-class-name         (capitalize-if-mysql :job_class_name)]
+    (.addMethod ^clojure.lang.MultiFn task/init! ::renamed-job (fn [_] (task/schedule-task! (job) (trigger-1))))
+    (try
+      (when-not scheduler-initialized?
+        (task/start-scheduler!))
+      (task/init! ::renamed-job)
+      (t2/update! job-details job-name "metabase.task-test.job" {job-class-name "metabase.task_test.OldNameOfTestJob"})
+      (task/stop-scheduler!)
+      (task/start-scheduler!)
+      (is (= (.getName TestJob)
+             (t2/select-one-fn job-class-name job-details job-name "metabase.task-test.job")))
+      (finally
+        (remove-method task/init! ::renamed-job)
+        (task/delete-task! (jobs/key "metabase.task-test.job") (triggers/key "metabase.task-test.trigger"))
+        (if scheduler-initialized?
+          (task/start-scheduler!)
+          (task/stop-scheduler!))))))
+
 (deftest start-scheduler-keeps-a-job-stored-under-an-old-class-name-test
   ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it, while
   ;; upgraded nodes load the current class under it
