@@ -176,6 +176,11 @@
                                   :has_query_tools          (or has-sql? has-nlq?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
                                   :has_query_execution      (contains? tools "run_query")
+                                  ;; The SQL guidance tells the model to write SQL and run it, so it needs the
+                                  ;; SQL tools as well as the setting.
+                                  :has_sql_execution        (and (contains? tools "run_query")
+                                                                 has-sql?
+                                                                 (metabot.settings/metabot-sql-execution-enabled?))
                                   :custom_instructions      (not-empty
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search
