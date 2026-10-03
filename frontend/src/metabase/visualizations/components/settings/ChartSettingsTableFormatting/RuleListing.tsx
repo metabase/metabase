@@ -18,7 +18,7 @@ export const RuleListing = ({
 }: SortableRuleListProps & {
   onAdd: MouseEventHandler<HTMLButtonElement>;
 }) => (
-  <Stack gap="md">
+  <Stack gap="lg">
     <Stack gap="sm">
       <Text fw="bold" fz="lg">{t`Conditional formatting`}</Text>
       <Text lh="normal">
@@ -28,8 +28,8 @@ export const RuleListing = ({
     </Stack>
     <Box>
       <Button
-        variant="subtle"
-        color="text-primary"
+        variant="transparent"
+        size="compact-md"
         onClick={onAdd}
         leftSection={<Icon name="add" />}
       >

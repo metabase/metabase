@@ -6,18 +6,19 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.actions.models :as action]
+   [metabase.actions.schema :as actions.schema]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
-   [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.util.honey-sql-2 :as h2x]
@@ -27,6 +28,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *actions-test-data-tables*
   #{"categories"})
 
@@ -175,6 +177,11 @@
               (is (= [[74]]
                      (row-count))))))))))
 
+(defn- insert-action!
+  "Normalizes `action` the way the REST API decodes one and inserts it, returning its id."
+  [action]
+  (action/insert! (lib/normalize ::actions.schema/action.for-insert action)))
+
 (defmulti ^:private create-action*!
   {:arglists '([options-map model-id])}
   (fn [options-map _model-id]
@@ -182,7 +189,7 @@
 
 (defmethod create-action*! :query
   [options-map model-id]
-  (let [action-id (action/insert!
+  (let [action-id (insert-action!
                    (merge {:model_id model-id
                            :name "Query Example"
                            :parameters [{:id "id"
@@ -217,7 +224,7 @@
 
 (defmethod create-action*! :implicit
   [options-map model-id]
-  (let [action-id (action/insert! (merge
+  (let [action-id (insert-action! (merge
                                    {:type :implicit
                                     :name "Update Example"
                                     :kind "row/update"
@@ -225,29 +232,6 @@
                                     :made_public_by_id (test.users/user->id :crowberto)
                                     :creator_id (test.users/user->id :crowberto)
                                     :model_id model-id}
-                                   options-map))]
-    {:action-id action-id :model-id model-id}))
-
-(defmethod create-action*! :http
-  [options-map model-id]
-  (let [action-id (action/insert! (merge
-                                   {:type :http
-                                    :name "Echo Example"
-                                    :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
-                                               :method "POST"
-                                               :body "{\"the_parameter\": {{id}}}"
-                                               :headers "{\"x-test\": \"{{id}}\"}"}
-                                    :parameters [{:id "id"
-                                                  :type "number"
-                                                  :target [:dimension [:template-tag "id"]]}
-                                                 {:id "fail"
-                                                  :type "text"
-                                                  :target [:dimension [:template-tag "fail"]]}]
-                                    :response_handle ".body"
-                                    :model_id model-id
-                                    :public_uuid (str (random-uuid))
-                                    :made_public_by_id (test.users/user->id :crowberto)
-                                    :creator_id (test.users/user->id :crowberto)}
                                    options-map))]
     {:action-id action-id :model-id model-id}))
 
@@ -278,7 +262,7 @@
 
   (with-actions [{model-card-id :id} {:type :model :dataset_query (mt/mbql-query types)}
                  {id :action-id} {}
-                 {:keys [action-id model-id]} {:type :http :name \"Temp HTTP Action\"}]
+                 {:keys [action-id model-id]} {:type :implicit :name \"Temp Implicit Action\"}]
     (assert (= model-card-id model-id))
     (something model-card-id id action-id model-id))"
   {:style/indent 1, :arglists '([action-bindings & body]
@@ -311,7 +295,7 @@
 
 (comment
   (with-actions [{id :action-id} {:type :implicit :kind "row/create"}
-                 {:keys [action-id model-id]} {:type :http}]
+                 {:keys [action-id model-id]} {}]
     (something id action-id model-id))
   (with-actions [{model-card-id :id} {:type :model, :dataset_query (data/mbql-query types)}
                  {id :action-id} {:type :implicit :kind "row/create"}
@@ -347,3 +331,15 @@
   `(with-actions-test-data
      (with-actions-enabled
        ~@body)))
+
+(defn latest-query-execution-id
+  "The id of the newest QueryExecution row, or 0 when there is none: the `since-id` for [[action-executions]]."
+  []
+  (or (t2/select-one-pk :model/QueryExecution {:order-by [[:id :desc]]}) 0))
+
+(defn action-executions
+  "The action-context QueryExecution rows written after `since-id`, oldest first."
+  [since-id]
+  (into []
+        (filter (comp #{:action-execute :public-action-execute} :context))
+        (t2/select :model/QueryExecution {:where [:> :id since-id], :order-by [[:id :asc]]})))

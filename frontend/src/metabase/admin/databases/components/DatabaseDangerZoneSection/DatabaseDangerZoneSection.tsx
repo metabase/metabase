@@ -54,7 +54,7 @@ export const DatabaseDangerZoneSection = ({
           <>
             <Button
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               onClick={saveFieldsModal.open}
             >{t`Discard saved field values`}</Button>
             <ConfirmModal
@@ -62,7 +62,7 @@ export const DatabaseDangerZoneSection = ({
               title={t`Discard saved field values`}
               onClose={saveFieldsModal.close}
               onConfirm={handleDiscardFieldValues}
-              padding="xl"
+              padding="xxl"
               data-testid="discard-field-values-confirm-modal"
             />
           </>
@@ -71,7 +71,7 @@ export const DatabaseDangerZoneSection = ({
           <>
             <Button
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               onClick={deleteDbModal.open}
             >{t`Remove this database`}</Button>
             <DeleteDatabaseModal

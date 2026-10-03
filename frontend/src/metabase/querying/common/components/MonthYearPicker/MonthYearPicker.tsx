@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import type { MonthYearPickerValue } from "metabase/querying/common/types";
 import { Box, type DateValue, MonthPicker } from "metabase/ui";
 
@@ -25,7 +24,7 @@ export function MonthYearPicker({ value, onChange }: MonthYearPickerProps) {
   };
 
   return (
-    <Box p="md">
+    <Box p="lg">
       <MonthPicker value={date} defaultDate={date} onChange={handleChange} />
     </Box>
   );

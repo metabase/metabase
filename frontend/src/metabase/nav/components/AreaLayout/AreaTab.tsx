@@ -47,7 +47,7 @@ export function AreaTab({
         onClick={onClick}
         p="sm"
         gap="sm"
-        bdrs="md"
+        bdrs="sm"
         aria-label={label}
         aria-current={isSelected ? "page" : undefined}
         justify={showLabel ? "start" : "center"}

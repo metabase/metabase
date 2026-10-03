@@ -19,6 +19,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
@@ -114,6 +115,25 @@
         ;; updated_at should not be modified when saving result metadata
         (is (= (:updated_at card)
                (t2/select-one-fn :updated_at :model/Card :id (u/the-id card))))))))
+
+(deftest data-sensitivity-in-result-metadata-test
+  (testing "a Field's data_sensitivity label reaches query results through the Lib column metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:data_sensitivity :PII}
+      (let [query (mt/mbql-query venues {:fields [$id $name]})]
+        (mt/with-temp [:model/Card card {:dataset_query query}]
+          (let [result (qp/process-query
+                        (qp/userland-query
+                         query
+                         {:card-id    (u/the-id card)
+                          :query-hash (qp.util/query-hash {})}))]
+            (when-not (= :completed (:status result))
+              (throw (ex-info "Query failed." result)))
+            (testing "the label reaches the live query response through the Lib column metadata"
+              (is (= [nil :PII]
+                     (map :data_sensitivity (get-in result [:data :cols])))))
+            (testing "the persisted Card result_metadata stores the label as its string form, and only on the labeled column"
+              (is (= [nil "PII"]
+                     (map :data_sensitivity (card-metadata card)))))))))))
 
 (defn- test-card-1 []
   (let [eid (u/generate-nano-id)]

@@ -5,7 +5,7 @@ rm -rf dist
 
 npm ci --install-links
 
-npm i ../../../resources/embedding-sdk --install-links --no-save --no-package-lock
+npm i ../../../resources/embedding-sdk --install-links --no-save
 
 if [ "$WATCH" = "true" ]; then
   npx vite --host

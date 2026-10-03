@@ -6,6 +6,7 @@ import {
   setupSearchEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -14,10 +15,6 @@ import {
   within,
 } from "__support__/ui";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, RecentItem } from "metabase-types/api";

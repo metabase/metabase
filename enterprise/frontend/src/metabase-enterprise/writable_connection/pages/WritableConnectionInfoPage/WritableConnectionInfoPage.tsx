@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -12,6 +11,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
 import { useNavigate, useParams } from "metabase/router";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Flex, ScrollArea, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, DatabaseData } from "metabase-types/api";
@@ -79,8 +79,8 @@ function WritableConnectionInfoPageBody({
       data-testid="writable-connection-info-page"
     >
       <Box h="100%" w="100%" component={ScrollArea}>
-        <Box w="100%" maw="54rem" mx="auto" p={{ base: "md", sm: "xl" }}>
-          <Flex mb="lg" align="center">
+        <Box w="100%" maw="54rem" mx="auto" p={{ base: "lg", sm: "xxl" }}>
+          <Flex mb="xl" align="center">
             <Title order={1} fz="h2">
               {title}
             </Title>

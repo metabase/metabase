@@ -110,7 +110,7 @@ export const LensContent = ({
       markCardLoaded={markCardLoaded}
       subscribeToCardLoaded={subscribeToCardLoaded}
     >
-      <Stack gap="xl">
+      <Stack gap="xxl">
         {match(lens.id)
           .with("generic-summary", () => (
             <GenericSummarySections

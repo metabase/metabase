@@ -571,8 +571,8 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           hsql-form
-          [:timestamp hsql-form (or source-timezone (driver-api/results-timezone-id))])
-        (datetime target-timezone)
+          [:timestamp hsql-form (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))])
+        (datetime (sql.qp/->honeysql driver target-timezone))
         (with-temporal-type :datetime))))
 
 (defmethod sql.qp/float-dbtype :bigquery-cloud-sdk
@@ -629,6 +629,7 @@
 
 ;; this is a little hacky, I'm 99% sure we could just have the [[sql.qp/->honeysql]] method for `:field` swap out the
 ;; `::add/source-table` to a `[project.dataset table]` pair but this will have to do for now.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *field-is-from-join-or-source-query?* false)
 
 (defn- should-qualify-identifier?
@@ -772,7 +773,10 @@
 
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :day]
   [_driver _unit x y]
-  (timestamp-diff :day (trunc :day x) (trunc :day y)))
+  ;; Use `DATE_DIFF` over `TIMESTAMP_DIFF` so that we count calendar days instead of 24-hour periods,
+  ;; to handle DST transitions correctly (#82193).
+  (let [->date (get-method ->temporal-type :default)]
+    [:date_diff (->date :date y) (->date :date x) :'day]))
 
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :hour] [_driver _unit x y] (timestamp-diff :hour x y))
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :minute] [_driver _unit x y] (timestamp-diff :minute x y))
@@ -797,8 +801,8 @@
 
 (defmethod sql.qp/inline-value [:bigquery-cloud-sdk String]
   [_ s]
-  ;; escape single-quotes like Cam's String -> Cam\'s String
-  (str \' (str/replace s "'" "\\\\'") \'))
+  ;; escape single-quotes like Cam's String -> Cam\'s String.
+  (sql.u/quote-literal s :backslashes))
 
 (defmethod sql.qp/inline-value [:bigquery-cloud-sdk LocalTime]
   [_ t]
@@ -826,6 +830,7 @@
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *compiling-cumulative-aggregation* false)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-count]
@@ -923,8 +928,13 @@
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private bigquery-interval-units
+  #{:microsecond :millisecond :second :minute :hour :day :week :month :quarter :year})
+
 (defn- interval [amount unit]
   ;; todo: can bigquery have an expression here or just a numeric literal?
+  (when-not (contains? bigquery-interval-units unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
   [:raw (format "INTERVAL %d %s" (int amount) (name unit))])
 
 ;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
@@ -992,9 +1002,9 @@
   (let [parent-method (get-method driver/mbql->native :sql)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
-           :table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
-                             (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
-                           sql.qp/source-query-alias)
+           :qp/table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
+                                (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
+                              sql.qp/source-query-alias)
            :mbql?      true)))
 
 (defn- format-current-moment
@@ -1036,9 +1046,18 @@
   [driver [_ _opts field]]
   [:log (sql.qp/->honeysql driver field) [:inline 10]])
 
+(sql/register-dialect!
+ ::bigquery
+ (assoc (sql/get-dialect :mysql)
+        :quote (fn [s]
+                 (str \` (-> s
+                             (str/replace "\\" "\\\\")
+                             (str/replace "`" "\\`"))
+                      \`))))
+
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_driver]
-  :mysql)
+  ::bigquery)
 
 (mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk :metabase.lib.parameters.parse.types/field-filter]
   [driver                            :- :keyword

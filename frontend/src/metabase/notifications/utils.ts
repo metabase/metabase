@@ -3,11 +3,14 @@ import _ from "underscore";
 
 import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import type {
+  GetScheduleDefaults,
   ScheduleBuilderValue,
   ScheduleValue,
-} from "metabase/common/components/Schedule/types";
-import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
-import { getScheduleDefaultsWithoutHour } from "metabase/common/components/Schedule/utils";
+} from "metabase/common/components/Schedule/domain";
+import {
+  getScheduleDefaults,
+  isScheduleCronValue,
+} from "metabase/common/components/Schedule/domain";
 import type { NotificationListItem } from "metabase/notifications/types";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
@@ -34,6 +37,7 @@ import type {
   NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
+  ScheduleSettings,
   UpdateAlertNotificationRequest,
   User,
   UserId,
@@ -42,9 +46,22 @@ import type {
 
 import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
+export const getScheduleDefaultsWithoutHour: GetScheduleDefaults = (
+  scheduleType,
+) => ({ ...getScheduleDefaults(scheduleType), schedule_hour: null });
+
 export const DEFAULT_ALERT_SCHEDULE: ScheduleBuilderValue = {
   schedule_type: "daily",
   ...getScheduleDefaultsWithoutHour("daily"),
+};
+
+export const toScheduleSettings = (value: ScheduleValue): ScheduleSettings => {
+  if (isScheduleCronValue(value) || value.schedule_type === "every_n_minutes") {
+    throw new Error(
+      `A ${value.schedule_type} schedule cannot be stored as a schedule map`,
+    );
+  }
+  return { ...value, schedule_type: value.schedule_type };
 };
 
 const getDefaultChannelConfig = ({
@@ -254,15 +271,14 @@ const notificationHandlerTypeToChannelMap: Record<
   ["channel/http"]: "http",
 };
 
-export function alertIsValid(
+export const alertHasValidTarget = (
   notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
   channelSpec: ChannelApiResponse | undefined,
-) {
+) => {
   const handlers = notification.handlers;
 
-  return (
+  return Boolean(
     channelSpec?.channels &&
-    notification.subscriptions.length > 0 &&
     handlers.length > 0 &&
     handlers.every((handlers) => channelIsValid(handlers)) &&
     handlers.every((c) => {
@@ -270,7 +286,17 @@ export function alertIsValid(
         notificationHandlerTypeToChannelMap[c.channel_type];
 
       return channelSpec?.channels[handlerChannelType]?.configured;
-    })
+    }),
+  );
+};
+
+export function alertIsValid(
+  notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
+  channelSpec: ChannelApiResponse | undefined,
+) {
+  return (
+    notification.subscriptions.length > 0 &&
+    alertHasValidTarget(notification, channelSpec)
   );
 }
 

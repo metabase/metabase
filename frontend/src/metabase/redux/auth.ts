@@ -4,27 +4,24 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { Api, refetchCurrentUser } from "metabase/api";
-import { loadLocalization } from "metabase/api/localization";
+import { Api } from "metabase/api";
 import {
   type MfaChallengeResponse,
+  type MfaEnrollmentResponse,
   isMfaChallenge,
+  isMfaEnrollment,
   sessionApi,
 } from "metabase/api/session";
+import { getUser, refetchCurrentUser } from "metabase/current-user";
 import { openNavbar } from "metabase/redux/app";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { navigate } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
 import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-
-export interface LoginData {
-  username: string;
-  password: string;
-  remember?: boolean;
-}
+import { loadLocalization } from "metabase/utils/localization";
+import type { LoginData } from "metabase-types/api";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(
@@ -75,6 +72,7 @@ interface LoginPayload {
 
 export interface LoginResult {
   mfaChallenge?: MfaChallengeResponse;
+  mfaEnrollment?: MfaEnrollmentResponse;
 }
 
 export const LOGIN = "metabase/auth/LOGIN";
@@ -89,6 +87,11 @@ export const login = createAsyncThunk(
       if (isMfaChallenge(result)) {
         const challenge: LoginResult = { mfaChallenge: result };
         return challenge;
+      }
+
+      if (isMfaEnrollment(result)) {
+        const enrollment: LoginResult = { mfaEnrollment: result };
+        return enrollment;
       }
 
       await dispatch(completeLogin()).unwrap();

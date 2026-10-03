@@ -7,6 +7,7 @@ import {
   setupDatabasesEndpoints,
   setupPrefetchDashcardValuesEndpoint,
 } from "__support__/server-mocks";
+import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -17,7 +18,6 @@ import {
   within,
 } from "__support__/ui";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   ActionDashboardCard,

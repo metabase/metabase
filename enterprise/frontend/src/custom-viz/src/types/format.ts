@@ -4,7 +4,7 @@ export type FormatValueOptions = {
   column?: Column;
   compact?: boolean;
   currency?: string;
-  currency_style?: string;
+  currency_style?: Intl.NumberFormatOptionsCurrencyDisplay;
   date_format?: string;
   date_style?: string | null;
   date_separator?: string;

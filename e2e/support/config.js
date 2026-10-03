@@ -22,11 +22,19 @@ import {
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
+import { requestAsAdmin } from "./helpers/e2e-admin-request-tasks";
 import {
   startCustomVizDevServer,
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
-import { buildDataApp } from "./helpers/e2e-data-app-tasks";
+import {
+  buildDataApp,
+  removeDataAppDeclaration,
+  removeDataAppPaths,
+  scaffoldDataApp,
+  syncDataApp,
+  writeDataAppFiles,
+} from "./helpers/e2e-data-app-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 import {
   startMockLlmServer,
@@ -39,6 +47,10 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
+
+const {
+  sideEffectFreeModulesPlugin,
+} = require("../../frontend/build/shared/esbuild/side-effect-free-modules-plugin");
 
 const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
 // The Cypress config process runs with cwd = this file's directory
@@ -238,7 +250,11 @@ const defaultConfig = {
         loader: {
           ".svg": "text",
         },
-        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
+        plugins: [
+          NodeModulesPolyfillPlugin(),
+          assetsResolverPlugin,
+          sideEffectFreeModulesPlugin,
+        ],
         sourcemap: "inline",
       }),
     );
@@ -283,11 +299,17 @@ const defaultConfig = {
       copyDirectory,
       removeDirectory,
       signJwt,
+      requestAsAdmin,
       startMockLlmServer,
       stopMockLlmServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
       buildDataApp,
+      syncDataApp,
+      scaffoldDataApp,
+      writeDataAppFiles,
+      removeDataAppDeclaration,
+      removeDataAppPaths,
       ...perTestCaptureTasks,
     });
 

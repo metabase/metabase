@@ -1,4 +1,4 @@
-import type { HighlightedObject } from "metabase/visualizations/types";
+import type { HighlightedObject } from "metabase/viz-core";
 import type {
   DatasetColumn,
   DatasetData,

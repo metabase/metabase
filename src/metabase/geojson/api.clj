@@ -8,6 +8,7 @@
    [metabase.geojson.settings :as geojson.settings]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -16,26 +17,11 @@
    [ring.util.response :as response])
   (:import
    (java.io BufferedReader)
-   (java.net InetAddress)
-   (org.apache.commons.io.input ReaderInputStream)
-   (org.apache.http.conn DnsResolver)
-   (org.apache.http.impl.conn SystemDefaultDnsResolver)))
+   (org.apache.commons.io.input ReaderInputStream)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private connection-timeout-ms 8000)
-
-(def ^DnsResolver ^:private ^:dynamic  *system-dns-resolver* (SystemDefaultDnsResolver.))
-
-(def ^:private non-link-local-dns-resolver
-  (reify
-    DnsResolver
-    (^"[Ljava.net.InetAddress;" resolve [_ ^String host]
-      (let [addresses (.resolve *system-dns-resolver* host)]
-        (if (some #(.isLinkLocalAddress ^InetAddress %) addresses)
-          (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400
-                                                                   :link-local true}))
-          addresses)))))
 
 (defn- url->geojson
   [url]
@@ -44,10 +30,10 @@
                                  :socket-timeout     connection-timeout-ms
                                  :connection-timeout connection-timeout-ms
                                  :throw-exceptions   false
-                                 :dns-resolver       non-link-local-dns-resolver})
+                                 :dns-resolver       (u.http/network-policy-dns-resolver :external-only)})
                   (catch Throwable e
-                    (if (:link-local (ex-data e))
-                      (throw (ex-info (ex-message e) (dissoc (ex-data e) :link-local) e))
+                    (if (:ssrf (ex-data e))
+                      (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400} e))
                       (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
         ;; only 2xx is a real success — a 3xx redirect isn't followed (`:redirect-strategy :none`, for SSRF
         ;; protection), so its (empty) body must be treated as a failed load rather than streamed as GeoJSON.
@@ -133,7 +119,7 @@
 (api.macros/defendpoint :get "/:key"
   "Fetch a custom GeoJSON file as defined in the [[metabase.geojson.settings/custom-geojson]] setting. (This just acts
   as a simple proxy for the file specified for `key`)."
-  [{k :key, :as _route-params} :- [:map
+  [{k :key, :as _route-params} :- [:map {:closed true}
                                    [:key ms/NonBlankString]]
    _query-params
    _body
@@ -157,7 +143,7 @@
   "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [_route-params
-   {:keys [url], :as _query-params} :- [:map
+   {:keys [url], :as _query-params} :- [:map {:closed true}
                                         [:url ms/NonBlankString]]
    _body
    _request

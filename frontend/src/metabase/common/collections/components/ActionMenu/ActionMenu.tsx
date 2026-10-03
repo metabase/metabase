@@ -10,7 +10,10 @@ import {
   useRestore,
   useSetArchive,
 } from "metabase/archive/hooks";
-import { trackCollectionItemBookmarked } from "metabase/common/collections/analytics";
+import {
+  setCollectionItemPinnedAndTrack,
+  trackCollectionItemBookmarked,
+} from "metabase/common/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -22,10 +25,11 @@ import {
   canArchiveItem,
   canBookmarkItem,
   canCopyItem,
+  getItemBookmarkType,
+  isItemBookmarked,
   isItemPinned,
 } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { EntityItem } from "metabase/common/components/EntityItem";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import {
   canMoveItem,
@@ -36,10 +40,15 @@ import {
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  Database,
+} from "metabase-types/api";
 
 import S from "./ActionMenu.module.css";
+import { EntityItemMenu } from "./EntityItemMenu";
 
 export interface ActionMenuProps {
   className?: string;
@@ -57,23 +66,6 @@ export interface ActionMenuProps {
 
 interface ActionMenuStateProps {
   isXrayEnabled: boolean;
-}
-
-function getIsBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
-  const normalizedItemModel = normalizeItemModel(item);
-
-  return bookmarks.some(
-    (bookmark) =>
-      bookmark.type === normalizedItemModel && bookmark.item_id === item.id,
-  );
-}
-
-// If item.model is `dataset`, that is, this is a Model in a product sense,
-// let’s call it "card" because `card` and `dataset` are treated the same in the back-end.
-function normalizeItemModel(item: CollectionItem) {
-  return item.model === "dataset" || item.model === "metric"
-    ? "card"
-    : item.model;
 }
 
 function mapStateToProps(state: State): ActionMenuStateProps {
@@ -100,7 +92,7 @@ function ActionMenuInner({
   const deleteItem = useDeleteItem();
   const setPinned = useSetPinned();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
-  const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
+  const isBookmarked = bookmarks && isItemBookmarked(item, bookmarks);
   const canBookmark = canBookmarkItem(item);
   const canPin = canPinItem(item, collection);
   const canMove = canMoveItem(item, collection);
@@ -112,7 +104,13 @@ function ActionMenuInner({
 
   const handlePin = useCallback(() => {
     if (isPinnable(item)) {
-      setPinned(item, !isItemPinned(item));
+      const pinned = !isItemPinned(item);
+      void setCollectionItemPinnedAndTrack({
+        item,
+        pinned,
+        triggeredFrom: "item_menu",
+        setPinned: () => setPinned(item, pinned),
+      });
     }
   }, [item, setPinned]);
 
@@ -141,8 +139,7 @@ function ActionMenuInner({
       if (!isBookmarked) {
         trackCollectionItemBookmarked(item);
       }
-      const normalizedModel = normalizeItemModel(item);
-      toggleBookmark?.({ id: item.id, type: normalizedModel });
+      toggleBookmark?.({ id: item.id, type: getItemBookmarkType(item) });
     };
     return handler;
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
@@ -163,7 +160,7 @@ function ActionMenuInner({
 
   return (
     <>
-      <EntityItem.Menu
+      <EntityItemMenu
         className={`${S.EntityItemMenu} ${className || ""}`}
         item={item}
         isBookmarked={isBookmarked}

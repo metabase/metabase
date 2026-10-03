@@ -1,15 +1,18 @@
-import { useState } from "react";
 import type { MouseEvent } from "react";
-import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
-import { formatValue } from "../../../src/index";
-import type { Settings } from "./types";
+import { useState } from "react";
+import { type CustomVisualizationProps, formatValue } from "../../../src/index";
+
+type Settings = {
+  columns?: string[];
+  threshold?: number;
+};
 
 export const Visualization = (
   props: CustomVisualizationProps<Settings> & { locale: string },
 ) => {
   const { series, settings, renderingContext, onClick, onHover, locale } =
     props;
-  const { threshold } = settings;
+  const { columns, threshold } = settings;
   const { cols, rows } = series[0].data;
   const value = rows[0][0];
 
@@ -21,27 +24,26 @@ export const Visualization = (
   const measuredHeight = Math.round(measuredTextSize.height);
   const brandColor = renderingContext.getColor("brand");
 
-  const [lastClickValue, setLastClickValue] = useState<RowValue | null>(null);
-  const [lastHoverValue, setLastHoverValue] = useState<RowValue | null>(null);
+  const [lastClickValue, setLastClickValue] = useState<number | null>(null);
+  const [lastHoverValue, setLastHoverValue] = useState<number | null>(null);
 
   if (typeof value !== "number" || typeof threshold !== "number") {
     throw new Error("Value and threshold need to be numbers");
   }
 
-  function handleClick(event: MouseEvent<HTMLButtonElement>) {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setLastClickValue(value);
     onClick({
       value,
       column: cols[0],
-      settings,
       event: event.nativeEvent,
       element: event.currentTarget,
       origin: { row: rows[0], cols },
       data: [{ value, col: cols[0] }],
     });
-  }
+  };
 
-  function handleHoverEnter(event: MouseEvent<HTMLDivElement>) {
+  const handleHoverEnter = (event: MouseEvent<HTMLDivElement>) => {
     setLastHoverValue(value);
     onHover({
       value,
@@ -50,16 +52,19 @@ export const Visualization = (
       element: event.currentTarget,
       data: [{ key: cols[0].name, value, col: cols[0] }],
     });
-  }
+  };
 
-  function handleHoverLeave() {
+  const handleHoverLeave = () => {
     onHover(null);
-  }
+  };
 
   return (
     <div>
       <h1>Custom viz rendered successfully</h1>
       <div>Threshold: {threshold}</div>
+      <div data-testid="demo-viz-columns">
+        Columns: {columns?.join(", ") ?? "none"}
+      </div>
       <div>Value: {value}</div>
       <div data-testid="demo-viz-formatted-value">
         Formatted: {formatValue(value, settings.column?.(cols[0]))}
@@ -93,10 +98,10 @@ export const Visualization = (
         Hover me
       </div>
       <div data-testid="demo-viz-last-click">
-        Last clicked: {lastClickValue === null ? "none" : lastClickValue}
+        Last clicked: {lastClickValue ?? "none"}
       </div>
       <div data-testid="demo-viz-last-hover">
-        Last hovered: {lastHoverValue === null ? "none" : lastHoverValue}
+        Last hovered: {lastHoverValue ?? "none"}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { Group } from "@visx/group";
 
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { truncateText } from "metabase/visualizations/lib/text";
+import { truncateText } from "metabase/viz-core";
 
 import {
   DEFAULT_LEGEND_FONT_SIZE,

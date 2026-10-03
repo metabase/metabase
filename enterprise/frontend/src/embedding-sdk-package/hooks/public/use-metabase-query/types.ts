@@ -15,7 +15,6 @@ import type {
   InferSchema,
   MetricSchema,
   QueryData,
-  QuestionSchema,
   SchemaColumn,
   SchemaJavaScriptType,
   SchemaValue,
@@ -134,21 +133,25 @@ export type FieldReference<TTable = unknown> =
   | LocalFieldReference<TTable>
   | JoinedFieldReference;
 
+// `name` names the result column, which is how a later stage refers to it. A
+// query with two aggregations of the same kind needs it to tell them apart.
 export type CountAggregation = {
   type: "operator";
   operator: "count";
   args: [];
+  name?: string;
 };
 
-export type CountAggregationSchema = CountAggregation & {
-  columns: readonly [
-    {
-      name: "count";
-      displayName: "Count";
-      jsType: "number";
-    },
-  ];
-};
+export type CountAggregationSchema<TName extends string = "count"> =
+  CountAggregation & {
+    columns: readonly [
+      {
+        name: TName;
+        displayName: "Count";
+        jsType: "number";
+      },
+    ];
+  };
 
 type CountAggregationColumn = CountAggregationSchema["columns"][number];
 
@@ -167,16 +170,18 @@ export type FieldAggregation<
   type: "operator";
   operator: TOperator;
   args: readonly [TDimension];
+  name?: string;
 };
 
 export type FieldAggregationSchema<
   TOperator extends FieldAggregationOperator = FieldAggregationOperator,
   TDimension = unknown,
   TJavaScriptType extends SchemaJavaScriptType = "number",
+  TName extends string = TOperator extends "distinct" ? "count" : TOperator,
 > = FieldAggregation<TOperator, TDimension> & {
   columns: readonly [
     {
-      name: TOperator extends "distinct" ? "count" : TOperator;
+      name: TName;
       displayName: string;
       jsType: TJavaScriptType;
     },
@@ -315,7 +320,7 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
 export type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
-  ? { binning?: BinningOptions } & BinningOptionsInput
+  ? { unit?: never; binning?: BinningOptions } & BinningOptionsInput
   : { unit?: TemporalUnit; binning?: BinningOptions } & BinningOptionsInput;
 
 export type MetabaseBreakoutObjectForDimension<TDimension> =
@@ -397,42 +402,14 @@ type StageClauses<TDimension, TAggregation, TFilter> = {
 type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
   fields?: readonly FieldReference<TTable>[];
+  savedQuestionSourceId?: number;
 } & StageClauses<
   FieldReference<TTable>,
   AnyAggregation<TTable>,
   SegmentReference<TTable>
 >;
 
-type QuestionResultColumn<TQuestion> = TQuestion extends {
-  columns?: infer TColumns;
-}
-  ? TupleElement<NonNullable<TColumns>>
-  : never;
-
-/**
- * What `filter`, `breakout`, and `orderBy` take on a question source. A card
- * stage exposes the question's result columns, not the fields underneath, so they
- * resolve by name — an app without a generated schema names one by hand.
- */
-export type QuestionColumnReference<TQuestion = unknown> = [
-  QuestionResultColumn<TQuestion>,
-] extends [never]
-  ? SchemaColumn & { type: "column" }
-  : QuestionResultColumn<TQuestion>;
-
-export type QuestionQuery<TQuestion = unknown> = {
-  source: TQuestion extends QuestionSchema ? TQuestion : QuestionSchema;
-
-  // A card stage returns the question's columns; there is no field list to
-  // narrow. Use the question's own `fields` upstream instead.
-  fields?: never;
-} & StageClauses<
-  QuestionColumnReference<TQuestion>,
-  DimensionAggregation<QuestionColumnReference<TQuestion>>,
-  never
->;
-
-type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
+export type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
   breakouts: readonly [unknown, ...unknown[]];
 }
   ? TQuery extends { aggregations: readonly [unknown, ...unknown[]] }
@@ -443,13 +420,10 @@ type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
 export type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
   RequireAggregationsForBreakouts<TQuery>;
 
-export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> = [
-  TEntity,
-] extends [undefined]
-  ? TableQuery<TEntity> | QuestionQuery<TEntity>
-  : TEntity extends QuestionSchema
-    ? QuestionQuery<TEntity>
-    : TableQuery<TEntity>;
+export type MetabaseQueryOptions<
+  TEntity = unknown,
+  _TSchema = unknown,
+> = TableQuery<TEntity>;
 
 type EmptyRow = Record<never, never>;
 
@@ -522,6 +496,44 @@ type InferQuerySchema<TEntity, TQuery> = DefaultSourceRow<TEntity, TQuery> &
     | QueryAggregationColumns<TQuery>
   >;
 
+type DefaultQuestionColumns<TEntity, TQuery> =
+  ReshapesResultColumns<TQuery> extends true
+    ? never
+    : TEntity extends { columns?: infer TColumns }
+      ? TupleElement<NonNullable<TColumns>>
+      : never;
+
+type QueryResultColumn<TEntity, TQuery> =
+  | DefaultTableColumns<TEntity, TQuery>
+  | DefaultQuestionColumns<TEntity, TQuery>
+  | QueryFieldColumns<TQuery>
+  | QueryBreakoutColumns<TQuery>
+  | QueryAggregationColumns<TQuery>;
+
+/**
+ * A column the static query returns — what the dynamic clauses take. Apps
+ * without a generated schema name a result column by hand.
+ */
+export type MetabaseDynamicColumn<TEntity = unknown, TQuery = unknown> = [
+  QueryResultColumn<TEntity, TQuery>,
+] extends [never]
+  ? SchemaColumn & { type: "column" }
+  : QueryResultColumn<TEntity, TQuery>;
+
+/**
+ * Clauses layered on top of a static query — the part a UI changes at runtime.
+ * They run as their own stage, so they see the static query's result columns and
+ * behave the same whether it runs from its table or from its published card.
+ */
+export type MetabaseDynamicQuery<
+  TEntity = unknown,
+  TQuery = unknown,
+> = StageClauses<
+  MetabaseDynamicColumn<TEntity, TQuery>,
+  DimensionAggregation<MetabaseDynamicColumn<TEntity, TQuery>>,
+  never
+>;
+
 type InferQueryEntity<TQuery> = TQuery extends { source: infer TTable }
   ? TTable
   : undefined;
@@ -530,22 +542,49 @@ type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
   ? InferQueryEntity<TQuery>
   : TEntity;
 
-export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
-  data: QueryData<InferQuerySchema<TEntity, TQuery>> | null;
+type InferResultSchema<TEntity, TQuery, TDynamic> =
+  ReshapesResultColumns<TDynamic> extends true
+    ? RowsFromColumns<
+        QueryBreakoutColumns<TDynamic> | QueryAggregationColumns<TDynamic>
+      >
+    : InferQuerySchema<TEntity, TQuery>;
+
+export type UseMetabaseQueryResult<
+  TEntity = unknown,
+  TQuery = unknown,
+  TDynamic = undefined,
+> = {
+  data: QueryData<InferResultSchema<TEntity, TQuery, TDynamic>> | null;
   isLoading: boolean;
   error: unknown;
   refetch: () => Promise<void>;
 };
 
+/**
+ * Marks a query as declared through `defineQuery`. The query hooks accept only
+ * marked queries, so an inline query object is a compile-time error.
+ *
+ * @category useMetabaseQuery
+ */
+export declare class DefinedQuery {
+  private readonly definedWithDefineQuery: true;
+}
+
 export type UseMetabaseQuery = <
-  TEntity extends TableSchema | QuestionSchema | undefined = undefined,
+  TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
-  const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
+  const TQuery = MetabaseQueryOptions<TEntity, TSchema> & DefinedQuery,
+  const TDynamic = undefined,
 >(
   query: TQuery &
+    DefinedQuery &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
         ? RequireAggregationsForBreakouts<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery>;
+  dynamicQuery?: TDynamic &
+    (TDynamic extends MetabaseDynamicQuery<TEntity, TQuery>
+      ? RequireAggregationsForBreakouts<TDynamic>
+      : MetabaseDynamicQuery<TEntity, TQuery>),
+) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;

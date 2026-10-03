@@ -3,14 +3,14 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/current-user";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-} from "metabase/selectors/user";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
@@ -134,7 +134,7 @@ export const CreateMenu = ({
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <Button leftSection={<Icon name="add" />}>{t`New`}</Button>
+          <Button size="lg" leftSection={<Icon name="add" />}>{t`New`}</Button>
         </Menu.Target>
         <Menu.Dropdown>{menuItems}</Menu.Dropdown>
       </Menu>

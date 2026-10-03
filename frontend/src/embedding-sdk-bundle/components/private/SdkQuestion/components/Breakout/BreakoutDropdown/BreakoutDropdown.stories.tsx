@@ -19,7 +19,7 @@ export default {
 export const BreakoutDropdownPicker = {
   render() {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           <Box>
             <Flex justify="space-between" w="100%">

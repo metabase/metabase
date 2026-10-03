@@ -59,7 +59,7 @@ export const DefaultLensSections = ({
           .exhaustive();
 
         return (
-          <Stack key={section.id} gap="md">
+          <Stack key={section.id} gap="lg">
             <Title order={3}>{section.title}</Title>
             {content}
           </Stack>

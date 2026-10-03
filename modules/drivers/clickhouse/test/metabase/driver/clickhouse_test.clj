@@ -3,17 +3,23 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.sync :as sync]
@@ -21,9 +27,30 @@
    [metabase.test.data.clickhouse :as ctd]
    [metabase.upload.impl-test :as upload-test]
    [taoensso.nippy :as nippy]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (com.clickhouse.jdbc ConnectionImpl)
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :clickhouse
+    (let [base-details (:details (mt/db))
+          db-name      (or (:dbname base-details) (:db base-details))]
+      (testing "database named by the older `db` spelling, which never reaches the JDBC URL"
+        (is (= db-name
+               (driver.sql/default-schema :clickhouse (mt/db)))))
+      (testing "database configured in the connection details"
+        (let [details (assoc base-details :dbname db-name)]
+          (mt/with-temp [:model/Database database {:engine :clickhouse, :details details}]
+            (is (= db-name
+                   (driver.sql/default-schema :clickhouse database))))))
+      (testing "details naming no database: the server reports the one the connection opened"
+        (mt/with-temp [:model/Database database {:engine  :clickhouse
+                                                 :details (dissoc base-details :db :dbname)}]
+          (is (= "default"
+                 (driver.sql/default-schema :clickhouse database))))))))
 
 ;; the mt/with-dynamic-redefs macro was renamed to mt/with-dynamic-fn-redefs for 0.53+
 ;; as 0.52 is still tested by CI we will check which macro is defined and use that
@@ -45,9 +72,265 @@
       ;; a backtick-quoted name can hold a comma or paren; it must stay one column and come out bare
       "`weird,name`, b"     ["weird,name" "b"]
       "`paren(col`, b"      ["paren(col" "b"]
-      "`back``tick`"        ["back`tick"]              ; doubled backtick is an escaped backtick
+      "`back\\`tick`"       ["back`tick"]              ; a backtick in a quoted name is backslash-escaped
+      "`back\\\\slash`"     ["back\\slash"]
+      "`col\\`tick`, b"     ["col`tick" "b"]           ; the escaped backtick doesn't end the quoted span
       ""                    []                         ; blank -> [], so :key-columns stays schema-valid
       nil                   [])))
+
+(defn- statement
+  "Join `lines` into a `SHOW CREATE TABLE` statement, the way ClickHouse formats one."
+  [& lines]
+  (str/join "\n" lines))
+
+(def ^:private every-skip-index-shape-statement
+  "Skip-index line shapes: one column, several columns, an expression, a back-quoted name, a parameterised type, and
+  an index literally named INDEX."
+  (statement "CREATE TABLE tenant_a.t"
+             "("
+             "    `id` Nullable(UInt64),"
+             "    `weird,name` Nullable(String),"
+             "    `email` Nullable(String),"
+             "    INDEX idx_id (id) TYPE minmax GRANULARITY 1,"
+             "    INDEX idx_multi (id, `weird,name`) TYPE bloom_filter GRANULARITY 2,"
+             "    INDEX idx_expr lower(email) TYPE bloom_filter GRANULARITY 1,"
+             "    INDEX `odd name` (`weird,name`) TYPE minmax GRANULARITY 1,"
+             "    INDEX idx_set (email) TYPE set(100) GRANULARITY 1,"
+             "    INDEX INDEX (`weird,name`, email) TYPE minmax GRANULARITY 1"
+             ")"
+             "ENGINE = MergeTree"
+             "ORDER BY (id)"
+             "SETTINGS allow_nullable_key = 1, index_granularity = 8192"))
+
+(def ^:private keyword-named-columns-statement
+  "Columns named INDEX and TYPE, and a PRIMARY KEY line that differs from the sorting key."
+  (statement "CREATE TABLE tenant_a.`odd table`"
+             "("
+             "    `INDEX` Int64,"
+             "    `TYPE` String,"
+             "    INDEX i1 (INDEX) TYPE minmax GRANULARITY 1"
+             ")"
+             "ENGINE = MergeTree"
+             "PRIMARY KEY (INDEX)"
+             "ORDER BY (INDEX, TYPE)"
+             "SETTINGS index_granularity = 8192"))
+
+(def ^:private unsorted-statement
+  (statement "CREATE TABLE tenant_a.noidx"
+             "("
+             "    `a` Int64"
+             ")"
+             "ENGINE = MergeTree"
+             "ORDER BY tuple()"
+             "SETTINGS index_granularity = 8192"))
+
+(def ^:private shared-merge-tree-statement
+  "Metabase Cloud Storage's engine, captured from a tenant database on stats.metabase.com."
+  (statement "CREATE TABLE db_c6633c128ed24e74.test_index"
+             "("
+             "    `session_id` String,"
+             "    `event_type` UInt8,"
+             "    `count` UInt64"
+             ")"
+             "ENGINE = SharedMergeTree('/clickhouse/tables/{uuid}/{shard}', '{replica}')"
+             "ORDER BY (event_type, session_id)"
+             "SETTINGS allow_nullable_key = 1, index_granularity = 8192"))
+
+(def ^:private pre-26-statement
+  "23.3 and 25.2 print a single-column index expression and PRIMARY KEY bare; 26.6+ wraps them in parentheses.
+  Captured from 25.2.2.39."
+  (statement "CREATE TABLE default.mb_probe_kw"
+             "("
+             "    `INDEX` Int64,"
+             "    `TYPE` String,"
+             "    `email` Nullable(String),"
+             "    INDEX i1 INDEX TYPE minmax GRANULARITY 1,"
+             "    INDEX i2 email TYPE bloom_filter GRANULARITY 3"
+             ")"
+             "ENGINE = MergeTree"
+             "PRIMARY KEY INDEX"
+             "ORDER BY (INDEX, TYPE)"
+             "SETTINGS index_granularity = 8192"))
+
+(def ^:private projection-statement
+  "A projection carries its own, indented ORDER BY; the table's sorting key is one back-quoted column. Captured from
+  25.2.2.39 (26.8 prints the index expression as `(b)`)."
+  (statement "CREATE TABLE default.mb_probe_shapes"
+             "("
+             "    `a` Nullable(Int64),"
+             "    `weird name` Nullable(String),"
+             "    `b` String,"
+             "    INDEX ng b TYPE ngrambf_v1(3, 256, 2, 0) GRANULARITY 1,"
+             "    PROJECTION p1"
+             "    ("
+             "        SELECT"
+             "            a,"
+             "            b"
+             "        ORDER BY b"
+             "    )"
+             ")"
+             "ENGINE = MergeTree"
+             "ORDER BY `weird name`"
+             "SETTINGS allow_nullable_key = 1, index_granularity = 8192"))
+
+(def ^:private escaped-names-statement
+  "Names holding a backtick or a backslash are back-quoted with backslash escapes. Captured from 26.8.5."
+  (statement "CREATE TABLE default.mb_probe_esc"
+             "("
+             "    `a` Int64,"
+             "    `col\\`tick` Int64,"
+             "    INDEX `ix\\`tick` (a) TYPE minmax GRANULARITY 1,"
+             "    INDEX `ix\\\\back` (`col\\`tick`) TYPE minmax GRANULARITY 1,"
+             "    INDEX `ix space` (a) TYPE minmax GRANULARITY 1"
+             ")"
+             "ENGINE = MergeTree"
+             "ORDER BY `col\\`tick`"
+             "SETTINGS index_granularity = 8192"))
+
+(deftest ^:parallel create-table-statement->indexes-test
+  (testing "every data-skipping INDEX line is parsed, in statement order (no live DB needed)"
+    (let [idxs (#'clickhouse/create-table-statement->indexes every-skip-index-shape-statement)
+          skip (filter #(= :skip-index (:kind %)) idxs)]
+      (is (= ["idx_id" "idx_multi" "idx_expr" "odd name" "idx_set" "INDEX"]
+             (map :name skip)))
+      (is (= [["id"] ["id" "weird,name"] ["lower(email)"] ["weird,name"] ["email"] ["weird,name" "email"]]
+             (map :key-columns skip)))
+      (testing "the access method drops the type's arguments"
+        (is (= ["minmax" "bloom_filter" "bloom_filter" "minmax" "set" "minmax"]
+               (map :access-method skip))))
+      (testing "the definition is the line itself, without indentation or the list separator"
+        (is (= "INDEX idx_multi (id, `weird,name`) TYPE bloom_filter GRANULARITY 2"
+               (:definition (second skip)))))
+      (testing "the whole map matches the cross-driver shape"
+        (is (= {:name              "idx_id"
+                :kind              :skip-index
+                :access-method     "minmax"
+                :is-unique         false
+                :is-primary        false
+                :is-valid          true
+                :key-columns       ["id"]
+                :include-columns   []
+                :partial-predicate nil
+                :definition        "INDEX idx_id (id) TYPE minmax GRANULARITY 1"}
+               (first skip))))))
+  (testing "the sorting key is emitted as one unnamed :order-by entry"
+    (is (= [{:name              nil
+             :kind              :order-by
+             :access-method     nil
+             :is-unique         false
+             :is-primary        false
+             :is-valid          true
+             :key-columns       ["id"]
+             :include-columns   []
+             :partial-predicate nil
+             :definition        "ORDER BY (id)"}]
+           (filter #(= :order-by (:kind %)) (#'clickhouse/create-table-statement->indexes
+                                             every-skip-index-shape-statement)))))
+  (testing "columns named INDEX/TYPE parse, and PRIMARY KEY is not mistaken for the sorting key"
+    (is (=? [{:name "i1" :kind :skip-index :key-columns ["INDEX"]}
+             {:name nil :kind :order-by :key-columns ["INDEX" "TYPE"]}]
+            (#'clickhouse/create-table-statement->indexes keyword-named-columns-statement))))
+  (testing "ORDER BY tuple() is an unsorted table: no entry, matching the empty catalog sorting key"
+    (is (= [] (#'clickhouse/create-table-statement->indexes unsorted-statement)))))
+
+(deftest ^:parallel create-table-statement->indexes-server-shapes-test
+  (testing "a SharedMergeTree table with no skip index yields only its sorting key"
+    (is (=? [{:name nil :kind :order-by :key-columns ["event_type" "session_id"]
+              :definition "ORDER BY (event_type, session_id)"}]
+            (#'clickhouse/create-table-statement->indexes shared-merge-tree-statement))))
+  (testing "pre-26 servers print a single-column expression and PRIMARY KEY without parentheses"
+    (is (=? [{:name "i1" :kind :skip-index :access-method "minmax" :key-columns ["INDEX"]
+              :definition "INDEX i1 INDEX TYPE minmax GRANULARITY 1"}
+             {:name "i2" :kind :skip-index :access-method "bloom_filter" :key-columns ["email"]}
+             {:name nil :kind :order-by :key-columns ["INDEX" "TYPE"]}]
+            (#'clickhouse/create-table-statement->indexes pre-26-statement))))
+  (testing "a projection's indented ORDER BY is not the sorting key; a bare back-quoted single column is"
+    (is (=? [{:name "ng" :kind :skip-index :access-method "ngrambf_v1" :key-columns ["b"]}
+             {:name nil :kind :order-by :key-columns ["weird name"] :definition "ORDER BY `weird name`"}]
+            (#'clickhouse/create-table-statement->indexes projection-statement))))
+  (testing "back-quoted names come out with their backslash escapes undone, matching the managed side"
+    (is (=? [{:name "ix`tick" :kind :skip-index :key-columns ["a"]}
+             {:name "ix\\back" :kind :skip-index :key-columns ["col`tick"]}
+             {:name "ix space" :kind :skip-index :key-columns ["a"]}
+             {:name nil :kind :order-by :key-columns ["col`tick"]}]
+            (#'clickhouse/create-table-statement->indexes escaped-names-statement)))))
+
+(deftest ^:parallel table-missing-exception?-test
+  (testing "the codes SHOW CREATE TABLE raises for a table or database that isn't there"
+    (are [message] (#'clickhouse/table-missing-exception? (java.sql.SQLException. message))
+      "Code: 60. DB::Exception: Table default.nope does not exist. (UNKNOWN_TABLE)"
+      "Code: 81. DB::Exception: Database nope does not exist. (UNKNOWN_DATABASE)"
+      "Code: 390. DB::Exception: Table `nope` doesn't exist. (CANNOT_GET_CREATE_TABLE_QUERY)"))
+  (testing "a privilege error is not a missing table, so fetch-table-indexes rethrows it"
+    (is (false? (#'clickhouse/table-missing-exception?
+                 (java.sql.SQLException. "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED)"))))))
+
+(deftest ^:parallel humanize-index-error-message-test
+  (testing "the error code ends the useful part of a message; the version/queryId tail is dropped"
+    (is (= (str "Code: 497. DB::Exception: user_x: Not enough privileges. To execute this query, it's necessary to "
+                "have the grant SELECT ON system.data_skipping_indices. (ACCESS_DENIED)")
+           (driver/humanize-index-error-message
+            :clickhouse
+            (str "Code: 497. DB::Exception: user_x: Not enough privileges. To execute this query, it's necessary to "
+                 "have the grant SELECT ON system.data_skipping_indices. (ACCESS_DENIED) "
+                 "(version 26.6.1.2047 (official build)) (queryId= 71d1c3e4-0000-0000-0000-000000000000)")))))
+  (testing "a message with no such code is kept as-is"
+    (is (= "Connection refused" (driver/humanize-index-error-message :clickhouse "Connection refused")))))
+
+(deftest ^:parallel inline-value-string-test
+  (testing "inlined string literals escape the backslash before the quote"
+    ;; ClickHouse treats `\` as an escape character inside a string literal, so doubling `'` alone (the default
+    ;; `[:sql String]` behaviour) lets a value like `a\'` close the literal early and run the rest as SQL.
+    (are [s expected] (= expected (sql.qp/inline-value :clickhouse s))
+      "Tito's Tacos"     "'Tito\\'s Tacos'"
+      "back\\slash"      "'back\\\\slash'"
+      "' OR 1 = 1 --"    "'\\' OR 1 = 1 --'"
+      "a\\' OR 1 = 1 --" "'a\\\\\\' OR 1 = 1 --'")))
+
+(def ^:private breakout-payload
+  "A value that closes a ClickHouse string literal early unless its backslash is escaped: `a\\' or 1=1 -- `."
+  "a\\' or 1=1 -- ")
+
+(def ^:private escaped-breakout-payload
+  "[[breakout-payload]] correctly escaped: `\\` is doubled, so the quote that follows is a genuinely escaped quote
+  and the payload stays inside the literal."
+  "a\\\\\\' or 1=1 -- ")
+
+;;; `contains` / `starts-with` / `ends-with` are an additional carrier for the escaping defect above, and a
+;;; very common one. On the generic SQL path they compile to `LIKE <pattern>`, and `sql.qp/generate-pattern` runs
+;;; `escape-like-pattern` on the value first -- which doubles `\` and so happens to neutralise this payload shape.
+;;; ClickHouse overrides all three to its native scalar functions instead, so `generate-pattern` never runs and the
+;;; value reaches ordinary function-argument position unescaped. Only [[sql.qp/inline-value]] stands between it and
+;;; the SQL text.
+(deftest string-filter-inline-escaping-test
+  ;; no ClickHouse server needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (testing "a string filter value cannot break out of the literal when compiled with inline parameters"
+    (let [mp       (lib.tu/merged-mock-metadata-provider
+                    meta/metadata-provider
+                    {:database {:engine       :clickhouse
+                                :dbms-version {:version "24.4" :semantic-version {:major 24 :minor 4}}}})
+          venues   (lib.metadata/table mp (meta/id :venues))
+          name-col (lib.metadata/field mp (meta/id :venues :name))
+          compile! (fn [filter-clause]
+                     (:query (qp.compile/compile-with-inline-parameters
+                              (-> (lib/query mp venues)
+                                  (lib/filter filter-clause)))))]
+      (doseq [[msg filter-clause expected]
+              [["contains"                     (lib/contains name-col breakout-payload)
+                (format "`positionUTF8`(`PUBLIC`.`VENUES`.`NAME`, '%s')" escaped-breakout-payload)]
+               ["starts-with"                  (lib/starts-with name-col breakout-payload)
+                (format "`startsWithUTF8`(`PUBLIC`.`VENUES`.`NAME`, '%s')" escaped-breakout-payload)]
+               ["ends-with"                    (lib/ends-with name-col breakout-payload)
+                (format "`endsWithUTF8`(`PUBLIC`.`VENUES`.`NAME`, '%s')" escaped-breakout-payload)]
+               ["case-insensitive contains"    (lib/ignore-case (lib/contains name-col breakout-payload))
+                (format "`positionCaseInsensitiveUTF8`(`PUBLIC`.`VENUES`.`NAME`, '%s')" escaped-breakout-payload)]
+               ["case-insensitive starts-with" (lib/ignore-case (lib/starts-with name-col breakout-payload))
+                (format "`lowerUTF8`('%s')" escaped-breakout-payload)]
+               ["case-insensitive ends-with"   (lib/ignore-case (lib/ends-with name-col breakout-payload))
+                (format "`lowerUTF8`('%s')" escaped-breakout-payload)]]]
+        (testing msg
+          (is (str/includes? (compile! filter-clause) expected)))))))
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver :clickhouse
@@ -66,6 +349,40 @@
            (let [details (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
                  spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
              (driver/db-default-timezone :clickhouse spec))))))
+
+(deftest clickhouse-report-timezone-reaches-server-test
+  ;; Regression for #79671.
+  (mt/test-driver :clickhouse
+    (mt/with-report-timezone-id! "America/Santiago"
+      (is (= [["America/Santiago" "America/Santiago"]]
+             (->> "SELECT timezone() AS tz, getSetting('session_timezone') AS s"
+                  (lib/native-query (mt/metadata-provider))
+                  qp/process-query
+                  mt/rows))))))
+
+(deftest ^:synchronized clickhouse-session-timezone-does-not-leak-across-borrows-test
+  (mt/test-driver :clickhouse
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+    (let [underlying-conn-ids (atom [])
+          observe (fn [opts]
+                    (sql-jdbc.execute/do-with-connection-with-options
+                     :clickhouse (mt/id) opts
+                     (fn [^Connection conn]
+                       (swap! underlying-conn-ids conj
+                              (System/identityHashCode (.unwrap conn ConnectionImpl)))
+                       (with-open [stmt (.createStatement conn)
+                                   rs   (.executeQuery stmt "SELECT getSetting('session_timezone')")]
+                         (.next rs)
+                         (.getString rs 1)))))]
+      (is (= "America/Santiago" (observe {:session-timezone "America/Santiago"})))
+      (let [result (observe nil)]
+        ;; Guard: the leak is only observable when the pool hands us the same underlying
+        ;; ConnectionImpl. With a freshly invalidated pool and back-to-back borrows this holds;
+        ;; if it stops holding, the test has to be fixed.
+        (is (apply = @underlying-conn-ids)
+            (str "expected both borrows to reuse the same underlying connection: " @underlying-conn-ids))
+        (is (= "" result)
+            "a borrow without :session-timezone must not inherit the previous borrow's timezone")))))
 
 (deftest ^:parallel clickhouse-connection-string
   (testing "connection with no additional options"
@@ -567,16 +884,24 @@
               (is (thrown-with-msg? Exception #"SQL parsing failed."
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
 
-(deftest ^:parallel set-role-statement-escape-quotes-test
+(deftest ^:parallel set-role-statement-quotes-role-test
   (are [role sql] (= sql
                      (sql-jdbc/set-role-statement :clickhouse nil role))
+    ;; the whole role is quoted as a single identifier
     "x"                             "SET ROLE \"x\""
-    ;; don't re-quote something that already has quotes
+    ;; a comma is part of the role name, not a separator between roles
+    "x,y"                           "SET ROLE \"x,y\""
+    "a,b"                           "SET ROLE \"a,b\""
+    ;; an already-quoted value is left as-is
     "\"x\""                         "SET ROLE \"x\""
-    ;; split on commas and quote separately
-    "x,y"                           "SET ROLE \"x\",\"y\""
-    ;; default database role, don't quote
+    ;; default database role is emitted verbatim, not quoted
     "NONE"                          "SET ROLE NONE"
-    ;; escape double-quotes in the role
+    ;; interior double-quotes are doubled
     "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
-    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))
+    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+    ;; a trailing backslash is escaped so it cannot close the quoted identifier
+    "foo\\"                         "SET ROLE \"foo\\\\\""
+    "a\\\"b"                        "SET ROLE \"a\\\\\"\"b\""
+    ;; a lone double-quote is a one-character role name, not an already-quoted empty one -- it must still come
+    ;; out as a terminated identifier
+    "\""                            "SET ROLE \"\"\"\""))

@@ -24,7 +24,7 @@ export const TAG_TYPES = [
   "external-transform",
   "public-document",
   "comment",
-  "embedding-hub-checklist",
+  "setup-guide-checklist",
   "exploration",
   "field",
   "field-values",
@@ -32,6 +32,7 @@ export const TAG_TYPES = [
   "indexed-entity",
   "table-index",
   "llm-models",
+  "llm-providers",
   "logger-preset",
   "measure",
   "metric-dimension",
@@ -66,6 +67,7 @@ export const TAG_TYPES = [
   "transform-inspector-lens",
   "user",
   "current-user",
+  "user-homepage-dashboard",
   "public-dashboard",
   "embed-dashboard",
   "public-card",
@@ -79,7 +81,6 @@ export const TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "metabot-permissions",
-  "security-advisory",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

@@ -119,7 +119,7 @@ function LibraryPageContent() {
       <SectionLayout>
         <PaneHeader
           breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Library`}</DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs>{t`Semantic layer`}</DataStudioBreadcrumbs>
           }
           px="3.5rem"
           py={0}
@@ -135,11 +135,11 @@ function LibraryPageContent() {
             <LibraryEmptyState />
           ) : (
             <>
-              <Flex gap="md">
+              <Flex gap="lg">
                 <TextInput
                   placeholder={t`Search...`}
                   leftSection={<Icon name="search" />}
-                  bdrs="md"
+                  bdrs="sm"
                   flex="1"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

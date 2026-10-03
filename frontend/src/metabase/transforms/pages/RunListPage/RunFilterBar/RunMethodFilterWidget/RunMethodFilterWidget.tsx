@@ -82,7 +82,7 @@ function RunMethodFilterForm({
   return (
     <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
       <Checkbox.Group value={runMethods} onChange={handleChange}>
-        <Stack p="md">
+        <Stack p="lg">
           {RUN_METHODS.map((method) => (
             <Checkbox
               key={method}
@@ -93,7 +93,7 @@ function RunMethodFilterForm({
         </Stack>
       </Checkbox.Group>
       <Divider />
-      <Group p="md" justify="end">
+      <Group p="lg" justify="end">
         <Button type="submit" variant="filled" disabled={!isValid}>
           {initialRunMethods.length > 0 ? `Update filter` : `Add filter`}
         </Button>

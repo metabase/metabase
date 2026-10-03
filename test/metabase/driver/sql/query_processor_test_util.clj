@@ -7,6 +7,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -144,13 +145,7 @@
 
 (defn do-with-native-query-testing-context
   [query thunk]
-  ;; building the pretty-printing string is actually a little bit on the expensive side so only do the work needed if
-  ;; someone actually looks at the [[testing]] context (i.e. if the test fails)
-  (testing (let [to-str (delay (pprint-native-query-with-best-strategy query))]
-             (reify
-               java.lang.Object
-               (toString [_]
-                 @to-str)))
+  (testing (tu/deferred-str (pprint-native-query-with-best-strategy query))
     (thunk)))
 
 (defmacro with-native-query-testing-context

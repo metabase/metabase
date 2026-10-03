@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
 import type { VersionInfoFile } from "./types";
-import { generateVersionInfoJson, getSupportedMajors, getSupportedMajorVersions, getVersionInfoUrl, isLtsVersion, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
+import { generateVersionInfoJson, getSupportedMajorVersions, getSupportedMajors, getVersionInfoUrl, isLtsVersion, updateVersionInfoLatest, updateVersionInfoLatestJson } from "./version-info";
 
 jest.mock("node-fetch", () => ({
   __esModule: true,
@@ -340,12 +340,13 @@ describe("version-info", () => {
       ]);
     });
 
-    it("treats eol === today as still in support", () => {
+    it("treats eol === today as out of support", () => {
       const versionInfo = fileWith([
-        { major: 60, released: "2026-04-01", lts: true, eol: "2026-06-04" },
+        { major: 88, released: "2026-04-01", lts: true, eol: "2026-06-04" },
+        { major: 89, released: "2026-04-01", lts: true, eol: "2026-06-05" },
       ]);
 
-      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([60]);
+      expect(getSupportedMajorVersions(versionInfo, "2026-06-04")).toEqual([89]);
     });
 
     it("ignores the lts flag — support is computed from eol only", () => {

@@ -4,7 +4,7 @@ import {
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { colors } from "metabase/ui/colors";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/viz-core";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
@@ -107,6 +107,7 @@ export default {
     "scalar.comparisons": [{ id: "1", type: "previousPeriod" }],
     "scalar.switch_positive_negative": false,
     "scalar.compact_primary_number": false,
+    "scalar.show_comparison_value": true,
   },
   argTypes: {
     "scalar.field": {
@@ -117,6 +118,9 @@ export default {
       control: { type: "boolean" },
     },
     "scalar.compact_primary_number": {
+      control: { type: "boolean" },
+    },
+    "scalar.show_comparison_value": {
       control: { type: "boolean" },
     },
   },

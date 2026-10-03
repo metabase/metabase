@@ -6,10 +6,8 @@ import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
-import { useSelector } from "metabase/redux";
 import type { Location } from "metabase/router";
 import { queryToSearch, useNavigate } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
 import type { ConcreteTableId, Segment } from "metabase-types/api";
 
@@ -80,9 +78,8 @@ type TableSelectorProps = {
 };
 
 function TableSelector({ tableId, setTableId }: TableSelectorProps) {
-  useGetTableQuery(tableId != null ? { id: tableId } : skipToken);
-  const table = useSelector((state) =>
-    tableId != null ? getMetadata(state).table(tableId) : null,
+  const { data: table } = useGetTableQuery(
+    tableId != null ? { id: tableId } : skipToken,
   );
 
   return (
@@ -108,7 +105,7 @@ function TableSelector({ tableId, setTableId }: TableSelectorProps) {
               )}
               data-testid="segment-list-table"
             >
-              {table ? table.displayName() : t`Filter by table`}
+              {table ? table.display_name : t`Filter by table`}
               <Icon
                 name={table ? "close" : "chevrondown"}
                 size={12}

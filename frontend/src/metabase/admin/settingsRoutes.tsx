@@ -89,6 +89,11 @@ const ldapAuth = () =>
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsLdapForm"
   ).then(({ SettingsLdapForm }) => ({ Component: SettingsLdapForm }));
 
+const domainsSettings = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DomainsSettingsPage"
+  ).then(({ DomainsSettingsPage }) => ({ Component: DomainsSettingsPage }));
+
 const remoteSyncSettings = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/RemoteSyncSettingsPage"
@@ -133,6 +138,13 @@ const dataAppsManage = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
   ).then(({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }));
+
+const dataAppUsersManage = () =>
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
+  ).then(({ DataAppUsersManagePage }) => ({
+    Component: DataAppUsersManagePage,
+  }));
 
 const uploadSettings = () =>
   import(
@@ -198,27 +210,28 @@ export const getSettingsRoutes = (
       <Route path="authentication/2fa" element={<IsAdmin />}>
         <Route
           path="enrolled"
-          element={<PLUGIN_MULTI_FACTOR_AUTH.EnrolledUsersPage />}
+          lazy={PLUGIN_MULTI_FACTOR_AUTH.enrolledUsersPage}
         />
         <Route
           path="unenrolled"
-          element={<PLUGIN_MULTI_FACTOR_AUTH.UnenrolledUsersPage />}
+          lazy={PLUGIN_MULTI_FACTOR_AUTH.unenrolledUsersPage}
         />
       </Route>
       <Route path="authentication/google" lazy={googleAuth} />
       <Route path="authentication/ldap" lazy={ldapAuth} />
       <Route
         path="authentication/saml"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsSAMLForm}
       />
       <Route
         path="authentication/jwt"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsJWTForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsJWTForm}
       />
       <Route
         path="authentication/oidc"
-        element={<PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
+        lazy={PLUGIN_AUTH_PROVIDERS.settingsOIDCForm}
       />
+      <Route path="domains" lazy={domainsSettings} />
       <Route path="remote-sync" lazy={remoteSyncSettings} />
       <Route path="maps" lazy={mapsSettings} />
       <Route path="localization" lazy={localizationSettings} />
@@ -234,22 +247,21 @@ export const getSettingsRoutes = (
           <Route path="development" lazy={customVisualizationsDevelopment} />
         )}
       </Route>
-      {/* TODO(v65): data apps launch in v65 — drop the isEnabled gate then so the
-          page shows the upsell without the token feature instead of 404ing */}
-      {PLUGIN_DATA_APPS.isEnabled && (
-        <Route
-          path={
-            Urls.DATA_APP_URL_SEGMENT
-          } /* do not allow users with "Settings access" permissions to access data apps pages */
-          element={<IsAdmin />}
-        >
-          <Route index lazy={dataAppsManage} />
-        </Route>
-      )}
+      <Route
+        path={
+          Urls.DATA_APP_URL_SEGMENT
+        } /* do not allow users with "Settings access" permissions to access data apps pages */
+        element={<IsAdmin />}
+      >
+        <Route index lazy={dataAppsManage} />
+        {PLUGIN_DATA_APPS.isEnabled && (
+          <Route path=":slug/users" lazy={dataAppUsersManage} />
+        )}
+      </Route>
       <Route path="uploads" lazy={uploadSettings} />
       <Route
         path="python-runner"
-        element={<PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage />}
+        lazy={PLUGIN_TRANSFORMS_PYTHON.pythonRunnerSettingsPage}
       />
       <Route path="public-sharing" lazy={publicSharingSettings} />
       <Route path="license" lazy={licenseSettings} />

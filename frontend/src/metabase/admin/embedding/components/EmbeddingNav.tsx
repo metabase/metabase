@@ -15,7 +15,7 @@ export function EmbeddingNav() {
 
   return (
     <AdminNavWrapper>
-      <Stack gap="xs">
+      <Stack gap="xxs">
         {hasSimpleEmbedding && (
           <>
             <EmbeddingNavItem

@@ -1,15 +1,15 @@
 import { createAction } from "redux-actions";
 
+import type { Dispatch, GetState } from "metabase/redux/store";
+import type { CollectionId, Timeline } from "metabase-types/api";
+
 import {
   DESELECT_TIMELINE_EVENTS,
   HIDE_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
   SHOW_TIMELINE_EVENTS,
-} from "metabase/redux/query-builder";
-import type { Dispatch, GetState } from "metabase/redux/store";
-import type { CollectionId, Timeline } from "metabase-types/api";
-
-import { getFetchedTimelines } from "../selectors";
+} from "../store/actions";
+import { getFetchedTimelines } from "../store/selectors";
 
 export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);

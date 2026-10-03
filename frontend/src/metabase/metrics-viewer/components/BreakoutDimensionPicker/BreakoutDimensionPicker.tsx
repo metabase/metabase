@@ -121,7 +121,7 @@ export function BreakoutDimensionPicker({
   );
 
   return (
-    <Flex direction="column" mah="25rem" py="xs" className={S.pickerContainer}>
+    <Flex direction="column" mah="25rem" py="xxs" className={S.pickerContainer}>
       <AccordionList
         className={S.dimensionList}
         sections={sections}

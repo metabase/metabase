@@ -1,0 +1,8 @@
+.root {
+  box-shadow: 0 7px 20px var(--mb-color-shadow-default);
+
+  &:hover {
+    box-shadow: 0 10px 22px
+      color-mix(in srgb, var(--mb-color-shadow-default) 50%, transparent);
+  }
+}

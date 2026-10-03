@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-thread-timeline
   (:require
+   [metabase.explorations.db :as explorations.db]
    [metabase.models.interface :as mi]
    [metabase.timeline.core :as timeline]
    [metabase.util.date-2 :as u.date]
@@ -24,7 +25,7 @@
           timelines    (when (seq timeline-ids)
                          (timeline/include-events
                           (filterv mi/can-read?
-                                   (t2/select :model/Timeline :id [:in timeline-ids]))
+                                   (explorations.db/timelines timeline-ids))
                           {:events/all? false}))]
       (into {} (map (juxt :id identity)) timelines))
    :timeline_id))
@@ -32,12 +33,7 @@
 (defn selected-names
   "Names of the timelines selected on `thread-id`, in position order."
   [thread-id]
-  (->> (t2/query
-        {:select    [[:t.name :name]]
-         :from      [[:exploration_thread_timeline :ett]]
-         :left-join [[:timeline :t] [:= :t.id :ett.timeline_id]]
-         :where     [:= :ett.exploration_thread_id thread-id]
-         :order-by  [[:ett.position :asc]]})
+  (->> (explorations.db/thread-timeline-names thread-id)
        (keep :name)))
 
 (defn load-timeline-events
@@ -48,23 +44,7 @@
   `{:timeline-id :timeline-name :timeline-description :events [...]}` maps, events sorted by
   timestamp ascending."
   [thread-id]
-  (let [rows (t2/query
-              {:select   [[:t.id :timeline_id]
-                          [:t.name :timeline_name]
-                          [:t.description :timeline_description]
-                          [:te.id :event_id]
-                          [:te.name :event_name]
-                          [:te.description :event_description]
-                          [:te.timestamp :event_timestamp]
-                          [:te.icon :event_icon]
-                          [:ett.position :position]]
-               :from     [[:exploration_thread_timeline :ett]]
-               :join     [[:timeline :t] [:= :t.id :ett.timeline_id]]
-               :left-join [[:timeline_event :te] [:and
-                                                  [:= :te.timeline_id :t.id]
-                                                  [:= :te.archived false]]]
-               :where    [:= :ett.exploration_thread_id thread-id]
-               :order-by [[:ett.position :asc] [:te.timestamp :asc]]})]
+  (let [rows (explorations.db/thread-timeline-event-rows thread-id)]
     (->> rows
          (group-by :timeline_id)
          (sort-by (fn [[_ rs]] (:position (first rs))))

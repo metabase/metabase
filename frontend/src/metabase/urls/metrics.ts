@@ -1,9 +1,3 @@
-import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
-import {
-  type MetricsViewerDisplayType,
-  type SerializedMetricsViewerPageState,
-  encodeState,
-} from "metabase/common/metrics-viewer";
 import type { CardId, CollectionId } from "metabase-types/api";
 
 import { card as urlForCard } from "./cards";
@@ -24,39 +18,6 @@ export function exploreMetric(metricId: number): string {
 
 export function exploreMeasure(measureId: number): string {
   return `${METRICS_VIEWER_ROOT}?measureId=${measureId}`;
-}
-
-export interface ExploreMetricDimensionOptions {
-  metricId: number;
-  dimensionId: string;
-  dimensionType: DimensionType;
-  displayType: MetricsViewerDisplayType;
-  label?: string;
-}
-
-export function exploreMetricDimension({
-  metricId,
-  dimensionId,
-  dimensionType,
-  displayType,
-  label,
-}: ExploreMetricDimensionOptions): string {
-  const state: SerializedMetricsViewerPageState = {
-    formulaEntities: [{ type: "metric", id: metricId }],
-    dimensionBreakouts: [
-      {
-        id: dimensionId,
-        type: dimensionType,
-        label: label ?? null,
-        display: displayType,
-        definitions: [{ slotIndex: 0, dimensionId }],
-      },
-    ],
-    selectedDimensionBreakoutId: dimensionId,
-  };
-
-  const hash = encodeState(state);
-  return hash ? metricsViewer(hash) : exploreMetric(metricId);
 }
 
 export function metricAbout(cardId: CardId): string {

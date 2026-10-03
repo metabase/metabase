@@ -80,10 +80,54 @@
       (yaml/from-file {:key-fn parse-key})
       read-timestamps))
 
+(defn- check-resource-path!
+  "Throws unless `path` is a relative path that stays inside its entity's directory."
+  [path]
+  (when-not (and (string? path)
+                 (not (str/starts-with? path "/"))
+                 (not (str/includes? path "\\"))
+                 (not-any? #{"" "." ".."} (str/split path #"/" -1)))
+    (throw (ex-info (format "Invalid resource file path: %s" path) {:path path}))))
+
+(defn read-resources
+  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`."
+  [entity read-fn]
+  (if-let [paths (seq (serdes/resource-paths entity))]
+    (assoc entity :serdes/resources (into {}
+                                          (map (fn [path]
+                                                 (check-resource-path! path)
+                                                 [path (read-fn path)]))
+                                          paths))
+    entity))
+
 (def legal-top-level-paths
   "Known top-level paths for directory with serialization output.
   We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
-  #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "osi_ai_context" "snippets" "transforms"})
+  #{"actions" "channels" "collections" "custom_viz_plugins" "data_apps" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "osi_ai_context" "snippets" "transforms"})
+
+(def shared-top-level-paths
+  "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
+  source code, to the name of the entity files in them."
+  {"data_apps" "data_app.yaml"})
+
+(def replaced-top-level-paths
+  "The [[legal-top-level-paths]] a full export may replace wholesale."
+  (apply disj legal-top-level-paths (keys shared-top-level-paths)))
+
+(defn entity-file-path?
+  "Whether the `/`-separated relative `path` names an entity YAML file: a `.yaml` file that isn't a dotfile under one
+  of the [[legal-top-level-paths]], with the entity file name of its directory when that is one of the
+  [[shared-top-level-paths]]."
+  [^String path]
+  (let [top       (first (str/split path #"/" 2))
+        file-name (subs path (inc (or (str/last-index-of path "/") -1)))]
+    (boolean (and (str/includes? path "/")
+                  (str/ends-with? file-name ".yaml")
+                  (not (str/starts-with? file-name "."))
+                  (contains? legal-top-level-paths top)
+                  (if-let [entity-file-name (get shared-top-level-paths top)]
+                    (= entity-file-name file-name)
+                    true)))))
 
 (defn- path-interner
   "Returns a function that interns `:serdes/meta` path vectors.
@@ -104,14 +148,11 @@
       (mapv intern-seg hierarchy))))
 
 (defn- ingestible-file?
-  "Whether `file` is a regular `.yaml` file under one of the [[legal-top-level-paths]].
-  Dotfiles are excluded (editor temp files, see #41567)."
+  "Whether `file` is a regular file that [[entity-file-path?]] accepts. Dotfiles are excluded (editor temp files, see
+  #41567)."
   [^File root-dir ^File file]
-  (boolean (and (.isFile file)
-                (not (str/starts-with? (.getName file) "."))
-                (str/ends-with? (.getName file) ".yaml")
-                (let [rel (.relativize (.toPath root-dir) (.toPath file))]
-                  (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))))
+  (and (.isFile file)
+       (entity-file-path? (str/replace (str (.relativize (.toPath root-dir) (.toPath file))) "\\" "/"))))
 
 (defn- file-hierarchy!
   "Parses `file` and returns its `:serdes/meta` abstract path, or nil on parse failure.
@@ -164,7 +205,11 @@
           {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
         (when-let [file (get @cache (strip-labels serdes-meta))]
           (try
-            (ingest-file file)
+            (read-resources (ingest-file file)
+                            (fn [path]
+                              (let [resource (io/file (.getParentFile ^File file) ^String path)]
+                                (when (.isFile resource)
+                                  (slurp resource)))))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
                                                        :abs-path serdes-meta} e))))))))

@@ -1,11 +1,11 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import type { State } from "metabase/redux/store";
 import {
   createMockAdminState,
   createMockPermissionsState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import type { State } from "metabase/redux/store";
 import type { CollectionPermissions } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 

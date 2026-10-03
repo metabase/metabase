@@ -2,11 +2,7 @@ import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
-import {
-  UPDATE_QUESTION,
-  onCloseQuestionInfo,
-  setUIControls,
-} from "metabase/redux/query-builder";
+import { setUIControls } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
@@ -16,19 +12,20 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
+import { UPDATE_QUESTION, onCloseQuestionInfo } from "../../store/actions";
 import {
   getIsShowingTemplateTagsEditor,
   getQueryBuilderMode,
   getQuestion,
   getRawSeries,
-} from "../../selectors";
+} from "../../store/selectors";
+import { getAdHocQuestionWithVizSettings } from "../../utils/viz-settings";
 import { runQuestionQuery } from "../querying";
 import { setQueryBuilderMode } from "../ui";
 import { updateUrl } from "../url";
 
 import { setIsShowingTemplateTagsEditor } from "./native";
 import { computeQuestionPivotTable } from "./pivot-table";
-import { getAdHocQuestionWithVizSettings } from "./utils";
 
 function shouldTemplateTagEditorBeVisible({
   currentQuestion,

@@ -53,7 +53,7 @@ export const DocumentCopyForm = ({
     >
       {() => (
         <Form>
-          <Stack gap="md" mb="md">
+          <Stack gap="lg" mb="lg">
             <FormTextInput
               name="name"
               label={t`Name`}
@@ -74,7 +74,7 @@ export const DocumentCopyForm = ({
             )}
             <FormSubmitButton
               label={c(`A verb, not a noun`).t`Duplicate`}
-              variant="primary"
+              variant="filled"
             />
           </FormFooter>
         </Form>

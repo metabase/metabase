@@ -2,14 +2,14 @@ import { t } from "ttag";
 
 import { useGetChannelInfoQuery } from "metabase/api";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import {
+  canManageSubscriptions as canManageSubscriptionsSelector,
+  getUserIsAdmin,
+} from "metabase/current-user";
 import { toggleSharing } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
-import {
-  canManageSubscriptions as canManageSubscriptionsSelector,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
 
 export const DashboardSubscriptionsButton = () => {
   const { dashboard } = useDashboardContext();

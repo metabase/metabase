@@ -1,21 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import { assocIn } from "icepick";
 
+import { createMockMetabotTextMessage } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
-import {
-  getMetabotConversationId,
-  getMetabotVisible,
-} from "metabase/metabot/state";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import { getMetabotVisible } from "metabase/metabot/state";
 import {
   createMockMetabotConversation,
   createMockUser,
 } from "metabase-types/api/mocks";
 
 import {
+  conversationIdForAgent,
+  createTestMetabotState,
   enterChatMessage,
   mockAgentEndpoint,
   setup,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "../../tests/utils";
 
@@ -26,36 +26,21 @@ const greetingTitle =
 
 type SetupOpts = Exclude<Parameters<typeof setup>[0], void>;
 
+const ASK_CONVERSATION_ID = testConversationId("ask");
+
 const setupMetabotAsk = (options?: Omit<SetupOpts, "ui">) =>
   setup({ ...options, ui: <MetabotAsk /> });
 
-// The history control lives in the chat header, which only renders once the ask
-// conversation has messages (i.e. past the greeting).
-const askStateWithMessage = () => {
-  const state = getMetabotInitialState();
-  const ask = state.conversations.ask;
-  if (!ask) {
-    throw new Error("Expected ask conversation");
-  }
-  ask.messages.push({
-    id: "seed-message",
-    role: "user",
-    type: "text",
-    message: "Earlier question",
-  });
-  return state;
-};
+const askConversation = (field: string, value: unknown) =>
+  assocIn(
+    createTestMetabotState(),
+    ["conversations", ASK_CONVERSATION_ID, field],
+    value,
+  );
 
 describe("MetabotAsk", () => {
   it("shows the greeting and closes the global Metabot sidebar", async () => {
-    const metabotInitialState = assocIn(
-      getMetabotInitialState(),
-      ["conversations", "omnibot", "visible"],
-      true,
-    );
-
     const { store } = setupMetabotAsk({
-      metabotInitialState,
       promptSuggestions: [{ prompt: "Show me all orders" }],
     });
 
@@ -124,7 +109,11 @@ describe("MetabotAsk", () => {
   });
 
   it("shows the conversation history control in the chat header", async () => {
-    setupMetabotAsk({ metabotInitialState: askStateWithMessage() });
+    setupMetabotAsk({
+      metabotInitialState: askConversation("messages", [
+        createMockMetabotTextMessage("user", "Earlier question"),
+      ]),
+    });
 
     expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
     expect(
@@ -142,14 +131,9 @@ describe("MetabotAsk", () => {
   });
 
   it("does not show the conversation history control for a non-internal/nlq profile", async () => {
-    const state = getMetabotInitialState();
-    const ask = state.conversations.ask;
-    if (!ask) {
-      throw new Error("Expected ask conversation");
-    }
-    ask.profileOverride = "sql";
-
-    setupMetabotAsk({ metabotInitialState: state });
+    setupMetabotAsk({
+      metabotInitialState: askConversation("profileOverride", "sql"),
+    });
 
     expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
     expect(
@@ -158,18 +142,18 @@ describe("MetabotAsk", () => {
   });
 
   it("navigates to the conversation route after the first message", async () => {
-    const { store, router } = setupMetabotAsk({
+    const { router, store } = setupMetabotAsk({
       withRouter: true,
       initialRoute: "/question/ask",
     });
     mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
-    const askId = getMetabotConversationId(store.getState(), "ask");
-
     await enterChatMessage("Who is your favorite?");
 
     await waitFor(() => {
-      expect(router?.location.pathname).toBe(`/metabot/conversation/${askId}`);
+      expect(router?.location.pathname).toBe(
+        `/metabot/conversation/${conversationIdForAgent(store, "ask")}`,
+      );
     });
   });
 

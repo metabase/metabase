@@ -53,6 +53,34 @@
       (is (= ["m1"] @multi-received))
       (is (pos? @multi-count) "the side-effecting first statement also ran"))))
 
+(deftest register-listeners!-is-idempotent-test
+  (testing "a second register-listeners! run replaces registrations instead of throwing"
+    ;; This is the REPL scenario: `mq.init/start!` runs once (dev-server startup, or a prior
+    ;; `test.initialize :mq`), then runs again against the same root `*listeners*` atom — e.g. a
+    ;; tools.namespace refresh unloads `metabase.test.initialize` (resetting its `defonce` of
+    ;; initialized steps) without reloading `metabase.mq.listener`. The second run must win
+    ;; quietly, like `register-queues!` does, rather than dying with "Listener already registered".
+    (binding [listener/*listeners* (atom {})
+              q.registry/*queues*  (atom {})]
+      (q.registry/register-queues!)
+      (listener/register-listeners!)
+      (let [first-registration (:listener (listener/get-listener :queue/listener-macro-test))]
+        (is (fn? first-registration))
+        (listener/register-listeners!)
+        (let [second-registration (:listener (listener/get-listener :queue/listener-macro-test))]
+          (is (fn? second-registration))
+          (testing "the re-run replaced the registration (latest declaration wins)"
+            (is (not (identical? first-registration second-registration)))))))))
+
+(deftest claim-listener-declaration-test
+  (testing "re-claiming a channel from its own declaring namespace is a no-op (namespace reload)"
+    (is (nil? (listener/claim-listener-declaration! :queue/listener-macro-test
+                                                    'metabase.mq.listener-test))))
+  (testing "claiming an already-claimed channel from a different namespace throws at load time"
+    (is (thrown-with-msg? ExceptionInfo #"already declared"
+                          (listener/claim-listener-declaration! :queue/listener-macro-test
+                                                                'metabase.some.other.ns)))))
+
 (deftest listener-requires-declared-queue-test
   (binding [listener/*listeners* (atom {})
             q.registry/*queues*  (atom {})]

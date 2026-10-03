@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -9,11 +10,10 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Notification,
@@ -165,6 +165,18 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /send now/i })).toBeEnabled();
+  });
+
+  it("should disable 'Send now' when there is nowhere to send the alert to", async () => {
+    setup({
+      isAdmin: true,
+      isEmailSetup: false,
+      isSlackSetup: true,
+    });
+
+    expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
   });
 
   it("should show the editing alert data when in edit mode", async () => {
@@ -525,10 +537,8 @@ describe("CreateOrEditQuestionAlertModal", () => {
       expect(screen.getByText("Edit alert")).toBeInTheDocument();
     });
 
-    // Going through Custom drops the hour, so the alert is left without a
-    // subscription until a new time is picked
     await userEvent.click(screen.getByTestId("select-frequency"));
-    await userEvent.click(screen.getByRole("option", { name: /custom/i }));
+    await userEvent.click(screen.getByRole("option", { name: /hourly/i }));
 
     await userEvent.click(screen.getByTestId("select-frequency"));
     await userEvent.click(screen.getByRole("option", { name: /daily/i }));
@@ -714,7 +724,7 @@ function setup({
   });
   const storeConfig = { storeInitialState };
 
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   // The modal takes `question` as a prop. In production it comes from the `getQuestion` selector
   // which composes metrics and models into runnable ad-hoc questions.
   // Matching that behavior here.

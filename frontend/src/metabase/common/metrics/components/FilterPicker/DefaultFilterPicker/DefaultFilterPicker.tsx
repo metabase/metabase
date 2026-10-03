@@ -65,14 +65,13 @@ export function DefaultFilterPicker({
       />
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>
-          <Stack p="md" gap="sm">
+          <Stack p="lg" gap="sm">
             {availableOptions.map((option) => (
               <Radio
                 key={option.operator}
                 value={option.operator}
                 label={option.displayName}
                 pb={6}
-                size="xs"
               />
             ))}
           </Stack>

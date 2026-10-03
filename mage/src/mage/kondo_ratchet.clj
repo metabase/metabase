@@ -1,10 +1,14 @@
 (ns mage.kondo-ratchet
   "Tooling around the inline ignore ratchets that needs a real kondo run (slow: a minute or two):
-  report ignores kondo considers redundant, and bulk-insert ignores when landing a new linter."
+  report ignores kondo considers redundant, attribute discouraged-var and discouraged-namespace ignores to the
+  symbols they cover, and bulk-insert ignores when landing a new linter."
   (:require
+   [babashka.fs :as fs]
+   [babashka.json :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [dev.kondo-ratchet :as kondo-ratchet]
+   [mage.kondo :as kondo]
    [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
@@ -12,17 +16,213 @@
 (def ^:private lint-roots
   ["src" "test" "enterprise/backend" "modules/drivers" "dev" "bin" "mage"])
 
+(defn parse-kondo-output
+  "The map a kondo run printed as `out` lines in `output-format` (`:edn` or `:json`).
+  Throws when the run failed (an `exit` other than 0, 2 or 3) or its output isn't a map with a `:findings` list,
+  rather than returning an empty result."
+  [output-format {:keys [exit out err]}]
+  (let [;; 2 and 3 mean kondo ran and reported warnings or errors
+        parsed (when (#{0 2 3} exit)
+                 (try
+                   (case output-format
+                     :edn  (edn/read-string (str/join "\n" out))
+                     :json (json/read-str (str/join "\n" out) {:key-fn keyword}))
+                   (catch Exception _ nil)))]
+    (when-not (sequential? (:findings parsed))
+      (throw (ex-info (format "clj-kondo run failed or printed no findings list (exit %d):\n%s"
+                              exit (str/join "\n" (take-last 20 err)))
+                      {:exit exit})))
+    parsed))
+
+(defn- run-kondo!
+  "Output of a `clojure -M:kondo` run over `paths`, with `config` merged over the repository's, as
+  [[parse-kondo-output]] reads it.
+  With `cache?` false the run neither reads nor writes kondo's cache."
+  ([output-format config paths]
+   (run-kondo! output-format config paths true))
+  ([output-format config paths cache?]
+   (parse-kondo-output output-format
+                       (apply shell/sh* {:quiet? true}
+                              "clojure" "-M:kondo"
+                              "--config" (pr-str (assoc-in config [:output :format] output-format))
+                              (concat (when-not cache? ["--cache" "false"])
+                                      ["--lint"]
+                                      paths)))))
+
 (defn- kondo-findings!
   "Kondo run over `roots`, optionally with `linter` forced to `:warning`; returns findings as EDN maps
   (all of them when `linter` is nil, else just that type)."
   [linter roots]
-  (let [config (pr-str (cond-> {:output {:format :edn}}
-                         linter (assoc :linters {linter {:level :warning}})))
-        {:keys [out]} (apply shell/sh* {:quiet? true}
-                             "clojure" "-M:kondo" "--config" config "--lint" roots)
-        findings (:findings (edn/read-string (str/join "\n" out)))]
-    (cond->> findings
-      linter (filter #(= (:type %) linter)))))
+  (cond->> (:findings (run-kondo! :edn (cond-> {} linter (assoc :linters {linter {:level :warning}})) roots))
+    linter (filter #(= (:type %) linter))))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Per-symbol attribution for :discouraged-var / :discouraged-namespace
+;;;; ---------------------------------------------------------------------------
+
+(defn- discouraged-ignores
+  "The [[kondo-ratchet/ignore-matches]] in `content` naming a [[kondo-ratchet/discouragement-linters]] entry."
+  [content]
+  (filterv #(some kondo-ratchet/discouragement-linters (:linters %))
+           (kondo-ratchet/ignore-matches content)))
+
+(def ^:private ignore-key
+  (str ":clj-kondo" "/ignore"))
+
+;; Renaming only the key leaves every form as the reader saw it: a `#_` still discards its map, and a `^` map
+;; is still metadata. Matching the length keeps every row and column.
+(def ^:private disabled-key
+  ":ratchet/unignore")
+
+(defn disable-ignores
+  "`content` with the key of each of `ignores` (from [[kondo-ratchet/ignore-matches]]) renamed so kondo no
+  longer honors it. Every character outside those keys keeps its offset."
+  [content ignores]
+  (reduce (fn [s {:keys [start]}]
+            (let [i (str/index-of s ignore-key start)]
+              (str (subs s 0 i) disabled-key (subs s (+ i (count ignore-key))))))
+          content
+          ignores))
+
+(defn- offset-fn
+  "A function from a 1-based `row` and `col` in `content` to its character offset."
+  [content]
+  (let [line-starts (into [0] (keep-indexed (fn [i c] (when (= c \newline) (inc i)))) content)]
+    (fn [row col]
+      (+ (line-starts (dec row)) (dec col)))))
+
+(def ^:private usages-key
+  "The kondo analysis bucket holding the usages each linter's findings report on."
+  {:discouraged-var       :var-usages
+   :discouraged-namespace :namespace-usages})
+
+(defn- usage-symbol
+  "The fully-qualified symbol a var-usage or namespace-usage names.
+  A var used through an alias takes its namespace from that alias in `alias-ns`, a map of `[file lang alias]` to
+  the namespace the file requires under it; a `.cljc` file can require a different one for each language."
+  [alias-ns {:keys [filename lang alias to name]}]
+  ;; Kondo resolves a re-exported var to the namespace it learned the var came from, which depends on its cache
+  ;; and on which files share the run. The namespace the file required under the alias doesn't move.
+  (if name
+    (symbol (str (get alias-ns [filename (some-> lang str) (str alias)] to)) (str name))
+    (symbol (str to))))
+
+(defn attribute-discouraged
+  "Per-symbol actual counts for the [[kondo-ratchet/discouragement-linters]] ignores in `contents`, a map of
+  file to text.
+  `output` is kondo's JSON output, findings plus var and namespace usages, for the same files with those
+  ignores disabled by [[disable-ignores]] and its `:filename`s mapped back to the keys of `contents`.
+  `baseline` is kondo's findings for the files as they are, with the ignores in place.
+  `known` maps each linter to its configured symbols.
+  An ignore counts once for each distinct symbol among the findings it covers.
+  Returns `{:actual {linter {key count}}, :unattributed _, :unresolved _}`, with keys from
+  [[kondo-ratchet/discouraged-count-key]].
+  The `:unattributed` ignores cover no finding, and the `:unresolved` findings have no configured symbol; both
+  are `{:file _, :line _, :linters [linter]}` maps."
+  [contents output baseline known]
+  ;; A finding missing from `baseline` was suppressed by one of the disabled ignores: the last one before it
+  ;; naming its linter. Kondo has already applied `:config-in-ns` scopes, `:off` overrides, and inline ns
+  ;; config, so only usages it flagged are counted.
+  ;;
+  ;; Known gap: nested ignores undercount. The last ignore before a finding isn't always the one whose form
+  ;; holds it, so with an ignore inside another for the same linter, the inner one also takes the outer one's
+  ;; later findings. The outer ignore then counts toward no budget, leaving its symbol's budget one short, and
+  ;; is reported as unattributed even though removing it would surface a warning. So a new ignore wrapped
+  ;; around an existing one needs no budget.
+  ;; TODO: charge each finding to the ignore that covers it alone. Also lint copies of files with nested
+  ;; ignores, one ignore disabled per copy, and charge a finding that only copy i reveals to ignore i.
+  (let [ignores   (update-vals contents discouraged-ignores)
+        offsets   (update-vals contents offset-fn)
+        reported? (set (map (juxt :filename :row :col :type) baseline))
+        alias-ns  (into {}
+                        (for [{:keys [filename lang alias to]} (get-in output [:analysis :namespace-usages])
+                              :when                            alias]
+                          [[filename (some-> lang str) (str alias)] to]))
+        ;; kondo puts each finding at its usage's own :row/:col
+        usages-at (group-by (juxt :linter :filename :row :col)
+                            (for [[linter k] usages-key
+                                  usage      (get-in output [:analysis k])]
+                              (assoc usage :linter linter)))
+        hits      (for [{:keys [filename row col], :as finding} (:findings output)
+                        :let  [linter (keyword (:type finding))]
+                        :when (and (usages-key linter)
+                                   (contains? contents filename)
+                                   (not (reported? [filename row col (:type finding)])))
+                        :let  [offset ((offsets filename) row col)]]
+                    {:file   filename
+                     :line   row
+                     :linter linter
+                     :ignore (last (filter #(and (<= (:end %) offset) (some #{linter} (:linters %)))
+                                           (ignores filename)))
+                     :symbol (some (comp (known linter) (partial usage-symbol alias-ns))
+                                   (usages-at [linter filename row col]))})
+        counted   (distinct (for [{:keys [file linter ignore symbol]} hits
+                                  :when (and ignore symbol)]
+                              [file ignore linter (kondo-ratchet/discouraged-count-key symbol)]))
+        covered?  (set (map (juxt :file :linter :ignore) hits))]
+    {:actual       (into {}
+                         (for [linter kondo-ratchet/discouragement-linters]
+                           [linter (frequencies (for [[_ _ l k] counted :when (= l linter)] k))]))
+     :unattributed (vec (for [[file file-ignores] ignores
+                              ignore              file-ignores
+                              linter              (filter kondo-ratchet/discouragement-linters (:linters ignore))
+                              :when               (not (covered? [file linter ignore]))]
+                          {:file file, :line (:line ignore), :linters [linter]}))
+     :unresolved   (vec (for [{:keys [file line linter symbol]} hits
+                              :when (nil? symbol)]
+                          {:file file, :line line, :linters [linter]}))}))
+
+(defn- lint-with-ignores-disabled!
+  "Kondo's JSON output, as [[attribute-discouraged]] takes it, for `contents` (a map of file to text) with
+  their [[kondo-ratchet/discouragement-linters]] ignores disabled, plus its findings for the files as they
+  are: `[output baseline]`."
+  [contents]
+  ;; Lints the files and, in the same run, copies with the discouraged ignores disabled, under a temp
+  ;; directory. Kondo configures a copy the same as the original because every ns-group matches on namespace
+  ;; names, not paths.
+  (let [dir      (fs/create-temp-dir {:prefix "kondo-ratchet-attribution"})
+        original (into {} (map (juxt #(str (fs/path dir %)) identity)) (keys contents))
+        ;; keeps only the copies' entries, renamed to their originals
+        restore  (partial keep #(some->> (original (:filename %)) (assoc % :filename)))]
+    (try
+      (doseq [[copy file] original
+              :let        [content (contents file)]]
+        (fs/create-dirs (fs/parent copy))
+        (spit copy (disable-ignores content (discouraged-ignores content))))
+      ;; Without the cache, a run's findings depend only on the files in it, so CI and a local run agree.
+      (let [output (run-kondo! :json
+                               {:output {:analysis {:var-usages true, :namespace-usages true}}}
+                               (concat (keys contents) (keys original))
+                               false)]
+        [(-> output
+             (update :findings restore)
+             (update-in [:analysis :var-usages] restore)
+             (update-in [:analysis :namespace-usages] restore))
+         (filter (comp contents :filename) (:findings output))])
+      (finally
+        (fs/delete-tree dir)))))
+
+(defn attribute-occurrences!
+  "Per-symbol attribution of the [[kondo-ratchet/discouragement-linters]] ignores in each of `groups`, a seq
+  of occurrence seqs, as [[attribute-discouraged]] returns it, in the same order; the `:attribute` that
+  [[dev.kondo-ratchet/check]] and `fix!` take."
+  [groups]
+  ;; One kondo run covers every group, since a JVM start and a lint pass dominate the cost.
+  (let [discouraged-files (fn [occurrences]
+                            (into (sorted-set)
+                                  (comp (filter #(some kondo-ratchet/discouragement-linters (:linters %)))
+                                        (map :file))
+                                  occurrences))
+        file-groups       (mapv discouraged-files groups)
+        contents          (into {} (map (juxt identity slurp)) (reduce into #{} file-groups))
+        config            (kondo-ratchet/kondo-config)
+        known             (into {}
+                                (for [linter kondo-ratchet/discouragement-linters]
+                                  [linter (kondo-ratchet/discouraged-symbols linter config)]))
+        [output baseline] (if (empty? contents)
+                            [{} []]
+                            (lint-with-ignores-disabled! contents))]
+    (mapv #(attribute-discouraged (select-keys contents %) output baseline known) file-groups)))
 
 (def keep-marker
   "Comment token marking an ignore as a verified `:redundant-ignore` false positive.
@@ -224,11 +424,11 @@
 ;;;; ---------------------------------------------------------------------------
 
 (defn- ignored-linters-at
-  "Linter keywords named by the ignore form at `row` of `lines`; reads a couple of extra lines since
-  the vector may wrap."
+  "Linter keywords named by the ignore form starting at `row` of `lines`."
   [lines row]
-  (kondo-ratchet/line-linters
-   (str/join "\n" (subvec lines (dec row) (min (count lines) (+ row 2))))))
+  (->> (kondo-ratchet/ignore-matches (str/join "\n" lines))
+       (filter #(= row (:line %)))
+       (mapcat :linters)))
 
 (defn- lsp-only?
   "Does the ignore form suppress only linters kondo doesn't run, so a re-lint could never restore it?"
@@ -244,8 +444,9 @@
 (defn- remove-ignores-at
   "The inline ignore forms that start on the 1-based `rows` of `text`, removed.
   Forms that name any clojure-lsp/* linter survive ([[names-lsp?]]): the verify pass could never restore
-  that half of the suppression. Forms whose matched span has unbalanced braces (nested maps the regex
-  can't span) are skipped and reported under `:skipped` rather than corrupted.
+  that half of the suppression. Prefixless maps, forms preceded by a `#` (legacy `#^` metadata vs a gensym's `#` -- telling
+  them apart needs a reader), and forms whose matched span has unbalanced braces (nested maps the
+  regex can't span) are skipped and reported under `:skipped` rather than corrupted.
   A line left whitespace-only by a removal is deleted; an inline removal also swallows the spaces
   separating it from the following form when the preceding text already ends in a space.
   Returns `{:text _, :sites [{:row _, :linters _, :original _} ...], :skipped [rows...]}`.
@@ -254,15 +455,28 @@
   [text rows]
   (let [rowset (set rows)
         masked (kondo-ratchet/mask-strings-and-comments text)
+        ;; A `#` right before the match is ambiguous without a reader: in `#^{...}` it is legacy
+        ;; metadata and removal must take it too, in `x#^{...}` it closes a syntax-quote gensym and
+        ;; removal must leave it. Both are rare; skip them rather than grow a partial reader here.
+        hash-caret? (fn [{:keys [start]}]
+                      (and (pos? start)
+                           (= \^ (.charAt ^String masked start))
+                           (= \# (.charAt ^String masked (dec start)))))
+        prefixed? (fn [{:keys [start]}]
+                    (contains? #{\# \^} (.charAt ^String masked start)))
         balanced? (fn [{:keys [start end]}]
                     (let [span (subs masked start end)]
                       (= (count (filter #{\{} span))
                          (count (filter #{\}} span)))))
-        {removable true, unbalanced false}
-        (group-by balanced?
+        {hash-caret true, plain false}
+        (group-by hash-caret?
                   (->> (kondo-ratchet/ignore-matches text)
                        (filter (comp rowset :line))
                        (remove (comp names-lsp? :linters))))
+        {prefixed true, prefixless false}
+        (group-by prefixed? plain)
+        {removable true, unbalanced false}
+        (group-by balanced? prefixed)
         result (reduce (fn [{:keys [text] :as acc} {:keys [start end line linters]}]
                          (let [before     (subs text 0 start)
                                after      (subs text end)
@@ -308,7 +522,7 @@
                  :linters      linters
                  :original     original})
      ;; adjusted like :sites, so warnings point at the rewritten file
-     :skipped (map (comp post-removal-row :line) unbalanced)}))
+     :skipped (map (comp post-removal-row :line) (concat hash-caret prefixless unbalanced))}))
 
 (defn redundant-ignores
   "Report inline ignores kondo flags as redundant, dropping its two known false-positive classes:
@@ -321,6 +535,8 @@
   pre-removal baseline, so files with pre-existing findings are excluded from the sweep and reported.
   An `--audit` removal that sticks takes its stale marker comment with it."
   [parsed]
+  ;; Without this, hooks reading the analysis cache report nothing and their ignores all look redundant.
+  (kondo/warm-cache! lint-roots)
   (println "Running kondo with :redundant-ignore enabled (full lint, takes a minute or two)...")
   (let [audit?     (get-in parsed [:options :audit])
         findings   (kondo-findings! :redundant-ignore lint-roots)
@@ -366,7 +582,7 @@
                                        (remove-ignores-at (slurp file) (map :row file-candidates))]
                                    (spit file text)
                                    (doseq [row skipped]
-                                     (println (format "WARNING: %s:%d skipped -- the ignore form's braces don't balance within the match; remove it by hand"
+                                     (println (format "WARNING: %s:%d skipped -- can't be excised safely (prefixless map, a `#` before the form, or unbalanced braces); remove it by hand"
                                                       file row)))
                                    ;; whether the removed site carried a marker decides where its marker
                                    ;; goes on restore ([[site-restore-plan]]) -- record it, don't infer it
@@ -402,7 +618,8 @@
                                               (count covered)
                                               (str/join ", " (sort (distinct (map :type covered))))
                                               keep-marker)))
-                           (println "Now run `./bin/mage fix-kondo-ratchets` to update the budgets, and `./bin/mage kondo` for the final word.")
+                           (println (str "Now run `./bin/mage kondo-ratchets` to check the suppressions, "
+                                         "then `./bin/mage kondo` to run the final lint."))
                            (when (or (seq exposed) (seq mismatched))
                              (throw (ex-info "the removals left warnings in the tree; fix or re-ignore them by hand and re-run"
                                              {:exit-code 1}))))
@@ -453,12 +670,39 @@
 ;;;; kondo-insert-ignores
 ;;;; ---------------------------------------------------------------------------
 
+(defn- exemption-suggestion
+  "The `insert-ignores` follow-up message recommending where to add `linter` to :comment-exempt, given its
+  `occurrences` (already found) -- naming the prod file, the test file, both, or nil when neither needs
+  it. An existing comment above a flagged form may already justify its ignore, so a file is only named
+  when the scanner still finds uncommented ignores there that its own :comment-exempt doesn't already
+  cover; otherwise it is unnecessary and the ratchet check reports it as stale. Prod and test track
+  :comment-exempt independently, so each is checked against its own file."
+  [linter occurrences]
+  (let [{test-occ true, prod-occ false} (group-by kondo-ratchet/test-occurrence? occurrences)
+        needs-exempt? (fn [ratchets-file occs]
+                        (and (seq occs)
+                             (not (contains? (:comment-exempt (binding [kondo-ratchet/*ratchets-file* ratchets-file]
+                                                                (kondo-ratchet/read-ratchets)))
+                                             linter))
+                             (seq (kondo-ratchet/unjustified #{} occs))))
+        prod?         (needs-exempt? kondo-ratchet/*ratchets-file* prod-occ)
+        test?         (needs-exempt? kondo-ratchet/*test-ratchets-file* test-occ)]
+    (cond
+      (and prod? test?) (format "Also add %s to :comment-exempt in both %s and %s -- the inserted ignores have no comments."
+                                linter kondo-ratchet/*ratchets-file* kondo-ratchet/*test-ratchets-file*)
+      prod?             (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
+                                linter kondo-ratchet/*ratchets-file*)
+      test?             (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
+                                linter kondo-ratchet/*test-ratchets-file*))))
+
 (defn insert-ignores
   "Insert an inline ignore above every site `linter` flags, so a new linter can land without a big-bang
   fix. Args: `LINTER [PATHS...]`; paths default to the usual lint roots."
   [[linter-arg & paths]]
   (when (str/blank? (str linter-arg))
     (throw (ex-info "Usage: ./bin/mage kondo-insert-ignores LINTER [PATHS...]" {:exit-code 1})))
+  ;; Without this, a cache-reading hook linter finds no sites at all.
+  (kondo/warm-cache! lint-roots)
   (let [linter   (keyword (str/replace-first linter-arg #"^:" ""))
         roots    (or (seq paths) lint-roots)
         _        (println (format "Running kondo with %s enabled over %s..." linter (str/join " " roots)))
@@ -470,7 +714,10 @@
     (println)
     (if (empty? by-file)
       (println "No findings; nothing inserted.")
-      (println (format "Inserted %d ignores across %d files. Now seed the budget:\n  ./bin/mage fix-kondo-ratchets --seed %s"
-                       (count (distinct (map (juxt :filename :row) findings)))
-                       (count by-file)
-                       linter)))))
+      (do (println (format "Inserted %d ignores across %d files. Now seed the budget:\n  ./bin/mage kondo-ratchets-shrink --seed %s"
+                           (count (distinct (map (juxt :filename :row) findings)))
+                           (count by-file)
+                           linter))
+          (some-> (exemption-suggestion linter (filter #(some #{linter} (:linters %))
+                                                       (kondo-ratchet/scan roots)))
+                  println)))))

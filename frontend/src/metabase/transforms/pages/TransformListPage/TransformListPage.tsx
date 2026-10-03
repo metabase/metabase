@@ -324,14 +324,14 @@ export const TransformListPage = () => {
 
   return (
     <PageContainer data-testid="transforms-list" gap={0}>
-      <TransformsHeader showMetabotButton />
+      <TransformsHeader />
       <Stack className={CS.overflowHidden}>
         {isMeterLocked && <LockedTransformsBanner />}
-        <Flex gap="md">
+        <Flex gap="lg">
           <TextInput
             placeholder={t`Search...`}
             leftSection={<Icon name="search" />}
-            bdrs="md"
+            bdrs="sm"
             flex="1"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

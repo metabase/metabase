@@ -31,13 +31,13 @@ describe("DataAppSummary", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders a sync-failed app's name as plain text (the link would lead to a dead end)", () => {
+  it("renders a draft's name as plain text (it has no bundle to open)", () => {
     renderWithProviders(
       <DataAppSummary
         app={createMockDataApp({
           display_name: "Sales",
           enabled: true,
-          sync_error: "Bundle file not found",
+          draft: true,
         })}
       />,
     );
@@ -48,54 +48,64 @@ describe("DataAppSummary", () => {
     ).not.toBeInTheDocument();
   });
 
-  describe("sync status", () => {
-    it("shows the short synced SHA when the app has synced", () => {
+  it("renders an outdated app's name as plain text (it refuses to open)", () => {
+    renderWithProviders(
+      <DataAppSummary
+        app={createMockDataApp({
+          display_name: "Sales",
+          enabled: true,
+          outdated: true,
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Sales")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Sales" }),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("description", () => {
+    it("renders the description when the app declares one", () => {
       renderWithProviders(
         <DataAppSummary
           app={createMockDataApp({
-            last_synced_sha: "0123456789abcdef",
-            sync_error: null,
+            display_name: "Sales",
+            description: "Pipeline health by region",
           })}
         />,
       );
 
-      expect(screen.getByText("Synced 0123456")).toBeInTheDocument();
+      expect(screen.getByText("Pipeline health by region")).toBeInTheDocument();
     });
 
-    it("shows a failure label with the error as a tooltip when the sync failed", () => {
+    it("renders nothing extra when the app has no description", () => {
       renderWithProviders(
         <DataAppSummary
-          app={createMockDataApp({ sync_error: "boom: bad manifest" })}
+          app={createMockDataApp({ display_name: "Sales", description: null })}
         />,
       );
 
-      const status = screen.getByText("Sync failed");
-      expect(status).toBeInTheDocument();
-      expect(status).toHaveAttribute("title", "boom: bad manifest");
+      expect(screen.getByText("Sales")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Pipeline health by region"),
+      ).not.toBeInTheDocument();
     });
+  });
 
-    it("prefers the failure label over the SHA when both are present", () => {
+  describe("draft badge", () => {
+    it("labels a draft", () => {
       renderWithProviders(
-        <DataAppSummary
-          app={createMockDataApp({
-            last_synced_sha: "0123456789abcdef",
-            sync_error: "boom",
-          })}
-        />,
+        <DataAppSummary app={createMockDataApp({ draft: true })} />,
       );
 
-      expect(screen.getByText("Sync failed")).toBeInTheDocument();
-      expect(screen.queryByText(/^Synced/)).not.toBeInTheDocument();
+      expect(screen.getByText("Draft")).toBeInTheDocument();
     });
 
-    it("shows 'Not synced yet' when the app has never synced", () => {
-      renderWithProviders(
-        <DataAppSummary
-          app={createMockDataApp({ last_synced_sha: null, sync_error: null })}
-        />,
-      );
+    it("doesn't label an app that isn't a draft", () => {
+      renderWithProviders(<DataAppSummary app={createMockDataApp()} />);
 
-      expect(screen.getByText("Not synced yet")).toBeInTheDocument();
+      expect(screen.queryByText("Draft")).not.toBeInTheDocument();
     });
   });
 });

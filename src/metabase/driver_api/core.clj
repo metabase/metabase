@@ -1,9 +1,8 @@
 (ns metabase.driver-api.core
-  ;; missing docstring warnings are false positives because of Potemkin
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:refer-clojure :exclude [replace compile])
   (:require
    [metabase.actions.core :as actions]
+   [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
@@ -47,6 +46,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.add-alias-info.helpers]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -55,10 +55,12 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.upload.db :as upload.db]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
+;; driver-api facade must keep re-exporting deprecated vars until all drivers migrate off them
 #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
 (p/import-vars
  actions/cached-database
@@ -73,6 +75,7 @@
  actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
+ metabase.query-processor.util.add-alias-info.helpers/mbql-5-aggregation-name
  annotate/aggregation-name
  annotate/base-type-inferer
  annotate/merged-column-info
@@ -101,6 +104,7 @@
  lib.metadata/transforms
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
+ lib.schema.temporal-bucketing/datetime-interval-units
  lib.types.isa/temporal?
  match/match-one
  match/match-many
@@ -185,6 +189,47 @@
   to see if the query has been canceled."
   []
   qp.pipeline/*canceled-chan*)
+
+;; These fill in the instance's time config, so drivers don't have to pass one.
+
+(defn desugar-filter-clause
+  "[[metabase.lib.core/desugar-filter-clause]] with this instance's time config."
+  [filter-clause]
+  (lib/desugar-filter-clause (lib-be/time-config) filter-clause))
+
+(defn negate-boolean-expression
+  "[[metabase.lib.core/negate-boolean-expression]] with this instance's time config."
+  [expression]
+  (lib/negate-boolean-expression (lib-be/time-config) expression))
+
+(defn date-extract
+  "[[metabase.util.date-2/extract]] with this instance's time config."
+  [t unit]
+  (u.date/extract (lib-be/time-config) t unit))
+
+(defn date-truncate
+  "[[metabase.util.date-2/truncate]] with this instance's time config."
+  [t unit]
+  (u.date/truncate (lib-be/time-config) t unit))
+
+(defn date-bucket
+  "[[metabase.util.date-2/bucket]] with this instance's time config."
+  [t unit]
+  (u.date/bucket (lib-be/time-config) t unit))
+
+(defn date-range
+  "[[metabase.util.date-2/range]] with this instance's time config."
+  ([t unit]
+   (u.date/range (lib-be/time-config) t unit))
+  ([t unit options]
+   (u.date/range (lib-be/time-config) t unit options)))
+
+(defn date-comparison-range
+  "[[metabase.util.date-2/comparison-range]] with this instance's time config."
+  ([t unit comparison-type]
+   (u.date/comparison-range (lib-be/time-config) t unit comparison-type))
+  ([t unit comparison-type options]
+   (u.date/comparison-range (lib-be/time-config) t unit comparison-type options)))
 ;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
 (p/import-fn setting/get-value-of-type setting-get-value-of-type)
 (p/import-fn secrets/value-as-string secret-value-as-string)
@@ -236,6 +281,10 @@
   ":metabase.actions.args/row"
   :metabase.actions.args/row)
 
+(def schema.actions.execution-context
+  "::metabase.actions.schema/execution-context"
+  ::actions.schema/execution-context)
+
 (def schema.expression.temporal.timezone-id
   "::lib.schema.expression.temporal/timezone-id"
   ::lib.schema.expression.temporal/timezone-id)
@@ -276,31 +325,31 @@
   "::lib.schema.validate/error"
   ::lib.schema.validate/error)
 
-(def mbql.schema.DateTimeValue
+(def ^{:deprecated "0.63.0"} mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"
   ::mbql.s/DateTimeValue)
 
-(def mbql.schema.Aggregation
+(def ^{:deprecated "0.63.0"} mbql.schema.Aggregation
   "::mbql.s/Aggregation"
   ::mbql.s/Aggregation)
 
-(def mbql.schema.OrderBy
+(def ^{:deprecated "0.63.0"} mbql.schema.OrderBy
   "::mbql.s/OrderBy"
   ::mbql.s/OrderBy)
 
-(def mbql.schema.Query
+(def ^{:deprecated "0.63.0"} mbql.schema.Query
   "::mbql.s/Query"
   ::mbql.s/Query)
 
-(def mbql.schema.value
+(def ^{:deprecated "0.63.0"} mbql.schema.value
   "mbql.s/value"
   ::mbql.s/value)
 
-(def mbql.schema.field
+(def ^{:deprecated "0.63.0"} mbql.schema.field
   "mbql.s/field"
   ::mbql.s/field)
 
-(def mbql.schema.FieldOrExpressionDef
+(def ^{:deprecated "0.63.0"} mbql.schema.FieldOrExpressionDef
   "::mbql.s/FieldOrExpressionDef"
   ::mbql.s/FieldOrExpressionDef)
 
@@ -340,10 +389,10 @@
   "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
   ::qp.compile/query-with-compiled-query)
 
-(def MBQLQuery
+(def ^{:deprecated "0.63.0"} MBQLQuery
   "Schema for a legacy MBQL inner query."
   ::mbql.s/MBQLInnerQuery)
 
-(def Join
+(def ^{:deprecated "0.63.0"} Join
   "Schema for a legacy MBQL join."
   ::mbql.s/Join)

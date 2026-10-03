@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
@@ -11,6 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
+   [metabase.session.models.session :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -21,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as string]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -90,29 +93,32 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
 
-(deftest user-list-for-data-analysts-test
-  (testing "GET /api/user"
-    (testing "A data analyst can get a list of all active users"
-      (mt/with-temp [:model/User {analyst-id :id :as analyst} {:first_name "Analyst"
-                                                               :last_name  "Testuser"
-                                                               :email      "analyst-list@metabase.com"
-                                                               :is_data_analyst true}]
-        (let [result (->> (:data (mt/user-http-request analyst :get 200 "user"))
-                          (filter #(or (mt/test-user? %) (= (:id %) analyst-id))))]
-          (is (= #{"crowberto@metabase.com"
-                   "lucky@metabase.com"
-                   "rasta@metabase.com"
-                   "analyst-list@metabase.com"}
-                 (set (map :email result)))))))
-    (testing "A sandboxed data analyst only sees themselves"
-      (mt/with-temp [:model/User {_ :id :as analyst} {:first_name "Sandboxed"
-                                                      :last_name  "Analyst"
-                                                      :email      "sandboxed-analyst@metabase.com"
-                                                      :is_data_analyst true}]
-        (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
-          (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
-            (is (= ["sandboxed-analyst@metabase.com"]
-                   (map :email result)))))))))
+(mt/when-ee-evailable
+ (deftest user-list-for-data-analysts-test
+   (testing "GET /api/user"
+     ;; data analysts may list users only while advanced-permissions is available
+     (mt/with-premium-features #{:advanced-permissions}
+       (testing "A data analyst can get a list of all active users"
+         (mt/with-temp [:model/User {analyst-id :id :as analyst} {:first_name "Analyst"
+                                                                  :last_name  "Testuser"
+                                                                  :email      "analyst-list@metabase.com"
+                                                                  :is_data_analyst true}]
+           (let [result (->> (:data (mt/user-http-request analyst :get 200 "user"))
+                             (filter #(or (mt/test-user? %) (= (:id %) analyst-id))))]
+             (is (= #{"crowberto@metabase.com"
+                      "lucky@metabase.com"
+                      "rasta@metabase.com"
+                      "analyst-list@metabase.com"}
+                    (set (map :email result)))))))
+       (testing "A sandboxed data analyst only sees themselves"
+         (mt/with-temp [:model/User {_ :id :as analyst} {:first_name "Sandboxed"
+                                                         :last_name  "Analyst"
+                                                         :email      "sandboxed-analyst@metabase.com"
+                                                         :is_data_analyst true}]
+           (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+             (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
+               (is (= ["sandboxed-analyst@metabase.com"]
+                      (map :email result)))))))))))
 
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
@@ -618,6 +624,16 @@
                    :common_name "Rasta Toucan"}
                   resp)))))))
 
+(deftest ^:parallel get-user-non-personal-users-test
+  (testing "GET /api/user/:id"
+    (testing "returns 404 for API-key pseudo-users, even for admins (UXW-4240)"
+      (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (str "user/" api-key-user-id))))))
+    (testing "returns 404 for the internal user"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 (str "user/" config/internal-mb-user-id)))))))
+
 (deftest get-user-structured-attributes-test
   (testing "GET /api/user/:id"
     (testing "includes structured_attributes that tracks attribute provenance"
@@ -627,6 +643,7 @@
                                        :password "p@ssw0rd"
                                        :login_attributes {"role" "admin"
                                                           "department" "engineering"}}]
+        (auth-identity/set-password! (:id user) "p@ssw0rd")
         (let [response (mt/user-http-request :crowberto :get 200 (str "user/" (:id user)))]
           (testing "response includes structured_attributes"
             (is (contains? response :structured_attributes)))
@@ -649,6 +666,7 @@
                                                         "env" "production"}
                                        :login_attributes {"role" "admin"
                                                           "department" "engineering"}}]
+        (auth-identity/set-password! (:id user) "p@ssw0rd")
         (let [response (mt/user-http-request :crowberto :get 200 (str "user/" (:id user)))]
           (testing "User attributes override jwt attributes when keys conflict"
             (is (= {:role {:source "user" :frozen false :value "admin"
@@ -720,6 +738,19 @@
               (is (= {:role {:source "user" :frozen false :value "user"}}
                      (:structured_attributes get-response))))))))))
 
+(deftest ^:parallel update-api-key-user-test
+  (testing "PUT /api/user/:id"
+    (testing "returns 404 for API-key pseudo-users, so login_attributes etc. cannot be set on them (UXW-4240)"
+      (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404 (str "user/" api-key-user-id)
+                                     {:login_attributes {"cat" 50}
+                                      :first_name       "Updated"})))
+        (testing "nothing was updated"
+          (is (=? {:login_attributes nil
+                   :first_name       (comp not #{"Updated"})}
+                  (t2/select-one [:model/User :login_attributes :first_name] :id api-key-user-id))))))))
+
 (deftest combine-function-test
   (testing "combine function merges attributes correctly"
     (testing "basic merging"
@@ -775,6 +806,22 @@
                            (dissoc :user_group_memberships))))
                 (is (= [{:id (:id (perms-group/all-users))}]
                        (:user_group_memberships resp)))))))))))
+
+(deftest create-user-creates-personal-collection-test
+  (testing "POST /api/user"
+    (testing "creates the new User's Personal Collection as part of the request (#78430)"
+      (mt/with-model-cleanup [:model/User :model/Collection]
+        (mt/with-fake-inbox
+          (let [user-id (u/the-id (mt/user-http-request :crowberto :post 200 "user"
+                                                        {:first_name "Personal"
+                                                         :last_name  "Collection"
+                                                         :email      (mt/random-email)}))]
+            (testing "the Collection row exists without anything having hydrated :personal_collection_id"
+              (is (some? (t2/select-one :model/Collection :personal_owner_id user-id))))
+            (testing "so it is immediately visible to GET /api/collection?personal-only=true"
+              (is (contains? (into #{} (map :personal_owner_id)
+                                   (mt/user-http-request :crowberto :get 200 "collection" :personal-only true))
+                             user-id)))))))))
 
 (deftest ^:parallel create-user-non-superuser-test
   (testing "POST /api/user"
@@ -1250,30 +1297,105 @@
 
 (deftest update-data-analyst-status-test
   (testing "PUT /api/user/:id"
-    (testing "Test that a superuser can set the :is_data_analyst flag (adds to Data Analysts group)"
-      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst@metabase.com"}]
-        (is (not (user-is-data-analyst? user-id)))
-        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/when-ee-evailable
+       (testing "Test that a superuser can set the :is_data_analyst flag (adds to Data Analysts group)"
+         (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst@metabase.com"}]
+           (is (not (user-is-data-analyst? user-id)))
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                 {:is_data_analyst true})
+           (is (user-is-data-analyst? user-id))))
+       (testing "Test that a superuser can unset the :is_data_analyst flag (removes from Data Analysts group)"
+         (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst-unset@metabase.com"}]
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                 {:is_data_analyst true})
+           (is (user-is-data-analyst? user-id))
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                 {:is_data_analyst false})
+           (is (not (user-is-data-analyst? user-id))))))
+      (testing "Test that a normal user cannot change the :is_data_analyst flag for themselves"
+        (is (not (user-is-data-analyst? (mt/user->id :rasta))))
+        (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
                               {:is_data_analyst true})
-        (is (user-is-data-analyst? user-id))))
-    (testing "Test that a superuser can unset the :is_data_analyst flag (removes from Data Analysts group)"
-      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst-unset@metabase.com"}]
-        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                              {:is_data_analyst true})
-        (is (user-is-data-analyst? user-id))
-        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                              {:is_data_analyst false})
-        (is (not (user-is-data-analyst? user-id)))))
-    (testing "Test that a normal user cannot change the :is_data_analyst flag for themselves"
-      (is (not (user-is-data-analyst? (mt/user->id :rasta))))
-      (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
-                            {:is_data_analyst true})
-      (is (not (user-is-data-analyst? (mt/user->id :rasta)))))
-    (testing "Test that a normal user cannot change the :is_data_analyst flag for another user"
-      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst2@metabase.com"}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :put 403 (str "user/" user-id)
-                                     {:is_data_analyst true})))))))
+        (is (not (user-is-data-analyst? (mt/user->id :rasta)))))
+      (testing "Test that a normal user cannot change the :is_data_analyst flag for another user"
+        (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst2@metabase.com"}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "user/" user-id)
+                                       {:is_data_analyst true}))))))))
+
+(deftest update-data-analyst-status-requires-advanced-permissions-test
+  (testing "PUT /api/user/:id with is_data_analyst"
+    (testing "is refused without the :advanced-permissions feature"
+      (mt/with-temp [:model/User {user-id :id} {:email "no-advanced-perms-analyst@metabase.com"}]
+        (mt/with-premium-features #{}
+          (is (= (str perms/fail-to-add-data-analyst-msg)
+                 (mt/user-http-request :crowberto :put 402 (str "user/" user-id)
+                                       {:is_data_analyst true})))
+          (testing "and neither the membership nor the flag is left behind"
+            (is (not (user-is-data-analyst? user-id)))
+            (is (not (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))
+    (mt/when-ee-evailable
+     (testing "can still unset the flag without the :advanced-permissions feature"
+       (mt/with-temp [:model/User {user-id :id} {:email "downgraded-analyst@metabase.com"}]
+         (mt/with-premium-features #{:advanced-permissions}
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst true})
+           (is (user-is-data-analyst? user-id)))
+         (mt/with-premium-features #{}
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst false})
+           (is (not (user-is-data-analyst? user-id)))
+           (is (not (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))
+
+(deftest reasserting-data-analyst-status-is-idempotent-test
+  (testing "PUT /api/user/:id with is_data_analyst true on someone already in the group"
+    (mt/when-ee-evailable
+     (mt/with-temp [:model/User {user-id :id} {:email "reasserted-analyst@metabase.com"}]
+       (mt/with-premium-features #{:advanced-permissions}
+         (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst true})
+         (testing "is a no-op while the feature is available"
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst true})
+           (is (user-is-data-analyst? user-id))))
+       (mt/with-premium-features #{}
+         (testing "and still a no-op after a downgrade: nothing is being added"
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst true})
+           (is (user-is-data-analyst? user-id))
+           (is (true? (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))
+
+(deftest invite-user-into-data-analyst-group-requires-advanced-permissions-test
+  (testing "POST /api/user cannot put a new user in the Data Analysts group without :advanced-permissions"
+    (let [email    (format "invited-analyst-%s@metabase.com" (random-uuid))
+          group-id (:id (perms-group/data-analyst))]
+      (try
+        (mt/with-premium-features #{}
+          (is (= (str perms/fail-to-add-data-analyst-msg)
+                 (mt/user-http-request :crowberto :post 402 "user"
+                                       {:first_name             "Invited"
+                                        :last_name              "Analyst"
+                                        :email                  email
+                                        :user_group_memberships [{:id (:id (perms-group/all-users))}
+                                                                 {:id group-id}]})))
+          (testing "and no user is created at all, since the invite is transactional"
+            (is (not (t2/exists? :model/User :email email)))))
+        (finally
+          (t2/delete! :model/User :email email))))))
+
+(mt/when-ee-evailable
+ (deftest invite-user-into-data-analyst-group-with-advanced-permissions-test
+   (testing "POST /api/user can put a new user in the Data Analysts group with :advanced-permissions"
+     (let [email    (format "invited-analyst-%s@metabase.com" (random-uuid))
+           group-id (:id (perms-group/data-analyst))]
+       (try
+         (mt/with-premium-features #{:advanced-permissions}
+           (let [{user-id :id} (mt/user-http-request :crowberto :post 200 "user"
+                                                     {:first_name             "Invited"
+                                                      :last_name              "Analyst"
+                                                      :email                  email
+                                                      :user_group_memberships [{:id (:id (perms-group/all-users))}
+                                                                               {:id group-id}]})]
+             (is (user-is-data-analyst? user-id))
+             (is (true? (boolean (t2/select-one-fn :is_data_analyst :model/User :id user-id))))))
+         (finally
+           (t2/delete! :model/User :email email)))))))
 
 (deftest filter-by-data-analyst-test
   (testing "GET /api/user"
@@ -1303,6 +1425,37 @@
           (testing "non-analyst is included"
             (is (contains? result-ids non-analyst-id))))))))
 
+(deftest data-analyst-user-list-access-follows-the-advanced-permissions-feature-test
+  (testing "GET /api/user is open to a data analyst only while advanced-permissions is available"
+    (mt/with-temp [:model/User {analyst-id :id} {:email           "list-analyst@metabase.com"
+                                                 :is_data_analyst true}]
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:advanced-permissions}
+         (is (map? (mt/user-http-request analyst-id :get 200 "user")))))
+      (mt/with-premium-features #{}
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request analyst-id :get 403 "user")))))))
+
+(deftest filter-by-can-access-data-studio-test
+  (testing "GET /api/user"
+    (mt/with-temp [:model/User {analyst-id :id} {:email           "data-studio-analyst@metabase.com"
+                                                 :is_data_analyst true}
+                   :model/User {plain-id :id}   {:email "data-studio-plain@metabase.com"}]
+      (letfn [(matching-ids [can-access?]
+                (set (map :id (:data (mt/user-http-request :crowberto :get 200 "user"
+                                                           :can_access_data_studio can-access?)))))]
+        (mt/when-ee-evailable
+         (testing "a data analyst can access Data Studio while advanced-permissions is available"
+           (mt/with-premium-features #{:advanced-permissions}
+             (is (contains? (matching-ids true) analyst-id))
+             (is (not (contains? (matching-ids true) plain-id))))))
+        (testing "but not once the feature is gone"
+          (mt/with-premium-features #{}
+            (is (not (contains? (matching-ids true) analyst-id)))
+            (is (contains? (matching-ids false) analyst-id))
+            (testing "while superusers still can"
+              (is (contains? (matching-ids true) (mt/user->id :crowberto))))))))))
+
 (deftest update-permissions-test
   (testing "PUT /api/user/:id"
     (testing "Check that a non-superuser CANNOT update someone else's user details"
@@ -1317,6 +1470,7 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "google"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -1327,6 +1481,7 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "ldap"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -1339,6 +1494,7 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "google"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (client/client creds :put 200 (format "user/%d" (u/the-id user))
@@ -1347,6 +1503,7 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "ldap"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (client/client creds :put 200 (format "user/%d" (u/the-id user))
@@ -1478,7 +1635,8 @@
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
-    (mt/with-temp [:model/User {user-id :id, email :email} {:password "p@ssw0rd"}]
+    (mt/with-temp [:model/User {user-id :id, email :email} {}]
+      (auth-identity/set-password! user-id "p@ssw0rd")
       (letfn [(set-locale! [expected-status-code new-locale]
                 (mt/client {:username email, :password "p@ssw0rd"}
                            :put expected-status-code (str "user/" user-id)
@@ -1573,25 +1731,26 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- user-can-reset-password? [superuser?]
-  (mt/with-temp [:model/User user {:password "def", :is_superuser (boolean superuser?)}]
+(defn- user-can-reset-password! [superuser?]
+  (mt/with-temp [:model/User user {:is_superuser (boolean superuser?)}]
+    (auth-identity/set-password! (:id user) "def")
     (let [creds {:username (:email user), :password "def"}
-          hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))]
-      ;; use API to reset the users password
+          password-hash (fn [] (:password_hash (t2/select-one-fn :credentials :model/AuthIdentity
+                                                                 :user_id (:id user), :provider "password")))
+          original-hash (password-hash)]
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                         :old_password "def"})
-      ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
-      (not= hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))))))
+      (not= original-hash (password-hash)))))
 
 (deftest can-reset-password-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we can reset our own password. If user is a"
       (testing "superuser"
         (is (true?
-             (user-can-reset-password? :superuser))))
+             (user-can-reset-password! :superuser))))
       (testing "non-superuser"
         (is (true?
-             (user-can-reset-password? (not :superuser))))))))
+             (user-can-reset-password! (not :superuser))))))))
 
 (deftest reset-password-permissions-test
   (testing "PUT /api/user/:id/password"
@@ -1612,19 +1771,123 @@
                                     {:password "whateverUP12!!"
                                      :old_password "mismatched"}))))))
 
+(deftest reset-password-old-password-check-is-throttled-test
+  (testing "PUT /api/user/:id/password - repeated wrong old_password attempts are throttled"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "correct-horse-1!")
+      (let [creds     {:username (:email user) :password "correct-horse-1!"}
+            wrong     (fn [] (mt/client creds :put 400 (format "user/%d/password" (:id user))
+                                        {:password "abc123!!DEF" :old_password "wrong"}))
+            throttler (throttle/make-throttler :user-id :attempts-threshold 3)]
+        (with-redefs [api.user/password-change-throttler throttler]
+          (testing "attempts up to the threshold return the normal Invalid password error"
+            (dotimes [_ 3]
+              (is (=? {:errors {:old_password "Invalid password"}} (wrong)))))
+          (testing "the next attempt is throttled, not a fresh password check"
+            (is (re-find #"^Too many attempts!"
+                         (get-in (mt/client creds :put 400 (format "user/%d/password" (:id user))
+                                            {:password "abc123!!DEF" :old_password "wrong"})
+                                 [:errors :user-id] "")))))))))
+
+(deftest reset-password-verifies-old-password-against-auth-identity-test
+  (testing "PUT /api/user/:id/password"
+    (testing "old_password is checked against the password AuthIdentity, like login, not the legacy core_user columns"
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
+        (t2/update! (t2/table-name :model/User) (:id user) {:password "not-a-bcrypt-hash", :password_salt "stale"})
+        (is (=? {:success true}
+                (mt/client {:username (:email user), :password "def"}
+                           :put 200 (format "user/%d/password" (:id user))
+                           {:password "abc123!!DEF", :old_password "def"})))
+        (testing "the new password authenticates and the stale core_user columns are left untouched"
+          (is (some? (mt/client :post 200 "session" {:username (:email user), :password "abc123!!DEF"})))
+          (is (= {:password "not-a-bcrypt-hash", :password_salt "stale"}
+                 (into {} (t2/select-one [:model/User :password :password_salt] :id (:id user))))))))))
+
 (deftest reset-password-session-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we return a session if we are changing our own password"
-      (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
         (let [creds {:username (:email user), :password "def"}]
           (is (=? {:session_id string/valid-uuid?
                    :success true}
                   (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                     :old_password "def"}))))))
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
-      (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                                     :old_password "def"})))))))
+
+(defn- generate-session!
+  [user-id auth-identity-id & {:keys [mfa_auth_identity_id]}]
+  (let [session-id (session/generate-session-id)
+        session-key (str (random-uuid))
+        session-key-hashed (session/hash-session-key session-key)]
+    (t2/insert! :model/Session {:id session-id
+                                :key_hashed session-key-hashed
+                                :user_id user-id
+                                :auth_identity_id auth-identity-id
+                                :mfa_auth_identity_id mfa_auth_identity_id})
+    session-key))
+
+(deftest reset-password-propagates-mfa-test
+  (testing "PUT /api/user/:id/password"
+    (testing "Test that the session returned has the same MFA method as the initial session"
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:multi-factor-auth}
+         (mt/with-temp [:model/User user {:is_superuser false}]
+           (auth-identity/set-password! (:id user) "def")
+           (let [user-id               (:id user)
+                 auth-identity         (t2/select-one :model/AuthIdentity :user_id user-id)
+                 totp-auth-identity-id (t2/insert-returning-pk! :model/AuthIdentity {:user_id  user-id
+                                                                                     :provider "totp"})
+                 original-session-key  (generate-session! user-id
+                                                          (:id auth-identity)
+                                                          :mfa_auth_identity_id totp-auth-identity-id)
+                 original-session      (t2/select-one
+                                        :model/Session
+                                        :key_hashed (session/hash-session-key original-session-key))
+                 resp                  (mt/client original-session-key
+                                                  :put 200 (format "user/%d/password" user-id)
+                                                  {:password "abc123!!DEF"
+                                                   :old_password "def"})]
+             (is (=? {:session_id string/valid-uuid?
+                      :success true}
+                     resp))
+             ;; Original session should be gone
+             (is (not (t2/exists?
+                       :model/Session
+                       :key_hashed (session/hash-session-key original-session-key))))
+             (let [new-session-key  (:session_id resp)
+                   new-session      (t2/select-one
+                                     :model/Session
+                                     :key_hashed (session/hash-session-key new-session-key))]
+               ;; Both the new and the old session should have an mfa id
+               (is (some? (:mfa_auth_identity_id original-session)))
+               (is (some? (:mfa_auth_identity_id new-session)))
+               ;; Which is the same
+               (is (= (:mfa_auth_identity_id original-session)
+                      (:mfa_auth_identity_id new-session)))
+               ;; But they should be distinct sessions
+               (is (not= (:id original-session) (:id new-session)))))))))))
+
+(deftest reset-password-invalidates-existing-sessions-test
+  (testing "PUT /api/user/:id/password invalidates the user's existing sessions"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "def")
+      (let [session (auth-identity/create-session-with-auth-tracking!
+                     user
+                     {:device_id "test-device" :embedded false :token_exchange false
+                      :device_description "Test" :ip_address "127.0.0.1"}
+                     :provider/password)]
+        (is (some? (t2/select-one :model/Session :id (:id session)))
+            "sanity check: the session exists before the password change")
+        (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user))
+                              {:password "abc123!!DEF", :old_password "def"})
+        (is (nil? (t2/select-one :model/Session :id (:id session)))
+            "the user's pre-existing session should be deleted after the password change")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
@@ -1677,6 +1940,7 @@
                                                  :last_name (mt/random-name)
                                                  :email "def@metabase.com"
                                                  :password "def123"}]
+          (auth-identity/set-password! id "def123")
           (let [creds {:username "def@metabase.com"
                        :password "def123"}]
             (testing "defaults to true"

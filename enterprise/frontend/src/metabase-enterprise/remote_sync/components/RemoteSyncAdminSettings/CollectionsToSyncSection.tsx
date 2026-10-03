@@ -16,7 +16,7 @@ export const CollectionsToSyncSection = () => {
       title={t`Collections to sync`}
       description={t`Choose which collections to sync with git.`}
     >
-      <Stack gap="lg">
+      <Stack gap="xl">
         <TopLevelCollectionsList />
         {useTenants && (
           <>

@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
@@ -17,7 +17,7 @@ const setup = (mockDatabases = [TEST_DATABASE]) => {
       databases: mockDatabases,
     }),
   });
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   const databases = mockDatabases.map((db) =>
     checkNotNull(metadata.database(db.id)),
   );

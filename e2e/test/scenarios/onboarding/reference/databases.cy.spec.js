@@ -10,60 +10,44 @@ describe("scenarios > reference > databases", () => {
     cy.signInAsAdmin();
   });
 
-  it("should see the listing", () => {
+  it("should let an admin browse and edit database details", () => {
     cy.visit("/reference/databases");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database");
-  });
-
-  xit("should let the user navigate to details", () => {
-    cy.visit("/reference/databases");
-    cy.contains("Sample Database").click();
-    cy.contains("Why this database is interesting");
-  });
-
-  it("should let an admin edit details about the database", () => {
-    cy.visit("/reference/databases/1");
-
-    // For some unknown reason, calling .click() causes the form to immediately reset, putting us
-    // in a state like we never clicked the edit button TODO: Fix
+    cy.findByTestId("data-reference-list-item")
+      .findByText("Sample Database")
+      .click();
+    H.main()
+      .findByText("Why this database is interesting")
+      .should("be.visible");
     cy.button(/Edit/).trigger("click");
-    // Q - is there any cleaner way to get a nearby element without having to know the DOM?
     cy.findByPlaceholderText("No description yet").type("A pretty ok store");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("A pretty ok store");
+    cy.findByPlaceholderText("Sample Database")
+      .clear()
+      .type("My definitely profitable business");
+    cy.button("Save").click();
+    H.main()
+      .should("contain", "A pretty ok store")
+      .and("contain", "My definitely profitable business");
   });
 
   it("should let an admin start to edit and cancel without saving", () => {
     cy.visit("/reference/databases/1");
-    // For some unknown reason, calling .click() causes the form to immediately reset, putting us
-    // in a state like we never clicked the edit button TODO: Fix
     cy.button(/Edit/).trigger("click");
-    // Q - is there any cleaner way to get a nearby element without having to know the DOM?
+    cy.findByPlaceholderText("Nothing interesting yet")
+      .invoke("val")
+      .as("originalInterestingDetails");
     cy.findByPlaceholderText("Nothing interesting yet").type(
       "Turns out it's not",
     );
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Cancel").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Turns out").should("have.length", 0);
-  });
-
-  it("should let an admin edit the database name", () => {
-    cy.visit("/reference/databases/1");
-    // For some unknown reason, calling .click() causes the form to immediately reset, putting us
-    // in a state like we never clicked the edit button TODO: Fix
+    cy.button("Cancel").click();
+    cy.button(/Edit/).should("be.visible");
+    H.main().should("not.contain", "Turns out it's not");
     cy.button(/Edit/).trigger("click");
-
-    cy.findByPlaceholderText("Sample Database")
-      .clear()
-      .type("My definitely profitable business");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("My definitely profitable business");
+    cy.get("@originalInterestingDetails").then((originalValue) => {
+      cy.findByPlaceholderText("Nothing interesting yet").should(
+        "have.value",
+        originalValue,
+      );
+    });
   });
 
   describe("multiple databases sorting order", () => {
@@ -72,18 +56,6 @@ describe("scenarios > reference > databases", () => {
         cy.addSQLiteDatabase({ name });
       });
     });
-
-    it(
-      "should sort data reference database list (metabase#15598)",
-      { tags: "@skip" },
-      () => {
-        cy.visit("/browse");
-        checkReferenceDatabasesOrder();
-
-        cy.visit("/reference/databases/");
-        checkReferenceDatabasesOrder();
-      },
-    );
 
     it("should sort databases in new UI based question data selection popover", () => {
       H.startNewQuestion();
@@ -99,14 +71,6 @@ describe("scenarios > reference > databases", () => {
         });
       });
     });
-
-    it(
-      "should sort databases in new native question data selection popover",
-      { tags: "@skip" },
-      () => {
-        checkQuestionSourceDatabasesOrder("Native query");
-      },
-    );
   });
 
   describe("x-ray", () => {
@@ -115,8 +79,6 @@ describe("scenarios > reference > databases", () => {
         "getXrayDashboard",
       );
       H.resetSnowplow();
-      H.restore();
-      cy.signInAsAdmin();
       H.enableTracking();
     });
 
@@ -124,7 +86,7 @@ describe("scenarios > reference > databases", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    it("should x-ray a table in a data reference page", () => {
+    it("should x-ray a table and a field in data reference pages", () => {
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}`);
       cy.findAllByRole("listitem")
         .filter(":contains(X-ray this table)")
@@ -136,9 +98,7 @@ describe("scenarios > reference > databases", () => {
         event_detail: "table",
         triggered_from: "data_reference",
       });
-    });
 
-    it("should x-ray a field in a data reference page", () => {
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}/fields/${PEOPLE.EMAIL}`,
       );
@@ -155,25 +115,3 @@ describe("scenarios > reference > databases", () => {
     });
   });
 });
-
-function checkReferenceDatabasesOrder() {
-  cy.get("[class*=Card]").as("databaseCard").first().should("have.text", "a");
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.get("@databaseCard").last().should("have.text", "Sample Database");
-}
-
-function checkQuestionSourceDatabasesOrder() {
-  // Last item is "Saved Questions" for UI based questions so we have to check for the one before that (-2), and the last one for "Native" (-1)
-  const lastDatabaseIndex = -1;
-  const selector = "[data-element-id=list-item]-title";
-
-  H.startNewQuestion();
-  H.popover().within(() => {
-    cy.findByText("Raw Data").click();
-    cy.get(selector).as("databaseName").eq(1).should("have.text", "a");
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.get("@databaseName")
-      .eq(lastDatabaseIndex)
-      .should("have.text", "Sample Database");
-  });
-}

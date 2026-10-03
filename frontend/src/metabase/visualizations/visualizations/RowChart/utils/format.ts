@@ -1,18 +1,18 @@
 import type { NumberLike, StringLike } from "@visx/scale";
 
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
-import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
-import type {
-  GroupedDatum,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
-import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
+import {
+  type BarData,
+  type CartesianChartColumns,
+  type ChartTicksFormatters,
+  type GroupedDatum,
+  type SeriesInfo,
+  getFormattingOptionsWithoutScaling,
+  getLabelsMetricColumn,
+  getStackOffset,
+} from "metabase/viz-core";
 import type {
   DatasetColumn,
   RowValue,
@@ -92,6 +92,6 @@ export const getLabelsFormatter = (
 export const getColumnValueFormatter = () => {
   return (value: RowValue, column: DatasetColumn) =>
     isEmpty(value)
-      ? NULL_DISPLAY_VALUE
+      ? getNullDisplayValue()
       : String(formatValue(value, { column }));
 };

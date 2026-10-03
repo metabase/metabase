@@ -9,18 +9,8 @@ import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
 import { SsoReload } from "metabase/auth/components/SsoReload";
-import {
-  BrowseDatabases,
-  BrowseMetrics,
-  BrowseModels,
-  BrowseSchemas,
-  BrowseTables,
-  TablePermalinkRedirect,
-} from "metabase/browse";
 import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
-import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
-import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import {
   lazyModalRoute,
@@ -29,12 +19,8 @@ import {
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
-import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
-import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
-import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
-import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -46,7 +32,11 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { QuestionHashRedirect } from "metabase/query_builder/components/QuestionHashRedirect";
+import {
+  QuestionHashRedirect,
+  loadMetabotQueryBuilder,
+  loadQueryBuilder,
+} from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { getReferenceRoutes } from "metabase/reference/routes";
 import {
@@ -60,14 +50,13 @@ import {
   Navigate,
   type RouteObject,
   redirect,
+  registerBackgroundPagePrefetch,
   registerPagePrefetch,
   toRouteObjects,
   useParams,
 } from "metabase/router";
-import { SearchApp } from "metabase/search/containers/SearchApp";
 import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
-import { Setup } from "metabase/setup/components/Setup";
-import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { getCollectionTimelineRoutes } from "metabase/timelines/collections/routes";
 
 import { LoadCurrentUser } from "./LoadCurrentUser";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
@@ -104,14 +93,12 @@ export function LegacyBrowseRedirect() {
  * every later navigation to the query builder is synchronous again.
  */
 const queryBuilder = () =>
-  import("metabase/query_builder/containers/QueryBuilder").then(
-    ({ QueryBuilder }) => ({ Component: QueryBuilder }),
-  );
+  loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
 
 const metabotQueryBuilder = () =>
-  import("metabase/query_builder/components/MetabotQueryBuilder").then(
-    ({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }),
-  );
+  loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
+    Component: MetabotQueryBuilder,
+  }));
 
 /**
  * Documents, in their own chunk. It carries the rich text editing stack, which
@@ -122,28 +109,115 @@ const metabotQueryBuilder = () =>
  * opening one does not depend on the page chunk having arrived.
  */
 const dashboardApp = () =>
-  import("metabase/dashboard/containers/DashboardApp/DashboardApp").then(
-    ({ DashboardApp }) => ({ Component: DashboardApp }),
-  );
+  import(
+    /* webpackChunkName: "dashboard" */ "metabase/dashboard/containers/DashboardApp/DashboardApp"
+  ).then(({ DashboardApp }) => ({ Component: DashboardApp }));
 
 const automaticDashboardApp = () =>
-  import("metabase/dashboard/containers/AutomaticDashboardApp").then(
-    ({ AutomaticDashboardApp }) => ({ Component: AutomaticDashboardApp }),
-  );
+  import(
+    /* webpackChunkName: "automatic-dashboard" */ "metabase/dashboard/containers/AutomaticDashboardApp"
+  ).then(({ AutomaticDashboardApp }) => ({ Component: AutomaticDashboardApp }));
 
 const metricsViewerPage = () =>
-  import("metabase/metrics-viewer").then(({ MetricsViewerPage }) => ({
+  import(
+    /* webpackChunkName: "metrics-viewer" */ "metabase/metrics-viewer"
+  ).then(({ MetricsViewerPage }) => ({
     Component: MetricsViewerPage,
   }));
 
+const tableDetailPage = () =>
+  import(
+    /* webpackChunkName: "table-detail" */ "metabase/detail-view/pages/TableDetailPage"
+  ).then(({ TableDetailPage }) => ({ Component: TableDetailPage }));
+
 const documentPage = () =>
-  import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
-    Component: DocumentPageOuter,
+  import(/* webpackChunkName: "documents" */ "metabase/documents/routes").then(
+    ({ DocumentPageOuter }) => ({
+      Component: DocumentPageOuter,
+    }),
+  );
+
+const setupPage = () =>
+  import(
+    /* webpackChunkName: "setup" */ "metabase/setup/components/Setup"
+  ).then(({ Setup }) => ({ Component: Setup }));
+
+/**
+ * The home page, in its own chunk. The route also covers the redirect to a
+ * configured landing page, so an instance that sets one fetches this chunk once
+ * before it leaves "/".
+ */
+const landingPage = () =>
+  import(
+    /* webpackChunkName: "home" */ "metabase/home/components/LandingPageRedirect"
+  ).then(({ LandingPageRedirect }) => ({ Component: LandingPageRedirect }));
+
+const onboardingPage = () =>
+  import(
+    /* webpackChunkName: "onboarding" */ "metabase/home/components/Onboarding"
+  ).then(({ Onboarding }) => ({ Component: Onboarding }));
+
+const searchApp = () =>
+  import(
+    /* webpackChunkName: "search" */ "metabase/search/containers/SearchApp"
+  ).then(({ SearchApp }) => ({ Component: SearchApp }));
+
+const collectionLanding = () =>
+  import(
+    /* webpackChunkName: "collection" */ "metabase/collections/components/CollectionLanding"
+  ).then((module) => ({ Component: module.default }));
+
+const trashCollectionLanding = () =>
+  import(
+    /* webpackChunkName: "trash-collection" */ "metabase/collections/components/TrashCollectionLanding"
+  ).then(({ TrashCollectionLanding }) => ({
+    Component: TrashCollectionLanding,
   }));
 
+const userCollectionList = () =>
+  import(
+    /* webpackChunkName: "user-collection-list" */ "metabase/common/components/UserCollectionList"
+  ).then(({ UserCollectionList }) => ({ Component: UserCollectionList }));
+
+/**
+ * The browse pages share one chunk: they are one module apiece behind a single
+ * barrel, and a visitor to one of them commonly walks into the next.
+ */
+const browsePage =
+  (
+    name:
+      | "BrowseMetrics"
+      | "BrowseModels"
+      | "BrowseDatabases"
+      | "BrowseSchemas"
+      | "BrowseTables"
+      | "TablePermalinkRedirect",
+  ) =>
+  () =>
+    import(/* webpackChunkName: "browse" */ "metabase/browse").then(
+      (module) => ({ Component: module[name] }),
+    );
+
 const commentsSidesheet = () =>
-  import("metabase/documents/components/CommentsSidesheet").then(
-    ({ CommentsSidesheet }) => CommentsSidesheet,
+  import(
+    /* webpackChunkName: "comments-sidesheet" */ "metabase/documents/components/CommentsSidesheet"
+  ).then(({ CommentsSidesheet }) => CommentsSidesheet);
+
+const dashboardMoveModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
+  ).then(({ DashboardMoveModalConnected }) => DashboardMoveModalConnected);
+
+const dashboardCopyModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
+  ).then(({ DashboardCopyModalConnected }) => DashboardCopyModalConnected);
+
+const dashboardArchiveModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
+  ).then(
+    ({ ArchiveDashboardModalConnected }) => ArchiveDashboardModalConnected,
   );
 
 /**
@@ -169,6 +243,20 @@ registerPagePrefetch("/document/", commentsSidesheet);
 registerPagePrefetch("/dashboard/", dashboardApp);
 registerPagePrefetch("/auto/dashboard/", automaticDashboardApp);
 registerPagePrefetch("/explore", metricsViewerPage);
+// The login page asks for this one by hand, so a user who signs in has the home
+// page in hand by the time they land on it. Exact, because every path starts
+// with "/".
+registerPagePrefetch("/", landingPage, { exact: true });
+registerPagePrefetch("/collection/", collectionLanding);
+registerPagePrefetch("/trash", trashCollectionLanding);
+registerPagePrefetch("/browse", browsePage("BrowseModels"));
+
+// No link points at a modal, so hovering never says one is wanted. These are
+// fetched only in the background, where the point is that a tab which outlives a
+// deploy can still open them.
+registerBackgroundPagePrefetch(dashboardMoveModal);
+registerBackgroundPagePrefetch(dashboardCopyModal);
+registerBackgroundPagePrefetch(dashboardArchiveModal);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -177,7 +265,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
       // SETUP
       {
         element: <RedirectIfSetup />,
-        children: [{ path: "/setup", element: <Setup /> }],
+        children: [{ path: "/setup", lazy: setupPage }],
       },
 
       // For compatibility: use the standard setup for embedding
@@ -220,18 +308,18 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 : []),
 
               // The global all hands routes, things in here are for all the folks
-              { path: "/", element: <LandingPageRedirect /> },
+              { path: "/", lazy: landingPage },
 
               {
                 path: "getting-started",
                 element: <CanAccessOnboarding />,
-                children: [{ index: true, element: <Onboarding /> }],
+                children: [{ index: true, lazy: onboardingPage }],
               },
 
-              { path: "search", element: <SearchApp /> },
+              { path: "search", lazy: searchApp },
               // Send historical /archive route to trash - can remove in v52
               { path: "archive", element: redirect("../trash") },
-              { path: "trash", element: <TrashCollectionLanding /> },
+              { path: "trash", lazy: trashCollectionLanding },
 
               {
                 path: "document/:entityId",
@@ -259,17 +347,14 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               {
                 path: "collection/users",
                 element: <IsAdmin />,
-                children: [{ index: true, element: <UserCollectionList /> }],
+                children: [{ index: true, lazy: userCollectionList }],
               },
 
               {
                 path: "collection/tenant-specific",
-                element: <PLUGIN_TENANTS.CanAccessTenantSpecificRoute />,
+                lazy: PLUGIN_TENANTS.canAccessTenantSpecificRoute,
                 children: [
-                  {
-                    index: true,
-                    element: <PLUGIN_TENANTS.TenantCollectionList />,
-                  },
+                  { index: true, lazy: PLUGIN_TENANTS.tenantCollectionList },
                 ],
               },
 
@@ -277,34 +362,37 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "collection/tenant-users",
                 element: <IsAdmin />,
                 children: [
-                  { index: true, element: <PLUGIN_TENANTS.TenantUsersList /> },
+                  { index: true, lazy: PLUGIN_TENANTS.tenantUsersList },
                   {
                     path: ":tenantId",
-                    element: (
-                      <PLUGIN_TENANTS.TenantUsersPersonalCollectionList />
-                    ),
+                    lazy: PLUGIN_TENANTS.tenantUsersPersonalCollectionList,
                   },
                 ],
               },
 
               {
                 path: "collection/:slug",
-                element: <CollectionLanding />,
-                children: toRouteObjects(
-                  <>
-                    {modalRoute("move", MoveCollectionModal, { noWrap: true })}
-                    {modalRoute("archive", ArchiveCollectionModal, {
-                      noWrap: true,
-                    })}
-                    {modalRoute("permissions", CollectionPermissionsModal)}
-                    {modalRoute(
-                      "move-questions-dashboard",
-                      MoveQuestionsIntoDashboardsModal,
-                    )}
-                    {PLUGIN_COLLECTIONS.cleanUpRoute}
-                    {getCollectionTimelineRoutes()}
-                  </>,
-                ),
+                lazy: collectionLanding,
+                children: [
+                  ...toRouteObjects(
+                    <>
+                      {modalRoute("move", MoveCollectionModal, {
+                        noWrap: true,
+                      })}
+                      {modalRoute("archive", ArchiveCollectionModal, {
+                        noWrap: true,
+                      })}
+                      {modalRoute("permissions", CollectionPermissionsModal)}
+                      {modalRoute(
+                        "move-questions-dashboard",
+                        MoveQuestionsIntoDashboardsModal,
+                        { noWrap: true },
+                      )}
+                      {PLUGIN_COLLECTIONS.cleanUpRoute}
+                    </>,
+                  ),
+                  ...getCollectionTimelineRoutes(),
+                ],
               },
 
               {
@@ -329,33 +417,15 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "dashboard/:slug",
                 lazy: dashboardApp,
                 children: [
-                  lazyModalRoute(
-                    "move",
-                    () =>
-                      import("metabase/dashboard/components/DashboardMoveModal").then(
-                        ({ DashboardMoveModalConnected }) =>
-                          DashboardMoveModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
-                  lazyModalRoute(
-                    "copy",
-                    () =>
-                      import("metabase/dashboard/components/DashboardCopyModal").then(
-                        ({ DashboardCopyModalConnected }) =>
-                          DashboardCopyModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
-                  lazyModalRoute(
-                    "archive",
-                    () =>
-                      import("metabase/dashboard/containers/ArchiveDashboardModal").then(
-                        ({ ArchiveDashboardModalConnected }) =>
-                          ArchiveDashboardModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
+                  lazyModalRoute("move", dashboardMoveModal, {
+                    noWrap: true,
+                  }),
+                  lazyModalRoute("copy", dashboardCopyModal, {
+                    noWrap: true,
+                  }),
+                  lazyModalRoute("archive", dashboardArchiveModal, {
+                    noWrap: true,
+                  }),
                 ],
               },
 
@@ -411,21 +481,24 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "browse",
                 children: [
                   { index: true, element: redirect("/browse/models") },
-                  { path: "metrics", element: <BrowseMetrics /> },
-                  { path: "models", element: <BrowseModels /> },
-                  { path: "databases", element: <BrowseDatabases /> },
-                  { path: "databases/:slug", element: <BrowseSchemas /> },
+                  { path: "metrics", lazy: browsePage("BrowseMetrics") },
+                  { path: "models", lazy: browsePage("BrowseModels") },
+                  { path: "databases", lazy: browsePage("BrowseDatabases") },
+                  {
+                    path: "databases/:slug",
+                    lazy: browsePage("BrowseSchemas"),
+                  },
                   {
                     path: "databases/:dbId/schema/:schemaName",
-                    element: <BrowseTables />,
+                    lazy: browsePage("BrowseTables"),
                   },
                   {
                     path: "databases/:dbName/schema/:schemaName/table/:tableName",
-                    element: <TablePermalinkRedirect />,
+                    lazy: browsePage("TablePermalinkRedirect"),
                   },
                   {
                     path: "databases/:dbName/table/:tableName",
-                    element: <TablePermalinkRedirect />,
+                    lazy: browsePage("TablePermalinkRedirect"),
                   },
 
                   ...toRouteObjects(PLUGIN_TABLE_EDITING.getRoutes()),
@@ -445,10 +518,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "table",
                 children: [
                   { path: ":slug", lazy: queryBuilder },
-                  {
-                    path: ":tableId/detail/:rowId",
-                    element: <TableDetailPage />,
-                  },
+                  { path: ":tableId/detail/:rowId", lazy: tableDetailPage },
                 ],
               },
 

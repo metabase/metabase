@@ -1,10 +1,9 @@
-import Database from "metabase-lib/v1/metadata/Database";
 import {
   DataPermission,
   DataPermissionValue,
   type SchemasPermissions,
 } from "metabase-types/api";
-import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { upgradeViewPermissionsIfNeeded } from "./graph";
 
@@ -14,18 +13,12 @@ const schema = "my_schema";
 const tableId = 30;
 const entityId = { databaseId };
 
-const database = new Database({
-  ...createMockDatabase({ id: entityId.databaseId }),
-  schemas: [schema],
-  tables: [tableId],
+const database = createMockDatabase({
+  id: entityId.databaseId,
+  tables: [
+    createMockTable({ id: tableId, db_id: entityId.databaseId, schema }),
+  ],
 });
-
-database.schemas = [
-  createMockSchema({
-    id: "100",
-    name: schema,
-  }),
-];
 
 const createGraph = (viewPermissions: SchemasPermissions) => ({
   [groupId]: {

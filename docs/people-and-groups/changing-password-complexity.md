@@ -11,7 +11,7 @@ Metabase can allow authentication via email and password.
 
 ## Password complexity
 
-The default password complexity for both Metabase instances and Metabase Store acccounts is minimum 15 characters.
+The default password complexity for both Metabase instances and Metabase Store accounts is minimum 15 characters.
 
 On self-hosted Metabases, you can configure required password complexity through environment variables:
 

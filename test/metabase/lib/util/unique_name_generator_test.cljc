@@ -139,6 +139,7 @@
 (deftest ^:parallel unique-name-generator-options-test
   (testing "options"
     (testing :name-key-fn
+      ;; exercising :name-key-fn with a simple case-folder over ASCII fixtures; locale safety is moot
       (let [f (lib.util.unique-name-generator/unique-name-generator-with-options :name-key-fn #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case)]
         (is (= ["x" "X_2" "X_3"]
                (map f ["x" "X" "X"])))))))

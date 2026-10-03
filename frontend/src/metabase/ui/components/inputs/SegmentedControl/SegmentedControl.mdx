@@ -1,6 +1,4 @@
-import { Canvas, Story, Meta } from "@storybook/blocks";
-import { SegmentedControl, Box, Center } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Canvas, Meta } from "@storybook/blocks";
 import * as SegmentedControlStories from "./SegmentedControl.stories";
 
 <Meta of={SegmentedControlStories} />
@@ -15,12 +13,22 @@ Our themed wrapper around [Mantine SegmentedControl](https://mantine.dev/core/se
 
 ## Examples
 
-<Canvas of={SegmentedControlStories.Default} />
+### Text only
+
+<Canvas of={SegmentedControlStories.TextOnly} />
+
+### Text + icon
+
+<Canvas of={SegmentedControlStories.TextAndIcon} />
+
+### Icon only
+
+<Canvas of={SegmentedControlStories.IconOnly} />
 
 ### Full width
 
 <Canvas of={SegmentedControlStories.FullWidth} />
 
-## Colors
+### Disabled
 
-<Canvas of={SegmentedControlStories.Color} />
+<Canvas of={SegmentedControlStories.Disabled} />

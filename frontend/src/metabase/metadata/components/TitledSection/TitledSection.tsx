@@ -11,8 +11,8 @@ interface Props {
 
 export const TitledSection = ({ children, title }: Props) => {
   return (
-    <Card className={S.card} p="lg" pt="md" withBorder>
-      <Stack gap="lg">
+    <Card className={S.card} p="xl" pt="lg" withBorder>
+      <Stack gap="xl">
         {title != null ? (
           <Text c="text-secondary" fw="bold" size="sm">
             {title}

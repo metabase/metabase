@@ -17,10 +17,10 @@ export function ChartLayoutPicker({
   return (
     <Flex
       className={S.root}
-      gap="xs"
+      gap="xxs"
       bg="background_page-secondary"
-      p="xs"
-      bdrs="md"
+      p="xxs"
+      bdrs="sm"
       data-testid="chart-layout-picker"
     >
       <Tooltip label={t`Default layout`}>

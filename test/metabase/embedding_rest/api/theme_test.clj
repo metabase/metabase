@@ -18,7 +18,7 @@
               response   (mt/user-http-request :crowberto :post 200 "embed-theme"
                                                {:name     theme-name
                                                 :settings settings})]
-          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :is_default :created_at :updated_at}
                  (set (keys response))))
           (is (= theme-name (:name response)))
           (is (= settings (:settings response)))
@@ -55,7 +55,7 @@
         (let [themes (mt/user-http-request :crowberto :get 200 "embed-theme")]
           (is (= 2 (count themes)))
           ; settings is used for theme card previews
-          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :is_default :created_at :updated_at}
                  (set (keys (first themes)))))
           (testing "themes are ordered by oldest first"
             (is (= ["Theme 1" "Theme 2"]
@@ -74,7 +74,7 @@
                                               :settings settings})
               theme-id (:id created)
               response (mt/user-http-request :crowberto :get 200 (format "embed-theme/%s" theme-id))]
-          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :is_default :created_at :updated_at}
                  (set (keys response))))
           (is (= "Test Theme" (:name response)))
           (is (= settings (:settings response))))))
@@ -153,7 +153,7 @@
                                               :settings original-settings})
               theme-id (:id created)
               response (mt/user-http-request :crowberto :post 200 (format "embed-theme/%s/copy" theme-id))]
-          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
+          (is (= #{:id :entity_id :name :settings :is_default :created_at :updated_at}
                  (set (keys response))))
           (is (= "Copy of My Theme" (:name response)))
           (is (= original-settings (:settings response)))
@@ -182,8 +182,8 @@
       (mt/with-empty-h2-app-db!
         (is (false? (embedding.settings/default-embedding-themes-seeded)))
         (is (nil? (mt/user-http-request :crowberto :post 204 "embed-theme/seed-defaults" example-seed-body)))
-        (is (= ["Light" "Dark"]
-               (map :name (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]}))))
+        (is (= [["Light" true] ["Dark" true]]
+               (map (juxt :name :is_default) (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]}))))
         (is (true? (embedding.settings/default-embedding-themes-seeded)))))
     (testing "subsequent calls are a no-op once the setting is flipped — even if themes were deleted"
       (mt/with-empty-h2-app-db!

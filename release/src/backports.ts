@@ -15,12 +15,13 @@ export const checkOpenBackports = async ({ github, owner, repo, channelName }: {
   channelName: string,
 }) => {
 
-  const { data: openBackports } = await github.rest.issues.listForRepo({
+  const openBackports = await github.paginate(github.rest.issues.listForRepo, {
     owner,
     repo,
     labels: "was-backported",
     state: "open",
-  }) as { data: Issue[] };
+    per_page: 100,
+  }) as Issue[];
 
   console.log(`Found ${openBackports.length} open backports`);
 

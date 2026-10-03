@@ -1,6 +1,6 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 
+import { dayjs } from "metabase/dayjs";
 import {
   DimensionPillBar,
   type DimensionPillBarItem,
@@ -175,7 +175,7 @@ export function MetricsViewerDimensionBreakoutContent() {
         </Box>
       )}
       {definitionForControls && (
-        <Flex mt="md" justify="center" align="center">
+        <Flex mt="lg" justify="center" align="center">
           <MetricControls
             definition={definitionForControls}
             allFilterDimensions={allFilterDimensions}

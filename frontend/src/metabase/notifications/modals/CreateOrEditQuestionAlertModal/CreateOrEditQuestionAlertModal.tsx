@@ -10,10 +10,16 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import type { ScheduleValueType } from "metabase/common/components/Schedule/types";
+import type { ScheduleValueType } from "metabase/common/components/Schedule/domain";
 import CS from "metabase/css/core/index.css";
+import {
+  canAccessSettings,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
+  alertHasValidTarget,
   alertIsValid,
   getAlertTriggerOptions,
   getDefaultQuestionAlertRequest,
@@ -24,11 +30,6 @@ import {
 } from "metabase/pulse";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import {
-  canAccessSettings,
-  getUser,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -294,6 +295,7 @@ export const CreateOrEditQuestionAlertModal = ({
   }
 
   const isValid = alertIsValid(notification, channelSpec);
+  const hasValidTarget = alertHasValidTarget(notification, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
   const hasError = errorCreating || errorUpdating;
 
@@ -322,11 +324,11 @@ export const CreateOrEditQuestionAlertModal = ({
         },
       }}
     >
-      <Stack gap="xl" mt="1.5rem" mb="2rem" px="2.5rem">
+      <Stack gap="xxl" mt="1.5rem" mb="2rem" px="2.5rem">
         <AlertModalSettingsBlock
           title={t`What do you want to be alerted about?`}
         >
-          <Flex gap="lg" align="center">
+          <Flex gap="xl" align="center">
             <AlertTriggerIcon />
             {hasSingleTriggerOption ? (
               <Paper
@@ -413,7 +415,6 @@ export const CreateOrEditQuestionAlertModal = ({
               },
             }}
             labelPosition="right"
-            size="sm"
             checked={notification.payload?.send_once}
             onChange={(event) => {
               setNotification({
@@ -435,12 +436,13 @@ export const CreateOrEditQuestionAlertModal = ({
         justify="space-between"
         align="center"
         px="2.5rem"
-        pt="lg"
+        pt="xl"
         className={CS.borderTop}
       >
         <Button
-          variant="outline"
-          color="core-brand"
+          variant="subtle"
+          color="brand"
+          disabled={!hasValidTarget}
           loading={isLoading}
           onClick={onSendNow}
         >
@@ -450,7 +452,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            bg={hasError ? "feedback-negative" : "core-brand"}
+            color={hasError ? "negative" : "brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}

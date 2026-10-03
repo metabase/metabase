@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
-import dayjs from "dayjs";
 
+import { dayjs } from "metabase/dayjs";
 import type { State } from "metabase/redux/store";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";

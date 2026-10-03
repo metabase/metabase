@@ -29,7 +29,7 @@ SELECT
                 WHEN 'slackbot'                  THEN 'Slackbot'
                 WHEN 'transforms_codegen'        THEN 'Transforms codegen'
                 WHEN 'document-generate-content' THEN 'Documents'
-                WHEN 'explorations'              THEN 'Explorations'
+                WHEN 'explorations'              THEN 'Research'
                 ELSE mm.profile_id
             END
      FROM metabot_message mm
@@ -59,8 +59,8 @@ SELECT
                 WHEN 'oss-sql-gen'                       THEN 'SQL'
                 WHEN 'sql-gen'                           THEN 'SQL'
                 WHEN 'unknown'                           THEN 'Unknown'
-                WHEN 'contextual_interestingness'        THEN 'Contextual Interestingness'
-                WHEN 'exploration'                       THEN 'Explorations'
+                WHEN 'contextual_interestingness'        THEN 'Research'
+                WHEN 'exploration'                       THEN 'Research'
                 ELSE aul.source
             END
      FROM ai_usage_log aul

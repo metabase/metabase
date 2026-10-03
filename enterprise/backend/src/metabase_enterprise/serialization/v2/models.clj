@@ -5,19 +5,18 @@
   "Schema model types"
   ["Database"
    "Field"
-   "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
+   "TableUserSettings"
    "Channel"])
 
 (def data-model-in-collection
-  "Data model types that can be found in collections (via published tables).
-   These are extracted by ID when discovered via descendants, even if no-data-model is set.
-   Includes both Field (full serdes) and FieldUserSettings (user-edits-only / git sync)."
+  "Data model types that can be found in collections (via published tables), extracted by ID when discovered via
+   descendants even if no-data-model is set."
   ["Table"
+   "TableUserSettings"
    "Field"
-   "FieldUserSettings"
    "Segment"])
 
 (def content
@@ -36,6 +35,7 @@
   (concat data-model
           content
           ["CustomVizPlugin"
+           "DataApp"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
@@ -44,7 +44,8 @@
            "Setting"
            "Transform"
            "TransformJob"
-           "TransformTag"]))
+           "TransformTag"
+           "TransformTest"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
@@ -53,6 +54,7 @@
   ["DashboardCard"
    "DashboardTab"
    "Dimension"
+   "FieldUserSettings"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
@@ -83,7 +85,6 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
-   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
@@ -98,7 +99,6 @@
    "ExplorationQueryResult"
    "ExplorationThread"
    "ExplorationThreadTimeline"
-   "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"
@@ -169,6 +169,7 @@
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformTestRun"
    "Undo"
    "User"
    "UserKeyValue"

@@ -13,6 +13,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -406,14 +407,26 @@
         raw-values ["African" "American"]]
     (testing "cache hits return raw values"
       (is (= raw-values
-             (#'entity-details/get-field-values {field-id {:values raw-values}} field-id))))
-    (testing "cache misses return the same raw-value shape"
-      (with-redefs [params.field-values/current-user-can-fetch-field-values?        (constantly true)
-                    params.field-values/get-or-create-field-values!                 (constantly {:values raw-values})
-                    params.field-values/get-or-create-field-values-for-current-user!
-                    (constantly {:values (mapv vector raw-values)})]
-        (is (= raw-values
-               (#'entity-details/get-field-values {} field-id)))))))
+             (#'entity-details/get-field-values {field-id {:values raw-values}} field-id))))))
+
+(deftest table-details-read-cached-field-values-in-one-query-test
+  (testing "table details read the cached values of unrestricted columns in one query, not one per column"
+    (mt/with-temp-copy-of-db
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [field-ids   (t2/select-pks-set :model/Field :table_id (mt/id :venues))
+              details     #(:structured-output
+                            (entity-details/get-table-details {:entity-type :table, :entity-id (mt/id :venues)}))
+              query-count (fn [field-ids-with-values]
+                            (mt/with-dynamic-fn-redefs [field-values/field-should-have-field-values?
+                                                        #(contains? field-ids-with-values (:id %))]
+                              ;; creates the FieldValues and warms the memoized field and table lookups
+                              (is (= field-ids-with-values
+                                     (set (keep #(when (:field_values %) (:field_id %)) (:fields (details))))))
+                              (t2/with-call-count [call-count]
+                                (details)
+                                (call-count))))]
+          (is (= (query-count #{(first field-ids)})
+                 (query-count field-ids))))))))
 
 ;;; ============================================================
 ;;; Base-table surfacing on get-metric-details (regression)
@@ -457,9 +470,10 @@
                                                   :type          :metric}]
         (mt/with-no-data-perms-for-all-users!
           (mt/with-current-user (mt/user->id :rasta)
-            (with-redefs [params.field-values/field-id->field-values-for-current-user
-                          (fn [_]
-                            (throw (ex-info "field values must not be fetched" {})))]
+            (mt/with-dynamic-fn-redefs
+              [params.field-values/get-or-create-field-values-by-field-id!
+               (fn [_]
+                 (throw (ex-info "field values must not be fetched" {})))]
               (let [output (:structured-output
                             (entity-details/get-metric-details {:metric-id     metric-id
                                                                 :with-segments? true}))]
@@ -578,6 +592,25 @@
             (is (vector? (get-in exported ["stages" 0 "source-table"])))
             (is (not (contains? exported "lib/metadata")))))))))
 
+(deftest card-details-tolerates-a-query-that-will-not-build-test
+  (testing "one Card whose stored query has no stages does not take down the response the others are in"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card broken {:name "Broken", :type :question, :dataset_query {}}
+                       :model/Card good   {:database_id   (mt/id)
+                                           :type          :question
+                                           :name          "Venues by Price"
+                                           :dataset_query (mt/mbql-query venues
+                                                            {:aggregation [[:count]]
+                                                             :breakout    [$price]})}]
+          ;; Exercise `cards-details`, the batch path used by the typed-schemas endpoint. Calling
+          ;; `get-table-details` for each Card would miss a failure that terminates the complete sequence.
+          (let [details (->> (entity-details/cards-details :question (mt/id) [broken good] {})
+                             (into [] (map #(select-keys % [:name :query_json]))))]
+            (is (= ["Broken" "Venues by Price"] (mapv :name details)))
+            (is (nil? (:query_json (first details))))
+            (is (map? (:query_json (second details))))))))))
+
 (deftest card-details-exposes-query-json-native-test
   (testing "card-details surfaces native saved queries as a portable repr map, preserving the SQL inside"
     (mt/test-driver :h2
@@ -653,6 +686,21 @@
                 (is (=? {:id card-id :type :question} output))
                 (is (not (contains? output :metrics)))
                 (is (= 0 @calls))))))))))
+
+(deftest answer-sources-omits-models-with-no-visible-fields-test
+  (testing "a model built on a table the user has no view-data permission on is omitted entirely from
+            list_available_data_sources, rather than listed with :fields []"
+    (mt/with-temp [:model/Card    {model-id :id} {:dataset_query (mt/mbql-query orders)
+                                                  :type          :model
+                                                  :collection_id nil}
+                   :model/Metabot metabot {:name          "root metabot"
+                                           :collection_id nil
+                                           :use_verified_content false}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [structured-output]} (entity-details/answer-sources
+                                             {:metabot-id (:entity_id metabot)})]
+            (is (not (contains? (set (map :id (:models structured-output))) model-id)))))))))
 
 (deftest related-tables-with-fields-capped-test
   (testing (str "FK-related-table *column* expansion is capped at `max-related-tables-with-fields` so a table "
@@ -872,6 +920,17 @@
   (testing "a metric with only FK-reachable (or no) joins has no :join-required-dimensions"
     (mt/with-current-user (mt/user->id :crowberto)
       (is (nil? (:join-required-dimensions (metric-details-for unjoined-metric-query)))))))
+
+(deftest metric-details-default-time-dimension-test
+  (testing "metric-details finds the time dimension a metric breaks out by when its table has FK-reachable columns"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (= (mt/id :orders :created_at)
+             (:default_time_dimension_field_id
+              (metric-details-for
+               (fn [mp]
+                 (lib/breakout (unjoined-metric-query mp)
+                               (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                                 :month))))))))))
 
 (deftest metric-details-omits-join-required-dimensions-when-export-fails-test
   (testing (str "fail closed: when the portable join clause cannot be exported, the entry is DROPPED "

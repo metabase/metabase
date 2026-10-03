@@ -53,9 +53,19 @@ The database username for the account that you want to use to connect to your da
 
 On your app.snowflake.com account page, you can find Users and roles under Admin > Users & Roles.
 
+### Authentication method
+
+Pick how Metabase authenticates to Snowflake:
+
+- **RSA key pair** — key-based auth.
+- **Workload Identity Federation** — keyless auth using a token from an OIDC provider, AWS, Azure, or Google Cloud.
+- **Username & password** — Snowflake blocks password authentication for service users by October 2026.
+
+The fields that appear below depend on which method you pick.
+
 ### Password
 
-The password for the username that you use to connect to the database.
+The password for the username that you use to connect to the database. Snowflake blocks password authentication for service users by October 2026; use RSA key pair or Workload Identity Federation instead.
 
 ### RSA private key (PEM)
 
@@ -64,6 +74,25 @@ Not required. You have the option of using a **Local file path** or an **Uploade
 ### Private key passphrase
 
 Only required if your private key is encrypted.
+
+### Workload Identity Federation
+
+Metabase forwards a workload-identity token to Snowflake; Snowflake validates it against a service user you provision with `CREATE USER ... WORKLOAD_IDENTITY = (...)`. See Snowflake's [Workload identity federation docs](https://docs.snowflake.com/en/user-guide/workload-identity-federation) for the trust-policy syntax.
+
+#### Workload identity provider
+
+- **OpenID Connect (JWT)** — you supply the token (see next two fields).
+- **AWS**, **Azure**, or **Google Cloud** — no additional credential fields in Metabase. Attach an AWS IAM role, an Azure managed identity, or a GCP service account to the host running Metabase; the Snowflake driver picks it up.
+
+#### OIDC token
+
+A JWT you paste into Metabase. Convenient for a one-off test. Metabase does not refresh the token, so once it expires the connection will fail until you paste a new one.
+
+#### OIDC token file path
+
+Path to a file on the Metabase server that contains the JWT (for example, a Kubernetes projected service-account token at `/var/run/secrets/tokens/oidc-token`). The Snowflake driver re-reads this file per connection, so tokens rotated in place — the standard Kubernetes pattern — flow through without any change in Metabase.
+
+If both the pasted token and the file path are set, the file path wins.
 
 ### Warehouse
 
@@ -77,7 +106,7 @@ The name of the database you want to connect to in Snowflake. On app.snowflake.c
 
 ### Schemas (optional)
 
-You can specify which schemas you want to sync and scan. If no schema is passed, then all schema available to that user and role will be listed as folders in Metabase.
+You can specify which schemas you want to sync and scan. If no schema is passed, then all schemas available to that user and role will be listed as folders in Metabase.
 
 Schema options include:
 
@@ -102,7 +131,7 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 
 ### Role (optional)
 
-> **WARNING:** Metabase gets _all the permissions_ combined from _every_ role you grant the user in Snowflake. Setting the 'Role' here just adds the role to the connection string to tell Snowflake which role to default to – it **won't restrict** access on its own. So **be careful which roles you assign to the connection user**: if down the line you grant that user broader roles in Snowflake, Metabase will automatically gets those new permissions, potentially showing data you didn't mean for it to see. If instead you want Metabase to issue `SET ROLE` commands before querying anything, check out [connection impersonation](../../permissions/impersonation.md).
+> **WARNING:** Metabase gets _all the permissions_ combined from _every_ role you grant the user in Snowflake. Setting the 'Role' here just adds the role to the connection string to tell Snowflake which role to default to – it **won't restrict** access on its own. So **be careful which roles you assign to the connection user**: if down the line you grant that user broader roles in Snowflake, Metabase will automatically get those new permissions, potentially showing data you didn't mean for it to see. If instead you want Metabase to issue `SET ROLE` commands before querying anything, check out [connection impersonation](../../permissions/impersonation.md).
 
 Specify a role to override the database user's default role. For example, if the database user `METABASE` has the roles:
 
@@ -123,7 +152,7 @@ Some databases allow you to append options to the connection string that Metabas
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -158,6 +187,6 @@ See [Danger zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

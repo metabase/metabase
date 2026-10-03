@@ -6,6 +6,7 @@
  */
 const esmPackages = [
   "@metabase\\+track",
+  "@modelcontextprotocol\\+ext-apps",
   "bail",
   "ccount",
   "character-entities.*",

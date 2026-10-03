@@ -103,7 +103,7 @@
 
 (defmethod tx/count-with-template-tag-query :mongo
   [_driver table-name field-name _param-type]
-  {:projections [:count]
+  {:projections ["count"]
    :query       (json/encode
                  [{:$match {(name field-name) (json/raw-json-generator (format "{{%s}}" (name field-name)))}}
                   {:$group {"_id" nil, "count" {:$sum 1}}}
@@ -113,7 +113,7 @@
 
 (defmethod tx/count-with-field-filter-query :mongo
   [_driver table-name field-name]
-  {:projections [:count]
+  {:projections ["count"]
    :query       (json/encode
                  [{:$match (json/raw-json-generator (format "{{%s}}" (name field-name)))}
                   {:$group {"_id" nil, "count" {:$sum 1}}}

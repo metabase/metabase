@@ -88,7 +88,7 @@ on:
 jobs:
   determine-test-type:
     name: Determine test type
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       type: ${{ steps.detect.outputs.type }}
@@ -106,7 +106,7 @@ jobs:
   workflow-summary:
     name: Stress test inputs
     needs: [determine-test-type]
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -154,7 +154,7 @@ jobs:
       MB_EDITION: ${{ inputs.mb_edition }}
       CYPRESS_ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Important because we need previous commits hashes to find and download the uberjar!
           fetch-depth: 20

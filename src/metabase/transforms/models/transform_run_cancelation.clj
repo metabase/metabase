@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-run-cancelation
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -15,17 +16,8 @@
   "Mark a started run for cancelation."
   [run-id]
   (try
-    (t2/query-one
-     [(str "INSERT INTO transform_run_cancelation (run_id) "
-           "SELECT transform_run.id "
-           "FROM transform_run "
-           "WHERE transform_run.id = ? "
-           "AND transform_run.is_active "
-           "AND NOT EXISTS (SELECT 1 FROM transform_run_cancelation WHERE run_id = ?)")
-      run-id run-id])
-    (t2/update! :model/TransformRun
-                :id run-id
-                {:status "canceling"})
+    (transforms.db/insert-cancelation-for-active-run! run-id)
+    (transforms.db/mark-run-canceling! run-id)
     (log/infof "Cancelation requested for transform run %s" run-id)
     (analytics/inc! :metabase-transforms/cancelation-requests {:status "ok"})
     nil
@@ -36,26 +28,14 @@
 (defn reducible-canceled-local-runs
   "Return a reducible sequence of local canceled runs."
   []
-  (t2/reducible-select :model/TransformRunCancelation))
-
-(defn- no-active-run-clause
-  []
-  [:not [:exists {:select [1]
-                  :from   [[:transform_run :wr]]
-                  :where  [:and
-                           [:= :wr.id :transform_run_cancelation.run_id]
-                           :wr.is_active]}]])
+  (transforms.db/cancelations-reducible))
 
 (defn delete-cancelation!
   "Delete a cancelation once it has been handled."
   [run-id]
-  (t2/delete! :model/TransformRunCancelation
-              {:where [:and
-                       [:= :run_id run-id]
-                       (no-active-run-clause)]}))
+  (transforms.db/delete-cancelation-for-inactive-run! run-id))
 
 (defn delete-old-canceling-runs!
   "Delete cancelations for runs that are no longer running."
   []
-  (t2/delete! :model/TransformRunCancelation
-              {:where (no-active-run-clause)}))
+  (transforms.db/delete-cancelations-for-inactive-runs!))
