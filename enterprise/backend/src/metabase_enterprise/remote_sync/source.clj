@@ -150,19 +150,28 @@
   (let [opts   (storage-context)
         stream (if (or (nil? task-id) total (counted? stream)) stream (vec stream))
         total  (or total (when task-id (count stream)))
+        ;; Throttled like the other phases: an unthrottled write per entity costs a select of the cancelled flag and
+        ;; an update. A cancel is noticed on a throttled write.
         report (if (and task-id (pos? total))
-                 (fn [n]
-                   (remote-sync.task/update-progress! task-id (-> n (/ total) (min 1) (* 0.65) (+ 0.3))))
-                 (constantly nil))]
-    (into []
-          (comp (map-indexed (fn [idx entity]
-                               (when (instance? Exception entity)
-                                 (throw entity))
-                               (let [spec (entity->file-spec opts entity)]
-                                 (report (inc idx))
-                                 (file-specs spec))))
-                cat)
-          stream)))
+                 (let [reporter (remote-sync.task/make-progress-reporter task-id)]
+                   (fn [n & [report-opts]]
+                     (reporter (-> n (/ total) (min 1) (* 0.65) (+ 0.3)) report-opts)))
+                 (constantly nil))
+        seen   (volatile! 0)
+        specs  (into []
+                     (comp (map-indexed (fn [idx entity]
+                                          (when (instance? Exception entity)
+                                            (throw entity))
+                                          (let [spec (entity->file-spec opts entity)]
+                                            (vreset! seen (inc idx))
+                                            (report (inc idx))
+                                            (file-specs spec))))
+                           cat)
+                     stream)]
+    ;; The end of the phase, recorded whatever the throttle did. It counts entities: `specs` also holds the resource
+    ;; files of some entities, and `total` can be an estimate.
+    (report @seen {:force? true})
+    specs))
 
 (defn- managed-path? [^String path]
   (when-let [idx (str/index-of path "/")]
