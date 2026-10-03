@@ -128,7 +128,13 @@ You handle one self-contained question or implementation at a time. If a task sp
 - **Make migrations backward-compatible** — the old code must still work during rollout.
 - **Custom migrations need progress tracking** and should be resumable after failure.
 - **Test on all three app DB backends** (H2, PostgreSQL, MySQL).
-- **Data migrations** go in `custom_migrations.clj`; schema migrations go in Liquibase XML.
+- **Data migrations** go in `custom_migrations.clj`; schema migrations are Liquibase YAML changesets in
+  `resources/migrations/<year>/<yyyymmdd>_<name>.yaml` with version-less ids -- follow the `app-db-migrations` skill
+  (`.claude/skills/app-db-migrations/SKILL.md`) for the id, rollback and type rules, and lint with
+  `./bin/lint-migrations-file.sh`.
+- **Rolling back in development** is by deployment (`clojure -M:dev:migrate rollback last-deployment`,
+  `dev.migrate/rollback!`); the release `migrate down` steps back one recorded Metabase major and refuses
+  dev-migrated databases.
 
 ### When Modifying the API Framework
 
