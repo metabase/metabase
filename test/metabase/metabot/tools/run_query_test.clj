@@ -261,3 +261,14 @@
                  (run-tool! (malformed unreadable-db) {:query_id "q1"})))
           (is (= {:output unreadable-database-output}
                  (run-tool! (malformed Integer/MAX_VALUE) {:query_id "q1"}))))))))
+
+(deftest run-query-missing-database-for-admin-test
+  (testing "an admin may read any database id, but a missing one still reads as not found, not as an unreadable query"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (binding [shared/*memory-atom* (atom {:state {:queries {"q1" {:database Integer/MAX_VALUE
+                                                                      :type     :query
+                                                                      :query    {:source-table 1}
+                                                                      :stages   []}}}})]
+          (is (= {:output unreadable-database-output}
+                 (run-query/run-query-tool {:query_id "q1"}))))))))

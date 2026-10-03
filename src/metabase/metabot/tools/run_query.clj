@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
@@ -97,8 +98,12 @@
            {:agent-error? true}))
 
 (defn- readable-database?
+  "Whether `database-id` names a database that exists and the current user can read. `can-read?` alone holds for any
+   id when the user is an admin, so it can't tell a deleted database from a live one."
   [database-id]
-  (and (int? database-id) (mi/can-read? :model/Database database-id)))
+  (and (pos-int? database-id)
+       (metabot.db/database-exists? database-id)
+       (mi/can-read? :model/Database database-id)))
 
 (defn- native-query?
   "Whether `query`, as state holds it, is a SQL query: an MBQL 4 query of type native, or an MBQL 5 query with a
