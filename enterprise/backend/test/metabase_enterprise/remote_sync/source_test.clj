@@ -2,11 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.app-db.activity-test-util :as db-activity]
    [metabase.models.serialization :as serdes]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -149,21 +151,28 @@
           n          50
           entities   (mapv #(create-test-entity (str "E" %) (str "e" %) "Card") (range n))
           statements (fn [task-id]
+                       ;; the settings cache checks for changes at most once a minute, JVM-wide; a check inside the
+                       ;; count would add a statement to one run only
+                       (setting/restore-cache-if-needed! :force-check? true)
                        (let [counts (db-activity/with-db-activity! (source/serialize-specs entities task-id))]
                          (is (= n (count (:result counts))))
-                         (get-in counts [:by-thread (.threadId (Thread/currentThread)) :statements] 0)))
-          ;; one unmeasured run of each kind first, so that one-time statements (for example the first read of a
-          ;; setting) count in neither measured run, whatever their order
-          _          (statements task-id)
-          _          (statements nil)
-          ;; so that the final progress below comes from the measured run
-          _          (t2/update! :model/RemoteSyncTask task-id {:progress 0.0})
-          ;; serializing without a task id is the same work minus progress reporting, so the difference is exactly
-          ;; the progress writes
-          baseline   (statements nil)
-          reporting  (statements task-id)]
-      ;; each progress write is a cancelled-check SELECT plus an UPDATE. Unthrottled that is one write per entity
-      ;; (100 statements here); throttled it is the first write plus the forced final one, well inside one window.
-      (is (<= (- reporting baseline) 4))
-      (testing "the final progress still reflects the whole stream"
-        (is (= 0.95 (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id))))))))
+                         (get-in counts [:by-thread (.threadId (Thread/currentThread)) :statements] 0)))]
+      ;; a clock that does not move, so that no run crosses a throttle window, however long it takes
+      (mt/with-dynamic-fn-redefs [remote-sync.task/make-progress-reporter
+                                  (let [make (mt/original-fn #'remote-sync.task/make-progress-reporter)]
+                                    (fn [task-id & [opts]] (make task-id (assoc opts :now-fn (constantly 0)))))]
+        ;; one unmeasured run of each kind first, so that one-time statements (for example the first read of a
+        ;; setting) count in neither measured run, whatever their order
+        (statements task-id)
+        (statements nil)
+        ;; so that the final progress below comes from the measured run
+        (t2/update! :model/RemoteSyncTask task-id {:progress 0.0})
+        ;; serializing without a task id is the same work minus progress reporting, so the difference is exactly
+        ;; the progress writes
+        (let [baseline  (statements nil)
+              reporting (statements task-id)]
+          ;; each progress write is a cancelled-check SELECT plus an UPDATE. Unthrottled that is one write per entity
+          ;; (100 statements here); throttled it is the first write plus the forced final one.
+          (is (= 4 (- reporting baseline)))
+          (testing "the final progress still reflects the whole stream"
+            (is (= 0.95 (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id))))))))))
