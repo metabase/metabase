@@ -659,13 +659,21 @@
   []
   (concat @retired-clones (cached-sibling-clones)))
 
-(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook deleting the [[clones-deleted-at-exit]]. The next
+(defn- delete-clone-dir!
+  "Deletes the clone directory `dir`, and ignores a failure."
+  [^File dir]
+  (FileUtils/deleteQuietly dir))
+
+(defn- delete-clones-at-exit!
+  "Deletes the [[clones-deleted-at-exit]]. The shutdown hook of [[retired-clones-reaper]] runs it."
+  []
+  (run! delete-clone-dir! (clones-deleted-at-exit)))
+
+(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook that runs [[delete-clones-at-exit!]]. The next
   process clones afresh at [[repo-path]]."}
   retired-clones-reaper
   (delay (.addShutdownHook (Runtime/getRuntime)
-                           (Thread. ^Runnable (fn []
-                                                (run! #(FileUtils/deleteQuietly ^File %)
-                                                      (clones-deleted-at-exit)))))))
+                           (Thread. ^Runnable (fn [] (delete-clones-at-exit!))))))
 
 (defonce ^:private ^{:doc "One lock object for each clone path, so that only one thread at a time clones for a URL."}
   clone-locks
