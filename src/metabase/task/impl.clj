@@ -241,7 +241,8 @@
         (into {} (.getJobDataMap job))])))
 
 (mu/defn add-job!
-  "Add a job separately from a trigger, replace if the job is already there"
+  "Add a job separately from a trigger. Replaces a stored job only when its definition has changed, so a job stored
+  under an old class name keeps that name."
   [job :- (ms/InstanceOfClass JobDetail)]
   (when-let [scheduler (scheduler)]
     ;; Replacing a job writes its current class name. A job stored under an old class name has to keep that name
