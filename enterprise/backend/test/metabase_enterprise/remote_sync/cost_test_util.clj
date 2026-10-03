@@ -41,18 +41,27 @@
   {:card      (t2/select-one-fn :m :model/Card {:select [[:%max.updated_at :m]]})
    :dashboard (t2/select-one-fn :m :model/Dashboard {:select [[:%max.updated_at :m]]})})
 
-(defn- rewritten-since [{:keys [card dashboard]}]
-  (+ (t2/count :model/Card :updated_at [:> card])
-     (t2/count :model/Dashboard :updated_at [:> dashboard])))
+(defn- rewritten-since
+  "The cards and dashboards with an `updated_at` later than the values of [[max-updated-at]]. A nil value is an empty
+  table, so all of its rows count."
+  [{:keys [card dashboard]}]
+  (letfn [(newer [model latest]
+            (if latest
+              (t2/count model :updated_at [:> latest])
+              (t2/count model)))]
+    (+ (newer :model/Card card)
+       (newer :model/Dashboard dashboard))))
 
 (defn measure!
   "Run `thunk` and return its result under `:result`, with every JDBC-level count from
   [[metabase.app-db.activity-test-util/count-db-activity!]] (see [[metabase.app-db.activity-test-util/count-keys]]) and
   two domain counts:
 
-  - `:metadata-inferences` Card `result_metadata` inferences (QP preprocessing). Counted with a thread-local redef,
-                           so only the inferences made on the calling thread count.
-  - `:rows-rewritten`      cards and dashboards whose `updated_at` moved during the thunk."
+  - `:metadata-inferences` Card `result_metadata` inferences (QP preprocessing) on the calling thread and on the
+                           threads that receive its bindings (`future`, `bound-fn`, `in-virtual-thread*`); not on a
+                           raw `Thread`.
+  - `:rows-rewritten`      cards and dashboards that the thunk inserted or updated: rows with an `updated_at` later
+                           than the latest one before the thunk."
   [thunk]
   (let [inferences (atom 0)
         before     (max-updated-at)]
