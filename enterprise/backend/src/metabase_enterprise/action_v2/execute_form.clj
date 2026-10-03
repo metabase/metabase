@@ -105,7 +105,7 @@
     (throw (ex-info "Must provide table-id" {:status-code 400})))
   (let [table                       (api/read-check (action-v2.db/active-table table-id))
         database                    (action-v2.db/database (:db_id table))
-        _                           (actions/check-data-editing-enabled-for-database! database)
+        _                           (actions/check-data-editing-enabled-for-database database)
         fields                      (-> (action-v2.db/active-fields-in-position-order table-id)
                                         (t2/hydrate :dimensions :has_field_values :values))
         ;; TODO get this from action configuration, when we add it, or inherit from table configuration

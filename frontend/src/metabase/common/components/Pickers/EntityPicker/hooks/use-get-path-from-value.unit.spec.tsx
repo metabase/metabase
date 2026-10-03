@@ -846,7 +846,8 @@ describe("useGetPathFromValue", () => {
         ],
       });
 
-      // doing this manually here to get a delay
+      // Delayed by hand, so the loading state stays observable for longer than
+      // waitFor's 50ms polling interval.
       fetchMock.get(
         `path:/api/collection/${parentCollection.id}/items`,
         () => {
@@ -860,7 +861,7 @@ describe("useGetPathFromValue", () => {
             ],
           };
         },
-        { name: `collection-${parentCollection.id}-items`, delay: 50 },
+        { name: `collection-${parentCollection.id}-items`, delay: 300 },
       );
 
       setupCollectionItemsEndpoint({

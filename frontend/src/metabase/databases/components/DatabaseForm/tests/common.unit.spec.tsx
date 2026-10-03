@@ -48,6 +48,18 @@ describe("DatabaseForm", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show the cancel button when rendered in a modal", () => {
+    setup({ location: "admin" });
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("should not show the cancel button when rendered as a full page", () => {
+    setup({ location: "full-page" });
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should not render hidden fields", async () => {
     setup();
     await userEvent.click(screen.getByText("Show advanced options"));

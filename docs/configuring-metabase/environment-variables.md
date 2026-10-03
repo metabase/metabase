@@ -1356,14 +1356,6 @@ The Anthropic API Key.
 
 Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
-### `MB_LLM_ANTHROPIC_MODEL`
-
-- Type: string
-- Default: `claude-opus-4-5-20251101`
-- [Configuration file name](./config-file.md): `llm-anthropic-model`
-
-The Anthropic model to use.
-
 ### `MB_LLM_AZURE_API_BASE_URL`
 
 - Type: string
@@ -1652,22 +1644,6 @@ JSON array of configured LLM provider connections. Each entry has a `key` (a URL
 Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
 
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.
-
-### `MB_LLM_RATE_LIMIT_PER_IP`
-
-- Type: integer
-- Default: `100`
-- [Configuration file name](./config-file.md): `llm-rate-limit-per-ip`
-
-Maximum SQL generation requests per IP address per minute.
-
-### `MB_LLM_RATE_LIMIT_PER_USER`
-
-- Type: integer
-- Default: `20`
-- [Configuration file name](./config-file.md): `llm-rate-limit-per-user`
-
-Maximum SQL generation requests per user per minute.
 
 ### `MB_LLM_REQUEST_TIMEOUT_MS`
 

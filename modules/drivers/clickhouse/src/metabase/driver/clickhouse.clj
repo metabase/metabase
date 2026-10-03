@@ -190,6 +190,8 @@
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
+  ;; run the shared connection-property denylist before opening any connection, on both paths below
+  (driver/validate-db-details! driver details)
   (if driver-api/is-test?
     (try
       ;; Default SELECT 1 is not enough for Metabase test suite,

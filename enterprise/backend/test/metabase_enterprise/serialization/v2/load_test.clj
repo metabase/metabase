@@ -115,6 +115,41 @@
                 (is (some (partial re-find #"Invalid input.*:template-tags") messages))
                 (is (not (ours? messages)))))))))))
 
+(deftest http-action-dashcards-are-dropped-test
+  (testing "an older export's HTTP action does not load, and only the dashboard buttons that ran it are dropped"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db        (ts/create! :model/Database :name "my-db")
+                coll      (ts/create! :model/Collection :name "Actions")
+                model     (ts/create! :model/Card
+                                      :name          "A model"
+                                      :type          :model
+                                      :collection_id (:id coll)
+                                      :database_id   (:id db)
+                                      :dataset_query {:database (:id db)
+                                                      :type     :native
+                                                      :native   {:query "SELECT 1"}})
+                action    (ts/create! :model/Action :name "Old HTTP" :type :query :model_id (:id model))
+                _         (ts/create! :model/QueryAction
+                                      :action_id     (:id action)
+                                      :dataset_query {:database (:id db) :type :native :native {:query "UPDATE t SET x = 1"}})
+                dashboard (ts/create! :model/Dashboard :name "Buttons" :collection_id (:id coll))]
+            (ts/create! :model/DashboardCard :dashboard_id (:id dashboard) :action_id (:id action))
+            (ts/create! :model/DashboardCard :dashboard_id (:id dashboard) :card_id (:id model))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory
+                                       (for [entity @serialized]
+                                         (cond-> entity
+                                           (= "Action" (-> entity :serdes/meta last :model))
+                                           (-> (assoc :type "http") (dissoc :query))))))
+          (let [dashboard-id (t2/select-one-pk :model/Dashboard :name "Buttons")]
+            (is (not (t2/exists? :model/Action :name "Old HTTP")))
+            (is (some? dashboard-id))
+            (is (=? [{:card_id pos-int? :action_id nil}]
+                    (t2/select :model/DashboardCard :dashboard_id dashboard-id)))))))))
+
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)

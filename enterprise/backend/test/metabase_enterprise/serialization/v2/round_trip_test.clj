@@ -148,10 +148,11 @@
   fixture in this shared baseline. OsiAiContext is covered (in-memory + on-disk) by
   metabase-enterprise.serialization.v2.osi-ai-context-test. TransformTest is covered by
   transform-test-round-trip-test and transform-test-expectations-round-trip-test in
-  metabase-enterprise.serialization.v2.e2e-test, and stays out of the baseline until
-  @metabase/representations publishes a schema for it — the baseline is validated against that
+  metabase-enterprise.serialization.v2.e2e-test, and DataApp by
+  metabase-enterprise.data-apps.serialization-test; both stay out of the baseline until
+  @metabase/representations publishes a schema for them — the baseline is validated against that
   package, which refuses a model it does not know."
-  #{"OsiAiContext" "TransformTest"})
+  #{"DataApp" "OsiAiContext" "TransformTest"})
 
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."

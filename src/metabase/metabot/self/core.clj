@@ -11,9 +11,9 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
-   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -114,11 +114,23 @@
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
+(mr/def ::decoded-json
+  "A value decoded from JSON.
+  Object keys are strings from `json/decode` (replayed history) or keywords from `json/decode+kw` (the stream)."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:sequential [:ref ::decoded-json]]
+   [:map-of [:or :string :keyword] [:ref ::decoded-json]]])
+
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
   string keys off the wire, keyword keys when built in Clojure."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::request.schema/json-value])
+   [:or :string :keyword] ::decoded-json])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -141,11 +153,13 @@
    [:provider-metadata {:optional true} [:maybe ProviderMetadata]]])
 
 (def ^:private ApiKeyCredentials
-  "The `{:api-key ... :base-url ...}` connection shape shared by most providers."
+  "The `{:api-key ... :base-url ...}` connection shape shared by most providers. `:model-reasoning` and
+  `:probed-model` are not admin-entered: a connect-time probe records them on the connection (vLLM)."
   [:map {:closed true}
    [:api-key         {:optional true} [:maybe :string]]
    [:base-url        {:optional true} [:maybe :string]]
-   [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]])
+   [:model-reasoning {:optional true} [:maybe [:or :boolean :string]]]
+   [:probed-model    {:optional true} [:maybe :string]]])
 
 (def ^:private AzureCredentials
   "An Azure connection's config: the API-key pair plus the model family and deployment name its model is composed from."
@@ -160,7 +174,8 @@
    [:access-key-id     {:optional true} [:maybe :string]]
    [:secret-access-key {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
-   [:region            {:optional true} [:maybe :string]]])
+   [:region            {:optional true} [:maybe :string]]
+   [:model-id          {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleCredentials
   [:map {:closed true}
@@ -169,9 +184,14 @@
    [:project-id          {:optional true} [:maybe :string]]
    [:location            {:optional true} [:maybe :string]]
    [:auth-method         {:optional true} [:maybe :string]]
-   [:base-url            {:optional true} [:maybe :string]]])
+   [:base-url            {:optional true} [:maybe :string]]
+   [:endpoint-id         {:optional true} [:maybe :string]]
+   ;; recorded by the connect-time probe, not entered by the admin
+   [:probed-model        {:optional true} [:maybe :string]]])
 
-(def ^:private LLMCredentials
+(def LLMCredentials
+  "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say
+  `:credentials` once rather than restating an open map at each schema that carries one."
   [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
 
 (def ^:private ReasoningConfig
@@ -930,45 +950,60 @@
   environment — `mu/defn` only instruments dev and test namespaces — and a
   mismatch is returned to the model as a repair-oriented error.
 
+  A call to a tool outside `tools` gets an error listing the ones it can call. Its name is model output,
+  so logs and span data record it as \"unknown\".
+
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
-  [tool-call-id tool-name tool chunks]
-  (ait/with-tool-call {:ai/tool-name    tool-name
-                       :ai/tool-call-id tool-call-id}
-    (with-span :info {:name         :metabot.agent/run-tool
-                      :tool-name    tool-name
-                      :tool-call-id tool-call-id}
-      (let [start-ms (u/start-timer)
-            assoc-ms (fn [duration-ms]
-                       (fn [chunk]
-                         (cond-> chunk
-                           (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-            results  (try
-                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                             arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
-                             arguments (coerce-stringified-scalars tool arguments)
-                             decode    (tool-decode-fn tool)
-                             arguments (cond-> arguments decode decode)
-                             _         (validate-tool-arguments! tool arguments)]
-                         (log/debug "Executing tool" {:tool-name tool-name})
-                         (when (ait/capture-active?)
-                           (ait/record! {:ai/tool-args arguments}))
-                         (let [tool-fn (tool-call-fn tool)
-                               result  (tool-fn arguments)]
-                           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-                           (collect-tool-result tool-call-id tool-name result)))
-                       (catch Exception e
-                         (if (:agent-error? (ex-data e))
-                           (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
-                         [{:type         :tool-output-available
-                           :toolCallId   tool-call-id
-                           :toolName     tool-name
-                           :error        {:message (concise-tool-error e)
-                                          :type    (str (type e))}}]))]
-        (when (ait/capture-active?)
-          (ait/record! {:ai/tool-output results}))
-        (mapv (assoc-ms (u/since-ms start-ms))
-              results)))))
+  [tool-call-id tool-name tools chunks]
+  (let [tool      (get tools tool-name)
+        safe-name (if tool tool-name "unknown")]
+    (ait/with-tool-call {:ai/tool-name    tool-name
+                         :ai/tool-call-id tool-call-id}
+      (with-span :info {:name         :metabot.agent/run-tool
+                        :tool-name    safe-name
+                        :tool-call-id tool-call-id}
+        (let [start-ms (u/start-timer)
+              assoc-ms (fn [duration-ms]
+                         (fn [chunk]
+                           (cond-> chunk
+                             (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+              results  (try
+                         (when-not tool
+                           (throw (ex-info (str "Tool `" tool-name "` does not exist. Available tools: "
+                                                (str/join ", " (sort (keys tools))) ".")
+                                           {:agent-error? true})))
+                         (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                               arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
+                               arguments (coerce-stringified-scalars tool arguments)
+                               decode    (tool-decode-fn tool)
+                               arguments (cond-> arguments decode decode)
+                               _         (validate-tool-arguments! tool arguments)]
+                           (log/debug "Executing tool" {:tool-name safe-name})
+                           (when (ait/capture-active?)
+                             (ait/record! {:ai/tool-args arguments}))
+                           (let [tool-fn (tool-call-fn tool)
+                                 result  (tool-fn arguments)]
+                             (log/debug "Tool returned" {:tool-name safe-name :result-type (type result)})
+                             (collect-tool-result tool-call-id tool-name result)))
+                         (catch Exception e
+                           (cond
+                             (nil? tool)
+                             (log/debugf "Tool call %s: unknown tool" tool-call-id)
+
+                             (:agent-error? (ex-data e))
+                             (log/debugf "Tool %s: agent validation error: %s" safe-name (ex-message e))
+
+                             :else
+                             (log/error e "Tool execution failed" {:tool-name safe-name}))
+                           [{:type         :tool-output-available
+                             :toolCallId   tool-call-id
+                             :toolName     tool-name
+                             :error        {:message (concise-tool-error e)
+                                            :type    (str (type e))}}]))]
+          (when (ait/capture-active?)
+            (ait/record! {:ai/tool-output results}))
+          (mapv (assoc-ms (u/since-ms start-ms))
+                results))))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
@@ -997,8 +1032,7 @@
         ([result {:keys [type toolCallId toolName] :as chunk}]
          (case type
            :tool-input-start
-           (when (contains? tools toolName)
-             (vswap! active assoc toolCallId {:chunks [chunk]}))
+           (vswap! active assoc toolCallId {:chunks [chunk]})
 
            :tool-input-delta
            (when (contains? @active toolCallId)
@@ -1006,8 +1040,7 @@
 
            :tool-input-available
            (when-let [{:keys [chunks]} (get @active toolCallId)]
-             (let [tool (get tools toolName)
-                   task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool chunks)))]
+             (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
                (vswap! active assoc toolCallId {:task task})))
 
            ;; otherwise: do nothing
@@ -1226,6 +1259,12 @@
            {:api-error  true
             :error-code :api-key-missing}))
 
+(def NetworkPolicyFloor
+  "The `:network-policy-floor` [[resolve-auth]] may put on an auth map, as the set of policies
+  [[metabase.llm.settings/network-policy]] ranks. Derived from that list rather than spelled out again, so
+  a policy added there cannot leave this behind."
+  (into [:enum] u.http/configurable-network-policies))
+
 (defn resolve-auth
   "Pick the right auth map for an LLM request.
 
@@ -1256,7 +1295,7 @@
   never block the caller forever. The timeouts default to the operator-tunable
   [[metabase.llm.settings/llm-connection-timeout-ms]] and
   [[metabase.llm.settings/llm-request-timeout-ms]] settings (read
-  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  at call time). Callers can
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`.
 

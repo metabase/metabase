@@ -884,64 +884,43 @@
       (is (= (str "Bearer error=\"insufficient_scope\", scope=\"a b\", resource_metadata=\"" url "\"")
              (challenge url ["a" "b"] nil))))))
 
-(deftest legacy-scoped-bearer-token-is-challenged-then-refused-test
+(deftest legacy-scoped-bearer-token-is-stepped-up-test
   (testing (str "GHY-4343: `/api/metabase-mcp` now serves the v2 tool surface, but every MCP client connected to a "
                 "shipped v0.60-v0.63 release holds a token carrying the pre-v2 per-entity agent scopes. No legacy "
-                "scope satisfies any v2 tool scope and `registry/list-tools` then filtered silently, so the pre-fix "
-                "failure mode was a successful handshake followed by HTTP 200 with an empty tools list - no error, "
-                "nothing logged, and no self-heal (the refresh grant copies scope forward and can only narrow). "
-                "`RevokeLegacyMcpOAuthTokens` stamps such tokens revoked so the client is refused outright and "
-                "re-authenticates. Whichever way it resolves, it must never be a 200 carrying zero tools.")
+                "scope satisfies any v2 tool scope, and the pre-fix failure mode was a successful handshake followed "
+                "by HTTP 200 with an empty tools list. GHY-4491: the upgrade leaves such tokens alive, so the client "
+                "must recover on its own: it is listed every tool, and a call gets a 403 `insufficient_scope` "
+                "challenge naming the v2 scope to re-authorize for.")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (oauth-server.tu/with-oauth-client [client-id]
         (mt/with-model-cleanup [:model/OAuthAccessToken]
-          (let [;; Exactly the review's token: one per-entity scope the v2 surface never gates on, plus
-                ;; `agent:resource:read`, which gates a resource rather than any tool.
-                token   (issue-bearer! (mt/user->id :rasta) client-id
-                                       ["agent:question:create" "agent:resource:read"])
-                headers (fn [& {:as extra}]
-                          {:request-options {:headers (merge {"authorization" (str "Bearer " token)} extra)}})
-                ;; The tool list is only reachable through a session, so the handshake runs first. Its status is
-                ;; not asserted: the point is what `tools/list` can be answered, and revoking the token moves the
-                ;; refusal to this call rather than removing it.
-                _       (testing (str "GHY-4543: before the migration this token handshakes and is listed every tool, "
-                                      "since tools/list no longer filters by scope, but can call none of them")
-                          (let [sid   (get-in (client/client-full-response
-                                               :post 200 "metabase-mcp" (headers)
-                                               (jsonrpc-request "initialize" {:capabilities {}}))
-                                              [:headers "Mcp-Session-Id"])
-                                r     (client/client-full-response :post 200 "metabase-mcp"
-                                                                   (headers "mcp-session-id" sid)
-                                                                   (jsonrpc-request "tools/list" {} 2))
-                                tools (get-in r [:body :result :tools])
-                                call  (client/client-full-response :post 403 "metabase-mcp"
-                                                                   (headers "mcp-session-id" sid)
-                                                                   (jsonrpc-request
-                                                                    "tools/call"
-                                                                    {:name      (:name (first tools))
-                                                                     :arguments {}}
-                                                                    3))]
-                            (is (= 200 (:status r)))
-                            (is (seq tools))
-                            (is (= 403 (:status call)))
-                            (is (str/includes? (get-in call [:headers "WWW-Authenticate"] "")
-                                               "error=\"insufficient_scope\""))
-                            (is (str/starts-with? (get-in call [:body :error :message] "")
-                                                  "Insufficient scope to call tool: "))))
-                ;; Then put the token in the state `RevokeLegacyMcpOAuthTokens` leaves it in. The migration
-                ;; class itself is exercised in `metabase.app-db.custom-migrations-test`, against the changelog;
-                ;; what this test owns is the consequence at the transport, which is the revoked stamp.
-                _       (t2/update! :model/OAuthAccessToken
-                                    {:token (oidc.util/hash-token token)} {:revoked_at :%now})
-                init    (client/client-full-response :post 401 "metabase-mcp" (headers)
-                                                     (jsonrpc-request "initialize" {:capabilities {}}))]
-            (testing "after the migration the token is refused at the handshake, so it never holds a useless session"
-              (is (= 401 (:status init)))
-              (is (nil? (get-in init [:headers "Mcp-Session-Id"]))
-                  "a revoked token must not be handed a working MCP session")
-              (let [challenge (get-in init [:headers "WWW-Authenticate"] "")]
-                (is (str/includes? challenge "invalid_token"))
-                (is (str/includes? challenge "resource_metadata=")
-                    "the challenge carries RFC 9728 discovery, so the client knows where to re-authenticate")
-                (is (str/includes? challenge "agent:content:read")
-                    "and names the v2 scopes to ask for, which the widened client snapshot now validates")))))))))
+          (let [;; One per-entity scope the v2 surface never gates on, plus `agent:resource:read`, which gates a
+                ;; resource rather than any tool.
+                token     (issue-bearer! (mt/user->id :rasta) client-id
+                                         ["agent:question:create" "agent:resource:read"])
+                headers   (fn [& {:as extra}]
+                            {:request-options {:headers (merge {"authorization" (str "Bearer " token)} extra)}})
+                sid       (get-in (client/client-full-response
+                                   :post 200 "metabase-mcp" (headers)
+                                   (jsonrpc-request "initialize" {:capabilities {}}))
+                                  [:headers "Mcp-Session-Id"])
+                listed    (client/client-full-response :post 200 "metabase-mcp"
+                                                       (headers "mcp-session-id" sid)
+                                                       (jsonrpc-request "tools/list" {} 2))
+                tools     (get-in listed [:body :result :tools])
+                call      (client/client-full-response :post 403 "metabase-mcp"
+                                                       (headers "mcp-session-id" sid)
+                                                       (jsonrpc-request "tools/call" {:name "search" :arguments {}} 3))
+                challenge (get-in call [:headers "WWW-Authenticate"] "")]
+            (testing "the handshake succeeds and every tool is listed, since tools/list does not filter by scope"
+              (is (string? sid))
+              (is (some #{"search"} (map :name tools))))
+            (testing "a call is refused with a step-up challenge rather than a 200 or a 401"
+              (is (= 403 (:status call)))
+              (is (str/includes? challenge "error=\"insufficient_scope\""))
+              (is (str/includes? challenge "agent:content:read")
+                  "the challenge names the v2 scope to ask for, which the widened client snapshot validates")
+              (is (str/includes? challenge "resource_metadata=")
+                  "and carries RFC 9728 discovery, so the client knows where to re-authorize")
+              (is (str/starts-with? (get-in call [:body :error :message] "")
+                                    "Insufficient scope to call tool: ")))))))))

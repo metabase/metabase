@@ -56,6 +56,7 @@
   {:vectors "library_entity_index"
    :meta    "library_entity_index_meta"})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *tables*
   "Table names to use, or nil for [[default-tables]]. Bound by tests to isolated names."
   nil)

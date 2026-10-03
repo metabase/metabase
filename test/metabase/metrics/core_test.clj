@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -352,6 +353,192 @@
 
 ;; Note: There's no test for "no-op without definition" for measures
 ;; because measures have a NOT NULL constraint on the definition column - they must always have a definition.
+
+(def ^:private uuid-1 "550e8400-e29b-41d4-a716-446655440001")
+(def ^:private uuid-2 "550e8400-e29b-41d4-a716-446655440002")
+
+(deftest ^:parallel recover-pre-curation-default-test
+  (let [mp             (mt/metadata-provider)
+        products       (lib.metadata/table mp (mt/id :products))
+        base-query     (-> (lib/query mp products)
+                           (lib/aggregate (lib/count)))
+        get-column     (m/index-by :display-name (lib/breakoutable-columns base-query))
+        category       (get-column "Category")
+        created-at     (get-column "Created At")
+        rating         (get-column "Rating")
+        created-at-day (lib/with-temporal-bucket created-at :day)
+        mappings       [{:type         :table
+                         :table-id     (mt/id :products)
+                         :dimension-id uuid-1
+                         :target       (lib/ref category)}
+                        {:type         :table
+                         :table-id     (mt/id :products)
+                         :dimension-id uuid-2
+                         :target       (lib/ref created-at)}]
+        dimensions     [{:id uuid-1, :name "col1"}
+                        {:id uuid-2, :name "col2"}]]
+    (testing "marks the dimension mapped to an unbucketed breakout as the sole default"
+      (is (= [{:id uuid-1, :name "col1", :default true}
+              {:id uuid-2, :name "col2"}]
+             (->> (lib/breakout base-query category)
+                  (metrics/recover-pre-curation-default-dimension dimensions mappings)))))
+    (testing "marks the dimension mapped to a bucketed breakout as the sole default"
+      (is (= [{:id uuid-1, :name "col1"}
+              {:id uuid-2, :name "col2", :default true}]
+             (->> (lib/breakout base-query created-at-day)
+                  (metrics/recover-pre-curation-default-dimension dimensions mappings)))))
+    (testing "the first mapped breakout wins when the query has several"
+      (is (= [{:id uuid-1, :name "col1"}
+              {:id uuid-2, :name "col2", :default true}]
+             (-> base-query
+                 (lib/breakout created-at-day)
+                 (lib/breakout category)
+                 (->> (metrics/recover-pre-curation-default-dimension dimensions mappings)))))
+      (is (= [{:id uuid-1, :name "col1", :default true}
+              {:id uuid-2, :name "col2"}]
+             (-> base-query
+                 (lib/breakout category)
+                 (lib/breakout created-at-day)
+                 (->> (metrics/recover-pre-curation-default-dimension dimensions mappings))))))
+    (testing "no change to the dimensions"
+      (testing "when there are no breakouts"
+        (is (= dimensions
+               (metrics/recover-pre-curation-default-dimension dimensions mappings base-query))))
+      (testing "when no breakouts match the dimensions"
+        (is (= dimensions
+               (->> (lib/breakout base-query rating)
+                    (metrics/recover-pre-curation-default-dimension dimensions mappings)))))
+      (testing "when there are no mappings"
+        (is (= dimensions
+               (->> (lib/breakout base-query created-at-day)
+                    (metrics/recover-pre-curation-default-dimension dimensions []))))))
+    (testing "idempotent -- re-running over already-repaired :dimensions is a no-op"
+      (let [query (-> base-query
+                      (lib/breakout category)
+                      (lib/breakout created-at-day))
+            once  (metrics/recover-pre-curation-default-dimension dimensions mappings query)
+            twice (metrics/recover-pre-curation-default-dimension once mappings query)]
+        (is (not= dimensions once))
+        (is (not= dimensions twice))
+        (is (= once twice))))))
+
+(deftest ^:parallel recover-pre-curation-default-dimension-preserves-temporal-unit-test
+  (let [mp           (mt/metadata-provider)
+        products     (lib.metadata/table mp (mt/id :products))
+        base-query   (-> (lib/query mp products)
+                         (lib/aggregate (lib/count)))
+        get-column   (m/index-by :display-name (lib/breakoutable-columns base-query))
+        created-at   (get-column "Created At")
+        mappings     [{:type         :table
+                       :table-id     (mt/id :products)
+                       :dimension-id uuid-1
+                       :target       (lib/ref created-at)}]
+        dim-plain    {:id uuid-1, :name "col1"}
+        dim-datetime {:id uuid-1, :name "col1", :effective-type :type/DateTime}
+        dim-date     {:id uuid-1, :name "col1", :effective-type :type/Date}
+        bucket-by    (fn [dim unit]
+                       (let [column (cond-> created-at
+                                      unit (lib/with-temporal-bucket unit))
+                             query  (lib/breakout base-query column)]
+                         (metrics/recover-pre-curation-default-dimension [dim] mappings query)))]
+    (testing "the breakout's bucket is carried over, so the metric keeps the grain it was authored at"
+      (doseq [unit [:year :quarter :month :week :day :hour :minute]]
+        (is (=? [(assoc dim-datetime
+                        :default               true
+                        :default-temporal-unit unit)]
+                (bucket-by dim-datetime unit))))
+      (doseq [unit [:year :quarter :month :week :day]]
+        (is (=? [(assoc dim-date
+                        :default               true
+                        :default-temporal-unit unit)]
+                (bucket-by dim-date unit)))))
+    (testing "an unbucketed breakout recovers the dimension but sets no unit"
+      (is (=? [(assoc dim-datetime :default true)]
+              (bucket-by dim-datetime nil))))
+    (testing "a unit the dimension's own picker would not offer is dropped rather than persisted"
+      (testing "hidden from the picker"
+        (is (= [(assoc dim-datetime :default true)]
+               (bucket-by dim-datetime :millisecond))))
+      (testing "belongs to another temporal type"
+        (let [dim-date (assoc dim-plain :effective-type :type/Date)]
+          (is (= [(assoc dim-date :default true)]
+                 (bucket-by dim-date :hour)))))
+      (testing "column is not temporal at all"
+        (is (= [(assoc dim-plain :default true)]
+               (bucket-by dim-plain :year)))))
+    (testing "idempotent -- the recovered unit survives a re-run"
+      (let [once (bucket-by dim-datetime :year)]
+        (is (= [(assoc dim-datetime
+                       :default               true
+                       :default-temporal-unit :year)]
+               once))
+        (testing "even if the breakout's unit changes"
+          (is (= [(assoc dim-datetime
+                         :default               true
+                         :default-temporal-unit :year)]
+                 (bucket-by (first once) :month))))))))
+
+(deftest ^:parallel recover-pre-curation-default-dimension-legacy-mbql-breakout-test
+  ;; Pre-curation metrics were mostly authored in legacy MBQL. Converting it tags every field ref with
+  ;; `:lib/transformation-added-base-type`, which the dimension mapping targets never carry.
+  (let [mp         (mt/metadata-provider)
+        orders     (lib.metadata/table mp (mt/id :orders))
+        columns    (lib/breakoutable-columns (lib/query mp orders))
+        created-at (m/find-first #(= (mt/id :orders :created_at) (:id %)) columns)
+        category   (m/find-first #(and (= (mt/id :products :category) (:id %))
+                                       (= (mt/id :orders :product_id) (:fk-field-id %)))
+                                 columns)
+        mappings   [{:type :table, :table-id (mt/id :orders),   :dimension-id uuid-1, :target (lib/ref created-at)}
+                    {:type :table, :table-id (mt/id :products), :dimension-id uuid-2, :target (lib/ref category)}]
+        dimensions [{:id uuid-1, :name "col1", :effective-type :type/DateTime}
+                    {:id uuid-2, :name "col2", :effective-type :type/Text}]
+        legacy     (fn [breakout]
+                     (lib/query mp {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :orders)
+                                               :aggregation  [[:count]]
+                                               :breakout     [breakout]}}))]
+    (testing "a bucketed own-table breakout recovers the default and its unit"
+      (is (= [(assoc (first dimensions) :default true, :default-temporal-unit :month)
+              (second dimensions)]
+             (metrics/recover-pre-curation-default-dimension
+              dimensions mappings
+              (legacy [:field (mt/id :orders :created_at) {:temporal-unit :month}])))))
+    (testing "an implicitly-joined breakout recovers the default"
+      (is (= [(first dimensions)
+              (assoc (second dimensions) :default true)]
+             (metrics/recover-pre-curation-default-dimension
+              dimensions mappings
+              (legacy [:field (mt/id :products :category) {:source-field (mt/id :orders :product_id)}])))))))
+
+(deftest pre-curation-legacy-metric-recovers-default-dimension-on-read-test
+  (testing "a pre-curation metric stored as legacy MBQL gets its breakout's dimension as the default on read"
+    (mt/with-temp [:model/Card metric {:name          "Legacy Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query (metric-query)}]
+      ;; Raw UPDATE, so the row looks like it was written before curated dimensions existed.
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema        23
+                              :dimensions         nil
+                              :dimension_mappings nil
+                              :dataset_query      (json/encode
+                                                   {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (mt/id :orders)
+                                                               :aggregation  [[:count]]
+                                                               :breakout     [[:field (mt/id :orders :created_at)
+                                                                               {:temporal-unit :month}]]}})}
+                     :where  [:= :id (:id metric)]})
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+            default (filter :default dimensions)
+            target  (some #(when (= (:id (first default)) (:dimension-id %)) (:target %)) dimension_mappings)]
+        (is (seq dimensions)
+            "The schema upgrade should have backfilled the full dimension set")
+        (is (= 1 (count default)))
+        (is (= :month (:default-temporal-unit (first default))))
+        (is (= (mt/id :orders :created_at) (nth target 2 nil)))))))
 
 ;;; ------------------------------------------ Database-wide backfill ------------------------------------------
 

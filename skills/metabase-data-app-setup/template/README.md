@@ -4,10 +4,10 @@ A Metabase **data app** — a single-bundle React app (built with the Embedding
 SDK) that Metabase renders inside an isolated, sandboxed iframe at
 `/apps/<slug>`.
 
-Data apps are delivered through **Git, not uploaded**: this directory lives at
+Data apps are delivered through **Git**: this directory lives at
 `data_apps/<slug>/` inside a repository connected to Metabase via remote sync.
 You commit the built bundle (`dist/index.js`), and on the next remote-sync
-import Metabase materializes the app and serves it. There is no upload step.
+import Metabase materializes the app and serves it.
 
 ## Develop
 
@@ -33,6 +33,14 @@ npm run build                         # produces a single dist/index.js
 Commit `dist/index.js` (the `path` declared in `data_app.yaml`) along with your
 source. The app appears at `/apps/<slug>` after Metabase's next remote-sync
 import (manual "Pull changes", auto-import, or startup).
+
+## Upgrading
+
+`data_app.yaml` declares the data-app contract version this app targets. When a
+Metabase release bumps that version, the app shows as _Outdated_ in the admin UI
+until it is migrated. Migration is its own instructed procedure, installed for
+your coding agent by the same command as the other data-app skills; do not edit
+`version` by hand.
 
 ## What's in the box
 

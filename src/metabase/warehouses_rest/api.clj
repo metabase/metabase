@@ -824,44 +824,8 @@
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/validate"
-  "Validate that we can connect to a database given a set of details."
-  ;; TODO - why do we pass the DB in under the key `details`?
-  [_route-params
-   _query-params
-   {{:keys [engine details]} :details} :- [:map {:closed true}
-                                           [:details [:map {:closed true}
-                                                      [:engine  DBEngineString]
-                                                      [:details ms/DatabaseDetails]]]]]
-  (api/check-superuser)
-  (let [details-or-error (warehouses/test-connection-details engine details)]
-    ;; details that come back without a `:valid` key at all are... valid!
-    (update details-or-error :valid (comp not false?))))
-
-;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/sample_database"
-  "Add the sample database as a new `Database`."
-  []
-  (api/check-superuser)
-  (sample-data/extract-and-sync-sample-database!)
-  (warehouses-rest.db/sample-database))
-
-;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
-
 (defn- upsert-sensitive-fields
-  "Replace any sensitive values not overridden in the PUT with the original values.
+  "Replace any sensitive values the client left redacted with the original values.
   `details-key` is the key in the database map to use (e.g., :details or :write_data_details).
   When `engine-changed?` is truthy, the existing details belong to a different driver, so they are not merged into the
   new details (#77480)."
@@ -882,6 +846,70 @@
        (if engine-changed?
          details
          (merge existing-details details))))))
+
+(defn- redact-sensitive-details
+  "Redact `database`'s sensitive values in `details` so secrets resolved server-side are never echoed back."
+  [database details]
+  (reduce (fn [details k]
+            (m/update-existing details k (fn [v] (when v secret/protected-password))))
+          details
+          (database/sensitive-fields-for-db database)))
+
+(defn- test-existing-database-details
+  "Like [[warehouses/test-connection-details]], but for `details` that are an edit of the existing `database`."
+  [database engine details]
+  (let [engine-changed? (not= (keyword engine) (:engine database))
+        details         (upsert-sensitive-fields database details :details engine-changed?)]
+    ;; testing an existing Database's own engine is fine; we only want to prevent creating new H2/SQLite Databases
+    (binding [driver.settings/*allow-testing-h2-connections*     (or (not engine-changed?)
+                                                                     driver.settings/*allow-testing-h2-connections*)
+              driver.settings/*allow-testing-sqlite-connections* (or (not engine-changed?)
+                                                                     driver.settings/*allow-testing-sqlite-connections*)]
+      (redact-sensitive-details database (warehouses/test-connection-details engine details)))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/validate"
+  "Validate that we can connect to a database given a set of details.
+
+  Pass the `id` of an existing Database to test edited details against it: sensitive values the client left redacted
+  are resolved from the stored Database, and its own engine may be tested even when creating new Databases of that
+  engine is disallowed."
+  ;; TODO - why do we pass the DB in under the key `details`?
+  [_route-params
+   _query-params
+   {{:keys [engine details id]} :details} :- [:map {:closed true}
+                                              [:details [:map {:closed true}
+                                                         [:engine  DBEngineString]
+                                                         [:details ms/DatabaseDetails]
+                                                         [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
+  (api/check-superuser)
+  (let [database         (when id (api/write-check (warehouses-rest.db/database id)))
+        details-or-error (if database
+                           (test-existing-database-details database engine details)
+                           (warehouses/test-connection-details engine details))]
+    ;; details that come back without a `:valid` key at all are... valid!
+    (update details-or-error :valid (comp not false?))))
+
+;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
+
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/sample_database"
+  "Add the sample database as a new `Database`."
+  []
+  (api/check-superuser)
+  (sample-data/extract-and-sync-sample-database!)
+  (warehouses-rest.db/sample-database))
+
+;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (def ^:private connection-marker-key->details-column
   {:write-data-connection "write_data_details"})
@@ -1151,6 +1179,7 @@
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *rescan-values-async*
   "Boolean indicating whether the rescan_values job should be done async or not. Defaults to `true`. Should only be rebound
   in tests to force the scan to block."
