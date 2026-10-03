@@ -163,7 +163,7 @@
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
 
-(deftest start-scheduler-keeps-a-renamed-job-under-its-mapped-old-class-name-test
+(deftest start-scheduler-keeps-a-renamed-job-under-its-registered-old-class-name-test
   ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it, while
   ;; upgraded nodes load the current class under it
   (let [scheduler-initialized? (some? (#'task/scheduler))
@@ -171,22 +171,23 @@
         job-name               (capitalize-if-mysql :job_name)
         job-class-name         (capitalize-if-mysql :job_class_name)
         old-class-name         "metabase.task_test.OldNameOfTestJob"]
-    (with-redefs [mdb.quartz/renamed-job-classes {old-class-name (.getName TestJob)}]
-      (try
-        (when-not scheduler-initialized?
-          (task/start-scheduler!))
-        (task/schedule-task! (job) (trigger-1))
-        (t2/update! job-details job-name "metabase.task-test.job" {job-class-name old-class-name})
-        (task/stop-scheduler!)
-        (task/start-scheduler!)
-        ;; what the job's `task/init!` does at startup
-        (task/schedule-task! (job) (trigger-1))
-        (is (= {:stored-class-name old-class-name
-                :loaded-class      TestJob}
-               {:stored-class-name (t2/select-one-fn job-class-name job-details job-name "metabase.task-test.job")
-                :loaded-class      (.getJobClass ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job))))}))
-        (finally
-          (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))
-          (if scheduler-initialized?
-            (task/start-scheduler!)
-            (task/stop-scheduler!)))))))
+    (task/register-renamed-job-class! old-class-name TestJob)
+    (try
+      (when-not scheduler-initialized?
+        (task/start-scheduler!))
+      (task/schedule-task! (job) (trigger-1))
+      (t2/update! job-details job-name "metabase.task-test.job" {job-class-name old-class-name})
+      (task/stop-scheduler!)
+      (task/start-scheduler!)
+      ;; what the job's `task/init!` does at startup
+      (task/schedule-task! (job) (trigger-1))
+      (is (= {:stored-class-name old-class-name
+              :loaded-class      TestJob}
+             {:stored-class-name (t2/select-one-fn job-class-name job-details job-name "metabase.task-test.job")
+              :loaded-class      (.getJobClass ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job))))}))
+      (finally
+        (swap! @#'mdb.quartz/renamed-job-classes dissoc old-class-name)
+        (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))
+        (if scheduler-initialized?
+          (task/start-scheduler!)
+          (task/stop-scheduler!))))))
