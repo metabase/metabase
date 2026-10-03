@@ -629,6 +629,56 @@ describe("metabase/dashboard/utils/click-behavior", () => {
       expect(value).toEqual("2020-01-01");
     });
 
+    it.each([
+      {
+        unit: "hour" as const,
+        expected: "2020-01-01T06:00~2020-01-01T07:00",
+      },
+      {
+        unit: "minute" as const,
+        expected: "2020-01-01T06:30~2020-01-01T06:31",
+      },
+    ])(
+      "should pass $unit-granularity dates to linked questions as a time range (metabase#66277)",
+      ({ unit, expected }) => {
+        const source = {
+          type: "column" as const,
+          id: "SOME_DATE",
+          name: "date",
+        };
+        const target: ClickBehaviorTarget = {
+          type: "dimension" as const,
+          id: '["dimension",["field",1,null]]',
+          dimension: ["dimension" as const, ["field", 1, null]],
+        };
+        const data = {
+          ...emptyData,
+          column: {
+            some_date: {
+              value: "2020-01-01T06:30:00+05:00",
+              column: createMockColumn({
+                effective_type: "type/DateTime",
+                unit,
+              }),
+            },
+          },
+        };
+        const clickBehavior = {
+          type: "link" as const,
+          linkType: "question" as const,
+          targetId: 123,
+        };
+
+        expect(
+          formatSourceForTarget(source, target, {
+            data,
+            extraData: {},
+            clickBehavior,
+          }),
+        ).toEqual(expected);
+      },
+    );
+
     describe("unbinned date columns (metabase#72863)", () => {
       const source = {
         type: "column" as const,
