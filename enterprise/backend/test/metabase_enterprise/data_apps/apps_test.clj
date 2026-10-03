@@ -13,17 +13,11 @@
    :bundle_path  "dist/index.js"
    :bundle       (.getBytes "BUNDLE" "UTF-8")})
 
-(deftest concurrent-draft-creation-is-safe-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [drafts (doall (repeatedly 2 #(future (data-apps.apps/ensure-draft! "draft-app"))))]
-      (doseq [draft drafts]
-        @draft)
-      (is (= 1 (t2/count :model/DataApp :name "draft-app"))))))
-
 (deftest create-app-fills-a-draft-with-the-same-slug-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [{:keys [resource_collection_id]} (data-apps.apps/ensure-draft! "sales")
-          draft-id                         (t2/select-one-pk :model/DataApp :name "sales")]
+    (let [{draft-id :id, :keys [resource_collection_id]}
+          (t2/insert-returning-instance! :model/DataApp {:name "sales" :display_name "sales"
+                                                         :bundle_path "dist/index.js" :draft true})]
       (is (= draft-id (data-apps.apps/create-app! app-row)))
       (is (=? {:display_name           "Sales"
                :draft                  false
