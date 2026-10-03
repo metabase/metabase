@@ -41,6 +41,11 @@
   [table]
   (mi/can-read? table))
 
+(defn- include-sensitive-fields-for?
+  "Sensitive fields are hidden from querying, so only list them for users who can edit the table's metadata."
+  [include-sensitive-fields? table]
+  (boolean (and include-sensitive-fields? (mi/can-write? table))))
+
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
@@ -49,9 +54,10 @@
   (if include-editable-data-model?
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
-  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                [:segments :definition_description] [:measures :definition_description] :metrics :collection]
-                         (premium-features/any-transforms-enabled?) (conj :transform))]
+  (let [include-sensitive-fields? (include-sensitive-fields-for? include-sensitive-fields? table)
+        hydration-keys            (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                                           [:segments :definition_description] [:measures :definition_description] :metrics :collection]
+                                    (premium-features/any-transforms-enabled?) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
@@ -67,7 +73,8 @@
 (defn batch-fetch-query-metadatas*
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
+      user can write (default false)"
   ([ids]
    (batch-fetch-query-metadatas* ids nil))
   ([ids {:keys [include-sensitive-fields?]}]
@@ -76,10 +83,11 @@
            _      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                                   :table-ids (into #{} (map :id) tables)})
            tables (filter can-access-table-for-query-metadata? tables)
-           tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)
-           excluded-visibility-types (cond-> #{:hidden}
-                                       (not include-sensitive-fields?) (conj :sensitive))]
-       (for [table tables]
+           tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)]
+       (for [table tables
+             :let [excluded-visibility-types (cond-> #{:hidden}
+                                               (not (include-sensitive-fields-for? include-sensitive-fields? table))
+                                               (conj :sensitive))]]
          (-> table
              (m/dissoc-in [:db :details])
              format-fields-for-response
