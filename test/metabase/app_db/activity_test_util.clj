@@ -1,6 +1,5 @@
 (ns metabase.app-db.activity-test-util
-  "Counts app-DB activity at the JDBC level, for cost tests: statements, prepares, connection check-outs and
-  check-ins, transaction starts, savepoints, commits and rollbacks.
+  "Counts app-DB activity at the JDBC level, for cost tests. [[count-keys]] defines what it counts.
 
   How: for the duration of [[count-db-activity!]], the root value of `metabase.app-db.connection/*application-db*` is
   replaced by a copy whose `:data-source` hands out counting proxies of the real (pooled) connections. Each app-DB
@@ -10,7 +9,8 @@
 
   Not counted: work on a connection that a thread got before the count (so [[count-db-activity!]] throws when the
   calling thread holds one, as in the body of a default `mt/with-temp`); a statement that a `ResultSet` or
-  `DatabaseMetaData` hands out; and Quartz's separate data source.
+  `DatabaseMetaData` hands out, or that is made on the connection that `Connection.unwrap` returns; and Quartz's
+  separate data source.
 
   Because the swap is JVM-wide, anything else using the app DB at the same time is counted too. Tests that use
   this MUST NOT be marked `^:parallel`, and the totals include background work (scheduler, heartbeats, async

@@ -148,3 +148,17 @@
                      (with-open [stmt2 (.createStatement (.getConnection stmt))]
                        (.execute stmt2 "SELECT 1"))))]
       (is (=? {:statements 2 :prepares 2} (this-thread counts))))))
+
+(deftest uncounted-statements-test
+  (testing "the statements that the ns docstring says the counter does not see are not counted"
+    (let [counts (activity/with-db-activity!
+                   (with-open [^Connection conn (.getConnection ^DataSource (mdb/app-db))
+                               stmt             (.createStatement conn)
+                               rs               (.executeQuery stmt "SELECT 1")]
+                     (doseq [^Connection other [(.getConnection (.getStatement rs))
+                                                (.getConnection (.getMetaData conn))
+                                                (.unwrap conn Connection)]]
+                       (with-open [other-stmt (.createStatement other)]
+                         (.execute other-stmt "SELECT 1")))))]
+      (testing "only the statement on the counting connection counts"
+        (is (=? {:statements 1 :prepares 1} (this-thread counts)))))))
