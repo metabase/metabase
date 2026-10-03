@@ -186,6 +186,36 @@
    entity-ids :- [:set :string]]
   (t2/select (into [model] columns) :entity_id [:in entity-ids]))
 
+(mu/defn cascaded-action-and-index-ids :- [:map
+                                           [:action-ids [:sequential ms/PositiveInt]]
+                                           [:index-ids  [:sequential ms/PositiveInt]]]
+  "The ids of the Actions and the ModelIndexes of the model Cards with `card-ids`. A delete of those Cards deletes
+  these rows, and the ModelIndexValues of the ModelIndexes, by foreign-key cascade."
+  [card-ids :- [:sequential ms/PositiveInt]]
+  {:action-ids (vec (t2/select-pks-vec :model/Action :model_id [:in card-ids]))
+   :index-ids  (vec (t2/select-pks-vec :model/ModelIndex :model_id [:in card-ids]))})
+
+(mu/defn model-index-value-search-ids :- [:sequential :string]
+  "The search-index ids (`<model_index_id>:<model_pk>`) of the ModelIndexValues of the ModelIndexes with
+  `index-ids`."
+  [index-ids :- [:sequential ms/PositiveInt]]
+  (vec (t2/select-fn-vec (fn [{:keys [model_index_id model_pk]}] (str model_index_id ":" model_pk))
+                         [:model/ModelIndexValue :model_index_id :model_pk]
+                         :model_index_id [:in index-ids])))
+
+(mu/defn child-card-ids :- [:sequential ms/PositiveInt]
+  "The ids of the Cards that belong to the Dashboards `dashboard-ids` or the Documents `document-ids` (dashboard
+  questions and document cards). A delete of those parents removes these Cards by foreign-key cascade."
+  [dashboard-ids :- [:sequential ms/PositiveInt]
+   document-ids  :- [:sequential ms/PositiveInt]]
+  (let [clauses (cond-> []
+                  (seq dashboard-ids) (conj [:in :dashboard_id dashboard-ids])
+                  (seq document-ids)  (conj [:in :document_id document-ids]))]
+    (if (seq clauses)
+      ;; `vec`, because `select-pks-vec` returns nil when no Card matches
+      (vec (t2/select-pks-vec :model/Card {:where (into [:or] clauses)}))
+      [])))
+
 (mu/defn delete-instances!
   "Delete the instances of `model` with `ids`."
   [model :- :keyword
@@ -481,6 +511,15 @@
   "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
   []
   (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
+
+(mu/defn synced-content-hashes-by-path :- [:map-of :string :string]
+  "{file_path content_hash} of every RemoteSyncObject with both: the hash of Metabase's serialization of each
+  entity as of its last sync, keyed by the repo file it was synced as."
+  []
+  (into {}
+        (map (juxt :file_path :content_hash))
+        (t2/select [:model/RemoteSyncObject :file_path :content_hash]
+                   :file_path [:not= nil] :content_hash [:not= nil])))
 
 (mu/defn departed-rso-keys
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."

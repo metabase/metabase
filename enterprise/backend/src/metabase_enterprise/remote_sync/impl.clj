@@ -441,6 +441,21 @@
       :else
       {:ingestable ingestable :deleted-rsos deleted-rsos})))
 
+(defn- cascaded-search-ids-of-cards
+  "The search-index ids, as strings and keyed by model, of the rows that a delete of the Cards with `card-ids` removes
+  by foreign-key cascade: the Actions of the models, and the values of their model indexes. A model with no such row
+  is absent. Each query takes at most [[app-db-batch-size]] ids."
+  [card-ids]
+  (let [{:keys [action-ids index-ids]} (transduce (map #(remote-sync.db/cascaded-action-and-index-ids (vec %)))
+                                                  (partial merge-with into)
+                                                  {:action-ids [] :index-ids []}
+                                                  (partition-all app-db-batch-size card-ids))
+        value-ids (into [] (mapcat #(remote-sync.db/model-index-value-search-ids (vec %)))
+                        (partition-all app-db-batch-size index-ids))]
+    (cond-> {}
+      (seq action-ids) (assoc :model/Action (mapv str action-ids))
+      (seq value-ids)  (assoc :model/ModelIndexValue value-ids))))
+
 (defn- incremental-load-snapshot!
   "Applies an incremental `plan` from [[incremental-import-plan]]: loads only its added/modified entities,
   deletes only those genuinely removed, and reconciles just those rows of the RemoteSyncObject table —
@@ -471,12 +486,30 @@
                                   eid (when model-key (remote-sync.db/entity-id model-key model_id))]
                             :when (not (loaded-eid? model_type eid))]
                         {:model_type model_type :model_id model_id})
+        ;; A delete of a Dashboard or a Document cascades (by foreign key) to the Cards that belong to it. Those
+        ;; Cards have ledger rows of their own, and the same pull usually deletes them. When the remote kept the file
+        ;; of such a Card, delete the Card here too, so that its ledger row and search entry go, as in the full import.
+        ;; The lookup runs after the load, so a Card that the pull moved out of its parent is not included.
+        deleted-ids   (fn [model-type] (into [] (keep #(when (= model-type (:model_type %)) (:model_id %))) deletes))
+        cascaded      (into #{}
+                            (map (fn [card-id] {:model_type "Card" :model_id card-id}))
+                            (remote-sync.db/child-card-ids (deleted-ids "Dashboard") (deleted-ids "Document")))
+        deletes       (distinct (concat deletes cascaded))
         model-key-of  (fn [{:keys [model_type]}] (:model-key (spec/spec-for-model-type model_type)))
-        sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
+        sync-rows     (into [] (remove #(cascaded (select-keys % [:model_type :model_id])))
+                            (spec/sync-all-entities! sync-timestamp imported-data))
+        ;; search model -> search-index ids (strings) of the rows that the deletes remove by cascade
+        cascaded-search-ids (atom {})]
     (report 0.7 {:force? true})
     ;; Before the transaction for the same reason as in [[load-snapshot!]].
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
+      ;; A delete of a model Card also deletes its Actions and model-index values, by foreign-key cascade. The ledger
+      ;; does not track model-index values (and can miss an Action), so note their search ids before the delete, and
+      ;; remove them from search below.
+      (when-let [card-ids (seq (keep (fn [{:keys [model_id] :as d}] (when (= :model/Card (model-key-of d)) model_id))
+                                     deletes))]
+        (reset! cascaded-search-ids (cascaded-search-ids-of-cards card-ids)))
       (doseq [[model-key ds] (group-by model-key-of deletes)]
         (remote-sync.db/delete-instances! model-key (mapv :model_id ds)))
       (when (seq deletes)
@@ -493,6 +526,9 @@
     (doseq [[model-key ds] (group-by model-key-of deletes)]
       ;; the search index stores model_id as text
       (search/delete! model-key (mapv (comp str :model_id) ds)))
+    (doseq [[model-key ids] @cascaded-search-ids
+            id-chunk        (partition-all app-db-batch-size ids)]
+      (search/delete! model-key (vec id-chunk)))
     (report 0.95 {:force? true})
     (log/info "Successfully reloaded entities from git repository")
     {:status :success
@@ -508,13 +544,20 @@
   (remote-sync.db/unsynced-rsos))
 
 (defn- restore-dirty-objects!
-  "Re-applies captured dirty statuses after a merge load (which marks everything 'synced'). For each
-  captured row, updates the matching freshly-synced row's status, or re-inserts it when no row exists
-  (e.g. a pending local deletion, whose entity is absent from the merged set)."
+  "Re-applies captured dirty rows after a merge load (which marks everything 'synced'). For each captured row,
+  updates the matching freshly-synced row, or re-inserts it when no row exists (e.g. a pending local deletion,
+  whose entity is absent from the merged set).
+
+  The update restores the captured `content_hash` and `file_path` along with the status. A full load rewrites
+  them from the entity's local, un-pushed content; left that way, the save-event handler would see a no-op re-save
+  match the hash and mark the entity synced, and its edit would drop out of the next push."
   [dirty-objects timestamp]
-  (doseq [{:keys [model_type model_id status] :as row} dirty-objects]
+  (doseq [{:keys [model_type model_id status content_hash file_path] :as row} dirty-objects]
     (if-let [existing (remote-sync.db/rso model_type model_id)]
-      (remote-sync.db/update-rso! (:id existing) {:status status :status_changed_at timestamp})
+      (remote-sync.db/update-rso! (:id existing) {:status            status
+                                                  :status_changed_at timestamp
+                                                  :content_hash      content_hash
+                                                  :file_path         file_path})
       (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
 (defn- import-merged!
@@ -531,7 +574,8 @@
                                              (let [targets (spec/exportable-entities)]
                                                (source/compute-merge (spec/extract-entities-for-export targets)
                                                                      snapshot base-snapshot task-id
-                                                                     :total (spec/exportable-entity-count targets))))]
+                                                                     :total (spec/exportable-entity-count targets)
+                                                                     :synced-hashes (remote-sync.db/synced-content-hashes-by-path))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -743,7 +787,8 @@
   Returns a `:success` result with a `:merge-summary`."
   [source snapshot base-snapshot task-id message sync-timestamp models & {:keys [total]}]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
-        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total)]
+        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total
+                                                                 :synced-hashes (remote-sync.db/synced-content-hashes-by-path))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies)" (count labels))
@@ -1642,7 +1687,8 @@
         (serdes/with-cache
           (let [targets (spec/exportable-entities)]
             (if (seq targets)
-              (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil)
+              (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil
+                                           :synced-hashes (remote-sync.db/synced-content-hashes-by-path))
                      :diverged? true)
               (assoc no-changes :diverged? true))))
         ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
