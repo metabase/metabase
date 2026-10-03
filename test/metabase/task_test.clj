@@ -191,3 +191,35 @@
         (if scheduler-initialized?
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
+
+(deftest add-job!-keeps-the-old-class-name-of-an-unchanged-job-test
+  ;; Replacing a stored job writes its current class name, which old nodes in a rolling upgrade can't load
+  (let [scheduler-initialized? (some? (#'task/scheduler))
+        job-details            (capitalize-if-mysql :qrtz_job_details)
+        job-name               (capitalize-if-mysql :job_name)
+        job-class-name         (capitalize-if-mysql :job_class_name)
+        old-class-name         "metabase.task.upgrade_checks.CheckForNewVersions"
+        current-class-name     "metabase.version.task.upgrade_checks.CheckForNewVersions"
+        stored-class-name      #(t2/select-one-fn job-class-name job-details job-name "metabase.task-test.job")
+        _                      (require 'metabase.version.task.upgrade-checks)
+        job                    (fn [description]
+                                 (jobs/build
+                                  (jobs/of-type (Class/forName current-class-name))
+                                  (jobs/with-identity (jobs/key "metabase.task-test.job"))
+                                  (jobs/with-description description)
+                                  (jobs/store-durably)))]
+    (try
+      (when-not scheduler-initialized?
+        (task/start-scheduler!))
+      (task/add-job! (job "a job"))
+      (t2/update! job-details job-name "metabase.task-test.job" {job-class-name old-class-name})
+      (is (= {:unchanged-job old-class-name
+              :changed-job   current-class-name}
+             {:unchanged-job (do (task/add-job! (job "a job"))
+                                 (stored-class-name))
+              :changed-job   (do (task/add-job! (job "a job with a new description"))
+                                 (stored-class-name))}))
+      (finally
+        (qs/delete-job (#'task/scheduler) (jobs/key "metabase.task-test.job"))
+        (when-not scheduler-initialized?
+          (task/stop-scheduler!))))))
