@@ -6,7 +6,6 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.connection :as mdb.connection]
-   [metabase.app-db.quartz :as mdb.quartz]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -163,15 +162,15 @@
           (task/start-scheduler!)
           (task/stop-scheduler!))))))
 
-(deftest start-scheduler-keeps-a-renamed-job-under-its-registered-old-class-name-test
+(deftest start-scheduler-keeps-a-job-stored-under-an-old-class-name-test
   ;; Old nodes in a rolling upgrade still load the stored name, so the row must survive startup and keep it, while
   ;; upgraded nodes load the current class under it
   (let [scheduler-initialized? (some? (#'task/scheduler))
         job-details            (capitalize-if-mysql :qrtz_job_details)
         job-name               (capitalize-if-mysql :job_name)
         job-class-name         (capitalize-if-mysql :job_class_name)
-        old-class-name         "metabase.task_test.OldNameOfTestJob"]
-    (task/register-renamed-job-class! old-class-name TestJob)
+        old-class-name         "metabase.task.upgrade_checks.CheckForNewVersions"]
+    (require 'metabase.version.task.upgrade-checks)
     (try
       (when-not scheduler-initialized?
         (task/start-scheduler!))
@@ -182,11 +181,10 @@
       ;; what the job's `task/init!` does at startup
       (task/schedule-task! (job) (trigger-1))
       (is (= {:stored-class-name old-class-name
-              :loaded-class      TestJob}
+              :loaded-class-name "metabase.version.task.upgrade_checks.CheckForNewVersions"}
              {:stored-class-name (t2/select-one-fn job-class-name job-details job-name "metabase.task-test.job")
-              :loaded-class      (.getJobClass ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job))))}))
+              :loaded-class-name (.getName (.getJobClass ^JobDetail (qs/get-job (#'task/scheduler) (.getKey (job)))))}))
       (finally
-        (swap! @#'mdb.quartz/renamed-job-classes dissoc old-class-name)
         (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))
         (if scheduler-initialized?
           (task/start-scheduler!)
