@@ -1155,13 +1155,31 @@
     (catch java.io.IOException _
       nil)))
 
+(defn- immutable-flag-skip-reason!
+  "Returns nil when `chflags uchg` makes a file in the system temp dir immutable; otherwise the reason it does not."
+  []
+  (let [probe-dir (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-chflags-" (random-uuid)))
+        probe     (io/file probe-dir "probe")]
+    (try
+      (io/make-parents probe)
+      (spit probe "x")
+      (let [exit (chflags! "uchg" probe)]
+        (cond
+          (nil? exit)  "this system has no chflags command"
+          (zero? exit) nil
+          :else        "the file system of the temp dir does not support the uchg flag"))
+      (finally
+        (chflags! "nouchg" probe)
+        (FileUtils/deleteQuietly probe-dir)))))
+
 (deftest uninitialized-clone-with-an-undeletable-file-test
   (testing "when a clone has no data and the delete cannot remove one of its files, the error is still the
             uninitialized-repository error"
     ;; Only an immutable flag stops the delete of commons-io: it makes a read-only directory writable first. The flag
-    ;; needs chflags (macOS and BSD); chattr +i on Linux needs root. So the test runs only where chflags exists.
-    (if-not (chflags! "nouchg" (io/file (System/getProperty "java.io.tmpdir")))
-      (log/info "Skipping uninitialized-clone-with-an-undeletable-file-test: this system has no chflags command")
+    ;; needs chflags (macOS and BSD); chattr +i on Linux needs root. So the test runs only where chflags exists and
+    ;; the file system supports the flag.
+    (if-let [skip-reason (immutable-flag-skip-reason!)]
+      (log/infof "Skipping uninitialized-clone-with-an-undeletable-file-test: %s" skip-reason)
       (mt/with-temp-dir [remote-dir nil]
         (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
               path       (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-" (random-uuid)))
