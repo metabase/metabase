@@ -1,0 +1,8 @@
+/*
+ * Two classes on each selector so these outrank react-grid-layout's own
+ * single-class transition rules regardless of stylesheet order.
+ */
+.withoutTransitions:global(.react-grid-layout),
+.withoutTransitions :global(.react-grid-item) {
+  transition: none;
+}
