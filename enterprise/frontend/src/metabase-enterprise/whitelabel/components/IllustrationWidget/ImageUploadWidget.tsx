@@ -10,10 +10,9 @@ import { SettingHeader } from "metabase/settings-components";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { EnterpriseSettingKey } from "metabase-types/api";
 
-import { PreviewImage } from "./IllustrationWidget.styled";
+import { ACCEPTED_IMAGE_TYPES, readImageFile } from "../../lib/image-file";
 
-const MB = 1024 * 1024;
-const IMAGE_SIZE_LIMIT = 2 * MB;
+import { PreviewImage } from "./IllustrationWidget.styled";
 
 export function ImageUploadWidget({
   name,
@@ -34,36 +33,23 @@ export function ImageUploadWidget({
     description,
   } = useAdminSetting(name);
 
-  function handleFileUpload(fileEvent: ChangeEvent<HTMLInputElement>) {
+  async function handleFileUpload(fileEvent: ChangeEvent<HTMLInputElement>) {
     setErrorMessage("");
-    if (fileEvent.target.files && fileEvent.target.files.length > 0) {
-      const file = fileEvent.target.files[0];
-      if (file.size > IMAGE_SIZE_LIMIT) {
-        setErrorMessage(
-          t`The image you chose is larger than 2MB. Please choose another one.`,
-        );
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = async (readerEvent) => {
-        // Unjustified type cast. FIXME
-        const dataUri = readerEvent.target?.result as string;
-        if (!(await isFileIntact(dataUri))) {
-          setErrorMessage(
-            t`The image you chose is corrupted. Please choose another one.`,
-          );
-          return;
-        }
-        setErrorMessage("");
-        setFileName(file.name);
-        await updateSetting({
-          key: name,
-          value: dataUri,
-        });
-      };
-      reader.readAsDataURL(file);
+    const file = fileEvent.target.files?.[0];
+    if (!file) {
+      return;
     }
+
+    const result = await readImageFile(file);
+    if (result.status === "error") {
+      setErrorMessage(result.message);
+      return;
+    }
+    setFileName(file.name);
+    await updateSetting({
+      key: name,
+      value: result.dataUri,
+    });
   }
 
   const isDefaultImage = imageSource === settingDetails?.default;
@@ -122,7 +108,7 @@ export function ImageUploadWidget({
                   hidden
                   onChange={handleFileUpload}
                   type="file"
-                  accept="image/jpeg,image/png,image/svg+xml"
+                  accept={ACCEPTED_IMAGE_TYPES}
                   multiple={false}
                 />
                 <Text ml="xl" truncate="end">
@@ -151,13 +137,4 @@ export function ImageUploadWidget({
       )}
     </Box>
   );
-}
-
-async function isFileIntact(dataUri: string) {
-  return new Promise((resolve) => {
-    const image = document.createElement("img");
-    image.src = dataUri;
-    image.onerror = () => resolve(false);
-    image.onload = () => resolve(true);
-  });
 }
