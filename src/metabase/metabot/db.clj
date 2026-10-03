@@ -478,6 +478,21 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
+(mu/defn table-publication-rows
+  "The ID, name, schema, Database ID, Collection ID, and published flag of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Table :id :name :schema :db_id :collection_id :is_published]
+             :id [:in table-ids]
+             {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn table-summaries-with-publication
+  "The ID, names, schema, Database ID, description, Collection ID, and published flag of the Tables with
+  `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Table :id :name :display_name :schema :db_id :description :collection_id :is_published]
+             :id [:in table-ids]
+             {:from [(warehouse-schema-overlay/table-query)]}))
+
 (mu/defn table-curation-rows
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
@@ -858,6 +873,16 @@
   "The ID, name, and authority level of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :name :authority_level] :id [:in collection-ids]))
+
+(mu/defn collection-path-rows
+  "The ID, name, location, and type of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [:model/Collection :id :name :location :type] :id [:in collection-ids]))
+
+(mu/defn collection-path-rows-with-effective-location
+  "Like [[collection-path-rows]], hydrated with each Collection's `:effective_location` for the current user."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/hydrate (collection-path-rows collection-ids) :effective_location))
 
 (mu/defn collection-curation-info-by-id
   "A map of ID to the ID, authority level, location, and type of the Collections with `collection-ids`."

@@ -5,17 +5,33 @@
 
 (def search-result-instructions
   "Instructions for LLM when processing search results."
-  "Search results ranked by relevance (highest first).
+  "Each result is an XML element carrying its `uri`, curation flags, and context (collection
+path, database, etc.). Surface order blends text relevance with curator boost — top hits
+lean curated, but you do your own triage from name + path + flags.
 
-When using results:
-- Prioritize verified dashboards, questions, and metrics over raw data exploration when they match the user's request
-- Check available fields or metadata of promising results before recommending them to ensure they contain needed data
-- **Be proactive with clear matches**: When the top result(s) have names or descriptions that clearly match the user's request, use them to achieve the users goal first, then list alternatives at the end. Don't ask for confirmation when there's an obvious best choice.
-- **Collection metadata**: Results may include collection information (name, description, authority level) that can help you determine whether the result is relevant to the user's query. Use this context to assess relevance.
-- **Save destinations**: Dashboard and document results include `can_write`. Only offer or use destinations where `can_write=true`; `can_write=false` means the user can view but cannot save there.
-- **Present options for ambiguous results**: When search returns multiple plausible options without a clear best match, present them and ask the user to choose
-- **Drill in via the `uri` attribute**: To inspect a result's details, pass its `uri` attribute to `read_resource` (append `/fields` for a table/model/question's columns). URIs always use the numeric `id` — never put a `portable_entity_id` in a URI; that value belongs only in `construct_notebook_query` query text (`source-card:` and metric/measure/segment references)
-- Reference results using the metabase protocol link format: [display name](metabase://type/id)
+How to use a result:
+- Curation flags (when several results fit, prefer the more curated one):
+  - `is_library_member=\"true\"` — the strongest signal: the item is part of the governed
+    Library (a curated model/metric/dashboard in a Library collection, or a table published
+    to the data library). Reach for these first.
+  - `is_official=\"true\"` — lives in an official collection; `is_verified=\"true\"` — passed
+    explicit moderation review. Both are good second-tier signals.
+  - `is_container=\"true\"` — a collection or dashboard you can drill into.
+  - No flags isn't disqualifying — plenty of valid data is uncurated; just prefer curated when it fits.
+- Picked a promising hit → call `read_resource` on its `uri` for fields/sources/items
+  (append `/fields` for a table/model/question's columns). URIs always use the numeric
+  `id` — never put a `portable_entity_id` in a URI; that value belongs only in
+  `construct_notebook_query` query text (`source-card:` and metric/measure/segment
+  references).
+- Picked a container → `read_resource` its `uri` to enumerate members instead of re-searching.
+- Choosing a save destination → dashboard and document results carry `can_write`. Only offer
+  or use destinations where `can_write=true`; `can_write=false` means the user can view but
+  cannot save there.
+- Got ambiguous results → list the plausible candidates with their links and ask the user.
+- First search missed → search again with a different angle. Iteration is cheap; a precise
+  follow-up beats one broad query.
+
+Reference results in your response with: `[display name](metabase://type/id)`.
 
 Examples: [Customer Metrics](metabase://metric/42), [Sales Dashboard](metabase://dashboard/158)")
 
