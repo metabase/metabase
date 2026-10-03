@@ -106,16 +106,25 @@
        (mi/can-read? :model/Database database-id)))
 
 (defn- native-query?
-  "Whether `query`, as state holds it, is a SQL query: an MBQL 4 query of type native, or an MBQL 5 query with a
-   native stage. Read off the stored form because normalizing needs the query's database, and a SQL query must be
-   refused as SQL even when that database is gone. Keys and values may be keywords or, after a JSON round trip,
-   strings."
-  [{query-type :type, :keys [stages]}]
-  (boolean
-   (or (contains? #{:native "native"} query-type)
-       (and (sequential? stages)
-            (some #(and (map? %) (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type %)))
-                  stages)))))
+  "Whether `query`, as state holds it, holds SQL anywhere along its nesting: an MBQL 4 query of type native or with a
+   native source query, or an MBQL 5 native stage, in the query itself or in a join. Read off the stored form because
+   normalizing needs the query's database, and a SQL query must be refused as SQL even when that database is gone.
+   Only the nesting keys are followed, since template tags and expressions are keyed by names a user picks. Keys
+   and values may be keywords or, after a JSON round trip, strings."
+  [query]
+  (letfn [(entry [m k]
+            (let [v (get m k)]
+              (if (some? v) v (get m (subs (str k) 1)))))
+          (sql? [node]
+            (and (map? node)
+                 (or (some? (entry node :native))
+                     (contains? #{:native "native"} (entry node :type))
+                     (contains? #{:mbql.stage/native "mbql.stage/native"} (entry node :lib/type))
+                     (some #(sql? (entry node %)) [:query :source-query])
+                     (some #(let [nodes (entry node %)]
+                              (and (sequential? nodes) (some sql? nodes)))
+                           [:stages :joins]))))]
+    (boolean (sql? query))))
 
 (defn- check-sql-runnable!
   "Refuse a SQL query unless Metabot may run SQL for the current user ([[scope/sql-execution-allowed?]]) and the user
@@ -152,7 +161,7 @@
         (throw (if (readable-database? (:database query))
                  (ex-info (str "Query " query-id " could not be read. " notebook-query-hint) {:agent-error? true})
                  (database-not-found query-id))))
-      ;; A native stage deeper in the query, such as a join's, shows only once the query is normalized.
+      ;; Normalizing can surface a native stage under a spelling [[native-query?]] does not follow.
       (when (and (not native?) (lib/any-native-stage? normalized))
         (check-sql-runnable! query-id (:database normalized)))
       (cond-> (lib/prepare-for-serialization normalized)

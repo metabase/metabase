@@ -272,3 +272,30 @@
                                                                       :stages   []}}}})]
           (is (= {:output unreadable-database-output}
                  (run-query/run-query-tool {:query_id "q1"}))))))))
+
+(deftest run-query-nested-sql-refusal-test
+  (testing "with SQL execution off, SQL nested in a notebook query gets the SQL refusal whatever its database"
+    (mt/with-temp [:model/Database {unreadable-db :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
+        (doseq [[shape query] {"a native source query"
+                               {:type :query, :query {:source-query {:native "SELECT 1"}}}
+                               "a join on a native source query"
+                               {:type  :query
+                                :query {:source-table 1
+                                        :joins        [{:source-query {:native "SELECT 1"}, :condition [:= 1 1]}]}}
+                               "a string-keyed native source query"
+                               {"type" "query", "query" {"source-query" {"native" "SELECT 1"}}}}
+                db-id         [(mt/id) unreadable-db Integer/MAX_VALUE]]
+          (testing (str shape " on database " db-id)
+            (is (= {:output sql-refused-output}
+                   (run-tool! {"q1" (assoc query :database db-id)} {:query_id "q1"}))))))))
+  (testing "a template tag or expression named native does not make a notebook query SQL"
+    (is (=? {:structured-output {:returned 1}}
+            (run-tool! {"q1" {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (mt/id :venues)
+                                         :expressions  {"native" [:+ 1 1]}
+                                         :limit        1}}}
+                       {:query_id "q1"})))))
