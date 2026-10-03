@@ -614,6 +614,19 @@
                     quantiles)]
     [::approx-quantiles expr offset quantiles]))
 
+(defn- format-exact-median
+  [_tag [expr :as _args]]
+  (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
+    (into [(format (str "(ARRAY_AGG(%1$s IGNORE NULLS ORDER BY %1$s)"
+                        "[SAFE_OFFSET(DIV(COUNT(%1$s) - 1, 2))] + "
+                        "ARRAY_AGG(%1$s IGNORE NULLS ORDER BY %1$s)"
+                        "[SAFE_OFFSET(DIV(COUNT(%1$s), 2))]) / 2")
+                   expr-sql)]
+          cat
+          (repeat 6 expr-args))))
+
+(sql/register-fn! ::exact-median #'format-exact-median)
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :percentile]
   [driver [_ _opts expr p]]
   (let [[offset quantiles] (percentile->quantile p)]
@@ -621,7 +634,7 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
   [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
+  [::exact-median (sql.qp/->honeysql driver arg)])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |
