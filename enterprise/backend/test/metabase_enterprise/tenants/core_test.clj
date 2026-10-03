@@ -4,6 +4,7 @@
    [metabase-enterprise.tenants.core :as tenants]
    [metabase.appearance.core :as appearance]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util.jvm :as u.jvm]))
 
 (deftest login-attribute-keys-disabled-feature-test
@@ -149,3 +150,23 @@
     (mt/with-temp [:model/Tenant {id :id} {:name "Toucan" :slug "toucan" :pdf_export_logo (png-data-uri "tenant")}]
       (is (nil? (tenants/tenant-pdf-export-logo id)))
       (is (nil? (appearance/pdf-export-logo-for-tenant id))))))
+
+(deftest ^:synchronized pdf-export-logo-endpoint-test
+  (mt/with-premium-features #{:tenants :whitelabel}
+    (let [instance-logo (png-data-uri "instance")
+          tenant-logo   (png-data-uri "tenant")]
+      (mt/with-temporary-setting-values [use-tenants            true
+                                         pdf-export-logo        "custom"
+                                         pdf-export-logo-custom instance-logo]
+        (mt/with-temp [:model/Tenant {tenant-a :id} {:name "Toucan" :slug "toucan" :pdf_export_logo tenant-logo}
+                       :model/Tenant {tenant-b :id} {:name "Pelican" :slug "pelican"}
+                       :model/User   {user-a :id}   {:tenant_id tenant-a}
+                       :model/User   {user-b :id}   {:tenant_id tenant-b}]
+          (testing "a user of a tenant with a logo gets the tenant's"
+            (is (= {:logo tenant-logo} (mt/user-http-request user-a :get 200 "session/pdf-export-logo"))))
+          (testing "a user of a tenant without a logo gets the instance's"
+            (is (= {:logo instance-logo} (mt/user-http-request user-b :get 200 "session/pdf-export-logo"))))
+          (testing "a user without a tenant gets the instance's"
+            (is (= {:logo instance-logo} (mt/user-http-request :rasta :get 200 "session/pdf-export-logo"))))
+          (testing "logged out gets the instance's"
+            (is (= {:logo instance-logo} (client/client :get 200 "session/pdf-export-logo")))))))))

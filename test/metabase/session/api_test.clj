@@ -726,6 +726,23 @@
       (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
         (fetch-illustration :login-page-illustration-custom 404)))))
 
+(deftest ^:synchronized pdf-export-logo-test
+  (mt/with-premium-features #{:whitelabel}
+    (let [logo (image-data-uri "image/png" "pelican")]
+      (mt/with-temporary-setting-values [pdf-export-logo        "custom"
+                                         pdf-export-logo-custom logo]
+        (testing "logged out"
+          (is (= {:logo logo} (client/client :get 200 "session/pdf-export-logo"))))
+        (testing "a user without a tenant"
+          (is (= {:logo logo} (mt/user-http-request :rasta :get 200 "session/pdf-export-logo"))))))
+    (mt/with-temporary-setting-values [pdf-export-logo "none"]
+      (is (= {:logo nil} (client/client :get 200 "session/pdf-export-logo"))))))
+
+(deftest ^:synchronized pdf-export-logo-without-whitelabel-test
+  (mt/with-premium-features #{}
+    (mt/with-temporary-raw-setting-values [application-logo-url (image-data-uri "image/png" "toucan")]
+      (is (= {:logo nil} (client/client :get 200 "session/pdf-export-logo"))))))
+
 (deftest properties-i18n-test
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"

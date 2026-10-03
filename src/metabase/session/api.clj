@@ -487,6 +487,12 @@
                   (assoc "Content-Security-Policy" "default-src 'none'; style-src 'unsafe-inline'; sandbox"))]
     {:status 200, :headers headers, :body image-bytes}))
 
+(api.macros/defendpoint :get "/pdf-export-logo" :- [:map {:closed true}
+                                                    [:logo [:maybe :string]]]
+  "Fetch the logo for PDF exports by the current user, as a data URI or URL, or nil for no logo. Works logged out."
+  []
+  {:logo (appearance/pdf-export-logo-for-tenant (:tenant_id @api/*current-user*))})
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
