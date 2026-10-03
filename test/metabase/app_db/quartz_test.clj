@@ -112,6 +112,9 @@
   (testing "no two jobs share a simple name"
     (let [simple-names (map (comp simple-name peek) mdb.quartz/job-class-history)]
       (is (= [] (for [[s n] (frequencies simple-names) :when (> n 1)] s)))))
+  (testing "jobs are listed by simple name"
+    (let [simple-names (map (comp simple-name peek) mdb.quartz/job-class-history)]
+      (is (= (sort simple-names) simple-names))))
   (doseq [names mdb.quartz/job-class-history
           :when (or config/ee-available?
                     (not (str/starts-with? (peek names) "metabase_enterprise.")))]
