@@ -92,40 +92,55 @@
   (ex-info (str "The database of query " query-id " was not found.")
            {:agent-error? true}))
 
+(defn- native-query?
+  "Whether `query`, as state holds it, is a SQL query: an MBQL 4 query of type native, or an MBQL 5 query with a
+   native stage. Read off the stored form because normalizing needs the query's database, and a SQL query must be
+   refused as SQL even when that database is gone. Keys and values may be keywords or, after a JSON round trip,
+   strings."
+  [{query-type :type, :keys [stages]}]
+  (boolean
+   (or (contains? #{:native "native"} query-type)
+       (and (sequential? stages)
+            (some #(and (map? %) (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type %)))
+                  stages)))))
+
 (defn- check-sql-runnable!
-  "Refuse a query with a native stage unless Metabot may run SQL for the current user
-   ([[scope/sql-execution-allowed?]]) and the user may run SQL against its database. The same gates as MCP's
-   `execute_sql`, in the same order. The QP permissions middleware re-checks
-   inside `process-query`; checking here first lets the model read why a run was refused.
+  "Refuse a SQL query unless Metabot may run SQL for the current user ([[scope/sql-execution-allowed?]]) and the user
+   may run SQL against `database-id`. The same gates as MCP's `execute_sql`, in the same order, so with SQL execution
+   off every SQL query gets the same refusal, whatever its database. The QP permissions middleware re-checks inside
+   `process-query`; checking here first lets the model read why a run was refused.
    An unreadable database reads exactly like a missing one, so the refusal is no existence oracle. The permission
    refusal is reachable only for a database the user can already read, so its distinct message discloses nothing."
-  [query-id query]
+  [query-id database-id]
   (when-not (scope/sql-execution-allowed?)
     (throw (ex-info (str "run_query only runs notebook queries, and this one is a SQL query. "
                          "To get values, rebuild the question with construct_notebook_query, "
                          "then run that query with run_query.")
                     {:agent-error? true})))
-  (let [database-id (:database query)]
-    (when-not (and (int? database-id) (mi/can-read? :model/Database database-id))
-      (throw (database-not-found query-id)))
-    (when-not (sql.common/native-query-access? database-id)
-      (throw (ex-info (str "You do not have permission to run SQL against the database of query " query-id ". "
-                           "To get values, build the question with construct_notebook_query, "
-                           "then run that query with run_query.")
-                      {:agent-error? true})))))
+  (when-not (and (int? database-id) (mi/can-read? :model/Database database-id))
+    (throw (database-not-found query-id)))
+  (when-not (sql.common/native-query-access? database-id)
+    (throw (ex-info (str "You do not have permission to run SQL against the database of query " query-id ". "
+                         "To get values, build the question with construct_notebook_query, "
+                         "then run that query with run_query.")
+                    {:agent-error? true}))))
 
 (defn- runnable-query
   "The serialized MBQL 5 form of the query stored under `query-id`, which state may hold as MBQL 4 (the user's
-   viewing context) or MBQL 5."
+   viewing context) or MBQL 5. A SQL query passes [[check-sql-runnable!]] before anything else touches it."
   [query-id query]
-  (let [normalized (lib-be/normalize-query query)]
-    ;; Normalizing loads the database's metadata and recovers to an empty map when it can't, as for a database
-    ;; that doesn't exist. That reads like an unreadable database, so neither tells the model the other exists.
-    (when (empty? normalized)
-      (throw (database-not-found query-id)))
-    (when (lib/any-native-stage? normalized)
-      (check-sql-runnable! query-id normalized))
-    (lib/prepare-for-serialization normalized)))
+  (let [native? (native-query? query)]
+    (when native?
+      (check-sql-runnable! query-id (:database query)))
+    (let [normalized (lib-be/normalize-query query)]
+      ;; Normalizing loads the database's metadata and recovers to an empty map when it can't, as for a database
+      ;; that doesn't exist. That reads like an unreadable database, so neither tells the model the other exists.
+      (when (empty? normalized)
+        (throw (database-not-found query-id)))
+      ;; A native stage deeper in the query, such as a join's, shows only once the query is normalized.
+      (when (and (not native?) (lib/any-native-stage? normalized))
+        (check-sql-runnable! query-id (:database normalized)))
+      (lib/prepare-for-serialization normalized))))
 
 (defn- cell-text
   [value]

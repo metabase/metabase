@@ -92,8 +92,24 @@
            (run-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
   (testing "a SQL query is refused with a pointer to construct_notebook_query while SQL execution is off"
     (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
-      (is (=? {:output #"run_query only runs notebook queries.*construct_notebook_query.*"}
-              (run-tool! {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"})))))
+      (let [mbql-4  (mt/native-query {:query "SELECT 1"})
+            mbql-5  (lib/prepare-for-serialization (lib/native-query (mt/metadata-provider) "SELECT 1"))
+            missing Integer/MAX_VALUE]
+        (doseq [[shape query] {"MBQL 4"                              mbql-4
+                               "MBQL 4 with string values, from JSON" (update mbql-4 :type name)
+                               "MBQL 5"                              mbql-5
+                               "MBQL 5 with string values, from JSON" (-> mbql-5
+                                                                          (assoc :lib/type "mbql/query")
+                                                                          (assoc-in [:stages 0 :lib/type]
+                                                                                    "mbql.stage/native"))
+                               "MBQL 4 on a database that is missing" (assoc mbql-4 :database missing)
+                               "MBQL 5 on a database that is missing" (assoc mbql-5 :database missing)
+                               "MBQL 4 with a native source query"    {:database (mt/id)
+                                                                       :type     :query
+                                                                       :query    {:source-query {:native "SELECT 1"}}}}]
+          (testing shape
+            (is (=? {:output #"run_query only runs notebook queries.*construct_notebook_query.*"}
+                    (run-tool! {"q1" query} {:query_id "q1"}))))))))
   (testing "a user without data access gets a failure, not rows"
     (mt/with-no-data-perms-for-all-users!
       (let [result (run-tool! {"q1" (venues-by-id)} {:query_id "q1"})]
