@@ -642,13 +642,27 @@
         :when (not= k (.getPath dir))]
     dir))
 
-(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook deleting the [[retired-clones]] and the cached
-  fresh siblings. The next process clones afresh at [[repo-path]]."}
+(defn- clones-deleted-at-exit
+  "The clone directories that the shutdown hook of [[retired-clones-reaper]] deletes: the [[retired-clones]] and the
+  cached fresh siblings."
+  []
+  (concat @retired-clones (cached-sibling-clones)))
+
+(defn- delete-clone-dir!
+  "Deletes the clone directory `dir`, and ignores a failure."
+  [^File dir]
+  (FileUtils/deleteQuietly dir))
+
+(defn- delete-clones-at-exit!
+  "Deletes the [[clones-deleted-at-exit]]. The shutdown hook of [[retired-clones-reaper]] runs it."
+  []
+  (run! delete-clone-dir! (clones-deleted-at-exit)))
+
+(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook that runs [[delete-clones-at-exit!]]. The next
+  process clones afresh at [[repo-path]]."}
   retired-clones-reaper
   (delay (.addShutdownHook (Runtime/getRuntime)
-                           (Thread. ^Runnable (fn []
-                                                (run! #(FileUtils/deleteQuietly ^File %)
-                                                      (concat @retired-clones (cached-sibling-clones))))))))
+                           (Thread. ^Runnable (fn [] (delete-clones-at-exit!))))))
 
 (defonce ^:private ^{:doc "One lock object for each clone path, so that only one thread at a time clones for a URL."}
   clone-locks
@@ -696,7 +710,7 @@
   recovery found stale. Call this with the [[clone-lock]] of `path` held."
   [^File path]
   (let [prefix    (str (.getName path) "-")
-        in-use    (into #{} (map canonical-path) (concat @retired-clones (cached-sibling-clones)))
+        in-use    (into #{} (map canonical-path) (clones-deleted-at-exit))
         leftovers (->> (.listFiles (.getParentFile path))
                        (filter #(str/starts-with? (.getName ^File %) prefix))
                        (remove #(contains? in-use (canonical-path %))))]

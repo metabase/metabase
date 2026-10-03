@@ -823,7 +823,20 @@
             (is (= [token] @clone-tokens) "the recovery clones once, with the source's token")
             (is (identical? recovered-git (:git later))
                 "a new source for the same URL and token uses the clone that the recovery made")
-            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))))))))
+            (is (= "File in master" (source.p/read-file (source.p/snapshot later) "master.txt")))
+            (testing "the shutdown hook deletes the stale clone and the fresh clone"
+              (let [deleted (atom [])]
+                (mt/with-dynamic-fn-redefs [git/delete-clone-dir! (fn [^File dir] (swap! deleted conj dir))]
+                  (#'git/delete-clones-at-exit!))
+                (let [deleted-at-exit (into #{} (map #(.getCanonicalPath ^File %)) @deleted)]
+                  ;; This assertion fails when the recovery does not retire the stale clone, in any test order.
+                  (is (contains? deleted-at-exit (.getCanonicalPath (#'git/git-dir (:git source))))
+                      "the stale clone is deleted at exit")
+                  (is (contains? deleted-at-exit (.getCanonicalPath (#'git/git-dir recovered-git)))
+                      "the fresh clone is deleted at exit")))
+              ;; The hook is installed once for each JVM, so an earlier test can make this assertion pass.
+              (is (realized? @#'git/retired-clones-reaper)
+                  "the shutdown hook is installed"))))))))
 
 (defn- remote-url
   "The file:// URL of a test 'remote' repo."
