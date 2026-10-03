@@ -671,7 +671,7 @@
         ;; When GROUP BY exists, collect IS NULL expressions from temporal order-by clauses
         ;; and add them to GROUP BY so MySQL's ONLY_FULL_GROUP_BY accepts them
         null-check-exprs (when has-group-by?
-                           (keep (fn [[_dir field-clause]]
+                           (keep (fn [[_dir _opts field-clause]]
                                    (when (sql.qp/temporal-field? field-clause)
                                      [:is (sql.qp/->honeysql driver field-clause) nil]))
                                  subclauses))]
