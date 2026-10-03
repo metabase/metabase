@@ -1085,7 +1085,7 @@
                        :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
         rows-query    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                               :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                               :select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
                                :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                                :order-by sql-order}
                         search-clause

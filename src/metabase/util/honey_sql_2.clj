@@ -465,12 +465,30 @@
   [sql-type]
   (boolean (re-matches raw-type-name-regex (name sql-type))))
 
+(defn- format-raw-type-name
+  "Emit a [[raw-type-name?]] type name as the SQL it names: unquoted, and with its spelling preserved exactly as the
+  engine reported it.
+
+  A type name needs its own form because neither shape Honey SQL splices on its own is the name we were given. A
+  string in the type position of `:cast` becomes a `?` parameter, which is not a type at all, so the engine rejects
+  the statement. A keyword goes through `honey.sql/sql-kw`, which upper-cases it and drops everything before a `/` --
+  so `timestamp` becomes `TIMESTAMP`, and ClickHouse's `DateTime64(3, 'America/New_York')` loses its timezone."
+  [_fn [sql-type]]
+  (let [type-name (name sql-type)]
+    ;; [[cast]] checks this before building the form; check it again here so the guarantee holds for anyone who writes
+    ;; the form directly, and so nothing unvalidated can reach the SQL through this path.
+    (when-not (raw-type-name? type-name)
+      (throw (ex-info "Invalid SQL type name" {:type type-name})))
+    [type-name]))
+
+(sql/register-fn! ::raw-type-name #'format-raw-type-name)
+
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [sql-type :- ms/KeywordOrString
    expr     :- ::honeysql-expr]
   (-> (if (raw-type-name? sql-type)
-        [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
+        [:cast expr [::raw-type-name (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))
 
@@ -705,7 +723,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff ^:allow-raw-sql [:raw "MICROSECOND"] start-form end-form])
+  [:timestampdiff :microsecond start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]

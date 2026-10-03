@@ -629,7 +629,7 @@
 
 (defn- job-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "job"] :run_type]
+  {:select [["job" :run_type]
             :id
             [:job_id :entity_id]
             [:job_name :entity_name]
@@ -650,13 +650,13 @@
 
 (defn- dag-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "dag"] :run_type]
+  {:select [["dag" :run_type]
             :id
             [:source_transform_id :entity_id]
             [:source_transform_name :entity_name]
             :direction
             :transform_count
-            [^:allow-raw-sql [:inline "manual"] :run_method]
+            ["manual" :run_method]
             :status :is_active :start_time :end_time :message
             :user_id]
    :from   [:transform_dag_run]
@@ -670,7 +670,7 @@
 
 (defn- transform-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline "transform"] :run_type]
+  {:select [["transform" :run_type]
             :id
             [:transform_id :entity_id]
             [:transform_name :entity_name]

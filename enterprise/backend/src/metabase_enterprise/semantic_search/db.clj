@@ -33,7 +33,7 @@
                         :where [:and
                                 [:= :active true]
                                 [:or [:= :is_published true]
-                                 [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
+                                 [:= :data_authority "authoritative"]]]}))
 
 (mu/defn official-collection-ids
   "The IDs of the official Collections."
@@ -73,7 +73,7 @@
 (defn- search-doc-select
   [{:keys [id model]}]
   ^:allow-subquery
-  {:select [[^:allow-raw-sql [:inline (str id)]] [^:allow-raw-sql [:inline model]]]})
+  {:select [[(str id)] [model]]})
 
 (defn- search-index-select
   "A `search_index` CTE selecting the `:id` and `:model` of each of `search-results` (each `{:id :model}`)."

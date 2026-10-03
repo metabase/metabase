@@ -20,6 +20,7 @@
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
+   [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
@@ -30,7 +31,8 @@
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.util :as t2.util])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource WrapperConnectionPoolDataSource)
    (liquibase.exception LockException)))
@@ -388,3 +390,13 @@
     (contains? query :delete-from)
     (-> (dissoc :delete-from)
         (assoc :from [(:delete-from query)]))))
+
+(methodical/defmethod t2.pipeline/compile [#_query-type :default
+                                           #_model      :default
+                                           #_query      clojure.lang.IPersistentMap]
+  "Override default Honey SQL 2 backend; compile using Funny SQL instead."
+  [query-type model honeysql]
+  (let [options  (t2.honeysql/options)
+        sql-args (t2.util/try-with-error-context ["compile SQL with Funny SQL" {:honeysql honeysql, :options options}]
+                   (funnysql/format honeysql (mdb.connection/db-type) options))]
+    (t2.pipeline/compile query-type model sql-args)))
