@@ -199,6 +199,39 @@ describe("SearchApp", () => {
         expect(new URLSearchParams(url.search).get("type")).toEqual(model);
       },
     );
+
+    it("should reset back to the first page when filters change (metabase#65501)", async () => {
+      const { router } = await setup({ searchText: "Test" });
+
+      await userEvent.click(screen.getByTestId("next-page-btn"));
+      await waitForLoaderToBeRemoved();
+      expect(screen.getByLabelText("pagination")).toHaveTextContent("5 - 7");
+      expect(new URLSearchParams(router.location.search).get("page")).toBe("1");
+
+      await userEvent.click(
+        within(screen.getByTestId("type-search-filter")).getByTestId(
+          "sidebar-filter-dropdown-button",
+        ),
+      );
+      await waitForLoaderToBeRemoved();
+
+      const popover = within(screen.getByTestId("popover"));
+      await userEvent.click(
+        popover.getByRole("checkbox", { name: TYPE_FILTER_LABELS.table }),
+      );
+      await userEvent.click(popover.getByRole("button", { name: "Apply" }));
+
+      const params = new URLSearchParams(router.location.search);
+      expect(params.get("type")).toBe("table");
+      expect(params.get("page")).toBeNull();
+
+      expect(
+        await screen.findByTestId("search-result-item-name"),
+      ).toHaveTextContent("Test Table");
+      expect(
+        screen.queryByText("Didn't find anything"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("hydrating search filters from URL", () => {
