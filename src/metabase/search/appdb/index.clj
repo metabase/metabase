@@ -119,24 +119,49 @@
   (map (comp keyword u/lower-case-en :table_name)
        (search.db/orphan-index-table-names)))
 
+(defn- drop-orphan-indexes!
+  "Drop every index table that has no metadata row, returning those dropped.
+  Best effort: a failed drop is logged and never propagates."
+  []
+  (let [dropped (into []
+                      (keep (fn [table]
+                              (try
+                                (search.db/drop-search-index-table! table)
+                                table
+                                ;; Deletion could fail if it races with other instances
+                                (catch Exception e
+                                  (log/warnf "Failed to drop orphan index %s: %s" table (ex-message e))
+                                  nil))))
+                      (orphan-indexes))]
+    (log/infof "Dropped %d orphan indexes: %s" (count dropped) dropped)
+    dropped))
+
+(defn- ddl-commits-caller-transaction?
+  "Whether dropping a table here would commit the transaction the caller is holding."
+  []
+  ;; Dropping a table is DDL, which h2 and mysql commit implicitly.
+  ;; Postgres keeps DDL inside the transaction, where it does no harm.
+  ;; Mysql cannot reach this while the appdb engine supports postgres and h2 only, but listing it means
+  ;; adding support does not quietly bring the rollback failure back.
+  ;; The depth behind in-transaction? is thread-local and conveyed by future, so a reindex started from
+  ;; inside a transaction defers a sweep it need not have. That costs a sweep, never data.
+  (and (mdb/in-transaction?) (contains? #{:h2 :mysql} (mdb/db-type))))
+
 (defn delete-obsolete-tables!
-  "Drop index tables that are no longer needed. Best effort: failures are logged and never propagate. Does nothing
-  while mocking tables, where the pending table is tracked in an atom and has no metadata row to find it by."
+  "Prune obsolete index metadata, then drop the index tables that leaves unreferenced.
+  Best effort: failures are logged and never propagate.
+  Does nothing while mocking tables, where the pending table lives in an atom with no metadata row.
+  Skips the drops when they would commit the caller's transaction, leaving those tables to a later sweep."
   []
   (when-not *mocking-tables*
     (try
       ;; Delete metadata around indexes that are no longer needed.
       (search-index-metadata/delete-obsolete! (search.spec/index-version-hash))
       ;; Drop any indexes that are no longer referenced.
-      (let [dropped (volatile! [])]
-        (doseq [table (orphan-indexes)]
-          (try
-            (search.db/drop-search-index-table! table)
-            (vswap! dropped conj table)
-            ;; Deletion could fail if it races with other instances
-            (catch Exception e
-              (log/warnf "Failed to drop stale index %s: %s" table (ex-message e)))))
-        (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped))
+      ;; A sweep outside the caller's transaction gets the rest.
+      (if (ddl-commits-caller-transaction?)
+        (log/debug "Deferring orphan index drops: dropping here would commit the caller's transaction")
+        (drop-orphan-indexes!))
       (catch Exception e
         (log/warnf "Failed to clean up obsolete indexes: %s" (ex-message e))))))
 
