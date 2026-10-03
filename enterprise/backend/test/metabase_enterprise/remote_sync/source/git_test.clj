@@ -7,7 +7,8 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import (java.io File)
            (java.net SocketTimeoutException)
            (java.nio.file Files Paths)
@@ -1145,6 +1146,37 @@
           (is (= [path] @deleted))
           (is (not (.exists path)) "the clone directory is gone")
           (finally (FileUtils/deleteQuietly path)))))))
+
+(defn- chflags!
+  "Runs `chflags` with `flag` on `file` and returns its exit code, or nil when this system has no `chflags` command."
+  [flag ^File file]
+  (try
+    (.waitFor (.start (ProcessBuilder. ^java.util.List ["chflags" flag (str file)])))
+    (catch java.io.IOException _
+      nil)))
+
+(deftest uninitialized-clone-with-an-undeletable-file-test
+  (testing "when a clone has no data and the delete cannot remove one of its files, the error is still the
+            uninitialized-repository error"
+    ;; Only an immutable flag stops the delete of commons-io: it makes a read-only directory writable first. The flag
+    ;; needs chflags (macOS and BSD); chattr +i on Linux needs root. So the test runs only where chflags exists.
+    (if-not (chflags! "nouchg" (io/file (System/getProperty "java.io.tmpdir")))
+      (log/info "Skipping uninitialized-clone-with-an-undeletable-file-test: this system has no chflags command")
+      (mt/with-temp-dir [remote-dir nil]
+        (let [[source _] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+              path       (io/file (System/getProperty "java.io.tmpdir") (str "metabase-git-test-" (random-uuid)))
+              locked     (io/file path "locked" "f")]
+          (try
+            (mt/with-dynamic-fn-redefs [git/has-data? (fn [_]
+                                                        (io/make-parents locked)
+                                                        (spit locked "x")
+                                                        (is (zero? (chflags! "uchg" locked)) "precondition: the file is immutable")
+                                                        false)]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
+                                    (#'git/open-checked! path {:remote-url (:remote-url source)}))))
+            (finally
+              (chflags! "nouchg" locked)
+              (FileUtils/deleteQuietly path))))))))
 
 (deftest shutdown-hook-keeps-clones-in-place-test
   (testing "the shutdown hook does not delete a clone that lives at its repo-path"
