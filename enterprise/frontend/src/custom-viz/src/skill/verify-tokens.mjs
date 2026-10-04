@@ -44,7 +44,8 @@ const rendersBlockedJsxTag = (node) => {
     return undefined;
   }
   const tag = node.tagName.getText();
-  return isBlockedTag(tag) ? `<${tag}>` : undefined;
+  const isIntrinsic = /^[a-z][\w-]*(:[\w-]+)?$/.test(tag);
+  return isIntrinsic && isBlockedTag(tag) ? `<${tag}>` : undefined;
 };
 
 const methodCall = (node, methods) =>

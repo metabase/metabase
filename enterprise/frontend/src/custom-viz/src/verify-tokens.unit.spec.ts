@@ -81,6 +81,10 @@ describe("verify-tokens.mjs", () => {
       'document.createElement("div").addEventListener("keydown", () => {});',
     ],
     ["allowed tags", "const a = <svg><rect /></svg>;"],
+    [
+      "components named like blocked tags",
+      "const Image = () => null;\nconst a = <Image />;\nconst b = <UI.Link />;",
+    ],
   ])("does not flag %s", (_, source) => {
     const { status, findings, output } = scan({ "index.tsx": source });
     expect(findings).toEqual([]);
