@@ -16,20 +16,25 @@ const program = ts.createProgram([process.argv[2] ?? "src/index.tsx"], {
 });
 const checker = program.getTypeChecker();
 
-const usesBlockedDomApi = (node) => {
+const apiNames = (node) => {
+  if (ts.isPropertyAccessExpression(node)) {
+    return [node.getText()];
+  }
   if (!ts.isIdentifier(node)) {
-    return undefined;
+    return [];
   }
   const symbol = checker.getSymbolAtLocation(node);
-  return symbol?.declarations
-    ?.filter((d) => program.isSourceFileDefaultLibrary(d.getSourceFile()))
+  return (symbol?.declarations ?? [])
+    .filter((d) => program.isSourceFileDefaultLibrary(d.getSourceFile()))
     .map(({ parent }) =>
       ts.isInterfaceDeclaration(parent)
         ? `${parent.name.text}.${symbol.name}`
         : symbol.name,
-    )
-    .find((name) => BLOCKED_DOM_APIS.has(name));
+    );
 };
+
+const usesBlockedDomApi = (node) =>
+  apiNames(node).find((name) => BLOCKED_DOM_APIS.has(name));
 
 const isBlockedTag = (tag) => BLOCKED_TAGS.has(tag.toLowerCase());
 
@@ -47,7 +52,6 @@ const methodCall = (node, methods) =>
   methods.includes(node.expression.name.text)
     ? {
         receiver: node.expression.expression,
-        method: node.expression.name.text,
         args: node.arguments
           .filter(ts.isStringLiteralLike)
           .map((arg) => arg.text),
@@ -57,7 +61,7 @@ const methodCall = (node, methods) =>
 const createsBlockedTag = (node) => {
   const call = methodCall(node, ["createElement", "createElementNS"]);
   const tag = call?.args.find(isBlockedTag);
-  return tag && `${call.method}("${tag}")`;
+  return tag && `createElement("${tag}")`;
 };
 
 const listensToBlockedGlobalEvent = (node) => {

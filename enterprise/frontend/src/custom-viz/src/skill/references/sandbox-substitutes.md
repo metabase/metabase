@@ -51,10 +51,11 @@
   behavior.
 - **Fonts (`FontFace`):** use `renderingContext.fontFamily` and measure
   with `renderingContext.measureText`.
-- **Keyboard and clipboard events on `document`/`window`:** attach the
-  listener to your own focusable element (`tabIndex={0}`).
-- **Host info (`document.cookie`, `referrer`, `URL`, `baseURI`,
-  `performance.getEntries`):** not available and never needed — remove
+- **Keyboard and clipboard events on `document`/`window`**
+  (`addEventListener` or `on*` handlers): attach the listener to your own
+  focusable element (`tabIndex={0}`).
+- **Host info (`document.cookie`, `cookieStore`, `referrer`, `URL`,
+  `baseURI`, `performance.getEntries`):** not available and never needed — remove
   the code.
 - **Everything else — `navigator.clipboard`, `geolocation`, `share` and
   other `navigator` APIs, `print`, `<iframe>`, `<video>`, `<audio>`:** no
