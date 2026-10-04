@@ -47,4 +47,6 @@ Anything else — `div`, `span`, `button`, `select`, `svg`, `g`, `path`,
 ## Blocked global event listeners
 
 `addEventListener` on `document` or `window` throws for
-`GLOBAL_BLOCKED_EVENT_TYPES` (listening on the viz's own elements is fine).
+`GLOBAL_BLOCKED_EVENT_TYPES`, and so does assigning the matching `on<type>`
+handler on `document`, `window` or `document.body` (e.g.
+`document.onkeydown = …`). Listening on the viz's own elements is fine.
