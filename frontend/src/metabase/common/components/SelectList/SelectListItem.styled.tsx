@@ -57,7 +57,7 @@ export const BaseItemRoot = styled.li<{
 `;
 
 const getGridTemplateColumns = (hasLeftIcon: boolean, hasRightIcon: boolean) =>
-  `${hasLeftIcon ? "min-content" : ""} 1fr ${
+  `${hasLeftIcon ? "min-content" : ""} minmax(0, 1fr) ${
     hasRightIcon ? "min-content" : ""
   }`;
 
