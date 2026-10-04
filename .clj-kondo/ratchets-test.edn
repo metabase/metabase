@@ -34,22 +34,22 @@
                                 :unused-private-var                                                  2}
  :discouraged-namespace-counts {:clojure.tools.logging 5
                                 :toucan2.core          1}
- :discouraged-var-counts       {:clojure.core/pr                            1
-                                :clojure.core/print                         1
-                                :clojure.core/printf                        2
-                                :clojure.core/println                       9
-                                :clojure.core/prn                           1
-                                :clojure.core/time                          1
-                                :clojure.java.jdbc/get-connection           1
-                                :clojure.java.jdbc/with-db-connection       1
-                                :clojure.pprint/print-table                 1
-                                :clojure.string/lower-case                  1
-                                :compojure.core/routes                      2
-                                :ee.entity-retrieval.core/search-unfiltered 6
-                                :entity-retrieval.core/search-unfiltered    1
-                                :entity-retrieval.mirror/search-unfiltered  1
-                                :lib.equality/find-column-indexes-for-refs  2
-                                :test/with-temp                             28}
+ :discouraged-var-counts       {:clojure.core/pr                                   1
+                                :clojure.core/print                                1
+                                :clojure.core/printf                               2
+                                :clojure.core/println                              9
+                                :clojure.core/prn                                  1
+                                :clojure.core/time                                 1
+                                :clojure.java.jdbc/get-connection                  1
+                                :clojure.java.jdbc/with-db-connection              1
+                                :clojure.pprint/print-table                        1
+                                :clojure.string/lower-case                         1
+                                :compojure.core/routes                             2
+                                :ee.search.entity-retrieval.core/search-unfiltered 6
+                                :lib.equality/find-column-indexes-for-refs         2
+                                :search.entity-retrieval.core/search-unfiltered    1
+                                :search.entity-retrieval.mirror/search-unfiltered  1
+                                :test/with-temp                                    28}
  :comment-exempt               #{:deprecated-namespace
                                  :discouraged-namespace
                                  :discouraged-var
