@@ -36,7 +36,8 @@ const apiNames = (node) => {
 const usesBlockedDomApi = (node) =>
   apiNames(node).find((name) => BLOCKED_DOM_APIS.has(name));
 
-const isBlockedTag = (tag) => BLOCKED_TAGS.has(tag.toLowerCase());
+const isBlockedTag = (tag) =>
+  BLOCKED_TAGS.has(tag.slice(tag.indexOf(":") + 1).toLowerCase());
 
 const rendersBlockedJsxTag = (node) => {
   if (!ts.isJsxOpeningElement(node) && !ts.isJsxSelfClosingElement(node)) {
@@ -73,7 +74,9 @@ const listensToBlockedGlobalEvent = (node) => {
   ) {
     return undefined;
   }
-  const type = call.args.find((arg) => GLOBAL_BLOCKED_EVENT_TYPES.has(arg));
+  const type = call.args.find((arg) =>
+    GLOBAL_BLOCKED_EVENT_TYPES.has(arg.toLowerCase()),
+  );
   return type && `${call.receiver.text}.addEventListener("${type}")`;
 };
 
