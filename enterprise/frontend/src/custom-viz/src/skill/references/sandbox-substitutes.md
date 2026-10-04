@@ -8,10 +8,6 @@
   MutationObservers rooted at `document`). Only query and observe inside
   your own mount. `document.activeElement` returns `null` while focus is
   on host UI.
-- **Debugging:** a blocked call throws with the restriction's label in
-  the message. DOMPurify strips content silently but logs
-  `[plugin <id>] DOMPurify stripped content from <source>` to the host
-  console — if content silently disappears, look there.
 - **Allowed and commonly needed:** React rendering into your container;
   `addEventListener` on your own elements for any event type; canvas and
   OffscreenCanvas on the main thread; `setTimeout` /

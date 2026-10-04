@@ -1,20 +1,15 @@
 # API behavioral contract
 
-What the host does with your callbacks — the part the `.d.ts` files cannot
-express. For the types themselves read
+Host behavior the `.d.ts` files cannot express. Types:
 `node_modules/@metabase/custom-viz/dist/types/`.
 
 ## onClick → the drill-through menu
 
-Calling the `onClick` prop with a click object opens Metabase's standard
-drill menu ("See these records", "Filter by this value", "Break out
-by…"). Drills are not automatic: a viz that never calls `onClick` is a
-static picture. Do not reimplement drills — no custom popovers, no
-self-filtering, no synthesized navigation: `onClick` gets all of
-Metabase's drill logic (permissions, actions available for the question's
-data source) for free.
+`onClick(clickObject)` opens Metabase's drill menu with permissions and
+source-aware actions. Drills are not automatic — no `onClick`, no drills.
+Never reimplement them (custom popovers, self-filtering, navigation).
 
-The shape (the one snippet in this file):
+Shape:
 
 ```tsx
 onClick({
@@ -46,9 +41,7 @@ symmetric: every mouse-enter that calls `onHover(...)` needs a leave path
 that reaches `onHover(null)` — including moving from a mark into empty
 viz interior without leaving the container. Provide `data` (rows of
 `{ key, value, col }`) for multi-line tooltips; `col` drives value
-formatting. Never use SVG `<title>` children or `title=` attributes for
-hover info — they produce the delayed plain browser tooltip, not
-Metabase's.
+formatting. Never use SVG `<title>` or `title=` for hover info.
 
 ## renderingContext
 
@@ -68,11 +61,10 @@ checks. Keep runtime guards in the component only for what
 `checkRenderable` cannot see: `width` and `height` are `null` until the
 first measure — return `null` then.
 
-## Other host behavior worth knowing
+## Other host behavior
 
-- The host measures your outer container and feeds the size back as the
-  next `width`/`height` props. A content-sized root creates a feedback
-  loop (see known-mistakes: unbounded growth). Pin the root to the props.
+- The host feeds your measured root size back as `width`/`height`; pin
+  the root to the props (known-mistakes: unbounded growth).
 - `formatValue` and the column-type predicates exported by the package
   delegate to the host at runtime (`__METABASE_VIZ_API__`) — they work
   only inside a running Metabase.
@@ -81,6 +73,5 @@ first measure — return `null` then.
   `settings.column?.(col)` and pass the result to `formatValue`.
 - Custom vizzes are not rendered in emails or Slack — static contexts
   fall back to a default visualization.
-- Images: the plugin is a single JS bundle; inline SVG in JSX or embed
-  rasters as `data:image/*` URIs. The only file served by the instance is
-  the manifest icon.
+- The plugin is a single JS bundle; the only served asset is the manifest
+  icon. Inline SVG in JSX; rasters as `data:image/*` URIs.

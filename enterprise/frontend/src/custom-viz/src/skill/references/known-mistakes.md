@@ -1,10 +1,7 @@
 # Known mistakes
 
-Mistakes spotted in real generated custom vizzes. The verifier runs each
-entry's detector against `src/index.tsx`; the debug route uses the
-entries as a symptom → cause → fix lookup. Entries get added as real
-issues surface — recurring causes from `.claude/fix-log.md` files are
-candidates.
+Bugs seen in real generated vizzes. The verifier runs each detector
+against `src/index.tsx`; the debug route matches symptoms here.
 
 Each entry: **Symptom**, **Why it's wrong**, **Fix**, **Detector** (a
 mechanical rule; when it needs judgment, it says so), **Severity**
@@ -95,8 +92,7 @@ event: event.nativeEvent }`, clear with `onHover(null)` on leave, and
   remove the `<title>` elements / `title=` attributes.
 - **Detector** — grep for `<title>` JSX children and `title=` attributes
   on rendered marks; if any match and `onHover` is never called, emit.
-  Severity rises to `blocker` when hover was an explicit requirement.
-- **Severity** — `warning` by default.
+- **Severity** — `blocker`; `warning` if hover was opted out.
 
 ## Drills wired on some marks but not others
 
@@ -112,10 +108,10 @@ event: event.nativeEvent }`, clear with `onHover(null)` on leave, and
   `cursor: pointer` on everything clickable.
 - **Detector** — (1) For each SVG/DOM mark element rendered from data,
   confirm `onClick=` or that it is pure decoration (axis, grid). (2) If
-  drills are expected and the viz renders more than one kind of mark,
-  emit when only one kind has `onClick`. `blocker` if drills are
-  expected and no mark has `onClick`.
-- **Severity** — `warning`.
+  drills were not opted out and the viz renders more than one kind of
+  mark, emit when only one kind has `onClick`.
+- **Severity** — `warning`; `blocker` when no mark has `onClick` and
+  drills were not opted out.
 
 ## Drill handler early-returns when one direction of a pair has no row
 

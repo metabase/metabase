@@ -1,7 +1,6 @@
 # Iterate — live dev server + user feedback
 
-Run by the main agent, never a subagent: a subagent's background
-processes die when it exits.
+Main agent only — a subagent's background processes die with it.
 
 ## Start the dev server
 
@@ -35,12 +34,11 @@ Hand off to the user:
 - After non-trivial edits, run `npm run type-check`.
 - If the user quotes a Metabase-side error message, trace it to
   `checkRenderable` or settings defaults before guessing.
-- If the user asks for a re-check, run the full three-level verification
-  pipeline from the README.
+- Re-check requested → run the README verification pipeline.
 
 ## If the dev server misbehaves
 
-Check the port and the server, then restart — that is the whole playbook:
+Check the port and the server, then restart:
 
 ```bash
 lsof -ti :5174 || echo free
@@ -54,5 +52,5 @@ curl -sf http://localhost:5174/metabase-plugin.json -o /dev/null && echo up || e
 
 ## Done?
 
-When the user signals they're finished ("ship it", "build it", "looks
-good"), go to `phases/ship.md`. Do not run `npm run build` from here.
+User signals done ("ship it", "build it", "looks good") →
+`phases/ship.md`. Never run `npm run build` here.

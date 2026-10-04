@@ -1,44 +1,37 @@
 # Build — write src/index.tsx
 
-You are the builder. Inputs from the conductor: the build statement (what
-to build, data shape, settings, any user answers so far). You produce a
-working `src/index.tsx` and nothing else.
+You are the builder. Input: the build statement (what to build, data
+shape, settings, user answers). Output: a working `src/index.tsx`.
 
-Steps:
-
-1. If `node_modules/` is missing, run `npm install` (can take 60–120s on a
-   cold cache). Do not add dependencies beyond what the scaffold pins; if
-   a customization seems to need a new package, return a question instead
-   of installing.
-2. Read, from `node_modules/@metabase/custom-viz/dist/`:
-   - `types/viz.d.ts` and `types/viz-settings.d.ts` (plus any other
-     `types/*.d.ts` you need) — the authoritative API surface
+1. `node_modules/` missing → `npm install` (60–120s on a cold cache).
+   Never add dependencies; if a feature seems to need one, return a
+   question.
+2. Read from `node_modules/@metabase/custom-viz/dist/`:
+   - `types/viz.d.ts`, `types/viz-settings.d.ts`, other `types/*.d.ts` as
+     needed — the API surface
    - `skill/references/api-contract.md`
-   - `skill/references/sandbox-restrictions.md` and
+   - `skill/references/sandbox-restrictions.md`,
      `skill/references/sandbox-substitutes.md`
-   - `skill/references/known-mistakes.md` — write code that passes those
-     detectors from the start
-3. Write `src/index.tsx`: a default-exported `CreateCustomVisualization`
-   factory wrapped in `defineConfig`, `id` equal to the `"name"` in
-   `metabase-plugin.json`, a `checkRenderable` that enforces the agreed
-   data shape with user-readable error messages, settings via
-   `defineSetting`. Wire `onClick` drills and `onHover` tooltips on every
-   data mark and drive colors from `renderingContext`, unless the user
+   - `skill/references/known-mistakes.md` — pass its detectors up front
+3. Write `src/index.tsx`: default-exported `CreateCustomVisualization`
+   factory wrapped in `defineConfig`; `id` equal to `"name"` in
+   `metabase-plugin.json`; `checkRenderable` enforcing the data shape with
+   user-readable errors; settings via `defineSetting`; `onClick` and
+   `onHover` on every data mark and colors from `renderingContext` unless
    opted out.
-4. Run `npm run type-check`; fix and re-run until clean. If the same error
-   survives two fix attempts, stop and surface it.
-5. Run
-   `node node_modules/@metabase/custom-viz/dist/skill/verify-tokens.mjs src/index.tsx`
-   and resolve any hit using `sandbox-substitutes.md`.
+4. `npm run type-check` until clean. Same error after two attempts → stop
+   and report it.
+5. `node node_modules/@metabase/custom-viz/dist/skill/verify-tokens.mjs src/index.tsx`;
+   resolve hits via `sandbox-substitutes.md`.
 
-Hard rules:
+Rules:
 
-- Touch only `src/index.tsx` (and `public/assets/icon.svg` when the user
-  supplied an icon). Never scaffold, never edit config files.
-- Do not start the dev server — the conductor owns it.
-- If a planned feature needs a blocked capability with no clean
-  substitute, stop and return the specific question, citing the
-  restriction label. Code that throws at runtime is worse than a question.
+- Touch only `src/index.tsx` (and `public/assets/icon.svg` if the user
+  supplied an icon).
+- Never start the dev server.
+- A feature needs a blocked capability with no clean substitute → stop
+  and return the question, citing the restriction label. A question beats
+  code that throws.
 
-Return to the conductor, briefly: what was built, type-check and
-token-scan status, open questions if any.
+Return: what was built, type-check and verify-tokens status, open
+questions.
