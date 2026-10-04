@@ -17,21 +17,33 @@ const program = ts.createProgram([entry], {
 });
 const checker = program.getTypeChecker();
 
-const apiNames = (node) => {
-  if (ts.isPropertyAccessExpression(node)) {
-    return [node.getText()];
-  }
-  if (!ts.isIdentifier(node)) {
-    return [];
-  }
-  const symbol = checker.getSymbolAtLocation(node);
-  return (symbol?.declarations ?? [])
+const libApiNames = (symbol) =>
+  (symbol?.declarations ?? [])
     .filter((d) => program.isSourceFileDefaultLibrary(d.getSourceFile()))
     .map(({ parent }) =>
       ts.isInterfaceDeclaration(parent)
         ? `${parent.name.text}.${symbol.name}`
         : symbol.name,
     );
+
+const destructuredSymbol = (node) =>
+  ts.isObjectBindingPattern(node.parent) &&
+  !node.propertyName &&
+  ts.isIdentifier(node.name)
+    ? checker.getTypeAtLocation(node.parent).getProperty(node.name.text)
+    : undefined;
+
+const apiNames = (node) => {
+  if (ts.isPropertyAccessExpression(node)) {
+    return [node.getText()];
+  }
+  if (ts.isIdentifier(node)) {
+    return libApiNames(checker.getSymbolAtLocation(node));
+  }
+  if (ts.isBindingElement(node)) {
+    return libApiNames(destructuredSymbol(node));
+  }
+  return [];
 };
 
 const usesBlockedDomApi = (node) =>

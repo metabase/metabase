@@ -39,6 +39,37 @@ const readBlockLabels = () => {
   return { labels, templates };
 };
 
+const collectLibApiNames = () => {
+  const program = ts.createProgram([__filename], {
+    target: ts.ScriptTarget.Latest,
+    noResolve: true,
+  });
+  program.getTypeChecker();
+  const names = new Set<string>();
+  const visit = (node: ts.Node) => {
+    if (
+      (ts.isPropertySignature(node) ||
+        ts.isMethodSignature(node) ||
+        ts.isVariableDeclaration(node) ||
+        ts.isFunctionDeclaration(node)) &&
+      node.name &&
+      ts.isIdentifier(node.name)
+    ) {
+      names.add(
+        ts.isInterfaceDeclaration(node.parent)
+          ? `${node.parent.name.text}.${node.name.text}`
+          : node.name.text,
+      );
+    }
+    ts.forEachChild(node, visit);
+  };
+  program
+    .getSourceFiles()
+    .filter((file) => program.isSourceFileDefaultLibrary(file))
+    .forEach(visit);
+  return names;
+};
+
 describe("skill blocked-apis.mjs", () => {
   it("maps every API blocked by the sandbox", async () => {
     const { SANDBOX_BLOCKED_APIS } = await import(
@@ -50,6 +81,35 @@ describe("skill blocked-apis.mjs", () => {
     expect(labels.filter((label) => !(label in SANDBOX_BLOCKED_APIS))).toEqual(
       [],
     );
+  });
+
+  it("names APIs the way verify-tokens resolves them from the TS lib", async () => {
+    const { SANDBOX_BLOCKED_APIS } = await import(
+      join(SKILL_DIR, "blocked-apis.mjs")
+    );
+    const libApiNames = collectLibApiNames();
+    const values: string[] = [
+      ...new Set<string>(Object.values(SANDBOX_BLOCKED_APIS)),
+    ];
+
+    expect(
+      values.filter(
+        (value) => !value.startsWith("document.") && !libApiNames.has(value),
+      ),
+    ).toEqual([
+      "onbeforepaste",
+      "onbeforecopy",
+      "onbeforecut",
+      "oncompositionstart",
+      "oncompositionupdate",
+      "oncompositionend",
+      "Navigator.usb",
+      "Navigator.bluetooth",
+      "Navigator.hid",
+      "Navigator.serial",
+      "Navigator.xr",
+      "Navigator.presentation",
+    ]);
   });
 
   it("knows every computed sandbox label", () => {

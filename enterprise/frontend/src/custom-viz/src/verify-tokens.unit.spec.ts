@@ -60,6 +60,11 @@ describe("verify-tokens.mjs", () => {
       "document.onkeydown = null;\ndocument.body.onpaste = null;\nonkeyup = null;",
       ["document.onkeydown", "document.body.onpaste", "onkeyup"],
     ],
+    [
+      "destructured host members",
+      "const { cookie } = document;\nconst { localStorage, fetch: f } = window;\nconst read = ({ cookie: c }: Document) => c;",
+      ["Document.cookie", "localStorage", "fetch", "Document.cookie"],
+    ],
   ])("flags %s", (_, source, expected) => {
     const { status, findings } = scan({ "index.tsx": source });
     expect(findings).toEqual(expected);

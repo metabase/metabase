@@ -13,28 +13,29 @@ out; `warning` = works but degrades UX).
   page. The `width`/`height` props keep increasing each render.
 - **Why it's wrong** — Metabase measures the viz's outer container and
   feeds the measured size back as the next `width`/`height` props. If the
-  root is sized by its content (default block flow, `inline-block`, an
-  `<svg>` without explicit width/height, unwrapped labels, padding
-  outside `border-box`) and the content exceeds the props, the container
-  grows → the host re-renders with bigger props → the content grows
-  again — a runaway loop.
-- **Fix** — Pin the outermost element to the props and clip: root gets
-  `width`/`height` of `"100%"` (or the props), `overflow: "hidden"` (or
-  `"auto"` when scrolling is intended), `boxSizing: "border-box"`. For
-  `<svg>`, set both `width={width}` and `height={height}` attributes
-  pinned to the props, not viewBox alone. Long labels: fixed-width
-  container + `whiteSpace: "nowrap"`, `overflow: "hidden"`,
-  `textOverflow: "ellipsis"`.
+  root's height is sized by its content (no height, `height: "auto"`) or
+  the root is not block-level (`inline-block`, `inline-flex`, a root
+  `<svg>` without size attributes) and its content scales with the props,
+  the container grows → the host re-renders with bigger props → the
+  content grows again — a runaway loop. A root pinned to the props breaks
+  the loop even when its content overflows.
+- **Fix** — Pin the outermost element: `height` of `"100%"` or the
+  `height` prop; a non-block-level root also needs `width` of `"100%"`
+  or the `width` prop. A root `<svg>` gets `width={width}` and
+  `height={height}` attributes, not `viewBox` alone. Content that may not
+  fit: `overflow: "hidden"` (or `"auto"` when scrolling is intended) and
+  `boxSizing: "border-box"` when the root has padding or border.
 - **Detector** — Inspect the outermost JSX element the component
-  returns. Emit the finding when any of: (a) no `overflow` rule on the
-  root, (b) the root's width/height styles are neither `"100%"` nor the
-  props, (c) an `<svg>` lacks both `width=` and `height=` pinned to the
-  props. These conditions are non-negotiable — do not skip because the
-  content "should fit"; the loop is driven by sub-pixel margins no
-  static reading can rule out. The single allowed exemption: the root
-  contains exactly one text node whose font size derives from
-  `width`/`height` and nothing else.
-- **Severity** — `blocker`.
+  returns. `blocker` when any of: (a) its `height` is neither `"100%"`
+  nor the `height` prop, (b) it is not block-level (`display` is
+  `inline*`, or it is an `<svg>`) and its `width` is neither `"100%"` nor
+  the `width` prop, (c) it is an `<svg>` without both `width=` and
+  `height=` pinned to the props. Do not skip because the content "should
+  fit". Needs judgment: content can exceed the root (sizes derived from
+  data or props, long labels) and the root has no `overflow` rule, or
+  has padding/border without `boxSizing: "border-box"` → `warning`
+  (content spills visually; no loop).
+- **Severity** — `blocker` for (a)–(c); `warning` for overflow.
 
 ## Hover handler doesn't call `onHover(null)` on leave
 
@@ -69,10 +70,12 @@ out; `warning` = works but degrades UX).
 - **Fix** — Call every hook unconditionally at the top; branch on data
   only after the last hook. Never put `return`, `if`, loops, or `&&`
   between hook calls.
-- **Detector** — Walk the component body top to bottom; a `return`
-  before any `useState`/`useMemo`/`useEffect`/`useRef`/`useCallback`/
-  `useLayoutEffect` call is a finding, as is a hook inside a
-  conditional/loop/ternary.
+- **Detector** — Walk the component's own top-level statements top to
+  bottom, skipping the bodies of nested functions (hook callbacks, event
+  handlers, helpers). A `return` among those statements before any
+  `use*` call is a finding, as is a `use*` call inside a
+  conditional/loop/ternary/`&&` or inside a nested function. A `return`
+  inside a nested function is never a finding.
 - **Severity** — `blocker`.
 
 ## SVG `<title>` used in place of the host `onHover` tooltip

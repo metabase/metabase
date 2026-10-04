@@ -118,7 +118,7 @@ export const SANDBOX_BLOCKED_APIS = {
   "XSLTProcessor.transformToDocument": "XSLTProcessor.transformToDocument",
 
   "HTMLElement.click": "HTMLElement.click",
-  "HTMLAnchorElement.set href": "HTMLAnchorElement.href",
+  "HTMLAnchorElement.set href": "HTMLHyperlinkElementUtils.href",
   "HTMLAnchorElement.set target": "HTMLAnchorElement.target",
   "HTMLFormElement.submit": "HTMLFormElement.submit",
   "HTMLFormElement.requestSubmit": "HTMLFormElement.requestSubmit",

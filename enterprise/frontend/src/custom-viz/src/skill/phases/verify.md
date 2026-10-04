@@ -20,7 +20,9 @@ Read: `skill/references/project.md`, `skill/references/known-mistakes.md`,
    literally.
 3. Click object passed to `onClick` incomplete per `api-contract.md`,
    or a clickable mark without `cursor: pointer` → `warning`.
-4. Something the viz opens has no dismiss path → `blocker`.
+4. Needs judgment: a popover, overlay, menu or expanded panel the viz
+   opens with no way to close it (close button, click outside it within
+   the viz, `Escape` on its own focusable element) → `blocker`.
 5. `checkRenderable` does not enforce the statement's data shape →
    `blocker`; the component duplicates those checks → `warning`.
 6. Colors not from `renderingContext` (`getColor` / `colorScheme`) and

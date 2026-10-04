@@ -59,7 +59,8 @@ constraint; Metabase shows the message instead of rendering. The
 component may then assume the constraints hold — do not duplicate the
 checks. Keep runtime guards in the component only for what
 `checkRenderable` cannot see: `width` and `height` are `null` until the
-first measure — return `null` then.
+first measure — return `null` then, after the last hook call
+(known-mistakes: React error #310).
 
 ## Other host behavior
 
