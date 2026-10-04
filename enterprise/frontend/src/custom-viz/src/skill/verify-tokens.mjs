@@ -1,46 +1,109 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { relative, resolve } from "node:path";
 
-const { BLOCKED_TAGS, GLOBAL_BLOCKED_EVENT_TYPES } = await import(
-  "./references/blocklists.mjs"
-);
+import { BLOCKED_DOM_APIS } from "./blocked-apis.mjs";
+import {
+  BLOCKED_TAGS,
+  GLOBAL_BLOCKED_EVENT_TYPES,
+} from "./references/blocklists.mjs";
 
-const target = process.argv[2] ?? "src/index.tsx";
-const alt = (list) => [...list].join("|");
+const ts = createRequire(resolve("package.json"))("typescript");
 
-const PATTERNS = [
-  /\b(fetch|alert|confirm|prompt)\s*\(/g,
-  /\bnew\s+(Worker|FontFace|Notification)\b/g,
-  /\b(XMLHttpRequest|WebSocket|EventSource|SharedWorker|RTCPeerConnection|WebTransport|BroadcastChannel|PaymentRequest|PerformanceObserver|XSLTProcessor|DOMParser|localStorage|sessionStorage|indexedDB|cookieStore)\b/g,
-  /\b(document\.cookie|document\.referrer|window\.open|window\.print)\b/g,
-  /\.(sendBeacon|createContextualFragment|setHTMLUnsafe|parseHTMLUnsafe|execCommand|pushState|replaceState|requestFullscreen|showModal)\s*\(/g,
-  new RegExp(`<(${alt(BLOCKED_TAGS)})(?=[\\s/>])`, "g"),
-  new RegExp(
-    `createElement(?:NS)?\\([^)]*["'\`](${alt(BLOCKED_TAGS)})["'\`]`,
-    "g",
-  ),
-  new RegExp(
-    `\\b(?:document|window)\\.addEventListener\\(\\s*["'\`](${alt(GLOBAL_BLOCKED_EVENT_TYPES)})["'\`]`,
-    "g",
-  ),
+const program = ts.createProgram([process.argv[2] ?? "src/index.tsx"], {
+  jsx: ts.JsxEmit.Preserve,
+  target: ts.ScriptTarget.Latest,
+});
+const checker = program.getTypeChecker();
+
+const usesBlockedDomApi = (node) => {
+  if (!ts.isIdentifier(node)) {
+    return undefined;
+  }
+  const symbol = checker.getSymbolAtLocation(node);
+  return symbol?.declarations
+    ?.filter((d) => program.isSourceFileDefaultLibrary(d.getSourceFile()))
+    .map(({ parent }) =>
+      ts.isInterfaceDeclaration(parent)
+        ? `${parent.name.text}.${symbol.name}`
+        : symbol.name,
+    )
+    .find((name) => BLOCKED_DOM_APIS.has(name));
+};
+
+const isBlockedTag = (tag) => BLOCKED_TAGS.has(tag.toLowerCase());
+
+const rendersBlockedJsxTag = (node) => {
+  if (!ts.isJsxOpeningElement(node) && !ts.isJsxSelfClosingElement(node)) {
+    return undefined;
+  }
+  const tag = node.tagName.getText();
+  return isBlockedTag(tag) ? `<${tag}>` : undefined;
+};
+
+const methodCall = (node, methods) =>
+  ts.isCallExpression(node) &&
+  ts.isPropertyAccessExpression(node.expression) &&
+  methods.includes(node.expression.name.text)
+    ? {
+        receiver: node.expression.expression,
+        method: node.expression.name.text,
+        args: node.arguments
+          .filter(ts.isStringLiteralLike)
+          .map((arg) => arg.text),
+      }
+    : undefined;
+
+const createsBlockedTag = (node) => {
+  const call = methodCall(node, ["createElement", "createElementNS"]);
+  const tag = call?.args.find(isBlockedTag);
+  return tag && `${call.method}("${tag}")`;
+};
+
+const listensToBlockedGlobalEvent = (node) => {
+  const call = methodCall(node, ["addEventListener"]);
+  if (
+    !call ||
+    !ts.isIdentifier(call.receiver) ||
+    !["window", "document"].includes(call.receiver.text)
+  ) {
+    return undefined;
+  }
+  const type = call.args.find((arg) => GLOBAL_BLOCKED_EVENT_TYPES.has(arg));
+  return type && `${call.receiver.text}.addEventListener("${type}")`;
+};
+
+const CHECKS = [
+  usesBlockedDomApi,
+  rendersBlockedJsxTag,
+  createsBlockedTag,
+  listensToBlockedGlobalEvent,
 ];
 
-const lines = readFileSync(target, "utf-8")
-  .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
-  .split("\n")
-  .map((line) => line.replace(/^\s*\/\/.*/, ""));
+const findBlocked = (node) => CHECKS.map((check) => check(node)).find(Boolean);
 
-const findings = lines.flatMap((line, i) =>
-  PATTERNS.flatMap((p) => [...line.matchAll(p)]).map(
-    (m) => `${target}:${i + 1} blocked in sandbox: ${m[0]}`,
-  ),
-);
+const findings = [];
+const visit = (file) => (node) => {
+  const blocked = findBlocked(node);
+  if (blocked) {
+    const { line } = file.getLineAndCharacterOfPosition(node.getStart());
+    findings.push(
+      `${relative(".", file.fileName)}:${line + 1} blocked in sandbox: ${blocked}`,
+    );
+  }
+  ts.forEachChild(node, visit(file));
+};
+program
+  .getSourceFiles()
+  .filter(
+    (file) =>
+      !program.isSourceFileFromExternalLibrary(file) && !file.isDeclarationFile,
+  )
+  .forEach((file) => visit(file)(file));
 
 if (findings.length) {
   console.error(findings.join("\n"));
-  console.error(
-    `\n${findings.length} blocked-API reference(s). See references/sandbox-restrictions.md and references/sandbox-substitutes.md next to this script.`,
-  );
+  console.error("\nSee references/sandbox-substitutes.md next to this script.");
   process.exit(1);
 }
-console.log(`verify-tokens: OK — no blocked sandbox tokens in ${target}`);
+console.log("verify-tokens: OK");

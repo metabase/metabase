@@ -1,12 +1,6 @@
 # Sandbox substitutes — what to use instead
 
-Hand-maintained companion to `sandbox-restrictions.md`.
-Every row's first cell cites a restriction exactly as the generated list
-names it — a CI test keeps the two files coherent. When a new restriction
-appears in the generated list without a row here, that is the signal to
-add one.
-
-## Practical rules that are not in the generated list
+## Practical rules
 
 - **The host page is invisible.** The viz mounts inside a subtree marked
   `data-plugin-sandbox="<pluginId>"`; DOM nodes outside it come back as
@@ -26,24 +20,42 @@ add one.
 
 ## Substitutes
 
-| Blocked                                                                                                                           | Use instead                                                                                                                                                                                                                                                                                                                                                                                |
-| --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `<input>`                                                                                                                         | Never fake a text field. Discrete choices: `<select>` (allowed) or styled `<button>`s. Continuous value: a slider built from `<div>`s + pointer events. Free text that configures the viz: a `defineSetting` with the `input` widget (the settings sidebar renders outside the sandbox). Free text that filters data: a dashboard filter feeding the question. If none fits, ask the user. |
-| `<a>`                                                                                                                             | `<button>` or a `role="button"` element with a React `onClick`. For "navigate when a data point is clicked", call the host `onClick` prop — the drill menu owns navigation.                                                                                                                                                                                                                |
-| `<form>`                                                                                                                          | Handle submission in a `<button>` `onClick`; there is no page to submit to.                                                                                                                                                                                                                                                                                                                |
-| `<style>`                                                                                                                         | Inline `style={{}}` objects (constructable stylesheets are blocked too: `Document.get adoptedStyleSheets`).                                                                                                                                                                                                                                                                                |
-| `<iframe>`, `<object>`, `<embed>`                                                                                                 | No substitute — embedded external content cannot work in the sandbox; escalate to the user.                                                                                                                                                                                                                                                                                                |
-| `<video>`, `<audio>`, `<source>`, `<track>`                                                                                       | No substitute — escalate to the user.                                                                                                                                                                                                                                                                                                                                                      |
-| `<image>`, `<use>`, `<feimage>`, `<foreignobject>`                                                                                | Inline the SVG content directly into your JSX; embed rasters as `data:image/*` URIs in `<img>` (allowed).                                                                                                                                                                                                                                                                                  |
-| `window.fetch`                                                                                                                    | All data arrives through the `series` prop. Need external data? Load it with a Metabase question and read `series`.                                                                                                                                                                                                                                                                        |
-| `window.XMLHttpRequest`, `window.WebSocket`, `window.EventSource`, `window.Worker`, `window.SharedWorker`, `Navigator.sendBeacon` | Same as `window.fetch` — no network and no background threads; precompute in the query.                                                                                                                                                                                                                                                                                                    |
-| `Window.get localStorage`, `Window.get sessionStorage`, `Window.get indexedDB`, `Window.get caches`                               | Per-render state: React state. State that must survive reloads: a viz setting declared with `defineSetting` (persisted with the card).                                                                                                                                                                                                                                                     |
-| `Document.get cookie`                                                                                                             | Nothing to replace — a viz never needs host cookies.                                                                                                                                                                                                                                                                                                                                       |
-| `window.alert`, `window.confirm`, `window.prompt`, `window.Notification`                                                          | Render your own message or confirmation UI inside the viz bounds.                                                                                                                                                                                                                                                                                                                          |
-| `window.open`, `History.pushState`, `History.replaceState`                                                                        | The viz cannot navigate the host. Call the host `onClick` prop and let the drill menu act.                                                                                                                                                                                                                                                                                                 |
-| `HTMLElement.click`                                                                                                               | Let real user events drive behavior; never synthesize clicks.                                                                                                                                                                                                                                                                                                                              |
-| `Element.requestFullscreen`, `HTMLDialogElement.showModal`                                                                        | An absolutely-positioned overlay inside the viz container.                                                                                                                                                                                                                                                                                                                                 |
-| `DOMParser.parseFromString`, `Range.createContextualFragment`, `Element.setHTMLUnsafe`, `Document.parseHTMLUnsafe`                | Build DOM with React/JSX. `innerHTML` works but is DOMPurify-sanitized — expect stripping.                                                                                                                                                                                                                                                                                                 |
-| `FontFace.load`                                                                                                                   | Use the host font (`renderingContext.fontFamily`) and measure with `renderingContext.measureText`.                                                                                                                                                                                                                                                                                         |
-| `keydown`, `keyup`, `keypress`, `paste`, `copy`, `cut`                                                                            | Attach the listener to your own focusable element (`tabIndex={0}`), not `document`/`window`.                                                                                                                                                                                                                                                                                               |
-| `Performance.getEntries`                                                                                                          | Nothing to replace — timing of host resources is intentionally hidden.                                                                                                                                                                                                                                                                                                                     |
+- **Text input (`<input>`):** never fake a text field. Discrete choices:
+  `<select>` (allowed) or styled `<button>`s. Continuous value: a slider
+  built from `<div>`s + pointer events. Free text that configures the viz:
+  a `defineSetting` with the `input` widget (the settings sidebar renders
+  outside the sandbox). Free text that filters data: a dashboard filter
+  feeding the question. If none fits, ask the user.
+- **Links and navigation (`<a>`, `window.open`, `history.*`):** use a
+  `<button>` with a React `onClick`. To navigate from a data point, call
+  the host `onClick` prop — the drill menu owns navigation.
+- **Forms (`<form>`):** handle submission in a `<button>` `onClick`.
+- **Styles (`<style>`, `adoptedStyleSheets`):** inline `style={{}}`
+  objects.
+- **SVG references (`<image>`, `<use>`, `<feImage>`, `<foreignObject>`):**
+  inline the SVG content into JSX; embed rasters as `data:image/*` URIs in
+  `<img>` (allowed). For text inside SVG use `<text>`.
+- **Data and network (`fetch`, `XMLHttpRequest`, `WebSocket`,
+  `EventSource`, `Worker`, `sendBeacon`):** all data arrives through the
+  `series` prop. Need more data? Add it to the Metabase question.
+- **Persistence (`localStorage`, `sessionStorage`, `indexedDB`,
+  `caches`):** React state for the session; a `defineSetting` for anything
+  that must survive reloads (persisted with the card).
+- **Dialogs (`alert`, `confirm`, `prompt`, `Notification`, `showModal`,
+  `requestFullscreen`):** render your own UI or an absolutely-positioned
+  overlay inside the viz bounds.
+- **HTML strings (`DOMParser`, `createContextualFragment`,
+  `setHTMLUnsafe`, `document.write`, `execCommand`, `contentEditable`):**
+  build DOM with React/JSX. `innerHTML` works but is DOMPurify-sanitized.
+- **Synthetic clicks (`element.click()`):** let real user events drive
+  behavior.
+- **Fonts (`FontFace`):** use `renderingContext.fontFamily` and measure
+  with `renderingContext.measureText`.
+- **Keyboard and clipboard events on `document`/`window`:** attach the
+  listener to your own focusable element (`tabIndex={0}`).
+- **Host info (`document.cookie`, `referrer`, `URL`, `baseURI`,
+  `performance.getEntries`):** not available and never needed — remove
+  the code.
+- **Everything else — `navigator.clipboard`, `geolocation`, `share` and
+  other `navigator` APIs, `print`, `<iframe>`, `<video>`, `<audio>`:** no
+  substitute; drop the feature or ask the user.

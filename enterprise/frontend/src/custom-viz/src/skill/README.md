@@ -42,14 +42,18 @@ first); `src/index.tsx` customized or template; a process on port 5174; a
 ## The three-level verification pipeline
 
 Used after Build, during Debug, and before Ship. Levels 1–2 are
-mechanical — run them yourself and treat their output as fact:
+mechanical — run them yourself and treat every error they report as fact:
 
 1. `npm run type-check`
 2. `node node_modules/@metabase/custom-viz/dist/skill/verify-tokens.mjs src/index.tsx`
-   — text search for sandbox-blocked APIs; the token list is generated
-   from the actual sandbox source at the same version as the SDK
-3. The **verifier** (`phases/verify.md`) — judgment-only checks that text
-   search cannot make. Pass it the level 1–2 results as established facts.
+   — type-aware scan (TypeScript compiler API) of `src/index.tsx` and its
+   local imports for sandbox-blocked APIs. Blocked tags and global event
+   types come from the sandbox source at the same version as the SDK; the
+   DOM API list (`blocked-apis.mjs`) is maintained by hand. A clean run
+   does not prove the viz is sandbox-safe: values typed `any`, computed
+   property names and code inside dependencies are not checked
+3. The **verifier** (`phases/verify.md`) — judgment-only checks that code
+   cannot make. Pass it the level 1–2 results as established facts.
 
 ## Roles and process rules (non-negotiable)
 
