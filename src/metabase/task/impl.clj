@@ -235,6 +235,8 @@
                                  (.getJobDetail scheduler (.getKey job))
                                  (catch JobPersistenceException _
                                    nil))]
+    ;; Quartz also stores whether the class disallows concurrent execution and persists its job data, but it never
+    ;; reads those columns back. It takes both from the loaded class's annotations, so they need no comparing.
     (= [(.getJobClass stored) (.getDescription stored) (.isDurable stored) (.requestsRecovery stored)
         (into {} (.getJobDataMap stored))]
        [(.getJobClass job) (.getDescription job) (.isDurable job) (.requestsRecovery job)
