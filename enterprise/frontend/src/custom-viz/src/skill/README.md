@@ -24,14 +24,26 @@ in a handoff — pass only the inputs below.
 - `skill/phases/ship.md` — you; input: accepted verification result
 
 When executing a phase yourself, follow that file only; skip reading
-files already read this session. Subagents are
-defined in `.claude/agents/`. No subagent support → run the subagent
-phase inline as a separate pass that ignores your earlier reasoning;
-for verify, also ignore `.claude/fix-log.md` and earlier findings.
+files already read this session. Subagents are defined in
+`.claude/agents/`. No subagent support, or the agent file is missing →
+run the phase inline as a separate pass that ignores your earlier
+reasoning. Inline verify cannot be truly fresh: run at most one round,
+tell the user, and never consult `.claude/fix-log.md` or earlier
+findings.
+
+## References
+
+- `project.md` — files, build statement format, defaults, checks
+- `api-contract.md` — host behavior the types cannot express
+- `known-mistakes.md` — bugs with symptoms, fixes, detectors
+- `sandbox-restrictions.md` — what the sandbox blocks at runtime
+- `sandbox-substitutes.md` — what to use instead
+- `operations.md` — dev server, connecting Metabase, renaming, user edits
+- `fix-log-rules.md` — format and rules of `.claude/fix-log.md`
 
 ## State
 
-`.claude/build-statement.md` — the viz spec; written by refine, kept
+`.claude/build-statement.md` — the build statement; written by refine, kept
 current by iterate and debug. Missing while `src/index.tsx` is already a
 viz → reconstruct it from the code, confirm with the user, write it.
 

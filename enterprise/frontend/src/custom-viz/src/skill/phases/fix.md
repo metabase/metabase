@@ -1,12 +1,7 @@
 # Fix — apply verifier findings
 
-Executor: subagent `custom-viz-fixer`.
 Input: this round's findings; `.claude/build-statement.md`. Output:
 edited `src/index.tsx` and a report.
-
-Paths: `skill/…`, `types/…`, `index.d.ts` are under
-`node_modules/@metabase/custom-viz/dist/`; other paths are relative to
-the project root.
 
 Read: `.claude/build-statement.md`, `skill/references/project.md`,
 `skill/references/fix-log-rules.md` (its rules apply), `.claude/fix-log.md`,
@@ -23,8 +18,12 @@ Steps:
 3. `npm run type-check` and verify-tokens; fix fallout, max two
    attempts.
 
-Rules: edit only `src/index.tsx` and `.claude/fix-log.md`; never start
-the dev server.
+Rules:
+
+- Edit only `src/index.tsx` and `.claude/fix-log.md`.
+- In `src/index.tsx`, touch only the code a finding names and what its
+  fix directly needs. Fallout elsewhere → report it, do not edit.
+- Never start the dev server.
 
 Return: fixes applied, fixes skipped and why, questions needing a user
 decision.

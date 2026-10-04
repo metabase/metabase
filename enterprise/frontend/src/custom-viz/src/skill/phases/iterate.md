@@ -5,8 +5,9 @@ processes die with it).
 Input: a change request, or none right after build. Output: edited
 `src/index.tsx`, a running dev server.
 
-Read: `skill/references/project.md`, `skill/references/operations.md`,
-`skill/references/fix-log-rules.md`, `skill/references/api-contract.md`,
+Read: `.claude/build-statement.md`, `skill/references/project.md`,
+`skill/references/operations.md`, `skill/references/fix-log-rules.md`
+(its rules apply), `skill/references/api-contract.md`,
 `skill/references/known-mistakes.md`,
 `skill/references/sandbox-substitutes.md`, `.claude/fix-log.md`.
 
@@ -23,11 +24,11 @@ Read: `skill/references/project.md`, `skill/references/operations.md`,
 Rules:
 
 - Edit only `src/index.tsx`, `public/assets/icon.svg`,
-  `.claude/build-statement.md`, `.claude/fix-log.md` (fix-log rules
-  only), plus the files Renaming lists.
+  `.claude/build-statement.md`, `.claude/fix-log.md`, plus the files
+  Renaming lists.
 - User edits rules apply.
 - An edit that undoes or rewrites code from a fix-log entry → tell the
-  user which bug it may bring back, then follow the fix-log rules.
+  user which bug it may bring back.
 - Never run `npm run build`.
 
 Return: `misbehavior: <symptom>` when the user reports a bug or quotes an

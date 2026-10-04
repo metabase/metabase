@@ -1,12 +1,7 @@
 # Build — write src/index.tsx
 
-Executor: subagent `custom-viz-builder`.
 Input: `.claude/build-statement.md`. Output: a working `src/index.tsx`
 and a report.
-
-Paths: `skill/…`, `types/…`, `index.d.ts` are under
-`node_modules/@metabase/custom-viz/dist/`; other paths are relative to
-the project root.
 
 Read before writing:
 

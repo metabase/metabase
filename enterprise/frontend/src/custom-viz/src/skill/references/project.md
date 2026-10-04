@@ -13,7 +13,7 @@
   Data shape: <columns and types, expected row count>
   Settings: <list>
   Opted out: <none | drills / hover / theme>
-  Notes: <click behavior, styling, other user answers that change the code; omit when none>
+  Notes: <click behavior, styling, other user answers that change the code; omit when none; never bug or fix history>
   ```
 
 - Scaffold-owned, never edited except when renaming: `package.json`,

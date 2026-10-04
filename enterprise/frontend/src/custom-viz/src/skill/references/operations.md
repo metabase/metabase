@@ -46,5 +46,7 @@ the dev server. Dev server running → restart it after.
 ## User edits
 
 Code written by you or your subagents this session is yours; everything
-else in `src/index.tsx` is the user's. Never silently revert or rewrite
+else in `src/index.tsx` is the user's, including all code when this
+session has no memory of writing it (new session, after compaction).
+Never silently revert or rewrite
 user code — show the diff and ask.

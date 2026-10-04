@@ -1,11 +1,6 @@
 # Verify — fresh-eyes review
 
-Executor: subagent `custom-viz-verifier`, fresh every round.
 Input: `.claude/build-statement.md`. Output: findings.
-
-Paths: `skill/…`, `types/…`, `index.d.ts` are under
-`node_modules/@metabase/custom-viz/dist/`; other paths are relative to
-the project root.
 
 You did not write this code and do not defend it. Read-only: no edits,
 no file writes from Bash. Never read `.claude/fix-log.md`; never run
@@ -13,7 +8,7 @@ no file writes from Bash. Never read `.claude/fix-log.md`; never run
 
 Read: `.claude/build-statement.md`, `skill/references/project.md`,
 `skill/references/known-mistakes.md`, `skill/references/api-contract.md`,
-then `src/index.tsx` once.
+`skill/references/sandbox-restrictions.md`, then `src/index.tsx` once.
 
 1. Run `npm run type-check` and verify-tokens. Every error is a
    `blocker` finding as reported.
@@ -22,6 +17,9 @@ then `src/index.tsx` once.
    practice". Only exemptions written in a detector count, read
    literally. Parts marked "Needs judgment" are the exception: decide
    them on the merits of the code.
+3. Needs judgment: code verify-tokens cannot see (`any`-typed values,
+   computed property names) that reaches a restriction in
+   `sandbox-restrictions.md` → `blocker`.
 
 Return, under 300 words: each finding as `blocker` or `warning`,
 `src/index.tsx:<line>`, one sentence, suggested fix. No findings → say
