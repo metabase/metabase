@@ -261,6 +261,25 @@
                        (transient []))
                      coll))))))
 
+#?(:clj
+   (defn mapv-maybe-unchanged
+     "Like [[clojure.core/mapv]], but is most efficient if `f` is an identity function for all values in `coll`, and `coll`
+  is a vector. In that case, `coll` will be returned without allocations. Otherwise, fall back to regular mapv
+  behavior."
+     [f coll]
+     (if (nil? coll)
+       []
+       (let [coll (vec coll)
+             it (RT/iter coll)]
+         (loop [res coll, i 0]
+           (if (.hasNext it)
+             (let [x (.next it)
+                   x' (f x)]
+               (if (identical? x' x)
+                 (recur res (inc i))
+                 (recur (assoc+ res i x') (inc i))))
+             (maybe-persistent! res)))))))
+
 (defn remove-by-index
   "Remove an item with the given `index` from vector `v`, returning a vector."
   [v index]
