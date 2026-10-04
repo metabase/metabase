@@ -61,6 +61,11 @@
   (is (= [] (mapv-via-run! inc [])))
   (is (= [1 2 3 4 5] (mapv-via-run! inc (range 5)))))
 
+(deftest mapv-maybe-unchanged-test
+  (is (= [1 2 3] (perf/mapv-maybe-unchanged inc (range 3))))
+  (is (= [0 1 2] (perf/mapv-maybe-unchanged identity (vec (range 3)))))
+  (is (= [0 1 20] (perf/mapv-maybe-unchanged #(if (> % 1) (* % 10) %) (vec (range 3))))))
+
 (deftest dropv-test
   (is (= [3 4 5] (perf/dropv 2 [1 2 3 4 5])))
   (is (= [1 2 3] (perf/dropv 0 [1 2 3])))
