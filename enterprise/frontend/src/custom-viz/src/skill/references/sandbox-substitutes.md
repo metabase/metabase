@@ -45,8 +45,7 @@
   build DOM with React/JSX. `innerHTML` works but is DOMPurify-sanitized.
 - **Synthetic clicks (`element.click()`):** let real user events drive
   behavior.
-- **Fonts (`FontFace`):** use `renderingContext.fontFamily` and measure
-  with `renderingContext.measureText`.
+- **Fonts (`FontFace`):** use `renderingContext` (`api-contract.md`).
 - **Keyboard and clipboard events on `document`/`window`**
   (`addEventListener` or `on*` handlers): attach the listener to your own
   focusable element (`tabIndex={0}`).

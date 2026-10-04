@@ -5,37 +5,31 @@ processes die with it).
 Input: a change request, or none right after build. Output: edited
 `src/index.tsx`, a running dev server.
 
-Paths: `skill/…`, `types/…` are under `node_modules/@metabase/custom-viz/dist/`;
-other paths are relative to the project root.
-
-Read: `skill/references/project.md`, `skill/references/api-contract.md`,
+Read: `skill/references/project.md`, `skill/references/operations.md`,
+`skill/references/fix-log-rules.md`, `skill/references/api-contract.md`,
+`skill/references/known-mistakes.md`,
 `skill/references/sandbox-substitutes.md`, `.claude/fix-log.md`.
 
-1. Dev server not up (Dev server checks) → `npm run dev` in the
-   background, wait a few seconds, re-check. First start in this session
-   → give the user the Connecting Metabase dev-mode steps.
+1. Dev server: Ensure running. First start in this session → give the
+   user the Connecting Metabase dev-mode steps.
 2. One user request — one focused edit to `src/index.tsx`; saves
    hot-reload.
-3. After non-trivial edits: `npm run type-check` and verify-tokens.
-4. Change alters the data shape, settings or opt-outs → update the
-   build statement.
-5. Rename request → Renaming in `project.md`.
-6. User reports a bug or quotes an error → return `misbehavior`; do not
-   fix it here.
-
-Dev server misbehaves: port busy but not answering → kill the pid,
-restart, re-check. Same failure twice → read the background process
-output, show the error verbatim, stop restarting.
+3. After every edit that changes logic, markup or props (not only
+   literal style values): `npm run type-check` and verify-tokens.
+4. Change alters the data shape, settings or opt-outs → update
+   `.claude/build-statement.md`.
+5. Rename request → Renaming.
 
 Rules:
 
-- Edit only `src/index.tsx` and `public/assets/icon.svg`, plus the
-  files Renaming lists.
-- Never silently revert edits the user made — show the diff and ask.
+- Edit only `src/index.tsx`, `public/assets/icon.svg`,
+  `.claude/build-statement.md`, `.claude/fix-log.md` (fix-log rules
+  only), plus the files Renaming lists.
+- User edits rules apply.
 - An edit that undoes or rewrites code from a fix-log entry → tell the
-  user which bug it may bring back, then follow the Fix log rules.
-- Iterate changes are not logged.
+  user which bug it may bring back, then follow the fix-log rules.
 - Never run `npm run build`.
 
-Return: `misbehavior: <symptom>` when the user reports a bug, `done`
-when the user signals done ("ship it", "looks good").
+Return: `misbehavior: <symptom>` when the user reports a bug or quotes an
+error — do not fix it here; `done` when the user signals done ("ship
+it", "looks good").

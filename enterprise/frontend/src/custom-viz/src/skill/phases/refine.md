@@ -1,13 +1,11 @@
 # Refine — turn the request into a build statement
 
 Executor: main agent (needs the user dialog).
-Input: the user's request. Output: a build statement.
+Input: the user's request. Output: `.claude/build-statement.md`.
 
-Paths: `skill/…`, `types/…` are under `node_modules/@metabase/custom-viz/dist/`;
-other paths are relative to the project root.
-
-Read: `skill/references/project.md` (Defaults, Renaming),
-`types/viz-settings.d.ts` (widget catalog).
+Read: `skill/references/project.md` (Files, Defaults),
+`skill/references/operations.md` (Renaming), `types/viz-settings.d.ts`
+(widget catalog).
 
 1. Ask 1–3 questions, only where different answers produce a different
    viz:
@@ -21,8 +19,6 @@ Read: `skill/references/project.md` (Defaults, Renaming),
    defaults. Never ask for plan approval.
 3. Propose obviously useful settings (a color, a threshold, a toggle)
    yourself; ask only about additions that change scope.
-4. User wants a different project name → apply Renaming from
-   `project.md` now.
-
-Output, one line:
-`Building: <what>; data shape: <shape>; settings: <list>; opted out: <none | drills / hover / theme>`
+4. User wants a different project name → apply Renaming now.
+5. Write the statement to `.claude/build-statement.md` in the format
+   from `project.md`.

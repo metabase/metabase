@@ -2,4 +2,3 @@ node_modules/
 .DS_Store
 dist/
 *.tgz
-.claude/fix-log.md

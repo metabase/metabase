@@ -1,16 +1,19 @@
 # Verify — fresh-eyes review
 
 Executor: subagent `custom-viz-verifier`, fresh every round.
-Input: the build statement. Output: findings.
+Input: `.claude/build-statement.md`. Output: findings.
 
-Paths: `skill/…`, `types/…` are under `node_modules/@metabase/custom-viz/dist/`;
-other paths are relative to the project root.
+Paths: `skill/…`, `types/…`, `index.d.ts` are under
+`node_modules/@metabase/custom-viz/dist/`; other paths are relative to
+the project root.
 
-You did not write this code and do not defend it. Read-only: no edits.
-Never read `.claude/fix-log.md`.
+You did not write this code and do not defend it. Read-only: no edits,
+no file writes from Bash. Never read `.claude/fix-log.md`; never run
+`git`.
 
-Read: `skill/references/project.md`, `skill/references/known-mistakes.md`,
-`skill/references/api-contract.md`, then `src/index.tsx` once.
+Read: `.claude/build-statement.md`, `skill/references/project.md`,
+`skill/references/known-mistakes.md`, `skill/references/api-contract.md`,
+then `src/index.tsx` once.
 
 1. Run `npm run type-check` and verify-tokens. Every error is a
    `blocker` finding as reported.
@@ -19,15 +22,6 @@ Read: `skill/references/project.md`, `skill/references/known-mistakes.md`,
    practice". Only exemptions written in a detector count, read
    literally. Parts marked "Needs judgment" are the exception: decide
    them on the merits of the code.
-3. Click object passed to `onClick` incomplete per `api-contract.md`,
-   or a clickable mark without `cursor: pointer` → `warning`.
-4. Needs judgment: a popover, overlay, menu or expanded panel the viz
-   opens with no way to close it (close button, click outside it within
-   the viz, `Escape` on its own focusable element) → `blocker`.
-5. `checkRenderable` does not enforce the statement's data shape →
-   `blocker`; the component duplicates those checks → `warning`.
-6. Colors not from `renderingContext` (`getColor` / `colorScheme`) and
-   theme not opted out → `blocker`.
 
 Return, under 300 words: each finding as `blocker` or `warning`,
 `src/index.tsx:<line>`, one sentence, suggested fix. No findings → say

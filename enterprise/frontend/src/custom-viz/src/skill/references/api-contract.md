@@ -31,17 +31,16 @@ onClick({
   aggregating dimension.
 - `onClick(null)` closes the menu — use it for background clicks that
   clear selection.
-- Give every clickable mark `cursor: pointer`.
 
 ## onHover → the tooltip
 
 Metabase renders its styled tooltip while a hover object is active and
 keeps it open **until you call `onHover(null)`**. The contract is
 symmetric: every mouse-enter that calls `onHover(...)` needs a leave path
-that reaches `onHover(null)` — including moving from a mark into empty
-viz interior without leaving the container. Provide `data` (rows of
-`{ key, value, col }`) for multi-line tooltips; `col` drives value
-formatting. Never use SVG `<title>` or `title=` for hover info.
+that reaches `onHover(null)` (known-mistakes: hover leave). Provide
+`data` (rows of `{ key, value, col }`) for multi-line tooltips; `col`
+drives value formatting. Pass `element` and `event` to anchor it, as for
+`onClick`.
 
 ## renderingContext
 
@@ -75,4 +74,4 @@ first measure — return `null` then, after the last hook call
 - Custom vizzes are not rendered in emails or Slack — static contexts
   fall back to a default visualization.
 - The plugin is a single JS bundle; the only served asset is the manifest
-  icon. Inline SVG in JSX; rasters as `data:image/*` URIs.
+  icon. Images: `sandbox-substitutes.md`, SVG references.

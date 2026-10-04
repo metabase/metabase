@@ -1,6 +1,6 @@
 ---
 name: custom-viz-builder
-description: Writes src/index.tsx from a build statement. Spawned by the custom-viz skill.
+description: Writes src/index.tsx from a build statement. Use only from the custom-viz skill orchestrator, never ad hoc.
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 

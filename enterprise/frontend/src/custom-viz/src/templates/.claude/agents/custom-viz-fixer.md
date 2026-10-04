@@ -1,6 +1,6 @@
 ---
 name: custom-viz-fixer
-description: Applies verifier findings to src/index.tsx. Spawned by the custom-viz skill.
+description: Applies verifier findings to src/index.tsx. Use only from the custom-viz skill orchestrator, never ad hoc.
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 

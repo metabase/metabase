@@ -4,10 +4,7 @@ Executor: main agent.
 Input: the latest verification result, already accepted by the user.
 Output: `<name>-<version>.tgz` and upload instructions.
 
-Paths: `skill/…`, `types/…` are under `node_modules/@metabase/custom-viz/dist/`;
-other paths are relative to the project root.
-
-Read: `skill/references/project.md`.
+Read: `skill/references/operations.md`.
 
 1. Icon: ask once — the user replaces `public/assets/icon.svg`
    themselves, describes one for you to draw (simple, single-color,

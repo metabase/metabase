@@ -15,14 +15,15 @@ console shows one of:
 
 The exact blocklists ship with this package — read them directly:
 
-- `blocklists.mjs` (this directory) — built from the sandbox source:
+- `skill/references/blocklists.mjs` — built from the sandbox source:
   `BLOCKED_TAGS`, `GLOBAL_BLOCKED_EVENT_TYPES`,
   `NAVIGATOR_BLOCKED_GETTERS`, `URL_VALUED_ATTRS`, `PURIFY_CONFIG`
-- `../blocked-apis.mjs` — every blocked DOM API; each key is the `<label>`
-  in the runtime error message, each value is how the API appears in code
+- `skill/blocked-apis.mjs` — every blocked DOM API; each key is the
+  `<label>` in the runtime error message, each value is how the API
+  appears in code
 
 For what to use **instead** of a blocked capability, read
-`sandbox-substitutes.md` in this directory.
+`skill/references/sandbox-substitutes.md`.
 
 ## Blocked HTML tags
 

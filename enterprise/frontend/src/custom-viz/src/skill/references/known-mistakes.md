@@ -1,10 +1,18 @@
 # Known mistakes
 
-Bugs seen in real generated vizzes. Each entry: **Symptom**, **Why it's
+Bugs and contract violations in generated vizzes. Each entry: **Symptom**, **Why it's
 wrong**, **Fix**, **Detector** (a mechanical rule; when it needs
 judgment, it says so), **Severity** (`blocker` = throws, produces wrong
-output, or breaks a default — drills, hover, theme — that was not opted
-out; `warning` = works but degrades UX).
+output, or breaks a default (`project.md`, Defaults) that the build
+statement did not opt out; `warning` = works but degrades UX).
+
+Contents: Viz grows unbounded each render · Hover handler doesn't call
+`onHover(null)` on leave · React error #310 · SVG `<title>` used in
+place of the host `onHover` tooltip · Drills wired on some marks but not
+others · Drill handler early-returns when one direction of a pair has no
+row · Click object incomplete, or clickable mark without
+`cursor: pointer` · Popover or overlay that cannot be closed ·
+`checkRenderable` doesn't match the build statement · Hardcoded colors
 
 ## Viz grows unbounded each render
 
@@ -94,10 +102,10 @@ out; `warning` = works but degrades UX).
 - **Why it's wrong** — Metabase's tooltip is driven by the `onHover`
   prop. SVG `<title>` triggers only the delayed native tooltip with no
   column-aware formatting; users read it as "no tooltips".
-- **Fix** — Destructure `onHover`, call it on `onMouseEnter` with
-  `{ data: [{ key, value, col }, …], element: event.currentTarget,
-event: event.nativeEvent }`, clear with `onHover(null)` on leave, and
-  remove the `<title>` elements / `title=` attributes.
+- **Fix** — Destructure `onHover`, call it on `onMouseEnter` with a
+  hover object as in `api-contract.md` (onHover), clear with
+  `onHover(null)` on leave, and remove the `<title>` elements / `title=`
+  attributes.
 - **Detector** — grep for `<title>` JSX children and `title=` attributes
   on rendered marks; if any match and `onHover` is never called, emit.
 - **Severity** — `blocker`; `warning` if hover was opted out.
@@ -134,7 +142,71 @@ event: event.nativeEvent }`, clear with `onHover(null)` on leave, and
 - **Fix** — Look up both directions and fall back to the reverse row
   (swapping source/target dimensions); return early only when both are
   missing.
-- **Detector** — grep for an index lookup like `cellRowIndex[…]?.[…]`
-  followed by `if (… < 0) return` / `if (… == null) return` without a
-  swapped-indices fallback.
+- **Detector** — In a click handler of a mark drawn from a pair
+  (source/target, row/column of a matrix), find the row lookup keyed by
+  the pair `(i, j)`. Emit when a missing result (`-1`, `undefined`,
+  `null`) returns early without first trying the swapped pair `(j, i)`.
 - **Severity** — `warning`.
+
+## Click object incomplete, or clickable mark without `cursor: pointer`
+
+- **Symptom** — The drill menu opens at the wrong spot, lacks "filter
+  by" actions, or formats the value wrongly; users don't notice a mark
+  is clickable.
+- **Why it's wrong** — The host builds the drill menu from the click
+  object (`api-contract.md`, onClick); missing fields silently drop
+  actions or the anchor.
+- **Fix** — Pass `value`, `column`, `dimensions`, `element` and `event`
+  as in `api-contract.md`; set `cursor: pointer` on every element with
+  `onClick`.
+- **Detector** — For each `onClick(` call with a non-null object, emit
+  when `value`, `column`, `element` or `event` is missing, or when
+  `dimensions` is missing and the viz has a dimension column. For each
+  element with an `onClick=` prop, emit when its style has no
+  `cursor: "pointer"`.
+- **Severity** — `warning`.
+
+## Popover or overlay that cannot be closed
+
+- **Symptom** — A popover, overlay, menu or expanded panel the viz opens
+  stays open; the user has to reload the dashboard.
+- **Why it's wrong** — Keyboard listeners on `document`/`window` are
+  blocked and clicks on host UI never reach the viz, so the usual
+  "click anywhere / press Escape" patterns don't work.
+- **Fix** — Give it a close button, close on a click elsewhere inside
+  the viz, or handle `Escape` on its own focusable element
+  (`tabIndex={0}`).
+- **Detector** — Needs judgment: every piece of UI the viz opens from
+  state has at least one of those close paths.
+- **Severity** — `blocker`.
+
+## `checkRenderable` doesn't match the build statement
+
+- **Symptom** — Wrong data crashes the component or renders garbage
+  instead of Metabase showing a readable error; or the component shows
+  its own "unsupported data" message.
+- **Why it's wrong** — `checkRenderable` is the single place for
+  data-shape and settings constraints (`api-contract.md`).
+- **Fix** — Enforce every constraint of the statement's data shape in
+  `checkRenderable` with a user-readable `Error`; remove the duplicate
+  checks from the component.
+- **Detector** — Compare `checkRenderable` against the data shape in
+  `.claude/build-statement.md`: a constraint not enforced → `blocker`.
+  The component re-checks a constraint `checkRenderable` enforces →
+  `warning`. `width`/`height` null guards are not duplicates.
+- **Severity** — `blocker` for missing; `warning` for duplicate.
+
+## Hardcoded colors
+
+- **Symptom** — The viz looks wrong in dark mode (dark text on dark
+  background) or off-palette next to native charts.
+- **Why it's wrong** — Only `renderingContext.getColor` and
+  `colorScheme` follow the current Metabase theme.
+- **Fix** — Derive every color from `renderingContext.getColor(name)` or
+  branch on `renderingContext.colorScheme`; user-picked colors from a
+  setting are fine.
+- **Detector** — grep for color literals (`#…`, `rgb(`, `hsl(`, named
+  CSS colors) in styles and SVG `fill`/`stroke`; emit for each one not
+  a setting default and not inside a `colorScheme` branch. Skip when
+  theme is opted out.
+- **Severity** — `blocker`.
