@@ -61,7 +61,7 @@ const methodCall = (node, methods) =>
 const createsBlockedTag = (node) => {
   const call = methodCall(node, ["createElement", "createElementNS"]);
   const tag = call?.args.find(isBlockedTag);
-  return tag && `createElement("${tag}")`;
+  return tag && `<${tag}>`;
 };
 
 const listensToBlockedGlobalEvent = (node) => {
