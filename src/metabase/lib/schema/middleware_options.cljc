@@ -23,6 +23,14 @@
        `metabase.query-processor.middleware.results-metadata`; default `false`. Has no effect when
        `skip-results-metadata?` is true."}
     :boolean]
+   [:skip-insights?
+    {:optional true
+     :description
+     "Should we skip per-row fingerprint/insights scan when computing `results_metadata`, returning only cheap column
+     metadata (name/type) instead? Used by `metabase.query-processor.middleware.results-metadata`; default `false`.
+     Has no effect when `skip-results-metadata?` is true. Safe to set whenever the caller doesn't need scalar trend
+     data (`:insights`)."}
+    :boolean]
    [:format-rows?
     {:optional true
      :description

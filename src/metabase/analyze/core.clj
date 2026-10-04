@@ -30,8 +30,9 @@
   infer-semantic-type-by-name]
  [metabase.analyze.fingerprint.fingerprinters
   col-wise
-  constant-fingerprinter
+  constant-rf
   fingerprint-fields]
  [metabase.analyze.query-results
   ResultsMetadata
+  cheap-metadata-rf
   insights-rf])

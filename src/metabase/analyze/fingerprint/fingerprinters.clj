@@ -26,7 +26,7 @@
 
 (defn col-wise
   "Apply reducing functions `rfs` coll-wise to a seq of seqs."
-  [& rfs]
+  [rfs]
   (let [rfs (vec rfs)]
     (fn
       ([] (perf/mapv (fn [rf] (rf)) rfs))
@@ -43,7 +43,7 @@
            (reduced results)
            results))))))
 
-(defn constant-fingerprinter
+(defn constant-rf
   "Constantly return `init`."
   [init]
   (fn
@@ -169,7 +169,7 @@
 
 (defmethod fingerprinter [:type/* :Semantic/* :type/PK]
   [_]
-  (constant-fingerprinter nil))
+  (constant-rf nil))
 
 (prefer-method fingerprinter [:type/*        :Semantic/* :type/FK]    [:type/Number :Semantic/* :Relation/*])
 (prefer-method fingerprinter [:type/*        :Semantic/* :type/FK]    [:type/Text   :Semantic/* :Relation/*])
@@ -376,9 +376,9 @@
 (defn fingerprint-fields
   "Return a transducer for fingerprinting a resultset with fields `fields`."
   [fields]
-  (apply col-wise (for [field fields]
-                    (fingerprinter
-                     (cond-> field
-                       ;; Try to get a better guestimate of what we're dealing with on first sync
-                       (every? nil? ((juxt :semantic_type :last_analyzed) field))
-                       (assoc :semantic_type (classifiers.name/infer-semantic-type-by-name field)))))))
+  (col-wise (for [{:keys [semantic_type last_analyzed] :as field} fields]
+              (fingerprinter
+               (cond-> field
+                 ;; Try to get a better guestimate of what we're dealing with on first sync
+                 (and (nil? semantic_type) (nil? last_analyzed))
+                 (assoc :semantic_type (classifiers.name/infer-semantic-type-by-name field)))))))

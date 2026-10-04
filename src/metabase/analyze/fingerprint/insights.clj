@@ -343,4 +343,4 @@
                           (resolve-agg-datetimes))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
-      :else (fingerprinters/constant-fingerprinter nil))))
+      :else (fingerprinters/constant-rf nil))))
