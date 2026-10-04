@@ -19,13 +19,13 @@
   :audit      :getter
   :feature    :whitelabel
   ;; ALL Tecnologias: nome padrão do fork
-  :default    "B.i ALL Tecnologias")
+  :default    "B.I ALL Tecnologias")
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
                 (setting/application-name-for-setting-descriptions application-name))
   :encryption :no
-  :default    "B.i ALL Tecnologias"
+  :default    "B.I ALL Tecnologias"
   :audit      :getter
   :visibility :settings-manager
   :export?    true)
@@ -339,6 +339,18 @@ See [fonts](../configuring-metabase/fonts.md).")
                 (let [new-value-string (str new-value)]
                   (validate-help-url new-value-string)
                   (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
+
+;; ALL Tecnologias: grupos marcados como "grupo de cliente" em Admin → Pessoas → Grupos.
+;; Membros desses grupos (que não sejam admins) veem uma interface reduzida: só as coleções
+;; liberadas para eles, sem "Novo", Metabot, Início, coleção pessoal, Dados e Lixeira.
+(defsetting all-client-group-ids
+  (deferred-tru "IDs of the permission groups marked as client groups.")
+  :encryption :no
+  :visibility :admin
+  :export?    false
+  :type       :json
+  :default    []
+  :audit      :getter)
 
 (defsetting show-metabase-links
   (deferred-tru "Whether or not to display Metabase links outside admin settings.")

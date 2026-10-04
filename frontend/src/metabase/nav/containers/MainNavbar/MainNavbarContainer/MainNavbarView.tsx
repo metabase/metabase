@@ -9,6 +9,7 @@ import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   isExamplesCollection,
   isLibraryCollection,
+  isRootPersonalCollection,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
@@ -178,6 +179,33 @@ export function MainNavbarView({
     ? t`Internal Collections`
     : t`Collections`;
 
+  // ALL Tecnologias: usuário de grupo de cliente vê apenas as coleções liberadas
+  // para ele (sem Início, coleção pessoal, Dados, Lixeira, favoritos etc.).
+  if (isAllClientUser) {
+    return (
+      <ErrorBoundary>
+        <SidebarContentRoot>
+          <div>
+            <SidebarSection>
+              <ErrorBoundary>
+                <Tree
+                  data={regularCollections.filter(
+                    (collection) => !isRootPersonalCollection(collection),
+                  )}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                  aria-label="collection-tree"
+                />
+              </ErrorBoundary>
+            </SidebarSection>
+          </div>
+        </SidebarContentRoot>
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -305,18 +333,16 @@ export function MainNavbarView({
             </ErrorBoundary>
           </SidebarSection>
 
-          {!isAllClientUser && (
-            <SidebarSection>
-              <ErrorBoundary>
-                <BrowseNavSection
-                  nonEntityItem={nonEntityItem}
-                  onItemSelect={onItemSelect}
-                  hasDataAccess={hasDataAccess}
-                  onAddDataModalOpen={openAddDataModal}
-                />
-              </ErrorBoundary>
-            </SidebarSection>
-          )}
+          <SidebarSection>
+            <ErrorBoundary>
+              <BrowseNavSection
+                nonEntityItem={nonEntityItem}
+                onItemSelect={onItemSelect}
+                hasDataAccess={hasDataAccess}
+                onAddDataModalOpen={openAddDataModal}
+              />
+            </ErrorBoundary>
+          </SidebarSection>
 
           {trashCollection && (
             <TrashSidebarSection>

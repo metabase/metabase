@@ -9,7 +9,7 @@ Base atual: `v0.63.18.4` · Branch: `all-branding`
 
 | O quê | Onde editar |
 |---|---|
-| Nome "B.i ALL Tecnologias" na interface, mensagens de carregamento, links do metabase.com ocultos | `frontend/src/metabase/branding/config.ts` |
+| Nome "B.I ALL Tecnologias" na interface, mensagens de carregamento, links do metabase.com ocultos | `frontend/src/metabase/branding/config.ts` |
 | Nome no título da aba/e-mails, **cores da marca**, logo padrão | `src/metabase/appearance/settings.clj` (valores `:default`) |
 | Logo da barra superior | `resources/frontend_client/app/assets/img/all-logo.svg` |
 | Favicon | `resources/frontend_client/app/assets/img/favicon.ico` (+ `favicon-16x16.png`, `favicon-32x32.png`) |
@@ -33,6 +33,19 @@ não é removido nem contornado.
 - Selo "Made with Metabase" nos PDFs exportados (`src/metabase/channel/render/pdf.clj`) — pode ser
   removido depois, se quiser.
 - Testes do upstream que esperam o texto "Metabase" não foram ajustados (o build de produção não os roda).
+
+## Grupos de cliente (interface reduzida)
+
+Em **Admin → Pessoas → Grupos → (grupo)** há o interruptor **"Grupo de cliente"**. Membros desses
+grupos (que não sejam administradores) veem apenas as coleções liberadas para eles:
+
+- somem o botão **Novo**, o **Metabot**, **Início**, **Sua coleção pessoal**, a seção **Dados**
+  (bancos, modelos, métricas), **Lixeira** e favoritos;
+- ao abrir o portal (ou clicar no logo) vão direto para a primeira coleção liberada.
+
+Os grupos marcados ficam na configuração `all-client-group-ids`. Isso só muda a interface: o acesso
+real aos dados continua definido em **Admin → Permissões** (Dados: sem acesso; Coleções: só
+visualização da pasta do cliente).
 
 ## Build
 
@@ -60,7 +73,7 @@ services:
 ```
 
 Depois do primeiro start:
-1. **Admin → Configurações → Geral → Nome do site**: troque para "B.i ALL Tecnologias" (o valor antigo
+1. **Admin → Configurações → Geral → Nome do site**: troque para "B.I ALL Tecnologias" (o valor antigo
    fica salvo no banco e tem prioridade sobre o padrão do fork).
 2. Confirme a **URL do site** — o logo dos e-mails depende dela.
 3. Faça backup do banco antes de trocar a imagem, como em qualquer upgrade.

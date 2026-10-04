@@ -14,11 +14,12 @@ import {
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
+import { useAdminSetting } from "metabase/api/utils";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { Box, Button, Text } from "metabase/ui";
+import { Box, Button, Switch, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { Alert } from "./Alert";
@@ -134,6 +135,7 @@ export const GroupDetail = ({
         }
       >
         <GroupDescription group={group} />
+        <ClientGroupToggle group={group} />
         <GroupMembersTable
           group={group}
           showAddUser={addUserVisible}
@@ -146,6 +148,42 @@ export const GroupDetail = ({
         {modalContent}
       </AdminPaneLayout>
     </SettingsSection>
+  );
+};
+
+/**
+ * ALL Tecnologias: marca o grupo como "grupo de cliente". Membros desses grupos
+ * (exceto admins) veem só as coleções liberadas para eles.
+ */
+const ClientGroupToggle = ({ group }: { group: Group }) => {
+  const { value, updateSetting, isLoading } = useAdminSetting(
+    "all-client-group-ids",
+  );
+
+  if (isAdminGroup(group) || isDefaultGroup(group)) {
+    return null;
+  }
+
+  const clientGroupIds = value ?? [];
+  const isClientGroup = clientGroupIds.includes(group.id);
+
+  const handleToggle = (checked: boolean) => {
+    const nextIds = checked
+      ? [...clientGroupIds.filter((id) => id !== group.id), group.id]
+      : clientGroupIds.filter((id) => id !== group.id);
+    updateSetting({ key: "all-client-group-ids", value: nextIds });
+  };
+
+  return (
+    <Box maw="38rem" mb="lg">
+      <Switch
+        label={t`Grupo de cliente`}
+        description={t`Membros deste grupo veem apenas as coleções liberadas para eles. Somem: botão Novo, Metabot, Início, coleção pessoal, Dados (modelos e métricas) e Lixeira. Não se aplica a administradores.`}
+        checked={isClientGroup}
+        disabled={isLoading}
+        onChange={(event) => handleToggle(event.currentTarget.checked)}
+      />
+    </Box>
   );
 };
 

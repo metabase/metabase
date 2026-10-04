@@ -504,6 +504,8 @@ export type EmbeddingHomepageStatus =
   | "hidden";
 
 interface AdminSettings {
+  /** ALL Tecnologias: IDs dos grupos marcados como "grupo de cliente". */
+  "all-client-group-ids"?: number[];
   "active-users-count"?: number;
   "analytics-pii-retention-enabled"?: boolean;
   "custom-geojson-enabled": boolean;

@@ -7,6 +7,7 @@
 
 (p/import-vars
  [metabase.appearance.settings
+  all-client-group-ids
   application-color
   application-colors
   application-favicon-url
