@@ -27,8 +27,8 @@ verbatim, stop restarting.
 Dev mode:
 
 1. Metabase runs with `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED=true`.
-2. Admin → Custom visualizations → Development → enable the dev server,
-   URL `http://localhost:5174`.
+2. Admin → Custom visualizations → Development → set the dev server
+   URL to `http://localhost:5174`.
 3. Open a question matching the data shape, pick the viz in the
    visualization picker.
 
@@ -45,8 +45,9 @@ the dev server. Dev server running → restart it after.
 
 ## User edits
 
-Code written by you or your subagents this session is yours; everything
-else in `src/index.tsx` is the user's, including all code when this
-session has no memory of writing it (new session, after compaction).
-Never silently revert or rewrite
-user code — show the diff and ask.
+Code written by you or your subagents this session, or changed by a
+`.claude/fix-log.md` entry and still matching what the entry describes,
+is yours; everything else in `src/index.tsx`
+is the user's, including code this session has no memory of writing
+(new session, after compaction). Never silently revert or rewrite user
+code — show the diff and ask.

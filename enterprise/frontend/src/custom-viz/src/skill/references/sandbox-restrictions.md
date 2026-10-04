@@ -13,7 +13,9 @@ console shows one of:
 - `[plugin <id>] DOMPurify stripped content from <source>: […]` (a log, not
   an exception — content silently disappears)
 
-The exact blocklists ship with this package — read them directly:
+The exact blocklists ship with this package. Read them only when you
+need an exact entry (a label from a console message, a tag or event
+type not named here):
 
 - `skill/references/blocklists.mjs` — built from the sandbox source:
   `BLOCKED_TAGS`, `GLOBAL_BLOCKED_EVENT_TYPES`,

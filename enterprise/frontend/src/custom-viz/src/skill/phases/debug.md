@@ -6,17 +6,20 @@ Input: the user's symptom. Output: a targeted fix in `src/index.tsx`.
 Read: `.claude/build-statement.md`, `skill/references/project.md`,
 `skill/references/operations.md`, `skill/references/fix-log-rules.md` (its
 rules apply), `.claude/fix-log.md`, `skill/references/known-mistakes.md`,
-`skill/references/sandbox-restrictions.md`,
-`skill/references/sandbox-substitutes.md`,
-`skill/references/api-contract.md`.
+`skill/references/sandbox-restrictions.md`.
 
-1. Run `npm run type-check` and verify-tokens; treat errors as fact.
+Read on demand: `skill/references/api-contract.md` when the cause
+involves host props or `checkRenderable`;
+`skill/references/sandbox-substitutes.md` when the fix replaces a
+blocked API.
+
+1. Run Checks (`project.md`) once; treat errors as fact.
 2. Match the symptom against `known-mistakes.md` symptoms; a host
    console message against the messages in `sandbox-restrictions.md`;
    a Metabase error message against `checkRenderable` and setting
    defaults.
 3. Read the relevant code and confirm the cause before editing.
-4. Apply the smallest edit that fixes the cause; re-run step 1. Append a
+4. Apply the smallest edit that fixes the cause; run Checks. Append a
    `debug` entry to `.claude/fix-log.md`.
 5. Fix alters the data shape, settings or opt-outs → update
    `.claude/build-statement.md`.

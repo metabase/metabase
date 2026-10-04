@@ -3,9 +3,8 @@
 Executor: main agent (needs the user dialog).
 Input: the user's request. Output: `.claude/build-statement.md`.
 
-Read: `skill/references/project.md` (Files, Defaults),
-`skill/references/operations.md` (Renaming), `types/viz-settings.d.ts`
-(widget catalog).
+Read: `skill/references/project.md`, `skill/references/operations.md`,
+`types/viz-settings.d.ts` (widget catalog).
 
 1. Ask 1–3 questions, only where different answers produce a different
    viz:
@@ -15,8 +14,8 @@ Read: `skill/references/project.md` (Files, Defaults),
      question (ask for its ID or URL) — preferred over a verbal
      description
    - special click behavior, if the request hints at it
-2. Never ask about drills, hover tooltips or theme support — they are
-   defaults. Never ask for plan approval.
+2. Never ask about the `project.md` Defaults. Never ask for plan
+   approval.
 3. Propose obviously useful settings (a color, a threshold, a toggle)
    yourself; ask only about additions that change scope.
 4. User wants a different project name → apply Renaming now.

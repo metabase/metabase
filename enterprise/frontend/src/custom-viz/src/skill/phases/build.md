@@ -1,7 +1,9 @@
 # Build — write src/index.tsx
 
-Input: `.claude/build-statement.md`. Output: a working `src/index.tsx`
-and a report.
+Executor: subagent `custom-viz-builder`. As a subagent, follow only this
+file; ignore AGENTS.md and the orchestrator README.
+Input: none; reads `.claude/build-statement.md`. Output: a working
+`src/index.tsx` and a report.
 
 Read before writing:
 
@@ -21,16 +23,16 @@ Steps:
    with user-readable errors; settings via `defineSetting`; the
    `project.md` Defaults on every data mark, minus what the statement
    opted out; everything in Notes.
-2. `npm run type-check` until clean. Same error after two attempts →
-   stop and report it.
-3. Run verify-tokens; resolve hits via `sandbox-substitutes.md`.
+2. Run Checks (`project.md`); resolve verify-tokens hits via
+   `sandbox-substitutes.md`.
 
 Rules:
 
 - Edit only `src/index.tsx`.
+- No comments that explain a fix or argue the code is correct; the
+  verifier reads the code cold.
 - Never start the dev server.
 - A feature needs a blocked capability with no clean substitute → stop
   and return the question, citing the restriction label.
 
-Return: what was built, type-check and verify-tokens status, open
-questions.
+Return: what was built, Checks status, open questions.

@@ -170,9 +170,9 @@ row · Click object incomplete, or clickable mark without
 
 - **Symptom** — A popover, overlay, menu or expanded panel the viz opens
   stays open; the user has to reload the dashboard.
-- **Why it's wrong** — Keyboard listeners on `document`/`window` are
-  blocked and clicks on host UI never reach the viz, so the usual
-  "click anywhere / press Escape" patterns don't work.
+- **Why it's wrong** — Global listeners are blocked
+  (`sandbox-restrictions.md`) and clicks on host UI never reach the viz,
+  so "click anywhere / press Escape" patterns don't work.
 - **Fix** — Give it a close button, close on a click elsewhere inside
   the viz, or handle `Escape` on its own focusable element
   (`tabIndex={0}`).

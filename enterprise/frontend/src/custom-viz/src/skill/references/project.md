@@ -45,3 +45,6 @@ statement opts out.
   listeners; exit 1 with `file:line blocked in sandbox: <what>` per hit.
   Clean output is not proof of safety: `any`-typed values, computed
   property names and dependency code are not checked.
+
+"Run Checks" means both commands. Same error after two fix attempts →
+stop and report it.

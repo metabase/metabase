@@ -7,29 +7,31 @@ outside a phase.
 Paths: `skill/…`, `types/…`, `index.d.ts` are under
 `node_modules/@metabase/custom-viz/dist/`; other paths are relative to
 the project root. Phase files hold the full instructions for their
-executor; knowledge lives in `skill/references/`. Never restate either
-in a handoff — pass only the inputs below.
+executor, including their `Input:`; knowledge lives in
+`skill/references/`. Never restate either in a handoff — pass only the
+phase's input.
+
+Read first: `skill/references/project.md`,
+`skill/references/operations.md`.
 
 ## Phases
 
-- `skill/phases/refine.md` — you; input: user request
-- `skill/phases/build.md` — subagent `custom-viz-builder`; input: none
-  (reads `.claude/build-statement.md`)
-- `skill/phases/verify.md` — subagent `custom-viz-verifier`; input: none
-  (reads `.claude/build-statement.md`)
-- `skill/phases/fix.md` — subagent `custom-viz-fixer`; input: this
-  round's findings
-- `skill/phases/iterate.md` — you; input: change request
-- `skill/phases/debug.md` — you; input: symptom
-- `skill/phases/ship.md` — you; input: accepted verification result
+- `skill/phases/refine.md` — you
+- `skill/phases/build.md` — subagent `custom-viz-builder`
+- `skill/phases/verify.md` — subagent `custom-viz-verifier`
+- `skill/phases/fix.md` — subagent `custom-viz-fixer`
+- `skill/phases/iterate.md` — you
+- `skill/phases/debug.md` — you
+- `skill/phases/ship.md` — you
 
 When executing a phase yourself, follow that file only; skip reading
-files already read this session. Subagents are defined in
-`.claude/agents/`. No subagent support, or the agent file is missing →
+files whose content is still in your context. Subagents are defined in
+`.claude/agents/`. No subagent support, the agent file is missing, or
+the subagent reports its tools blocked by `agent-guard` failing to run →
 run the phase inline as a separate pass that ignores your earlier
 reasoning. Inline verify cannot be truly fresh: run at most one round,
-tell the user, and never consult `.claude/fix-log.md` or earlier
-findings.
+tell the user, and never consult `.claude/fix-log.md`,
+`.claude/accepted-findings.md` or earlier findings.
 
 ## References
 
@@ -43,9 +45,14 @@ findings.
 
 ## State
 
-`.claude/build-statement.md` — the build statement; written by refine, kept
-current by iterate and debug. Missing while `src/index.tsx` is already a
-viz → reconstruct it from the code, confirm with the user, write it.
+- `.claude/build-statement.md` — the build statement; written by refine,
+  kept current by iterate and debug. Missing while `src/index.tsx` is
+  already a viz → reconstruct it from the code in the `project.md`
+  format, confirm with the user, write it.
+- `.claude/accepted-findings.md` — yours only; never pass it to a
+  subagent. One line per finding the user chose to keep:
+  `<severity> — <function, component or element> — <one sentence>`.
+  Create if missing.
 
 ## Start
 
@@ -56,6 +63,8 @@ Route:
 - Change, new setting, restyle, rename → iterate
 - Misbehavior report → debug
 - "ship it", "package it", "build the archive" → **Ship**
+- Question about the viz, the API or the setup → answer from the
+  references and the code; no phase
 
 ## Create
 
@@ -65,23 +74,28 @@ questions → ask the user, fold the answers into
 
 ## Verify loop
 
-1. Spawn a fresh verifier. Pass it nothing — never `.claude/fix-log.md`,
-   earlier findings or your opinion of the code.
-2. No `blocker` → done; show warnings to the user. Blockers the user
-   chose to keep do not count.
-3. A finding in user code (User edits, `skill/references/operations.md`)
-   → ask the user to fix, keep, or edit it themselves. Pass only the
-   findings to fix.
-4. Spawn the fixer with them, then go to 1.
+1. Spawn a fresh verifier with the prompt "Run your phase." and nothing
+   else — never `.claude/fix-log.md`, earlier findings or your opinion
+   of the code.
+2. Drop findings that name the same code and problem as a line in
+   `.claude/accepted-findings.md`, whatever the wording. Remove lines
+   whose code no longer exists in `src/index.tsx`. No `blocker` left →
+   done; show warnings to the user.
+3. A finding in user code (`operations.md`, User edits) → ask the user
+   to fix, keep, or edit it themselves. Kept → append it to
+   `.claude/accepted-findings.md`.
+4. Spawn the fixer with every remaining finding, blockers and warnings;
+   it decides which warnings to apply. Then go to 1.
 5. Blockers after round 3 → stop, show them to the user, let them
-   decide.
+   decide; kept ones go to `.claude/accepted-findings.md`.
 
 ## Ship
 
 Run the **Verify loop** first — code may have drifted, including user
-edits. Blockers left → offer: another loop, back
-to iterate, or ship with the findings listed. Then ship with the
-accepted result.
+edits. The dev server stays up during the loop, so tell the user fixes
+will hot-reload in Metabase. Blockers left → offer: another loop, back
+to iterate, or ship with the findings listed. Then run ship with the
+accepted result and `.claude/accepted-findings.md`.
 
 ## Phase exits
 

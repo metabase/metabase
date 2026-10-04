@@ -1,6 +1,8 @@
 # Fix — apply verifier findings
 
-Input: this round's findings; `.claude/build-statement.md`. Output:
+Executor: subagent `custom-viz-fixer`. As a subagent, follow only this
+file; ignore AGENTS.md and the orchestrator README.
+Input: this round's findings; reads `.claude/build-statement.md`. Output:
 edited `src/index.tsx` and a report.
 
 Read: `.claude/build-statement.md`, `skill/references/project.md`,
@@ -15,15 +17,17 @@ Steps:
    that fixes the cause (one finding — one edit), append a `fix` entry.
    Reuse helpers earlier fixes introduced.
 2. `warning`s: fix only when obvious and low-risk.
-3. `npm run type-check` and verify-tokens; fix fallout, max two
-   attempts.
+3. Run Checks (`project.md`). An error your edit caused, at the code you
+   edited → fix it. Anywhere else → report it, do not edit.
 
 Rules:
 
 - Edit only `src/index.tsx` and `.claude/fix-log.md`.
 - In `src/index.tsx`, touch only the code a finding names and what its
-  fix directly needs. Fallout elsewhere → report it, do not edit.
+  fix directly needs.
+- No comments that explain a fix or argue the code is correct; the
+  verifier reads the code cold.
 - Never start the dev server.
 
-Return: fixes applied, fixes skipped and why, questions needing a user
-decision.
+Return: fixes applied, fixes skipped and why, logged code you undid and
+the bug that may come back, questions needing a user decision.
