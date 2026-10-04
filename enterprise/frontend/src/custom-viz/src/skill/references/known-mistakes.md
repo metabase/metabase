@@ -19,22 +19,28 @@ out; `warning` = works but degrades UX).
   the container grows → the host re-renders with bigger props → the
   content grows again — a runaway loop. A root pinned to the props breaks
   the loop even when its content overflows.
-- **Fix** — Pin the outermost element: `height` of `"100%"` or the
-  `height` prop; a non-block-level root also needs `width` of `"100%"`
-  or the `width` prop. A root `<svg>` gets `width={width}` and
-  `height={height}` attributes, not `viewBox` alone. Content that may not
-  fit: `overflow: "hidden"` (or `"auto"` when scrolling is intended) and
-  `boxSizing: "border-box"` when the root has padding or border.
+- **Fix** — Pin the outermost element: a block-level root gets `height`
+  of `"100%"` or the `height` prop; an inline root (`<span>`,
+  `display: "inline*"`) becomes block-level (`<div>`, `display: "flex"`),
+  even with a pinned height; a root `<svg>` or
+  `<canvas>` gets `width={width}` and `height={height}` attributes, not
+  `viewBox` alone. Content that may not fit: `overflow: "hidden"` (or
+  `"auto"` when scrolling is intended) and `boxSizing: "border-box"` when
+  the root has padding or border.
 - **Detector** — Inspect the outermost JSX element the component
-  returns. `blocker` when any of: (a) its `height` is neither `"100%"`
-  nor the `height` prop, (b) it is not block-level (`display` is
-  `inline*`, or it is an `<svg>`) and its `width` is neither `"100%"` nor
-  the `width` prop, (c) it is an `<svg>` without both `width=` and
-  `height=` pinned to the props. Do not skip because the content "should
-  fit". Needs judgment: content can exceed the root (sizes derived from
-  data or props, long labels) and the root has no `overflow` rule, or
-  has padding/border without `boxSizing: "border-box"` → `warning`
-  (content spills visually; no loop).
+  returns; when it is a local component, inspect what that component
+  returns. `blocker` when any of: (a) a block-level root's `height` style
+  is neither `"100%"`, the `height` prop, nor a value derived from either
+  that cannot exceed it (`calc(100% - 8px)`, `height - 8`); (b) the root
+  is inline (`<span>`, or `display` is `"inline"`, `"inline-block"`,
+  `"inline-flex"`, `"inline-grid"`); (c) the root is an `<svg>` or
+  `<canvas>` without both `width=` and `height=` attributes pinned to the
+  props or derived from them as in (a). Do not skip because the content
+  "should fit". Needs judgment: content can exceed the root (sizes
+  derived from data or props, long labels) and the root has no
+  `overflow` rule, or has padding/border without
+  `boxSizing: "border-box"` → `warning` (content spills visually; no
+  loop).
 - **Severity** — `blocker` for (a)–(c); `warning` for overflow.
 
 ## Hover handler doesn't call `onHover(null)` on leave
@@ -74,8 +80,9 @@ out; `warning` = works but degrades UX).
   bottom, skipping the bodies of nested functions (hook callbacks, event
   handlers, helpers). A `return` among those statements before any
   `use*` call is a finding, as is a `use*` call inside a
-  conditional/loop/ternary/`&&` or inside a nested function. A `return`
-  inside a nested function is never a finding.
+  conditional/loop/ternary/`&&` or inside a nested function, unless that
+  nested function's own name starts with `use` (a custom hook). A
+  `return` inside a nested function is never a finding.
 - **Severity** — `blocker`.
 
 ## SVG `<title>` used in place of the host `onHover` tooltip

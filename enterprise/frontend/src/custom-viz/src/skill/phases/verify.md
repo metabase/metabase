@@ -17,7 +17,8 @@ Read: `skill/references/project.md`, `skill/references/known-mistakes.md`,
 2. Run every detector in `known-mistakes.md` mechanically. A matched
    condition is a finding; never argue it away as "bounded" or "fine in
    practice". Only exemptions written in a detector count, read
-   literally.
+   literally. Parts marked "Needs judgment" are the exception: decide
+   them on the merits of the code.
 3. Click object passed to `onClick` incomplete per `api-contract.md`,
    or a clickable mark without `cursor: pointer` → `warning`.
 4. Needs judgment: a popover, overlay, menu or expanded panel the viz
