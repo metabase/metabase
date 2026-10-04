@@ -12,8 +12,8 @@ const SANDBOX_SOURCE_FILES = [
   "distortions-event.ts",
 ];
 
-const readSandboxSource = (file: string) => {
-  const source = readFileSync(
+const readSandboxFile = (file: string) =>
+  readFileSync(
     resolve(
       __dirname,
       "../../../../frontend/src/metabase/utils/scripts-sandbox",
@@ -21,10 +21,27 @@ const readSandboxSource = (file: string) => {
     ),
     "utf-8",
   );
-  return ts
+
+const readSandboxSource = (file: string) =>
+  ts
     .createPrinter({ removeComments: true })
-    .printFile(ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true));
-};
+    .printFile(
+      ts.createSourceFile(
+        file,
+        readSandboxFile(file),
+        ts.ScriptTarget.Latest,
+        true,
+      ),
+    );
+
+const transpileSandboxModule = (file: string) =>
+  ts.transpileModule(readSandboxFile(file), {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2022,
+      removeComments: true,
+    },
+  }).outputText;
 
 const copyStaticFiles = () => ({
   name: "copy-static-files",
@@ -47,7 +64,7 @@ const copyStaticFiles = () => ({
     });
     writeFileSync(
       resolve(__dirname, "dist/skill/references/blocklists.mjs"),
-      readSandboxSource("blocklists.ts"),
+      transpileSandboxModule("blocklists.ts"),
     );
   },
 });
