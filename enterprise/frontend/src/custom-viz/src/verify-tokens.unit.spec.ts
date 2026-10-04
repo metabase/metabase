@@ -9,14 +9,14 @@ const PACKAGE_DIR = join(__dirname, "..");
 const SCRIPT = join(PACKAGE_DIR, "dist", "skill", "verify-tokens.mjs");
 
 const scan = (files: Record<string, string>) => {
-  const dir = mkdtempSync(join(tmpdir(), "verify-tokens-"));
+  const dir = mkdtempSync(join(PACKAGE_DIR, "dist", "verify-tokens-"));
   Object.entries(files).forEach(([name, source]) =>
     writeFileSync(join(dir, name), source),
   );
   const { status, stdout, stderr } = spawnSync(
     process.execPath,
     [SCRIPT, join(dir, "index.tsx")],
-    { cwd: PACKAGE_DIR, encoding: "utf-8" },
+    { cwd: tmpdir(), encoding: "utf-8" },
   );
   rmSync(dir, { recursive: true, force: true });
   return {

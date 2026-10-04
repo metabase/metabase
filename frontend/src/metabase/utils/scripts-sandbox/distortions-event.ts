@@ -1,8 +1,6 @@
 import { GLOBAL_BLOCKED_EVENT_TYPES } from "./blocklists";
 import { coerceToString } from "./coerce";
 
-export { GLOBAL_BLOCKED_EVENT_TYPES };
-
 export const ADD_EVENT_LISTENER = EventTarget.prototype.addEventListener;
 
 function isGlobalEventTarget(target: unknown): boolean {

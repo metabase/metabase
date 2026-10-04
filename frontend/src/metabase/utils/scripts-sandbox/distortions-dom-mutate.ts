@@ -3,8 +3,6 @@ import DOMPurify from "dompurify";
 import { BLOCKED_TAGS, PURIFY_CONFIG, URL_VALUED_ATTRS } from "./blocklists";
 import { coerceToString } from "./coerce";
 
-export { BLOCKED_TAGS };
-
 export const CREATE_ELEMENT = Document.prototype.createElement;
 export const CREATE_ELEMENT_NS = Document.prototype.createElementNS;
 export const INSERT_ADJACENT_HTML = Element.prototype.insertAdjacentHTML;

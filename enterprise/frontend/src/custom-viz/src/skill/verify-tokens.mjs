@@ -8,9 +8,10 @@ import {
   GLOBAL_BLOCKED_EVENT_TYPES,
 } from "./references/blocklists.mjs";
 
-const ts = createRequire(resolve("package.json"))("typescript");
+const entry = resolve(process.argv[2] ?? "src/index.tsx");
+const ts = createRequire(entry)("typescript");
 
-const program = ts.createProgram([process.argv[2] ?? "src/index.tsx"], {
+const program = ts.createProgram([entry], {
   jsx: ts.JsxEmit.Preserve,
   target: ts.ScriptTarget.Latest,
 });
