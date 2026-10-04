@@ -1,12 +1,10 @@
 # Known mistakes
 
-Bugs seen in real generated vizzes. The verifier runs each detector
-against `src/index.tsx`; the debug route matches symptoms here.
-
-Each entry: **Symptom**, **Why it's wrong**, **Fix**, **Detector** (a
-mechanical rule; when it needs judgment, it says so), **Severity**
-(`blocker` = throws or produces wrong output; `warning` = works but
-degrades UX).
+Bugs seen in real generated vizzes. Each entry: **Symptom**, **Why it's
+wrong**, **Fix**, **Detector** (a mechanical rule; when it needs
+judgment, it says so), **Severity** (`blocker` = throws, produces wrong
+output, or breaks a default — drills, hover, theme — that was not opted
+out; `warning` = works but degrades UX).
 
 ## Viz grows unbounded each render
 

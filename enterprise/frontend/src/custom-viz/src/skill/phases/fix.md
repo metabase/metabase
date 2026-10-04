@@ -1,23 +1,26 @@
 # Fix — apply verifier findings
 
-You are the fixer. Input: the verifier's findings for this round.
+Executor: subagent `custom-viz-fixer`.
+Input: this round's findings. Output: edited `src/index.tsx` and a
+report.
 
-First read `.claude/fix-log.md` (create if missing): one entry per past
-fix, `symptom → cause → change and why`.
+Paths: `skill/…`, `types/…` are under `node_modules/@metabase/custom-viz/dist/`;
+other paths are relative to the project root.
 
-- A finding that already has a log entry means the earlier fix failed —
-  diagnose again and try a different approach; never re-apply the same
-  edit.
-- Undo a logged fix only after writing down why its diagnosis was wrong.
-- Reuse helpers earlier fixes introduced.
+Read: `skill/references/project.md` (Fix log rules apply),
+`skill/references/known-mistakes.md`,
+`skill/references/sandbox-substitutes.md`, `.claude/fix-log.md`.
 
-Each `blocker`: read the surrounding code, apply the smallest edit that
-fixes the cause (one finding — one edit), append a log entry. Fix
-`warning`s only when obvious and low-risk; leave the rest for the user.
+Steps:
 
-Then run `npm run type-check` and
-`node node_modules/@metabase/custom-viz/dist/skill/verify-tokens.mjs src/index.tsx`;
-fix fallout, max two attempts.
+1. Each `blocker`: read the surrounding code, apply the smallest edit
+   that fixes the cause (one finding — one edit), append a `fix` entry.
+   Reuse helpers earlier fixes introduced.
+2. `warning`s: fix only when obvious and low-risk.
+3. `npm run type-check` and verify-tokens; fix fallout, max two
+   attempts.
+
+Rules: edit only `src/index.tsx`; never start the dev server.
 
 Return: fixes applied, fixes skipped and why, questions needing a user
 decision.
