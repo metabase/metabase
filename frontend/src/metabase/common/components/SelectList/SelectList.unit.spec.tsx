@@ -106,5 +106,21 @@ describe("Components > SelectList", () => {
         "true",
       );
     });
+
+    it("lets the name column shrink so long names are ellipsified (metabase#83544)", () => {
+      render(
+        <SelectList.Item
+          id="1"
+          name="Very very very very very very long collection name"
+          icon="folder"
+          rightIcon="chevronright"
+          onSelect={_.noop}
+        />,
+      );
+
+      expect(screen.getByRole("menuitem")).toHaveStyle({
+        gridTemplateColumns: "min-content minmax(0, 1fr) min-content",
+      });
+    });
   });
 });
