@@ -13,16 +13,13 @@ console shows one of:
 - `[plugin <id>] DOMPurify stripped content from <source>: […]` (a log, not
   an exception — content silently disappears)
 
-The exact blocklists are copied from the sandbox source (comments
-stripped) into this directory at package build time — always in sync,
-read them directly:
+The exact blocklists ship with this package — read them directly:
 
-- `blocklists.mjs` — `BLOCKED_TAGS`, `GLOBAL_BLOCKED_EVENT_TYPES`,
+- `blocklists.mjs` (this directory) — built from the sandbox source:
+  `BLOCKED_TAGS`, `GLOBAL_BLOCKED_EVENT_TYPES`,
   `NAVIGATOR_BLOCKED_GETTERS`, `URL_VALUED_ATTRS`, `PURIFY_CONFIG`
-- `distortions-blocked-apis.ts` — every blocked API; the `block()` label
-  is the `<label>` in the runtime error message
-- `distortions-dom-mutate.ts` / `distortions-event.ts` — how tags,
-  attributes, HTML strings, and global listeners are enforced
+- `../blocked-apis.mjs` — every blocked DOM API; each key is the `<label>`
+  in the runtime error message, each value is how the API appears in code
 
 For what to use **instead** of a blocked capability, read
 `sandbox-substitutes.md` in this directory.

@@ -6,9 +6,8 @@ import { describe, expect, it } from "vitest";
 
 const SKILL_DIR = join(__dirname, "..", "dist", "skill");
 const DISTORTIONS_FILE = join(
-  SKILL_DIR,
-  "references",
-  "distortions-blocked-apis.ts",
+  __dirname,
+  "../../../../../frontend/src/metabase/utils/scripts-sandbox/distortions-blocked-apis.ts",
 );
 
 const readBlockLabels = () => {

@@ -6,12 +6,6 @@ import ts from "typescript";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
-const SANDBOX_SOURCE_FILES = [
-  "distortions-blocked-apis.ts",
-  "distortions-dom-mutate.ts",
-  "distortions-event.ts",
-];
-
 const readSandboxFile = (file: string) =>
   readFileSync(
     resolve(
@@ -21,18 +15,6 @@ const readSandboxFile = (file: string) =>
     ),
     "utf-8",
   );
-
-const readSandboxSource = (file: string) =>
-  ts
-    .createPrinter({ removeComments: true })
-    .printFile(
-      ts.createSourceFile(
-        file,
-        readSandboxFile(file),
-        ts.ScriptTarget.Latest,
-        true,
-      ),
-    );
 
 const transpileSandboxModule = (file: string) =>
   ts.transpileModule(readSandboxFile(file), {
@@ -55,12 +37,6 @@ const copyStaticFiles = () => ({
     );
     cpSync(resolve(__dirname, "src/skill"), resolve(__dirname, "dist/skill"), {
       recursive: true,
-    });
-    SANDBOX_SOURCE_FILES.forEach((file) => {
-      writeFileSync(
-        resolve(__dirname, "dist/skill/references", file),
-        readSandboxSource(file),
-      );
     });
     writeFileSync(
       resolve(__dirname, "dist/skill/references/blocklists.mjs"),
