@@ -197,6 +197,7 @@ project_backend_checks:
   - "{resources,test_resources,test_config}/**/*.{clj,cljc,cljs}"
   - ".clj-kondo/config.edn"
   - ".clj-kondo/config/modules/config.edn"
+  - ".clj-kondo/config/modules/cycle-clusters.edn"
   - ".github/team.json"
   - "dev/resources/dev/modules_config_test/**"
 

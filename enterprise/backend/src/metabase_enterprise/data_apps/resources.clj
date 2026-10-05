@@ -76,7 +76,7 @@
   "Create or restore the server-owned permission resources for `app` and return their IDs."
   [app]
   (perms/with-global-permissions-lock
-    (let [app        (data-apps.db/non-blob-data-app (:id app))
+    (let [app        (data-apps.db/data-app (:id app))
           group      (permission-group! app)
           collection (resource-collection! app)]
       (data-apps.db/update-permission-group! (:id group)

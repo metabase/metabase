@@ -85,6 +85,11 @@
     :label         (deferred-tru "OpenRouter")
     :default-model "anthropic/claude-sonnet-4.6"
     :mini-model    "anthropic/claude-haiku-4.5"
+    ;; Ids of retired models, each mapped to the model that now serves it. OpenRouter lists only the dated
+    ;; `qwen/qwen3.8-max-0902` (https://openrouter.ai/api/v1/models). Saved selections may still name a retired id,
+    ;; and they read as the successor. Treat an entry as permanent: nothing rewrites a value pinned by an environment
+    ;; variable, and a stored value converges only when the setting is next written.
+    :retired-models {"qwen/qwen3.8-max" "qwen/qwen3.8-max-0902"}
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -173,6 +178,24 @@
                      :advanced? true
                      :default   "https://api.deepseek.com"
                      :help      (deferred-tru "The root both surfaces hang off; leave off any /anthropic or /v1 path.")}]}
+   {:type          "xai"
+    :label         (deferred-tru "xAI")
+    :default-model "grok-4.7"
+    :mini-model    "grok-4.3"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder "xai-..."
+                     :prefix      "xai-"
+                     :docs-url    "https://console.x.ai/team/default/api-keys"}
+                    {:key       :base-url
+                     :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.x.ai/v1"}]}
    {:type          "google"
     ;; "Google Gemini Enterprise" (nearly the official "Gemini Enterprise Agent Platform" name), not "Google
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
@@ -289,6 +312,8 @@
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
+    ;; A connection with a model ID serves that model instead of the catalog.
+    :model-fields  [:model-id]
     ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
     ;; without the other authenticates nothing. A session token only extends the pair.
     :requires      {:access-key-id     [:secret-access-key]
@@ -313,6 +338,11 @@
                      :type    :select
                      :options aws-region-options
                      :default "us-east-1"}
+                    {:key         :model-id
+                     :label       (deferred-tru "Model ID")
+                     :type        :text
+                     :placeholder "global.anthropic.claude-sonnet-4-6"
+                     :help        (deferred-tru "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN.")}
                     {:key       :session-token
                      :label     (deferred-tru "Session token")
                      :type      :password
@@ -607,6 +637,9 @@
    "deepseek"   {:type     "deepseek"
                  :settings {:api-key  {:setting :llm-deepseek-api-key :credential? true}
                             :base-url {:setting :llm-deepseek-api-base-url}}}
+   "xai"        {:type     "xai"
+                 :settings {:api-key  {:setting :llm-xai-api-key :credential? true}
+                            :base-url {:setting :llm-xai-api-base-url}}}
    "google"     {:type     "google"
                  :settings {:service-account-key {:setting :llm-google-service-account-key :credential? true}
                             :oauth-access-token  {:setting :llm-google-oauth-access-token :credential? true}
@@ -874,6 +907,33 @@
   (when model-ref
     (second (str/split model-ref #"/" 2))))
 
+(def ^:private retired-model-ids
+  "Every model id some provider type has retired, so a reference naming none of them needs no connection lookup."
+  (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
+
+(defn- current-model
+  "The model now serving `model` on provider type `type-name`.
+
+  Its successor when the type retired it, otherwise `model` itself. Read from the raw registry, like
+  [[retired-model-ids]]: retirement is not hosted policy, so it needs no [[provider-type]] lookup.
+
+    \"openrouter\" \"qwen/qwen3.8-max\" => \"qwen/qwen3.8-max-0902\""
+  [type-name model]
+  (get-in provider-type-by-name [type-name :retired-models model] model))
+
+(defn canonical-model-ref
+  "`model-ref` with any retired model id replaced by its successor.
+
+  A selection saved before a rename reads as the current model. Returns any other `model-ref` unchanged.
+
+    \"openrouter/qwen/qwen3.8-max\" => \"openrouter/qwen/qwen3.8-max-0902\""
+  [model-ref]
+  (let [model (model-ref->model model-ref)]
+    (if-let [{:keys [key type]} (when (contains? retired-model-ids model)
+                                  (connection (model-ref->connection-key model-ref)))]
+      (str key "/" (current-model type model))
+      model-ref)))
+
 (defn strip-managed-prefix
   "Drop the `metabase/` routing prefix from a model reference, leaving the `provider/model` pair the proxy forwards.
   Returns `model-ref` unchanged when it has no such prefix."
@@ -905,7 +965,8 @@
   Returns `{:connection-key :type :model :credentials :ai-proxy?}`, or nil when no such connection exists. `:type`
   is the provider type whose adapter should serve the request: for the managed connection that is the wire family
   named by the model's own first segment (`metabase/anthropic/claude-...` is served by the Anthropic adapter over
-  the proxy), and `:model` is what remains."
+  the proxy), and `:model` is what remains. A retired model id resolves to the model that now serves it, as
+  in [[canonical-model-ref]]."
   [model-ref]
   (let [conn-key (model-ref->connection-key model-ref)
         model    (model-ref->model model-ref)]
@@ -918,7 +979,7 @@
          :ai-proxy?      true}
         {:connection-key conn-key
          :type           type
-         :model          model
+         :model          (current-model type model)
          :credentials    (with-field-defaults type config)
          :ai-proxy?      false}))))
 

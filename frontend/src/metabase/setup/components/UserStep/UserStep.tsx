@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { UserInfo } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
+import { Box } from "metabase/ui";
 
 import { submitUser } from "../../actions";
 import { getUser } from "../../selectors";
@@ -11,8 +12,6 @@ import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import { UserForm } from "../UserForm";
 import type { NumberedStepProps } from "../types";
-
-import S from "./UserStep.module.css";
 
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("user_info");
@@ -39,10 +38,10 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   return (
     <ActiveStep title={getStepTitle(user, isStepCompleted)} label={stepLabel}>
       {isHosted && (
-        <div className={S.StepDescription}>
+        <Box c="text-secondary" mt="md">
           {t`We know you’ve already created one of these.`}{" "}
           {t`We like to keep billing and product accounts separate so that you don’t have to share logins.`}
-        </div>
+        </Box>
       )}
       <UserForm user={user} isHosted={isHosted} onSubmit={handleSubmit} />
     </ActiveStep>

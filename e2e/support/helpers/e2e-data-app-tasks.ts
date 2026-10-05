@@ -120,7 +120,7 @@ export async function scaffoldDataApp({
   );
   fs.writeFileSync(
     path.join(root, "data_app.yaml"),
-    `name: ${appName}\npath: ./dist/index.js\n`,
+    `name: ${appName}\nslug: ${appName}\npath: ./dist/index.js\n`,
   );
 
   return root;

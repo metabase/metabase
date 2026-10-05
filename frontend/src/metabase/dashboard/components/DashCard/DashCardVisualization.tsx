@@ -295,7 +295,7 @@ export function DashCardVisualization({
         name: dashcard.card.name,
         description: dashcard.card.description,
         display: display ?? DEFAULT_VISUALIZER_DISPLAY,
-        visualization_settings: settings,
+        visualization_settings: _.omit(settings, "click_behavior"),
         dataset_query: STRUCTURED_QUERY_TEMPLATE,
       },
       _.omit(dashcard.visualization_settings, "visualization"),

@@ -7,7 +7,7 @@ import type { ColumnSettings, FieldValue, RowValue } from "metabase-types/api";
 
 import { Value as ValueComponent } from "../../Value";
 
-import SingleSelectListField from "./index";
+import { SingleSelectListField } from "./index";
 
 const value: RowValue[] = [];
 const firstOption = "AK";

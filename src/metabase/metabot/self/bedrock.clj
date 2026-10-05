@@ -13,6 +13,10 @@
   [[openai/openai-request-body]] + [[openai/openai->aisdk-chunks-xf]]; the vendor prefix on the
   model id (e.g. `anthropic.claude-haiku-4-5`, `openai.gpt-5.5`) selects the API family.
 
+  Claude inference profiles, ARNs and versioned model IDs, none of which mantle serves, go to
+  `bedrock-runtime`'s `InvokeModelWithResponseStream` with the same Anthropic Messages body instead (see
+  [[runtime-model?]]).
+
   Requests are authenticated with AWS Signature Version 4 computed from the connection's access key pair, or, on a
   self-hosted Metabase with no pair configured, from the AWS SDK default credentials chain (IRSA, EKS Pod Identity,
   instance profile). Metabase Cloud always requires the pair:
@@ -27,9 +31,12 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [ring.util.codec :as codec])
   (:import
+   (java.io InputStream)
    (java.net URI)
    (java.util.function Consumer)
    (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
@@ -37,7 +44,8 @@
    (software.amazon.awssdk.http ContentStreamProvider SdkHttpMethod SdkHttpRequest SdkHttpRequest$Builder)
    (software.amazon.awssdk.http.auth.aws.signer AwsV4HttpSigner)
    (software.amazon.awssdk.http.auth.spi.signer SignRequest$Builder SignedRequest)
-   (software.amazon.awssdk.identity.spi AwsCredentialsIdentity AwsSessionCredentialsIdentity)))
+   (software.amazon.awssdk.identity.spi AwsCredentialsIdentity AwsSessionCredentialsIdentity)
+   (software.amazon.eventstream HeaderValue Message MessageDecoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -104,7 +112,7 @@
     (.build b)))
 
 (defn- signed-headers
-  "AWS SigV4 request headers for a Bedrock mantle request, computed by the AWS SDK's [[AwsV4HttpSigner]].
+  "AWS SigV4 request headers for a Bedrock request, computed by the AWS SDK's [[AwsV4HttpSigner]].
 
   Returns a `{header-name header-value}` map carrying `Host`, `X-Amz-Date`, `Authorization`,
   `x-amz-content-sha256`, plus `Content-Type` and `X-Amz-Security-Token` when applicable. Additional
@@ -192,10 +200,11 @@
   being fixed by the descriptor. The signed headers travel as the request's auth headers; extra unsigned
   headers (e.g. `anthropic-version`) can still be added freely alongside them.
 
-  `ai-proxy?` is accepted for parity with the other adapters but is not supported."
-  [{:keys [slug display-name]} {:keys [credentials ai-proxy? method path body]}]
+  `base-url-format` puts the region into the endpoint's base URL. `ai-proxy?` is accepted for parity with the
+  other adapters but is not supported."
+  [base-url-format {:keys [slug display-name]} {:keys [credentials ai-proxy? method path body]}]
   (let [{:keys [region] :as creds} (ensure-credentials credentials)
-        base-url     (str "https://bedrock-mantle." region ".api.aws")
+        base-url     (format base-url-format region)
         content-type (when body "application/json")
         sig-headers  (signed-headers (merge creds {:method       method
                                                    :url          (str base-url path)
@@ -208,7 +217,7 @@
 (def ^:private provider
   (adapter/provider
    {:slug              "bedrock"
-    :auth              bedrock-auth
+    :auth              (partial bedrock-auth "https://bedrock-mantle.%s.api.aws")
     :display-name      "AWS Bedrock"
     :error-fallback    #(tru "AWS Bedrock API error (HTTP {0})" %)
     :errors            {401 #(tru "AWS Bedrock rejected our credentials or request signature")
@@ -216,6 +225,93 @@
                         404 #(tru "AWS Bedrock model or endpoint is unavailable in the configured region")
                         429 #(tru "AWS Bedrock has rate limited us")
                         500 #(tru "AWS Bedrock is not working but not saying why")}}))
+
+(def ^:private runtime-provider
+  (assoc provider :auth (partial bedrock-auth "https://bedrock-runtime.%s.amazonaws.com")))
+
+;;; ------------------------------------------------ bedrock-runtime ---------------------------------------------
+
+(defn- runtime-model?
+  "Whether `model` names a Claude model the way only `bedrock-runtime` serves it: an inference profile ID like
+  `eu.anthropic.claude-sonnet-4-6`, an ARN, or a versioned model ID like `anthropic.claude-haiku-4-5-20251001-v1:0`.
+  A bare `anthropic.*` or `openai.*` ID is a mantle catalog ID."
+  [model]
+  (boolean (re-find #"^arn:|^[a-z-]+\.anthropic\.|^anthropic\..*-v\d+(:\d+)?$" (str model))))
+
+(defn- runtime-base-model
+  "The `anthropic.claude-*` ID of the model a runtime `model` invokes, which is what the Claude adapter reads a model's
+  capabilities from: `anthropic.claude-haiku-4-5-20251001` for `global.anthropic.claude-haiku-4-5-20251001-v1:0`.
+  An ARN that doesn't name its model, like an application inference profile's, gives its own resource ID."
+  [model]
+  (-> model
+      (str/replace #"^arn:.*/" "")
+      (str/replace #"^[a-z-]+\.(?=anthropic\.)" "")
+      (str/replace #"-v\d+(:\d+)?$" "")))
+
+(def ^:private runtime-anthropic-version "bedrock-2023-05-31")
+
+(defn- runtime-path
+  [model]
+  (str "/model/" (codec/url-encode model) "/invoke-with-response-stream"))
+
+(defn- ->runtime-anthropic-body
+  "Adapt a canonical Anthropic Messages request body for `InvokeModelWithResponseStream`: the model goes in the URL
+  and the API version in the body, and there is no `stream` flag or top-level `cache_control`."
+  [body]
+  (-> body
+      (dissoc :model :stream :cache_control)
+      (assoc :anthropic_version runtime-anthropic-version)))
+
+(defn- header-string
+  [^Message message header]
+  (when-let [^HeaderValue value (.get (.getHeaders message) header)]
+    (.getString value)))
+
+(defn- runtime-event
+  "The Anthropic streaming event one `InvokeModelWithResponseStream` message carries. A chunk carries it as base64
+  JSON; an exception becomes Anthropic's `error` event, which the Claude translation reports like any other."
+  [^Message message]
+  (let [payload (json/decode+kw (u/bytes-to-string (.getPayload message)))]
+    (if (= "chunk" (header-string message ":event-type"))
+      (json/decode+kw (u/decode-base64 (:bytes payload)))
+      {:type  "error"
+       :error {:type    (header-string message ":exception-type")
+               :message (:message payload)}})))
+
+(defn- runtime-events
+  "A reducible over the Anthropic streaming events in an `InvokeModelWithResponseStream` response `body`, which
+  comes framed as an AWS event stream rather than SSE."
+  [^InputStream body]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (with-open [in body]
+        (let [decoder (MessageDecoder.)
+              buf     (byte-array 8192)]
+          (loop [acc init, messages ()]
+            (cond
+              (reduced? acc) @acc
+              (seq messages) (recur (rf acc (runtime-event (first messages))) (rest messages))
+              :else          (let [n (.read in buf)]
+                               (if (neg? n)
+                                 acc
+                                 (do (.feed decoder buf 0 n)
+                                     (recur acc (.getDecodedMessages decoder))))))))))))
+
+(defn- check-runtime-model!
+  "Generate one token with `model` on `bedrock-runtime`, which has no catalog to check a model against.
+  Throws unless the model finishes its response."
+  [{:keys [model] :as opts}]
+  (let [chunks (into [] (claude/claude->aisdk-chunks-xf)
+                     (adapter/stream! runtime-provider (select-keys opts [:model :credentials :ai-proxy?])
+                                      {:path        (runtime-path model)
+                                       :body        {:anthropic_version runtime-anthropic-version
+                                                     :max_tokens        1
+                                                     :messages          [{:role "user" :content "Hi"}]}
+                                       :read-stream runtime-events}))]
+    (when-let [error (or (some :errorText chunks)
+                         (when-not (some :finish-reason chunks)
+                           (tru "AWS Bedrock returned an incomplete response from {0}" (pr-str model))))]
+      (throw (ex-info error {:api-error true :status-code 400})))))
 
 ;;; ------------------------------------------------ Model listing ----------------------------------------------
 
@@ -240,7 +336,9 @@
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
   [model :- [:maybe :string]]
-  (get-in supported-models [model :context-window]))
+  (if (runtime-model? model)
+    (claude/context-window-tokens (runtime-base-model model))
+    (get-in supported-models [model :context-window])))
 
 (defn- available-model?
   "Whether a `/v1/models` catalog entry is available.
@@ -254,11 +352,19 @@
   The opts map supports `:credentials`, a map of `:access-key-id`, `:secret-access-key`, `:region`, and (for
   temporary credentials) `:session-token`, plus `:ai-proxy?`, which is not supported for Bedrock and throws when
   true. On a self-hosted Metabase with no access key pair, requests are signed with whatever the AWS default
-  credentials chain resolves; Metabase Cloud requires the pair."
+  credentials chain resolves; Metabase Cloud requires the pair.
+
+  A `:model` only `bedrock-runtime` serves is not in that catalog, so nothing is listed for it, and with `:probe?`
+  it is checked by generating a token with it."
   ([] (list-models {}))
-  ([opts :- adapter/ListOpts]
-   (adapter/model-listing supported-models
-                          (filter available-model? (adapter/fetch-catalog provider opts "/v1/models")))))
+  ([{:keys [model probe? ai-proxy?] :as opts} :- adapter/ListOpts]
+   (if (runtime-model? model)
+     (do (adapter/reject-ai-proxy! provider ai-proxy?)
+         (when probe?
+           (check-runtime-model! opts))
+         {:models []})
+     (adapter/model-listing supported-models
+                            (filter available-model? (adapter/fetch-catalog provider opts "/v1/models"))))))
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
 
@@ -267,9 +373,11 @@
 (def ^:private anthropic-version "2023-06-01")
 
 (defn- model-family
-  "Which mantle API family serves `model`, by vendor prefix: `:anthropic`, `:openai`, or nil."
+  "Which API serves `model`: mantle's `:anthropic` or `:openai` family by vendor prefix, `:runtime` for a Claude
+  model only `bedrock-runtime` serves, or nil."
   [model]
   (cond
+    (runtime-model? model)                      :runtime
     (str/starts-with? (str model) "anthropic.") :anthropic
     (str/starts-with? (str model) "openai.")    :openai))
 
@@ -290,6 +398,7 @@
   [model]
   (case (model-family model)
     :anthropic (claude/reasoning-model? model)
+    :runtime   (claude/reasoning-model? (runtime-base-model model))
     ;; The mantle's Responses surface accepts the reasoning request fields and
     ;; the GPT models do reason (at a per-model default effort: gpt-5.4 "none",
     ;; gpt-5.5 "medium"), but it never streams reasoning summaries — `summary`
@@ -314,7 +423,8 @@
   (dissoc body :cache_control))
 
 (mu/defn bedrock-raw
-  "Perform a streaming request to the Bedrock mantle endpoint.
+  "Perform a streaming request to Bedrock: the mantle endpoint for a mantle catalog ID, `bedrock-runtime` for a
+  Claude model only it serves (see [[runtime-model?]]).
   Opts map takes `:credentials` from the connection serving this request: `:access-key-id`, `:secret-access-key`,
   `:region`, and (for temporary credentials) `:session-token`. On a self-hosted Metabase with no access key pair,
   requests are signed with whatever the AWS default credentials chain resolves; Metabase Cloud requires the pair.
@@ -323,29 +433,34 @@
     :or   {model default-model}} :- core/LLMRequestOpts]
   (let [opts   (assoc opts :model model :fast? false)
         family (model->family model)
-        {:keys [path headers req]}
+        {:keys [path headers req read-stream]}
         (case family
           :anthropic {:path    "/anthropic/v1/messages"
                       :headers {"anthropic-version" anthropic-version}
                       :req     (->mantle-anthropic-body (claude/claude-request-body opts))}
+          :runtime   {:path        (runtime-path model)
+                      :req         (->runtime-anthropic-body
+                                    (claude/claude-request-body (assoc opts :model (runtime-base-model model))))
+                      :read-stream runtime-events}
           :openai    {:path    "/openai/v1/responses"
                       :req     (openai/openai-request-body opts)})]
-    (adapter/stream! provider opts
-                     {:path       path
-                      :body       req
-                      :headers    headers
-                      :span-attrs {:family (name family)}})))
+    (adapter/stream! (if (= :runtime family) runtime-provider provider) opts
+                     {:path        path
+                      :body        req
+                      :headers     headers
+                      :read-stream read-stream
+                      :span-attrs  {:family (name family)}})))
 
 (defn- model->aisdk-chunks-xf
   "The SSE->AISDK translating transducer for a Bedrock model id.
-  Claude's for `anthropic.*` models, OpenAI's for `openai.*` models."
+  Claude's for Claude models, OpenAI's for `openai.*` models."
   [model]
   (case (model->family model)
-    :anthropic (claude/claude->aisdk-chunks-xf)
-    :openai    (openai/openai->aisdk-chunks-xf)))
+    (:anthropic :runtime) (claude/claude->aisdk-chunks-xf)
+    :openai               (openai/openai->aisdk-chunks-xf)))
 
 (defn bedrock
-  "Call AWS Bedrock (mantle endpoint), return AISDK stream."
+  "Call AWS Bedrock, return AISDK stream."
   [& [{:keys [model] :or {model default-model}} :as args]]
   (let [raw (apply bedrock-raw args)]
     (eduction (model->aisdk-chunks-xf model) raw)))

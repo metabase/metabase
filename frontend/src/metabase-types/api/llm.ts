@@ -41,6 +41,7 @@ export type LlmProviderTypeName =
   | "zai"
   | "moonshot"
   | "deepseek"
+  | "xai"
   | "google"
   | "azure"
   | "bedrock"
