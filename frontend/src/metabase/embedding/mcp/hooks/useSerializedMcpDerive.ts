@@ -14,10 +14,11 @@ interface UseSerializedMcpDeriveParams {
 }
 
 /**
- * Derives a new query from the current handle and makes the new handle
- * current. Derives run one after another, so each change starts from the
- * handle the previous one produced. A failed derive rejects its own promise
- * and leaves the current handle as it was.
+ * `deriveQuery` derives a new query from the current handle and makes the new
+ * handle current. Derives run one after another, so each change starts from
+ * the handle the previous one produced. A failed derive rejects its own
+ * promise and leaves the current handle as it was. `pendingDerivesRef` counts
+ * the derives that have not finished.
  */
 export function useSerializedMcpDerive({
   instanceUrl,
@@ -25,9 +26,12 @@ export function useSerializedMcpDerive({
   mcpSessionId,
 }: UseSerializedMcpDeriveParams) {
   const lastDeriveRef = useRef<Promise<unknown>>(Promise.resolve());
+  const pendingDerivesRef = useRef(0);
 
-  return useCallback(
+  const deriveQuery = useCallback(
     (operations: McpDeriveOperation[]): Promise<DerivedQuery> => {
+      pendingDerivesRef.current += 1;
+
       const derive = lastDeriveRef.current.then(async () => {
         // Read inside the chained step: the previous derive may have moved it.
         const queryHandle = getCurrentMcpQueryHandle();
@@ -52,8 +56,12 @@ export function useSerializedMcpDerive({
       // A failure is the caller's to report; it must not stop later derives.
       lastDeriveRef.current = derive.catch(() => undefined);
 
-      return derive;
+      return derive.finally(() => {
+        pendingDerivesRef.current -= 1;
+      });
     },
     [instanceUrl, mcpSessionId, uiCredential],
   );
+
+  return { deriveQuery, pendingDerivesRef };
 }
