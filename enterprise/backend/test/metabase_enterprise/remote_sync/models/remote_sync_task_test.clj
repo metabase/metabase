@@ -392,6 +392,11 @@
         (is (= "version 1" (rst/last-version))))
       (testing "Ignores incomplete tasks"
         (is (= "version 1" (rst/last-version))))
+      (testing "Ignores a conflict task even though it records the version it conflicted against"
+        (let [conflict-task (rst/create-sync-task! "export" (mt/user->id :rasta))]
+          (rst/set-version! (:id conflict-task) "version 1.5")
+          (rst/conflict-sync-task! (:id conflict-task) [])
+          (is (= "version 1" (rst/last-version)))))
       (testing "Returns newer successful tasks"
         (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
           (rst/complete-sync-task! (:id new-task))
