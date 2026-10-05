@@ -25,9 +25,9 @@
    :data_sensitivity       mi/transform-keyword
    :settings               mi/transform-json
    :nfc_path               mi/transform-json
-   :description_set        field/transform-field-boolean
-   :semantic_type_set      field/transform-field-boolean
-   :fk_target_field_id_set field/transform-field-boolean})
+   :description_set        mi/transform-boolean
+   :semantic_type_set      mi/transform-boolean
+   :fk_target_field_id_set mi/transform-boolean})
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)

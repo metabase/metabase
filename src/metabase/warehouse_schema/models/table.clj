@@ -126,16 +126,10 @@
    :silver :final
    :gold   :final})
 
-(def ^:private transform-table-boolean
-  "Boolean column transform; a boolean computed in SQL (the merge in `table-query`) comes back as a number from MySQL
-  and MariaDB, which have no boolean type of their own."
-  {:in  identity
-   :out (fn [v] (if (number? v) (pos? v) v))})
-
 (t2/deftransforms :model/Table
   {:entity_type             mi/transform-keyword
-   :is_published            transform-table-boolean
-   :show_in_getting_started transform-table-boolean
+   :is_published            mi/transform-boolean
+   :show_in_getting_started mi/transform-boolean
    :visibility_type         mi/transform-keyword
    :data_layer              (mi/transform-validator-with-fixes
                              mi/transform-keyword
