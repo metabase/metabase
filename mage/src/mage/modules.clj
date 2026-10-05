@@ -162,6 +162,7 @@
      events
      explorations
      formatter
+     funny-sql
      geojson
      glossary
      indexed-entities

@@ -906,6 +906,7 @@
      :database
      :date_part
      :dateadd
+     :date_add
      :datediff
      :day
      :distinct
