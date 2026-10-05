@@ -876,6 +876,20 @@
         (is (true? @connections-stay-open?))
         (tx/destroy-db! driver/*driver* empty-dbdef)))))
 
+(deftest ^:parallel compact-database-metadata-test
+  (let [selector (java.net.URLEncoder/encode "[[\"PUBLIC\",\"CATEGORIES\"]]" "UTF-8")
+        response (mt/user-http-request :rasta :get 200
+                                       (format "database/%d/metadata?compact=true&table_selector=%s" (mt/id) selector))
+        table    (first (:tables response))]
+    (is (= {:id (mt/id) :name "test-data (h2)"}
+           (select-keys response [:id :name])))
+    (is (= 1 (count (:tables response))))
+    (is (= {:id (mt/id :categories) :name "CATEGORIES" :schema "PUBLIC"}
+           (select-keys table [:id :name :schema])))
+    (is (= #{(mt/id :categories :id) (mt/id :categories :name)}
+           (set (map :id (:fields table)))))
+    (is (every? #(not-any? (set (keys %)) [:fingerprint :values :target]) (:fields table)))))
+
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)

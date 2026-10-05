@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --port 5174",
     "build": "npm run sync-resources && vite build",
+    "generate-schema": "embedding-sdk-react data-apps generate-schema",
     "sync-resources": "embedding-sdk-react data-apps sync-resources",
     "typecheck": "tsc --noEmit"
   },
