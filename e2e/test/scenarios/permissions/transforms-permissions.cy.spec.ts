@@ -253,14 +253,6 @@ describe(
         H.setUserAsAnalyst(NORMAL_USER_ID, false);
       });
 
-      it("denies user access to transforms list page", () => {
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/transforms");
-
-        cy.url().should("include", "/unauthorized");
-        cy.findByRole("img", { name: /key/ }).should("exist");
-      });
-
       it("denies user access to a specific transform page", () => {
         cy.signInAsAdmin();
         H.createAndRunMbqlTransform({
@@ -339,6 +331,7 @@ describe(
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
         cy.url().should("include", "/unauthorized");
+        cy.findByRole("img", { name: /key/ }).should("exist");
 
         cy.signInAsAdmin();
         grantTransformsPermissionToAllGroups();

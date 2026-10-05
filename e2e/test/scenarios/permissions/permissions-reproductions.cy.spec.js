@@ -228,9 +228,9 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTextEnsureVisible(
-      "Sorry, you don't have permission to run this query.",
-    );
+    H.queryBuilderMain()
+      .findByText("Sorry, you don't have permission to run this query.")
+      .should("be.visible");
 
     H.queryBuilderFooter()
       .findByTestId("viz-settings-button")

@@ -1,9 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP, DATA_GROUP } =
   USER_GROUPS;
@@ -403,32 +400,6 @@ describe("scenarios > admin > permissions", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-  });
-
-  it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-      [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-    });
-
-    cy.signIn("nodata");
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    H.queryBuilderMain().findByText(
-      "Sorry, you don't have permission to run this query.",
-    );
-    H.queryBuilderFooter()
-      .findByTestId("viz-settings-button")
-      .should("not.exist");
-    H.queryBuilderFooter().findByText("Visualization").should("not.exist");
   });
 
   it("shows permission error for cards that use blocked data sources", () => {
