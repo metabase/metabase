@@ -436,17 +436,20 @@
   [{:keys [term_queries semantic_queries created_by archived]} entity-types collection-id limit offset]
   ;; The tool redirects query-less listings to browse_*, so engine-results only ever runs with a
   ;; query present — no :filters-only? branch to trip.
-  (let [results (metabot.search/search
-                 (cond-> {:term-queries     (vec term_queries)
-                          :semantic-queries (vec semantic_queries)
-                          :entity-types     (vec entity-types)
-                          :archived         (true? archived)
-                          :limit            limit
-                          :offset           offset}
-                   created_by    (assoc :created-by #{api/*current-user-id*})
-                   collection-id (assoc :collection-id collection-id)))]
-    {:rows  (add-collection-paths (vec results))
-     :total (:total (meta results))}))
+  (if (empty? entity-types)
+    ;; The engine reads an empty type list as every Metabot search model, transforms included.
+    {:rows [] :total 0}
+    (let [results (metabot.search/search
+                   (cond-> {:term-queries     (vec term_queries)
+                            :semantic-queries (vec semantic_queries)
+                            :entity-types     (vec entity-types)
+                            :archived         (true? archived)
+                            :limit            limit
+                            :offset           offset}
+                     created_by    (assoc :created-by #{api/*current-user-id*})
+                     collection-id (assoc :collection-id collection-id)))]
+      {:rows  (add-collection-paths (vec results))
+       :total (:total (meta results))})))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 

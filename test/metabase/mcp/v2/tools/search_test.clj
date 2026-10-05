@@ -466,7 +466,16 @@
             (tools.search/search-tool {:term_queries ["x"]} {:token-scopes #{"agent:content:read"}})
             (is (contains? (set @captured-entity-types) "question")
                 "sanity: the engine was asked for the content types")
-            (is (not (contains? (set @captured-entity-types) "transform")))))))))
+            (is (not (contains? (set @captured-entity-types) "transform")))))))
+    (testing "an empty type list returns an empty page without calling the engine, which reads it as every type"
+      (let [engine-called? (atom false)]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_ctx]
+                                                            (reset! engine-called? true)
+                                                            (with-meta [{:id 1 :type "transform"}] {:total 1}))]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (is (= {:rows [] :total 0}
+                   (engine-results {:term_queries ["x"]} [] nil 20 0)))
+            (is (false? @engine-called?))))))))
 
 (deftest transform-output-table-is-searchable-test
   (testing "GHY-4746: MCP v2 has no transforms, but a transform's output is an ordinary table, so search with
