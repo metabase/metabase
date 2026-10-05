@@ -12,7 +12,8 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.random :as u.random]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -101,6 +102,37 @@
               ;; never send one must keep seeing exactly the request they saw before.
               (let [xml (saml-request (logout-url nil))]
                 (is (not (str/includes? xml "SessionIndex")))))))))))
+
+(deftest logout-ends-session-with-slo-enabled-test
+  (testing "with SLO enabled, logout ends the Metabase session itself, whatever created the session"
+    ;; The IdP redirect is extra, not a substitute: a password session has no IdP to go to, and a SAML
+    ;; session must not stay alive while the browser is off at the IdP.
+    (mt/with-premium-features #{:sso-saml}
+      (mt/with-temporary-setting-values [saml-enabled                       true
+                                         saml-identity-provider-uri         "http://idp.example.com/login"
+                                         saml-identity-provider-certificate (slurp "test_resources/sso/auth0-public-idp.cert")
+                                         saml-keystore-path                 "test_resources/keystore.jks"
+                                         saml-keystore-password             "123456"
+                                         saml-keystore-alias                "sp"
+                                         site-url                           "http://localhost:3000"
+                                         saml-slo-enabled                   true
+                                         saml-identity-provider-slo-uri     "http://idp.example.com/logout"]
+        (binding [client/*url-prefix* ""]
+          (doseq [[sso-source idp-url?] [[nil false] ["saml" true]]]
+            (testing (str "sso_source " (pr-str sso-source))
+              (let [session-key        (session/generate-session-key)
+                    session-key-hashed (session/hash-session-key session-key)]
+                (mt/with-temp [:model/User user {:email "logout_test@metabase.com" :sso_source sso-source}
+                               :model/Session _ {:user_id    (:id user)
+                                                 :id         (session/generate-session-id)
+                                                 :key_hashed session-key-hashed}]
+                  (let [response (client/client :post "/auth/sso/logout"
+                                                (assoc-in {} [:request-options :cookies
+                                                              request/metabase-session-cookie :value]
+                                                          session-key))]
+                    (is (= idp-url? (some? (:saml-logout-url response))))
+                    (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))
+                        "the session is deleted")))))))))))
 
 (def ^:private default-jwt-secret (u.random/secure-hex 32))
 
