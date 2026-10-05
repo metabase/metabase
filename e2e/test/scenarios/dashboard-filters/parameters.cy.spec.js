@@ -134,6 +134,8 @@ describe("scenarios > dashboard > parameters", () => {
       },
     );
 
+    H.tableInteractiveBody().findByText("37.65").should("be.visible");
+
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(startsWith.name).click();
     cy.findByPlaceholderText("Enter some text").type("G");
@@ -148,8 +150,9 @@ describe("scenarios > dashboard > parameters", () => {
     cy.button("Add filter").click();
 
     expectSearchParams({ [endsWith.slug]: "", [startsWith.slug]: "G" });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("37.65").should("not.exist");
+    H.tableInteractiveBody().findByText("110.93").should("be.visible");
+    H.tableInteractiveBody().findByText("52.72").should("be.visible");
+    H.tableInteractiveBody().findByText("37.65").should("not.exist");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(endsWith.name).click();
@@ -163,8 +166,8 @@ describe("scenarios > dashboard > parameters", () => {
     cy.button("Add filter").click();
 
     expectSearchParams({ [endsWith.slug]: "zmo", [startsWith.slug]: "G" });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("52.72").should("not.exist");
+    H.tableInteractiveBody().findByText("110.93").should("be.visible");
+    H.tableInteractiveBody().findByText("52.72").should("not.exist");
 
     // Remove filter (metabase#17933)
     cy.icon("pencil").click();
@@ -188,6 +191,7 @@ describe("scenarios > dashboard > parameters", () => {
       "There should only be one filter remaining and its value is preserved",
     );
 
+    H.filterWidget().should("have.length", 1);
     H.filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
 
     expectSearchParams({ [endsWith.slug]: "zmo" });
@@ -420,14 +424,14 @@ describe("scenarios > dashboard > parameters", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections").click();
 
-    // Even after we reopen the dropdown, it shouldn't send additional requests for values (metabase#16103)
-    cy.get("@fetchAllCategories").should("have.been.calledOnce");
-
     // As a sanity check, make sure we can deselect the filter by clicking on it
     H.popover().within(() => {
       cy.findByText("Gizmo").click();
       isFilterSelected("Gizmo", false);
     });
+
+    // Even after we reopen the dropdown, it shouldn't send additional requests for values (metabase#16103)
+    cy.get("@fetchAllCategories").should("have.been.calledOnce");
 
     cy.button("Update filter").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -726,9 +730,7 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText(/No results/)
         .should("exist");
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=6000");
-      });
+      expectSearchParams({ category: "Gadget", count: "6000" });
 
       H.getDashboardCard(1).within(() => {
         H.clearFilterWidget(1);
@@ -741,9 +743,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Widget").should("not.exist");
       });
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Gadget&count=");
-      });
+      expectSearchParams({ category: "Gadget", count: "" });
     });
 
     it("should be able to edit filters", () => {
@@ -1053,9 +1053,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Doohickey").should("exist");
         cy.findByText("Gizmo").should("not.exist");
       });
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Doohickey&category_1=");
-      });
+      expectSearchParams({ category: "Doohickey", category_1: "" });
 
       H.getDashboardCard(2).within(() => {
         H.filterWidget().contains("Category 1").click();
@@ -1068,9 +1066,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(1)
         .findByText(/No results/)
         .should("exist");
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=Doohickey&category_1=Gizmo");
-      });
+      expectSearchParams({ category: "Doohickey", category_1: "Gizmo" });
 
       H.getDashboardCard(0).within(() => H.clearFilterWidget());
 
@@ -1078,9 +1074,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("exist");
       });
-      cy.location().should(({ search }) => {
-        expect(search).to.eq("?category=&category_1=Gizmo");
-      });
+      expectSearchParams({ category: "", category_1: "Gizmo" });
     });
 
     it("should duplicate filters when duplicating a dashboard", () => {
@@ -1573,6 +1567,13 @@ describe("scenarios > dashboard > parameters", () => {
           cy.findByText("Heading Text").should("exist");
           cy.findByText("Category").should("not.exist");
         });
+
+        H.getDashboardCard(1).within(() => {
+          cy.findByText("Doohickey").should("be.visible");
+          cy.findByText("Gizmo").should("be.visible");
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Widget").should("be.visible");
+        });
       });
 
       it("should work correctly when parameter is locked", () => {
@@ -2058,6 +2059,9 @@ describe("scenarios > dashboard > parameters", () => {
         H.filterWidget({ isEditing: true }).contains("Category").click();
       });
       H.getDashboardCard(1)
+        .findByText("This filter can only connect to its own card.")
+        .should("be.visible");
+      H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
         .should("not.exist");
@@ -2067,6 +2071,9 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(0).click(); // click to stop dragging a card
       H.disconnectDashboardFilter(H.getDashboardCard(0), "Category");
       H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.getDashboardCard(1)
+        .findByText("This filter can only connect to its own card.")
+        .should("be.visible");
       H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
@@ -2152,6 +2159,9 @@ describe("scenarios > dashboard > parameters", () => {
           .click();
       });
       H.getDashboardCard(1)
+        .findByText("This filter can only connect to its own card.")
+        .should("be.visible");
+      H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
         .should("not.exist");
@@ -2217,10 +2227,10 @@ describe("scenarios > dashboard > parameters", () => {
         });
       });
 
-      cy.location().should(({ search }) => {
-        expect(search).to.eq(
-          "?category=Widget&category_1=Doohickey&count=5000",
-        );
+      expectSearchParams({
+        category: "Widget",
+        category_1: "Doohickey",
+        count: "5000",
       });
     });
 
@@ -2611,6 +2621,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Move filter to top nav and assert the "Show filter" button isn't displayed
       H.moveDashboardFilter("Top of page");
+      H.undoToast().should("contain", "Filter moved");
       H.undoToast().button("Show filter").should("not.exist");
     });
   });
