@@ -268,6 +268,68 @@
         (is (string? (:body response)))
         (is (< (count (:body response)) 300))))))
 
+(defn- orders-count-binned-by
+  "Count of orders broken out by each of `column-names`, binned."
+  [& column-names]
+  (let [mp  (mt/metadata-provider)
+        bin (fn [q column-name]
+              (let [col (some #(when (= column-name (:name %)) %) (lib/breakoutable-columns q))]
+                (lib/breakout q (lib/with-binning col (first (lib/available-binning-strategies q col))))))]
+    (reduce bin (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count)) column-names)))
+
+(def ^:private two-bin-point
+  {:column "count" :value 5 :dimensions [{:column "SUBTOTAL" :value 20.0} {:column "TOTAL" :value 40.0}]})
+
+(defn- zoom-filters!
+  "The filters of the query derived from `query` by a zoom-in.binning drill with `extra` keys and `context`."
+  [query context extra]
+  (let [{:keys [status body]} (derive! query {:operations [(merge {:type "drill-thru" :drill "zoom-in.binning"
+                                                                   :context context}
+                                                                  extra)]})]
+    (is (= 200 status))
+    (some->> (:handle body) (stored-query :rasta) lib/filters)))
+
+(deftest zoom-in-binning-zooms-the-dimension-clicked-test
+  (testing "a point with two binned dimensions offers one zoom per dimension; the operation names which one to apply"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [query (orders-count-binned-by "SUBTOTAL" "TOTAL")]
+        (is (=? [[:>= {} [:field {} (mt/id :orders :total)] 40.0] [:< {} [:field {} (mt/id :orders :total)] number?]]
+                (zoom-filters! query two-bin-point {:dimension "TOTAL"})))
+        (is (=? [[:>= {} [:field {} (mt/id :orders :subtotal)] 20.0]
+                 [:< {} [:field {} (mt/id :orders :subtotal)] number?]]
+                (zoom-filters! query two-bin-point {:dimension "SUBTOTAL"})))
+        (testing "without a dimension the click is ambiguous, so it is refused rather than guessed"
+          (is (= 400 (:status (derive! query {:operations [{:type    "drill-thru" :drill "zoom-in.binning"
+                                                            :context two-bin-point}]})))))
+        (testing "a dimension the click does not offer is refused"
+          (is (= 400 (:status (derive! query {:operations [{:type      "drill-thru" :drill "zoom-in.binning"
+                                                            :dimension "TAX"
+                                                            :context   two-bin-point}]})))))))
+    (testing "a click with a single binned dimension needs no dimension"
+      (mt/with-model-cleanup [:model/McpQueryHandle]
+        (is (=? [[:>= {} [:field {} (mt/id :orders :total)] 40.0] [:< {} [:field {} (mt/id :orders :total)] number?]]
+                (zoom-filters! (orders-count-binned-by "TOTAL")
+                               {:column "count" :value 5 :dimensions [{:column "TOTAL" :value 40.0}]}
+                               {})))))))
+
+(deftest zoom-in-geographic-zooms-the-dimension-clicked-test
+  (testing "a point with a state and a city dimension offers one geographic zoom per dimension"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [mp    (mt/metadata-provider)
+            base  (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :people))) (lib/count))
+            by    (fn [q n] (lib/breakout q (some #(when (= n (:name %)) %) (lib/breakoutable-columns q))))
+            query (-> base (by "STATE") (by "CITY"))
+            point {:column "count" :value 3 :dimensions [{:column "STATE" :value "TX"} {:column "CITY" :value "Austin"}]}
+            zoom  (fn [dimension]
+                    (let [{:keys [status body]} (derive! query {:operations [{:type      "drill-thru"
+                                                                              :drill     "zoom-in.geographic"
+                                                                              :dimension dimension
+                                                                              :context   point}]})]
+                      (is (= 200 status))
+                      (some->> (:handle body) (stored-query :rasta) lib/filters)))]
+        (is (=? [[:= {} [:field {} (mt/id :people :state)] "TX"]] (zoom "STATE")))
+        (is (=? [[:= {} [:field {} (mt/id :people :city)] "Austin"]] (zoom "CITY")))))))
+
 (deftest closed-schema-test
   (testing "the body names a closed set of operations, so anything else is a 400 before any query is touched"
     (mt/with-model-cleanup [:model/McpQueryHandle]

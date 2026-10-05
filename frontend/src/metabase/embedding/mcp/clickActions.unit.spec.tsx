@@ -1,15 +1,28 @@
+import { checkNotNull } from "metabase/utils/types";
 import {
   type ClickAction,
   type ClickObject,
   isCustomClickAction,
 } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
+  createMockColumn,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
+import { PEOPLE, PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
-import { getMcpClickActions, isMcpChartChanging } from "./clickActions";
+import {
+  getDrillDimensions,
+  getMcpClickActions,
+  isMcpChartChanging,
+} from "./clickActions";
 
 const CARD = createMockCard();
 const NOT_BUSY = () => false;
@@ -32,6 +45,7 @@ describe("getMcpClickActions", () => {
       CLICKED,
       onDrill,
       NOT_BUSY,
+      {},
     );
 
     expect(action.name).toBe("sort.descending");
@@ -70,6 +84,7 @@ describe("getMcpClickActions", () => {
         CLICKED,
         jest.fn(),
         NOT_BUSY,
+        {},
       ),
     ).toEqual([]);
   });
@@ -87,7 +102,13 @@ describe("getMcpClickActions", () => {
     };
 
     expect(
-      getMcpClickActions([hideColumn, urlAction], CLICKED, jest.fn(), NOT_BUSY),
+      getMcpClickActions(
+        [hideColumn, urlAction],
+        CLICKED,
+        jest.fn(),
+        NOT_BUSY,
+        {},
+      ),
     ).toEqual([hideColumn, urlAction]);
   });
 
@@ -103,7 +124,7 @@ describe("getMcpClickActions", () => {
     // A drill's click comes from the results on screen, which a pending change
     // or a running query is about to replace.
     expect(
-      getMcpClickActions(actions, CLICKED, jest.fn(), isBusy).map(
+      getMcpClickActions(actions, CLICKED, jest.fn(), isBusy, {}).map(
         (action) => action.name,
       ),
     ).toEqual(["hide-column"]);
@@ -111,10 +132,56 @@ describe("getMcpClickActions", () => {
     busy = false;
 
     expect(
-      getMcpClickActions(actions, CLICKED, jest.fn(), isBusy).map(
+      getMcpClickActions(actions, CLICKED, jest.fn(), isBusy, {}).map(
         (action) => action.name,
       ),
     ).toEqual(["sort.ascending", "hide-column"]);
+  });
+});
+
+describe("getMcpClickActions with a drill offered per dimension", () => {
+  it("names the dimension each zoom acts on, so two zooms send different dimensions", () => {
+    const onDrill = jest.fn();
+    const zoom = (): ClickAction => ({
+      ...questionAction("zoom-in.binning"),
+      section: "zoom",
+    });
+    const actions = getMcpClickActions(
+      [zoom(), zoom()],
+      CLICKED,
+      onDrill,
+      NOT_BUSY,
+      { "zoom-in.binning": ["SUBTOTAL", "TOTAL"] },
+    );
+
+    for (const action of actions) {
+      if (!isCustomClickAction(action) || !action.onClick) {
+        throw new Error("expected a custom action with an onClick");
+      }
+      action.onClick({ dispatch: jest.fn(), closePopover: jest.fn() });
+    }
+
+    expect(
+      onDrill.mock.calls.map(([operation]) => operation.dimension),
+    ).toEqual(["SUBTOTAL", "TOTAL"]);
+  });
+
+  it("sends no dimension for a drill offered once", () => {
+    const onDrill = jest.fn();
+    const [action] = getMcpClickActions(
+      [questionAction("sort.ascending")],
+      CLICKED,
+      onDrill,
+      NOT_BUSY,
+      {},
+    );
+
+    if (!isCustomClickAction(action) || !action.onClick) {
+      throw new Error("expected a custom action with an onClick");
+    }
+    action.onClick({ dispatch: jest.fn(), closePopover: jest.fn() });
+
+    expect(onDrill.mock.calls[0][0]).not.toHaveProperty("dimension");
   });
 });
 
@@ -134,5 +201,63 @@ describe("isMcpChartChanging", () => {
 
     isQueryRunning.current = false;
     expect(isMcpChartChanging(pendingDerives, isQueryRunning)).toBe(false);
+  });
+});
+
+describe("getDrillDimensions", () => {
+  it("names the dimension of each geographic zoom a two-dimension point offers", () => {
+    const base = Lib.aggregateByCount(
+      Lib.queryFromTableOrCardMetadata(
+        SAMPLE_PROVIDER,
+        checkNotNull(Lib.tableOrCardMetadata(SAMPLE_PROVIDER, PEOPLE_ID)),
+      ),
+      -1,
+    );
+    const breakout = (query: Lib.Query, columnName: string) =>
+      Lib.breakout(
+        query,
+        -1,
+        columnFinder(query, Lib.breakoutableColumns(query, -1))(
+          "PEOPLE",
+          columnName,
+        ),
+      );
+    const query = breakout(breakout(base, "STATE"), "CITY");
+    const question = new Question(
+      createMockCard({ id: undefined, dataset_query: Lib.toJsQuery(query) }),
+      SAMPLE_METADATA,
+    );
+    const dimension = (name: string, id: number, semantic_type: string) =>
+      createMockColumn({
+        name,
+        display_name: name,
+        source: "breakout",
+        base_type: "type/Text",
+        semantic_type,
+        id,
+        table_id: PEOPLE_ID,
+        field_ref: ["field", id, null],
+      });
+
+    expect(
+      getDrillDimensions(question, {
+        column: createMockNumericColumn({
+          name: "count",
+          source: "aggregation",
+          field_ref: ["aggregation", 0],
+        }),
+        value: 3,
+        dimensions: [
+          {
+            column: dimension("STATE", PEOPLE.STATE, "type/State"),
+            value: "TX",
+          },
+          {
+            column: dimension("CITY", PEOPLE.CITY, "type/City"),
+            value: "Austin",
+          },
+        ],
+      }),
+    ).toEqual({ "zoom-in.geographic": ["STATE", "CITY"] });
   });
 });
