@@ -4,9 +4,9 @@
   aggregate. Nothing here references an entity by numeric ID, so the author copies it into the app's resources as it
   is, apart from what makes it a copy.
 
-  The endpoint is for superusers, who write an app's repository. The export itself still holds each source to what
-  its caller can read, as the typed schema does, and leaves out what a routing destination backs, as the schema
-  leaves it out. A table the caller can't read answers as if it didn't exist, before its columns are looked at."
+  The endpoint is for superusers, who write an app's repository, so nothing here is checked against the caller.
+  Opening it to anyone else needs that put back: every source, and every table a query's column reaches through a
+  foreign key. What a routing destination backs is left out, as the typed schema leaves it out."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -17,7 +17,6 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -136,15 +135,12 @@
    :dimension_mappings     nil})
 
 (mu/defn- built-query
-  "The query Metabase builds from `query-definition`, as the dev preview does. The table has to be one the typed
-  schema would show the caller: one they can read. (A routing destination has no tables of its own, only cards.)"
+  "The query Metabase builds from `query-definition`, as the dev preview does. (A routing destination has no tables
+  of its own, only cards.)"
   [{[{{table-id :id} :source}] :stages, :as query-definition} :- ::query-definition/query-definition]
   (let [table (data-apps.db/table table-id)]
-    (when-not (and table (mi/can-read? table))
-      (fail (tru "Table {0} does not exist, or you can''t read it." (str table-id))))
-    ;; Only the source table is checked. A column can name a table the source reaches through a foreign key, and the
-    ;; builder finds it in metadata no permission filters. A superuser reads every table, so that is sound while the
-    ;; endpoint is theirs alone; opening it to anyone else needs those tables checked as well.
+    (when-not table
+      (fail (tru "Table {0} does not exist." (str table-id))))
     (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)))
 
 (mu/defn- export-query
@@ -172,8 +168,8 @@
     {:id card-id}
     (fn []
       (let [label (tru "Metric {0}" (str card-id))]
-        (when-not (and card (= :metric (keyword (:type card))) (mi/can-read? card))
-          (fail (tru "{0} does not exist, or you can''t read it." label)))
+        (when-not (and card (= :metric (keyword (:type card))))
+          (fail (tru "{0} does not exist." label)))
         (check-copyable label "Card" card exported #{})
         {:id card-id, :entity (as-written exported)}))))
 
@@ -186,8 +182,8 @@
     {:id action-id}
     (fn []
       (let [label (tru "Action {0}" (str action-id))]
-        (when-not (and action (mi/can-read? action))
-          (fail (tru "{0} does not exist, or you can''t read it." label)))
+        (when-not action
+          (fail (tru "{0} does not exist." label)))
         (when (:model_id action)
           (fail (tru "{0} belongs to a model. A data app runs query actions that belong to no model." label)))
         (check-copyable label "Action" action exported #{})

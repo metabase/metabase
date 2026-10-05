@@ -19,14 +19,6 @@
    (mt/with-premium-features features
      (mt/user-http-request user :post status "apps/export-resources" body))))
 
-(defn- export-as
-  "What the export itself answers `user`, past the endpoint only a superuser reaches: it still holds each source to
-  what its caller can read. `queries` are decoded, as the endpoint hands them over."
-  [user queries action-ids & {:keys [features] :or {features #{:data-apps}}}]
-  (mt/with-premium-features features
-    (mt/with-current-user (mt/user->id user)
-      (resource-export/export-resources queries action-ids))))
-
 (defn- db-name []
   (t2/select-one-fn :name :model/Database (mt/id)))
 
@@ -162,16 +154,6 @@
                       :metrics [{:id reading-metric-id :error (re-pattern (str ".*reads card " model-id ".*"))}]}
                      response)))))))))
 
-(deftest exports-only-what-the-caller-can-read-test
-  (data-apps.tu/do-with-sources!
-   (fn [{:keys [action-id]}]
-     (mt/with-temp [:model/Collection {collection-id :id} {:name "Private"}]
-       (t2/update! :model/Action action-id {:collection_id collection-id})
-       (mt/with-non-admin-groups-no-collection-perms collection-id
-         (testing "an action in a collection the caller can't read"
-           (is (=? {:actions [{:id action-id :error #".*does not exist, or you can't read it.*"}]}
-                   (export-as :rasta [] [action-id])))))))))
-
 (deftest rejects-unsupported-definitions-test
   (testing "the request accepts only what data app definitions support"
     (doseq [path [[:queries 0 :query :stages 0 :joins]
@@ -182,32 +164,11 @@
                                        :query  {:stages [{:source {:type "table" :id (mt/id :venues)}}]}}]}
                            path []))))))
 
-(deftest a-reader-of-the-sources-exports-them-test
-  (testing "the export itself needs what the typed schema needs: a caller who can read the sources"
-    (data-apps.tu/do-with-sources!
-     (fn [{:keys [metric-id action-id]}]
-       (is (=? {:queries [{:export "VenueCount" :entity map?}]
-                :actions [{:id action-id :entity map?}]
-                :metrics [{:id metric-id :entity map?}]}
-               (export-as :rasta
-                          [{:export "VenueCount"
-                            :query  {:stages [{:source       {:type :table :id (mt/id :venues)}
-                                               :aggregations [{:type :metric :id metric-id}]}]}}]
-                          [action-id])))))))
-
-(deftest a-table-the-caller-cannot-read-reveals-nothing-test
-  (testing "a definition on a table the caller can't read gets the same answer whether or not its columns exist"
-    (mt/with-no-data-perms-for-all-users!
-      (is (=? {:queries [{:export "Venues" :error #"Table \d+ does not exist, or you can't read it."}
-                         {:export "NoSuchColumn" :error #"Table \d+ does not exist, or you can't read it."}]}
-              (export-as :rasta
-                         [{:export "Venues"
-                           :query  {:stages [{:source {:type :table :id (mt/id :venues)}}]}}
-                          {:export "NoSuchColumn"
-                           :query  {:stages [{:source {:type :table :id (mt/id :venues)}
-                                              :fields [{:type :column :name "NOT_A_COLUMN"
-                                                        :table-id (mt/id :venues) :source-name "VENUES"}]}]}}]
-                         []))))))
+(deftest refuses-a-table-that-does-not-exist-test
+  (is (=? {:queries [{:export "Nothing" :error (str "Table " Integer/MAX_VALUE " does not exist.")}]}
+          (export! :crowberto 200
+                   {:queries [{:export "Nothing"
+                               :query  {:stages [{:source {:type "table" :id Integer/MAX_VALUE}}]}}]}))))
 
 (deftest refuses-archived-sources-test
   (testing "the pull refuses an archived resource, so the export refuses an archived source"
@@ -244,20 +205,6 @@
                        {:queries [{:export "Cheap"
                                    :query  {:stages [{:source  {:type "table" :id (mt/id :venues)}
                                                       :filters [{:type "segment" :id segment-id}]}]}}]}))))))
-
-(deftest a-table-published-to-a-collection-the-caller-reads-exports-test
-  (testing "a table the caller reads only through its published collection is readable here as in the typed schema,
-            which reads tables through the same per-user overlay"
-    (mt/with-temp [:model/Collection {collection-id :id} {:name "Data Library" :type "library-data"}
-                   :model/TableUserSettings _ {:table_id      (mt/id :venues)
-                                               :is_published  true
-                                               :collection_id collection-id}]
-      (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted :create-queries :no}}
-        (is (=? {:queries [{:export "Venues" :entity {:dataset_query {:stages [{:source-table (table-path "VENUES")}]}}}]}
-                (export-as :rasta
-                           [{:export "Venues" :query {:stages [{:source {:type :table :id (mt/id :venues)}}]}}]
-                           []
-                           :features #{:data-apps :library})))))))
 
 (deftest refuses-sources-on-a-routing-destination-test
   (testing "a routing destination is reachable only through its router, so the typed schema leaves out what it backs,
