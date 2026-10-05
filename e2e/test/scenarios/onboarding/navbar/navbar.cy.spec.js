@@ -15,7 +15,7 @@ describe("scenarios > navigation > navbar", () => {
       cy.signInAsNormalUser();
     });
 
-    it("should highlight relevant entities when navigating", () => {
+    it("should highlight entities, preserve state on logo and breadcrumb clicks, and show errors", () => {
       const questionName = "Bookmarked question";
       H.createQuestion(
         {
@@ -45,15 +45,7 @@ describe("scenarios > navigation > navbar", () => {
       H.openNavigationSidebar();
       H.assertNavigationSidebarItemSelected(/Third collection/, "false");
       H.assertNavigationSidebarBookmarkSelected(questionName, "false");
-    });
 
-    it("should display error ui when data fetching fails", () => {
-      cy.intercept("GET", "/api/database", (req) => req.reply(500));
-      cy.visit("/");
-      H.navigationSidebar().findByText(/An error occurred/);
-    });
-
-    it("should preserve state when clicking the mb logo or a collection breadcrumb", () => {
       cy.visit("/collection/root");
       H.navigationSidebar().should("be.visible");
       cy.findByTestId("main-logo-link").click();
@@ -77,6 +69,10 @@ describe("scenarios > navigation > navbar", () => {
         "Our analytics",
       );
       H.navigationSidebar().should("not.be.visible");
+
+      cy.intercept("GET", "/api/database", (req) => req.reply(500));
+      cy.visit("/");
+      H.navigationSidebar().findByText(/An error occurred/);
     });
   });
 
