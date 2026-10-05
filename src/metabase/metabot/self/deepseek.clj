@@ -55,13 +55,6 @@
   {"deepseek-flash"  {:display-name "DeepSeek Flash"}
    "deepseek-v4-pro" {:display-name "DeepSeek V4 Pro"}})
 
-(def ^:private retired-aliases
-  "Retired DeepSeek model ids that saved selections may still name, and that DeepSeek still accepts.
-
-  https://api-docs.deepseek.com/quick_start/pricing"
-  ;; Kept out of `supported-models` so the picker never offers them. Drop an entry once DeepSeek stops accepting it.
-  #{"deepseek-v4-flash"})
-
 (def ^:private thinking-enabled-payload
   "Sent whenever thinking is allowed. Explicit rather than omitted: DeepSeek ignores an
   unrecognized `thinking.type` and leaves thinking on, so only the exact disable payload turns
@@ -72,11 +65,10 @@
   {:type "disabled"})
 
 (defn reasoning-model?
-  "Whether `model` streams reasoning back to us. Every DeepSeek model we offer does, and so do the
-  [[retired-aliases]] now served by one, subject to the per-request suppression in [[thinking-enabled?]]."
+  "Whether `model` streams reasoning back to us. Every DeepSeek model we offer does, subject to the
+  per-request suppression in [[thinking-enabled?]]."
   [model]
-  (or (contains? supported-models model)
-      (contains? retired-aliases model)))
+  (contains? supported-models model))
 
 (mu/defn streams-reasoning? :- :boolean
   "Registry capability. DeepSeek answers from the model name."
