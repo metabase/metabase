@@ -199,7 +199,8 @@
                        "kimi-k2.7-code"               32000}
    :mistral           {"mistral-medium-3-5"           32000
                        "mistral-medium-latest"        32000}
-   ;; no default cap (see vllm/vllm-request-body)
+   ;; no default cap without a known context window, which the pure builder is not given
+   ;; (see vllm/vllm-request-body)
    :vllm              {"Qwen/Qwen3-32B"              omitted}})
 
 (deftest ^:parallel chat-cap-is-the-flat-default-test
@@ -225,7 +226,7 @@
       :zai        "glm-5.3"                  32000
       :moonshot   "kimi-k3"                  32000
       :gemini     "google/gemini-3.7-flash"  32000))
-  (testing "vLLM still sends no cap: a floor raises a caller's cap, it never adds one"
+  (testing "vLLM with no known window still sends no cap: a floor raises a caller's cap, it never adds one"
     (is (= omitted (cap-for :vllm "Qwen/Qwen3-32B" {:schema {:type "object"}})))))
 
 (defn- registry-models

@@ -284,7 +284,8 @@
 
   A constant rather than a setting: the output distribution is the same on every instance, telemetry records no
   finish reason so a lowered value would truncate tool calls invisibly, and some surfaces deliberately send no cap
-  (see the OpenAI and vLLM builders), so one global knob would mislead."
+  (see the OpenAI builder) or send it only when it fits the context window (see the vLLM builder), so one global
+  knob would mislead."
   32000)
 
 (defn mkid

@@ -1328,7 +1328,7 @@
                    :stream_options {:include_usage true}
                    :messages       [{:role "user" :content "hi"}]}
                   body))
-          (testing "and, like vLLM chat, no output cap"
+          (testing "and, like vLLM chat with an unknown context window, no output cap"
             (is (not (contains? body :max_tokens)))))))))
 
 (deftest google-raw-dedicated-endpoint-host-test

@@ -15,10 +15,12 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
    (java.io IOException)
    (java.net SocketTimeoutException)
+   (java.nio.charset StandardCharsets)
    (java.util.concurrent ExecutionException)))
 
 (set! *warn-on-reflection* true)
@@ -175,15 +177,48 @@
   2048)
 
 (def ^:private forced-tool-call-token-floor
-  "Smallest `max_tokens` a caller's cap on a forced tool call is raised to — below it a reasoning
-  model spends the budget thinking and emits no tool call. Equal to [[probe-max-tokens]], which
-  [[preflight!]] already proves the served model can clear."
+  "Smallest `max_tokens` a cap on a forced tool call is raised to — below it a reasoning model spends
+  the budget thinking and emits no tool call. Equal to [[probe-max-tokens]], which [[preflight!]]
+  already proves the served model can clear."
   probe-max-tokens)
 
 (def ^:private reasoning-model-token-floor
-  "Smallest `max_tokens` a caller's cap is raised to once [[preflight!]] has observed the served model
+  "Smallest `max_tokens` a cap is raised to once [[preflight!]] has observed the served model
   reasoning. Chat Completions bills thinking, answer, and tool call against one budget."
   16384)
+
+(def ^:private prompt-overhead-tokens
+  "Tokens [[estimated-prompt-tokens]] adds for what the chat template wraps around the messages and
+  tools: role markers, a tool-use preamble, the generation prompt."
+  1024)
+
+(def ^:private prompt-bytes-per-token
+  "Bytes of JSON `messages` and `tools` [[estimated-prompt-tokens]] counts as one token. Metabot agent
+  prompts measured 4.1 to 4.3 bytes per token on Qwen3, so 2 leaves room for content that tokenizes
+  denser, such as digit-heavy query results."
+  2)
+
+(def ^:private known-window-ttl-ms
+  "How long [[served-max-model-len]] reuses a context window the server reported.
+
+  Five minutes, because a vLLM server is seldom restarted after its initial setup. The cost: after a
+  restart with a smaller `--max-model-len`, a cap sized for the old window can get a 400 from vLLM for up
+  to five minutes after the lookup that cached it."
+  (* 5 60 1000))
+
+(def ^:private unknown-window-ttl-ms
+  "How long [[served-max-model-len]] reuses a nil answer: no entry for the model, no window, or a failed
+  lookup.
+
+  Shorter than [[known-window-ttl-ms]], so a server that comes up, or starts to report a window, is used
+  soon. A `/v1/models` that is down still costs at most one [[window-lookup-timeout-ms]] lookup in this
+  period."
+  30000)
+
+(def ^:private window-lookup-timeout-ms
+  "Connection and socket timeout of the `/v1/models` lookup behind [[served-max-model-len]]. The
+  catalog is cheap to serve, and the chat request waits for this lookup."
+  5000)
 
 (def ^:private default-temperature
   "Sampling temperature for a caller that supplies none. vLLM's own default is 1.0, which is wrong for
@@ -394,27 +429,129 @@
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
+(defonce ^:private window-cache
+  ;; [base-url model] -> {:window n-or-nil, :expires-at epoch-ms}. Each entry carries its own expiry, because a
+  ;; known and an unknown window live for different times (see [[window-entry]]). The keys are the servers
+  ;; and models the connections name, so the map stays small without eviction.
+  (atom {}))
+
+(defn- now-ms
+  "The current time in epoch milliseconds. A function, so a test can set the clock."
+  []
+  (System/currentTimeMillis))
+
+(defn- window-entry
+  "A [[window-cache]] entry for `window`, which expires after [[known-window-ttl-ms]] when the window is
+  known and after [[unknown-window-ttl-ms]] when it is nil."
+  [window]
+  {:window     window
+   :expires-at (+ (now-ms) (if window known-window-ttl-ms unknown-window-ttl-ms))})
+
+(defn- live-entry
+  "The [[window-cache]] entry for `k`, or nil when there is none or it has expired."
+  [k]
+  (let [entry (get @window-cache k)]
+    (when (and entry (< (now-ms) (:expires-at entry)))
+      entry)))
+
+(defn- fetch-max-model-len
+  "Fetch the context window the server at `credentials` advertises for `model`, or nil.
+
+  vLLM's `/v1/models` entries carry `max_model_len`
+  (https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/serve/engine/protocol.py, `ModelCard`).
+  Nil when the catalog lists no entry with the model's id or no window for it (Ollama, LM Studio, TGI),
+  and when the request fails: an unknown window only means no default cap, and the chat request that
+  follows reports a real failure in its own words."
+  [credentials model]
+  (try
+    (let [res   (adapter/request! provider
+                                  {:credentials credentials :method :get :path "/models" :as :json}
+                                  {:socket-timeout     window-lookup-timeout-ms
+                                   :connection-timeout window-lookup-timeout-ms})
+          entry (u/seek #(= model (:id %)) (get-in res [:body :data]))]
+      (when (pos-int? (:max_model_len entry))
+        (:max_model_len entry)))
+    (catch Exception e
+      (log/debugf e "Could not read the context window of %s from the vLLM server" model)
+      nil)))
+
+(defn- served-max-model-len
+  "The context window the vLLM server serves the request's model with, or nil when it is unknown.
+
+  Read from the server rather than stored on the connection, so a restart with a different
+  `--max-model-len` is followed within [[known-window-ttl-ms]]. Answers are cached per base URL and model,
+  nil ones too, so a server that reports no window costs one lookup per [[unknown-window-ttl-ms]], not one
+  per request. Two requests that miss at the same time both look up; the later answer wins."
+  [{:keys [model credentials ai-proxy?]}]
+  (let [base-url (:base-url credentials)
+        k        [base-url model]]
+    (when-not (or ai-proxy? (str/blank? base-url))
+      (:window (or (live-entry k)
+                   (let [entry (window-entry (fetch-max-model-len credentials model))]
+                     (swap! window-cache assoc k entry)
+                     entry))))))
+
+(defn- estimated-prompt-tokens
+  "A high estimate of the prompt tokens in the Chat Completions `body`.
+
+  The UTF-8 bytes of its JSON `messages` and `tools`, divided by [[prompt-bytes-per-token]], plus
+  [[prompt-overhead-tokens]]. A high estimate is the safe side: [[output-cap]] then sends no cap, where
+  a low one would send a cap that does not fit."
+  [body]
+  (let [json-bytes (alength (.getBytes ^String (json/encode (select-keys body [:messages :tools]))
+                                       StandardCharsets/UTF_8))]
+    (+ prompt-overhead-tokens
+       (quot (+ json-bytes (dec prompt-bytes-per-token)) prompt-bytes-per-token))))
+
+(defn- raise-to-floors
+  "Raise `cap` to [[forced-tool-call-token-floor]] on a `forced?` call, and to
+  [[reasoning-model-token-floor]] on a reasoning connection."
+  [cap forced? credentials]
+  (cond-> cap
+    forced?                             (max forced-tool-call-token-floor)
+    (reasoning-connection? credentials) (max reasoning-model-token-floor)))
+
+(defn- output-cap
+  "The `max_tokens` to send with `body`, or nil to send none.
+
+  For example, on a 131072-token window the agent loop's 48 KB first prompt gets 32000; on a 32768-token
+  window it gets none, and vLLM stops at the remaining window, about 21000 tokens.
+
+  The cap is the caller's `max-tokens`, or [[core/chat-max-output-tokens]] when the `window` is known,
+  raised by [[raise-to-floors]]. It is sent only when [[estimated-prompt-tokens]] plus the cap fits the
+  window: vLLM subtracts a sent cap from the admissible prompt and returns a 400 when the prompt no longer
+  fits (https://github.com/vllm-project/vllm/blob/main/vllm/renderers/params.py). A cap that does not fit
+  is dropped, not lowered. Uncapped, vLLM generates up to the remaining window, which then bounds the
+  output by the exact prompt length rather than by an estimate.
+
+  With an unknown window, only a caller's cap is sent."
+  [body max-tokens forced? credentials window]
+  (let [cap (some-> (or max-tokens (when window core/chat-max-output-tokens))
+                    (raise-to-floors forced? credentials))]
+    (when (and cap
+               (or (nil? window)
+                   (<= (+ (estimated-prompt-tokens body) cap) window)))
+      cap)))
+
 (mu/defn vllm-request-body
   "Build the Chat Completions request body for an LLM request.
 
-  Matches what [[chat-completions/request-body]] emits, except that a caller's `:max-tokens` is raised
-  to [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies, and
-  `temperature` falls back to [[default-temperature]]. Both stay adapter-local rather than moving into
-  the shared builder, which would also change Z.AI, Mistral, and OpenRouter.
+  Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is the one
+  [[output-cap]] picks for the context window `max-model-len` (nil when unknown), and `temperature`
+  falls back to [[default-temperature]]. Both stay adapter-local rather than moving into the shared
+  builder, which would also change Z.AI, Mistral, and OpenRouter.
 
-  With no `:max-tokens`, no `max_tokens` is sent and the floors add none: vLLM subtracts a sent cap
-  from the admissible prompt before tokenizing and returns a 400 when the prompt no longer fits
-  (https://github.com/vllm-project/vllm/blob/main/vllm/renderers/params.py), whereas uncapped it
-  generates up to the remaining context window."
-  [{:keys [max-tokens temperature schema tool_choice credentials] :as opts} :- core/LLMRequestOpts]
-  (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))
-        capped  (when max-tokens
-                  (cond-> max-tokens
-                    forced?                             (max forced-tool-call-token-floor)
-                    (reasoning-connection? credentials) (max reasoning-model-token-floor)))]
-    (cond-> (chat-completions/request-body (cond-> opts
-                                             (nil? temperature) (assoc :temperature default-temperature)))
-      capped (assoc :max_tokens capped))))
+  Pure: [[vllm-raw]] looks the window up. The 1-arity, which Model Garden endpoints use, has none."
+  ([opts :- core/LLMRequestOpts]
+   (vllm-request-body opts nil))
+  ([{:keys [max-tokens temperature schema tool_choice credentials] :as opts} :- core/LLMRequestOpts
+    max-model-len                                                            :- [:maybe pos-int?]]
+   (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))
+         body    (chat-completions/request-body (cond-> (dissoc opts :max-tokens)
+                                                  (nil? temperature) (assoc :temperature default-temperature)))
+         cap     (output-cap body max-tokens forced? credentials max-model-len)]
+     (cond-> body
+       cap (assoc :max_tokens cap)))))
 
 (defn- stream-io-ex
   "The vLLM error for a transport failure while *consuming* a response stream. Tagged
@@ -471,14 +608,15 @@
   "Perform a streaming request to a vLLM server's Chat Completions API.
   Opts map takes `:credentials` (`{:base-url ... :api-key ...}`) from the connection serving this
   request, and throws without a base URL.
-  `:ai-proxy?` is not supported for vLLM and throws when true."
+  `:ai-proxy?` is not supported for vLLM and throws when true.
+  Reads the served context window first, through [[served-max-model-len]]'s cache, to size `max_tokens`."
   [{:keys [model credentials] :as opts} :- core/LLMRequestOpts]
   (when (str/blank? model)
     (throw (missing-model-ex)))
   (let [timeout-ms (llm/llm-vllm-request-timeout-ms)]
     (adapter/stream! provider opts
                      {:path             "/chat/completions"
-                      :body             (vllm-request-body opts)
+                      :body             (vllm-request-body opts (served-max-model-len opts))
                       :request-options  (inference-timeouts)
                       :wrap-stream      #(io-guarded % timeout-ms)
                       ;; clj-http raises an `IOException` only when there is no response at all, so the
