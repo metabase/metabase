@@ -80,9 +80,8 @@
 (defn- create!
   [{:keys [description parent_id authority_level], coll-name :name, coll-namespace :namespace, :as args}]
   (check-method-args! :create args)
-  ;; A namespaced collection ("snippets") is its own hierarchy, and personal
-  ;; collections only exist in the default one — so only a normal collection can default into the
-  ;; caller's.
+  ;; A namespaced collection ("snippets") is its own hierarchy, and personal collections only exist in the default
+  ;; one — so only a normal collection can default into the caller's.
   (let [parent-id (if coll-namespace
                     (v2.resolve/resolve-collection-id parent_id)
                     (v2.resolve/resolve-collection-id-or-personal parent_id))]

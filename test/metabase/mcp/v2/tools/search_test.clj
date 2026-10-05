@@ -443,10 +443,9 @@
                                                     {:token-scopes #{"agent:content:read"}})))))
 
 (deftest engine-results-reports-total-test
-  (testing "GHY-4137: engine-results reports the engine's total for every search"
+  (testing "GHY-4137: engine-results passes the engine's total through unchanged"
     (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_ctx] (with-meta [{:id 1 :type "question"}] {:total 30}))]
-      (mt/with-test-user :crowberto
-        (is (= 30 (:total (engine-results {} ["question" "dashboard"] nil 20 0))))))))
+      (is (= 30 (:total (engine-results {} ["question" "dashboard"] nil 20 0)))))))
 
 (deftest search-has-no-transform-type-test
   (testing "GHY-4746: MCP v2 has no transforms. search refuses the type, and a search that omits type never asks

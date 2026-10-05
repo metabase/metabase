@@ -415,9 +415,8 @@
                 "and the channel recipient list is gone")))))))
 
 (deftest get-content-has-no-transform-type-test
-  (testing "GHY-4746: MCP v2 has no transforms, so get_content refuses the type even for an admin on an instance
-            with transforms enabled. The output table of a run is an ordinary table, reachable through browse_data
-            and search."
+  (testing "GHY-4746: MCP v2 has no transforms, so get_content refuses the type, even for an admin on an instance
+            with transforms enabled"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp-env-var-value! [mb-transforms-enabled true]
         (mt/with-temp [:model/Transform {id :id} {:name   "t1"

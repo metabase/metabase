@@ -315,10 +315,9 @@
         (common/throw-teaching-error
          (message/msg [(str "Filtering tables by collection_id requires the semantic layer feature, which "
                             "this instance doesn't have — remove table from type or drop collection_id.")])))
-      ;; Without the Library feature a collection-scoped search never covers tables: the engine's
-      ;; ::collection-hierarchy where-clause drops them, not the spec's collection attr. Named
-      ;; explicitly that is a teaching error above; with `type` omitted it must be narrowed and
-      ;; disclosed, not dropped in silence.
+      ;; Without the Library feature the engine's ::collection-hierarchy where-clause drops tables from a
+      ;; collection-scoped search. An explicit type: ["table"] is a teaching error above; with `type`
+      ;; omitted, the exclusion is narrowed and disclosed, not dropped in silence.
       (when (and type-omitted?
                  (contains? effective-types "table")
                  (not (premium-features/has-feature? :library)))
