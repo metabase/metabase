@@ -13,6 +13,7 @@
    [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
+   [metabase.mcp.v2.skills :as skills]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -577,17 +578,49 @@
               (str "the description is " (count description) " characters")))))))
 
 (deftest no-transforms-on-the-surface-test
-  (testing "GHY-4746: MCP is for consuming content, and authoring transforms is creation, so MCP v2 has no transforms
-            at all — no tool, argument, enum value, description, learn topic, or resource names them"
-    (let [session-id (initialize-ui-client!)
+  (testing "GHY-4746: MCP is for consuming content, so MCP v2 has no transforms — no tool, input-schema enum value,
+            or learn topic is one, and no text the server sends names them: the initialize instructions, tools/list,
+            resources/list, the text resources, learn(), and every learn topic and reference"
+    (let [init       (mcp-request (jsonrpc-request "initialize" mcp-app-ui-capabilities))
+          session-id (get-in init [:headers "Mcp-Session-Id"])
           request!   (fn [method params]
                        (-> (mcp-request (jsonrpc-request method params) {"mcp-session-id" session-id})
-                           (get-in [:body :result])))]
-      (doseq [[label payload] {"tools/list"     (request! "tools/list" {})
-                               "resources/list" (request! "resources/list" {})
-                               "learn()"        (request! "tools/call" {:name "learn" :arguments {}})}]
-        (testing label
-          (is (not (re-find #"(?i)transform" (json/encode payload)))))))))
+                           (get-in [:body :result])))
+          learn!     (fn [arguments] (request! "tools/call" {:name "learn" :arguments arguments}))
+          tools      (:tools (request! "tools/list" {}))
+          resources  (:resources (request! "resources/list" {}))]
+      (testing "no tool is named for transforms"
+        (is (empty? (filter #(re-find #"(?i)transform" %) (map :name tools)))))
+      (testing "no input-schema enum offers a transform value"
+        (doseq [{tool-name :name :keys [inputSchema]} tools]
+          (testing tool-name
+            (is (empty? (for [node  (tree-seq coll? seq inputSchema)
+                              :when (map? node)
+                              value (:enum node)
+                              :when (re-find #"(?i)^transforms?$" (str value))]
+                          value))))))
+      (testing "no learn topic is transforms"
+        (is (empty? (filter #(re-find #"(?i)transform" %) (skills/topics)))))
+      (testing "no text names transforms"
+        (doseq [[label payload]
+                (concat [["initialize instructions" (get-in init [:body :result :instructions])]
+                         ["tools/list" tools]
+                         ["resources/list" resources]
+                         ["learn()" (learn! {})]]
+                        ;; The ui:// resources are frontend bundles, where `transform` is CSS.
+                        (for [{:keys [uri]} resources
+                              :when (not (str/starts-with? uri "ui://"))]
+                          [(str "resources/read " uri) (request! "resources/read" {:uri uri})])
+                        (for [topic (skills/topics)]
+                          [(str "learn(" topic ")") (learn! {:topic topic})])
+                        (for [topic     (skills/topics)
+                              reference (skills/reference-names topic)]
+                          [(str "learn(" topic ", " reference ")") (learn! {:topic topic :reference reference})]))]
+          (testing label
+            (is (some? payload) "sanity: the request returned a result")
+            (is (not (:isError payload)) "sanity: the request succeeded")
+            (is (empty? (re-seq #"(?i).{0,40}\btransforms?\b.{0,40}"
+                                (if (string? payload) payload (json/encode payload)))))))))))
 
 (deftest refresh-ui-credential-test
   (testing "GHY-4157: #81041 moved MCP Apps credential delivery out of the rendered shell and into a server
