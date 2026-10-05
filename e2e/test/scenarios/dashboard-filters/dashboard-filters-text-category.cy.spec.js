@@ -225,7 +225,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     H.toggleFilterWidgetValues(["Organic"], {
       buttonLabel: "Set to default",
     });
-    H.popover().should("not.exist");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
     H.filterWidget().findByText("Organic").should("be.visible");
     assertOrganicOnly();
   });
