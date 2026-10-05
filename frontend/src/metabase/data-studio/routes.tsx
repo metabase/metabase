@@ -114,7 +114,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           <Route path="transforms" lazy={transformsSectionLayout}>
             {getDataStudioTransformRoutes()}
           </Route>
-          <Route path="actions" lazy={actionsSectionLayout}>
+          <Route path="data-actions" lazy={actionsSectionLayout}>
             {getDataStudioActionRoutes()}
           </Route>
           {getDataStudioGlossaryRoutes()}

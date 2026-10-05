@@ -28,7 +28,7 @@ export function publicAction(siteUrl: string, uuid: string) {
   return `${siteUrl}/public/action/${uuid}`;
 }
 
-const DATA_ACTIONS_ROOT_URL = `/data-studio/actions`;
+const DATA_ACTIONS_ROOT_URL = `/data-studio/data-actions`;
 
 export type DataActionListParams = {
   collectionId?: CollectionId;
