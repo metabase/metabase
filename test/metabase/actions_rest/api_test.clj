@@ -567,6 +567,24 @@
             (testing "an unknown type is rejected"
               (mt/user-http-request :crowberto :get 400 "action" :type "http"))))))))
 
+(deftest action-can-write-test
+  (testing "GET /api/action and GET /api/action/:id hydrate :can_write from the action's collection"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/Action]
+          (mt/with-temp [:model/Collection {coll-id :id} {}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [action-id (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id)))
+                  listed    (fn [user]
+                              (m/find-first #(= action-id (:id %))
+                                            (mt/user-http-request user :get 200 "action" :type "query")))]
+              (testing "a user who can write the collection"
+                (is (=? {:can_write true} (listed :crowberto)))
+                (is (=? {:can_write true} (mt/user-http-request :crowberto :get 200 (str "action/" action-id)))))
+              (testing "a user who can only read the collection"
+                (is (=? {:can_write false} (listed :rasta)))
+                (is (=? {:can_write false} (mt/user-http-request :rasta :get 200 (str "action/" action-id))))))))))))
+
 (deftest attached-action-keeps-model-collection-test
   (testing "an action with a model stays in the model's collection whatever collection_id an update sends"
     (mt/with-actions-test-data-and-actions-enabled

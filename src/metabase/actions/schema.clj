@@ -138,7 +138,8 @@
                              cat
                              [(case schema-type
                                 :select [[:id ::id]
-                                         [:creator {:optional true} [:maybe ::users.schema/user]]]
+                                         [:creator {:optional true} [:maybe ::users.schema/user]]
+                                         [:can_write {:optional true} :boolean]]
                                 :update [[:id {:optional true} ::id]]
                                 :insert nil)
                               [[:name                   required-for-insert :string]

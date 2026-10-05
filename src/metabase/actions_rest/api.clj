@@ -35,7 +35,7 @@
                       action-type (filter #(= action-type (keyword (:type %))))))
                   (when-let [action-ids (seq (actions-rest.db/unarchived-action-ids-visible-to-user {:type action-type}))]
                     (actions/select-actions-for-ids nil (vec action-ids))))]
-    (t2/hydrate (vec actions) :creator)))
+    (t2/hydrate (vec actions) :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
@@ -50,7 +50,7 @@
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
-      (t2/hydrate :creator)
+      (t2/hydrate :creator :can_write)
       api/read-check))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
