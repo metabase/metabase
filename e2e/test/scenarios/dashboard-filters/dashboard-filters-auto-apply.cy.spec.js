@@ -282,12 +282,12 @@ describe(
         cy.signIn("readonly");
       });
 
-      it("should not be able to toggle auto-apply filters toggle", () => {
+      it("should not show dashboard settings with the auto-apply filters toggle", () => {
         openDashboard();
         cy.wait("@cardQuery");
 
-        // shouldn't even show settings as an option for this user
         H.dashboardHeader().icon("ellipsis").click();
+        H.popover().findByText("Enter fullscreen").should("be.visible");
         H.popover().findByText("Edit settings").should("not.exist");
       });
     });
