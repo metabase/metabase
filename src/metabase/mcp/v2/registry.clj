@@ -358,6 +358,20 @@
                      "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]
                tool-name))
 
+(defn check-tool-allowed!
+  "Throw a 403 teaching error unless the current user's groups allow the tool registered as `tool-name`. For a
+   handler whose action is another tool's capability, such as storing raw SQL that `execute_sql` would run: `subject`
+   opens the refusal, naming that action. An unregistered `tool-name` refuses every caller but an unrestricted one."
+  [tool-name subject]
+  (let [policy (mcp.perms/policy-for-current-user)]
+    (when-not (or (= mcp.perms/unrestricted-policy policy)
+                  (some->> (get @tools* tool-name) (tool-allowed? policy)))
+      (common/throw-teaching-error
+       (message/msg [(str "%s needs the %s tool, which is not enabled for your groups. "
+                          "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]
+                    subject tool-name)
+       {:status-code 403}))))
+
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]
   (let [tool    (get @tools* tool-name)

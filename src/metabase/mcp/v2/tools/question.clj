@@ -130,16 +130,18 @@
                     stages)))))
 
 (defn- check-native-source-gates!
-  "The gates an inline `native` source passes: the `agent:sql:run` scope and the
-   `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two, because the stored card is raw
-   SQL a later `run_saved_question` executes, so accepting one under the content write scope alone
-   would rebuild `execute_sql` without its scope or its kill switch. Every source that can resolve
+  "The gates an inline `native` source passes: the user's groups allowing `execute_sql`, the
+   `agent:sql:run` scope, and the `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own three,
+   because the stored card is raw SQL a later `run_saved_question` executes, so accepting one under
+   `question_write`'s policy and content write scope alone would rebuild `execute_sql` for a user an
+   admin denied it, or without its scope or its kill switch. Every source that can resolve
    to native passes these, `query_handle` included — holding a handle is not proof the gates were
    spent (`construct_native_query` mints under `agent:sql:construct` and never consults the kill
    switch, and a handle resolves on `core_session.user_id`, so any credential of that user can spend
    one minted by another). No-op on the scope half for unscoped callers (cookie sessions bind the
    unrestricted sentinel, which matches everything)."
   [token-scopes]
+  (registry/check-tool-allowed! "execute_sql" (message/raw "Saving a native (SQL) query"))
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (common/throw-insufficient-scope!
      (message/msg [(str "Saving a native (SQL) query requires the %s scope — "
