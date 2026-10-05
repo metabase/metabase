@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.core :as lib]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
 
@@ -165,9 +166,10 @@
         resolve (fn [column-name]
                   (or (get columns column-name)
                       (throw (bad-request (tru "The query returns no column named {0}." (pr-str column-name))))))
+        ;; A SQL NULL is `:null` only as the clicked value; in row and dimension cells it stays nil.
         cell    (fn [{column-name :column v :value}]
                   (let [col (resolve column-name)]
-                    {:column col :column-ref (lib/ref col) :value (if (nil? v) :null v)}))]
+                    {:column col :column-ref (lib/ref col) :value v}))]
     (cond-> {:value (when (contains? context :value)
                       (if (nil? (:value context)) :null (:value context)))}
       column           (merge (let [col (resolve column)] {:column col :column-ref (lib/ref col)}))
@@ -203,8 +205,15 @@
 
 (defn derive-query
   "Apply `operations`, each a [[::operation]], in order to the MBQL lib `query`, and return the new query. Throws a
-   400 when `query` has a native stage or an operation does not apply to the query."
+   400 with a short message when `query` has a native stage or an operation does not apply to the query."
   [query operations]
   (when (lib/any-native-stage? query)
     (throw (bad-request (tru "A native query cannot be changed here; only MBQL queries can."))))
-  (reduce apply-operation query operations))
+  (try
+    (reduce apply-operation query operations)
+    (catch Exception e
+      (if (:status-code (ex-data e))
+        (throw e)
+        ;; Lib refusing the click's values or the operation: the caller's input, so a 400 that names no internals.
+        (do (log/debug e "Lib refused an MCP derive operation")
+            (throw (bad-request (tru "This change does not apply to this query."))))))))

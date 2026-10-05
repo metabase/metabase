@@ -235,6 +235,39 @@
             (is (= 400 (:status (derive! query (op {:column     "PRICE" :value 3 :row row
                                                     :dimensions [{:column "NAME_2" :value "x"}]})))))))))))
 
+(deftest drill-on-row-with-a-null-cell-test
+  (testing "a clicked row that holds a SQL NULL in another cell still drills"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [mp    (mt/metadata-provider)
+            query (lib/limit (lib/query mp (lib.metadata/table mp (mt/id :orders))) 1)
+            row   [{:column "ID" :value 1} {:column "QUANTITY" :value 2} {:column "DISCOUNT" :value nil}]]
+        (is (=? {:status 200}
+                (derive! query {:operations [{:type    "drill-thru" :drill "quick-filter" :operator "<"
+                                              :context {:column "QUANTITY" :value 2 :row row}}]})))))))
+
+(deftest drill-on-point-with-a-null-dimension-test
+  (testing "a chart point whose breakout value is NULL still drills"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [mp    (mt/metadata-provider)
+            base  (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))
+            query (lib/breakout base (some #(when (= "DISCOUNT" (:name %)) %) (lib/breakoutable-columns base)))]
+        (is (=? {:status 200}
+                (derive! query {:operations [{:type    "drill-thru" :drill "underlying-records"
+                                              :context {:column     "count" :value 10
+                                                        :dimensions [{:column "DISCOUNT" :value nil}]}}]})))))))
+
+(deftest drill-with-a-context-lib-rejects-test
+  (testing "a click context Lib refuses as invalid is a 400 with a short plain-text body, not a 500"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [response (derive! (checkins-by-month)
+                              {:operations [{:type    "drill-thru" :drill "underlying-records"
+                                             :context {:column     "count" :value 8
+                                                       :dimensions [{:column "DATE" :value true}]}}]})]
+        (is (= 400 (:status response)))
+        (is (re-find #"(?i)^text/plain" (str (get-in response [:headers "Content-Type"]))))
+        (is (string? (:body response)))
+        (is (< (count (:body response)) 300))))))
+
 (deftest closed-schema-test
   (testing "the body names a closed set of operations, so anything else is a 400 before any query is touched"
     (mt/with-model-cleanup [:model/McpQueryHandle]
