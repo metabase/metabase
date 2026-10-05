@@ -247,7 +247,7 @@
             (str "no SQL tools in this surface either: " (pr-str context)))))))
 
 (deftest ^:parallel data-sources-raw-sql-sentence-gates-on-sql-tools-test
-  (testing "the raw-SQL aside in the shared data-sources snippet renders only when SQL tools are active"
+  (testing "the raw-SQL aside (now in the templates, not the directive-free shared snippet) renders only when SQL tools are active"
     (binding [scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
                                                         :permission/metabot-nlq            :yes
                                                         :permission/metabot-other-tools    :yes}]
@@ -273,3 +273,39 @@
       (is (not (str/includes? content "{%raw%}")))
       (is (not (str/includes? content "{% safe %}")))
       (is (not (str/includes? content "verbatim"))))))
+
+(deftest ^:parallel embedding-loadable-skills-do-not-presuppose-sql-test
+  (testing "every skill the embedded profile can load is free of SQL-writing guidance, since it has no SQL tools"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :embedding_next)
+            tools   (profiles/profile->tools profile [])
+            {:keys [catalog always-on]} (skills/build-skill-manifest profile (keys tools) [])
+            ids     (concat (map (comp keyword :id) catalog) (map :id always-on))]
+        (is (some #{:read-resource} ids) "premise: read-resource is loadable here")
+        (doseq [id ids]
+          (testing id
+            (is (not (re-find #"(?i)before writing SQL|recommending raw-table SQL"
+                              (:body (skills/get-skill id)))))))))))
+
+(deftest ^:parallel embedding-prompt-full-app-scope-text-unchanged-test
+  (testing "full-app embed: the Scope section is byte-identical to the pre-BOT-1891 text (no blank lines left by the Selmer tags)"
+    (let [content (embedded-prompt {})]
+      (is (str/includes? content
+                         (str "# Scope\n\n"
+                              "Your job is to answer analytical questions by producing visualizations. For other needs:\n\n"
+                              "- Dashboards: direct the user to the dashboard builder.\n"
+                              "- SQL queries: direct the user to the SQL editor.\n"
+                              "- Finding existing saved content: direct the user to search/browse.\n\n")))
+      (is (not (str/includes? content "search/browse.\n\n\n\n"))
+          "the {% endif %} must not add a blank line after the hand-off"))))
+
+(deftest ^:parallel raw-sql-aside-reaches-every-sql-writing-template-test
+  (testing "the raw-SQL aside lives outside the directive-free shared snippets, so each SQL-writing template must carry it itself"
+    (binding [scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
+                                                        :permission/metabot-nlq            :yes
+                                                        :permission/metabot-other-tools    :yes}]
+      (doseq [template ["internal.selmer" "sql-querying-only.selmer"]]
+        (testing template
+          (is (str/includes? (prompts/build-system-message-content {:prompt-template template} {}
+                                                                   {"create_sql_query" nil} [])
+                             "When writing raw SQL")))))))
