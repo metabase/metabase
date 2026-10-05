@@ -94,7 +94,6 @@ describe("Native SQL generation", () => {
       H.NativeEditor.get().should("contain", "SELECT * FROM users");
 
       cy.log("control the input");
-      cy.visit("/");
       H.startNewNativeQuestion();
       H.NativeEditor.get().should("be.visible");
 
@@ -149,14 +148,15 @@ describe("Native SQL generation", () => {
       generateButton().click();
       cy.wait("@metabotAgent");
 
-      errorMessage().should(
-        "have.text",
-        "Sorry, I ran into an error. Could you please try that again?",
-      );
+      errorMessage()
+        .should("be.visible")
+        .and(
+          "have.text",
+          "Sorry, I ran into an error. Could you please try that again?",
+        );
       acceptButton().should("not.exist");
 
       cy.log("manage conversation state");
-      cy.visit("/");
       H.startNewNativeQuestion({ query: "SELECT 1" });
       H.NativeEditor.get().should("be.visible");
 

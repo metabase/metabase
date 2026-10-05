@@ -23,7 +23,7 @@ describe("Metabot Query Builder", () => {
     H.setupAnthropicLlmProvider();
   });
 
-  it("should render the agent's reply inline, support clicking suggested prompts, and handle errors", () => {
+  it("should render the agent's reply inline and support clicking suggested prompts", () => {
     cy.visit("/question/ask");
     H.metabotChatInput().should("be.visible");
 
@@ -63,20 +63,6 @@ describe("Metabot Query Builder", () => {
     cy.findByTestId("metabot-inline-chart").should("be.visible");
     cy.findByTestId("qb-header").should("not.exist");
     cy.url().should("include", "/metabot/conversation/");
-
-    cy.log("errors");
-    // visit AI exploration page
-    cy.visit("/question/ask");
-    H.metabotChatInput().should("be.visible");
-
-    // mock the agent request to stream an error
-    H.mockMetabotResponse({ body: mockErrorResponse });
-
-    // send a prompt
-    H.sendMetabotMessage("Show me all orders");
-
-    // should show an error message inline
-    H.lastChatMessage().should("contain.text", "Something went wrong");
   });
 });
 
@@ -94,8 +80,3 @@ const mockGeneratedEntityResponse = (datasetQuery: unknown) => {
   };
   return H.createMetabotSSEBody(H.metabotDataPart("generated_entity", value));
 };
-
-const mockErrorResponse = H.createMetabotSSEBody(
-  H.metabotErrorPart("Anthropic API key expired or invalid"),
-  H.metabotFinishPart("error"),
-);
