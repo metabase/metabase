@@ -20,6 +20,11 @@ const actionQueryPage = () =>
     ({ ActionQueryPage }) => ({ Component: ActionQueryPage }),
   );
 
+const actionFieldsPage = () =>
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ActionFieldsPage"
+  ).then(({ ActionFieldsPage }) => ({ Component: ActionFieldsPage }));
+
 const actionRunPage = () =>
   import(/* webpackChunkName: "data-actions" */ "./pages/ActionRunPage").then(
     ({ ActionRunPage }) => ({ Component: ActionRunPage }),
@@ -37,6 +42,8 @@ export function getDataStudioActionRoutes() {
       <Route path="new" lazy={newActionPage} />
       <Route path=":actionId" lazy={actionQueryPage} />
       <Route path=":actionId/edit" lazy={actionQueryPage} />
+      <Route path=":actionId/fields" lazy={actionFieldsPage} />
+      <Route path=":actionId/fields/:fieldId" lazy={actionFieldsPage} />
       <Route path=":actionId/run" lazy={actionRunPage} />
       <Route path=":actionId/settings" lazy={actionSettingsPage} />
     </Route>

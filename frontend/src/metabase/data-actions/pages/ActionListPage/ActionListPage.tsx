@@ -109,12 +109,10 @@ export function ActionListPage() {
   }
 
   const isLoading = isLoadingActions || isLoadingCollections;
-  const emptyMessage =
-    treeData.length === 0
-      ? t`No actions yet`
-      : treeTableInstance.rows.length === 0 && searchQuery
-        ? t`No actions found`
-        : null;
+  const emptyMessage = getEmptyMessage({
+    hasActions: treeData.length > 0,
+    hasResults: treeTableInstance.rows.length > 0,
+  });
 
   return (
     <PageContainer data-testid="actions-list" gap={0}>
@@ -143,6 +141,23 @@ export function ActionListPage() {
       </Stack>
     </PageContainer>
   );
+}
+
+function getEmptyMessage({
+  hasActions,
+  hasResults,
+}: {
+  hasActions: boolean;
+  hasResults: boolean;
+}): string | null {
+  switch (true) {
+    case !hasActions:
+      return t`No actions yet`;
+    case !hasResults:
+      return t`No actions found`;
+    default:
+      return null;
+  }
 }
 
 function getColumns(

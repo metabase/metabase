@@ -6,7 +6,9 @@ import type {
   CreateActionRequest,
   Database,
   FieldSettings,
+  FieldType,
   TemplateTag,
+  TemplateTagType,
   WritebackParameter,
 } from "metabase-types/api";
 
@@ -50,7 +52,7 @@ export function getFieldSettingsFromQuery(
       const existing = formSettings.fields?.[parameter.id];
       const field =
         existing?.fieldType === fieldTypes.fieldType
-          ? { ...existing, required: parameter.required ?? false }
+          ? existing
           : getDefaultFieldSettings({
               id: parameter.id,
               name: parameter.name,
@@ -63,6 +65,33 @@ export function getFieldSettingsFromQuery(
     }),
   );
   return { ...formSettings, fields };
+}
+
+export function getTemplateTagType(fieldType: FieldType): TemplateTagType {
+  switch (fieldType) {
+    case "number":
+      return "number";
+    case "date":
+      return "date";
+    default:
+      return "text";
+  }
+}
+
+export function setTemplateTagFieldType(
+  query: Lib.Query,
+  parameterId: string,
+  fieldType: FieldType,
+): Lib.Query {
+  const tags = Object.fromEntries(
+    Object.entries(Lib.templateTags(query)).map(([name, tag]) => [
+      name,
+      tag.id === parameterId
+        ? { ...tag, type: getTemplateTagType(fieldType) }
+        : tag,
+    ]),
+  );
+  return Lib.withTemplateTags(query, tags);
 }
 
 export function getActionDefinition(

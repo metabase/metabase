@@ -6,6 +6,7 @@ import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import type { StackProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
@@ -18,13 +19,14 @@ type ActionHeaderProps = {
   actions?: ReactNode;
   isEditMode?: boolean;
   readOnly?: boolean;
-};
+} & Omit<StackProps, "title">;
 
 export function ActionHeader({
   action,
   actions,
   isEditMode = false,
   readOnly,
+  ...stackProps
 }: ActionHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: action.collection_id,
@@ -56,6 +58,7 @@ export function ActionHeader({
           {action.name}
         </DataStudioBreadcrumbs>
       }
+      {...stackProps}
     />
   );
 }

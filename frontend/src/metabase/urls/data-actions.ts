@@ -24,6 +24,16 @@ export function dataActionEdit(actionId: WritebackActionId) {
   return `${dataAction(actionId)}/edit`;
 }
 
+export function dataActionFields(
+  actionId: WritebackActionId,
+  fieldId?: string,
+) {
+  const fieldsUrl = `${dataAction(actionId)}/fields`;
+  return fieldId != null
+    ? `${fieldsUrl}/${encodeURIComponent(fieldId)}`
+    : fieldsUrl;
+}
+
 export function dataActionRun(actionId: WritebackActionId) {
   return `${dataAction(actionId)}/run`;
 }
