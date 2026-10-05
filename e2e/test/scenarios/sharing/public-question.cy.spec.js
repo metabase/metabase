@@ -44,8 +44,6 @@ describe("scenarios > public > question", () => {
 
     H.restore();
     cy.signInAsAdmin();
-
-    H.updateSetting("enable-public-sharing", true);
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
@@ -180,8 +178,6 @@ describe("scenarios [EE] > public > question", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-
-    H.updateSetting("enable-public-sharing", true);
   });
 
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {

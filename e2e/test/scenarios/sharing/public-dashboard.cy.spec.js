@@ -65,8 +65,6 @@ const USERS = {
 };
 
 const prepareDashboard = () => {
-  H.updateSetting("enable-public-sharing", true);
-
   cy.intercept("/api/dashboard/*/public_link").as("publicLink");
 
   H.createNativeQuestionAndDashboard({

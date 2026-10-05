@@ -282,7 +282,6 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
         H.downloadAndAssert({
           publicUuid: uuid,
           fileType: "csv",
-          questionId: ORDERS_BY_YEAR_QUESTION_ID,
           isDashboard: false,
           isEmbed: true,
         });
