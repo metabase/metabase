@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.field :as parameters.field]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -67,6 +68,34 @@
                                              (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
                                              "Red"
                                              nil))))))
+
+(deftest search-values-from-field-id-has-more-values-test
+  (binding [qp.perms/*param-values-query* true]
+    (with-redefs [parameters.field/default-max-field-search-limit 2]
+      (let [field-id (mt/id :venues :id)]
+        (doseq [query [nil "" "  "]
+                [rows expected-values more?] [[[[1] [2] [3]] [[1] [2]] true]
+                                              [[[1] [2]] [[1] [2]] false]
+                                              [[[1]] [[1]] false]
+                                              [[] [] false]
+                                              [nil [] false]]]
+          (testing (str "Unfiltered results: query=" (pr-str query) ", rows=" rows)
+            (mt/with-dynamic-fn-redefs [parameters.field/search-values
+                                        (fn [_field _search-field query limit]
+                                          (is (nil? query))
+                                          (is (= 3 limit))
+                                          rows)]
+              (is (= {:values expected-values, :has_more_values more?, :field_id field-id}
+                     (parameters.field/search-values-from-field-id field-id query))))))
+        (doseq [rows [[[1] [2] [3]] [[1]] []]]
+          (testing (str "Searches keep server-side search enabled: " rows)
+            (mt/with-dynamic-fn-redefs [parameters.field/search-values
+                                        (fn [_field _search-field query limit]
+                                          (is (= "Red" query))
+                                          (is (= 3 limit))
+                                          rows)]
+              (is (= {:values (vec (take 2 rows)), :has_more_values true, :field_id field-id}
+                     (parameters.field/search-values-from-field-id field-id "Red"))))))))))
 
 (deftest search-values-with-field-and-search-field-is-fk-test
   (testing "searching on a PK field should work (#32985)"
