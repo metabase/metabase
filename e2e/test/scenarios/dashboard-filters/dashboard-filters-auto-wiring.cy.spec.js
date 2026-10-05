@@ -29,7 +29,6 @@ describe("dashboard filters auto-wiring", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
   });
 
   describe("parameter mapping", () => {
@@ -395,12 +394,6 @@ describe("dashboard filters auto-wiring", () => {
 
   describe("adding cards with foreign keys to the dashboard (metabase#36275)", () => {
     beforeEach(() => {
-      cy.intercept(
-        "POST",
-        "/api/dashboard/*/dashcard/*/card/*/query",
-        cy.spy().as("cardQueryRequest"),
-      ).as("cardQuery");
-
       H.createQuestion({
         name: "Products Question",
         query: { "source-table": PRODUCTS_ID, limit: 1 },
