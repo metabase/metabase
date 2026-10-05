@@ -72,7 +72,7 @@ describe("scenarios > dashboard > filters > SQL > required", () => {
     createDashboardWithRequiredFilterCards();
 
     cy.log("dashboard filter defaults apply");
-    cy.location("search").should("eq", "?text=Bar&category=Widget");
+    cy.location("search").should("eq", "?category=Widget&text=Bar");
     H.getDashboardCard(0).should("contain", "Bar");
     H.getDashboardCard(1)
       .should("contain", "Widget")
@@ -83,7 +83,7 @@ describe("scenarios > dashboard > filters > SQL > required", () => {
     cy.log("cleared dashboard filters fall back to the SQL defaults");
     H.clearFilterWidget(0);
     H.clearFilterWidget(1);
-    cy.location("search").should("eq", "?text=&category=");
+    cy.location("search").should("eq", "?category=&text=");
     assertSqlDefaultsApplied();
     cy.findByPlaceholderText("Text").should("be.visible");
     H.filterWidget().eq(1).should("contain", "Category");
@@ -91,13 +91,13 @@ describe("scenarios > dashboard > filters > SQL > required", () => {
     cy.log("cleared dashboard filters stay cleared on reload (metabase#13960)");
     cy.reload();
     assertSqlDefaultsApplied();
-    cy.location("search").should("eq", "?text=&category=");
+    cy.location("search").should("eq", "?category=&text=");
 
     cy.log("dashboard filter defaults apply on a subsequent visit");
     cy.visit("/collection/root");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Required Filters Dashboard").click();
-    cy.location("search").should("eq", "?text=Bar&category=Widget");
+    cy.location("search").should("eq", "?category=Widget&text=Bar");
 
     cy.log("removing a dashboard filter default clears it in the url");
     H.editDashboard();
@@ -106,7 +106,7 @@ describe("scenarios > dashboard > filters > SQL > required", () => {
       removeDefaultFilterValue("Bar");
     });
     H.saveDashboard();
-    cy.location("search").should("eq", "?text=&category=Widget");
+    cy.location("search").should("eq", "?category=Widget&text=");
   });
 });
 
