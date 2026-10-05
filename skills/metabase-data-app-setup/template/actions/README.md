@@ -56,14 +56,13 @@ Rules:
   only `queries/` and `actions/`, so a definition anywhere else never gets a
   copy, and the authored action is refused for the app's viewers in production.
 - Actions exist only when the generated schema includes actions
-  (`include-actions=true`). The app runs a copy of each action, on a copy of its
-  model, both written from what `npm run print-resources` prints; it never
-  creates actions.
+  (`include-actions=true`). The app runs a copy of each action, written from
+  what `npm run print-resources` prints; it never creates actions.
 - Pass the export itself to `useAction`. Never pass
   `schema.actions.<action>` or its `.id`.
 - `copiedActionEntityId` is the entity ID of the action's copy in
-  `resources/actions/`. After adding a definition, copy the action and its
-  model into `resources/`, run `npm run check-resources`, and commit the
+  `resources/actions/`. After adding a definition, copy the action into
+  `resources/`, run `npm run check-resources`, and commit the
   definitions and `resources/` together. `npm run build` fails until they
   match.
 - Never copy a `copiedActionEntityId` to another definition, or remove it while

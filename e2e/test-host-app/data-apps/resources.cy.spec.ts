@@ -77,7 +77,6 @@ describe("Embedding SDK: data-app resources (queries)", () => {
           const printed = JSON.parse(stdout);
           expect(printed).to.deep.include({
             actions: [],
-            models: [],
             metrics: [],
           });
           const [query] = printed.queries;

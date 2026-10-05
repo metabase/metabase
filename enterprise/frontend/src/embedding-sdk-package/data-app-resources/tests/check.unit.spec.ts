@@ -12,7 +12,7 @@ import {
 } from "./setup";
 
 const QUESTION = "questionEntityId00010";
-const MODEL = "modelCopyEntityId0001";
+const METRIC = "metricCopyEntityId001";
 const ACTION = "actionCopyEntityId001";
 
 const cardFile = (entityId: string, type: string) => ({
@@ -24,9 +24,8 @@ const cardFile = (entityId: string, type: string) => ({
 
 const actionFile = (entityId: string) => ({
   name: "Create",
-  type: "implicit",
+  type: "query",
   entity_id: entityId,
-  model_id: MODEL,
   "serdes/meta": [{ model: "Action", id: entityId }],
 });
 
@@ -42,7 +41,7 @@ function checkedApp() {
     `export const Create = defineAction({ copiedActionEntityId: "${ACTION}", action: { id: 51, parameters: [] } });`,
   );
   writeResource(appRoot, "cards/orders.yaml", cardFile(QUESTION, "question"));
-  writeResource(appRoot, "cards/orders_model.yaml", cardFile(MODEL, "model"));
+  writeResource(appRoot, "cards/revenue.yaml", cardFile(METRIC, "metric"));
   writeResource(appRoot, "actions/create.yaml", actionFile(ACTION));
   return appRoot;
 }

@@ -73,8 +73,8 @@ function definitionProblems(
 
 /**
  * A question or action no definition names is still loaded by a pull: the
- * question into the app's collection, the action onto its model copy, where it
- * is one more write the app's viewers can run.
+ * question and the action into the app's collection, where the action is one
+ * more write the app's viewers can run.
  */
 function leftoverProblems(
   queries: DiscoveredQuery[],

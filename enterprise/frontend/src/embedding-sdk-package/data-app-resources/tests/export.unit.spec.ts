@@ -7,7 +7,6 @@ import { makeApp, setupResourceTests, writeAction, writeQuery } from "./setup";
 
 const QUESTION = "questionEntityId00010";
 const ACTION_COPY = "actionCopyEntityId001";
-const MODEL = "modelEntityId00000001";
 
 const COLLECTION = "appCollectionEntity01";
 
@@ -24,10 +23,7 @@ const EXPORTED = {
       metrics: [],
     },
   ],
-  actions: [
-    { id: 51, entity: { entity_id: "sourceActionEntity051", model_id: MODEL } },
-  ],
-  models: [{ id: 7, entity: { entity_id: MODEL } }],
+  actions: [{ id: 51, entity: { entity_id: "sourceActionEntity051" } }],
   metrics: [],
 };
 
@@ -99,10 +95,9 @@ describe("exporting what resources are written from", () => {
           file: "actions/orders.action.ts",
           copiedActionEntityId: ACTION_COPY,
           id: 51,
-          entity: { entity_id: "sourceActionEntity051", model_id: MODEL },
+          entity: { entity_id: "sourceActionEntity051" },
         },
       ],
-      models: EXPORTED.models,
       metrics: [],
     });
   });
@@ -110,7 +105,7 @@ describe("exporting what resources are written from", () => {
   it("sends only the definitions in the given file", async () => {
     const appRoot = appWithDefinitions();
     const fetchSpy = mockExport(
-      new Response(JSON.stringify({ ...EXPORTED, actions: [], models: [] })),
+      new Response(JSON.stringify({ ...EXPORTED, actions: [] })),
     );
 
     await exportResources(appRoot, "queries/orders.query.ts");

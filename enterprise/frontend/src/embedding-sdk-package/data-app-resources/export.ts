@@ -13,7 +13,6 @@ import { isObject } from "./guards";
 interface ExportedResources {
   queries: Record<string, unknown>[];
   actions: Record<string, unknown>[];
-  models: unknown[];
   metrics: unknown[];
 }
 
@@ -25,7 +24,6 @@ function isExportedResources(value: unknown): value is ExportedResources {
     isObject(value) &&
     isObjectArray(value.queries) &&
     isObjectArray(value.actions) &&
-    Array.isArray(value.models) &&
     Array.isArray(value.metrics)
   );
 }
@@ -61,8 +59,8 @@ async function requestExport(
  * definitions in `file` (relative to the app root, as files are printed) or
  * every definition: the saved question Metabase writes for each `defineQuery`
  * definition, in the collection `data_app.yaml` names and with the
- * definition's entity ID, each `defineAction`'s action, the models they belong
- * to, and the metrics the queries aggregate, all as serialization writes them.
+ * definition's entity ID, each `defineAction`'s action, and the metrics the
+ * queries aggregate, all as serialization writes them.
  * One request to the Metabase instance and API key in `.env.local`.
  */
 export async function exportResources(appDirectory: string, file?: string) {
@@ -117,7 +115,6 @@ export async function exportResources(appDirectory: string, file?: string) {
         copiedActionEntityId: action.copiedActionEntityId ?? null,
         ...exportedActions.get(action.sourceActionId),
       })),
-      models: exported.models,
       metrics: exported.metrics,
     },
     null,
