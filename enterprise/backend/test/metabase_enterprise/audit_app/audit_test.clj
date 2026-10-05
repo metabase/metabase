@@ -7,6 +7,7 @@
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase-enterprise.audit-app.settings :as ee.audit.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.lib.core :as lib]
@@ -231,7 +232,8 @@
       (let [audit-db (t2/select-one :model/Database :is_audit true)
             syncs    (atom 0)]
         (ee.audit.settings/last-analytics-views-checksum! 0)
-        (t2/update! :model/Database (:id audit-db) {:engine "postgres"})
+        ;; any engine other than the host's takes the ::updated path
+        (t2/update! :model/Database (:id audit-db) {:engine (if (= :postgres (mdb/db-type)) "h2" "postgres")})
         (mt/with-dynamic-fn-redefs [ee-audit/views-checksum (constantly 12345)
                                     sync.core/sync-database! (fn [& _] (swap! syncs inc))]
           (is (= ::ee-audit/updated (#'ee-audit/maybe-install-audit-db!)))
