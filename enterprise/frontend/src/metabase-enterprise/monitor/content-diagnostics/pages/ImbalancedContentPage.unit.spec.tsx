@@ -14,8 +14,9 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { UrlStateQuery } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route } from "metabase/router";
+import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import type {
@@ -68,7 +69,7 @@ type SetupOpts = {
   mode?: ContentDiagnosticsImbalancedFindingType;
   findings?: ContentDiagnosticsImbalancedFinding[];
   total?: number;
-  urlParams?: Urls.ImbalancedContentParams;
+  urlParams?: UrlStateQuery;
   lastUsedParams?: ContentDiagnosticsImbalancedUserParams;
   error?: boolean;
   getResponse?: (url: string) => ListImbalancedFindingsResponse;
@@ -121,7 +122,7 @@ function setup({
     />,
     {
       withRouter: true,
-      initialRoute: Urls.imbalancedContent(mode, urlParams),
+      initialRoute: `${Urls.imbalancedContent(mode)}${queryToSearch(urlParams)}`,
       storeInitialState: {
         currentUser: createMockUser(),
       },
@@ -249,7 +250,7 @@ describe("ImbalancedContentPage", () => {
   it("offers collections as an entity type and sends the selection to the server", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["dashboard"] },
+      urlParams: { "entity-types": ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -306,17 +307,19 @@ describe("ImbalancedContentPage", () => {
     const { router } = setup({
       findings: FINDINGS,
       urlParams: {},
-      lastUsedParams: { sort_column: "content-count", sort_direction: "desc" },
+      lastUsedParams: { sort_column: "created-at", sort_direction: "desc" },
     });
 
     await waitForListToLoad();
 
-    expect(getUrlQuery(router)).toEqual({
-      "sort-column": "content-count",
-      "sort-direction": "desc",
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "sort-column": "created-at",
+        "sort-direction": "desc",
+      });
     });
     expect(getLastRequestUrl().searchParams.get("sort-column")).toBe(
-      "content-count",
+      "created-at",
     );
   });
   it("marks the filter button once non-default filters are applied", async () => {
@@ -332,7 +335,7 @@ describe("ImbalancedContentPage", () => {
     );
     const popover = await screen.findByRole("dialog");
     await userEvent.click(
-      within(popover).getByRole("checkbox", { name: "Models" }),
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
     );
 
     await waitFor(() => {
@@ -346,7 +349,7 @@ describe("ImbalancedContentPage", () => {
     setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { "entity-types": ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -356,14 +359,14 @@ describe("ImbalancedContentPage", () => {
       expect(getLastRequestUrl().searchParams.get("offset")).toBe("25");
     });
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
-      "model",
+      "dashboard",
     ]);
   });
 
   it("resets to all entity types when the last selected type is deselected", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { "entity-types": ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -372,21 +375,13 @@ describe("ImbalancedContentPage", () => {
     );
     const popover = await screen.findByRole("dialog");
     await userEvent.click(
-      within(popover).getByRole("checkbox", { name: "Models" }),
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
     );
 
     await waitFor(() => {
       expect(getUrlQuery(router)).toEqual({});
     });
-    const allEntityTypes = [
-      "Questions",
-      "Models",
-      "Metrics",
-      "Dashboards",
-      "Documents",
-      "Transforms",
-      "Collections",
-    ];
+    const allEntityTypes = ["Dashboards", "Documents", "Collections"];
     allEntityTypes.forEach((label) => {
       expect(
         within(popover).getByRole("checkbox", { name: label }),
@@ -394,13 +389,41 @@ describe("ImbalancedContentPage", () => {
     });
   });
   describe("sorting", () => {
+    it("does not offer sorting by mixed-unit crowded content counts", async () => {
+      const { router } = setup({
+        findings: FINDINGS,
+        urlParams: { "sort-column": "content-count" },
+      });
+      await waitForListToLoad();
+
+      const header = screen.getByRole("columnheader", {
+        name: /^Content count/,
+      });
+      expect(header).not.toHaveAttribute("aria-sort");
+      await userEvent.click(header);
+      expect(getUrlQuery(router)).toEqual({});
+    });
+
+    it("sorts empty content by its comparable count", async () => {
+      const { router } = setup({ mode: "empty", findings: FINDINGS });
+      await waitForListToLoad();
+
+      await userEvent.click(
+        screen.getByRole("columnheader", { name: /^Content count/ }),
+      );
+      await waitFor(() => {
+        expect(getUrlQuery(router)).toEqual({
+          "sort-column": "content-count",
+          "sort-direction": "asc",
+        });
+      });
+    });
     it.each([
       ["Name", "name"],
       ["Type", "entity-type"],
       ["Location", "collection-name"],
       ["Created by", "created-by"],
       ["Created at", "created-at"],
-      ["Content count", "content-count"],
     ])("sorts by %s", async (header, sortColumn) => {
       const { router } = setup({ findings: FINDINGS });
       await waitForListToLoad();

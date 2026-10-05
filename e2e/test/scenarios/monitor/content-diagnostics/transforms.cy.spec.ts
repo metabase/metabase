@@ -233,7 +233,7 @@ describe(
         cy.findByRole("button", { name: "Delete" }).click();
       });
 
-      H.undoToast().findByText("Removed 1 item").should("be.visible");
+      H.undoToast().findByText("Deleted 1 item").should("be.visible");
 
       cy.log("the finding is invalidated and the transform itself is gone");
       cy.findByTestId("stale-content-list").should(

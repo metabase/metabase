@@ -3,7 +3,6 @@ import { c, msgid, ngettext, t } from "ttag";
 import { Link } from "metabase/router";
 import {
   Anchor,
-  Box,
   Card,
   FixedSizeIcon,
   Group,
@@ -16,8 +15,9 @@ import type {
   ContentDiagnosticsDuplicatedFinding,
 } from "metabase-types/api";
 
-import { trackContentDiagnosticsEntityOpened } from "../../analytics";
+import { trackContentDiagnosticsDuplicateOpened } from "../../analytics";
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";
+import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 import {
   getDuplicateEntityName,
   getDuplicateEntityUrl,
@@ -26,8 +26,6 @@ import {
 } from "../utils";
 
 import S from "./DuplicatedContentSidebar.module.css";
-
-const TOOLTIP_OPEN_DELAY_MS = 300;
 
 type DuplicatedContentSidebarProps = {
   finding: ContentDiagnosticsDuplicatedFinding;
@@ -65,9 +63,9 @@ function DuplicatesSection({
 
   return (
     <Stack gap="sm" role="region" aria-label={t`Duplicates`}>
-      <Box c="text-secondary" fz="sm" lh="h5">
+      <Text c="text-secondary" fz="sm" lh="h5">
         {title}
-      </Box>
+      </Text>
       {duplicateEntities.length > 0 && (
         <Card p={0} shadow="none" withBorder>
           {duplicateEntities.map((entity) => (
@@ -102,7 +100,7 @@ function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
   const typeLabel = getEntityTypeLabel(entity);
 
   const trackEntityOpened = () =>
-    trackContentDiagnosticsEntityOpened({
+    trackContentDiagnosticsDuplicateOpened({
       tab: "duplicated",
       entityId: entity.id,
       entityType: entity.entity_type,

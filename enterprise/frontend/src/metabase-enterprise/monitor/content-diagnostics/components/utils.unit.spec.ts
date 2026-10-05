@@ -2,6 +2,7 @@ import type { CollectionNamespace } from "metabase-types/api";
 import {
   createMockContentDiagnosticsCollection,
   createMockContentDiagnosticsDuplicateEntity,
+  createMockContentDiagnosticsDuplicatedFinding,
   createMockContentDiagnosticsStaleFinding,
 } from "metabase-types/api/mocks";
 
@@ -61,6 +62,23 @@ describe("getEntityUrl", () => {
     expect(url).toMatch(expected);
   });
 
+  it("points a transforms collection at the transforms list", () => {
+    expect(
+      getEntityUrl(
+        createMockContentDiagnosticsDuplicatedFinding({
+          entity_type: "collection",
+          entity_id: 10,
+          details: {
+            collection: createMockContentDiagnosticsCollection({
+              id: 10,
+              namespace: "transforms",
+            }),
+          },
+        }),
+      ),
+    ).toBe("/data-studio/transforms?collectionId=10");
+  });
+
   it("points a transform at the Data Studio transform route", () => {
     const url = getEntityUrl(
       createMockContentDiagnosticsStaleFinding({
@@ -75,6 +93,18 @@ describe("getEntityUrl", () => {
 });
 
 describe("getDuplicateEntityUrl", () => {
+  it("routes a transforms collection peer to the transforms list", () => {
+    expect(
+      getDuplicateEntityUrl(
+        createMockContentDiagnosticsDuplicateEntity({
+          id: 11,
+          entity_type: "collection",
+          namespace: "transforms",
+        }),
+      ),
+    ).toBe("/data-studio/transforms?collectionId=11");
+  });
+
   it("routes a peer by its own kind rather than the finding's", () => {
     const url = getDuplicateEntityUrl(
       createMockContentDiagnosticsDuplicateEntity({

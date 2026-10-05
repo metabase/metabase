@@ -6,11 +6,12 @@ import { ImbalancedContentSidebar } from "./ImbalancedContentSidebar";
 
 function setup(
   finding: ContentDiagnosticsImbalancedFinding = createMockContentDiagnosticsImbalancedFinding(),
+  tab: "empty" | "sparse" | "crowded" = "empty",
 ) {
   renderWithProviders(
     <ImbalancedContentSidebar
       finding={finding}
-      tab="empty"
+      tab={tab}
       onClose={jest.fn()}
     />,
     { withRouter: true },
@@ -38,8 +39,9 @@ describe("ImbalancedContentSidebar", () => {
         content_count: 21,
         details: { unit: "dashcards" },
       }),
+      "crowded",
     );
 
-    expect(screen.getByText("21 dashcards")).toBeInTheDocument();
+    expect(screen.getByText("21 dashcards on one tab")).toBeInTheDocument();
   });
 });

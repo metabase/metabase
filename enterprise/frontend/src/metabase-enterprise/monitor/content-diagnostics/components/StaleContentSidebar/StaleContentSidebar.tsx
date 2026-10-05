@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { Box } from "metabase/ui";
+import { Text } from "metabase/ui";
 import type { ContentDiagnosticsStaleFinding } from "metabase-types/api";
 
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";
@@ -29,7 +29,7 @@ export function StaleContentSidebar({
           last_active_at != null ? (
             <DateTime value={last_active_at} unit="day" />
           ) : (
-            <Box c="text-secondary">{t`Never`}</Box>
+            <Text c="text-secondary">{t`Never`}</Text>
           ),
       }}
     />

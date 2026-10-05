@@ -1,10 +1,4 @@
-import type {
-  OnChangeFn,
-  Row,
-  RowSelectionState,
-  SortingState,
-  Updater,
-} from "@tanstack/react-table";
+import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -17,23 +11,23 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type * as Urls from "metabase/urls";
-import {
-  type Sorting,
-  getNextOptionalSorting,
-  getSortingState,
-} from "metabase/utils/sorting";
-import {
-  CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS,
-  type ContentDiagnosticsDuplicatedFinding,
-  type ContentDiagnosticsDuplicatedSortColumn,
+import type { Sorting } from "metabase/utils/sorting";
+import type {
+  ContentDiagnosticsDuplicatedFinding,
+  ContentDiagnosticsDuplicatedSortColumn,
 } from "metabase-types/api";
+
+import {
+  type DuplicatedContentParams,
+  duplicatedContentConfig,
+} from "../../config";
+import { useOptionalSortingState } from "../../hooks/use-optional-sorting-state";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
 type DuplicatedContentTableProps = {
   findings: ContentDiagnosticsDuplicatedFinding[];
-  params: Urls.DuplicatedContentParams;
+  params: DuplicatedContentParams;
   sortOptions: Sorting<ContentDiagnosticsDuplicatedSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
@@ -57,28 +51,15 @@ export function DuplicatedContentTable({
   onRowSelectionChange,
 }: DuplicatedContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
-  const sortingState = useMemo(
-    () => getSortingState(sortOptions),
-    [sortOptions],
-  );
+  const { sortingState, onSortingChange } = useOptionalSortingState({
+    sortOptions,
+    columns: duplicatedContentConfig.sortColumns,
+    onSortOptionsChange,
+  });
 
   const handleRowActivate = useCallback(
     (row: Row<ContentDiagnosticsDuplicatedFinding>) => onSelect?.(row.original),
     [onSelect],
-  );
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const newSortingState =
-        typeof updater === "function" ? updater(sortingState) : updater;
-      onSortOptionsChange(
-        getNextOptionalSorting(
-          newSortingState,
-          CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS,
-        ),
-      );
-    },
-    [sortingState, onSortOptionsChange],
   );
 
   const treeTableInstance =
@@ -92,7 +73,7 @@ export function DuplicatedContentTable({
       rowSelection,
       onRowActivate: handleRowActivate,
       onRowSelectionChange,
-      onSortingChange: handleSortingChange,
+      onSortingChange,
     });
 
   useScrollToTop({

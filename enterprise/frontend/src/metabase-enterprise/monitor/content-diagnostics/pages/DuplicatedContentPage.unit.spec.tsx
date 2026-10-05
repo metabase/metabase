@@ -13,8 +13,9 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { UrlStateQuery } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route } from "metabase/router";
+import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import type {
@@ -51,7 +52,7 @@ const FINDINGS: ContentDiagnosticsDuplicatedFinding[] = [
 type SetupOpts = {
   findings?: ContentDiagnosticsDuplicatedFinding[];
   total?: number;
-  urlParams?: Urls.DuplicatedContentParams;
+  urlParams?: UrlStateQuery;
   lastUsedParams?: ContentDiagnosticsDuplicatedUserParams;
   error?: boolean;
   getResponse?: (url: string) => ListDuplicatedFindingsResponse;
@@ -102,7 +103,7 @@ function setup({
     />,
     {
       withRouter: true,
-      initialRoute: Urls.duplicatedContent(urlParams),
+      initialRoute: `${Urls.duplicatedContent()}${queryToSearch(urlParams)}`,
       storeInitialState: {
         currentUser: createMockUser(),
       },
@@ -300,7 +301,7 @@ describe("DuplicatedContentPage", () => {
     const { router } = setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { page: 1 },
+      urlParams: { page: "1" },
     });
     await waitForListToLoad();
 
@@ -378,7 +379,7 @@ describe("DuplicatedContentPage", () => {
   it("reflects the minimum duplicate count from the URL and sends changes made in the Filter popover", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { minDuplicateCount: 3 },
+      urlParams: { "min-duplicate-count": "3" },
     });
     await waitForListToLoad();
 
@@ -439,7 +440,7 @@ describe("DuplicatedContentPage", () => {
   it("offers collections as an entity type and sends the selection to the server", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["question"] },
+      urlParams: { "entity-types": ["question"] },
     });
     await waitForListToLoad();
 
@@ -489,8 +490,10 @@ describe("DuplicatedContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(getUrlQuery(router)).toEqual({
-      "min-duplicate-count": "5",
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "min-duplicate-count": "5",
+      });
     });
     expect(getLastRequestUrl().searchParams.get("min-duplicate-count")).toBe(
       "5",
@@ -500,7 +503,7 @@ describe("DuplicatedContentPage", () => {
   it("lets an explicit default-valued URL win over the last-used filter", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { page: 0, includePersonalCollections: true },
+      urlParams: { page: "0", "include-personal-collections": "true" },
       lastUsedParams: { min_duplicate_count: 5 },
     });
 
@@ -541,7 +544,7 @@ describe("DuplicatedContentPage", () => {
     setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { "entity-types": ["model"] },
     });
     await waitForListToLoad();
 
@@ -558,7 +561,7 @@ describe("DuplicatedContentPage", () => {
   it("resets to all entity types when the last selected type is deselected", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { "entity-types": ["model"] },
     });
     await waitForListToLoad();
 

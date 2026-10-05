@@ -1,5 +1,8 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { ContentDiagnosticsEntityType } from "metabase-types/api";
+import type {
+  ContentDiagnosticsEntityId,
+  ContentDiagnosticsEntityType,
+} from "metabase-types/api";
 
 import type {
   ContentDiagnosticsFilterDimension,
@@ -21,7 +24,7 @@ export const trackContentDiagnosticsFindingSelected = ({
   entityType,
 }: {
   tab: ContentDiagnosticsTab;
-  entityId: number;
+  entityId: ContentDiagnosticsEntityId;
   entityType: ContentDiagnosticsEntityType;
 }) => {
   trackSimpleEvent({
@@ -38,7 +41,7 @@ export const trackContentDiagnosticsEntityOpened = ({
   entityType,
 }: {
   tab: ContentDiagnosticsTab;
-  entityId: number;
+  entityId: ContentDiagnosticsEntityId;
   entityType: ContentDiagnosticsEntityType;
 }) => {
   trackSimpleEvent({
@@ -46,6 +49,34 @@ export const trackContentDiagnosticsEntityOpened = ({
     triggered_from: tab,
     target_id: entityId,
     event_detail: entityType,
+  });
+};
+
+export const trackContentDiagnosticsDuplicateOpened = ({
+  tab,
+  entityId,
+  entityType,
+}: {
+  tab: ContentDiagnosticsTab;
+  entityId: ContentDiagnosticsEntityId;
+  entityType: ContentDiagnosticsEntityType;
+}) => {
+  trackSimpleEvent({
+    event: "content_diagnostics_duplicate_opened",
+    triggered_from: tab,
+    target_id: entityId,
+    event_detail: entityType,
+  });
+};
+
+export const trackContentDiagnosticsLocationOpened = (
+  tab: ContentDiagnosticsTab,
+  collectionId: number | string,
+) => {
+  trackSimpleEvent({
+    event: "content_diagnostics_location_opened",
+    triggered_from: tab,
+    event_detail: String(collectionId),
   });
 };
 

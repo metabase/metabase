@@ -352,7 +352,7 @@
   ;; a `:collection` subject *is* the read-permission unit, so it gates on its own `:id` rather than a
   ;; parent `:collection_id`, and has no root row to preserve. The visibility clause already drops
   ;; archived collections, so no separate archived filter here.
-  (cd.db/name-rows :model/Collection nil
+  (cd.db/name-rows :model/Collection [:namespace]
                    [:and
                     [:in :id ids]
                     (collection/visible-collection-filter-clause :id)
@@ -371,8 +371,8 @@
 
 (defn- hydrate-duplicate-entities
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
-  :card_type <kw> :view_count <int>}}`. `card_type` and `view_count` are present only on card/dashboard/
-  document peers (transforms have no view concept, so their peers carry no usage signal). Peers share the
+  :card_type <kw> :view_count <int> :namespace <kw>}}`. `card_type` and `view_count` are present only on
+  card/dashboard/document peers; `namespace` is present only on collection peers. Peers share the
   finding's own entity type, so each type's ids resolve from that type's own model via [[read-entity-rows]]
   (which applies the per-type read gate); a filtered-out peer drops out of `duplicate_entities` like a
   deleted one."
@@ -387,7 +387,8 @@
            (cond-> {:id (:id row) :name (:name row) :entity_type etype}
              ;; only card/dashboard/document carry view_count (transform + collection have none)
              (contains? #{:card :dashboard :document} etype) (assoc :view_count (:view_count row))
-             (= etype :card)                                 (assoc :card_type (:type row)))])))
+             (= etype :card)                                 (assoc :card_type (:type row))
+             (= etype :collection)                           (assoc :namespace (:namespace row)))])))
 
 (defn- normalized-owner
   "Normalized `owner` from the transform `:owner` hydrate or a personal collection's owning user:
@@ -459,9 +460,10 @@
               :let  [model      (common/entity-type->model etype)
                      ids        (into #{} (map :entity_id) rows)
                      selectable (cond
-                                  ;; card_schema: Card's after-select throws on a row with query columns but no schema
+                                  ;; Include document_id so Card's write-permission check does not fetch the full
+                                  ;; Card (and parse unrelated legacy result_metadata) to resolve its parent Document.
                                   (= etype :card)
-                                  [model :id :collection_id :card_schema]
+                                  [model :id :collection_id :document_id :card_schema]
 
                                   (isa? common/hierarchy etype ::common/collection-item)
                                   [model :id :collection_id]

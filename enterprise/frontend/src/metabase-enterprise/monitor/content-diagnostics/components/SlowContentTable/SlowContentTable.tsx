@@ -1,10 +1,4 @@
-import type {
-  OnChangeFn,
-  Row,
-  RowSelectionState,
-  SortingState,
-  Updater,
-} from "@tanstack/react-table";
+import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -17,23 +11,20 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type * as Urls from "metabase/urls";
-import {
-  type Sorting,
-  getNextOptionalSorting,
-  getSortingState,
-} from "metabase/utils/sorting";
-import {
-  CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS,
-  type ContentDiagnosticsSlowFinding,
-  type ContentDiagnosticsSlowSortColumn,
+import type { Sorting } from "metabase/utils/sorting";
+import type {
+  ContentDiagnosticsSlowFinding,
+  ContentDiagnosticsSlowSortColumn,
 } from "metabase-types/api";
+
+import { type SlowContentParams, slowContentConfig } from "../../config";
+import { useOptionalSortingState } from "../../hooks/use-optional-sorting-state";
 
 import { SKELETON_COLUMN_WIDTHS, getColumns } from "./columns";
 
 type SlowContentTableProps = {
   findings: ContentDiagnosticsSlowFinding[];
-  params: Urls.SlowContentParams;
+  params: SlowContentParams;
   sortOptions: Sorting<ContentDiagnosticsSlowSortColumn> | undefined;
   isFetching?: boolean;
   isLoading?: boolean;
@@ -57,28 +48,15 @@ export function SlowContentTable({
   onRowSelectionChange,
 }: SlowContentTableProps) {
   const columns = useMemo(() => getColumns(), []);
-  const sortingState = useMemo(
-    () => getSortingState(sortOptions),
-    [sortOptions],
-  );
+  const { sortingState, onSortingChange } = useOptionalSortingState({
+    sortOptions,
+    columns: slowContentConfig.sortColumns,
+    onSortOptionsChange,
+  });
 
   const handleRowActivate = useCallback(
     (row: Row<ContentDiagnosticsSlowFinding>) => onSelect?.(row.original),
     [onSelect],
-  );
-
-  const handleSortingChange = useCallback(
-    (updater: Updater<SortingState>) => {
-      const newSortingState =
-        typeof updater === "function" ? updater(sortingState) : updater;
-      onSortOptionsChange(
-        getNextOptionalSorting(
-          newSortingState,
-          CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS,
-        ),
-      );
-    },
-    [sortingState, onSortOptionsChange],
   );
 
   const treeTableInstance = useTreeTableInstance<ContentDiagnosticsSlowFinding>(
@@ -92,7 +70,7 @@ export function SlowContentTable({
       rowSelection,
       onRowActivate: handleRowActivate,
       onRowSelectionChange,
-      onSortingChange: handleSortingChange,
+      onSortingChange,
     },
   );
 

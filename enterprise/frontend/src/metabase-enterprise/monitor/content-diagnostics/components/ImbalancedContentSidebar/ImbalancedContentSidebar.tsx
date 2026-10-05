@@ -1,6 +1,5 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
-import { Box } from "metabase/ui";
 import type {
   ContentDiagnosticsImbalancedFinding,
   ContentDiagnosticsImbalancedFindingType,
@@ -21,6 +20,16 @@ export function ImbalancedContentSidebar({
   onClose,
 }: ImbalancedContentSidebarProps) {
   const { content_count, details } = finding;
+  const contentCountLabel =
+    tab === "crowded" &&
+    finding.entity_type === "dashboard" &&
+    details.unit === "dashcards"
+      ? ngettext(
+          msgid`${content_count} dashcard on one tab`,
+          `${content_count} dashcards on one tab`,
+          content_count,
+        )
+      : getContentCountLabel(content_count, details.unit);
 
   return (
     <DiagnosticsSidebar
@@ -29,9 +38,7 @@ export function ImbalancedContentSidebar({
       onClose={onClose}
       extraInfo={{
         label: t`Content count`,
-        children: (
-          <Box>{getContentCountLabel(content_count, details.unit)}</Box>
-        ),
+        children: contentCountLabel,
       }}
     />
   );

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import * as Urls from "metabase/urls";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
   CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
@@ -47,6 +48,7 @@ type ContentDiagnosticsEntityKind = Pick<
 type ContentDiagnosticsEntityTarget = ContentDiagnosticsEntityKind & {
   id: number;
   name: string;
+  namespace?: CollectionNamespace;
 };
 
 export function getEntityIcon(entity: ContentDiagnosticsEntityKind): IconName {
@@ -123,7 +125,9 @@ function getTargetUrl(entity: ContentDiagnosticsEntityTarget): string {
     )
     .with({ entity_type: "transform" }, (entity) => Urls.transform(entity.id))
     .with({ entity_type: "collection" }, (entity) =>
-      Urls.collection({ id: entity.id, name: entity.name }),
+      entity.namespace === "transforms"
+        ? Urls.transformList({ collectionId: entity.id })
+        : Urls.collection({ id: entity.id, name: entity.name }),
     )
     .exhaustive();
 }
@@ -134,6 +138,7 @@ export function getEntityUrl(finding: ContentDiagnosticsBaseFinding): string {
     card_type: finding.card_type,
     id: finding.entity_id,
     name: getEntityName(finding),
+    namespace: finding.details.collection?.namespace,
   });
 }
 
@@ -145,6 +150,7 @@ export function getDuplicateEntityUrl(
     card_type: entity.card_type,
     id: entity.id,
     name: getDuplicateEntityName(entity),
+    namespace: entity.namespace,
   });
 }
 
@@ -189,9 +195,12 @@ export function getBreadcrumbLinks(
 
 export function getUserName(user: ContentDiagnosticsUser | null): string {
   return match(user)
-    .with(null, () => "—")
-    .with({ type: "user" }, (user) => user.name ?? user.email ?? "—")
-    .with({ type: "external" }, (user) => user.email ?? "—")
+    .with(null, () => EMPTY_CELL_PLACEHOLDER)
+    .with(
+      { type: "user" },
+      (user) => user.name ?? user.email ?? EMPTY_CELL_PLACEHOLDER,
+    )
+    .with({ type: "external" }, (user) => user.email ?? EMPTY_CELL_PLACEHOLDER)
     .exhaustive();
 }
 
@@ -214,8 +223,9 @@ export function areEntityTypesEqual(
   if (a.length !== b.length) {
     return false;
   }
+  const setA = new Set(a);
   const setB = new Set(b);
-  return a.every((type) => setB.has(type));
+  return setA.size === setB.size && a.every((type) => setB.has(type));
 }
 
 const BASE_FILTER_DIMENSIONS: Record<

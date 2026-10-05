@@ -22,6 +22,7 @@
    [metabase.test :as mt]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :each cd.tu/with-authorized-reader!)
@@ -364,6 +365,69 @@
                   (is (not (contains? ids old-id)))
                   ;; total excludes the invalidated latest, and does not fall back to the older row
                   (is (= 0 (:total resp))))))))))))
+
+(deftest api-stale-card-with-legacy-metadata-test
+  (testing "GET /stale checks Card write permissions without reading legacy result metadata"
+    (mt/with-premium-features #{:content-diagnostics}
+      (let [prefix (scope-prefix)]
+        (mt/with-temp [:model/Card {card-id :id} {}
+                       :model/ContentDiagnosticsFinding {finding-id :id}
+                       {:scan_id      "legacy-metadata"
+                        :entity_type  :card
+                        :entity_id    card-id
+                        :entity_name  prefix
+                        :finding_type :stale
+                        :details      {}}]
+          (let [original-metadata (:result_metadata (t2/query-one {:select [:result_metadata]
+                                                                   :from   [:report_card]
+                                                                   :where  [:= :id card-id]}))]
+            ;; Bypass Card's write transforms to reproduce stored metadata from older versions.
+            (t2/query {:update :report_card
+                       :set    {:result_metadata (json/encode [{:name           "legacy_field"
+                                                                :display_name   "Legacy Field"
+                                                                :base_type      "type/Integer"
+                                                                :effective_type "type/Integer"
+                                                                :field_ref      ["field" 1 nil]
+                                                                :table_id       1}])}
+                       :where  [:= :id card-id]})
+            (try
+              (let [rows (:data (mt/user-http-request :crowberto :get 200
+                                                      "ee/content-diagnostics/stale" :query prefix))]
+                (is (=? {:id         finding-id
+                         :entity_id  card-id
+                         :can_write true}
+                        (some #(when (= finding-id (:id %)) %) rows))))
+              (finally
+                (t2/query {:update :report_card
+                           :set    {:result_metadata original-metadata}
+                           :where  [:= :id card-id]})))))))))
+
+(deftest api-stale-card-write-permissions-are-batched-test
+  (testing "GET /stale does not fetch each Card to resolve its parent Document for write permissions"
+    (mt/with-premium-features #{:content-diagnostics}
+      (let [prefix      (scope-prefix)
+            finding     (fn [card-id]
+                          {:scan_id      "batched-card-permissions"
+                           :entity_type  :card
+                           :entity_id    card-id
+                           :entity_name  prefix
+                           :finding_type :stale
+                           :details      {}})
+            fetch       #(mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/stale" :query prefix)
+            count-fetch (fn []
+                          (t2/with-call-count [call-count]
+                            (fetch)
+                            (call-count)))]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {first-card-id :id} {:collection_id coll-id}
+                       :model/ContentDiagnosticsFinding {first-finding-id :id} (finding first-card-id)]
+          (fetch) ; warm one-time request setup outside the measured window
+          (let [one-card-calls (count-fetch)]
+            (mt/with-temp [:model/Card {second-card-id :id} {:collection_id coll-id}
+                           :model/ContentDiagnosticsFinding {second-finding-id :id} (finding second-card-id)]
+              (is (= #{first-finding-id second-finding-id}
+                     (set (map :id (:data (fetch))))))
+              (is (= one-card-calls (count-fetch))))))))))
 
 (deftest api-include-personal-collections-test
   (testing "GET /stale excludes personal-collection findings by default; includes them with the param"

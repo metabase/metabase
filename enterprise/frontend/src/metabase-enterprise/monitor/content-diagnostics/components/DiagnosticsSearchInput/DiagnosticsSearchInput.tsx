@@ -26,7 +26,9 @@ export function DiagnosticsSearchInput({
 
   useEffect(() => {
     handleSearchDebounce.cancel();
-    setSearchValue(query ?? "");
+    setSearchValue((value) =>
+      value.trim() === (query ?? "") ? value : (query ?? ""),
+    );
   }, [handleSearchDebounce, query]);
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {

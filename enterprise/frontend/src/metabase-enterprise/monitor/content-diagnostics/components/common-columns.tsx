@@ -8,8 +8,10 @@ import {
   Text,
   type TreeTableColumnDef,
 } from "metabase/ui";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
+import { TOOLTIP_OPEN_DELAY_MS } from "./constants";
 import {
   getCollectionName,
   getEntityIcon,
@@ -40,7 +42,7 @@ export function getCommonColumns<
         return (
           <Group align="center" gap="sm" miw={0} wrap="nowrap">
             <FixedSizeIcon name={getEntityIcon(finding)} />
-            <Ellipsified tooltipProps={{ openDelay: 300 }}>
+            <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
               {getEntityName(finding)}
             </Ellipsified>
           </Group>
@@ -72,7 +74,7 @@ export function getCommonColumns<
         return (
           <Group align="center" gap="sm" miw={0} wrap="nowrap">
             <FixedSizeIcon name="folder" />
-            <Ellipsified tooltipProps={{ openDelay: 300 }}>
+            <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
               {collectionName}
             </Ellipsified>
           </Group>
@@ -88,7 +90,7 @@ export function getCommonColumns<
       minWidth: 120,
       accessorFn: (finding) => getUserName(finding.details.creator),
       cell: ({ row }) => (
-        <Ellipsified tooltipProps={{ openDelay: 300 }}>
+        <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
           {getUserName(row.original.details.creator)}
         </Ellipsified>
       ),
@@ -104,11 +106,11 @@ export function getCommonColumns<
       cell: ({ row }) => {
         const { created_at } = row.original;
         return created_at != null ? (
-          <Ellipsified tooltipProps={{ openDelay: 300 }}>
+          <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
             <DateTime value={created_at} unit="day" />
           </Ellipsified>
         ) : (
-          <Text c="text-secondary">{"—"}</Text>
+          <Text c="text-secondary">{EMPTY_CELL_PLACEHOLDER}</Text>
         );
       },
     },

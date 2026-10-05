@@ -8,6 +8,8 @@ import {
   createMockContentDiagnosticsUser,
 } from "metabase-types/api/mocks";
 
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
+
 import {
   DiagnosticsSidebar,
   type SidebarExtraInfo,
@@ -82,6 +84,29 @@ describe("DiagnosticsSidebar", () => {
 
     const location = screen.getByRole("region", { name: "Location" });
     expect(within(location).getByText("Marketing")).toBeInTheDocument();
+  });
+
+  it("tracks opening a location breadcrumb", async () => {
+    trackSimpleEvent.mockClear();
+    setup({
+      finding: createMockContentDiagnosticsStaleFinding({
+        details: {
+          collection: createMockContentDiagnosticsCollection({
+            id: 9,
+            name: "Reports",
+          }),
+        },
+      }),
+    });
+
+    await userEvent.click(screen.getByRole("link", { name: "Reports" }));
+    expect(trackSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "content_diagnostics_location_opened",
+        triggered_from: "stale",
+        event_detail: "9",
+      }),
+    );
   });
 
   it("shows a fallback when there is no description", () => {

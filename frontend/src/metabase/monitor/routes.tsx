@@ -68,18 +68,18 @@ const dependencyDiagnosticsUpsellPage = () =>
   }));
 
 const contentDiagnosticsSectionLayout = () =>
-  import("metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout").then(
-    ({ ContentDiagnosticsSectionLayout }) => ({
-      Component: ContentDiagnosticsSectionLayout,
-    }),
-  );
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout"
+  ).then(({ ContentDiagnosticsSectionLayout }) => ({
+    Component: ContentDiagnosticsSectionLayout,
+  }));
 
 const contentDiagnosticsUpsellPage = () =>
-  import("metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage").then(
-    ({ ContentDiagnosticsUpsellPage }) => ({
-      Component: ContentDiagnosticsUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage"
+  ).then(({ ContentDiagnosticsUpsellPage }) => ({
+    Component: ContentDiagnosticsUpsellPage,
+  }));
 
 const jobInfoApp = () =>
   import(
@@ -187,13 +187,12 @@ export function getMonitorRoutes() {
   );
 }
 
-// Dependency diagnostics is first route in Monitor area, but it has tighter permission requirements,
-// so for users who can't access it we fallback to Content diagnostics (which can be accessed by anyone
-// who can access Monitor area)
+// Content diagnostics requires an additional feature token, so Tasks remains
+// the accessible fallback for users who lack dependency diagnostics access.
 function getMonitorIndexPath(state: State) {
   return canAccessDependencyDiagnostics(state)
     ? Urls.dependencyDiagnostics()
-    : Urls.contentDiagnostics();
+    : Urls.monitorTasks();
 }
 
 /**

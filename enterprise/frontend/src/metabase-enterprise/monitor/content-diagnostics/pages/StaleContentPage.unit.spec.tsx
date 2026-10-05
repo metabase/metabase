@@ -14,8 +14,9 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { UrlStateQuery } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route } from "metabase/router";
+import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import type {
@@ -52,7 +53,7 @@ const FINDINGS: ContentDiagnosticsStaleFinding[] = [
 type SetupOpts = {
   findings?: ContentDiagnosticsStaleFinding[];
   total?: number;
-  urlParams?: Urls.StaleContentParams;
+  urlParams?: UrlStateQuery;
   lastUsedParams?: ContentDiagnosticsStaleUserParams;
   error?: boolean;
   getResponse?: (url: string) => ListStaleFindingsResponse;
@@ -103,7 +104,7 @@ function setup({
     />,
     {
       withRouter: true,
-      initialRoute: Urls.staleContent(urlParams),
+      initialRoute: `${Urls.staleContent()}${queryToSearch(urlParams)}`,
       storeInitialState: {
         currentUser: createMockUser(),
       },
@@ -236,6 +237,17 @@ describe("StaleContentPage", () => {
 
     await screen.findByRole("treegrid");
     await userEvent.click(screen.getByLabelText("Select all"));
+    const bulkActions = screen.getByTestId("content-diagnostics-bulk-actions");
+    expect(
+      within(screen.getByTestId("monitor-main")).getByTestId(
+        "content-diagnostics-bulk-actions",
+      ),
+    ).toBe(bulkActions);
+    expect(bulkActions).toHaveStyle({
+      position: "absolute",
+      left: "50%",
+      bottom: "var(--mantine-spacing-lg)",
+    });
     await userEvent.click(
       screen.getByRole("button", { name: "Move to trash" }),
     );
@@ -380,11 +392,31 @@ describe("StaleContentPage", () => {
     expect(getUrlQuery(router)).toEqual({ page: "1" });
   });
 
+  it("clamps a page that no longer exists after a refetch", async () => {
+    const { router } = setup({
+      urlParams: { page: "1" },
+      getResponse: (url) =>
+        createMockListStaleFindingsResponse({
+          data:
+            new URL(url, "http://localhost").searchParams.get("offset") === "25"
+              ? []
+              : FINDINGS,
+          total: 2,
+        }),
+    });
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({});
+      expect(getLastRequestUrl().searchParams.get("offset")).toBe("0");
+    });
+    expect(await screen.findByText("Sales overview")).toBeInTheDocument();
+  });
+
   it("clears the page parameter when navigating back to the first page", async () => {
     const { router } = setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { page: 1 },
+      urlParams: { page: "1" },
     });
     await waitForListToLoad();
 
@@ -425,7 +457,7 @@ describe("StaleContentPage", () => {
     const { router } = setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { page: 1 },
+      urlParams: { page: "1" },
     });
     await waitForListToLoad();
 
@@ -509,7 +541,7 @@ describe("StaleContentPage", () => {
   it("clears the filters and the search box from the Filter popover", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { query: "revenue", entityTypes: ["dashboard"] },
+      urlParams: { query: "revenue", "entity-types": ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -582,7 +614,7 @@ describe("StaleContentPage", () => {
   it("reflects the staleness threshold from the URL and sends changes made in the Filter popover", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { thresholdDays: 90 },
+      urlParams: { "threshold-days": "90" },
     });
     await waitForListToLoad();
 
@@ -625,8 +657,10 @@ describe("StaleContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(getUrlQuery(router)).toEqual({
-      "entity-types": "model",
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "entity-types": "model",
+      });
     });
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
       "model",
@@ -636,7 +670,7 @@ describe("StaleContentPage", () => {
   it("prefers URL params over the last-used filter", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["dashboard"] },
+      urlParams: { "entity-types": ["dashboard"] },
       lastUsedParams: { entity_types: ["model"] },
     });
 
@@ -653,7 +687,7 @@ describe("StaleContentPage", () => {
   it("lets an explicit default-valued URL win over the last-used filter", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { page: 0, includePersonalCollections: true },
+      urlParams: { page: "0", "include-personal-collections": "true" },
       lastUsedParams: { entity_types: ["model"] },
     });
 
@@ -692,7 +726,7 @@ describe("StaleContentPage", () => {
     setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { "entity-types": ["model"] },
     });
     await waitForListToLoad();
 
@@ -709,7 +743,7 @@ describe("StaleContentPage", () => {
   it("resets to all entity types when the last selected type is deselected", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { "entity-types": ["model"] },
     });
     await waitForListToLoad();
 

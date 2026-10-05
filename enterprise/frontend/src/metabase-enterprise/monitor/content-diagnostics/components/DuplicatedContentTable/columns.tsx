@@ -4,6 +4,7 @@ import { Ellipsified, type TreeTableColumnDef } from "metabase/ui";
 import type { ContentDiagnosticsDuplicatedFinding } from "metabase-types/api";
 
 import { getCommonColumns } from "../common-columns";
+import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 
 export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFinding>[] {
   const { name, entityType, collectionName, createdBy, createdAt } =
@@ -18,7 +19,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFin
       minWidth: 120,
       accessorFn: (finding) => finding.duplicate_count,
       cell: ({ row }) => (
-        <Ellipsified tooltipProps={{ openDelay: 300 }}>
+        <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
           {row.original.duplicate_count}
         </Ellipsified>
       ),

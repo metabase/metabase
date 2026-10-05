@@ -122,7 +122,7 @@ export function DiagnosticsFilterPicker<
                 />
               </Stack>
             </Input.Wrapper>
-            <Button size="sm" disabled={!canReset} onClick={handleReset}>
+            <Button fullWidth disabled={!canReset} onClick={handleReset}>
               {t`Reset to defaults`}
             </Button>
           </Stack>

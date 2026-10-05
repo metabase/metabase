@@ -715,7 +715,9 @@
               (testing "the sentinel names the transforms tree, not the default \"Our analytics\""
                 (doseq [coll-id [xf-a xf-b]]
                   (is (= {:id "root" :name "Transforms" :namespace "transforms" :effective_ancestors []}
-                         (get-in (by-id coll-id) [:details :collection]))))))))))))
+                         (get-in (by-id coll-id) [:details :collection]))))
+                (is (= "transforms"
+                       (:namespace (first (get-in (by-id xf-a) [:details :duplicate_entities])))))))))))))
 
 (deftest duplicated-api-collection-peers-hydrate-test
   (testing "GET /duplicated hydrates collection peers gated on the collection's own read visibility (its own :id)"
@@ -740,7 +742,7 @@
                 (testing "superuser: the peer hydrates as a bare collection object - no card_type, no view_count"
                   (let [f (finding :crowberto)]
                     (is (some? f))
-                    (is (= [{:id coll-b :name nm :entity_type "collection"}]
+                    (is (= [{:id coll-b :name nm :entity_type "collection" :namespace nil}]
                            (get-in f [:details :duplicate_entities])))
                     (testing "context: the breadcrumb anchor is the parent (where it lives), plus description; no owner/creator"
                       (is (= parent (get-in f [:details :collection :id])))

@@ -21,6 +21,33 @@ describe("SlowContentSidebar", () => {
     expect(screen.getByText("5.0s")).toBeInTheDocument();
   });
 
+  it("links to the slow cards behind a container finding", () => {
+    setup(
+      createMockContentDiagnosticsSlowFinding({
+        entity_type: "dashboard",
+        details: {
+          slow_entities: [
+            {
+              id: 33,
+              name: "Slow report",
+              entity_type: "card",
+              card_type: "model",
+              view_count: 7,
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(
+      screen.getByRole("region", { name: "Slow items" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Slow report" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/model\/33/),
+    );
+  });
+
   it("humanizes a duration spanning minutes", () => {
     setup(createMockContentDiagnosticsSlowFinding({ duration_ms: 65000 }));
 

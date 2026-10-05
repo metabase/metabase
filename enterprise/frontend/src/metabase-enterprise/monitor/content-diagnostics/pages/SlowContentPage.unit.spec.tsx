@@ -13,8 +13,9 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { UrlStateQuery } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route } from "metabase/router";
+import { Route, queryToSearch } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import type {
@@ -50,7 +51,7 @@ const FINDINGS: ContentDiagnosticsSlowFinding[] = [
 type SetupOpts = {
   findings?: ContentDiagnosticsSlowFinding[];
   total?: number;
-  urlParams?: Urls.SlowContentParams;
+  urlParams?: UrlStateQuery;
   lastUsedParams?: ContentDiagnosticsSlowUserParams;
   error?: boolean;
   getResponse?: (url: string) => ListSlowFindingsResponse;
@@ -101,7 +102,7 @@ function setup({
     />,
     {
       withRouter: true,
-      initialRoute: Urls.slowContent(urlParams),
+      initialRoute: `${Urls.slowContent()}${queryToSearch(urlParams)}`,
       storeInitialState: {
         currentUser: createMockUser(),
       },
@@ -182,7 +183,7 @@ describe("SlowContentPage", () => {
   });
 
   it("sends the minimum duration filter to the server and reflects it in the Filter popover", async () => {
-    setup({ findings: FINDINGS, urlParams: { minDurationMs: 30000 } });
+    setup({ findings: FINDINGS, urlParams: { "min-duration-ms": "30000" } });
     await waitForListToLoad();
 
     expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBe(
@@ -253,7 +254,7 @@ describe("SlowContentPage", () => {
   it("resets to all entity types when the last selected type is deselected", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { "entity-types": ["model"] },
     });
     await waitForListToLoad();
 
@@ -299,8 +300,10 @@ describe("SlowContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(getUrlQuery(router)).toEqual({
-      "min-duration-ms": "3000",
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "min-duration-ms": "3000",
+      });
     });
     expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBe(
       "3000",
@@ -310,7 +313,7 @@ describe("SlowContentPage", () => {
   it("lets an explicit default-valued URL win over the last-used filter", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { page: 0, includePersonalCollections: true },
+      urlParams: { page: "0", "include-personal-collections": "true" },
       lastUsedParams: { min_duration_ms: 3000 },
     });
 
@@ -349,7 +352,7 @@ describe("SlowContentPage", () => {
     setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { "entity-types": ["model"] },
     });
     await waitForListToLoad();
 

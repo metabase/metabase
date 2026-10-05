@@ -5,6 +5,7 @@ import { formatDurationLong } from "metabase/utils/formatting";
 import type { ContentDiagnosticsSlowFinding } from "metabase-types/api";
 
 import { getCommonColumns } from "../common-columns";
+import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 
 export function getColumns(): TreeTableColumnDef<ContentDiagnosticsSlowFinding>[] {
   const { name, entityType, collectionName, createdBy, createdAt } =
@@ -18,7 +19,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsSlowFinding>[
     minWidth: 120,
     accessorFn: (finding) => finding.duration_ms,
     cell: ({ row }) => (
-      <Ellipsified tooltipProps={{ openDelay: 300 }}>
+      <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
         {formatDurationLong(row.original.duration_ms)}
       </Ellipsified>
     ),
