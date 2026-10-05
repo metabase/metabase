@@ -111,28 +111,29 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
     });
 
     it("serves the report to shell agents, with cursor filtering", () => {
-      const DIAGNOSTICS_IDLE_MS = 500;
+      // Retry the full read-then-cursor pair until no POST sneaks between
+      // the two GETs. Under CPU throttling the reporter's batched timer can
+      // jitter enough to land a POST in that gap, so a single-pass idle
+      // guard before the first GET is not enough.
+      const verifyStableCursor = (attempt = 0): Cypress.Chainable<void> => {
+        return cy.request(DIAGNOSTICS_URL).then(({ body: report }) => {
+          expect(report.manifest?.errors).to.have.length(0);
+          expect(report.clients).to.be.gte(1);
 
-      let lastPostAt = Date.now();
-      cy.intercept("POST", "**/__data-app/diagnostics", (req) => {
-        lastPostAt = Date.now();
-        req.continue();
-      }).as("diagPost");
-
-      // The sandbox probe's blocked fetch can legitimately arrive in a
-      // second, later POST — wait for traffic to settle before trusting a cursor.
-      // Still a cy.wait under the hood, just one that adapts to actual
-      // traffic instead of a fixed duration, and fails loud if it never settles.
-      const waitForDiagnosticsIdle = (attempt = 0): Cypress.Chainable<void> => {
-        if (Date.now() - lastPostAt >= DIAGNOSTICS_IDLE_MS) {
-          return cy.wrap(undefined, { log: false });
-        }
-        if (attempt >= 40) {
-          throw new Error("Diagnostics POST traffic never went idle");
-        }
-        return cy
-          .wait(100, { log: false })
-          .then(() => waitForDiagnosticsIdle(attempt + 1));
+          return cy
+            .request(`${DIAGNOSTICS_URL}?startEventId=${report.nextEventId}`)
+            .then(({ body: filtered }) => {
+              if (filtered.entries.length === 0) {
+                return;
+              }
+              if (attempt >= 20) {
+                throw new Error("Cursor never stabilized");
+              }
+              return cy
+                .wait(250, { log: false })
+                .then(() => verifyStableCursor(attempt + 1));
+            });
+        });
       };
 
       readDiagnosticsUntil(
@@ -141,19 +142,7 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         (report) =>
           report.entries.some((entry) => entry.kind === "blocked-network") &&
           report.connection?.reachable === true,
-      )
-        .then(() => waitForDiagnosticsIdle())
-        .then(() => {
-          cy.request(DIAGNOSTICS_URL).then(({ body: report }) => {
-            expect(report.manifest?.errors).to.have.length(0);
-            expect(report.clients).to.be.gte(1);
-
-            // A reader that has consumed everything sees an empty page, not a replay.
-            cy.request(`${DIAGNOSTICS_URL}?startEventId=${report.nextEventId}`)
-              .its("body.entries")
-              .should("be.empty");
-          });
-        });
+      ).then(() => verifyStableCursor());
     });
 
     it("keeps the buffer across a page reload, with continuous event ids", () => {
