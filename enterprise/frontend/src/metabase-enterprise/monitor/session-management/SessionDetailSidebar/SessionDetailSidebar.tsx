@@ -1,16 +1,15 @@
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Flex, Stack, Text } from "metabase/ui";
-import { useListSessionsQuery } from "metabase-enterprise/api";
 
 import { SessionDetails } from "./SessionDetails";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import type { SessionDetailSidebarProps } from "./types";
+import { useShownSession } from "./use-shown-session";
 
 export const SessionDetailSidebar = ({
   sessionId,
@@ -23,11 +22,10 @@ export const SessionDetailSidebar = ({
   onRevokeUserSessions,
   onClose,
 }: SessionDetailSidebarProps) => {
-  // There is no fetch-by-id endpoint, so a session that isn't on the current page is looked up with the ids filter
-  const { currentData, error } = useListSessionsQuery(
-    sessionFromPage ? skipToken : { ids: [sessionId] },
+  const { session, isLoading, error } = useShownSession(
+    sessionId,
+    sessionFromPage,
   );
-  const session = sessionFromPage ?? currentData?.data[0];
   const currentUser = useSelector(getUser);
 
   const canRevokeSession =
@@ -62,11 +60,7 @@ export const SessionDetailSidebar = ({
           onNavigate={onNavigate}
           onClose={onClose}
         />
-        <LoadingAndErrorWrapper
-          loading={session === undefined && currentData === undefined}
-          error={error}
-          noWrapper
-        >
+        <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
           {session ? (
             <SessionDetails session={session} />
           ) : (

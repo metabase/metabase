@@ -31,6 +31,12 @@ export const setupRevokeSessionsEndpoint = (
   fetchMock.post("path:/api/ee/session-management/revoke", response);
 };
 
-export const setupRevokeSessionsErrorEndpoint = () => {
-  fetchMock.post("path:/api/ee/session-management/revoke", { status: 500 });
+export const setupRevokeSessionsErrorEndpoint = ({
+  status = 500,
+  message,
+}: { status?: number; message?: string } = {}) => {
+  fetchMock.post("path:/api/ee/session-management/revoke", {
+    status,
+    body: message === undefined ? undefined : { message },
+  });
 };

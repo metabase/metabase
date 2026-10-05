@@ -55,15 +55,21 @@ export async function backendRequest<TBody = unknown>({
   sessionId,
   failOnStatusCode = true,
 }: BackendRequest): Promise<BackendResponse<TBody>> {
-  const response = await fetch(`${BASE_URL}${url}`, {
-    method,
-    redirect: "manual",
-    headers: {
-      "Content-Type": "application/json",
-      ...(sessionId ? { "X-Metabase-Session": sessionId } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${url}`, {
+      method,
+      redirect: "manual",
+      headers: {
+        "Content-Type": "application/json",
+        ...(sessionId ? { "X-Metabase-Session": sessionId } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    // undici's bare "fetch failed" doesn't say which of a test's many requests it was
+    throw new Error(`${method} ${url} failed to send`, { cause: error });
+  }
   const text = await response.text();
 
   if (failOnStatusCode && !response.ok) {
@@ -97,7 +103,8 @@ async function freshAdminSession(): Promise<string | undefined> {
 }
 
 /**
-  Acts as the admin without touching the browser's cookies
+  Acts as the admin without touching the browser's cookies. The cached admin session is the one
+  `cy.signInAsAdmin()` puts in the browser, so revoking that session would break both.
  */
 export async function requestAsAdmin(request: AdminRequest) {
   const sessionId = cachedAdminSession() ?? (await freshAdminSession());

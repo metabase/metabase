@@ -1,6 +1,16 @@
+import {
+  createMockSession,
+  createMockSessionUser,
+} from "metabase-types/api/mocks";
+
 import { PAGE_SIZE } from "./constants";
 import type { SessionsUrlState } from "./types";
-import { buildListParams, urlStateConfig } from "./utils";
+import {
+  buildListParams,
+  getTabChange,
+  isSessionRevokedBy,
+  urlStateConfig,
+} from "./utils";
 
 const DEFAULT_STATE: SessionsUrlState = {
   page: 0,
@@ -68,6 +78,10 @@ describe("SessionsPage/utils", () => {
       expect(
         urlStateConfig.parse({ sort_column: "last_active_at" }).sort_column,
       ).toBe("created_at");
+      expect(
+        urlStateConfig.parse({ tab: "ended", sort_column: "provider" })
+          .sort_column,
+      ).toBe("created_at");
     });
   });
 
@@ -127,6 +141,69 @@ describe("SessionsPage/utils", () => {
 
       expect(params.query).toBeUndefined();
       expect(params.provider).toBeUndefined();
+    });
+  });
+
+  describe("getTabChange", () => {
+    it("goes back to the first page, keeping a sort the new tab shows", () => {
+      expect(
+        getTabChange({ ...POPULATED_STATE, tab: "active" }, "ended"),
+      ).toEqual({ tab: "ended", page: 0 });
+    });
+
+    it("resets a sort by a column the new tab doesn't show", () => {
+      expect(
+        getTabChange(
+          { ...DEFAULT_STATE, sort_column: "provider", sort_direction: "asc" },
+          "ended",
+        ),
+      ).toEqual({
+        tab: "ended",
+        page: 0,
+        sort_column: "created_at",
+        sort_direction: "desc",
+      });
+    });
+  });
+
+  describe("isSessionRevokedBy", () => {
+    const user = createMockSessionUser({ id: 2 });
+    const session = createMockSession({ id: "shown", user });
+
+    it.each([
+      { description: "revoking everything", request: {}, expected: true },
+      {
+        description: "revoking its id",
+        request: { ids: ["shown"] },
+        expected: true,
+      },
+      {
+        description: "revoking other ids",
+        request: { ids: ["other"] },
+        expected: false,
+      },
+      {
+        description: "revoking its user",
+        request: { "user-id": 2 },
+        expected: true,
+      },
+      {
+        description: "revoking another user",
+        request: { "user-id": 3 },
+        expected: false,
+      },
+    ])(
+      "is $expected for a live session when $description",
+      ({ request, expected }) => {
+        expect(isSessionRevokedBy(session, request)).toBe(expected);
+      },
+    );
+
+    it("is false for an ended or current session, whatever the criteria", () => {
+      expect(
+        isSessionRevokedBy({ ...session, status: "ended" }, { "user-id": 2 }),
+      ).toBe(false);
+      expect(isSessionRevokedBy({ ...session, current: true }, {})).toBe(false);
     });
   });
 });

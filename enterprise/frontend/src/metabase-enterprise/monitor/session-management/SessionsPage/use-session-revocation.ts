@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -53,9 +54,12 @@ export function useSessionRevocation({
           );
         }
         onRevoked(request);
-      } catch {
+      } catch (error) {
         dispatch(
-          addUndo({ icon: "warning", message: t`Could not revoke sessions.` }),
+          addUndo({
+            icon: "warning",
+            message: getErrorMessage(error, t`Could not revoke sessions.`),
+          }),
         );
       }
     },
@@ -107,7 +111,7 @@ export function useSessionRevocation({
       const name = getSessionUserName(session.user);
       confirmRevoke({
         title: t`Revoke all sessions for ${name}?`,
-        message: t`${name} will be signed out everywhere. Your own current session is never revoked.`,
+        message: t`${name} will be signed out everywhere.`,
         request: { "user-id": session.user.id },
       });
     },

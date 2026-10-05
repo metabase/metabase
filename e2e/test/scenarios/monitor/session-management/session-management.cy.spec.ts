@@ -33,10 +33,6 @@ describe("scenarios > monitor > session management", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    cy.intercept({
-      method: "GET",
-      pathname: "/api/ee/session-management",
-    }).as("listSessions");
     cy.intercept("POST", "/api/ee/session-management/revoke").as("revoke");
   });
 
@@ -79,10 +75,12 @@ describe("scenarios > monitor > session management", () => {
 
           cy.log("Each live session shows the auth method it was created with");
           visitSessions();
-          sessionRow(s.normalA).should("contain", "Robert Tableton");
-          sessionRow(s.normalA).should("contain", "Password");
-          sessionRow(s.jwt).should("contain", "Jay Doubleyoo");
-          sessionRow(s.jwt).should("contain", "JWT");
+          sessionRow(s.normalA)
+            .should("contain", "Robert Tableton")
+            .and("contain", "Password");
+          sessionRow(s.jwt)
+            .should("contain", "Jay Doubleyoo")
+            .and("contain", "JWT");
           sessionRow(s.ldap).should("contain", "LDAP");
           sessionRow(s.signedOut).should("not.exist");
 
@@ -90,8 +88,8 @@ describe("scenarios > monitor > session management", () => {
             "The admin narrows the list to SSO sessions and revokes the LDAP one",
           );
           cy.button("Show filters").click();
-          H.popover().findByText("JWT").click();
-          H.popover().findByText("LDAP").click();
+          H.popover().findByRole("button", { name: "JWT" }).click();
+          H.popover().findByRole("button", { name: "LDAP" }).click();
           H.popover().button("Apply").click();
           sessionRow(s.jwt).should("be.visible");
           sessionRow(s.ldap).should("be.visible");
@@ -135,6 +133,7 @@ describe("scenarios > monitor > session management", () => {
           sessionRow(s.nodataA).click();
           sessionSidebar().button("Revoke active sessions").click();
           confirmRevoke("Revoke all sessions for No Data Tableton?");
+          // no count: the other users' cached sessions H.restore() brings back are revoked too
           expectToast("Revoked");
           expectEnded(s.nodataA);
           expectEnded(s.nodataB);
@@ -159,6 +158,7 @@ describe("scenarios > monitor > session management", () => {
           cy.log("The admin revokes everyone else, and stays signed in");
           cy.button("Revoke all active sessions").click();
           confirmRevoke("Revoke all sessions?");
+          // no count: the other users' cached sessions H.restore() brings back are revoked too
           expectToast("Revoked");
           expectEnded(s.nocollection);
           expectEnded(s.jwt);
@@ -188,7 +188,7 @@ describe("scenarios > monitor > session management", () => {
           sessionRow(s.signedOut).should("contain", "Signed out");
 
           cy.button("Show filters").click();
-          H.popover().findByPlaceholderText("Any reason").click();
+          H.popover().findByRole("textbox", { name: "Reason" }).click();
           cy.findByRole("option", { name: "Revoked by admin" }).click();
           H.popover().button("Apply").click();
           sessionRow(s.signedOut).should("not.exist");
@@ -272,7 +272,6 @@ describe("scenarios > monitor > session management", () => {
         expectEnded(s.passwordChanged);
         expectEnded(s.supportAccess);
 
-        visitSessions();
         cy.findByTestId("sessions-tab-ended").click();
         sessionRow(s.loggedOut).should("contain", "Signed out");
         sessionRow(s.deactivated).should("contain", "User deactivated");
@@ -294,7 +293,7 @@ describe("scenarios > monitor > session management", () => {
 
         cy.log("Filtering by reason narrows the ended sessions");
         cy.button("Show filters").click();
-        H.popover().findByPlaceholderText("Any reason").click();
+        H.popover().findByRole("textbox", { name: "Reason" }).click();
         cy.findByRole("option", { name: "Password changed" }).click();
         H.popover().button("Apply").click();
         expectOnlyListed(s.passwordChanged);
@@ -306,7 +305,7 @@ describe("scenarios > monitor > session management", () => {
 
         cy.log("Filtering by auth method narrows them too");
         cy.button("Show filters").click();
-        H.popover().findByText("Support access").click();
+        H.popover().findByRole("button", { name: "Support access" }).click();
         H.popover().button("Apply").click();
         expectOnlyListed(s.supportAccess);
 
@@ -456,8 +455,13 @@ function expectEnded(session: TestSession) {
 }
 
 function visitSessions() {
+  // a fresh intercept per visit: a reused alias would be satisfied by a request from earlier in the test
+  cy.intercept({
+    method: "GET",
+    pathname: "/api/ee/session-management",
+  }).as("visitListSessions");
   cy.visit("/monitor/sessions");
-  cy.wait("@listSessions");
+  cy.wait("@visitListSessions");
 }
 
 function sessionRow(session: TestSession) {
@@ -469,7 +473,7 @@ function currentSessionRow() {
   return cy
     .findByTestId("sessions-table")
     .findByText("This session")
-    .closest("[data-testid^='session-row-']");
+    .closest("[role='row']");
 }
 
 function sessionSidebar() {

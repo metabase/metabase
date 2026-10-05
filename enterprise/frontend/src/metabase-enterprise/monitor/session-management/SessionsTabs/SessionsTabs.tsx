@@ -3,11 +3,11 @@ import { t } from "ttag";
 import { Icon, Tabs } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import type { SessionsTab, SessionsUrlState } from "../SessionsPage/types";
+import type { SessionsTab } from "../SessionsPage/types";
 
 type SessionsTabsProps = {
   tab: SessionsTab;
-  onChange: (patch: Partial<SessionsUrlState>) => void;
+  onChange: (tab: SessionsTab) => void;
 };
 
 type TabConfig = {
@@ -25,7 +25,7 @@ export const SessionsTabs = ({ tab, onChange }: SessionsTabsProps) => {
   const handleTabChange = (value: string | null) => {
     const next = tabs.find((config) => config.value === value);
     if (next !== undefined) {
-      onChange({ tab: next.value });
+      onChange(next.value);
     }
   };
 

@@ -11,8 +11,10 @@ import {
 } from "metabase/common/hooks/use-url-state";
 import { dayjs } from "metabase/dayjs";
 import {
+  type RevokeSessionsRequest,
   SESSION_END_REASONS,
   SESSION_PROVIDERS,
+  type Session,
   type SessionEndReason,
   type SessionListParams,
   type SessionProvider,
@@ -22,7 +24,7 @@ import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
   DEFAULT_TAB,
-  SORT_COLUMN_VALUES,
+  TAB_SORT_COLUMNS,
   TAB_STATUS,
 } from "./constants";
 import {
@@ -71,24 +73,27 @@ const parseEndReason = (param: QueryParam): SessionEndReason | null => {
 };
 
 export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
-  parse: (query) => ({
-    page: parsePage(query.page),
-    query: parseQuery(query.query),
-    tab: parseTab(query.tab),
-    provider: parseProviders(query.provider),
-    last_active: parseTimePreset(query.last_active),
-    ended: parseTimePreset(query.ended),
-    reason: parseEndReason(query.reason),
-    sort_column: parseSortColumn(
-      query.sort_column,
-      SORT_COLUMN_VALUES,
-      DEFAULT_SORT_COLUMN,
-    ),
-    sort_direction: parseSortDirection(
-      query.sort_direction,
-      DEFAULT_SORT_DIRECTION,
-    ),
-  }),
+  parse: (query) => {
+    const tab = parseTab(query.tab);
+    return {
+      page: parsePage(query.page),
+      query: parseQuery(query.query),
+      tab,
+      provider: parseProviders(query.provider),
+      last_active: parseTimePreset(query.last_active),
+      ended: parseTimePreset(query.ended),
+      reason: parseEndReason(query.reason),
+      sort_column: parseSortColumn(
+        query.sort_column,
+        TAB_SORT_COLUMNS[tab],
+        DEFAULT_SORT_COLUMN,
+      ),
+      sort_direction: parseSortDirection(
+        query.sort_direction,
+        DEFAULT_SORT_DIRECTION,
+      ),
+    };
+  },
   serialize: (state) => ({
     page: state.page === 0 ? undefined : String(state.page),
     query: state.query || undefined,
@@ -134,3 +139,30 @@ export const buildListParams = (
     "sort-direction": state.sort_direction,
   };
 };
+
+export const getTabChange = (
+  state: SessionsUrlState,
+  tab: SessionsTab,
+): Partial<SessionsUrlState> => {
+  const isSortShown = TAB_SORT_COLUMNS[tab].includes(state.sort_column);
+  return {
+    tab,
+    page: 0,
+    ...(isSortShown
+      ? {}
+      : {
+          sort_column: DEFAULT_SORT_COLUMN,
+          sort_direction: DEFAULT_SORT_DIRECTION,
+        }),
+  };
+};
+
+// Mirrors the endpoint: only live sessions other than the caller's are revoked, and every criterion has to hold
+export const isSessionRevokedBy = (
+  session: Session,
+  request: RevokeSessionsRequest,
+): boolean =>
+  session.status === "live" &&
+  !session.current &&
+  (request.ids === undefined || request.ids.includes(session.id)) &&
+  (request["user-id"] === undefined || request["user-id"] === session.user.id);

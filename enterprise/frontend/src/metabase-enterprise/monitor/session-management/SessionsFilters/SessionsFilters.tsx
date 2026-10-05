@@ -59,7 +59,7 @@ export const hasActiveFilters = (state: SessionsUrlState): boolean =>
     ? state.ended !== null || state.reason !== null
     : state.last_active !== null);
 
-const TIME_PRESET_COMBOBOX = {
+const FILTER_SELECT_COMBOBOX = {
   withinPortal: false,
   floatingStrategy: "fixed" as const,
   position: "bottom-start" as const,
@@ -126,9 +126,10 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
               label: getTimePresetLabel(preset),
             }))}
             value={draft.last_active}
+            aria-label={t`Last active`}
             placeholder={t`Any time`}
             clearable
-            comboboxProps={TIME_PRESET_COMBOBOX}
+            comboboxProps={FILTER_SELECT_COMBOBOX}
             onChange={handleLastActiveChange}
           />
         </FilterSection>
@@ -143,9 +144,10 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
               label: getTimePresetLabel(preset),
             }))}
             value={draft.ended}
+            aria-label={t`Ended`}
             placeholder={t`Any time`}
             clearable
-            comboboxProps={TIME_PRESET_COMBOBOX}
+            comboboxProps={FILTER_SELECT_COMBOBOX}
             onChange={handleEndedChange}
           />
         </FilterSection>
@@ -160,9 +162,10 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
               label: getEndReasonLabel(reason),
             }))}
             value={draft.reason}
+            aria-label={t`Reason`}
             placeholder={t`Any reason`}
             clearable
-            comboboxProps={TIME_PRESET_COMBOBOX}
+            comboboxProps={FILTER_SELECT_COMBOBOX}
             onChange={handleReasonChange}
           />
         </FilterSection>

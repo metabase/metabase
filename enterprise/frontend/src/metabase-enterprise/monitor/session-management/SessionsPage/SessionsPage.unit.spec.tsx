@@ -48,7 +48,7 @@ type SetupOpts = {
   listFails?: boolean;
   initialRoute?: string;
   revokeResponse?: RevokeSessionsResponse;
-  revokeFails?: boolean;
+  revokeError?: Parameters<typeof setupRevokeSessionsErrorEndpoint>[0];
 };
 
 const setup = ({
@@ -57,15 +57,15 @@ const setup = ({
   listFails = false,
   initialRoute = PATHNAME,
   revokeResponse = createMockRevokeSessionsResponse(),
-  revokeFails = false,
+  revokeError,
 }: SetupOpts = {}) => {
   if (listFails) {
     setupListSessionsErrorEndpoint();
   } else {
     setupListSessionsEndpoint(sessions, { total });
   }
-  if (revokeFails) {
-    setupRevokeSessionsErrorEndpoint();
+  if (revokeError) {
+    setupRevokeSessionsErrorEndpoint(revokeError);
   } else {
     setupRevokeSessionsEndpoint(revokeResponse);
   }
@@ -161,11 +161,17 @@ describe("SessionsPage", () => {
 
       expect(await screen.findByText("No active sessions")).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Revoke all active sessions" }),
-      ).toBeDisabled();
-      expect(
         screen.queryByText("Ended sessions are kept for 30 days."),
       ).not.toBeInTheDocument();
+    });
+
+    it("keeps revoke all available when the search matches nothing, since it ignores the search", async () => {
+      setup({ sessions: [], initialRoute: `${PATHNAME}?query=nobody` });
+
+      expect(await screen.findByText("No active sessions")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Revoke all active sessions" }),
+      ).toBeEnabled();
     });
 
     it("explains the empty ended tab, and how long ended sessions are kept", async () => {
@@ -205,6 +211,18 @@ describe("SessionsPage", () => {
       });
       expect(getLastListParams().get("offset")).toBe("0");
       expect(queryBulkActionBar()).not.toBeInTheDocument();
+    });
+
+    it("drops a sort by auth method when switching to the ended tab, which has no such column", async () => {
+      setup({ initialRoute: `${PATHNAME}?sort_column=provider` });
+      await screen.findByTestId("session-row-ann-session");
+
+      await userEvent.click(screen.getByTestId("sessions-tab-ended"));
+
+      await waitFor(() => {
+        expect(getLastListParams().get("status")).toBe("ended");
+      });
+      expect(getLastListParams().get("sort-column")).toBe("created_at");
     });
 
     it("sorts by a column header from the first page, dropping the selection", async () => {
@@ -355,6 +373,21 @@ describe("SessionsPage", () => {
       },
     );
 
+    it("re-requests the list after a revoke", async () => {
+      setup();
+      await screen.findByTestId("session-row-ann-session");
+      const listCalls = () =>
+        fetchMock.callHistory.calls("path:/api/ee/session-management").length;
+      const callsBefore = listCalls();
+
+      await clickRevokeAll();
+      await confirmRevoke();
+
+      await waitFor(() => {
+        expect(listCalls()).toBeGreaterThan(callsBefore);
+      });
+    });
+
     it("revokes nothing when the confirmation is cancelled", async () => {
       setup({ initialRoute: `${PATHNAME}/ann-session` });
 
@@ -396,10 +429,40 @@ describe("SessionsPage", () => {
       },
     );
 
+    it("stays open after revoking the user of the ended session it shows", async () => {
+      const ended = createMockSession({
+        id: "ended-session",
+        user: ANN_SESSION.user,
+        status: "ended",
+        end_reason: "logout",
+      });
+      const { router } = setup({
+        sessions: [ended],
+        initialRoute: `${PATHNAME}/ended-session?tab=ended`,
+      });
+
+      await clickSidebarButton("Revoke active sessions");
+      await confirmRevoke();
+
+      await waitFor(() => {
+        expect(getRevokeBodies()).toEqual([{ "user-id": 2 }]);
+      });
+      expect(router?.location.pathname).toBe(`${PATHNAME}/ended-session`);
+    });
+
+    it("shows the server's reason when a revoke is refused", async () => {
+      setup({ revokeError: { status: 400, message: "Too many sessions" } });
+
+      await clickRevokeAll();
+      await confirmRevoke();
+
+      expect(await screen.findByText("Too many sessions")).toBeInTheDocument();
+    });
+
     it("shows an error, and keeps the sidebar open, when the revoke fails", async () => {
       const { router } = setup({
         initialRoute: `${PATHNAME}/ann-session`,
-        revokeFails: true,
+        revokeError: {},
       });
 
       await clickSidebarButton("Revoke session");

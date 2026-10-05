@@ -47,9 +47,9 @@ const apply = async () =>
     within(await getPopover()).getByRole("button", { name: "Apply" }),
   );
 
-const choose = async (placeholder: string, option: string) => {
+const choose = async (filter: string, option: string) => {
   await userEvent.click(
-    within(await getPopover()).getByPlaceholderText(placeholder),
+    within(await getPopover()).getByRole("textbox", { name: filter }),
   );
   await userEvent.click(await screen.findByRole("option", { name: option }));
 };
@@ -119,7 +119,7 @@ describe("SessionsFilters", () => {
 
     await userEvent.click(within(await getPopover()).getByText("SAML"));
     await userEvent.click(within(await getPopover()).getByText("JWT"));
-    await choose("Any time", "Past day");
+    await choose("Last active", "Past day");
     await apply();
 
     expect(onChange).toHaveBeenCalledWith({
@@ -133,8 +133,8 @@ describe("SessionsFilters", () => {
     const { onChange } = setup(ENDED_TAB_STATE);
     await openFilters();
 
-    await choose("Any time", "Past week");
-    await choose("Any reason", "Revoked by admin");
+    await choose("Ended", "Past week");
+    await choose("Reason", "Revoked by admin");
     await apply();
 
     expect(onChange).toHaveBeenCalledWith({

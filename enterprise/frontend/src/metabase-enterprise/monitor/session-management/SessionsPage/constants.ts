@@ -18,8 +18,8 @@ export const TAB_STATUS: Record<SessionsTab, SessionStatusFilter> = {
 export const DEFAULT_SORT_COLUMN: SessionSortColumn = "created_at";
 export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
-export const SORT_COLUMN_VALUES: SessionSortColumn[] = [
-  "created_at",
-  "user_email",
-  "provider",
-];
+// The ended tab has no auth method column, so it can't sort by one
+export const TAB_SORT_COLUMNS: Record<SessionsTab, SessionSortColumn[]> = {
+  active: ["created_at", "user_email", "provider"],
+  ended: ["created_at", "user_email"],
+};

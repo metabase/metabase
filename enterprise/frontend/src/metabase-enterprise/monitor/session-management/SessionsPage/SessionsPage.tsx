@@ -22,7 +22,7 @@ import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
 import type { RevokeSessionsRequest, SessionId } from "metabase-types/api";
 
-import { SessionDetailSidebar } from "../SessionDetailSidebar";
+import { SessionDetailSidebar, useShownSession } from "../SessionDetailSidebar";
 import { SessionsFilters } from "../SessionsFilters";
 import { SessionsTable } from "../SessionsTable";
 import { SessionsTabs } from "../SessionsTabs";
@@ -31,11 +31,17 @@ import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
   PAGE_SIZE,
-  SORT_COLUMN_VALUES,
+  TAB_SORT_COLUMNS,
 } from "./constants";
 import type { RouteParams } from "./types";
 import { useSessionRevocation } from "./use-session-revocation";
-import { buildListParams, getTimePresetCutoff, urlStateConfig } from "./utils";
+import {
+  buildListParams,
+  getTabChange,
+  getTimePresetCutoff,
+  isSessionRevokedBy,
+  urlStateConfig,
+} from "./utils";
 
 export const SessionsPage = () => {
   usePageTitle(t`Session management`);
@@ -103,7 +109,9 @@ export const SessionsPage = () => {
         return;
       }
       const [first] = next;
-      const column = SORT_COLUMN_VALUES.find((value) => value === first.id);
+      const column = TAB_SORT_COLUMNS[urlState.tab].find(
+        (value) => value === first.id,
+      );
       if (column === undefined) {
         return;
       }
@@ -113,7 +121,7 @@ export const SessionsPage = () => {
         page: 0,
       });
     },
-    [patchUrlState],
+    [patchUrlState, urlState.tab],
   );
 
   const handleSearchChange = useCallback(
@@ -160,20 +168,18 @@ export const SessionsPage = () => {
     };
   }, [sessionId, sessions]);
 
+  const { session: shownSession } = useShownSession(sessionId, sessionFromPage);
+
   const handleRevoked = useCallback(
     (request: RevokeSessionsRequest) => {
       clearSelection();
-      // The caller's own session survives every revoke, and an id list only removes the sessions it names
-      const isShownSessionKept =
-        sessionFromPage?.current === true ||
-        (request.ids !== undefined &&
-          sessionId !== undefined &&
-          !request.ids.includes(sessionId));
-      if (sessionId !== undefined && !isShownSessionKept) {
+      const isShownSessionGone =
+        shownSession === undefined || isSessionRevokedBy(shownSession, request);
+      if (sessionId !== undefined && isShownSessionGone) {
         navigateToSession(undefined);
       }
     },
-    [clearSelection, navigateToSession, sessionFromPage, sessionId],
+    [clearSelection, navigateToSession, shownSession, sessionId],
   );
 
   const {
@@ -193,7 +199,7 @@ export const SessionsPage = () => {
 
           <SessionsTabs
             tab={urlState.tab}
-            onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
+            onChange={(tab) => patchUrlState(getTabChange(urlState, tab))}
           />
 
           {isEndedTab && (
@@ -211,7 +217,8 @@ export const SessionsPage = () => {
             />
             <SessionsFilters state={urlState} onChange={patchUrlState} />
             {!isEndedTab && (
-              <Button disabled={isRevoking || total === 0} onClick={revokeAll}>
+              // not tied to the listed total: revoking all ignores the search and filters
+              <Button disabled={isRevoking} onClick={revokeAll}>
                 {t`Revoke all active sessions`}
               </Button>
             )}
