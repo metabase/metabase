@@ -159,7 +159,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "data_studio_table_unpublished",
       });
-      H.DataStudio.nav().findByLabelText("Library").click();
+      H.DataStudio.nav().findByLabelText("Semantic layer").click();
 
       H.DataStudio.Library.libraryPage().within(() => {
         cy.findByText("Reviews").should("be.visible");
