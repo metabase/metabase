@@ -313,8 +313,6 @@ describe("scenarios > actions > table editing", () => {
 
       cy.wait("@updateTableData");
       dismissUndoToast("Successfully updated");
-      // The saved value renders at the picked wall-clock time, so the
-      // timezone offset survived the round trip.
       getEditableCell(TARGET_ROW_ID, "datetime").should(
         "have.text",
         `February ${day}, 2020, ${hour}:${minute} AM`,
@@ -689,7 +687,8 @@ function selectRowByText(text: string) {
 
 /**
  * Success toasts stack, so each one is dismissed before the next edit can
- * raise another.
+ * raise another. Inline edits update the cell optimistically, so the fresh
+ * toast is what proves the save succeeded.
  */
 function dismissUndoToast(message: string) {
   H.undoToast().within(() => {
