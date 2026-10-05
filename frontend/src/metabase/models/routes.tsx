@@ -1,6 +1,6 @@
 import { lazyModalRouteElement } from "metabase/common/components/ModalRoute";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
-import { loadLegacyActionCreator } from "metabase/querying/legacy-action-creator";
+import { loadActionCreator } from "metabase/querying/action-creator";
 import { Route, redirect } from "metabase/router";
 import {
   type ModalProps,
@@ -14,7 +14,7 @@ const actionCreatorModal = () =>
     import(
       /* webpackChunkName: "action-creator-modal" */ "./containers/ActionCreatorModal/ActionCreatorModal"
     ),
-    loadLegacyActionCreator(),
+    loadActionCreator(),
   ]).then(([{ default: ActionCreatorModal }]) => ActionCreatorModal);
 
 const modelDetailPage = () =>

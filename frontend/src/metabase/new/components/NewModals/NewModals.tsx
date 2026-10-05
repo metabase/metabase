@@ -8,7 +8,7 @@ import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { LegacyActionCreator } from "metabase/querying/legacy-action-creator";
+import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { ModalState } from "metabase/redux/store/modal";
@@ -101,7 +101,7 @@ export const NewModals = () => {
           withCloseButton={false}
           padding={0}
         >
-          <LegacyActionCreator
+          <ActionCreator
             onClose={handleModalClose}
             onSubmit={handleActionCreated}
           />

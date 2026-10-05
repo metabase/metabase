@@ -18,7 +18,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { LegacyActionCreator } from "../ActionCreator";
+import { ActionCreator } from "../ActionCreator";
 
 export const SITE_URL = "http://localhost:3000";
 
@@ -70,7 +70,7 @@ export async function setup({
   }
 
   renderWithProviders(
-    <LegacyActionCreator
+    <ActionCreator
       actionId={action?.id}
       modelId={model?.id}
       databaseId={database.id}

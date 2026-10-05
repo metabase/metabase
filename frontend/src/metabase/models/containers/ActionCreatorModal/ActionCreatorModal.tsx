@@ -4,7 +4,7 @@ import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useQuestionFromCard } from "metabase/metadata-store";
-import { LegacyActionCreator } from "metabase/querying/legacy-action-creator";
+import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
@@ -67,7 +67,7 @@ function ActionCreatorModal({
   }
 
   return (
-    <LegacyActionCreator
+    <ActionCreator
       actionId={actionId}
       modelId={modelId}
       databaseId={databaseId}

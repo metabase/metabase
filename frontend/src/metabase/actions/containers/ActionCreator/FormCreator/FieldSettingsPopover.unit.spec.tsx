@@ -4,7 +4,7 @@ import { useState } from "react";
 import { render, screen } from "__support__/ui";
 import type { FieldSettings } from "metabase-types/api";
 
-import { getDefaultFieldSettings } from "../../utils";
+import { getDefaultFieldSettings } from "../../../utils";
 
 import type { FieldSettingsPopoverProps } from "./FieldSettingsPopover";
 import { FieldSettingsPopover } from "./FieldSettingsPopover";

@@ -6,7 +6,7 @@ import { useListActionsQuery, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { LegacyActionCreator } from "metabase/querying/legacy-action-creator";
+import { ActionCreator } from "metabase/querying/action-creator";
 import {
   ActionIcon,
   Button,
@@ -157,7 +157,7 @@ function ModelActionPicker({
         withCloseButton={false}
         padding={0}
       >
-        <LegacyActionCreator
+        <ActionCreator
           modelId={model.id}
           databaseId={model.database_id}
           actionId={editingActionId}

@@ -19,7 +19,7 @@ import { ActionIcon, Icon, Switch, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
-import { isActionPublic, isSavedAction } from "../utils";
+import { isActionPublic, isSavedAction } from "../../utils";
 
 import {
   ActionSettingsContent,

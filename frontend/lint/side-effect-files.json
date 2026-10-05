@@ -88,7 +88,7 @@
     "frontend/src/embedding-sdk-bundle/test/CommonSdkStoryWrapper.tsx": "entry",
     "frontend/src/metabase/account/password/components/UserPasswordForm/UserPasswordForm.tsx": "self",
     "frontend/src/metabase/account/profile/components/UserProfileForm/UserProfileForm.tsx": "self",
-    "frontend/src/metabase/actions/legacy-action-creator/CreateActionForm/CreateActionForm.tsx": "self",
+    "frontend/src/metabase/actions/containers/ActionCreator/CreateActionForm/CreateActionForm.tsx": "self",
     "frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx": "self",
     "frontend/src/metabase/admin/performance/utils.tsx": "self",
     "frontend/src/metabase/admin/settings/auth/constants.ts": "self",

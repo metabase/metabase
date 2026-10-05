@@ -1,5 +1,5 @@
-import { ActionCreator as ActionCreatorContent } from "metabase/actions/legacy-action-creator/ActionCreator";
-import type { DataReferenceSlot } from "metabase/actions/legacy-action-creator/types";
+import { ActionCreator as ActionCreatorContent } from "metabase/actions/containers/ActionCreator/ActionCreator";
+import type { DataReferenceSlot } from "metabase/actions/containers/ActionCreator/types";
 import {
   skipToken,
   useGetActionQuery,
@@ -21,7 +21,7 @@ import {
   DataReferenceTriggerButton,
 } from "./InlineDataReference";
 
-export interface LegacyActionCreatorProps {
+export interface ActionCreatorProps {
   actionId?: WritebackActionId;
   modelId?: CardId;
   databaseId?: DatabaseId;
@@ -42,7 +42,7 @@ const DATA_REFERENCE: DataReferenceSlot = {
   Panel: DataReferenceInline,
 };
 
-export function LegacyActionCreator({
+export function ActionCreator({
   actionId,
   modelId,
   databaseId,
@@ -50,7 +50,7 @@ export function LegacyActionCreator({
   isRouted,
   onSubmit,
   onClose,
-}: LegacyActionCreatorProps) {
+}: ActionCreatorProps) {
   const { data: databases } = useListDatabasesQuery();
   const { data: model } = useGetCardQuery(
     modelId != null ? { id: modelId } : skipToken,

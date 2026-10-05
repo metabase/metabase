@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
-import { getDefaultFormSettings } from "../../utils";
+import { getDefaultFormSettings } from "../../../utils";
 import type { ActionCreatorUIProps } from "../types";
 
 import type { EditableActionParams, EditorBodyProps } from "./types";
