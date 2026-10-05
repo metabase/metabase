@@ -1,14 +1,17 @@
 import { t } from "ttag";
 
+import type { useGetIcon } from "metabase/hooks/use-icon";
 import { Ellipsified, type TreeTableColumnDef } from "metabase/ui";
 import type { ContentDiagnosticsDuplicatedFinding } from "metabase-types/api";
 
 import { getCommonColumns } from "../common-columns";
 import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 
-export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFinding>[] {
+export function getColumns(
+  getIcon: ReturnType<typeof useGetIcon>,
+): TreeTableColumnDef<ContentDiagnosticsDuplicatedFinding>[] {
   const { name, entityType, collectionName, createdBy, createdAt } =
-    getCommonColumns<ContentDiagnosticsDuplicatedFinding>();
+    getCommonColumns<ContentDiagnosticsDuplicatedFinding>(getIcon);
   const duplicateCountColumn: TreeTableColumnDef<ContentDiagnosticsDuplicatedFinding> =
     {
       id: "duplicate-count",

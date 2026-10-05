@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { useGetIcon } from "metabase/hooks/use-icon";
 import { Ellipsified, type TreeTableColumnDef } from "metabase/ui";
 import type {
   ContentDiagnosticsImbalancedFinding,
@@ -11,9 +12,10 @@ import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 
 export function getColumns(
   mode: ContentDiagnosticsImbalancedFindingType,
+  getIcon: ReturnType<typeof useGetIcon>,
 ): TreeTableColumnDef<ContentDiagnosticsImbalancedFinding>[] {
   const { name, entityType, collectionName, createdBy, createdAt } =
-    getCommonColumns<ContentDiagnosticsImbalancedFinding>();
+    getCommonColumns<ContentDiagnosticsImbalancedFinding>(getIcon);
   const contentCountColumn: TreeTableColumnDef<ContentDiagnosticsImbalancedFinding> =
     {
       id: "content-count",

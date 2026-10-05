@@ -323,9 +323,12 @@
           (mt/with-temp
             [:model/Collection {coll-id :id} {:name "Analytics"}
              :model/Card {card-a :id} {:collection_id coll-id :name nm :type :model
-                                       :creator_id (mt/user->id :rasta) :view_count 4}
-             :model/Card {card-b :id} {:collection_id coll-id :name nm :type :model :view_count 7}]
+                                       :creator_id (mt/user->id :rasta) :view_count 4 :display :table}
+             :model/Card {card-b :id} {:collection_id coll-id :name nm :type :model :view_count 7 :display :table}]
             (scan/scan!)
+            ;; Visualization display is live context, not frozen with the scan verdict.
+            (t2/update! :model/Card card-a {:display :bar})
+            (t2/update! :model/Card card-b {:display :line})
             (let [resp  (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/duplicated"
                                               :query prefix)
                   by-id (into {} (map (juxt (juxt :entity_type :entity_id) identity)) (:data resp))]
@@ -337,13 +340,15 @@
                 (is (= nm (:entity_display_name f)))
                 (testing "the flagged card carries its own type as a top-level card_type"
                   (is (= "model" (:card_type f))))
+                (testing "the finding carries the current visualization display without rescanning"
+                  (is (= "bar" (:display f))))
                 (testing "top-level duplicate_count + normalized_name in details"
                   (is (= 1 (:duplicate_count f)))
                   (is (= (u/lower-case-en nm) (get-in f [:details :normalized_name]))))
                 (testing "the flagged entity's own live view_count is hydrated into details"
                   (is (= 4 (get-in f [:details :view_count]))))
                 (testing "the peer hydrates with its card sub-kind and live view_count"
-                  (is (= [{:id card-b :name nm :entity_type "card" :card_type "model" :view_count 7}]
+                  (is (= [{:id card-b :name nm :entity_type "card" :card_type "model" :display "line" :view_count 7}]
                          (get-in f [:details :duplicate_entities]))))
                 (testing "the raw stored peer ids are not served"
                   (is (not (contains? (:details f) :duplicate_entity_ids))))

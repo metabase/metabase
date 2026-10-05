@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import type { useGetIcon } from "metabase/hooks/use-icon";
 import {
   Ellipsified,
   FixedSizeIcon,
@@ -11,10 +12,10 @@ import {
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
+import { DiagnosticsEntityIcon } from "./DiagnosticsEntityIcon";
 import { TOOLTIP_OPEN_DELAY_MS } from "./constants";
 import {
   getCollectionName,
-  getEntityIcon,
   getEntityName,
   getEntityTypeLabel,
   getUserName,
@@ -25,9 +26,9 @@ type CommonColumns<T extends ContentDiagnosticsBaseFinding> = Record<
   TreeTableColumnDef<T>
 >;
 
-export function getCommonColumns<
-  T extends ContentDiagnosticsBaseFinding,
->(): CommonColumns<T> {
+export function getCommonColumns<T extends ContentDiagnosticsBaseFinding>(
+  getIcon: ReturnType<typeof useGetIcon>,
+): CommonColumns<T> {
   return {
     name: {
       id: "name",
@@ -50,12 +51,10 @@ export function getCommonColumns<
       sortDescFirst: false,
       width: "auto",
       accessorFn: (finding) => getEntityTypeLabel(finding),
-      // Icon-only: the backend sorts by entity type regardless of locale, so
-      // the column must not display a translated label (GDGT-3309).
       cell: ({ row }) => (
-        <FixedSizeIcon
-          name={getEntityIcon(row.original)}
-          aria-label={getEntityTypeLabel(row.original)}
+        <DiagnosticsEntityIcon
+          entity={row.original}
+          getIcon={getIcon}
           mx="auto"
         />
       ),

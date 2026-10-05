@@ -406,6 +406,7 @@
              :model/Card           {slow-card :id} {:collection_id coll-id
                                                     :name          "Full Orders Export"
                                                     :type          :model
+                                                    :display       :table
                                                     :view_count    5
                                                     :creator_id    (mt/user->id :rasta)}
              :model/QueryExecution _ {:card_id slow-card :started_at (t/offset-date-time)
@@ -424,6 +425,7 @@
                   (is (= "Full Orders Export" (:entity_display_name f)))
                   (testing "the flagged card carries its own type as a top-level card_type"
                     (is (= "model" (:card_type f))))
+                  (is (= "table" (:display f)))
                   (is (= 25000 (:duration_ms f)))
                   (is (= 10000 (get-in f [:details :threshold_ms])))
                   (is (= coll-id (get-in f [:details :collection :id])))
@@ -442,7 +444,7 @@
                     (is (= 1 (count entities)))
                     (testing "each culprit carries its own live view_count alongside id/name/type"
                       (is (= {:id slow-card :name "Full Orders Export"
-                              :entity_type "card" :card_type "model" :view_count 5}
+                              :entity_type "card" :card_type "model" :display "table" :view_count 5}
                              (first entities))))))))))))))
 
 (deftest slow-api-transform-root-breadcrumb-test

@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useScrollToTop } from "metabase/common/hooks";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import {
   Card,
@@ -50,7 +51,8 @@ export function DuplicatedContentTable({
   onSortOptionsChange,
   onRowSelectionChange,
 }: DuplicatedContentTableProps) {
-  const columns = useMemo(() => getColumns(), []);
+  const getIcon = useGetIcon();
+  const columns = useMemo(() => getColumns(getIcon), [getIcon]);
   const { sortingState, onSortingChange } = useOptionalSortingState({
     sortOptions,
     columns: duplicatedContentConfig.sortColumns,

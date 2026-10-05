@@ -109,8 +109,8 @@
   method rather than going through the shared column path; its peer/candidate reads are explicit methods too."
   ;; card :context has no :type - the finding's own card_type is served from the finding row;
   ;; :peer keeps :type (+ the :card_schema it forces) for live peer hydration.
-  {:card      {:context   [:description :view_count]
-               :peer      [:view_count :type :card_schema]
+  {:card      {:context   [:description :view_count :display]
+               :peer      [:view_count :type :display :card_schema]
                :candidate [:card_schema]}
    :dashboard {:context   [:description :view_count]
                :peer      [:view_count]

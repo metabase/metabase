@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Link } from "metabase/router";
 import {
   ActionIcon,
@@ -23,11 +24,11 @@ import {
   trackContentDiagnosticsEntityOpened,
   trackContentDiagnosticsLocationOpened,
 } from "../../analytics";
+import { DiagnosticsEntityIcon } from "../DiagnosticsEntityIcon";
 import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 import type { ContentDiagnosticsTab } from "../types";
 import {
   getBreadcrumbLinks,
-  getEntityIcon,
   getEntityName,
   getEntityTypeLabel,
   getEntityUrl,
@@ -86,6 +87,7 @@ type SidebarHeaderProps = {
 };
 
 function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
+  const getIcon = useGetIcon();
   const entityUrl = getEntityUrl(finding);
   const viewLabel = getEntityViewLabel(finding);
   const trackEntityOpened = () =>
@@ -104,7 +106,7 @@ function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
       data-testid="content-diagnostics-sidebar-header"
     >
       <Group gap="sm" wrap="nowrap" align="center" miw={0}>
-        <FixedSizeIcon name={getEntityIcon(finding)} />
+        <DiagnosticsEntityIcon entity={finding} getIcon={getIcon} />
         <Anchor
           className={cx(S.wrap, S.titleLink)}
           component={ForwardRefLink}
