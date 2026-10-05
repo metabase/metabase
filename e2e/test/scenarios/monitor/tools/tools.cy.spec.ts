@@ -429,7 +429,7 @@ describe("scenarios > monitor > tools > logs", () => {
   }
 });
 
-describe("monitor > tools > erroring questions ", () => {
+describe("monitor > tools > erroring questions", () => {
   const TOOLS_ERRORS_URL = "/monitor/errors";
   // The filter is required but doesn't have a default value set
   const brokenQuestionDetails = {
@@ -481,82 +481,76 @@ describe("monitor > tools > erroring questions ", () => {
       });
   }
 
-  describe("when feature enabled", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    // Unjustified type cast. FIXME
+    H.createNativeQuestion(brokenQuestionDetails as NativeQuestionDetails, {
+      loadMetadata: true,
     });
 
-    describe("with the existing broken questions", () => {
-      beforeEach(() => {
-        // Unjustified type cast. FIXME
-        H.createNativeQuestion(brokenQuestionDetails as NativeQuestionDetails, {
-          loadMetadata: true,
-        });
+    cy.visit(TOOLS_ERRORS_URL);
+  });
 
-        cy.visit(TOOLS_ERRORS_URL);
-      });
+  it("should rerun, search and clear a broken question", () => {
+    cy.wait("@dataset");
 
-      it("should render correctly", () => {
-        cy.wait("@dataset");
+    // nothing selected -> the bulk action bar (and its button) is hidden
+    cy.button("Rerun selected").should("not.exist");
+    selectQuestion(brokenQuestionDetails.name);
 
-        // nothing selected -> the bulk action bar (and its button) is hidden
-        cy.button("Rerun selected").should("not.exist");
-        selectQuestion(brokenQuestionDetails.name);
+    cy.intercept("POST", "/api/dataset").as("rerunRefetch");
+    cy.button("Rerun selected").should("not.be.disabled").click();
 
-        cy.intercept("POST", "/api/dataset").as("rerunRefetch");
-        cy.button("Rerun selected").should("not.be.disabled").click();
+    cy.wait("@rerunRefetch");
+    cy.findByTestId("erroring-questions-table").should(
+      "have.attr",
+      "aria-busy",
+      "false",
+    );
 
-        cy.wait("@rerunRefetch");
-        cy.findByTestId("erroring-questions-table").should(
-          "have.attr",
-          "aria-busy",
-          "false",
-        );
+    // The question is still there because we didn't fix it
+    cy.findByTestId("erroring-questions-table")
+      .findByText(brokenQuestionDetails.name)
+      .should("be.visible");
+    // rerunning clears the selection, so the bulk action bar closes
+    cy.button("Rerun selected").should("not.exist");
 
-        // The question is still there because we didn't fix it
-        cy.findByTestId("erroring-questions-table")
-          .findByText(brokenQuestionDetails.name)
-          .should("be.visible");
-        // rerunning clears the selection, so the bulk action bar closes
-        cy.button("Rerun selected").should("not.exist");
+    cy.intercept("POST", "/api/dataset").as("searchRefetch");
+    cy.findByPlaceholderText(
+      "Search by question, error, database, or collection",
+    )
+      .should("be.enabled")
+      .type("foo");
 
-        cy.intercept("POST", "/api/dataset").as("searchRefetch");
-        cy.findByPlaceholderText(
-          "Search by question, error, database, or collection",
-        )
-          .should("be.enabled")
-          .type("foo");
+    cy.wait("@searchRefetch");
 
-        cy.wait("@searchRefetch");
+    cy.findByTestId("erroring-questions-table")
+      .findByText("No results")
+      .should("be.visible");
 
-        cy.findByTestId("erroring-questions-table")
-          .findByText("No results")
-          .should("be.visible");
+    cy.findByPlaceholderText(
+      "Search by question, error, database, or collection",
+    ).clear();
 
-        cy.findByPlaceholderText(
-          "Search by question, error, database, or collection",
-        ).clear();
+    fixQuestion(brokenQuestionDetails.name);
 
-        fixQuestion(brokenQuestionDetails.name);
+    cy.visit(TOOLS_ERRORS_URL);
 
-        cy.visit(TOOLS_ERRORS_URL);
+    selectQuestion(brokenQuestionDetails.name);
 
-        selectQuestion(brokenQuestionDetails.name);
+    cy.intercept("POST", "/api/dataset").as("fixedRerunRefetch");
+    cy.button("Rerun selected").should("not.be.disabled").click();
 
-        cy.intercept("POST", "/api/dataset").as("fixedRerunRefetch");
-        cy.button("Rerun selected").should("not.be.disabled").click();
+    cy.wait("@fixedRerunRefetch");
 
-        cy.wait("@fixedRerunRefetch");
-
-        cy.findByTestId("erroring-questions-table")
-          .findByText("No results")
-          .should("be.visible");
-      });
-    });
+    cy.findByTestId("erroring-questions-table")
+      .findByText("No results")
+      .should("be.visible");
   });
 });
 
