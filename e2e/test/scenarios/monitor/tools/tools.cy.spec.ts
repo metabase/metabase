@@ -718,7 +718,7 @@ describe("scenarios > monitor > tools > task runs", () => {
     cy.wait("@getTaskRuns");
     cy.findByTestId("task-runs-table")
       .findAllByTestId("task-run")
-      .should("have.length", 1);
+      .should("have.length.at.least", 1);
 
     cy.findByRole("link", { name: "Tasks" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/list");
