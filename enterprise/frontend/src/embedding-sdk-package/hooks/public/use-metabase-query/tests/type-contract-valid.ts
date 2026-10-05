@@ -29,7 +29,7 @@ const _queryLimit: 10 = revenueQuery.limit;
 
 const CreateOrder = defineAction({
   copiedActionId: 91,
-  action: TEST_SCHEMA.models.orders.actions.create,
+  action: TEST_SCHEMA.actions.createOrder,
 });
 
 const _copiedActionId: 91 = CreateOrder.copiedActionId;
@@ -37,7 +37,7 @@ const _sourceActionId: 51 = CreateOrder.action.id;
 
 // A definition is authored without a generated ID; synchronization writes one.
 const UpdateOrder = defineAction({
-  action: TEST_SCHEMA.models.orders.actions.update,
+  action: TEST_SCHEMA.actions.updateOrder,
 });
 
 // --------
@@ -70,10 +70,10 @@ function ValidTypeFixtures() {
 
   void createOrder.execute({ status: "shipped" });
 
-  const createdRow: RowValue | undefined =
-    createOrder.result?.["created-row"].ID;
+  const createdCount: number | undefined =
+    createOrder.result?.["rows-affected"];
 
-  void createdRow;
+  void createdCount;
 
   const updateOrder = useDataAppAction(UpdateOrder);
 
@@ -81,16 +81,16 @@ function ValidTypeFixtures() {
 
   // The SDK hook takes a plain definition object, and a `defineAction` export too.
   const sdkCreateOrder = useAction({
-    action: TEST_SCHEMA.models.orders.actions.create,
+    action: TEST_SCHEMA.actions.createOrder,
   });
 
   void sdkCreateOrder.execute({ status: "shipped" });
   void useAction(CreateOrder).execute({ status: "shipped" });
 
-  const updatedRows: readonly RowValue[] | undefined =
-    updateOrder.result?.["rows-updated"];
+  const updatedCount: number | undefined =
+    updateOrder.result?.["rows-affected"];
 
-  void updatedRows;
+  void updatedCount;
 
   // A raw id types nothing, so the generics still stand in for a definition.
   const rawAction = useAction<{ status: string }, "create">(51);

@@ -188,3 +188,9 @@
   :feature :none
   []
   (data-apps.db/data-app-group-ids))
+
+(defenterprise data-app-collection-ids
+  "The resource collections of the data apps, which hold the copies `sync-resources` makes."
+  :feature :none
+  []
+  (data-apps.db/resource-collection-ids))
