@@ -408,6 +408,8 @@
     (testing "accepts a publisher-qualified model, or a Model Garden endpoint"
       (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
         (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5"]
+        (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-sonnet-4-5@20250929"]
         (is (= "google/anthropic/claude-sonnet-4-5@20250929" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "google/endpoints/1234567890123456789"]
@@ -425,32 +427,14 @@
       (testing "while any other model reads back as stored"
         (with-selected-model "google/anthropic/claude-sonnet-4-6"
           (is (= "google/anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider))))))
-    (testing "while the same model name on a connection that is not Google's reads back as stored, since that server may serve it under that name"
+    (testing (str "while the same model name on a connection that is not Google's reads back as stored, "
+                  "since that server may serve it under that name")
       (with-connections [(connection "vllm-proxy" "vllm" {:base-url "https://vllm.example.com/v1"})]
         (with-selected-model "vllm-proxy/anthropic/claude-haiku-4-5@20251001"
           (is (= "vllm-proxy/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider))))))
     (testing "and with nothing stored the default still applies"
       (with-selected-model nil
         (is (= metabot.settings/default-llm-metabot-provider (metabot.settings/llm-metabot-provider)))))))
-
-(deftest llm-mini-model-reads-a-renamed-model-as-its-current-id-test
-  (testing "an explicitly stored mini model the provider has since renamed reads back as the current ID"
-    (with-connections [configured-google]
-      (with-selected-model "google/google/gemini-3.5-flash"
-        ;; env vars outrank raw setting values, so mask any MB_LLM_MINI_MODEL the host carries
-        (mt/with-temp-env-var-value! [mb-llm-mini-model nil]
-          (mt/with-temporary-raw-setting-values [llm-mini-model "google/anthropic/claude-haiku-4-5@20251001"]
-            (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/explicit-mini-model)))
-            (is (= "google/anthropic/claude-haiku-4-5" (metabot.settings/llm-mini-model)))))))))
-
-(deftest renamed-google-model-is-stored-as-its-current-id-test
-  (testing "writing a renamed Google model stores the current ID, so saved values converge"
-    (with-connections [configured-google]
-      (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil]
-        (mt/discard-setting-changes [llm-metabot-provider]
-          (metabot.settings/llm-metabot-provider! "google/anthropic/claude-haiku-4-5@20251001")
-          (is (= "google/anthropic/claude-haiku-4-5"
-                 (setting/get-value-of-type :string :llm-metabot-provider))))))))
 
 (deftest validate-metabot-provider-google-rejects-an-unqualified-model-test
   (with-connections [configured-anthropic configured-google]

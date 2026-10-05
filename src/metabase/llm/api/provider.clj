@@ -168,8 +168,8 @@
   comes from the registry, and the call is made against the model this connection is known to serve.
 
   `:model` is a request the type must honour or fail. `:proposed-model` is only our guess at what this connection
-  serves — the `:probed-model` an earlier probe recorded, or the catalog's first entry — which a type is free to
-  ignore.
+  serves — the model now serving the `:probed-model` an earlier probe recorded ([[llm.provider/current-model]]),
+  or the catalog's first entry — which a type is free to ignore.
 
   A connection that names its model in `:config` (an Azure deployment or a Google Model Garden endpoint, which no
   listing returns) makes the call for the same reason. That model is the one verified, whichever model the caller or
@@ -186,7 +186,8 @@
       (let [config           (llm.provider/with-field-defaults type (or config-override config))
             configured-model (llm.provider/connection-model type config)
             ;; Our best guess at the model to try if caller did not specify a model.
-            proposed-model   (or (:probed-model config) (:id (first fixed)))
+            proposed-model   (or (some->> (:probed-model config) (llm.provider/current-model type))
+                                 (:id (first fixed)))
             model            (or configured-model model (selected-model conn-key))
             config-models    (cond
                                configured-model [{:id           configured-model

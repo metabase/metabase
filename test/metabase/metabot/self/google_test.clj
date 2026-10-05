@@ -88,6 +88,17 @@
       "anthropic/claude-haiku-4-5@20251001"  200000
       "anthropic/claude-unknown"            nil)))
 
+(deftest ^:parallel anthropic-catalog-models-have-adapter-limits-test
+  (let [{:keys [models retired-models]} (llm.provider/provider-type "google")]
+    (testing "every Claude model Google offers has the Claude adapter's limits, so an undated ID needs an alias"
+      (doseq [model (map :id models)
+              :when (str/starts-with? model "anthropic/")]
+        (testing model
+          (is (some? (google/context-window-tokens model))))))
+    (testing "every retired model maps to a model the catalog offers"
+      (doseq [successor (vals retired-models)]
+        (is (contains? (set (map :id models)) successor))))))
+
 (deftest context-window-tokens-unqualified-test
   (testing "a model with no publisher qualifier is not treated as an Anthropic one"
     (is (nil? (google/context-window-tokens "claude-sonnet-4-6")))

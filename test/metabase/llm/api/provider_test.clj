@@ -1416,6 +1416,20 @@
                  (mt/user-http-request :crowberto :get 200 "llm/models")))
           (is (= "endpoints/1234567890123456789" (:model @listed-with))))))))
 
+(deftest models-propose-a-retired-probed-model-as-its-successor-test
+  (testing "a connection last probed with a model its provider has since retired proposes the model now serving it"
+    (let [config      {:oauth-access-token "ya29.token"
+                       :project-id         "my-project"
+                       :probed-model       "anthropic/claude-haiku-4-5@20251001"}
+          listed-with (atom nil)]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google" config)]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+          (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider opts]
+                                                                 (reset! listed-with opts)
+                                                                 {:models []})]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= "anthropic/claude-haiku-4-5" (:proposed-model @listed-with)))))))))
+
 (deftest models-isolate-per-connection-failures-test
   (mt/with-temporary-setting-values [llm-providers [(connection "failing-anthropic" "anthropic" {:api-key "sk-ant-bad"})
                                                     (connection "working-openai" "openai" {:api-key "sk-good"})]]

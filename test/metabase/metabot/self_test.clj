@@ -219,7 +219,8 @@
       (doseq [[model-ref url-part] [["azure/openai/gpt-4.1-mini"                 "/v1/responses"]
                                     ["azure/anthropic/claude-deployment"         "/v1/messages"]
                                     ["google/google/gemini-3.5-flash"            "projects/my-project/locations/global"]
-                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5:"]]]
+                                    ["google/anthropic/claude-haiku-4-5@20251001"
+                                     "/publishers/anthropic/models/claude-haiku-4-5:"]]]
         (testing model-ref
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity

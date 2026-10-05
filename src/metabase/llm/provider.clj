@@ -917,7 +917,7 @@
   "Every model id some provider type has retired, so a reference naming none of them needs no connection lookup."
   (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
 
-(defn- current-model
+(defn current-model
   "The model now serving `model` on provider type `type-name`.
 
   Its successor when the type retired it, otherwise `model` itself. Read from the raw registry, like
