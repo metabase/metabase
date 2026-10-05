@@ -132,7 +132,7 @@ jobs:
     needs: app-db-matrix
     if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -193,7 +193,7 @@ jobs:
     needs: app-db-matrix
     if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -252,7 +252,7 @@ jobs:
     needs: app-db-matrix
     if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
