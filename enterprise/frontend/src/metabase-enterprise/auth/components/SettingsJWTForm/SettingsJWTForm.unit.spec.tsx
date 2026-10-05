@@ -406,7 +406,9 @@ describe("SettingsJWTForm", () => {
     expect(saveButton).toBeDisabled();
 
     await userEvent.click(screen.getByRole("button", { name: /Set up key/ }));
-    await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create" }),
+    );
 
     await waitFor(() => expect(saveButton).toBeEnabled());
   });
@@ -654,7 +656,7 @@ describe("SettingsJWTForm", () => {
         await screen.findByRole("button", { name: /Set up key/ }),
       );
       await userEvent.click(
-        await screen.findByRole("button", { name: /Done/ }),
+        await screen.findByRole("button", { name: "Create" }),
       );
       await userEvent.click(
         screen.getByRole("button", { name: /Save and enable/ }),
