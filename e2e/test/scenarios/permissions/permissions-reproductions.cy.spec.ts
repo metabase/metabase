@@ -74,13 +74,11 @@ describe("issue 11994", () => {
     cy.signIn("readonly");
   });
 
-  it("does not show raw data toggle for pivot questions (metabase#11994)", () => {
+  it("does not show raw data toggle for pivot questions, nor offer to save combo question viewed in raw mode (metabase#11994)", () => {
     H.visitQuestion("@pivotQuestionId");
     cy.icon("table2").should("not.exist");
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
-  });
 
-  it("does not offer to save combo question viewed in raw mode (metabase#11994)", () => {
     H.visitQuestion("@comboQuestionId");
     cy.location().then((questionLocation) => {
       cy.icon("table2").click();

@@ -176,10 +176,12 @@ describe("UI elements that make no sense for users without data permissions (met
     H.restore();
   });
 
-  it("should not offer to save question to users with no data permissions", () => {
+  it("should let users without data permissions view but not save questions, and hide visualization settings when data is blocked", () => {
     cy.signIn("nodata");
 
     H.visitQuestion(ORDERS_QUESTION_ID);
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.contains("February 11, 2028, 9:40 PM"); // check that the data loads
 
     cy.findByTestId("viz-settings-button");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -210,9 +212,8 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.newButton().click();
     H.popover().should("contain", "Dashboard").and("not.contain", "Question");
-  });
 
-  it("should not show visualization or question settings to users with block data permissions", () => {
+    cy.log("blocked data permissions");
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     cy.updatePermissionsGraph({
@@ -327,7 +328,7 @@ describe("issue 22695 ", () => {
   });
 });
 
-describe("issue 22726", () => {
+describe("issues 22726 and 22727", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card").as("createCard");
@@ -343,36 +344,7 @@ describe("issue 22726", () => {
     cy.signIn("nocollection");
   });
 
-  it("should offer to duplicate a question in a view-only collection (metabase#22726)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    H.openQuestionActions();
-    H.popover().findByText("Duplicate").click();
-    cy.findByTextEnsureVisible(
-      `${H.getFullName(nocollection)}'s Personal Collection`,
-    );
-
-    cy.button("Duplicate").click();
-    cy.wait("@createCard");
-  });
-});
-
-describe("issue 22727", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    // Let's give all users a read only access to "Our analytics"
-    cy.updateCollectionGraph({
-      [ALL_USERS_GROUP]: { root: "read" },
-    });
-
-    cy.signIn("nocollection");
-  });
-
-  it("should not offer to save question in view only collection (metabase#22727, metabase#20717)", () => {
+  it("should not offer to save a question in a view-only collection, but should offer to duplicate it (metabase#22727, metabase#20717, metabase#22726)", () => {
     // It is important to start from a saved question and to alter it.
     // We already have a reproduction that makes sure "Our analytics" is not offered when starting from an ad-hoc question (table).
     H.visitQuestion(ORDERS_QUESTION_ID);
@@ -394,6 +366,18 @@ describe("issue 22727", () => {
         .invoke("text")
         .should("not.eq", "Our analytics");
     });
+
+    cy.log("metabase#22726");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openQuestionActions();
+    H.popover().findByText("Duplicate").click();
+    cy.findByTextEnsureVisible(
+      `${H.getFullName(nocollection)}'s Personal Collection`,
+    );
+
+    cy.button("Duplicate").click();
+    cy.wait("@createCard");
   });
 });
 

@@ -949,15 +949,6 @@ describe("scenarios > admin > permissions > view data > blocked (enforcement)", 
     H.activateToken("pro-self-hosted");
   });
 
-  it("should deny view access to a query builder question that makes use of a blocked table", () => {
-    assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
-    cy.visit(
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
-    );
-    removeCollectionGroupPermissions();
-    assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
-  });
-
   it("should deny view access to a query builder question that makes use of a blocked database", () => {
     assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
@@ -965,15 +956,17 @@ describe("scenarios > admin > permissions > view data > blocked (enforcement)", 
     assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
   });
 
-  it("should deny view access to any native question if the user has blocked view data for any table or database", () => {
+  it("should deny view access to query builder questions using a blocked table and to any native question", () => {
     H.createNativeQuestion({
       native: { query: "select 1" },
     }).then(({ body: { id: nativeQuestionId } }) => {
+      assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
       assertCollectionGroupUserHasAccess(nativeQuestionId, false);
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
       );
       removeCollectionGroupPermissions();
+      assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
       assertCollectionGroupHasNoAccess(nativeQuestionId, false);
     });
   });

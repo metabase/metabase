@@ -89,55 +89,13 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
   });
 });
 
-describe("scenarios > admin > permissions > create queries > no", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should allow setting create queries to 'no' in group view", () => {
-    cy.visit("/admin/permissions/data");
-    H.selectSidebarItem("data");
-
-    H.modifyPermission(
-      "Sample Database",
-      NATIVE_QUERIES_PERMISSION_INDEX,
-      "No",
-    );
-
-    H.assertPermissionTable([["Sample Database", "No"]]);
-
-    cy.button("Save changes").click();
-
-    H.modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.button("Yes").click();
-    });
-
-    H.assertPermissionTable([["Sample Database", "No"]]);
-
-    cy.findByTextEnsureVisible("Sample Database").click();
-
-    H.assertPermissionTable([
-      ["Accounts", "No"],
-      ["Analytic Events", "No"],
-      ["Feedback", "No"],
-      ["Invoices", "No"],
-      ["Orders", "No"],
-      ["People", "No"],
-      ["Products", "No"],
-      ["Reviews", "No"],
-    ]);
-  });
-});
-
 describe("scenarios > admin > permissions > create queries > query builder and native", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("should allow setting create queries to 'query builder and native' in group view", () => {
+  it("should allow setting create queries to 'query builder and native' and 'no' in group view", () => {
     cy.visit("/admin/permissions");
     H.selectSidebarItem("collection");
 
@@ -213,7 +171,33 @@ describe("scenarios > admin > permissions > create queries > query builder and n
       "No",
     );
 
+    H.assertPermissionTable([["Sample Database", "No"]]);
+
     cy.button("Refresh the page").should("not.exist");
+
+    cy.button("Save changes").click();
+
+    H.modal().within(() => {
+      cy.findByText("Save permissions?");
+      cy.button("Yes").click();
+    });
+
+    H.assertPermissionTable([["Sample Database", "No"]]);
+
+    cy.findByTextEnsureVisible("Sample Database").click();
+
+    H.assertPermissionTable([
+      ["Accounts", "No"],
+      ["Analytic Events", "No"],
+      ["Feedback", "No"],
+      ["Invoices", "No"],
+      ["Orders", "No"],
+      ["People", "No"],
+      ["Products", "No"],
+      ["Reviews", "No"],
+    ]);
+
+    H.selectSidebarItem("data");
 
     // User should have the option to change permissions back to query builder and native at the database level
     H.modifyPermission(

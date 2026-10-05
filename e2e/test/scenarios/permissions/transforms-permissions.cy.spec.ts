@@ -107,19 +107,12 @@ describe(
         H.setUserAsAnalyst(NORMAL_USER_ID);
       });
 
-      it("allows user to view transforms list page", () => {
+      it("allows user to view transforms list page and create a new transform via UI", () => {
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
 
         H.DataStudio.Transforms.list().should("be.visible");
-        cy.button("Create a transform").should("be.visible");
-      });
-
-      it("allows user to create a new transform via UI", () => {
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/transforms");
-
-        cy.button("Create a transform").click();
+        cy.button("Create a transform").should("be.visible").click();
         H.popover().findByText("Query builder").click();
 
         H.miniPicker().within(() => {
@@ -269,7 +262,7 @@ describe(
         });
       });
 
-      it("denies user from creating transforms via API", () => {
+      it("denies user from creating and running transforms via API", () => {
         cy.signInAsNormalUser();
 
         H.getTableId({ databaseId: WRITABLE_DB_ID, name: SOURCE_TABLE }).then(
@@ -300,9 +293,7 @@ describe(
             });
           },
         );
-      });
 
-      it("denies user from running transforms via API", () => {
         cy.signInAsAdmin();
         H.createMbqlTransform({
           sourceTable: SOURCE_TABLE,

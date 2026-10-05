@@ -7,13 +7,6 @@ const PG_DB_ID = 2;
 
 describe("impersonated permission", { tags: "@external" }, () => {
   describe("admins", () => {
-    beforeEach(() => {
-      H.restore("postgres-12");
-      H.createTestRoles({ type: "postgres" });
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-    });
-
     describe("impersonated users", () => {
       const setImpersonatedPermission = () => {
         cy.updatePermissionsGraph(

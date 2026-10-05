@@ -126,6 +126,18 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         ["readonly", "View"],
       ]);
 
+      cy.log("Show selected option for the collection with children");
+      H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
+      H.assertPermissionOptions(["Curate", "View", "No access"]);
+
+      H.selectSidebarItem("Third collection");
+      H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
+      H.assertPermissionOptions(["Curate", "View"]);
+
+      cy.realPress("Escape");
+      H.popover().should("not.exist");
+      H.selectSidebarItem("Second collection");
+
       H.modifyPermission(
         "All Users",
         COLLECTION_ACCESS_PERMISSION_INDEX,
@@ -242,25 +254,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       ["nosql", "No access"],
       ["readonly", "View"],
     ]);
-  });
-
-  it("show selected option for the collection with children", () => {
-    cy.visit("/admin/permissions/collections");
-
-    const collections = ["Our analytics", "First collection"];
-    H.assertSidebarItems(collections);
-
-    H.selectSidebarItem("First collection");
-    H.assertSidebarItems([...collections, "Second collection"]);
-
-    H.selectSidebarItem("Second collection");
-    H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
-    H.assertPermissionOptions(["Curate", "View", "No access"]);
-
-    H.selectSidebarItem("Third collection");
-    H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
-
-    H.assertPermissionOptions(["Curate", "View"]);
   });
 
   context("data permissions", () => {
@@ -513,6 +506,22 @@ describe("scenarios > admin > permissions", () => {
 
     cy.get("@permissionsHelpContent").within(() => {
       cy.findByText("Data permissions");
+    });
+
+    // Application permissions
+    cy.visit("/admin/permissions/application");
+    cy.get("main").within(() => {
+      cy.findByText("Permissions help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference").within(() => {
+      cy.findAllByText("Applications permissions");
+
+      cy.findByText(
+        "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.",
+      );
+      cy.findByLabelText("Close").click();
     });
   });
 

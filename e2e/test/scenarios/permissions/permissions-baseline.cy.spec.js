@@ -16,13 +16,15 @@ describe("scenarios > permissions", () => {
     "/admin",
   ];
 
-  for (const path of PATHS) {
-    it(`should display the permissions screen on ${path}`, () => {
-      cy.signIn("none");
+  it("should display the permissions screen on pages the user can't access", () => {
+    cy.signIn("none");
+
+    PATHS.forEach((path) => {
+      cy.log(path);
       cy.visit(path);
       checkUnauthorized();
     });
-  }
+  });
 
   it("should not allow to run adhoc native questions without permissions", () => {
     cy.signIn("none");
@@ -42,13 +44,6 @@ describe("scenarios > permissions", () => {
     );
 
     cy.findAllByLabelText("Refresh").should("be.disabled");
-  });
-
-  it("should let a user with no data permissions view questions", () => {
-    cy.signIn("nodata");
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("February 11, 2028, 9:40 PM"); // check that the data loads
   });
 });
 

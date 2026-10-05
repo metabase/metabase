@@ -22,20 +22,33 @@ describe("scenarios > admin > permissions > application", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("shows permissions help", () => {
-    cy.visit("/admin/permissions/application");
-    cy.get("main").within(() => {
-      cy.findByText("Permissions help").as("permissionHelpButton").click();
-      cy.get("@permissionHelpButton").should("not.exist");
-    });
+  describe("default permissions", () => {
+    it("gives ability to create dashboard subscriptions and question alerts, but not to access monitoring tools", () => {
+      H.setupSMTP();
+      cy.signInAsNormalUser();
 
-    cy.findByLabelText("Permissions help reference").within(() => {
-      cy.findAllByText("Applications permissions");
+      cy.log("Set up a dashboard subscription");
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.toggleDashboardSubscriptionsSidebar();
+      H.sidebar().findByText("Email this dashboard").should("exist");
 
-      cy.findByText(
-        "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.",
-      );
-      cy.findByLabelText("Close").click();
+      cy.log("Create a question alert");
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+      H.modal().findByText("New alert").should("be.visible");
+
+      cy.log("Monitoring tools are not accessible");
+      cy.visit("/");
+      H.getProfileLink().click();
+
+      H.popover().findByText(adminAppLinkText).should("not.exist");
+
+      cy.visit("/monitor/errors");
+      H.main().findByText("Sorry, you don’t have permission to see that.");
+
+      cy.visit("/monitor");
+      H.main().findByText("Sorry, you don’t have permission to see that.");
     });
   });
 
@@ -76,24 +89,6 @@ describe("scenarios > admin > permissions > application", () => {
         cy.findByTestId("notifications-list").within(() => {
           cy.icon("close").should("not.exist");
         });
-      });
-    });
-
-    describe("granted", () => {
-      it("gives ability to create dashboard subscriptions and question alerts", () => {
-        H.setupSMTP();
-        cy.signInAsNormalUser();
-
-        cy.log("Set up a dashboard subscription");
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.toggleDashboardSubscriptionsSidebar();
-        H.sidebar().findByText("Email this dashboard").should("exist");
-
-        cy.log("Create a question alert");
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        cy.findByLabelText("Move, trash, and more…").click();
-        H.popover().findByText("Create an alert").click();
-        H.modal().findByText("New alert").should("be.visible");
       });
     });
   });
@@ -138,22 +133,6 @@ describe("scenarios > admin > permissions > application", () => {
         cy.findByTestId("monitor-nav").findByText("Erroring questions").click();
         cy.location("pathname").should("eq", "/monitor/errors");
         cy.findByTestId("monitor-main").findByText("Erroring questions");
-      });
-    });
-
-    describe("revoked", () => {
-      it("does not allow accessing admin tools for non-admins", () => {
-        cy.signInAsNormalUser();
-        cy.visit("/");
-        H.getProfileLink().click();
-
-        H.popover().findByText(adminAppLinkText).should("not.exist");
-
-        cy.visit("/monitor/errors");
-        H.main().findByText("Sorry, you don’t have permission to see that.");
-
-        cy.visit("/monitor");
-        H.main().findByText("Sorry, you don’t have permission to see that.");
       });
     });
   });
