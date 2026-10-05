@@ -74,6 +74,7 @@ type QueryEditorBodyProps = {
   onOpenModal: (type: QueryModalType) => void;
   editorHeight?: number;
   hideRunButton?: boolean;
+  hidePreview?: boolean;
   topBarInnerContent?: ReactNode;
   availableHeight?: number;
 };
@@ -111,6 +112,7 @@ export function QueryEditorBody({
   onOpenModal,
   editorHeight: editorHeightOverride,
   hideRunButton,
+  hidePreview,
   topBarInnerContent,
   availableHeight,
 }: QueryEditorBodyProps) {
@@ -167,7 +169,7 @@ export function QueryEditorBody({
     return (
       <NativeQueryEditor
         className={cx(S.nativeQueryEditor, {
-          [S.readOnly]: readOnly,
+          [S.fullHeight]: readOnly || hidePreview,
         })}
         availableHeight={availableHeight}
         question={question}

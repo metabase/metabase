@@ -138,6 +138,7 @@ export function QueryEditor({
             onChangeNativeEditorSelection={setSelectionRange}
             editorHeight={uiOptions?.editorHeight}
             hideRunButton={uiOptions?.hideRunButton}
+            hidePreview={uiOptions?.hidePreview}
             onBlur={onBlur}
             topBarInnerContent={topBarInnerContent}
             extraButton={extraEditorButton}
