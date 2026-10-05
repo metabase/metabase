@@ -152,6 +152,19 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         H.popover().findByText(value).click();
       },
     });
+
+    cy.log("chevron icons are aligned in temporal unit parameter sidebar");
+    editFilter(NO_DEFAULT_NON_REQUIRED);
+    H.dashboardParameterSidebar()
+      .findAllByLabelText("chevrondown icon")
+      .should("have.length", 2)
+      .then(([$firstChevron, $secondChevron]) => {
+        const firstRect = $firstChevron.getBoundingClientRect();
+        const secondRect = $secondChevron.getBoundingClientRect();
+
+        expect(firstRect.left, "left").to.eq(secondRect.left);
+        expect(firstRect.right, "right").to.eq(secondRect.right);
+      });
   });
 
   it("time parameters", () => {
@@ -638,37 +651,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         H.popover().button("Update filter").click();
       },
     });
-  });
-
-  it("chevron icons are aligned in temporal unit parameter sidebar", () => {
-    createDashboardWithParameters(
-      ORDERS_COUNT_OVER_TIME,
-      ORDERS_CREATED_AT_FIELD,
-      [
-        {
-          name: "Time grouping",
-          slug: "unit-of-time",
-          id: "fed1b910",
-          type: "temporal-unit",
-          sectionId: "temporal-unit",
-        },
-      ],
-    );
-    H.editDashboard();
-    editFilter("Time grouping");
-
-    H.dashboardParameterSidebar()
-      .findAllByLabelText("chevrondown icon")
-      .then(([$firstChevron, ...$otherChevrons]) => {
-        const firstRect = $firstChevron.getBoundingClientRect();
-
-        for (const $chevron of $otherChevrons) {
-          const rect = $chevron.getBoundingClientRect();
-
-          expect(firstRect.left, "left").to.eq(rect.left);
-          expect(firstRect.right, "right").to.eq(rect.right);
-        }
-      });
   });
 });
 
