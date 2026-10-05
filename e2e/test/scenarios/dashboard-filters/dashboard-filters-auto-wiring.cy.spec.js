@@ -188,8 +188,7 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should dismiss auto-wire toasts on timeout, restarting the 12s timeout for a second suggestion toast", () => {
-      // The auto-wiring undo toasts use the same id, a bug in the undo logic caused the second toast to be dismissed by the
-      // timeout set by the first. See https://github.com/metabase/metabase/pull/35461#pullrequestreview-1731776862
+      // A second auto-wiring suggestion toast must not be dismissed by the timeout set for the first one.
       const cardTemplate = {
         card_id: ORDERS_BY_YEAR_QUESTION_ID,
         row: 0,
