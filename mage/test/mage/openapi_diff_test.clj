@@ -300,7 +300,7 @@
       (is (re-find #"POST /api/x" (with-out-str (openapi-diff/print-diff d :additive))))
       (is (re-find #"POST /api/x" (with-out-str (openapi-diff/print-grouped d :additive)))))))
 
-;; ---- review findings 1-5: tests supplied by the reviewer, verbatim ----
+;; ---- direction: arrays, nullability, requiredness, ref chains ----
 
 (deftest response-array-items-are-compared-as-output-test
   (let [resp (fn [props] (op :response {"type" "array" "items" (obj props)}))
@@ -339,7 +339,7 @@
       (is (breaking? (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a" "b"]})})
                      (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a"]})}))))))
 
-;; ---- third review: tests supplied by the reviewer, verbatim ----
+;; ---- unions and nullable arrays ----
 
 (deftest removed-union-variant-is-breaking-test
   (testing "a request body that stops accepting one variant of a oneOf requires more"
@@ -353,3 +353,162 @@
                                                              {"type" "null"}]}})))]
       (is (breaking? (spec {"/api/x" {"get" (resp {"x" {"type" "string"} "y" {"type" "string"}})}})
                      (spec {"/api/x" {"get" (resp {"x" {"type" "string"}})}}))))))
+
+;; ---- keywords beyond type, enum, and properties ----
+
+(deftest tightened-bound-is-breaking-test
+  (testing "a request field that gains a bound or a narrower map value requires more"
+    (doseq [[label old-field new-field]
+            [[":int -> ms/PositiveInt" {"type" "integer"} {"type" "integer" "minimum" 1}]
+             [":string -> ms/NonBlankString" {"type" "string"} {"type" "string" "minLength" 1}]
+             ["map-of values narrowed"
+              {"type" "object" "additionalProperties" {"type" "string"}}
+              {"type" "object" "additionalProperties" {"type" "integer"}}]]]
+      (is (body-change-breaking? (obj {"a" old-field}) (obj {"a" new-field})) label))))
+
+(deftest loosened-bound-is-additive-test
+  (testing "the reverse of each tightening requires less of the caller"
+    (doseq [[label old-field new-field]
+            [["minimum dropped" {"type" "integer" "minimum" 1} {"type" "integer"}]
+             ["maxLength raised" {"type" "string" "maxLength" 10} {"type" "string" "maxLength" 20}]
+             ["pattern dropped" {"type" "string" "pattern" "^a"} {"type" "string"}]]]
+      (is (not (body-change-breaking? (obj {"a" old-field}) (obj {"a" new-field}))) label)))
+  (testing "a response bound that tightens provides a narrower set of values"
+    (is (not (breaking? (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "integer"}}))}})
+                        (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "integer" "minimum" 1}}))}}))))))
+
+(deftest nullable-enum-is-compared-test
+  (let [nullable-enum (fn [vs] (obj {"f" {"oneOf" [{"type" "string" "enum" vs} {"type" "null"}]}}))]
+    (testing "a nullable request enum that loses a value requires more"
+      (is (body-change-breaking? (nullable-enum ["a" "b"]) (nullable-enum ["a"]))))
+    (testing "a nullable request enum that gains a value requires less"
+      (is (not (body-change-breaking? (nullable-enum ["a"]) (nullable-enum ["a" "b"])))))
+    (testing "a nullable response enum that gains a value can break a client's switch"
+      (is (breaking? (spec {"/api/x" {"get" (op :response (nullable-enum ["a"]))}})
+                     (spec {"/api/x" {"get" (op :response (nullable-enum ["a" "b"]))}}))))))
+
+(deftest response-map-of-values-test
+  (let [resp-spec (fn [r] (spec {"/api/x" {"get" (op :response r)}}))
+        setting   (fn [props req] {"type" "object" "additionalProperties" (obj props req)})
+        old       (obj {"settings" (setting {"enabled" {"type" "boolean"}
+                                             "type" {"enum" ["error" "warning"] "type" "string"}}
+                                            ["enabled" "type"])} ["settings"])]
+    (testing "map-of value drops a required field"
+      (let [new (obj {"settings" (setting {"type" {"enum" ["error" "warning"] "type" "string"}} ["type"])} ["settings"])]
+        (is (breaking? (resp-spec old) (resp-spec new)))))
+    (testing "map-of value enum widened"
+      (let [new (obj {"settings" (setting {"enabled" {"type" "boolean"}
+                                           "type" {"enum" ["error" "warning" "info"] "type" "string"}}
+                                          ["enabled" "type"])} ["settings"])]
+        (is (breaking? (resp-spec old) (resp-spec new)))))
+    (testing "nullable map-of value type string -> integer"
+      (let [o (obj {"attributes" {"oneOf" [{"additionalProperties" {"type" "string"} "type" "object"} {"type" "null"}]}} ["attributes"])
+            n (obj {"attributes" {"oneOf" [{"additionalProperties" {"type" "integer"} "type" "object"} {"type" "null"}]}} ["attributes"])]
+        (is (breaking? (resp-spec o) (resp-spec n)))))))
+
+(deftest allof-is-compared-test
+  (testing "a request body wrapped in allOf (Malli :and) that gains a required field requires more"
+    (is (body-change-breaking? {"allOf" [(obj {"a" {"type" "string"}})]}
+                               {"allOf" [(obj {"a" {"type" "string"} "req" {"type" "string"}} ["req"])]})))
+  (testing "a request field under allOf that changes string -> integer requires more"
+    (is (body-change-breaking? (obj {"f" {"allOf" [{"type" "string"}]}})
+                               (obj {"f" {"allOf" [{"type" "integer"}]}}))))
+  (testing "a request body under allOf that gains an optional field requires less"
+    (is (not (body-change-breaking? {"allOf" [(obj {"a" {"type" "string"}})]}
+                                    {"allOf" [(obj {"a" {"type" "string"} "b" {"type" "string"}})]}))))
+  (testing "a response under allOf that loses a field provides less"
+    (is (breaking? (spec {"/api/x" {"get" (op :response {"allOf" [(obj {"a" {"type" "string"} "b" {"type" "string"}})]})}})
+                   (spec {"/api/x" {"get" (op :response {"allOf" [(obj {"a" {"type" "string"}})]})}})))))
+
+(deftest tuple-element-narrowed-is-breaking-test
+  (is (body-change-breaking? (obj {"t" {"type" "array" "prefixItems" [{"const" "x"} {"type" "string"}]}})
+                             (obj {"t" {"type" "array" "prefixItems" [{"const" "x"} {"type" "integer"}]}}))))
+
+(deftest unmodeled-keyword-change-is-breaking-test
+  (testing "a change to a keyword the tool does not model is ranked breaking, not hidden"
+    (is (body-change-breaking? (obj {"a" {"type" "array" "contains" {"type" "string"}}})
+                               (obj {"a" {"type" "array" "contains" {"type" "integer"}}})))))
+
+(deftest union-variant-edits-are-directional-test
+  (let [a  (obj {"kind" {"const" "a"} "x" {"type" "string"}} ["kind"])
+        a+ (obj {"kind" {"const" "a"} "x" {"type" "string"} "z" {"type" "string"}} ["kind"])
+        b  (obj {"kind" {"const" "b"} "y" {"type" "integer"}} ["kind"])]
+    (testing "a request variant that gains an optional field requires less"
+      (is (not (body-change-breaking? {"oneOf" [a b]} {"oneOf" [a+ b]}))))
+    (testing "a request variant that loses a field requires more"
+      (is (body-change-breaking? {"oneOf" [a+ b]} {"oneOf" [a b]})))))
+
+;; ---- response structure ----
+
+(deftest response-nullable-array-plus-items-test
+  (let [resp-spec (fn [r] (spec {"/api/x" {"get" (op :response r)}}))]
+    (testing "nullable array becomes non-null AND items drop a field"
+      (let [o {"oneOf" [{"type" "array" "items" (obj {"id" {"type" "integer"} "name" {"type" "string"}} ["id"])} {"type" "null"}]}
+            n {"type" "array" "items" (obj {"id" {"type" "integer"}} ["id"])}]
+        (is (breaking? (resp-spec o) (resp-spec n)))))
+    (testing "field removed at depth 8"
+      (let [nest (fn [leaf] (reduce (fn [acc k] (obj {k acc} [k])) leaf (map #(str "l" %) (range 8))))
+            o (nest (obj {"a" {"type" "string"} "b" {"type" "string"}}))
+            n (nest (obj {"a" {"type" "string"}}))]
+        (is (breaking? (resp-spec o) (resp-spec n)))))))
+
+(deftest response-object-becomes-opaque-test
+  (is (breaking? (spec {"/api/x" {"get" (op :response (obj {"id" {"type" "integer"}} ["id"]))}})
+                 (spec {"/api/x" {"get" (op :response {"type" "object"})}}))))
+
+(deftest response-schema-removed-is-breaking-test
+  (is (breaking? (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "string"}}))}})
+                 (spec {"/api/x" {"get" (op)}}))))
+
+(deftest nullable-object-field-closed-is-breaking-test
+  (testing "a nullable request object field that starts rejecting undeclared keys requires more"
+    (let [o (obj {"x" {"type" "string"}})]
+      (is (body-change-breaking? (obj {"a" {"oneOf" [o {"type" "null"}]}})
+                                 (obj {"a" {"oneOf" [(assoc o "additionalProperties" false) {"type" "null"}]}}))))))
+
+(deftest param-schema-severity-test
+  (let [p (fn [schema] (op :params [{"in" "query" "name" "q" "required" false "schema" schema}]))]
+    (testing "a query param enum narrowed requires more"
+      (is (breaking? (spec {"/api/x" {"get" (p {"enum" ["a" "b" "c"]})}})
+                     (spec {"/api/x" {"get" (p {"enum" ["a"]})}}))))
+    (testing "a query param enum widened requires less"
+      (is (not (breaking? (spec {"/api/x" {"get" (p {"enum" ["a"]})}})
+                          (spec {"/api/x" {"get" (p {"enum" ["a" "b"]})}})))))
+    (testing "a free string param becoming an enum requires more"
+      (is (breaking? (spec {"/api/x" {"get" (p {"type" "string"})}})
+                     (spec {"/api/x" {"get" (p {"enum" ["a"]})}}))))))
+
+;; ---- documentation and rendering ----
+
+(deftest nested-description-change-is-doc-only-test
+  (testing "rewording a nested field's description is not a schema change"
+    (let [d (openapi-diff/diff
+             (spec {"/api/x" {"post" (op :body (obj {"a" {"type" "string" "description" "Old."}}))}})
+             (spec {"/api/x" {"post" (op :body (obj {"a" {"type" "string" "description" "New."}}))}}))]
+      (is (= [:doc-only] (map :severity (:changed d))))))
+  (testing "a field literally named description is still compared"
+    (is (body-change-breaking? (obj {"description" {"type" "string"}}) (obj {})))))
+
+(deftest distinct-leaf-changes-stay-distinct-when-grouped-test
+  (testing "two different changes to the same field on two endpoints are two groups"
+    (let [body     (fn [field] (op :body (obj {"a" field})))
+          old-spec (spec {"/api/p" {"post" (body {"type" "integer" "minimum" 1})}
+                          "/api/q" {"post" (body {"type" "integer" "maximum" 10})}})
+          new-spec (spec {"/api/p" {"post" (body {"type" "integer"})}
+                          "/api/q" {"post" (body {"type" "integer"})}})
+          groups   (#'openapi-diff/grouped-findings (:changed (openapi-diff/diff old-spec new-spec)))]
+      (is (= 2 (count groups))))))
+
+(deftest truncated-brief-names-the-change-test
+  (let [models (fn [vs] [{"in" "query" "name" "models" "required" false
+                          "schema" {"oneOf" [{"type" "array" "items" {"type" "string" "enum" vs}} {"type" "null"}]}}])
+        old    ["dashboard" "table" "dataset" "no_models" "timeline" "snippet" "collection" "transform" "document" "pulse" "metric" "card"]
+        new    ["dashboard" "table" "dataset" "no_models" "timeline" "snippet" "collection" "measure" "transform" "document" "pulse" "metric" "card"]
+        lines  (findings-text (spec {"/api/x" {"get" (op :params (models old))}})
+                              (spec {"/api/x" {"get" (op :params (models new))}}))]
+    (is (some #(re-find #"\+\"measure\"" %) lines) "the added enum value is visible in the finding")))
+
+(deftest unconstrained-allof-member-is-ignored-test
+  (testing "a Malli :fn predicate adds an empty allOf member, which the spec cannot compare"
+    (is (not (body-change-breaking? {"allOf" [(obj {"a" {"type" "string"}}) {}]}
+                                    {"allOf" [(obj {"a" {"type" "string"}}) {} {}]})))))

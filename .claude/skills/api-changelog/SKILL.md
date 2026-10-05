@@ -100,9 +100,13 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
 
    | | Breaking (requires more / provides less) | Not breaking |
    |---|---|---|
-   | **Request** | field or param becomes required; type or enum narrowed; `additionalProperties: false` added; field removed | new *optional* field or param; type or enum widened; field made nullable; schema opened |
-   | **Response** | field removed; field may now be `null` | new field returned; field that was nullable never is |
+   | **Request** | field or param becomes required; type, enum, or bound (`minimum`, `minLength`, `pattern`, ...) narrowed; `additionalProperties: false` added; field removed | new *optional* field or param; type, enum, or bound widened; field made nullable; schema opened |
+   | **Response** | field removed or no longer always returned; field may now be `null`; new enum value | new field returned; field that was nullable never is |
    | **Endpoint** | removed | added |
+
+   A change to a schema keyword the tool does not model is ranked breaking, so
+   it is never hidden; read it before drafting. A reworded description, title,
+   example, or default is DOC_ONLY.
 
    Adding an optional parameter is not breaking. Returning extra data is not
    breaking. Existing callers keep working in both cases.
