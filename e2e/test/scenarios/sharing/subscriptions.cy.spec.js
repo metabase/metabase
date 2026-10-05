@@ -13,51 +13,45 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow sharing if there are no dashboard cards", () => {
+  it("should allow sharing if there are no dashboard cards or only text cards (metabase#15077)", () => {
     H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       H.visitDashboard(DASHBOARD_ID);
     });
 
-    cy.findByLabelText("subscriptions").should("not.exist");
+    H.dashboardHeader().within(() => {
+      H.sharingMenuButton().should("be.visible");
+      cy.findByTestId("dashboard-subscriptions-button").should("not.exist");
+    });
 
-    H.openSharingMenu(/public link/i);
+    H.addTextBox("Foo");
+    cy.button("Save").click();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+
+    // Dashboard subscriptions are not shown because
+    // getting notifications with static text-only cards doesn't make a lot of sense
+    H.dashboardHeader().within(() => {
+      H.sharingMenuButton().should("be.visible");
+      cy.findByTestId("dashboard-subscriptions-button").should("not.exist");
+    });
+
+    H.openSharingMenu();
+    H.sharingMenu().within(() => {
+      cy.findByText("Create a public link").should("be.visible");
+      cy.findByText("Embed").should("be.visible");
+    });
+
+    H.sharingMenu()
+      .findByText(/public link/i)
+      .click();
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
     H.openSharingMenu("Embed");
     H.embedModalContent().should("be.visible");
   });
 
-  it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
-    H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-      H.visitDashboard(DASHBOARD_ID);
-    });
-    H.addTextBox("Foo");
-    cy.button("Save").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-    H.openSharingMenu();
-    // Dashboard subscriptions are not shown because
-    // getting notifications with static text-only cards doesn't make a lot of sense
-    H.sharingMenu().findByText("subscriptions").should("not.exist");
-
-    H.sharingMenu().within(() => {
-      cy.findByText("Create a public link").should("be.visible");
-      cy.findByText("Embed").should("be.visible");
-    });
-  });
-
-  describe("sidebar toggling behavior", () => {
-    it("should allow toggling the sidebar", () => {
-      openDashboardSubscriptions();
-
-      // The sidebar starts open after the method there, so test that clicking the icon closes it
-      H.toggleDashboardSubscriptionsSidebar();
-      H.sidebar().should("not.exist");
-    });
-  });
-
   describe("with no channels set up", () => {
-    it("should instruct user to connect email or slack", () => {
+    it("should instruct user to connect email or slack and allow closing the sidebar", () => {
       openDashboardSubscriptions();
       // Look for the messaging about configuring slack and email
       cy.findByRole("link", { name: /set up email/i }).should(
@@ -70,7 +64,36 @@ describe("scenarios > dashboard > subscriptions", () => {
         "href",
         "/admin/settings/slack",
       );
+
+      H.sidebar().should("be.visible");
+      H.toggleDashboardSubscriptionsSidebar();
+      H.sidebar().should("not.exist");
     });
+  });
+
+  it("should show errors on the unsubscribe page for invalid links", () => {
+    const nonUserEmail = "non-user@example.com";
+
+    cy.visit({
+      url: "/unsubscribe",
+      qs: {
+        hash: "459a8e9f8d9e",
+        email: nonUserEmail,
+      }, // missing pulse-id
+    });
+
+    cy.findByLabelText("error page").should("exist");
+
+    cy.visit({
+      url: "/unsubscribe",
+      qs: {
+        hash: "459a8e9f8d9e",
+        email: nonUserEmail,
+        "pulse-id": "f", // invalid pulse-id
+      },
+    });
+
+    cy.findByLabelText("error message").should("exist");
   });
 
   describe("with email set up", { tags: "@external" }, () => {
@@ -108,23 +131,28 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("with no existing subscriptions", () => {
-      it("should not enable subscriptions without the recipient (metabase#17657)", () => {
+      it("should not enable subscriptions without the recipient and still send a one-off email after the frequency change clears the time (metabase#17657)", () => {
         openDashboardSubscriptions();
 
         H.sidebar().findByText("Email it").click();
 
         // Make sure no recipients have been assigned
-        cy.findByPlaceholderText("Enter user names or email addresses");
+        cy.findByPlaceholderText("Enter user names or email addresses").should(
+          "be.visible",
+        );
 
         // Change the schedule to "Monthly"
         cy.findByTestId("select-frequency").click();
         H.popover().findByText("monthly").click();
+        H.selectScheduleTime();
 
         H.sidebar().button("Done").should("be.disabled");
-      });
 
-      it("should still send a one-off email after the frequency change clears the time", () => {
-        assignRecipient();
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+        H.popover().contains(admin.first_name).click();
+        cy.realPress("Escape");
+
+        H.sidebar().button("Done").should("be.enabled");
 
         cy.findByTestId("select-frequency").click();
         H.popover().findByText("weekly").click();
@@ -136,30 +164,28 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.getInbox(1).its("body").should("have.length", 1);
       });
 
-      it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
+      it("should keep the people dropdown on screen and not add a recipient when Escape is pressed (metabase#17186, metabase#24629)", () => {
+        Cypress._.times(30, (index) => {
+          cy.request("POST", "/api/user", {
+            first_name: `Recipient${index}`,
+            last_name: "Example",
+            email: `recipient${index}@metabase.test`,
+          });
+        });
+
         openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
 
         H.sidebar().findByText("Email it").click();
 
         cy.findByPlaceholderText("Enter user names or email addresses").click();
         H.popover().should("be.visible").and("contain", `${admin.first_name}`);
+        H.popover().isRenderedWithinViewport();
         cy.realPress("Escape");
         H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-        cy.findByPlaceholderText("Enter user names or email addresses").should(
-          "not.have.value",
-        );
-
-        cy.findByTestId("token-field-popover").should("not.exist");
-      });
-
-      it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
-        openDashboardSubscriptions();
-
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Email it").click();
-        cy.findByPlaceholderText("Enter user names or email addresses").click();
-
-        H.popover().isRenderedWithinViewport();
+        cy.findByPlaceholderText("Enter user names or email addresses")
+          .should("be.visible")
+          .and("not.have.value");
+        H.sidebar().button("Done").should("be.disabled");
       });
     });
 
@@ -181,7 +207,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
       });
 
-      it("should send as BCC by default", () => {
+      it("should send as BCC by default and as CC when opted-in", () => {
         const ORDERS_DASHBOARD_NAME = "Orders in a dashboard";
 
         assignRecipients();
@@ -196,16 +222,14 @@ describe("scenarios > dashboard > subscriptions", () => {
           cy.findByText(`${admin.email}`).should("exist");
           cy.findByText(`${normal.email}`).should("exist");
         });
-      });
 
-      it("should send as CC when opted-in", () => {
+        H.clearInbox();
+
         // opt-in to CC
         cy.visit("/admin/settings/email");
         cy.findByTestId("bcc-enabled?-setting")
           .findByLabelText("CC - Disclose recipients")
           .click();
-
-        const ORDERS_DASHBOARD_NAME = "Orders in a dashboard";
 
         assignRecipients();
         H.sidebar().within(() => {
@@ -215,40 +239,15 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.viewEmailPage(ORDERS_DASHBOARD_NAME);
 
         cy.get(".main-container").within(() => {
-          cy.findByText("Bcc:").should("not.exist");
           cy.findByText(`${admin.email}`).should("exist");
           cy.findByText(`${normal.email}`).should("exist");
+          cy.findByText("Bcc:").should("not.exist");
         });
       });
     });
 
     describe("let non-users unsubscribe from subscriptions", () => {
-      it("should allow non-user to unsubscribe from subscription", () => {
-        const nonUserEmail = "non-user@example.com";
-        const dashboardName = "Orders in a dashboard";
-
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-        H.setupSubscriptionWithRecipients([nonUserEmail]);
-
-        H.emailSubscriptionRecipients();
-
-        H.openEmailPage(dashboardName).then(() => {
-          cy.intercept("/api/pulse/unsubscribe").as("unsubscribe");
-          cy.findByText("Unsubscribe").click();
-          cy.wait("@unsubscribe");
-          cy.contains(
-            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
-          ).should("exist");
-        });
-
-        openDashboardSubscriptions();
-        H.openPulseSubscription();
-
-        H.sidebar().findByText(nonUserEmail).should("not.exist");
-      });
-
-      it("should allow non-user to undo-unsubscribe from subscription", () => {
+      it("should allow non-user to unsubscribe and undo-unsubscribe from subscription", () => {
         const nonUserEmail = "non-user@example.com";
         const dashboardName = "Orders in a dashboard";
         H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -280,39 +279,20 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.openPulseSubscription();
 
         H.sidebar().findByText(nonUserEmail).should("exist");
-      });
 
-      it("should show 404 page when missing required parameters", () => {
-        const nonUserEmail = "non-user@example.com";
-
-        const params = {
-          hash: "459a8e9f8d9e",
-          email: nonUserEmail,
-        }; // missing pulse-id
-
-        cy.visit({
-          url: "/unsubscribe",
-          qs: params,
+        H.openEmailPage(dashboardName).then(() => {
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
         });
 
-        cy.findByLabelText("error page").should("exist");
-      });
+        openDashboardSubscriptions();
+        H.openPulseSubscription();
 
-      it("should show error message when server responds with an error", () => {
-        const nonUserEmail = "non-user@example.com";
-
-        const params = {
-          hash: "459a8e9f8d9e",
-          email: nonUserEmail,
-          "pulse-id": "f", // invalid pulse-id
-        };
-
-        cy.visit({
-          url: "/unsubscribe",
-          qs: params,
-        });
-
-        cy.findByLabelText("error message").should("exist");
+        H.sidebar().findByText("Delete this subscription").should("exist");
+        H.sidebar().findByText(nonUserEmail).should("not.exist");
       });
     });
 
@@ -552,32 +532,6 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.mockSlackConfigured();
     });
 
-    it("should not enable 'Done' button before channel is selected (metabase#14494)", () => {
-      openSlackCreationForm();
-
-      cy.findAllByRole("button", { name: "Done" }).should("be.disabled");
-      cy.findByPlaceholderText("Pick a user or channel...").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("#work").click();
-      cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
-    });
-
-    it("should have 'Send to Slack now' button (metabase#14515)", () => {
-      openSlackCreationForm();
-
-      H.sidebar().within(() => {
-        cy.findAllByRole("button", { name: "Send to Slack now" }).should(
-          "be.disabled",
-        );
-        cy.findByPlaceholderText("Pick a user or channel...").click();
-      });
-
-      H.popover().findByText("#work").click();
-      H.sidebar()
-        .findAllByRole("button", { name: "Done" })
-        .should("not.be.disabled");
-    });
-
     it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -585,15 +539,28 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.sidebar().should("be.visible");
     });
 
-    it("should persist the immutable Slack channel_id alongside the channel name", () => {
+    it("should enable 'Done' and 'Send to Slack now' only after a channel is selected and persist the immutable Slack channel_id (metabase#14494, metabase#14515)", () => {
       cy.intercept("POST", "/api/pulse").as("createPulse");
 
       openSlackCreationForm();
 
-      cy.findByPlaceholderText("Pick a user or channel...").click();
+      H.sidebar().within(() => {
+        cy.findByRole("button", { name: "Done" }).should("be.disabled");
+        cy.findByRole("button", { name: "Send to Slack now" }).should(
+          "be.disabled",
+        );
+        cy.findByPlaceholderText("Pick a user or channel...").click();
+      });
+
       H.popover().findByText("#work").click();
 
-      H.sidebar().findByRole("button", { name: "Done" }).click();
+      H.sidebar().within(() => {
+        cy.findByRole("button", { name: "Done" }).should("be.enabled");
+        cy.findByRole("button", { name: "Send to Slack now" }).should(
+          "be.enabled",
+        );
+        cy.findByRole("button", { name: "Done" }).click();
+      });
 
       cy.wait("@createPulse").then(({ request: { body } }) => {
         // The mocked channel `#work` has id `C001` in e2e-slack-helpers.js.
@@ -711,35 +678,17 @@ describe("scenarios > dashboard > subscriptions", () => {
         .should("not.exist");
     });
 
-    it("should only show current user in recipients dropdown if `user-visiblity` setting is `none`", () => {
+    it("should show recipients in dropdown based on the `user-visiblity` setting", () => {
       openRecipientsWithUserVisibilitySetting("none");
-
       H.popover().find("span").should("have.length", 1);
-    });
 
-    it("should only show users in same group in recipients dropdown if `user-visiblity` setting is `group`", () => {
+      cy.signInAsAdmin();
       openRecipientsWithUserVisibilitySetting("group");
-
       H.popover().find("span").should("have.length", 5);
-    });
 
-    it("should show all users in recipients dropdown if `user-visiblity` setting is `all`", () => {
+      cy.signInAsAdmin();
       openRecipientsWithUserVisibilitySetting("all");
-
       H.popover().find("span").should("have.length", 10);
-    });
-
-    describe("with no parameters", () => {
-      it("should have no parameters section", () => {
-        openDashboardSubscriptions();
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Email it").click();
-
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Set filter values for when this gets sent").should(
-          "not.exist",
-        );
-      });
     });
 
     it("should send a dashboard with questions saved in the dashboard", () => {
@@ -867,24 +816,43 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
     });
 
-    describe("with unconnected parameters", () => {
+    describe("with no or unconnected parameters", () => {
       it("should show only connected parameters in subscription sidebar", () => {
-        addConnectedAndUnconnectedParameterToDashboard();
-        openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
-
+        openDashboardSubscriptions();
         H.sidebar().findByText("Email it").click();
-        H.sidebar().findByText("Text 1").should("not.exist");
-      });
-
-      it("should not show filters section in subscription sidebar with no connected parameters", () => {
-        H.editDashboard();
-        setTextFilter();
-        openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
-
-        H.sidebar().findByText("Email it").click();
+        H.sidebar().findByText("Email this dashboard").should("be.visible");
         H.sidebar()
           .findByText("Set filter values for when this gets sent")
           .should("not.exist");
+
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.editDashboard();
+        setTextFilter();
+        H.saveDashboard();
+
+        openDashboardSubscriptions();
+        H.sidebar().findByText("Email it").click();
+        H.sidebar().findByText("Email this dashboard").should("be.visible");
+        H.sidebar()
+          .findByText("Set filter values for when this gets sent")
+          .should("not.exist");
+
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.editDashboard();
+        setTextFilter();
+        H.getDashboardCard().findByText("Select…").click();
+        H.popover().findByText("Name").click();
+        H.saveDashboard();
+
+        openDashboardSubscriptions();
+        H.sidebar().findByText("Email it").click();
+        cy.findByTestId("subscription-parameters-section").within(() => {
+          cy.findByText("Set filter values for when this gets sent").should(
+            "be.visible",
+          );
+          cy.findByText("Text 1").should("be.visible");
+          cy.findByText("Text").should("not.exist");
+        });
       });
     });
 
@@ -997,21 +965,6 @@ function addParametersToDashboard() {
   H.popover().within(() => {
     cy.findByText("Category").click();
   });
-
-  cy.findByText("Save").click();
-  cy.contains("You're editing this dashboard.").should("not.exist");
-}
-
-function addConnectedAndUnconnectedParameterToDashboard() {
-  H.editDashboard();
-
-  setTextFilter();
-  cy.findByText("Select…").click();
-  H.popover().within(() => {
-    cy.findByText("Name").click();
-  });
-
-  setTextFilter();
 
   cy.findByText("Save").click();
   cy.contains("You're editing this dashboard.").should("not.exist");
