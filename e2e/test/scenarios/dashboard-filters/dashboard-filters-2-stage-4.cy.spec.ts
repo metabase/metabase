@@ -17,7 +17,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
-    cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashboardData",
     );

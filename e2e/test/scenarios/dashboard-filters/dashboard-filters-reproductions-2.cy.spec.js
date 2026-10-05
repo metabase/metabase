@@ -141,18 +141,6 @@ describe("44047", () => {
     },
   };
 
-  const sourceQuestionDetails = {
-    name: "Source question",
-    type: "question",
-    query: {
-      "source-table": REVIEWS_ID,
-      fields: [
-        ["field", REVIEWS.ID, { "base-type": "type/BigInteger" }],
-        ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
-      ],
-    },
-  };
-
   const parameterDetails = {
     name: "Text",
     slug: "text",
@@ -227,7 +215,6 @@ describe("44047", () => {
   });
 
   it("should be able to use remapped values from an integer field with an overridden semantic type used for a custom dropdown source in public dashboards (metabase#44047)", () => {
-    H.createQuestion(sourceQuestionDetails);
     H.createDashboardWithQuestions({
       dashboardDetails,
       questions: [questionDetails, modelDetails],
@@ -916,7 +903,6 @@ describe("issue 45670", { tags: ["@external"] }, () => {
     H.resetTestTable({ type: dialect, table: tableName });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName });
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should be able to pass query string parameters for boolean parameters in dashboards (metabase#45670)", () => {
@@ -1614,7 +1600,6 @@ describe("issue 59306", () => {
                 card_id: card.id,
                 parameter_id: parameter.id,
                 target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-                has_field_values: "input",
               },
             ],
           },
@@ -1910,7 +1895,6 @@ describe("issue #66670", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
     cy.intercept("GET", "/api/revision*").as("revisionHistory");
   });
 
@@ -1954,7 +1938,6 @@ describe("issue #66670", () => {
 
             cy.log("Step 5: Save the dashboard");
             H.saveDashboard();
-            cy.wait("@updateDashboard");
 
             cy.log("Step 5b: Update the title and save again");
             H.editDashboard();
@@ -1963,7 +1946,6 @@ describe("issue #66670", () => {
               .clear()
               .type("Updated Dashboard Title");
             H.saveDashboard();
-            cy.wait("@updateDashboard");
 
             cy.log("Step 6: Move Question B to the trash");
             H.visitQuestion(questionBId);

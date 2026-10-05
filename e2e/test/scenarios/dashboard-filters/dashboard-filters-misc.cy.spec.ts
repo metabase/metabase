@@ -14,10 +14,8 @@ describe("pivot tables", () => {
     cy.signInAsAdmin();
     QSHelpers.createBaseQuestions();
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/dataset/pivot").as("datasetPivot");
     cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.then(function () {
       H.createQuestion({

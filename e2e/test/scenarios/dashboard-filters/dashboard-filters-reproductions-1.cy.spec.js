@@ -1049,7 +1049,6 @@ describe("issue 24235", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
   it("should not allow to add a filter when all exclude options are selected (metabase#24235)", () => {
@@ -1790,7 +1789,7 @@ describe("issue 27768", () => {
           parameters: [filter],
         });
 
-        H.visitDashboard(dashboard_id, { queryParams: { cat: "Gizmo" } });
+        H.visitDashboard(dashboard_id);
       },
     );
   });
