@@ -535,6 +535,38 @@
               (is (contains? (listed-ids :rasta) (:id visible)))
               (is (not (contains? (listed-ids :rasta) (:id hidden)))))))))))
 
+(deftest list-actions-by-type-test
+  (testing "GET /api/action?type= returns only actions of that type, alone or combined with model-id"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-actions [{model-id :id}           {:type :model :dataset_query (mt/mbql-query categories)}
+                          {query-id :action-id}    {}
+                          {implicit-id :action-id} {:type :implicit :kind "row/update"}]
+          (let [model-less (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))
+                list-ids   (fn [& params]
+                             (set (map :id (apply mt/user-http-request :crowberto :get 200 "action" params))))]
+            (testing "type=query includes query actions with and without a model, and no implicit actions"
+              (let [ids (list-ids :type "query")]
+                (is (set/subset? #{query-id (:id model-less)} ids))
+                (is (not (contains? ids implicit-id)))
+                (is (= #{"query"}
+                       (set (map :type (mt/user-http-request :crowberto :get 200 "action" :type "query")))))))
+            (testing "type=implicit returns only implicit actions"
+              (let [ids (list-ids :type "implicit")]
+                (is (contains? ids implicit-id))
+                (is (not-any? #{query-id (:id model-less)} ids))))
+            (testing "type combines with model-id"
+              (is (= #{query-id} (list-ids :model-id model-id :type "query")))
+              (is (= #{implicit-id} (list-ids :model-id model-id :type "implicit")))
+              (is (= #{query-id implicit-id} (list-ids :model-id model-id))))
+            (testing "a model-less query action is returned with its creator"
+              (is (=? {:id      (:id model-less)
+                       :creator {:id (mt/user->id :crowberto)}}
+                      (m/find-first #(= (:id model-less) (:id %))
+                                    (mt/user-http-request :crowberto :get 200 "action" :type "query")))))
+            (testing "an unknown type is rejected"
+              (mt/user-http-request :crowberto :get 400 "action" :type "http"))))))))
+
 (deftest attached-action-keeps-model-collection-test
   (testing "an action with a model stays in the model's collection whatever collection_id an update sends"
     (mt/with-actions-test-data-and-actions-enabled

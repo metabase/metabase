@@ -65,6 +65,7 @@ export const actionApi = Api.injectEndpoints({
         body: _.pick(body, [
           "id",
           "archived",
+          "collection_id",
           "database_id",
           "dataset_query",
           "description",

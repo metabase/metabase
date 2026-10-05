@@ -22,15 +22,18 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns the unarchived actions in collections the current user can read. Pass optional `?model-id=<model-id>` to
-  limit to the actions of a particular model."
+  limit to the actions of a particular model, and optional `?type=<type>` to limit to actions of that type."
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [model-id]} :- [:map {:closed true}
-                          [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
+   {:keys [model-id]
+    action-type :type} :- [:map {:closed true}
+                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
+                           [:type     {:optional true} [:maybe ::actions.schema/type]]]]
   (let [actions (if model-id
                   (let [model (api/read-check :model/Card model-id)]
-                    (actions/select-actions-for-models [model] [model-id]))
-                  (when-let [action-ids (seq (actions-rest.db/unarchived-action-ids-visible-to-user))]
+                    (cond->> (actions/select-actions-for-models [model] [model-id])
+                      action-type (filter #(= action-type (keyword (:type %))))))
+                  (when-let [action-ids (seq (actions-rest.db/unarchived-action-ids-visible-to-user {:type action-type}))]
                     (actions/select-actions-for-ids nil (vec action-ids))))]
     (t2/hydrate (vec actions) :creator)))
 

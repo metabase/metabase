@@ -7,6 +7,7 @@ import {
   canAccessDataModel as canAccessDataModelSelector,
   useUserKeyValue,
 } from "metabase/current-user";
+import { useHasActionDatabases } from "metabase/data-actions";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import {
   AreaLayout,
@@ -55,6 +56,8 @@ export function DataStudioLayout() {
   // if transform setup isn't complete, we still show transforms - that's where the upsell/enable pages are
   const shouldShowTransforms = canUseTransforms || !isTransformsSetupComplete;
 
+  const hasActionDatabases = useHasActionDatabases();
+
   const settings = useDataStudioSettings();
   const currentTab = getCurrentTab(pathname);
 
@@ -91,6 +94,15 @@ export function DataStudioLayout() {
                 <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
               ) : null
             }
+          />
+        )}
+        {hasActionDatabases && (
+          <AreaTab
+            label={t`Data actions`}
+            icon="bolt"
+            to={Urls.dataActionList()}
+            isSelected={currentTab === "actions"}
+            showLabel={isNavbarOpened}
           />
         )}
       </AreaTabGroup>

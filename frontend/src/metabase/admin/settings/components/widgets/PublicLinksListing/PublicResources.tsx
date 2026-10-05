@@ -65,7 +65,11 @@ export const PublicLinksActionListing = () => {
   return (
     <PublicLinksListing<GetPublicAction>
       revoke={revoke}
-      getUrl={(action) => Urls.action({ id: action.model_id }, action.id)}
+      getUrl={(action) =>
+        action.model_id != null
+          ? Urls.action({ id: action.model_id }, action.id)
+          : Urls.dataAction(action.id)
+      }
       getPublicUrl={({ public_uuid }) => {
         if (public_uuid) {
           return Urls.publicAction(siteUrl, public_uuid);

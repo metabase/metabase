@@ -1,0 +1,1 @@
+export const ACTION_NAME_MAX_LENGTH = 254;

@@ -1,6 +1,7 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
+import { getDataStudioActionRoutes } from "metabase/data-actions";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
@@ -48,6 +49,13 @@ const transformsSectionLayout = () =>
     /* webpackChunkName: "data-studio" */ "./app/pages/TransformsSectionLayout"
   ).then(({ TransformsSectionLayout }) => ({
     Component: TransformsSectionLayout,
+  }));
+
+const actionsSectionLayout = () =>
+  import(
+    /* webpackChunkName: "data-studio" */ "./app/pages/ActionsSectionLayout"
+  ).then(({ ActionsSectionLayout }) => ({
+    Component: ActionsSectionLayout,
   }));
 
 const dependenciesSectionLayout = () =>
@@ -105,6 +113,9 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           </Route>
           <Route path="transforms" lazy={transformsSectionLayout}>
             {getDataStudioTransformRoutes()}
+          </Route>
+          <Route path="actions" lazy={actionsSectionLayout}>
+            {getDataStudioActionRoutes()}
           </Route>
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSettingsRoutes()}

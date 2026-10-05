@@ -2,17 +2,23 @@
   "Application database queries for the actions REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (mu/defn unarchived-action-ids-visible-to-user
-  "The ids of the unarchived Actions in Collections the current user can read."
-  []
-  (t2/select-pks-vec :model/Action {:where [:and
-                                            [:= :archived false]
-                                            (collection/visible-collection-filter-clause)]}))
+  "The ids of the unarchived Actions in Collections the current user can read, limited to actions of `:type` if given."
+  ([]
+   (unarchived-action-ids-visible-to-user {}))
+  ([{action-type :type} :- [:map {:closed true}
+                            [:type {:optional true} [:maybe ::actions.schema/type]]]]
+   (t2/select-pks-vec :model/Action {:where [:and
+                                             [:= :archived false]
+                                             (when action-type
+                                               [:= :type (name action-type)])
+                                             (collection/visible-collection-filter-clause)]})))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."

@@ -87,6 +87,11 @@ const elements = [
   createElement({ type: "feature", name: "browse" }),
   createElement({ type: "feature", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
+  createElement({
+    type: "shared",
+    name: "data-actions",
+    enforcePublicApi: true,
+  }),
   ...[
     "frontend/src/metabase/common/metrics/**",
     "frontend/src/metabase/common/metrics-viewer/**",
