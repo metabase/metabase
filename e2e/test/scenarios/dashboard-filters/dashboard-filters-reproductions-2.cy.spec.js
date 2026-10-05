@@ -309,11 +309,16 @@ describe("issue 45659", () => {
     });
   });
 
-  it("should remap initial parameter values in public dashboards (metabase#45659)", () => {
+  it("should remap initial parameter values and query each dashcard once in public dashboards (metabase#45659, metabase#17061)", () => {
+    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+      "publicDashcardData",
+    );
     createDashboard().then(({ dashboard }) =>
       H.visitPublicDashboard(dashboard.id),
     );
     verifyFilterWithRemapping();
+    H.getDashboardCard().findByText("Tressa White").should("be.visible");
+    cy.get("@publicDashcardData.all").should("have.length", 1);
   });
 
   it("should remap initial parameter values in embedded dashboards (metabase#45659)", () => {
@@ -1205,67 +1210,6 @@ describe("issue 54236", () => {
   });
 });
 
-describe("issue 17061", () => {
-  const questionDetails = {
-    query: {
-      "source-table": PEOPLE_ID,
-      "order-by": [["asc", ["field", PEOPLE.ID, null]]],
-      limit: 1,
-    },
-  };
-
-  const parameterDetails = {
-    name: "State",
-    slug: "state",
-    id: "5aefc725",
-    type: "string/=",
-    sectionId: "location",
-  };
-
-  const dashboardDetails = {
-    parameters: [parameterDetails],
-    enable_embedding: true,
-    embedding_params: {
-      [parameterDetails.slug]: "enabled",
-    },
-  };
-
-  const getParameterMapping = (cardId) => ({
-    parameter_id: parameterDetails.id,
-    card_id: cardId,
-    target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
-  });
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
-      "publicDashcardData",
-    );
-  });
-
-  it("should not send multiple query requests for the same dashcards when opening a public dashboard with parameters (metabase#17061)", () => {
-    H.createQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    }).then(({ body: dashcard, questionId }) => {
-      H.updateDashboardCards({
-        dashboard_id: dashcard.dashboard_id,
-        cards: [
-          {
-            card_id: questionId,
-            parameter_mappings: [getParameterMapping(questionId)],
-          },
-        ],
-      });
-      H.visitPublicDashboard(dashcard.dashboard_id);
-    });
-
-    H.getDashboardCard().findByText("1").should("be.visible");
-    cy.get("@publicDashcardData.all").should("have.length", 1);
-  });
-});
-
 describe("issue 62627", () => {
   beforeEach(() => {
     H.restore();
@@ -1682,7 +1626,7 @@ describe("issue 59306", () => {
   });
 });
 
-describe("Issue 60987", () => {
+describe("issues 60987 and 46767", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1729,66 +1673,17 @@ describe("Issue 60987", () => {
     H.getDashboardCard().findByText("Select…").click();
   });
 
-  it("should show the empty state for parameters when searching the in the parameter target picker popover (metabase#60987)", () => {
+  it("should show the empty state and no empty sections when searching in the parameter target picker popover (metabase#60987, metabase#46767)", () => {
     H.popover().within(() => {
       cy.findByPlaceholderText("Find...").type("aa");
       cy.findByText("Didn't find any results")
         .should("be.visible")
         .should("have.css", "color", "rgba(7, 23, 34, 0.62)"); // the text "text-medium"
-    });
-  });
-});
 
-describe("Issue 46767", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
+      cy.findByPlaceholderText("Find...").clear().type("Name");
+      cy.findByText("User").should("be.visible");
 
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        type: "question",
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              "source-table": PRODUCTS_ID,
-              fields: "all",
-              strategy: "left-join",
-              alias: "Products",
-              condition: [
-                "=",
-                [
-                  "field",
-                  ORDERS.PRODUCT_ID,
-                  {
-                    "base-type": "type/Integer",
-                  },
-                ],
-                [
-                  "field",
-                  PRODUCTS.ID,
-                  {
-                    "base-type": "type/BigInteger",
-                    "join-alias": "Products",
-                  },
-                ],
-              ],
-            },
-          ],
-        },
-      },
-    }).then((response) => {
-      H.visitDashboard(response.body.dashboard_id);
-    });
-
-    H.editDashboard();
-    H.setFilter("Text or Category", "Is");
-    H.getDashboardCard().findByText("Select…").click();
-  });
-
-  it("search results for parameter target picker should not show empty sections (metabase#46767)", () => {
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Find...").type("Ean");
+      cy.findByPlaceholderText("Find...").clear().type("Ean");
       cy.findByText("Products").should("be.visible");
       cy.findByText("User").should("not.exist");
     });
