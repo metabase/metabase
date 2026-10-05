@@ -49,7 +49,7 @@ All OSS, under `src/metabase/` unless noted.
 ## How to work
 
 1. Migrations: follow the "Add app-DB migrations as one file per change" section of the `backend-module-conventions` skill (file layout, IDs, backports, scoped preconditions). Copy the shape of a recent file in the newest dir. Run `bin/lint-migrations-file.sh`. Test with the `test-migrations` macro (`metabase.app-db.schema-migrations-test.impl`); `metabase.app-db.schema-migrations-test` and `metabase.app-db.custom-migrations-test` have examples.
-2. Guards and lint: run `metabase.app-db.value-guard-test`, `metabase.app-db.query-test`, and `hooks.metabase.toucan.db-ns-test` (run kondo hook tests with `clj -X:dev:test:test/kondo`). A hook change alters lint output for every module, so run `./bin/mage kondo-ratchets` after it.
+2. Guards and lint: run `metabase.app-db.value-guard-test`, `metabase.app-db.query-test`, and `hooks.metabase.toucan.db-ns-test` (kondo hook tests are on the dev classpath, so `./bin/test-agent :only '[hooks.metabase.toucan.db-ns-test]'` works; `:only '[".clj-kondo/test"]'` runs all of them). A hook change alters lint output for every module, so run `./bin/mage kondo-ratchets` after it.
 3. Middleware and server: read the stack in `metabase.server.handler`, then the one middleware. Tests live in `test/metabase/server/` (`handler-test`, `streaming-response-test`, `middleware/`).
 4. API framework: run `metabase.api.macros-test` and `metabase.api.open-api-test`. A change to `defendpoint` touches every endpoint, so also load a few `*.api` namespaces.
 5. Settings: run `metabase.settings.models.setting-test`. Check the env-var override and visibility, not only the DB path.
