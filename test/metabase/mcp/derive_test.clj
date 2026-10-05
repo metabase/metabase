@@ -141,6 +141,83 @@
                                                              :context   {:column "NOT_A_COLUMN"}
                                                              :direction "asc"}]}))))))))
 
+(defn- result-column-names
+  "The `:name`s the QP returns for `query`'s columns: what the iframe sends back as a click's column."
+  [query]
+  (mapv :name (mt/with-test-user :rasta (mt/cols (mt/process-query query)))))
+
+(defn- orders-count-by-product-category []
+  (let [mp       (mt/metadata-provider)
+        query    (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))
+        category (some #(when (= "CATEGORY" (:name %)) %) (lib/breakoutable-columns query))]
+    (lib/breakout query category)))
+
+(deftest drill-on-implicitly-joined-column-test
+  (testing "a click names a column by its result-column name, which differs from its alias for an implicit join"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [query (orders-count-by-product-category)]
+        (is (= ["CATEGORY" "count"] (result-column-names query))
+            "the iframe sends this name back as the click's column")
+        (testing "sort on the joined column"
+          (is (=? {:status 200 :body {:handle string?}}
+                  (derive! query {:operations [{:type      "drill-thru" :drill "sort"
+                                                :context   {:column "CATEGORY"}
+                                                :direction "desc"}]}))))
+        (testing "a quick filter whose dimension is the joined column"
+          (is (=? [[:< {} [:field {} "count"] 10]]
+                  (lib/filters (derived-query! query
+                                               [{:type       "drill-thru" :drill "quick-filter" :operator "<"
+                                                 :context    {:column     "count" :value 10
+                                                              :dimensions [{:column "CATEGORY" :value "Gizmo"}]}}])
+                               -1))))
+        (testing "underlying records on a point whose dimension is the joined column"
+          (let [derived (derived-query! query [{:type    "drill-thru" :drill "underlying-records"
+                                                :context {:column     "count" :value 10
+                                                          :dimensions [{:column "CATEGORY" :value "Gizmo"}]}}])]
+            (is (empty? (lib/aggregations derived)))
+            (is (=? [[:= {} [:field {:source-field (mt/id :orders :product_id)} (mt/id :products :category)]
+                      "Gizmo"]]
+                    (lib/filters derived)))))))))
+
+(deftest drill-on-two-joined-columns-with-the-same-name-test
+  (testing "two joined columns with the same name come back under distinct result names, and each resolves"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [mp       (mt/metadata-provider)
+            base     (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))
+            by-name  (fn [query table-id]
+                       (some #(when (and (= "CREATED_AT" (:name %)) (= table-id (:table-id %))) %)
+                             (lib/breakoutable-columns query)))
+            query    (-> base
+                         (lib/breakout (lib/with-temporal-bucket (by-name base (mt/id :products)) :year))
+                         (as-> q (lib/breakout q (lib/with-temporal-bucket (by-name q (mt/id :people)) :year))))
+            names    (result-column-names query)]
+        (is (= 3 (count (set names))) "the QP deduplicates the two CREATED_AT names")
+        (doseq [column-name (butlast names)]
+          (testing column-name
+            (is (=? {:status 200}
+                    (derive! query {:operations [{:type      "drill-thru" :drill "sort"
+                                                  :context   {:column column-name}
+                                                  :direction "asc"}]})))))))))
+
+(deftest drill-on-explicitly-joined-column-test
+  (testing "a click on a column of an explicit join resolves by its result-column name"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [mp       (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))
+            base     (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            query    (-> base
+                         (lib/join (lib/join-clause products
+                                                    [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                            (lib.metadata/field mp (mt/id :products :id)))]))
+                         (lib/limit 1))
+            joined   (last (result-column-names query))]
+        (is (not= joined (:lib/desired-column-alias (last (lib/returned-columns query))))
+            "the result name differs from the alias, or this proves nothing")
+        (is (=? {:status 200}
+                (derive! query {:operations [{:type      "drill-thru" :drill "sort"
+                                              :context   {:column joined}
+                                              :direction "asc"}]})))))))
+
 (deftest closed-schema-test
   (testing "the body names a closed set of operations, so anything else is a 400 before any query is touched"
     (mt/with-model-cleanup [:model/McpQueryHandle]

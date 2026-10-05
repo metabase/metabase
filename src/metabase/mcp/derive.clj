@@ -158,9 +158,10 @@
     (lib/replace-clause query -1 breakout (lib/with-temporal-bucket column bucket))))
 
 (defn- click-context
-  "The drill context for the click `context`, with each named column resolved against `query`'s returned columns."
+  "The drill context for the click `context`. Each column is named by the name it has in `query`'s results, and
+   resolves to the returned column of that name."
   [query {:keys [column row dimensions] :as context}]
-  (let [columns (into {} (map (juxt :lib/desired-column-alias identity)) (lib/returned-columns query))
+  (let [columns (into {} (map (juxt :lib/deduplicated-name identity)) (lib/returned-columns query))
         resolve (fn [column-name]
                   (or (get columns column-name)
                       (throw (bad-request (tru "The query returns no column named {0}." (pr-str column-name))))))
