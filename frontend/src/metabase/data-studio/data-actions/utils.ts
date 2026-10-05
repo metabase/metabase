@@ -5,7 +5,6 @@ import { getTemplateTagParameters } from "metabase-lib/v1/parameters/utils/templ
 import type {
   ActionFormSettings,
   CreateActionRequest,
-  Database,
   FieldSettings,
   FieldType,
   TemplateTag,
@@ -97,8 +96,4 @@ export function getActionDefinition(
     parameters: getQueryParameters(query),
     visualization_settings: getFieldSettingsFromQuery(query, formSettings),
   };
-}
-
-export function isEditableActionDatabase(database: Database): boolean {
-  return database.native_permissions === "write";
 }

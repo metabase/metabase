@@ -12,6 +12,7 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { hasNativeWritePermissions } from "metabase/common/utils/database";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { type Location, useNavigate } from "metabase/router";
 import { Center } from "metabase/ui";
@@ -24,14 +25,13 @@ import { ActionEditorPane } from "../../components/ActionEditorPane";
 import { ACTION_NAME_MAX_LENGTH } from "../../constants";
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useActionDraft } from "../../hooks/use-action-draft";
-import { isEditableActionDatabase } from "../../utils";
 
 import { CreateActionModal } from "./CreateActionModal";
 
 export function NewActionPage() {
   const { databases, isLoading, error } = useActionDatabases();
   const editableDatabases = useMemo(
-    () => databases.filter(isEditableActionDatabase),
+    () => databases.filter(hasNativeWritePermissions),
     [databases],
   );
 

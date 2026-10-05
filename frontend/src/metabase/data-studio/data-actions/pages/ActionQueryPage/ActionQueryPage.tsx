@@ -9,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { hasNativeWritePermissions } from "metabase/common/utils/database";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { type Location, useLocation, useNavigate } from "metabase/router";
 import { Button, Center } from "metabase/ui";
@@ -21,7 +22,6 @@ import { ActionHeader } from "../../components/ActionHeader";
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useActionDraft } from "../../hooks/use-action-draft";
 import { useRouteAction } from "../../hooks/use-route-action";
-import { isEditableActionDatabase } from "../../utils";
 
 export function ActionQueryPage() {
   const { pathname } = useLocation();
@@ -37,7 +37,7 @@ export function ActionQueryPage() {
     error: databasesError,
   } = useActionDatabases();
   const editableDatabases = useMemo(
-    () => databases.filter(isEditableActionDatabase),
+    () => databases.filter(hasNativeWritePermissions),
     [databases],
   );
   const isLoading = isLoadingAction || isLoadingDatabases;
