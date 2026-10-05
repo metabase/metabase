@@ -218,7 +218,8 @@
       ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
       ;; state apart by which 403 message it got back.
-      ;; Literal comparison: MCP honors only the literal scopes a credential claims, never a wildcard.
+      ;; Literal comparison: MCP honors only the literal scopes a credential claims, never a wildcard. This repeats
+      ;; `metabase.mcp.scope/matches?` because the `mcp` module depends on `agent-api`, so requiring it here is a cycle.
       (let [token-scopes (set (filter string? (:token-scopes claims)))]
         (when-not (contains? token-scopes metabot.scope/agent-sql-run)
           (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run

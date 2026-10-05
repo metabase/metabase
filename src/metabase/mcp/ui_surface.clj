@@ -5,6 +5,7 @@
    whose token may hold nothing but `agent:query:run`, so what it reaches has to be decided here rather than
    inherited from whatever the embedded app happens to call."
   (:require
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.metabot.scope :as metabot.scope]))
 
 (set! *warn-on-reflection* true)
@@ -67,4 +68,4 @@
   [method uri {:keys [token-scopes]}]
   (when-let [entry (surface-entry method uri)]
     (boolean (or (nil? (val entry))
-                 (contains? (set (filter string? token-scopes)) (val entry))))))
+                 (mcp.scope/matches? token-scopes (val entry))))))
