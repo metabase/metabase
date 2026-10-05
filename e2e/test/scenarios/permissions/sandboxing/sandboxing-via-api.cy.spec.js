@@ -194,13 +194,14 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
     function verifyCategoryList(visibleCategories) {
       H.popover().within(() => {
-        allCategories.forEach((value) => {
-          if (visibleCategories.includes(value)) {
-            cy.findByText(value).should("be.visible");
-          } else {
-            cy.findByText(value).should("not.exist");
-          }
+        visibleCategories.forEach((value) => {
+          cy.findByText(value).should("be.visible");
         });
+        allCategories
+          .filter((value) => !visibleCategories.includes(value))
+          .forEach((value) => {
+            cy.findByText(value).should("not.exist");
+          });
       });
     }
 

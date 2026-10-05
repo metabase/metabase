@@ -198,10 +198,13 @@ describe("scenarios > admin > permissions > data > downloads", () => {
         H.downloadAndAssert({ fileType: "xlsx" });
 
         // Make sure we can download results from a native model
-        cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
+        cy.request("PUT", `/api/card/${id}`, {
+          name: "Native Model",
+          type: "model",
+        });
 
-        H.visitQuestion(id);
-        assertDownloadPerms(`@cardQuery${id}`, "full");
+        H.visitModel(id);
+        assertDownloadPerms(`@modelQuery${id}`, "full");
 
         H.downloadAndAssert({ fileType: "xlsx", questionId: id });
       });
@@ -228,9 +231,12 @@ describe("scenarios > admin > permissions > data > downloads", () => {
         cy.icon("download").should("not.exist");
 
         // Convert question to a model, which also shouldn't be downloadable
-        cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
+        cy.request("PUT", `/api/card/${id}`, {
+          name: "Native Model",
+          type: "model",
+        });
 
-        H.visitQuestion(id);
+        H.visitModel(id);
 
         cy.findByText("Showing first 2,000 rows");
         cy.findByLabelText("Download results").should("not.exist");
@@ -257,10 +263,13 @@ describe("scenarios > admin > permissions > data > downloads", () => {
         H.downloadAndAssert({ fileType: "xlsx" });
 
         // Convert question to a model, which should also have a download row limit
-        cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
+        cy.request("PUT", `/api/card/${id}`, {
+          name: "Native Model",
+          type: "model",
+        });
 
-        H.visitQuestion(id);
-        assertDownloadPerms(`@cardQuery${id}`, "limited");
+        H.visitModel(id);
+        assertDownloadPerms(`@modelQuery${id}`, "limited");
 
         H.downloadAndAssert({ fileType: "xlsx", questionId: id });
       });
