@@ -1089,6 +1089,38 @@
         (is (= (:id table) (lib/primary-source-table-id imported)))
         (is (=? [[:field {} (:id field)]] (lib/fields imported)))))))
 
+(deftest card-on-missing-database-imports-into-stub-database-test
+  (testing "Importing a Card whose database is absent from the export and the target creates a stub database"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "source-only-db" :engine :h2)
+                table (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+                coll  (ts/create! :model/Collection :name "coll")
+                mp    (lib-be/application-database-metadata-provider (:id db))]
+            (ts/create! :model/Card
+                        :name          "Customers"
+                        :collection_id (:id coll)
+                        :database_id   (:id db)
+                        :table_id      (:id table)
+                        :dataset_query (lib/query mp (lib.metadata/table mp (:id table))))
+            (storage/store! (serdes/with-cache (into [] (extract/extract {:no-settings   true
+                                                                          :no-data-model true})))
+                            (storage.files/file-writer dump-dir))))
+        (ts/with-db dest-db
+          (is (not (t2/exists? :model/Database :name "source-only-db")))
+          (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+          (let [stub  (t2/select-one :model/Database :name "source-only-db")
+                table (t2/select-one :model/Table :db_id (:id stub) :name "customers")]
+            (is (=? {:engine  :postgres
+                     :details {}
+                     :is_stub true}
+                    stub))
+            (is (=? {:schema "PUBLIC" :active false} table))
+            (is (=? {:database_id (:id stub)
+                     :table_id    (:id table)}
+                    (t2/select-one :model/Card :name "Customers")))))))))
+
 (deftest orphaned-transform-yaml-round-trip-test
   (testing "A Transform whose source database was deleted round-trips through YAML storage as a tombstone"
     (mt/with-premium-features #{:transforms-basic}
