@@ -24,9 +24,9 @@ import { LockedTransformsBanner } from "metabase/transforms/components/LockedTra
 import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
-import { Ellipsified } from "metabase/ui";
 import {
   Card,
+  Ellipsified,
   EntityNameCell,
   Flex,
   Group,
