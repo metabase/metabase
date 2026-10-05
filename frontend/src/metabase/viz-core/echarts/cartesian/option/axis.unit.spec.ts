@@ -2,6 +2,7 @@ import {
   createMockCartesianChartModel,
   createMockChartLayout,
 } from "__support__/echarts";
+import { dayjs } from "metabase/dayjs";
 import {
   createMockColumn,
   createMockVisualizationSettings,
@@ -188,5 +189,86 @@ describe("responsive Y-axis ticks", () => {
       chartModelOptions: { splitPanelYAxisModels: [axisModel] },
     });
     expect(yAxis[0].axisLabel?.customValues).toEqual([0, 100]);
+  });
+});
+
+describe("first x-axis label", () => {
+  const settings = createMockVisualizationSettings({
+    "graph.x_axis.axis_enabled": true,
+  });
+  const chartLayout = createMockChartLayout({ outerWidth: 300 });
+  const xAxisFor = (
+    chartModel: ReturnType<typeof createMockCartesianChartModel>,
+    chartSettings = settings,
+  ) =>
+    buildAxes(chartModel, chartLayout, chartSettings, false, renderingContext)
+      .xAxis;
+
+  it("keeps the first category label when it collides with the second", () => {
+    const xAxis = xAxisFor(
+      createMockCartesianChartModel({
+        xAxisModel: {
+          axisType: "category",
+          isHistogram: false,
+          valuesCount: 4,
+          formatter: String,
+        },
+      }),
+    );
+
+    expect(xAxis.axisLabel?.showMinLabel).toBe(true);
+  });
+
+  it("keeps the first time-series and numeric labels too", () => {
+    const timeAxis = xAxisFor(
+      createMockCartesianChartModel({
+        xAxisModel: {
+          axisType: "time",
+          interval: { unit: "month", count: 1 },
+          intervalsCount: 12,
+          range: [dayjs.utc("2025-01-01"), dayjs.utc("2026-01-01")],
+          formatter: String,
+          toEChartsAxisValue: (value) => String(value),
+          fromEChartsAxisValue: (value) => dayjs.utc(value),
+        },
+      }),
+    );
+    const numericAxis = xAxisFor(
+      createMockCartesianChartModel({
+        xAxisModel: {
+          axisType: "value",
+          extent: [0, 10],
+          interval: 1,
+          intervalsCount: 10,
+          isPadded: true,
+          formatter: String,
+          toEChartsAxisValue: (value) => Number(value),
+          fromEChartsAxisValue: (value) => value,
+        },
+      }),
+    );
+
+    expect(timeAxis.axisLabel?.showMinLabel).toBe(true);
+    expect(numericAxis.axisLabel?.showMinLabel).toBe(true);
+  });
+
+  it("still labels histogram bins by their right edge", () => {
+    const xAxis = xAxisFor(
+      createMockCartesianChartModel({
+        xAxisModel: {
+          axisType: "category",
+          isHistogram: true,
+          valuesCount: 4,
+          formatter: String,
+        },
+      }),
+      createMockVisualizationSettings({
+        "graph.x_axis.axis_enabled": true,
+        "graph.x_axis.scale": "histogram",
+      }),
+    );
+
+    expect(xAxis.axisLabel?.showMinLabel).toBe(false);
+    expect(xAxis.axisLabel?.showMaxLabel).toBe(true);
   });
 });

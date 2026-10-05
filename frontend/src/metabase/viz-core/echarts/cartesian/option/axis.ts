@@ -117,6 +117,7 @@ export const getDimensionTicksDefaultOption = (
   return {
     ...getTicksDefaultOption(renderingContext),
     show: !!settings["graph.x_axis.axis_enabled"],
+    showMinLabel: true,
     rotate: getRotateAngle(settings),
   };
 };
