@@ -665,9 +665,13 @@
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [card (api/write-check :model/Card id)]
+  (let [card    (api/write-check :model/Card id)
+        ;; the database deletes the card's actions through the foreign key, with no events of their own
+        actions (queries-rest.db/actions-for-model id)]
     (queries-rest.db/delete-card! id)
-    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
+    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*})
+    (doseq [action actions]
+      (events/publish-event! :event/action-delete {:object action :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
@@ -727,7 +731,8 @@
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
                                                  (u/the-id card)))]
-          (queries-rest.db/set-cards-collection-raw! (set cards-without-position) new-collection-id-or-nil))
+          (queries-rest.db/set-cards-collection-raw! (set cards-without-position) new-collection-id-or-nil)
+          (queries/move-actions-of-models! (set cards-without-position) new-collection-id-or-nil))
         (doseq [card cards]
           (collection/check-for-remote-sync-update card)))))
 
@@ -884,12 +889,15 @@
   (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/card-public-link-created
-                                          {:object-id card-id
-                                           :user-id api/*current-user-id*})
-                   (queries-rest.db/update-card! card-id
-                                                 {:public_uuid       <>
-                                                  :made_public_by_id api/*current-user-id*})))]
+                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                   (t2/with-transaction [_conn]
+                     (queries-rest.db/update-card! card-id
+                                                   {:public_uuid       <>
+                                                    :made_public_by_id api/*current-user-id*})
+                     (events/publish-event! :event/card-public-link-created
+                                            {:object    (queries-rest.db/card card-id)
+                                             :object-id card-id
+                                             :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -905,13 +913,15 @@
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
-  (queries-rest.db/update-card! card-id
-                                {:public_uuid       nil
-                                 :made_public_by_id nil})
-  (events/publish-event! :event/card-public-link-deleted
-                         {:object-id card-id
-                          :user-id api/*current-user-id*})
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
+  (t2/with-transaction [_conn]
+    (queries-rest.db/update-card! card-id
+                                  {:public_uuid       nil
+                                   :made_public_by_id nil})
+    (events/publish-event! :event/card-public-link-deleted
+                           {:object    (queries-rest.db/card card-id)
+                            :object-id card-id
+                            :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

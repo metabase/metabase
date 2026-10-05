@@ -236,6 +236,27 @@
   :setter     (connection-field-setter :llm-deepseek-api-key)
   :doc        "Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
+;;; ---------------------------------------------------- xAI ----------------------------------------------------
+
+(defsetting llm-xai-api-base-url
+  (deferred-tru "The xAI API base URL used for Chat Completions.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :default    "https://api.x.ai/v1"
+  :export?    false
+  :getter     (connection-field-getter :llm-xai-api-base-url)
+  :setter     (connection-field-setter :llm-xai-api-base-url)
+  :doc        "Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-xai-api-key
+  (deferred-tru "The xAI API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-xai-api-key)
+  :setter     (connection-field-setter :llm-xai-api-key)
+  :doc        "Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
 ;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
 ;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
 ;;; project ID is necessary. The location is optional and defaults to `global`.

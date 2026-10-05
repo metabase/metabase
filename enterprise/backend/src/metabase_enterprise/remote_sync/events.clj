@@ -67,6 +67,26 @@
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
+(defn backfill-action-tracking!
+  "Insert a 'create' ledger row for every unarchived Action in a remote-synced collection that has none, returning the
+  number of rows inserted."
+  []
+  (let [action-spec    (spec/spec-for-model-key :model/Action)
+        collection-ids (remote-sync.db/remote-synced-collection-ids)
+        tracked        (remote-sync.db/tracked-model-ids "Action")
+        timestamp      (t/offset-date-time)
+        rows           (when (seq collection-ids)
+                         (for [action (remote-sync.db/instances-in-collections :model/Action collection-ids :archived)
+                               :when  (not (contains? tracked (:id action)))]
+                           (merge {:model_type        "Action"
+                                   :model_id          (:id action)
+                                   :status            "create"
+                                   :status_changed_at timestamp}
+                                  (spec/build-sync-object-fields action-spec action))))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
 (defn disable-library-tracking!
   "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
   []
@@ -231,6 +251,11 @@
         existing-entry (remote-sync.db/rso model-type model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
+      ;; a synced item on a read-only instance can still change (e.g. an admin's public link), but that change can
+      ;; never be pushed, so tracking it would only block the next pull
+      (not (spec/model-editable? (:model-key model-spec) object))
+      nil
+
       eligible?
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"

@@ -192,6 +192,13 @@ export const useGetSettingsQuery = useGetSessionPropertiesQuery;
 export const useLazyGetSettingsQuery = useLazyGetSessionPropertiesQuery;
 
 /**
+ * The session properties (settings) request in flight, if there is one.
+ * Await `dispatch(joinSiteSettingsRequest())` to wait for it without sending one.
+ */
+export const joinSiteSettingsRequest = () =>
+  settingsApi.util.getRunningQueryThunk("getSessionProperties", undefined);
+
+/**
  * Force a refetch of the session properties (settings) from non-React code.
  * Dispatch it via `dispatch(refetchSiteSettings())`.
  * In React, prefer `useLazyGetSettingsQuery()`'s trigger instead.

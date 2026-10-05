@@ -1,0 +1,51 @@
+.root {
+  display: flex;
+  align-items: center;
+  height: 1.5rem;
+  padding-left: 0.4375rem;
+}
+
+.dots {
+  --bright: var(--mb-color-icon-primary);
+  --dim: var(--mb-color-border-strong);
+
+  width: 0.25rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  animation: dots 350ms infinite linear alternate;
+
+  [data-mantine-color-scheme="dark"] & {
+    --bright: rgba(255, 255, 255, 0.74);
+    --dim: rgba(255, 255, 255, 0.22);
+  }
+}
+
+@keyframes dots {
+  0% {
+    box-shadow:
+      0.4375rem 0 var(--bright),
+      -0.4375rem 0 var(--dim);
+    background: var(--bright);
+  }
+
+  33% {
+    box-shadow:
+      0.4375rem 0 var(--bright),
+      -0.4375rem 0 var(--dim);
+    background: var(--dim);
+  }
+
+  66% {
+    box-shadow:
+      0.4375rem 0 var(--dim),
+      -0.4375rem 0 var(--bright);
+    background: var(--dim);
+  }
+
+  100% {
+    box-shadow:
+      0.4375rem 0 var(--dim),
+      -0.4375rem 0 var(--bright);
+    background: var(--bright);
+  }
+}

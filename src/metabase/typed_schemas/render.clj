@@ -38,7 +38,7 @@
                       :comment [:entityId :description]}
    :metric           {:runtime [:type :id :name :databaseId :sourceTableId :sourceCardId
                                 :mappedTableIds :columns :dimensions]
-                      :comment [:entityId :description :verified :sourceTable]}
+                      :comment [:entityId :description :filters :verified :sourceTable]}
    :metric-dimension {:runtime [:type :id :fieldId :metricId :tableId :sourceName :sourceFieldId
                                 :name :jsType :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
@@ -62,6 +62,7 @@
    :displayName   "Display name"
    :effectiveType "Effective type"
    :entityId      "Entity ID"
+   :filters       "Filters"
    :schemaName    "Schema"
    :semanticType  "Semantic type"
    :sourceTable   "Source table"
@@ -108,12 +109,18 @@
   for humans and coding agents, but are intentionally omitted from runtime
   objects consumed by the Lib.createTestQuery DSL."
   [kind value entry-key]
-  (seq (for [comment-key (policy-comment-keys kind value entry-key)
-             :let [comment-text (comment-value (get value comment-key))]
-             :when (not (str/blank? comment-text))]
-         (str (get comment-labels comment-key (name comment-key))
-              ": "
-              (str/replace comment-text #"\R+" " ")))))
+  (let [single-line #(str/replace % #"\R+" " ")]
+    (seq (mapcat (fn [comment-key]
+                   (let [label (get comment-labels comment-key (name comment-key))
+                         value (get value comment-key)]
+                     ;; A list gets a line per item, so a long one stays readable instead of being truncated.
+                     (if (sequential? value)
+                       (when (seq value)
+                         (cons (str label ":") (map #(str "- " (single-line (str %))) value)))
+                       (let [comment-text (comment-value value)]
+                         (when-not (str/blank? comment-text)
+                           [(str label ": " (single-line comment-text))])))))
+                 (policy-comment-keys kind value entry-key)))))
 
 (defn- generic->node
   "Converts a schema value without render policy into an AST expression.
@@ -349,14 +356,14 @@
          (vals (:metrics schema)))))
 
 (def ^:private top-level-keys
-  [:questions :models :tables :metrics])
+  [:questions :actions :tables :metrics])
 
 (defn- section->node
   "Converts one top-level schema section into an object expression."
   [section-key section]
   (case section-key
     :questions (keyed-entities->obj section :question)
-    :models    (generic->node section)
+    :actions   (generic->node section)
     :tables    (keyed-entities->obj section :table)
     :metrics   (keyed-entities->obj section :metric)))
 

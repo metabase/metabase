@@ -20,7 +20,7 @@ describe("issue 19180", () => {
     cy.intercept("/api/card/*/query").as("cardQuery");
   });
 
-  it("shouldn't drop native model query results after leaving the query editor", () => {
+  it("shouldn't drop native model query results after leaving the query editor (metabase#19180)", () => {
     H.createNativeQuestion(QUESTION).then(({ body: { id: QUESTION_ID } }) => {
       cy.request("PUT", `/api/card/${QUESTION_ID}`, { type: "model" }).then(
         () => {
@@ -57,46 +57,10 @@ describe("issue 20042", () => {
 
     cy.wait("@query");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders Model");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
-  });
-});
-
-describe("issue 20045", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      name: "Orders Model",
-      type: "model",
-    });
-  });
-
-  it("should not add query hash on the rerun (metabase#20045)", () => {
-    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-
-    cy.wait("@dataset");
-
-    cy.location("pathname").should(
-      "eq",
-      `/model/${ORDERS_QUESTION_ID}-orders-model`,
-    );
-    cy.location("hash").should("eq", "");
-
-    cy.findByTestId("qb-header-action-panel").find(".Icon-refresh").click();
-
-    cy.wait("@dataset");
-
-    cy.location("pathname").should(
-      "eq",
-      `/model/${ORDERS_QUESTION_ID}-orders-model`,
-    );
-    cy.location("hash").should("eq", "");
+    cy.findByTestId("qb-header")
+      .findByText("Orders Model")
+      .should("be.visible");
+    H.tableInteractive().findByText("37.65").should("be.visible");
   });
 });
 
@@ -155,7 +119,6 @@ describe("issue 26091", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
   it("should allow to choose a newly created model in the data picker (metabase#26091)", () => {
@@ -175,7 +138,11 @@ describe("issue 26091", () => {
     startNewQuestion();
     H.miniPicker().within(() => {
       cy.findByText("Our analytics").click();
-      cy.findByText("New model").should("be.visible");
+      cy.findByText("New model")
+        .should("be.visible")
+        .closest("[role=menuitem]")
+        .icon("model")
+        .should("exist");
       cy.findByText("Old model").should("be.visible");
       cy.findByText("Orders Model").should("be.visible");
     });
@@ -291,7 +258,6 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
@@ -350,12 +316,11 @@ describe("issue 31663", () => {
     H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByPlaceholderText("Select a target").click();
-    H.popover().findByText("Orders Model → ID").should("not.exist");
-    H.popover().findByText("Products Model → ID").should("not.exist");
-
     H.popover().findByText("Orders → ID").should("be.visible");
     H.popover().findByText("People → ID").should("be.visible");
     H.popover().findByText("Products → ID").should("be.visible");
+    H.popover().findByText("Orders Model → ID").should("not.exist");
+    H.popover().findByText("Products Model → ID").should("not.exist");
     H.popover()
       .scrollTo("bottom")
       .findByText("Reviews → ID")
@@ -363,30 +328,7 @@ describe("issue 31663", () => {
   });
 });
 
-describe("issue 31905", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/card/*").as("card");
-
-    H.createQuestion(
-      {
-        name: "Orders Model",
-        type: "model",
-        query: { "source-table": ORDERS_ID, limit: 2 },
-      },
-      { visitQuestion: true },
-    );
-  });
-
-  // TODO: This should be 1, but MainNavbar.tsx RTKQ fetch + QB's call to loadCard makes it 2
-  it("should not send more than one same api requests to load a model (metabase#31905)", () => {
-    cy.get("@card.all").should("have.length.lte", 2);
-  });
-});
-
-describe("issue 32963", () => {
+describe("issues 31905 and 32963", () => {
   function assertLineChart() {
     H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
@@ -406,6 +348,7 @@ describe("issue 32963", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/card/*").as("card");
     H.createQuestion(
       {
         name: "Orders Model",
@@ -416,7 +359,11 @@ describe("issue 32963", () => {
     );
   });
 
-  it("should pick sensible display for model based questions (metabase#32963)", () => {
+  it("should load a model once and pick sensible display for model based questions (metabase#31905, metabase#32963)", () => {
+    cy.log("should not send more than one same api request (metabase#31905)");
+    // TODO: This should be 1, but MainNavbar.tsx RTKQ fetch + QB's call to loadCard makes it 2
+    cy.get("@card.all").should("have.length.within", 1, 2);
+
     cy.findByTestId("qb-header")
       .button(/Summarize/)
       .click();

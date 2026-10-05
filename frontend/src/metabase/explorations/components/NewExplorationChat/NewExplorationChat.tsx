@@ -92,6 +92,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     messages,
     conversationId,
     retryMessage,
+    continueResponse,
     isDoingScience,
     submitInput,
     cancelRequest,
@@ -288,14 +289,17 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           >
             <Messages
               messages={messages}
+              size="md"
               onRetryMessage={(id) =>
                 retryMessage(id, { profile: "explorations" })
               }
-              onContinueMessage={(prompt) =>
-                submitInput(prompt, {
-                  preventOpenSidebar: true,
-                  profile: "explorations",
-                })
+              onContinueMessage={
+                continueResponse &&
+                (() =>
+                  continueResponse({
+                    preventOpenSidebar: true,
+                    profile: "explorations",
+                  }))
               }
               isDoingScience={isDoingScience}
               debug={false}

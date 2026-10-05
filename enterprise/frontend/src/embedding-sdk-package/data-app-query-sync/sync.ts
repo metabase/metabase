@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import { readManifest } from "../data-app-dev/config/read-manifest";
+
 import { discoverActions, discoverQueries } from "./discover";
 import { isPositiveInteger } from "./guards";
 import {
@@ -9,7 +11,7 @@ import {
 } from "./lockfile";
 import { MetabaseClient, orNullOn404 } from "./metabase-client";
 import { reconcileQueries } from "./reconcile";
-import { reconcileModels } from "./reconcile-models";
+import { reconcileActions } from "./reconcile-actions";
 import type { DiscoveredAction, ResourceLockfile } from "./types";
 
 export interface SyncResourcesOptions {
@@ -70,9 +72,7 @@ function checkActionsSynchronized(
   lockfile: ResourceLockfile,
 ) {
   const byId = new Map(
-    lockfile.models.flatMap((model) =>
-      model.actions.map((entry) => [entry.sourceActionId, entry] as const),
-    ),
+    lockfile.actions.map((entry) => [entry.sourceActionId, entry] as const),
   );
 
   for (const action of actions) {
@@ -84,10 +84,8 @@ function checkActionsSynchronized(
   }
 
   const liveIds = new Set(actions.map(({ sourceActionId }) => sourceActionId));
-  const hasRemovedAction = lockfile.models.some(
-    (model) =>
-      model.actions.length === 0 ||
-      model.actions.some(({ sourceActionId }) => !liveIds.has(sourceActionId)),
+  const hasRemovedAction = lockfile.actions.some(
+    ({ sourceActionId }) => !liveIds.has(sourceActionId),
   );
 
   if (hasRemovedAction) {
@@ -129,7 +127,6 @@ async function moveCopiesToAppCollection(
   if (previousCollectionId !== undefined) {
     const copiedCardIds = [
       ...lockfile.queries.map((entry) => entry.savedQuestionSourceId),
-      ...lockfile.models.map((entry) => entry.copiedModelId),
       ...lockfile.metrics.map((entry) => entry.copiedMetricId),
     ];
 
@@ -142,6 +139,21 @@ async function moveCopiesToAppCollection(
 
       await client.moveCardToCollection(cardId, collectionId);
       log(`moved card ${cardId} into data app collection ${collectionId}`);
+    }
+
+    for (const { copiedActionId } of lockfile.actions) {
+      const action = await orNullOn404(client.getAction(copiedActionId));
+
+      if (action?.collection_id !== previousCollectionId) {
+        continue;
+      }
+
+      await client.updateAction(copiedActionId, {
+        collection_id: collectionId,
+      });
+      log(
+        `moved action ${copiedActionId} into data app collection ${collectionId}`,
+      );
     }
   }
 
@@ -161,7 +173,12 @@ export async function syncResources({
   ]);
   const lockfile = readResourceLockfile(appRoot);
   const client = new MetabaseClient(metabaseUrl, apiKey);
-  const slug = path.basename(appRoot);
+  const slug = readManifest(appRoot)?.manifest.slug;
+  if (!slug) {
+    throw new Error(
+      `${path.join(appRoot, "data_app.yaml")} must declare the app's "slug".`,
+    );
+  }
   const app = await client.ensureDraft(slug);
   if (!isPositiveInteger(app.resource_collection_id)) {
     throw new Error(`Data app ${slug} does not have a resource collection.`);
@@ -184,7 +201,7 @@ export async function syncResources({
     client,
     log,
   });
-  const modelTableIds = await reconcileModels({
+  const actionTableIds = await reconcileActions({
     appRoot,
     slug,
     collectionId: app.resource_collection_id,
@@ -194,7 +211,7 @@ export async function syncResources({
     log,
   });
 
-  const tableIds = [...new Set([...queryTableIds, ...modelTableIds])].sort(
+  const tableIds = [...new Set([...queryTableIds, ...actionTableIds])].sort(
     (a, b) => a - b,
   );
 

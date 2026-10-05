@@ -27,6 +27,10 @@ export function makeApp() {
 
   fs.mkdirSync(path.join(appRoot, "queries"));
   fs.mkdirSync(path.join(appRoot, "actions"));
+  fs.writeFileSync(
+    path.join(appRoot, "data_app.yaml"),
+    `slug: ${path.basename(appRoot)}\n`,
+  );
 
   const packageRoot = path.join(
     appRoot,
@@ -74,7 +78,7 @@ export function writeQueryLockfile(
 ) {
   fs.writeFileSync(
     path.join(appRoot, "resources_metadata.json"),
-    JSON.stringify({ queries, models: [] }),
+    JSON.stringify({ queries, actions: [] }),
   );
 }
 

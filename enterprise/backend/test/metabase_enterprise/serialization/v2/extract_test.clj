@@ -1039,6 +1039,31 @@
                   (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/deserialization-dependencies ser)))))))))))))
 
+(deftest collection-export-includes-model-actions-test
+  (testing "GHY-4722: exporting a collection exports the actions of its models, though a model doesn't reference them"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}      {:name "My Database"}
+                         :model/Collection {coll-id :id}    {:name "Models"}
+                         :model/Card       {model-id :id}   {:name          "Model"
+                                                             :type          :model
+                                                             :database_id   db-id
+                                                             :collection_id coll-id
+                                                             :dataset_query {:database db-id
+                                                                             :type     :native
+                                                                             :native   {:query "select 1"}}}
+                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id}
+                         :model/Action     {archived-id :id} {:name "Old Action" :type :implicit :model_id model-id
+                                                              :archived true}]
+        (let [eid (fn [id] (t2/select-one-fn :entity_id :model/Action :id id))]
+          (is (= #{(eid action-id) (eid archived-id)}
+                 (ids-by-model "Action" (extract/extract {:targets       [["Collection" coll-id]]
+                                                          :no-data-model true}))))
+          (testing "with :skip-archived, the archived action is left out"
+            (is (= #{(eid action-id)}
+                   (ids-by-model "Action" (extract/extract {:targets       [["Collection" coll-id]]
+                                                            :no-data-model true
+                                                            :skip-archived true}))))))))))
+
 (deftest query-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"

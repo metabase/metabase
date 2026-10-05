@@ -158,7 +158,7 @@
                                     ;; since that desugars to
                                     ;;
                                     ;;    [:or [:= <field> 1] ...].
-                                    lib/desugar-filter-clause
+                                    driver-api/desugar-filter-clause
                                     driver-api/wrap-value-literals-in-mbql5
                                     (->> (mongo.qp/compile-filter query stage-number))
                                     json/encode)]

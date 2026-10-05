@@ -10,7 +10,6 @@ export {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   type AuthSettingsPageProps,
   type AuthSettingsPageTab,
-  type LdapUserProvisioningProps,
   type SettingsJWTFormProps,
 } from "./oss/auth";
 export {

@@ -6,6 +6,7 @@
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -19,6 +20,12 @@
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
   (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
+
+(def fail-to-add-data-analyst-msg
+  "Exception message when trying to add a member to the Data Analysts group without the `:advanced-permissions`
+  premium feature."
+  (deferred-tru (str "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, "
+                     "which is not enabled on this instance.")))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-changing-all-users-group-members*
@@ -61,6 +68,15 @@
     (when-not *allow-changing-all-external-users-group-members*
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
                       {:status-code 400})))))
+
+(defn- check-can-add-to-data-analyst-group
+  "Throw a 402 if we're trying to *add* a user to the Data Analysts group without the `:advanced-permissions` premium
+  feature. Removals are never gated."
+  [group-id]
+  (when (and (= group-id (:id (perms-group/data-analyst)))
+             (not (premium-features/enable-advanced-permissions?)))
+    (throw (ex-info (str fail-to-add-data-analyst-msg)
+                    {:status-code 402}))))
 
 (defn throw-if-last-admin!
   "Throw an Exception if there are no admins left besides this one. The assumption is that the one admin is about to be
@@ -144,6 +160,11 @@
                                                                    (throw (ex-info "Conflicting permissions group memberships"
                                                                                    {:conflicts (distinct pgms)})))
                                                                  (boolean (:is-group-manager? (first pgms))))))
+          ;; re-adding an existing member is a no-op, so everything below only ever sees genuine additions:
+          ;; the tenant checks, the Data Analysts gate, the insert, the flag updates and the events
+          user-id-group-id->is-group-manager? (apply dissoc user-id-group-id->is-group-manager?
+                                                     (permissions.db/existing-membership-pairs
+                                                      (keys user-id-group-id->is-group-manager?)))
           [user-ids group-ids] (->> user-id-group-id->is-group-manager?
                                     keys
                                     (reduce (fn [[uids gids] [user-id group-id]]
@@ -163,7 +184,8 @@
                                                :group-is-tenant? (group-id->tenant? group-id)}))))
           _ (doseq [group-id group-ids]
               (check-not-all-users-group group-id)
-              (check-not-all-external-users-group group-id))
+              (check-not-all-external-users-group group-id)
+              (check-can-add-to-data-analyst-group group-id))
           _ (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
               (when (and is-group-manager? (user-id->tenant? user-id))
                 (throw (ex-info (tru "Tenant users cannot be made group managers")
@@ -185,25 +207,26 @@
                                     (keep (fn [[user-id group-id]]
                                             (when (= group-id (:id (perms-group/data-analyst)))
                                               user-id))))]
-      (t2/with-transaction [_conn]
-        (when (< (permissions.db/insert-group-memberships-from-mapping! user-id-group-id->is-group-manager?)
-                 (count user-id-group-id->is-group-manager?))
-          ;; Theoretically, there could be a race condition in the above check: a user or group may be changed to a tenant
-          ;; user/group or vice versa AFTER we check (above) but BEFORE the insert (below). So just make sure that the
-          ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
-          (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
-        (when (seq new-admin-ids)
-          (permissions.db/update-users! new-admin-ids {:is_superuser true}))
-        (when (seq new-data-analyst-ids)
-          (permissions.db/update-users! new-data-analyst-ids {:is_data_analyst true}))
-        ;; Publish events for each new membership
-        (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
-          (events/publish-event! :event/group-membership-create
-                                 {:user-id api/*current-user-id*
-                                  :object (t2/instance :model/PermissionsGroupMembership
-                                                       {:user_id user-id
-                                                        :group_id group-id
-                                                        :is_group_manager is-group-manager?})}))))))
+      (when (seq user-id-group-id->is-group-manager?)
+        (t2/with-transaction [_conn]
+          (when (< (permissions.db/insert-group-memberships-from-mapping! user-id-group-id->is-group-manager?)
+                   (count user-id-group-id->is-group-manager?))
+            ;; Theoretically, there could be a race condition in the above check: a user or group may be changed to a tenant
+            ;; user/group or vice versa AFTER we check (above) but BEFORE the insert (below). So just make sure that the
+            ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
+            (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
+          (when (seq new-admin-ids)
+            (permissions.db/update-users! new-admin-ids {:is_superuser true}))
+          (when (seq new-data-analyst-ids)
+            (permissions.db/update-users! new-data-analyst-ids {:is_data_analyst true}))
+          ;; Publish events for each new membership
+          (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
+            (events/publish-event! :event/group-membership-create
+                                   {:user-id api/*current-user-id*
+                                    :object (t2/instance :model/PermissionsGroupMembership
+                                                         {:user_id user-id
+                                                          :group_id group-id
+                                                          :is_group_manager is-group-manager?})})))))))
 
 (defn add-user-to-groups!
   "Add a user to multiple groups"

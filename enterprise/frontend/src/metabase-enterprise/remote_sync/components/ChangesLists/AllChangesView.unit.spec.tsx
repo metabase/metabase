@@ -992,4 +992,27 @@ describe("AllChangesView", () => {
       expect(screen.queryByText("Library")).not.toBeInTheDocument();
     });
   });
+
+  describe("actions", () => {
+    // The dirty entry for an action has no parent model id, so there is no
+    // action URL to build. The item must show without a dead /404 link (GHY-4722).
+    it("should display a model action in its model's collection with the bolt icon and no link", async () => {
+      const actionEntity = createMockRemoteSyncEntity({
+        id: 600,
+        name: "Create order",
+        model: "action",
+        collection_id: 1,
+        sync_status: "create",
+      });
+
+      setup({ entities: [actionEntity] });
+
+      expect(await screen.findByText("Entity Collection")).toBeInTheDocument();
+      expect(screen.getByText("Create order")).toBeInTheDocument();
+      expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /Create order/ }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
