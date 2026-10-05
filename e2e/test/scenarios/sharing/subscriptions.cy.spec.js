@@ -23,6 +23,21 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByTestId("dashboard-subscriptions-button").should("not.exist");
     });
 
+    H.openSharingMenu();
+    H.sharingMenu()
+      .findByText(/public link/i)
+      .click();
+    cy.findByTestId("public-link-popover-content").should("be.visible");
+
+    H.openSharingMenu("Embed");
+    H.embedModalContent().should("be.visible");
+
+    H.createDashboard({ name: "Text only dashboard" }).then(
+      ({ body: { id: DASHBOARD_ID } }) => {
+        H.visitDashboard(DASHBOARD_ID);
+      },
+    );
+
     H.addTextBox("Foo");
     cy.button("Save").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -40,14 +55,6 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByText("Create a public link").should("be.visible");
       cy.findByText("Embed").should("be.visible");
     });
-
-    H.sharingMenu()
-      .findByText(/public link/i)
-      .click();
-    cy.findByTestId("public-link-popover-content").should("be.visible");
-
-    H.openSharingMenu("Embed");
-    H.embedModalContent().should("be.visible");
   });
 
   describe("with no channels set up", () => {
@@ -262,8 +269,12 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.emailSubscriptionRecipients();
 
         H.openEmailPage(dashboardName).then(() => {
-          cy.intercept("/api/pulse/unsubscribe").as("unsubscribe");
-          cy.intercept("/api/pulse/unsubscribe/undo").as("resubscribe");
+          cy.intercept("POST", { pathname: "/api/pulse/unsubscribe" }).as(
+            "unsubscribe",
+          );
+          cy.intercept("POST", { pathname: "/api/pulse/unsubscribe/undo" }).as(
+            "resubscribe",
+          );
 
           cy.findByText("Unsubscribe").click();
           cy.wait("@unsubscribe");
@@ -546,6 +557,10 @@ describe("scenarios > dashboard > subscriptions", () => {
       );
 
       H.sendEmailAndAssert(({ html }) => {
+        expect(html).to.include(questionDetails.name);
+        expect(html).to.match(
+          /<img style="display: block; width: 100%;" src="cid:/,
+        );
         expect(html).not.to.include(
           "An error occurred while displaying this card.",
         );
