@@ -213,6 +213,25 @@
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-interactive "interactive-embedding"))
 
+(defsetting enable-embedding-sidecar
+  (deferred-tru "Do admins link to Metabase from their own app? Only reported for analytics.")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  ;; Only reported, never checked: side-car embedding is a link to Metabase, so there is nothing to turn on, and no
+  ;; secret key to generate like [[make-embedding-toggle-setter]] does. `simple_event` for the same reason as
+  ;; [[enable-embedding-modular]].
+  :setter     (fn [new-value]
+                (u/prog1 new-value
+                  (let [old-value (setting/get-value-of-type :boolean :enable-embedding-sidecar)]
+                    (when (not= new-value old-value)
+                      (setting/set-value-of-type! :boolean :enable-embedding-sidecar new-value)
+                      (analytics/track-event!
+                       :snowplow/simple_event
+                       {:event (keyword (str "sidecar-embedding" (if new-value "-enabled" "-disabled")))}))))))
+
 (defsetting embedding-app-origins-interactive
   (deferred-tru "Allow these space delimited origins to embed Metabase interactive.")
   :type       :string

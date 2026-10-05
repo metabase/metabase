@@ -82,6 +82,23 @@
                          :user-id (str (mt/user->id :crowberto))}]
                        (pop-events!)))))))))))
 
+(deftest enable-embedding-sidecar-test
+  (testing "Toggling side-car embedding sends a simple_event and nothing else"
+    (mt/with-test-user :crowberto
+      (mt/with-temporary-setting-values [enable-embedding-sidecar false
+                                         embedding-secret-key     nil]
+        (snowplow-test/with-fake-snowplow-collector
+          (embed.settings/enable-embedding-sidecar! true)
+          (is (= [{:data    {"event" "sidecar_embedding_enabled"}
+                   :user-id (str (mt/user->id :crowberto))}]
+                 (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))
+          (testing "without generating the secret key the other embedding methods sign with"
+            (is (nil? (embed.settings/embedding-secret-key))))
+          (embed.settings/enable-embedding-sidecar! false)
+          (is (= [{:data    {"event" "sidecar_embedding_disabled"}
+                   :user-id (str (mt/user->id :crowberto))}]
+                 (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!)))))))))
+
 (defn- legacy-setting
   "Reads a deprecated embedding setting that `enable-embedding-modular` replaces."
   [embedding-method]

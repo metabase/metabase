@@ -25,4 +25,5 @@
    :enabled-embedding-simple      (boolean  (and  (setting/get :enable-embedding-modular)
                                                   (or (setting/get-value-of-type :boolean :jwt-enabled)
                                                       (setting/get-value-of-type :boolean :saml-enabled))))
+   :enabled-embedding-sidecar     (boolean (setting/get-value-of-type :boolean :enable-embedding-sidecar))
    :use-tenants                   (boolean (setting/get-value-of-type :boolean :use-tenants))})
