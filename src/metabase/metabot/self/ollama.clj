@@ -122,7 +122,8 @@
   "A preflight failure, tagged so `metabase.metabot.api` surfaces the message verbatim, not as a 500.
 
   `data` may carry `::server-wide?`, for a failure every model on the server would hit as well, which
-  ends [[preflight!]]'s search rather than moving it on to the next model."
+  ends [[preflight!]]'s search rather than moving it on to the next model — see
+  [[model-specific-failure?]]."
   ([msg] (preflight-ex msg nil))
   ([msg data]
    (ex-info msg (merge {:api-error   true
@@ -366,6 +367,20 @@
   (run-probe! check-structured-output! req model)
   model)
 
+(defn- model-specific-failure?
+  "Whether `e`, thrown while preflighting one model, is about that model alone, so that
+  [[preflight!]]'s search moves on to the next one.
+
+  Two HTTP statuses are, on Ollama: 500 for a model too large to load (\"model requires more system
+  memory\"), and 400 for one whose template has no tool support, which only a probe finds out when
+  `/api/show` will not say."
+  [e]
+  (let [{:keys [error-code status] :as data} (ex-data e)]
+    (case error-code
+      :ollama-preflight-failed (not (::server-wide? data))
+      :provider-api-error      (contains? #{400 500} status)
+      false)))
+
 (defn- preflight!
   "Exercise the agent loop's contract against the model that will actually serve it, returning that
   model's id. The connect path must adopt exactly this model rather than re-deriving it from the
@@ -373,8 +388,8 @@
 
   A model asked for by name is the only one probed. The connect path names none, and the form offers
   no picker for Ollama, so a failing model there would leave the admin no way forward: it moves on to
-  the next chat model, newest first, up to [[max-fallback-candidates]] of them. A failure every model
-  would share — see [[preflight-ex]] — ends the search."
+  the next chat model, newest first, up to [[max-fallback-candidates]] of them. A failure that is
+  not the model's own — see [[model-specific-failure?]] — ends the search."
   [req entries requested-model]
   (check-native-api! (:credentials req))
   (if requested-model
@@ -388,9 +403,8 @@
                   (try
                     (preflight-model! req model)
                     (catch clojure.lang.ExceptionInfo e
-                      (let [{:keys [error-code] :as data} (ex-data e)]
-                        (when (or (not= :ollama-preflight-failed error-code) (::server-wide? data))
-                          (throw e)))
+                      (when-not (model-specific-failure? e)
+                        (throw e))
                       (vswap! errors conj e)
                       nil)))
                 candidates)

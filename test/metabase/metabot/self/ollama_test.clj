@@ -513,6 +513,26 @@
                  #"^Ollama did not answer the connection test"
                  (ollama/list-models {:credentials credentials :probe? true})))
             (is (= ["m0"] @probed)))))))
+  (let [connect (fn [failing-status]
+                  (let [probed (atom [])
+                        tools  (fn [model]
+                                 (swap! probed conj model)
+                                 (if (= "m0" model)
+                                   (throw (ex-info "clj-http: status" {:status failing-status
+                                                                       :body   "{\"error\":\"m0\"}"}))
+                                   {:message tool-calling-message :finish_reason "tool_calls"}))]
+                    (with-clean-capabilities!
+                      (fn []
+                        {:result (try (get-in (probe-choice! [{:id "m0"} {:id "m1"}] tools structured-success)
+                                              [:connection-info :probed-model])
+                                      (catch clojure.lang.ExceptionInfo e (ex-message e)))
+                         :probed @probed}))))]
+    (testing "a 500 is how Ollama answers for a model too large to load, so the search moves on"
+      (is (= {:result "m1" :probed ["m0" "m1"]} (connect 500))))
+    (testing "a 400 is how Ollama answers for a model with no tool support when capabilities are unknown"
+      (is (= {:result "m1" :probed ["m0" "m1"]} (connect 400))))
+    (testing "a rejected key would be rejected for every model, so it ends the search"
+      (is (=? {:result #"^Ollama rejected the API key" :probed ["m0"]} (connect 401)))))
   (testing "a window too small is the model's own as often as the server's — a Modelfile can set one — so
            the search moves on"
     (is (= "m1"
