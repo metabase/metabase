@@ -117,7 +117,7 @@ describe(
         cy.get("@cardQuery.all").should("have.length", 4);
 
         cy.log(
-          "last applied parameter values should be used when disabling auto applying filters, even if previously there were draft parameter values",
+          "parameter values applied while auto-applying filters should be preserved when disabling auto applying filters",
         );
         H.filterWidget().findByText("Widget").click();
         H.popover().within(() => {
@@ -134,6 +134,7 @@ describe(
         H.closeDashboardSettingsSidebar();
 
         H.filterWidget().findByText("2 selections").should("be.visible");
+        H.assertTableRowsCount(107);
         cy.get("@cardQuery.all").should("have.length", 5);
 
         cy.get("@updateDashboardSpy").should("have.callCount", 3);
