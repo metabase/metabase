@@ -393,6 +393,21 @@ describe(
     });
 
     it("allows switching to the granular access and update table permissions", () => {
+      cy.log(
+        "Set unrestricted for children if database is set to impersonated before going granular",
+      );
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+
+      H.selectImpersonatedAttribute("role");
+      H.saveImpersonationSettings();
+
+      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Granular");
+
+      H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Can view");
+
+      cy.log("Same, after saving the impersonated permissions");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
       H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
@@ -477,19 +492,6 @@ describe(
       cy.get("@leaveConfirmation").findByText("Discard changes").click();
 
       cy.focused().should("have.attr", "placeholder", "username");
-    });
-
-    it("should set unrestricted for children if database is set to impersonated before going granular", () => {
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
-
-      H.selectImpersonatedAttribute("role");
-      H.saveImpersonationSettings();
-
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Granular");
-
-      H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Can view");
     });
   },
 );

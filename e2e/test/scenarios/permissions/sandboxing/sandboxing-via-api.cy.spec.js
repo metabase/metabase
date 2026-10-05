@@ -1103,34 +1103,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       H.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has 30
     });
 
-    it("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
-      H.setupSMTP();
-
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-      });
-
-      cy.signInAsSandboxedUser();
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.toggleDashboardSubscriptionsSidebar();
-
-      // should forward to email since that is the only one setup
-      H.sidebar().findByText("Email this dashboard").should("exist");
-
-      // test that user is sandboxed - normal users has over 2000 rows
-      H.getDashboardCard().within(() => {
-        H.assertTableRowsCount(11);
-      });
-      H.assertDatasetReqIsSandboxed({
-        requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
-        columnId: ORDERS.USER_ID,
-        columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
-      });
-    });
-
     it("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,
@@ -1207,7 +1179,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     });
 
     it(
-      "sandboxed user should receive sandboxed dashboard subscription",
+      "sandboxed user should see dashboard subscriptions and receive a sandboxed subscription (metabase#14990)",
       { tags: "@external" },
       () => {
         H.setupSMTP();
@@ -1236,6 +1208,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         });
 
         H.toggleDashboardSubscriptionsSidebar();
+
+        // metabase#14990: should forward to email since that is the only one setup
+        H.sidebar().findByText("Email this dashboard").should("exist");
 
         H.sidebar()
           .findByPlaceholderText("Enter user names or email addresses")
