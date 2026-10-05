@@ -1,7 +1,4 @@
-import {
-  ALL_USERS_GROUP_ID,
-  NORMAL_USER_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 
@@ -61,57 +58,11 @@ describe("AI Controls > Metabot access and customization", () => {
         cy.findAllByRole("checkbox").each(($checkbox) => {
           cy.wrap($checkbox).should("not.be.checked");
         });
-
-        // Toggle the metabot AI features switch on again
-        cy.findByRole("switch").click({ force: true });
-
-        cy.wait("@updatePermissions")
-          .its("response.statusCode")
-          .should("eq", 200);
-
-        // When metabot permission is toggled on, all tools should be enabled by default
-        cy.findAllByRole("checkbox").each(($checkbox) => {
-          cy.wrap($checkbox).should("be.checked");
-        });
       });
 
       cy.intercept("GET", "/api/metabot/permissions/user-permissions").as(
         "getUserPermissions",
       );
-
-      cy.log(
-        "a user in a group with Metabot access sees the Metabot chat icon",
-      );
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.wait("@getUserPermissions");
-      H.appBar().find('[aria-label*="Chat with"]').should("be.visible");
-
-      cy.signInAsAdmin();
-
-      // First, get the current permissions so we can update only the All Users group
-      cy.request("GET", "/api/ee/ai-controls/permissions").then((response) => {
-        const currentPermissions: Array<{
-          group_id: number;
-          perm_type: string;
-          perm_value: string;
-        }> = response.body.permissions;
-
-        // Set All Users group's metabot permission to "no"
-        const updatedPermissions = currentPermissions.map((p) => {
-          if (
-            p.group_id === ALL_USERS_GROUP_ID &&
-            p.perm_type === "permission/metabot"
-          ) {
-            return { ...p, perm_value: "no" };
-          }
-          return p;
-        });
-
-        cy.request("PUT", "/api/ee/ai-controls/permissions", {
-          permissions: updatedPermissions,
-        });
-      });
 
       // Sign in as a normal user (who is only in the All Users group)
       cy.signInAsNormalUser();
@@ -125,6 +76,34 @@ describe("AI Controls > Metabot access and customization", () => {
 
       // The Metabot chat icon should not be present
       H.appBar().find('[aria-label*="Chat with"]').should("not.exist");
+
+      cy.signInAsAdmin();
+      cy.visit("/admin/metabot/usage-controls/ai-feature-access");
+      cy.wait("@getPermissions");
+
+      cy.findByRole("row", { name: /All Users permissions/ }).within(() => {
+        // Toggle the metabot AI features switch on again
+        cy.findByRole("switch").should("not.be.checked").click({ force: true });
+
+        cy.wait("@updatePermissions")
+          .its("response.statusCode")
+          .should("eq", 200);
+
+        // When metabot permission is toggled on, all tools should be enabled by default
+        cy.findAllByRole("checkbox").each(($checkbox) => {
+          cy.wrap($checkbox).should("be.checked");
+        });
+      });
+
+      cy.log(
+        "a user in a group with Metabot access sees the Metabot chat icon",
+      );
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.wait("@getUserPermissions")
+        .its("response.body.permissions.metabot")
+        .should("eq", "yes");
+      H.appBar().find('[aria-label*="Chat with"]').should("be.visible");
     });
   });
 
@@ -362,19 +341,14 @@ describe("AI controls > AI usage limits", () => {
         });
       });
       cy.log("Enforce a zero instance limit in a fresh chat");
+      cy.findByLabelText("Total weekly instance message limit").type(
+        "{selectall}0",
+      );
+      cy.wait("@updateInstanceLimit").then(({ request }) => {
+        expect(request.body).to.deep.equal({ max_usage: 0 });
+      });
+
       H.updateSetting("metabot-enabled?", true);
-
-      cy.request("PUT", "/api/setting/metabot-limit-reset-rate", {
-        value: "monthly",
-      });
-
-      cy.request("PUT", "/api/setting/metabot-quota-reached-message", {
-        value: DEFAULT_QUOTA_MESSAGE,
-      });
-
-      cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
-        max_usage: 0,
-      });
 
       cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
         "xrayCandidates",
@@ -385,7 +359,10 @@ describe("AI controls > AI usage limits", () => {
       H.openMetabotViaSearchButton();
       H.sendMetabotMessage("hello");
 
-      H.lastChatMessage().should("have.text", DEFAULT_QUOTA_MESSAGE);
+      H.lastChatMessage().should(
+        "have.text",
+        "You have hit the AI usage limit.",
+      );
     });
   });
 

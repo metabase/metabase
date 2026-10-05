@@ -63,6 +63,11 @@ describe("Metabot Query Builder", () => {
     cy.findByTestId("metabot-inline-chart").should("be.visible");
     cy.findByTestId("qb-header").should("not.exist");
     cy.url().should("include", "/metabot/conversation/");
+
+    cy.log("errors");
+    H.mockMetabotResponse({ body: mockErrorResponse });
+    H.sendMetabotMessage("Show me all orders");
+    H.lastChatMessage().should("contain.text", "Something went wrong");
   });
 });
 
@@ -80,3 +85,8 @@ const mockGeneratedEntityResponse = (datasetQuery: unknown) => {
   };
   return H.createMetabotSSEBody(H.metabotDataPart("generated_entity", value));
 };
+
+const mockErrorResponse = H.createMetabotSSEBody(
+  H.metabotErrorPart("Anthropic API key expired or invalid"),
+  H.metabotFinishPart("error"),
+);
