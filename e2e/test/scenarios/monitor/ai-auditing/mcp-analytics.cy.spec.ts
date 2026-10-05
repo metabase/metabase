@@ -42,7 +42,18 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
     cy.signInAsAdmin();
   });
 
-  it("shows seeded tool calls, their errors and the gated error message", () => {
+  it("is hidden without the audit-app feature and shows seeded tool calls, their errors and the gated error message with it", () => {
+    cy.visit(MCP_ANALYTICS_PATH);
+
+    cy.log("The MCP analytics route is not registered without audit_app");
+    cy.findByLabelText("error page").should("be.visible");
+    cy.findByTestId("monitor-nav")
+      .findByRole("link", { name: /Background tasks/ })
+      .should("be.visible");
+    cy.findByRole("heading", { name: "MCP analytics" }).should("not.exist");
+    cy.findByRole("link", { name: "MCP analytics" }).should("not.exist");
+
+    cy.log("With audit_app, the page shows the seeded tool calls");
     H.activateToken("pro-self-hosted");
     seedMcpToolCall();
     // error_message is gated PII — the backend only records/shows it when retention is on.
@@ -95,17 +106,5 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
       cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_MESSAGE).scrollIntoView().should("be.visible");
     });
-  });
-
-  it("hides the nav item and the page without the audit-app feature", () => {
-    cy.visit(MCP_ANALYTICS_PATH);
-
-    cy.log("The MCP analytics route is not registered without audit_app");
-    cy.findByLabelText("error page").should("be.visible");
-    cy.findByTestId("monitor-nav")
-      .findByRole("link", { name: /Background tasks/ })
-      .should("be.visible");
-    cy.findByRole("heading", { name: "MCP analytics" }).should("not.exist");
-    cy.findByRole("link", { name: "MCP analytics" }).should("not.exist");
   });
 });
