@@ -1,96 +1,38 @@
 # JavaScript and TypeScript linting
 
-Oxlint runs the JavaScript/TypeScript checks in `bun run lint`, staged-file checks
-and frontend CI, including module boundaries. Oxfmt owns formatting and import
-ordering through its `sortImports` config. A few files set their import order for
-runtime reasons and keep it with `// oxfmt-ignore` comments. ESLint remains
-installed for retained plugins and compatibility tests.
+Oxlint runs the JavaScript and TypeScript checks in `bun run lint`, the
+staged-file checks and frontend CI, including module boundaries. Oxfmt formats
+the code and sorts imports. ESLint stays installed for the plugins oxlint runs
+through its JS plugin API, the compatibility tests and `bun run
+module-boundaries`, which the weekly stats collector runs.
 
-## Commands
+Oxfmt moves value imports past side-effect imports when it sorts. A file whose
+import order matters at runtime keeps that order with `// oxfmt-ignore` comments.
 
-```sh
-bun install --frozen-lockfile
-bun run lint-oxlint       # generates CLJS output, then lints
-bun run lint-oxlint-pure  # uses existing CLJS output
-bun run lint-oxlint-fix
-bun run test-oxlint
-```
+## Where the configuration lives
 
-`oxlint.config.mts` is the entry point. Production commands use one process, with
-oxlint choosing the thread count from the available CPU cores. The pure command
-excludes formatting, type checking and CLJS compilation. Generated CLJS is still
-needed for filesystem resolution.
+These files hold the lint configuration. Paths are relative to `frontend/lint`
+unless they say otherwise.
 
-To investigate slow rules, run `bun run lint-oxlint-pure --debug timings`. Oxlint
-reports timings for native rules and the retained JavaScript plugin rules.
+- `oxlint.config.mts` in the repo root is the entry point oxlint loads.
+- `config.mjs` holds the rule options, file scopes, globals and settings. Both
+  engines read it.
+- `oxlint/config.mjs` translates that policy into an oxlint config.
+- `oxlint/rule-map.json` maps each ESLint rule name to a native oxlint rule or a
+  JS plugin rule.
+- `recommended-rules.json` and `oxlint/rule-defaults.json` are generated
+  snapshots of the plugin presets and rule defaults.
+- `eslint.config.mjs` in the repo root supplies the parsers and plugins for the
+  ESLint side of the compatibility tests.
 
-## Accepted rule differences
+## After a dependency upgrade
 
-These native rules replace expensive JS checks with explicit policy tradeoffs.
+Run `bun run lint-config-update` and review the snapshot changes. `createConfig`
+throws on an enabled rule that has no entry in `oxlint/rule-map.json`, so add an
+entry for each rule the upgrade enables. Then run `bun run test-oxlint`.
 
-| Rule                        | Difference and reason                                                                                                                                                                                                                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| TypeScript `no-unused-vars` | Values referenced through `typeof` count as used. The tested ambient interface augmentations also accept unused generic parameters. This avoids suppressions for useful TS declarations. Removing the two file-wide suppressions restores unused-variable checking throughout those files. |
-| `import/no-duplicates`      | A mixed type/value import and a second value import from the same module must be combined. Separate pure named type and value imports remain allowed in the tested case. We accept this style change for the native rule's speed.                                                          |
-| React `display-name`        | Native checks some mocked `forwardRef` calls upstream skips, but misses some anonymous class HOCs. We accept the legacy-class tradeoff for speed. `ExplicitSize` has a narrow exception because it already names the wrapped component.                                                    |
+## Known limits
 
-Native `complexity` keeps the limit of 55. ESLint and oxlint report different
-positions in multiline arrow headers, so the CardEmbed suppression brackets
-only the header. Two JSX suppressions also use bounded comments for differing
-report locations. Retained JS checks use the same aliases in both engines so
-suppression comments target the same rules.
-
-## Configuration
-
-- `config.mjs` holds shared rule options, file scopes, globals and settings.
-- `eslint.config.mjs` supplies the reference parsers and plugins.
-- `oxlint/config.mjs` maps the policy through `oxlint/rule-map.json` to native
-  rules and selected JS adapters. Native namespaces are declared explicitly.
-- `recommended-rules.json` and `oxlint/rule-defaults.json` snapshot plugin presets
-  and defaults, avoiding full ESLint configuration loading during normal lint.
-
-After dependency upgrades, run `bun run lint-config-update`, review snapshot
-changes and map any newly enabled rules. Configuration rejects unmapped rules.
-Wrapped plugins must provide `create`: `createOnce` is omitted to preserve the
-wrapper's per-file settings and context handling. The no-only-tests plugin loads
-directly and uses its published `createOnce` API.
-
-Files matching the same policy scopes share settings objects. Their identity
-allows the resolver's WeakMaps to reuse services. The last-file lookup avoids
-repeating file matching across rules. The import adapter supplies its parser
-lazily when export analysis requests it. JSX entity decoding and an import-free
-JS scope view preserve retained rules' behavior.
-
-The optional postcss-modules check loads when installed and either CI or
-`LINT_CSS_MODULES=true` is set. It uses the same conditional hook as ESLint.
-
-## Boundary and resolver contracts
-
-`module-boundaries.mjs` supplies elements, enforced rules, options and settings
-to both engines. `oxlint-boundaries.mjs` compiles the supported policy subset.
-Configuration rejects differing boundary options and unsupported settings;
-compilation rejects unsupported selectors and descriptors. The parity test
-compares every declared module pair with the upstream evaluator.
-
-`oxlint-import-resolver.mjs` shares published `oxc-resolver` between boundary and
-import checks. It preserves separate import-x and legacy resolution precedence,
-aliases, extensions, entry fields, externals, loaders, queries and symlink paths.
-Unsupported resolver policies throw. Alias and fallback targets must be absolute
-so bare imports can reuse resolution across directories within a package root.
-
-The app and SDK share lightweight build-resolution modules. The SDK owns a
-separate alias object: its three enterprise overrides apply in every edition.
-Integration tests snapshot lightweight settings before loading full build
-configs and check development/production and OSS/EE combinations.
-
-Resolution reuse belongs to one CLI invocation over a fixed tree. Bare imports
-use the nearest package.json/node_modules ancestor; relative, loader and query
-specifiers retain directory-specific keys. Construct a fresh resolver service
-after filesystem, dependency or configuration changes. Persistent caching and
-editor/watch invalidation are not implemented.
-
-## Validation
-
-`bun run test-oxlint` checks policy mapping, real-engine violations and
-suppressions, boundary parity, resolver behavior and build integration. Custom
-rules use oxlint's RuleTester through the `lint-rules` Jest project.
+The import resolver reuses its results within one CLI run over a fixed tree.
+Persistent caching and invalidation for editors or watch mode are not
+implemented.
