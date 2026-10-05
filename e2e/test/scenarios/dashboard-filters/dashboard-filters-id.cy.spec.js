@@ -31,8 +31,6 @@ const ID_FILTERS = [
   },
 ];
 
-const [PRIMARY_KEY, FOREIGN_KEY, IMPLICIT_JOIN] = ID_FILTERS;
-
 describe("scenarios > dashboard > filters > ID", () => {
   beforeEach(() => {
     H.restore();
@@ -81,29 +79,40 @@ describe("scenarios > dashboard > filters > ID", () => {
     );
   });
 
-  it("should work for the primary key when set as the default filter", () => {
-    addIdFilter(PRIMARY_KEY);
-    setDefaultValueAndSave(PRIMARY_KEY.value);
+  it("should work for the primary key, the foreign key and the implicit join when set as the default filter", () => {
+    ID_FILTERS.forEach((filter) => {
+      addIdFilter(filter);
+      cy.findByText("Default value").next().click();
+      addWidgetStringFilter(filter.value);
+    });
 
-    assertDashcardResult(PRIMARY_KEY.representativeResult);
-  });
+    H.saveDashboard();
+    cy.wait("@dashboardData");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
-  it("should work for the foreign key when set as the default filter", () => {
-    addIdFilter(FOREIGN_KEY);
-    setDefaultValueAndSave(FOREIGN_KEY.value);
+    ID_FILTERS.forEach(
+      ({ name, representativeResult, remappedValue }, index) => {
+        cy.log(name);
+        const otherIndexes = ID_FILTERS.map((_, i) => i).filter(
+          (i) => i !== index,
+        );
 
-    assertDashcardResult(FOREIGN_KEY.representativeResult);
-    H.filterWidget({ name: FOREIGN_KEY.name }).should(
-      "contain",
-      FOREIGN_KEY.remappedValue,
+        otherIndexes.forEach((otherIndex) => {
+          H.clearFilterWidget(otherIndex);
+          cy.wait("@dashboardData");
+        });
+
+        assertDashcardResult(representativeResult);
+        if (remappedValue) {
+          H.filterWidget({ name }).should("contain", remappedValue);
+        }
+
+        otherIndexes.forEach((otherIndex) => {
+          H.resetFilterWidgetToDefault(otherIndex);
+          cy.wait("@dashboardData");
+        });
+      },
     );
-  });
-
-  it("should work on the implicit join when set as the default filter", () => {
-    addIdFilter(IMPLICIT_JOIN);
-    setDefaultValueAndSave(IMPLICIT_JOIN.value);
-
-    assertDashcardResult(IMPLICIT_JOIN.representativeResult);
   });
 });
 
@@ -112,15 +121,6 @@ function addIdFilter({ name, selectColumn }) {
 
   cy.findByText("Select…").click();
   selectColumn();
-}
-
-function setDefaultValueAndSave(value) {
-  cy.findByText("Default value").next().click();
-  addWidgetStringFilter(value);
-
-  H.saveDashboard();
-  cy.wait("@dashboardData");
-  cy.findByTestId("loading-indicator").should("not.exist");
 }
 
 function assertDashcardResult(representativeResult) {
