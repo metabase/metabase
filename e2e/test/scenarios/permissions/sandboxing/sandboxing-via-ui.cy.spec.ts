@@ -39,8 +39,6 @@ describe(
     const customViews: CollectionItem[] = [];
 
     before(() => {
-      cy.intercept("/api/card/*/query").as("cardQuery");
-
       H.restore("postgres-12");
 
       cy.signInAsAdmin();
@@ -71,12 +69,9 @@ describe(
     });
 
     beforeEach(() => {
-      cy.intercept("/api/card/*/query").as("cardQuery");
-
       cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
         "dashcardQuery",
       );
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
       // Unjustified type cast. FIXME
       H.restore("sandboxing-snapshot" as any);
     });

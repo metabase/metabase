@@ -14,7 +14,7 @@ const { nocollection } = USERS;
 
 const PG_DB_ID = 2;
 
-describe("postgres > user > query", { tags: "@external" }, () => {
+describe("issue 14873", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
@@ -41,8 +41,6 @@ describe("postgres > user > query", { tags: "@external" }, () => {
         },
       },
     });
-
-    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
   });
 
   it("should handle the use of `regexExtract` in a sandboxed table (metabase#14873)", () => {

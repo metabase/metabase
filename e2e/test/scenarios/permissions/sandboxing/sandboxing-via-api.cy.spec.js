@@ -707,7 +707,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       it("Advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
         cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-        cy.intercept("PUT", "/api/card/*").as("questionUpdate");
 
         H.createNativeQuestion({
           name: "EE_520_Q1",
@@ -989,8 +988,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     });
 
     it("should be able to remove columns via QB sidebar / settings (metabase#14841)", () => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
@@ -1206,8 +1203,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       });
       H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
       H.assertDatasetReqIsSandboxed();
-
-      // Add positive assertion once this issue is fixed
     });
 
     it(

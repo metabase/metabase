@@ -64,8 +64,6 @@ describe("impersonated permission", { tags: "@external" }, () => {
         cy.get("main").findByText("Orders").click();
         cy.findAllByTestId("header-cell").contains("Subtotal");
 
-        cy.reload();
-
         // No access through the native query builder
         H.startNewNativeQuestion();
 

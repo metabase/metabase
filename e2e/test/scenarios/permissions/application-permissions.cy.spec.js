@@ -18,7 +18,6 @@ describe("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    // H.activateToken("pro-self-hosted");
     H.activateToken("pro-self-hosted");
   });
 
@@ -118,14 +117,6 @@ describe("scenarios > admin > permissions > application", () => {
           cy.findByText("Are you sure you want to do this?");
           cy.button("Yes").click();
         });
-
-        H.createNativeQuestion(
-          {
-            name: "broken_question",
-            native: { query: "select * from broken_question" },
-          },
-          { loadMetadata: true },
-        );
 
         cy.signInAsNormalUser();
       });

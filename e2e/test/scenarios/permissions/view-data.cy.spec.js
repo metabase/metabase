@@ -124,7 +124,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not allow making permissions granular in the either database or group focused view", () => {
+  it("should not show the view data column without a token in either the database or group focused view", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     cy.findByTestId("permission-table")
@@ -953,7 +953,7 @@ describe("scenarios > admin > permissions > view data > unrestricted", () => {
   });
 });
 
-// ENFORMCENT RELATED TESTS
+// ENFORCEMENT RELATED TESTS
 
 describe("scenarios > admin > permissions > view data > blocked (enforcement)", () => {
   beforeEach(() => {
@@ -963,24 +963,24 @@ describe("scenarios > admin > permissions > view data > blocked (enforcement)", 
   });
 
   it("should deny view access to a query builder question that makes use of a blocked database", () => {
-    assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
+    assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID);
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
     removeCollectionGroupPermissions();
-    assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
+    assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID);
   });
 
   it("should deny view access to query builder questions using a blocked table and to any native question", () => {
     H.createNativeQuestion({
       native: { query: "select 1" },
     }).then(({ body: { id: nativeQuestionId } }) => {
-      assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
-      assertCollectionGroupUserHasAccess(nativeQuestionId, false);
+      assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID);
+      assertCollectionGroupUserHasAccess(nativeQuestionId);
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
       );
       removeCollectionGroupPermissions();
-      assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
-      assertCollectionGroupHasNoAccess(nativeQuestionId, false);
+      assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID);
+      assertCollectionGroupHasNoAccess(nativeQuestionId);
     });
   });
 });
@@ -994,7 +994,7 @@ function lackPermissionsView(shouldExist) {
 // NOTE: all helpers below make user of the "sandboxed" user and "collection" group to test permissions
 // as this user is of only one group and has permission to view existing question
 
-function assertCollectionGroupUserHasAccess(questionId, isQbQuestion) {
+function assertCollectionGroupUserHasAccess(questionId) {
   cy.signOut();
   cy.signIn("sandboxed");
 
@@ -1006,7 +1006,7 @@ function assertCollectionGroupUserHasAccess(questionId, isQbQuestion) {
   cy.signInAsAdmin();
 }
 
-function assertCollectionGroupHasNoAccess(questionId, isQbQuestion) {
+function assertCollectionGroupHasNoAccess(questionId) {
   cy.signOut();
   cy.signIn("sandboxed");
 
