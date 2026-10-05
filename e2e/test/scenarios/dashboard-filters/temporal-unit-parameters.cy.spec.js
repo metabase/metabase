@@ -440,7 +440,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
     });
 
-    it("should connect multiple parameters to the same column in a card and drill thru, with the last parameter taking priority", () => {
+    it("should connect multiple parameters to the same column in a card and drill thru", () => {
       H.createQuestion(singleBreakoutQuestionDetails);
       H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
@@ -459,8 +459,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget().eq(1).click();
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
-        // metabase#44684
-        // should be "Created At: Year" and "2025" because the last parameter is "Year"
+        // metabase#44684: the card applies the first parameter, the drill applies the last one
         cy.findByText("Created At: Quarter").should("be.visible");
         cy.findByText("Q2 2025").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
@@ -989,7 +988,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("permissions", () => {
-    it("should add a temporal unit parameter and connect it to a card and drill thru", () => {
+    it("should let a user without data access use a temporal unit parameter and drill thru", () => {
       createDashboardWithMappedQuestion().then((dashboard) => {
         cy.signIn("nodata");
         H.visitDashboard(dashboard.id);
