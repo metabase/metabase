@@ -6,7 +6,7 @@ the app runs, and an action it triggers, have to be reachable **through that col
 fail on permissions.
 
 The app's `resources/` directory makes that true. It holds serdes YAML for the app's collection, a
-saved question per query, and copies of the models, actions, and metrics those use. The author (in
+saved question per query, and copies of the actions the app runs and of the metrics its queries use. The author (in
 practice, an agent following the data-app skills) writes that YAML from the app's definitions. Nothing
 changes in Metabase until the repository is pulled: the pull loads the files as serialized content, like
 everything else the repository holds, so a local experiment can't break the running app, and the saved
@@ -20,7 +20,7 @@ Two directories at the data-app root, beside `package.json`:
 
 ```
 queries/orders.query.ts     export const RevenueQuery = defineQuery({ savedQuestionEntityId: "…", source: schema.tables.orders })
-actions/orders.action.ts    export const CreateOrder = defineAction({ copiedActionEntityId: "…", action: schema.models.orders.actions.create })
+actions/orders.action.ts    export const CreateOrder = defineAction({ copiedActionEntityId: "…", action: schema.actions.createOrder })
 ```
 
 Nothing else is scanned: definitions under `src/` are invisible to both commands, which is a common
@@ -31,14 +31,14 @@ authoring mistake.
 ```
 data_app.yaml                      collection: <entity ID of resources/collection.yaml>
 resources/collection.yaml          the app's resource collection
-resources/cards/*.yaml             a saved question per query, and copies of the models and metrics they use
-resources/actions/*.yaml           a copy of each action, on the copy of its model
+resources/cards/*.yaml             a saved question per query, and copies of the metrics they use
+resources/actions/*.yaml           a copy of each action
 ```
 
-An action's permissions resolve through its parent model's collection
-(`metabase.actions.models`, `perms-objects-set`), so making an action reachable means copying its
-model into the app's collection and the action onto that copy. Metrics a query uses are copied for the
-same reason, and the question reads the copy. Every saved question and copy is written from what
+A data app runs only query actions that belong to no model, which the typed schema lists under
+`schema.actions`. Such an action's permissions resolve through its own collection, so making it
+reachable means copying it into the app's collection. Metrics a query uses are copied for the same
+reason, and the question reads the copy. Every saved question and copy is written from what
 `print-resources` prints, whose references are already in the form the YAML uses, with new entity IDs
 and references rewritten to the copies.
 
@@ -47,9 +47,9 @@ and references rewritten to the copies.
 `embedding-sdk-react data-apps print-resources [file]` (`export.ts`) sends the evaluated definitions (all
 of them, or those in `file`, relative to the app directory) to `POST /api/apps/export-resources`, with the
 instance and API key from `.env.local`, and prints the answer as JSON: the saved question Metabase
-writes for each `defineQuery` definition, each `defineAction`'s source action, the models those actions
-belong to, and the metrics the queries aggregate, all as serialization writes them, each beside the
-definition's file and entity ID. The saved question is complete: named after the export, in the
+writes for each `defineQuery` definition, each `defineAction`'s source action, and the metrics the
+queries aggregate, all as serialization writes them, each beside the definition's file and entity ID.
+An action that belongs to a model comes back with an error. The saved question is complete: named after the export, in the
 collection `data_app.yaml` names, with the definition's `savedQuestionEntityId`, created by the API
 key's user, and holding the query Metabase builds with the same `createTestQuery` code the dev preview
 runs. Every entity comes in the key order serialization writes a file and without the keys serialization

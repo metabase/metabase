@@ -34,7 +34,7 @@ npm run build                         # produces a single dist/index.js
 ```
 
 `resources/` holds the app's collection, a saved question per query, and copies
-of the models, metrics, and actions they use, as Metabase YAML. It is written
+of the metrics and actions the app uses, as Metabase YAML. It is written
 from what `npm run print-resources` prints, which Metabase exports for the
 app's definitions; `data_app.yaml`'s `collection:` names the collection, and
 each definition names its file by entity ID. Only `print-resources` calls
@@ -60,7 +60,7 @@ your coding agent by the same command as the other data-app skills; do not edit
 ```
 .
 ├── data_app.yaml           - manifest: version, name, bundle path, allowed_hosts, collection
-├── resources/              - the app's collection, saved questions, and copied models, metrics, and actions
+├── resources/              - the app's collection, saved questions, and copied metrics and actions
 ├── package.json            - @metabase/embedding-sdk-react + react/react-dom + Vite toolchain
 ├── vite.config.ts          - one-liner: `export default dataAppConfig()`
 ├── tsconfig.json

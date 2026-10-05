@@ -57,7 +57,6 @@ describe("data app commands", () => {
         JSON.stringify({
           queries: [{ export: "Orders", entity: {}, metrics: [] }],
           actions: [],
-          models: [],
           metrics: [],
         }),
       ),
@@ -81,7 +80,6 @@ describe("data app commands", () => {
         },
       ],
       actions: [],
-      models: [],
       metrics: [],
     });
   });
