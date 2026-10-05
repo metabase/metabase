@@ -2,4 +2,27 @@
  ["src" "resources"]
 
  :deps
- {com.microsoft.sqlserver/mssql-jdbc {:mvn/version "13.4.0.jre11"}}}
+ {com.microsoft.sqlserver/mssql-jdbc {:mvn/version "13.4.0.jre11"}
+  ;; Required at runtime by mssql-jdbc for Entra ID auth modes: ActiveDirectoryPassword,
+  ;; ActiveDirectoryServicePrincipal, ActiveDirectoryServicePrincipalCertificate, ActiveDirectoryInteractive.
+  ;; mssql-jdbc declares this only transitively via azure-identity as <optional>, so it is not
+  ;; bundled in Metabase's uberjar unless we depend on it explicitly. Version 1.23.1 is what
+  ;; azure-identity 1.18.2 (the version pinned in mssql-jdbc 13.4.0's pom) ships with.
+  com.microsoft.azure/msal4j        {:mvn/version "1.23.1"}
+  ;; Required at runtime by mssql-jdbc for ActiveDirectoryManagedIdentity / ActiveDirectoryMSI /
+  ;; ActiveDirectoryDefault. SQLServerSecurityUtility.getManagedIdentityCredAuthToken references
+  ;; com.azure.identity.ManagedIdentityCredential and DefaultAzureCredential from this library.
+  ;; Version 1.18.2 matches what mssql-jdbc 13.4.0's pom pins as its <optional> dependency.
+  ;;
+  ;; azure-core-http-netty is excluded following the snowflake driver's pattern
+  ;; (modules/drivers/snowflake/deps.edn): the full reactor-netty + Netty 4.1.x chain is ~20 MB
+  ;; and only exists to serve azure-core's HTTP pipeline. MI's only HTTP call is a single POST to
+  ;; the IMDS endpoint, which azure-core can serve via the JDK HttpClient transport instead.
+  com.azure/azure-identity          {:mvn/version "1.18.2"
+                                     :exclusions [com.azure/azure-core-http-netty
+                                                  ;; pinned in and resolved from /deps.edn
+                                                  com.fasterxml.jackson.core/jackson-core
+                                                  com.fasterxml.jackson.core/jackson-databind]}
+  com.azure/azure-core-http-jdk-httpclient {:mvn/version "1.0.3"}
+  ;; pinned: azure-core 1.57.1 (transitive via azure-identity) pulls reactor-core 3.7.14
+  io.projectreactor/reactor-core           {:mvn/version "3.8.7"}}}

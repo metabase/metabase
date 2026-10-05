@@ -1,0 +1,121 @@
+## Data apps become regular serdes entities. They get an entity_id so serialization and remote sync can key them on a
+## stable, portable identifier; the backfill mirrors 20260911_glossary_entity_id: all three dialect variants in one
+## changeset, then NOT NULL and UNIQUE. Imports now fail as a whole rather than per app, so the per-app sync
+## columns go away.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-01T00:00:00
+      author: ranquild
+      comment: Add entity_id column to data_app table
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: data_app
+            columnName: entity_id
+
+  - changeSet:
+      id: v65.2026-10-01T00:00:01
+      author: ranquild
+      comment: Backfill NULL data_app.entity_id values
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: UPDATE data_app SET entity_id = substr(replace(gen_random_uuid()::text, '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: UPDATE data_app SET entity_id = substr(replace(uuid(), '-', ''), 1, 21) WHERE entity_id IS NULL;
+        - sql:
+            dbms: h2
+            sql: UPDATE data_app SET entity_id = substr(replace(cast(random_uuid() as varchar), '-', ''), 1, 21) WHERE entity_id IS NULL;
+      rollback: []
+
+  - changeSet:
+      id: v65.2026-10-01T00:00:02
+      author: ranquild
+      comment: entity_id is NOT NULL on data_app
+      changes:
+        - addNotNullConstraint:
+            tableName: data_app
+            columnName: entity_id
+            columnDataType: char(21)
+
+  - changeSet:
+      id: v65.2026-10-01T00:00:03
+      author: ranquild
+      comment: entity_id is unique on data_app
+      changes:
+        - addUniqueConstraint:
+            tableName: data_app
+            columnNames: entity_id
+            constraintName: uq_data_app_entity_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: data_app
+            constraintName: uq_data_app_entity_id
+
+  - changeSet:
+      id: v65.2026-10-01T00:00:04
+      author: ranquild
+      comment: Drop data_app.sync_error, which only the removed per-app sync wrote
+      changes:
+        - dropColumn:
+            tableName: data_app
+            columnName: sync_error
+      rollback:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: sync_error
+                  type: ${text.type}
+                  remarks: Error from the most recent failed sync of this app, NULL when the last sync succeeded
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-10-01T00:00:05
+      author: ranquild
+      comment: Drop data_app.last_synced_sha, which only the removed per-app sync wrote
+      changes:
+        - dropColumn:
+            tableName: data_app
+            columnName: last_synced_sha
+      rollback:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: last_synced_sha
+                  type: varchar(40)
+                  remarks: Git commit SHA the app was last synced from
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-10-01T00:00:06
+      author: ranquild
+      comment: Drop data_app.last_synced_at, which only the removed per-app sync wrote
+      changes:
+        - dropColumn:
+            tableName: data_app
+            columnName: last_synced_at
+      rollback:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: last_synced_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of the last successful sync of this app
+                  constraints:
+                    nullable: true

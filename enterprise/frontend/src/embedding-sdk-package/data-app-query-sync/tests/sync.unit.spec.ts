@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { discoverQueries } from "../discover";
@@ -13,6 +14,45 @@ import {
 
 describe("query synchronization", () => {
   setupResourceSyncTests();
+
+  it("synchronizes the app named by the manifest's slug, not its directory", async () => {
+    const appRoot = makeApp();
+    fs.writeFileSync(path.join(appRoot, "data_app.yaml"), "slug: other-app\n");
+    const fetchSpy = jest.spyOn(global, "fetch").mockResolvedValue(
+      new Response("Not found.", {
+        status: 404,
+        headers: { "content-type": "text/plain" },
+      }),
+    );
+
+    await expect(
+      syncResources({
+        appRoot,
+        metabaseUrl: "http://metabase.test",
+        apiKey: "secret",
+        log: jest.fn(),
+      }),
+    ).rejects.toThrow(/apps\/other-app\/draft/);
+    expect(String(fetchSpy.mock.calls[0][0])).toBe(
+      "http://metabase.test/api/apps/other-app/draft",
+    );
+  });
+
+  it("refuses an app whose manifest declares no slug", async () => {
+    const appRoot = makeApp();
+    fs.writeFileSync(path.join(appRoot, "data_app.yaml"), "name: App\n");
+    const fetchSpy = jest.spyOn(global, "fetch");
+
+    await expect(
+      syncResources({
+        appRoot,
+        metabaseUrl: "http://metabase.test",
+        apiKey: "secret",
+        log: jest.fn(),
+      }),
+    ).rejects.toThrow(/must declare the app's "slug"/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 
   it("identifies the request that failed", async () => {
     const appRoot = makeApp();
