@@ -218,6 +218,23 @@
                                               :context   {:column joined}
                                               :direction "asc"}]})))))))
 
+(deftest drill-on-row-with-remapped-column-test
+  (testing "a clicked row carries the display column an FK remapping adds, which the query itself does not return"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-column-remappings [venues.category_id categories.name]
+        (let [query  (lib/limit (venues) 1)
+              result (mt/with-test-user :rasta (mt/process-query query))
+              row    (map (fn [col v] {:column (:name col) :value v}) (mt/cols result) (first (mt/rows result)))
+              op     (fn [context] {:operations [{:type    "drill-thru" :drill "quick-filter" :operator "<"
+                                                  :context context}]})]
+          (is (some #{"NAME_2"} (map :column row)) "the iframe sends the remapped column as a row cell")
+          (is (=? {:status 200}
+                  (derive! query (op {:column "PRICE" :value 3 :row row}))))
+          (testing "a clicked column or a dimension the query does not return is still refused"
+            (is (= 400 (:status (derive! query (op {:column "NAME_2" :value "x" :row row})))))
+            (is (= 400 (:status (derive! query (op {:column     "PRICE" :value 3 :row row
+                                                    :dimensions [{:column "NAME_2" :value "x"}]})))))))))))
+
 (deftest closed-schema-test
   (testing "the body names a closed set of operations, so anything else is a 400 before any query is touched"
     (mt/with-model-cleanup [:model/McpQueryHandle]
