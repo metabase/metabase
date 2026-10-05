@@ -282,7 +282,7 @@ describe("scenarios > monitor > tools > tasks", () => {
     }).as("getTask");
   });
 
-  it("shows task details page", () => {
+  it("shows task details page with and without logs", () => {
     cy.visit("/monitor/tasks/list");
     cy.wait("@getTasks");
 
@@ -321,9 +321,8 @@ describe("scenarios > monitor > tools > tasks", () => {
       // Ideally, we would compare raw strings here, but Cypress automatically parses JSON files
       task.task_details,
     );
-  });
 
-  it("should render logs when they are present", () => {
+    cy.log("logs");
     const taskWithLogs = {
       ...task,
       logs: [
@@ -350,7 +349,7 @@ describe("scenarios > monitor > tools > tasks", () => {
       body: taskWithLogs,
     }).as("getTaskWithLogs");
 
-    cy.visit(`/monitor/tasks/list/${task.id}`);
+    cy.reload();
     cy.wait("@getTaskWithLogs");
 
     cy.findByTestId("task-logs").scrollIntoView().should("be.visible");
@@ -358,6 +357,9 @@ describe("scenarios > monitor > tools > tasks", () => {
       cy.findByText(new RegExp(taskWithLogs.logs[0].msg)).should("be.visible");
       cy.findByText(new RegExp(taskWithLogs.logs[1].msg)).should("be.visible");
     });
+    cy.findByTestId("monitor-main")
+      .findByText("There are no captured logs")
+      .should("not.exist");
   });
 });
 
