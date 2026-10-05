@@ -3,7 +3,6 @@ import type {
   Collection,
   CollectionId,
   IconName,
-  UserId,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -16,24 +15,8 @@ export type ActionTreeNode = {
   children?: ActionTreeNode[];
 };
 
-export type ActionFilters = {
-  databaseId: number | null;
-  creatorId: UserId | null;
-};
-
 export function getCollectionNodeId(collectionId: CollectionId): string {
   return `collection-${collectionId}`;
-}
-
-export function filterActions(
-  actions: WritebackAction[],
-  { databaseId, creatorId }: ActionFilters,
-): WritebackAction[] {
-  return actions.filter(
-    (action) =>
-      (databaseId == null || action.database_id === databaseId) &&
-      (creatorId == null || action.creator_id === creatorId),
-  );
 }
 
 function buildActionNode(action: WritebackAction): ActionTreeNode {

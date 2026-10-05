@@ -1,14 +1,11 @@
 import type { Row } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
-  skipToken,
   useListActionsQuery,
   useListCollectionsTreeQuery,
   useListDatabasesQuery,
-  useSearchQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
@@ -22,12 +19,9 @@ import {
   Ellipsified,
   EntityNameCell,
   Flex,
-  Group,
   Icon,
   type RenderRowLink,
-  Select,
   Stack,
-  Text,
   TextInput,
   TreeTable,
   type TreeTableColumnDef,
@@ -36,18 +30,11 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
-import type { CardId, Database, WritebackAction } from "metabase-types/api";
+import type { Database, WritebackAction } from "metabase-types/api";
 
 import { ActionsHeader } from "../../components/ActionsHeader";
 
-import {
-  type ActionFilters,
-  type ActionTreeNode,
-  buildActionTree,
-  filterActions,
-} from "./utils";
-
-const ALL_VALUE = "all";
+import { type ActionTreeNode, buildActionTree } from "./utils";
 
 const getNodeId = (node: ActionTreeNode) => node.id;
 const getSubRows = (node: ActionTreeNode) => node.children;
@@ -72,10 +59,6 @@ const renderRowLink: RenderRowLink<ActionTreeNode> = (row, props) => {
 
 export function ActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<ActionFilters>({
-    databaseId: null,
-    creatorId: null,
-  });
 
   const {
     data: actions = [],
@@ -88,34 +71,18 @@ export function ActionListPage() {
     error: collectionsError,
   } = useListCollectionsTreeQuery({ "exclude-archived": true });
   const { data: databasesResponse } = useListDatabasesQuery();
-  const hasModelActions = actions.some((action) => action.model_id != null);
-  const { data: modelsResponse } = useSearchQuery(
-    hasModelActions
-      ? { models: ["dataset"], context: "entity-picker" }
-      : skipToken,
-  );
 
   const databases = useMemo(
     () => databasesResponse?.data ?? [],
     [databasesResponse],
   );
-  const modelNames = useMemo(
-    () =>
-      new Map(
-        (modelsResponse?.data ?? []).map((model) => [model.id, model.name]),
-      ),
-    [modelsResponse],
-  );
 
   const treeData = useMemo(
-    () => buildActionTree(collections, filterActions(actions, filters)),
-    [collections, actions, filters],
+    () => buildActionTree(collections, actions),
+    [collections, actions],
   );
 
-  const columns = useMemo(
-    () => getColumns({ databases, modelNames }),
-    [databases, modelNames],
-  );
+  const columns = useMemo(() => getColumns(databases), [databases]);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -144,9 +111,7 @@ export function ActionListPage() {
   const isLoading = isLoadingActions || isLoadingCollections;
   const emptyMessage =
     treeData.length === 0
-      ? actions.length === 0
-        ? t`No actions yet`
-        : t`No actions found`
+      ? t`No actions yet`
       : treeTableInstance.rows.length === 0 && searchQuery
         ? t`No actions found`
         : null;
@@ -155,26 +120,12 @@ export function ActionListPage() {
     <PageContainer data-testid="actions-list" gap={0}>
       <ActionsHeader />
       <Stack className={CS.overflowHidden}>
-        <Flex gap="md">
-          <TextInput
-            placeholder={t`Search actions…`}
-            leftSection={<Icon name="search" />}
-            flex="1"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          <DatabaseFilter
-            actions={actions}
-            databases={databases}
-            value={filters.databaseId}
-            onChange={(databaseId) => setFilters({ ...filters, databaseId })}
-          />
-          <CreatorFilter
-            actions={actions}
-            value={filters.creatorId}
-            onChange={(creatorId) => setFilters({ ...filters, creatorId })}
-          />
-        </Flex>
+        <TextInput
+          placeholder={t`Search actions…`}
+          leftSection={<Icon name="search" />}
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+        />
         <Card withBorder p={0}>
           {isLoading ? (
             <TreeTableSkeleton columnWidths={[0.4, 0.2, 0.2, 0.2]} />
@@ -194,15 +145,9 @@ export function ActionListPage() {
   );
 }
 
-type ColumnsOptions = {
-  databases: Database[];
-  modelNames: Map<CardId | string, string>;
-};
-
-function getColumns({
-  databases,
-  modelNames,
-}: ColumnsOptions): TreeTableColumnDef<ActionTreeNode>[] {
+function getColumns(
+  databases: Database[],
+): TreeTableColumnDef<ActionTreeNode>[] {
   const getDatabaseName = (action: WritebackAction | undefined) =>
     databases.find((database) => database.id === action?.database_id)?.name ??
     "";
@@ -215,29 +160,16 @@ function getColumns({
       minWidth: 280,
       maxAutoWidth: 800,
       enableSorting: true,
-      cell: ({ row }) => {
-        const modelId = row.original.action?.model_id;
-        const modelName = modelId != null ? modelNames.get(modelId) : undefined;
-        return (
-          <Group gap="sm" wrap="nowrap" miw={0}>
-            <EntityNameCell
-              data-testid="tree-node-name"
-              icon={row.original.icon}
-              iconColor={
-                row.original.nodeType === "action"
-                  ? "core-brand"
-                  : "text-secondary"
-              }
-              name={row.original.name}
-            />
-            {modelName && (
-              <Text c="text-secondary" size="sm" lineClamp={1}>
-                {modelName}
-              </Text>
-            )}
-          </Group>
-        );
-      },
+      cell: ({ row }) => (
+        <EntityNameCell
+          data-testid="tree-node-name"
+          icon={row.original.icon}
+          iconColor={
+            row.original.nodeType === "action" ? "core-brand" : "text-secondary"
+          }
+          name={row.original.name}
+        />
+      ),
     },
     {
       id: "database",
@@ -282,79 +214,4 @@ function getColumns({
         ) : null,
     },
   ];
-}
-
-type DatabaseFilterProps = {
-  actions: WritebackAction[];
-  databases: Database[];
-  value: number | null;
-  onChange: (databaseId: number | null) => void;
-};
-
-function DatabaseFilter({
-  actions,
-  databases,
-  value,
-  onChange,
-}: DatabaseFilterProps) {
-  const options = useMemo(() => {
-    const databaseIds = new Set(actions.map((action) => action.database_id));
-    return [
-      { value: ALL_VALUE, label: t`Database: All` },
-      ...databases
-        .filter((database) => databaseIds.has(database.id))
-        .map((database) => ({
-          value: String(database.id),
-          label: t`Database: ${database.name}`,
-        })),
-    ];
-  }, [actions, databases]);
-
-  return (
-    <Select
-      aria-label={t`Database`}
-      data={options}
-      value={value != null ? String(value) : ALL_VALUE}
-      allowDeselect={false}
-      w="12rem"
-      onChange={(next) =>
-        onChange(next && next !== ALL_VALUE ? Number(next) : null)
-      }
-    />
-  );
-}
-
-type CreatorFilterProps = {
-  actions: WritebackAction[];
-  value: number | null;
-  onChange: (creatorId: number | null) => void;
-};
-
-function CreatorFilter({ actions, value, onChange }: CreatorFilterProps) {
-  const options = useMemo(() => {
-    const creators = _.uniq(
-      actions.map((action) => action.creator),
-      (creator) => creator.id,
-    );
-    return [
-      { value: ALL_VALUE, label: t`Created by: Anyone` },
-      ...creators.map((creator) => ({
-        value: String(creator.id),
-        label: t`Created by: ${getUserName(creator)}`,
-      })),
-    ];
-  }, [actions]);
-
-  return (
-    <Select
-      aria-label={t`Created by`}
-      data={options}
-      value={value != null ? String(value) : ALL_VALUE}
-      allowDeselect={false}
-      w="14rem"
-      onChange={(next) =>
-        onChange(next && next !== ALL_VALUE ? Number(next) : null)
-      }
-    />
-  );
 }
