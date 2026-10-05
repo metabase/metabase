@@ -14,7 +14,8 @@ import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
 export type EmbeddingSettingKey =
   | "enable-embedding-interactive"
   | "enable-embedding-modular"
-  | "enable-embedding-sdk";
+  | "enable-embedding-sdk"
+  | "enable-embedding-sidecar";
 
 export type EmbeddingToggleProps = {
   settingKey: EmbeddingSettingKey;

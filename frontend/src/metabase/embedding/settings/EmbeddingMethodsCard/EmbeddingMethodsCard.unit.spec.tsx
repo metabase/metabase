@@ -21,6 +21,7 @@ import { EmbeddingMethodsCard } from "./EmbeddingMethodsCard";
 const MODULAR_EMBEDDING_LABEL = "Modular embedding";
 const SDK_LABEL = "Modular embedding React SDK";
 const OSS_LABEL = "Enable embedding";
+const SIDECAR_LABEL = "Standalone Metabase linked from your app";
 
 type SetupOpts = {
   hasSimpleEmbedding?: boolean;
@@ -34,6 +35,7 @@ type SetupOpts = {
     | "enable-embedding-modular"
     | "enable-embedding-sdk"
     | "enable-embedding-interactive"
+    | "enable-embedding-sidecar"
   >
 >;
 
@@ -49,6 +51,7 @@ async function setup({
     "enable-embedding-modular": false,
     "enable-embedding-sdk": false,
     "enable-embedding-interactive": false,
+    "enable-embedding-sidecar": false,
     "show-modular-embed-terms": showEmbedTerms,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,
@@ -63,6 +66,7 @@ async function setup({
       "enable-embedding-modular",
       "enable-embedding-sdk",
       "enable-embedding-interactive",
+      "enable-embedding-sidecar",
     ] as const
   ).map((key) =>
     createMockSettingDefinition({
@@ -88,7 +92,7 @@ async function setup({
 }
 
 describe("EmbeddingMethodsCard", () => {
-  it("presents modular embedding, the React SDK and full-app embedding as separate methods", async () => {
+  it("presents modular embedding, the React SDK, full-app and side-car embedding as separate methods", async () => {
     await setup();
 
     expect(
@@ -96,6 +100,7 @@ describe("EmbeddingMethodsCard", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(SDK_LABEL)).toBeInTheDocument();
     expect(screen.getByText("Full-app embedding")).toBeInTheDocument();
+    expect(screen.getByText(SIDECAR_LABEL)).toBeInTheDocument();
 
     expect(screen.queryByText(OSS_LABEL)).not.toBeInTheDocument();
   });
@@ -107,12 +112,14 @@ describe("EmbeddingMethodsCard", () => {
     expect(screen.queryByText(MODULAR_EMBEDDING_LABEL)).not.toBeInTheDocument();
     expect(screen.queryByText(SDK_LABEL)).not.toBeInTheDocument();
     expect(screen.queryByText("Full-app embedding")).not.toBeInTheDocument();
+    expect(screen.queryByText(SIDECAR_LABEL)).not.toBeInTheDocument();
   });
 
-  it("shows only full-app embedding when that is the only feature on the token", async () => {
+  it("shows only full-app and side-car embedding when full-app is the only feature on the token", async () => {
     await setup({ hasSimpleEmbedding: false, hasFullAppEmbedding: true });
 
     expect(await screen.findByText("Full-app embedding")).toBeInTheDocument();
+    expect(screen.getByText(SIDECAR_LABEL)).toBeInTheDocument();
     expect(screen.queryByText(MODULAR_EMBEDDING_LABEL)).not.toBeInTheDocument();
     expect(screen.queryByText(SDK_LABEL)).not.toBeInTheDocument();
     expect(screen.queryByText(OSS_LABEL)).not.toBeInTheDocument();
@@ -237,6 +244,26 @@ describe("EmbeddingMethodsCard", () => {
         ),
       ).toBeInTheDocument();
       expect(await findRequests("PUT")).toHaveLength(0);
+    });
+  });
+
+  describe("the side-car switch", () => {
+    it("writes enable-embedding-sidecar", async () => {
+      await setup();
+
+      const sidecarSwitch = await screen.findByRole("switch", {
+        name: `${SIDECAR_LABEL} toggle`,
+      });
+      expect(sidecarSwitch).not.toBeChecked();
+
+      await userEvent.click(sidecarSwitch);
+
+      await waitFor(async () => {
+        expect(await findRequests("PUT")).toHaveLength(1);
+      });
+
+      const [{ body }] = await findRequests("PUT");
+      expect(body).toEqual({ "enable-embedding-sidecar": true });
     });
   });
 });

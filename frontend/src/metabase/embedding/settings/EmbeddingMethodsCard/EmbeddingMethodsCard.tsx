@@ -30,6 +30,9 @@ type EmbeddingMethod = {
  * replaces, so an upgrade cannot switch a live embed off.
  *
  * Guest embeds is the only free method, so OSS keeps a guest-only row.
+ *
+ * Side-car embedding is a link to Metabase from the customer's app, not an
+ * embed, so its switch only reports usage and is listed with the paid methods.
  */
 export function EmbeddingMethodsCard() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
@@ -64,13 +67,21 @@ export function EmbeddingMethodsCard() {
     requiresTerms: false,
   };
 
+  const sidecarEmbedding: EmbeddingMethod = {
+    title: t`Standalone Metabase linked from your app`,
+    description: t`Link to Metabase from your own app and provide authentication with SSO.`,
+    settingKey: "enable-embedding-sidecar",
+    requiresTerms: false,
+  };
+
   const proMethods = [
     hasSimpleEmbedding ? modularEmbedding : null,
     hasSdkEmbedding ? sdkEmbedding : null,
     hasFullAppEmbedding ? fullAppEmbedding : null,
   ].filter(isNotNull);
 
-  const methods = proMethods.length > 0 ? proMethods : [guestEmbeds];
+  const methods =
+    proMethods.length > 0 ? [...proMethods, sidecarEmbedding] : [guestEmbeds];
 
   return (
     <SettingsSection

@@ -304,6 +304,33 @@ describe("scenarios > embedding > embedding hub > security", () => {
       });
     });
 
+    it("keeps side-car embedding on after a reload", () => {
+      cy.intercept("GET", "/api/setting").as("getSettings");
+      cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
+      cy.intercept("PUT", "/api/setting").as("updateSettings");
+
+      cy.visit("/embedding/security");
+      cy.wait(["@getSettings", "@getSessionProperties"]);
+
+      cy.findByRole("switch", {
+        name: "Standalone Metabase linked from your app toggle",
+      })
+        .should("not.be.checked")
+        .click();
+      cy.wait("@updateSettings");
+
+      cy.visit("/embedding/security");
+      cy.wait(["@getSettings", "@getSessionProperties"]);
+
+      cy.findByRole("switch", {
+        name: "Standalone Metabase linked from your app toggle",
+      }).should("be.checked");
+
+      cy.request("GET", "/api/session/properties").then(({ body }) => {
+        expect(body["enable-embedding-sidecar"]).to.be.true;
+      });
+    });
+
     it("lists published guest embeds even after guest embeds are switched off", () => {
       cy.log("Publish a dashboard as a guest embed");
       // Publishing is itself gated on guest embeds being on, so this has to
