@@ -122,8 +122,8 @@ describe("issues 18344 and 18352", { tags: "@external" }, () => {
       );
 
       expect(html).to.include("OrdersFoo");
-      expect(html).to.include("foo");
-      expect(html).to.include("bar");
+      expect(html).to.match(/>\s*foo\s*</);
+      expect(html).to.match(/>\s*bar\s*</);
     });
   });
 });
@@ -963,9 +963,15 @@ describe("issue 49525", { tags: "@external" }, () => {
 
     H.popover().findByText(`${first_name} ${last_name}`).click();
 
+    // Click this just to close the popover that is blocking the "Send email now" button
+    H.sidebar().findByText("To:").click();
+
+    H.clickSend();
+    cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(({ body }) => {
+      cy.wrap(body.slice(-1)[0].id).as("plainEmailId");
+    });
+
     H.sidebar().within(() => {
-      // Click this just to close the popover that is blocking the "Send email now" button
-      cy.findByText("To:").click();
       cy.findByLabelText("Attach results")
         .should("not.be.checked")
         .click({ force: true }); // Input is placed behind the lable due to tooltip in label
@@ -973,7 +979,10 @@ describe("issue 49525", { tags: "@external" }, () => {
       cy.findByText("Questions to attach").click();
     });
 
-    H.sendEmailAndAssert((email) => {
+    H.clickSend();
+    cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(({ body }) => {
+      const email = body.slice(-1)[0];
+
       // Get the CSV attachment data
       const csvAttachment = email.attachments.find(
         (attachment) => attachment.contentType === "text/csv",
@@ -996,15 +1005,13 @@ describe("issue 49525", { tags: "@external" }, () => {
           "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals",
         );
       });
-
-      cy.wrap(email.id).as("emailId");
     });
 
     H.sidebar().button("Done").click();
     H.openPulseSubscription();
     H.sidebar().findByLabelText("Keep the data pivoted").should("be.checked");
 
-    cy.get("@emailId").then((emailId) => {
+    cy.get("@plainEmailId").then((emailId) => {
       cy.visit(`http://localhost:${WEB_PORT}/email/${emailId}/html`);
     });
 
