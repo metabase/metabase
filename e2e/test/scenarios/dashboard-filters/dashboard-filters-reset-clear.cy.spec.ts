@@ -638,8 +638,8 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
-      otherValue: "Doohickey,Widget,",
-      otherValueFormatted: "2 selections",
+      otherValue: "Doohickey,Gizmo,Widget,",
+      otherValueFormatted: "3 selections",
       setValue: (label, value) => {
         filter(label).click();
         H.popover().within(() => {
