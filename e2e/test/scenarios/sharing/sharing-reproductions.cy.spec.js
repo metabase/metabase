@@ -848,6 +848,7 @@ describe("issue 17658", { tags: "@external" }, () => {
 
     H.toggleDashboardSubscriptionsSidebar();
 
+    H.sidebar().findByLabelText("Pulse Card").should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
 
@@ -860,10 +861,14 @@ describe("issue 17658", { tags: "@external" }, () => {
 
     cy.wait("@deletePulse").then(({ response }) => {
       expect(response.body.cause).not.to.exist;
-      expect(response.statusCode).not.to.eq(500);
+      expect(response.statusCode).to.eq(200);
     });
 
     cy.button("Delete").should("not.exist");
+    H.sidebar().within(() => {
+      cy.findByText("Set up a dashboard subscription").should("be.visible");
+      cy.findByLabelText("Pulse Card").should("not.exist");
+    });
   });
 });
 
@@ -1222,6 +1227,8 @@ describe("issue 54603", () => {
     H.saveDashboard();
 
     H.toggleDashboardSubscriptionsSidebar();
-    H.sidebar().findByText("Weekly Category Roundup").should("not.exist");
+    H.sidebar()
+      .findByText("Set up a dashboard subscription")
+      .should("be.visible");
   });
 });
