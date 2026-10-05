@@ -35,6 +35,7 @@ const PUBLIC_QUESTION_REGEX =
   /\/public\/question\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
 
 const USERS = {
+  "admin user": () => cy.signInAsAdmin(),
   "user with no permissions": () => cy.signIn("none"),
 };
 

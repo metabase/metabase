@@ -41,6 +41,13 @@ const { H } = cy;
         H.sharingMenu().findByRole("button", { name: "Embed" }).click();
 
         H.embedModalContent().should("be.visible");
+
+        cy.signInAsNormalUser();
+        cy.get("@resourceId").then((id) => {
+          visitResource(resource, id);
+        });
+
+        assertNonAdminCannotCreatePublicLink(resource);
       });
     });
 
@@ -238,16 +245,12 @@ describe("#39152 sharing an unsaved question", () => {
 
     describe(`when embedding ${resource}`, () => {
       describe("when interacting with public link popover", () => {
-        it("should show, copy, and remove an existing public link and send `public_link_copied` and `public_link_removed` events", () => {
+        it("should send `public_link_copied` and `public_link_removed` events and show an existing public link", () => {
           cy.get("@resourceId").then((id) => {
-            createPublicResourceLink(resource, id);
             visitResource(resource, id);
           });
 
           H.openSharingMenu(/public link/i);
-
-          assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
-
           cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
             H.expectUnstructuredSnowplowEvent({
@@ -295,6 +298,15 @@ describe("#39152 sharing an unsaved question", () => {
             artifact: resource,
             source: "public-share",
           });
+
+          cy.get("@resourceId").then((id) => {
+            createPublicResourceLink(resource, id);
+            visitResource(resource, id);
+          });
+
+          H.openSharingMenu(/public link/i);
+
+          assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
         });
       });
 
