@@ -49,7 +49,8 @@ of them, or those in `file`, relative to the app directory) to `POST /api/apps/e
 instance and API key from `.env.local`, and prints the answer as JSON: the saved question Metabase
 writes for each `defineQuery` definition, each `defineAction`'s source action, and the metrics the
 queries aggregate, all as serialization writes them, each beside the definition's file and entity ID.
-An action that belongs to a model comes back with an error. The saved question is complete: named after the export, in the
+An action that belongs to a model comes back with an error. The endpoint answers only a superuser, so
+the API key must be one in the Administrators group. The saved question is complete: named after the export, in the
 collection `data_app.yaml` names, with the definition's `savedQuestionEntityId`, created by the API
 key's user, and holding the query Metabase builds with the same `createTestQuery` code the dev preview
 runs. Every entity comes in the key order serialization writes a file and without the keys serialization
