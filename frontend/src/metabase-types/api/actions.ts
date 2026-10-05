@@ -65,6 +65,7 @@ export interface WritebackActionBase {
   public_uuid: string | null;
   database_id?: DatabaseId;
   database_enabled_actions?: boolean;
+  can_write?: boolean;
   entity_id: BaseEntityId;
 }
 

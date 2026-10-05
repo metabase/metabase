@@ -2,13 +2,15 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
+import { hasActionsEnabled } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { Button, Center, Group, Icon, Tooltip } from "metabase/ui";
 
 import { ActionHeader } from "../../components/ActionHeader";
-import { useActionPermissions } from "../../hooks/use-action-permissions";
 import { useRouteAction } from "../../hooks/use-route-action";
 
 export function ActionRunPage() {
@@ -17,16 +19,16 @@ export function ActionRunPage() {
     isLoading: isLoadingAction,
     error: actionError,
   } = useRouteAction();
+  const databaseId = action?.database_id;
   const {
-    readOnly,
-    isActionsEnabled,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useActionPermissions(action);
+    data: database,
+    isLoading: isLoadingDatabase,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
-  const isLoading = isLoadingAction || isLoadingDatabases;
-  const error = actionError ?? databasesError;
+  const isLoading = isLoadingAction || isLoadingDatabase;
+  const error = actionError ?? databaseError;
 
   if (isLoading || error != null || action == null) {
     return (
@@ -36,19 +38,24 @@ export function ActionRunPage() {
     );
   }
 
+  const canRun =
+    database != null &&
+    hasFeature(database, "actions") &&
+    hasActionsEnabled(database);
+
   return (
     <PageContainer data-testid="action-run">
-      <ActionHeader action={action} readOnly={readOnly} />
+      <ActionHeader action={action} readOnly={!action.can_write} />
       <TitleSection label={t`Run this action`}>
         <Group p="xl">
           <Tooltip
             label={t`Actions are disabled for this action's database.`}
-            disabled={isActionsEnabled}
+            disabled={canRun}
           >
             <Button
               variant="filled"
               leftSection={<Icon name="play_outlined" />}
-              disabled={!isActionsEnabled}
+              disabled={!canRun}
               onClick={openModal}
             >
               {t`Run`}
