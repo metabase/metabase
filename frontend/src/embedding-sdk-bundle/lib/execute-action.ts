@@ -53,7 +53,7 @@ const isActionDefinition = (
 /**
  * The action that actually runs. Outside the dev preview the app's copy
  * replaces the authored action: the copy is what grants an app's viewers
- * permission to run it, through the collection its model lives in.
+ * permission to run it, through the app's collection.
  */
 function toExecutableActionId(input: SdkActionInput): SdkActionId {
   if (!isActionDefinition(input)) {
