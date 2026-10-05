@@ -106,7 +106,7 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
-(def ^:private transform-field-boolean
+(def transform-field-boolean
   "Boolean column transform; a boolean computed in SQL (e.g. `COALESCE` over `json_unfolding`) comes back as a number
   from MySQL."
   {:in  identity

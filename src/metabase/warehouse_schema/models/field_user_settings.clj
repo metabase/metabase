@@ -17,14 +17,17 @@
 (methodical/defmethod t2/table-name :model/FieldUserSettings [_model] :metabase_field_user_settings)
 
 (t2/deftransforms :model/FieldUserSettings
-  {:effective_type    field/transform-field-effective-type
-   :coercion_strategy field/transform-field-coercion-strategy
-   :semantic_type     field/transform-field-semantic-type
-   :visibility_type   mi/transform-keyword
-   :has_field_values  mi/transform-keyword
-   :data_sensitivity  mi/transform-keyword
-   :settings          mi/transform-json
-   :nfc_path          mi/transform-json})
+  {:effective_type         field/transform-field-effective-type
+   :coercion_strategy      field/transform-field-coercion-strategy
+   :semantic_type          field/transform-field-semantic-type
+   :visibility_type        mi/transform-keyword
+   :has_field_values       mi/transform-keyword
+   :data_sensitivity       mi/transform-keyword
+   :settings               mi/transform-json
+   :nfc_path               mi/transform-json
+   :description_set        field/transform-field-boolean
+   :semantic_type_set      field/transform-field-boolean
+   :fk_target_field_id_set field/transform-field-boolean})
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
