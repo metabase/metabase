@@ -7,7 +7,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { hasActionsEnabled } from "metabase/common/utils/database";
-import { hasFeature } from "metabase/databases";
 import { Button, Center, Group, Icon, Tooltip } from "metabase/ui";
 
 import { ActionHeader } from "../../components/ActionHeader";
@@ -38,10 +37,7 @@ export function ActionRunPage() {
     );
   }
 
-  const canRun =
-    database != null &&
-    hasFeature(database, "actions") &&
-    hasActionsEnabled(database);
+  const canRun = database != null && hasActionsEnabled(database);
 
   return (
     <PageContainer data-testid="action-run">
