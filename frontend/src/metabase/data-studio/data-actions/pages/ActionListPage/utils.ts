@@ -1,7 +1,11 @@
+import { t } from "ttag";
+
 import { getCollectionIcon } from "metabase/common/collections/utils";
+import { getUserName } from "metabase/utils/user";
 import type {
   Collection,
   CollectionId,
+  Database,
   IconName,
   WritebackAction,
 } from "metabase-types/api";
@@ -82,4 +86,50 @@ export function buildActionTree(
     .map(buildActionNode);
 
   return [...folders, ...topLevelActions];
+}
+
+export const getNodeId = (node: ActionTreeNode) => node.id;
+
+export const getSubRows = (node: ActionTreeNode) => node.children;
+
+export const isFilterable = (node: ActionTreeNode) =>
+  node.nodeType === "action";
+
+export const globalFilterFn = (
+  row: { original: ActionTreeNode },
+  _columnId: string,
+  filterValue: string,
+) =>
+  row.original.nodeType === "action" &&
+  row.original.name.toLowerCase().includes(String(filterValue).toLowerCase());
+
+export function getDatabaseName(
+  databases: Database[],
+  action: WritebackAction | undefined,
+): string {
+  return (
+    databases.find((database) => database.id === action?.database_id)?.name ??
+    ""
+  );
+}
+
+export function getCreatorName(action: WritebackAction | undefined): string {
+  return action ? (getUserName(action.creator) ?? "") : "";
+}
+
+export function getEmptyMessage({
+  hasActions,
+  hasResults,
+}: {
+  hasActions: boolean;
+  hasResults: boolean;
+}): string | null {
+  switch (true) {
+    case !hasActions:
+      return t`No actions yet`;
+    case !hasResults:
+      return t`No actions found`;
+    default:
+      return null;
+  }
 }

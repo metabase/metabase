@@ -29,24 +29,21 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { getUserName } from "metabase/utils/user";
-import type { Database, WritebackAction } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 
 import { ActionsHeader } from "../../components/ActionsHeader";
 
-import { type ActionTreeNode, buildActionTree } from "./utils";
-
-const getNodeId = (node: ActionTreeNode) => node.id;
-const getSubRows = (node: ActionTreeNode) => node.children;
-const isFilterable = (node: ActionTreeNode) => node.nodeType === "action";
-
-const globalFilterFn = (
-  row: { original: ActionTreeNode },
-  _columnId: string,
-  filterValue: string,
-) =>
-  row.original.nodeType === "action" &&
-  row.original.name.toLowerCase().includes(String(filterValue).toLowerCase());
+import {
+  type ActionTreeNode,
+  buildActionTree,
+  getCreatorName,
+  getDatabaseName,
+  getEmptyMessage,
+  getNodeId,
+  getSubRows,
+  globalFilterFn,
+  isFilterable,
+} from "./utils";
 
 const renderRowLink: RenderRowLink<ActionTreeNode> = (row, props) => {
   const action = row.original.action;
@@ -143,30 +140,9 @@ export function ActionListPage() {
   );
 }
 
-function getEmptyMessage({
-  hasActions,
-  hasResults,
-}: {
-  hasActions: boolean;
-  hasResults: boolean;
-}): string | null {
-  switch (true) {
-    case !hasActions:
-      return t`No actions yet`;
-    case !hasResults:
-      return t`No actions found`;
-    default:
-      return null;
-  }
-}
-
 function getColumns(
   databases: Database[],
 ): TreeTableColumnDef<ActionTreeNode>[] {
-  const getDatabaseName = (action: WritebackAction | undefined) =>
-    databases.find((database) => database.id === action?.database_id)?.name ??
-    "";
-
   return [
     {
       id: "name",
@@ -188,24 +164,24 @@ function getColumns(
     },
     {
       id: "database",
-      accessorFn: (node) => getDatabaseName(node.action),
+      accessorFn: (node) => getDatabaseName(databases, node.action),
       header: t`Database`,
       minWidth: 160,
       enableSorting: true,
       cell: ({ row }) => (
-        <Ellipsified>{getDatabaseName(row.original.action)}</Ellipsified>
+        <Ellipsified>
+          {getDatabaseName(databases, row.original.action)}
+        </Ellipsified>
       ),
     },
     {
       id: "creator",
-      accessorFn: (node) =>
-        node.action ? (getUserName(node.action.creator) ?? "") : "",
+      accessorFn: (node) => getCreatorName(node.action),
       header: t`Created by`,
       minWidth: 160,
       enableSorting: true,
       cell: ({ row }) => {
-        const creator = row.original.action?.creator;
-        const name = creator ? getUserName(creator) : null;
+        const name = getCreatorName(row.original.action);
         return name ? (
           <Flex align="center" gap="sm">
             <Avatar size="sm" name={name} />
