@@ -1,7 +1,18 @@
 const { H } = cy;
 
-import { checkGroupMappingsWidget } from "./shared/group-mappings-widget";
+import { groupMappingCardHelpers } from "./shared/group-mapping-card";
 import { getSamlCertificate, setupSaml } from "./shared/helpers";
+
+const {
+  groupMappingSwitch,
+  mappingRow,
+  toggleGroupMapping,
+  addMapping,
+  deleteMapping,
+} = groupMappingCardHelpers({
+  sectionTestId: "saml-group-mapping-section",
+  nameLabel: "SAML group name",
+});
 
 describe("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
@@ -69,9 +80,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    cy.findByRole("switch", { name: "User provisioning" })
-      .should("be.checked")
-      .click({ force: true });
+    cy.findByRole("switch", { name: "User provisioning" }).should("be.checked");
+    cy.contains("label", "User provisioning").click();
     cy.wait("@updateSetting");
     H.undoToast().findByText("Changes saved").should("exist");
     cy.findByRole("switch", { name: "User provisioning" }).should(
@@ -79,18 +89,43 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     );
   });
 
-  describe("Group Mappings Widget", () => {
+  describe("Group mapping", () => {
     beforeEach(() => {
-      cy.intercept("GET", "/api/setting").as("getSettings");
-      cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
-      cy.intercept("PUT", "/api/permissions/membership/*/clear").as(
-        "clearGroup",
-      );
+      setupSaml();
+      cy.visit("/admin/settings/authentication/saml");
     });
 
-    it("should allow deleting mappings along with deleting, or clearing users of, mapped groups, while keeping remaining mappings consistent", () => {
-      checkGroupMappingsWidget("saml");
+    it("should save the switch and the mappings on their own and the group attribute with the form", () => {
+      toggleGroupMapping(true);
+      addMapping("engineering", ["data", "nosql"]);
+
+      cy.log("The group attribute saves with the page form");
+      cy.findByLabelText(/Group attribute name/).type("memberOf");
+      cy.button("Save changes").click();
+      cy.wait("@updateSamlSettings");
+
+      cy.log("Everything comes back after a reload");
+      cy.reload();
+      groupMappingSwitch().should("be.checked");
+      mappingRow("engineering").should("contain", "data, nosql");
+      cy.findByLabelText(/Group attribute name/).should(
+        "have.value",
+        "memberOf",
+      );
+
+      cy.log("Deleting a mapping takes its groups with it");
+      deleteMapping(
+        "engineering",
+        /delete the groups/i,
+        "Remove mapping and delete groups",
+      );
+      cy.wait(["@deleteGroup", "@deleteGroup"]);
+
+      cy.log("Turning group mapping off sticks");
+      toggleGroupMapping(false);
+      cy.reload();
+      groupMappingSwitch().should("not.be.checked");
     });
   });
 });
