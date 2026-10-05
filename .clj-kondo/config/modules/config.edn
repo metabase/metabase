@@ -4030,8 +4030,7 @@
                      settings
                      task
                      util
-                     enterprise/cloud.add-ons
-                     enterprise/mcp}
+                     enterprise/cloud.add-ons}
    :model-imports #{:model/AiUsageLog :model/PermissionsGroup :model/PermissionsGroupMembership}}
 
   enterprise/metabot.agent-api

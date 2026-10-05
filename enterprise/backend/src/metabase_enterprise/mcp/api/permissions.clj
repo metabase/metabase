@@ -1,5 +1,7 @@
 (ns metabase-enterprise.mcp.api.permissions
-  "`/api/ee/ai-controls/mcp-permissions` routes for managing which MCP tools each permissions group may use."
+  "`/api/ee/ai-controls/mcp-permissions` routes for managing which MCP tools each permissions group may use. Every
+  route is superuser-only. Setting a group's policy and entering group-level mode need the `:ai-controls` feature;
+  reading the policy and switching back to All Users do not, since the rows stay enforced without the feature."
   (:require
    [metabase-enterprise.mcp.db :as mcp.db]
    [metabase.api.common :as api]
@@ -9,6 +11,7 @@
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.api :as mcp.v2.api]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -99,6 +102,7 @@
    {:keys [permissions]} :- [:map {:closed true}
                              [:permissions [:sequential group-permission-schema]]]]
   (api/check-superuser)
+  (premium-features/assert-has-feature :ai-controls (tru "AI Controls"))
   (cluster-lock/with-cluster-lock policy-lock
     (check-writable permissions)
     (check-visible-groups permissions)
@@ -124,6 +128,7 @@
    from the rows of the other groups, and enables Data Analysts with every tool at its default when it has no row."
   []
   (api/check-superuser)
+  (premium-features/assert-has-feature :ai-controls (tru "AI Controls"))
   (switch-mode! true)
   (permissions-response))
 

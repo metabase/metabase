@@ -204,11 +204,41 @@
             (is (= (refusal all-users-id) (put! all-users-id)))
             (is (not (t2/exists? :model/McpGroupPermission :group_id all-users-id)))))))))
 
-(deftest ^:parallel permissions-require-ai-controls-feature-test
+(deftest ^:parallel writes-require-ai-controls-feature-test
   (mt/with-premium-features #{}
-    (mt/assert-has-premium-feature-error "AI Controls" (mt/user-http-request :crowberto :get 402 endpoint))
-    (mt/assert-has-premium-feature-error "AI Controls" (mt/user-http-request :crowberto :put 402 endpoint
-                                                                             {:permissions []}))))
+    (testing "setting a group's policy"
+      (mt/assert-has-premium-feature-error "AI Controls" (mt/user-http-request :crowberto :put 402 endpoint
+                                                                               {:permissions []})))
+    (testing "entering group-level mode"
+      (mt/assert-has-premium-feature-error
+       "AI Controls"
+       (mt/user-http-request :crowberto :post 402 "ee/ai-controls/mcp-permissions/advanced")))))
+
+(deftest ^:parallel get-permissions-without-ai-controls-feature-test
+  (mt/with-premium-features #{}
+    (testing "an admin can still read the policy the rows enforce"
+      (is (=? {:advanced boolean? :tools seq :permissions seq}
+              (mt/user-http-request :crowberto :get 200 endpoint))))))
+
+(deftest disable-advanced-mode-without-ai-controls-feature-test
+  (mcp.tu/with-group-level-mode
+    (mt/with-premium-features #{}
+      (testing "an admin who lost the feature in group-level mode can switch back to All Users"
+        (let [all-users-id (u/the-id (perms/all-users-group))
+              response     (mt/user-http-request :crowberto :delete 200 "ee/ai-controls/mcp-permissions/advanced")]
+          (is (false? (:advanced response)))
+          (is (= {:group_id all-users-id :mcp_enabled true :tool_access {}}
+                 (group-permission response all-users-id))))))))
+
+(deftest ^:parallel permissions-require-superuser-without-ai-controls-feature-test
+  (mt/with-premium-features #{}
+    (doseq [[method path body] [[:get    endpoint]
+                                [:put    endpoint {:permissions []}]
+                                [:post   "ee/ai-controls/mcp-permissions/advanced"]
+                                [:delete "ee/ai-controls/mcp-permissions/advanced"]]]
+      (testing (str method " " path)
+        (is (= "You don't have permissions to do that."
+               (apply mt/user-http-request :rasta method 403 path (when body [body]))))))))
 
 (deftest enable-advanced-mode-test
   (mt/with-premium-features #{:ai-controls}

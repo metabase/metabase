@@ -28,6 +28,7 @@
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
+   [metabase-enterprise.mcp.api.permissions]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
@@ -113,7 +114,12 @@
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
+   ;; MCP permissions check :ai-controls per endpoint and must come first: the Metabot handler refuses every
+   ;; request without the feature, matching or not.
+   "/ai-controls"                  (handlers/routes
+                                    (handlers/route-map-handler
+                                     {"/mcp-permissions" metabase-enterprise.mcp.api.permissions/routes})
+                                    (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls))
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
