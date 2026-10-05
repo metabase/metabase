@@ -9,8 +9,6 @@ describe("issue 10803", () => {
   const testCases = ["csv", "xlsx"];
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -161,8 +159,6 @@ describe("issues 18440 and 18573", () => {
   const testCases = ["csv", "xlsx"];
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/card").as("saveQuestion");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -261,8 +257,6 @@ describe("issue 19889", () => {
   }
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -336,8 +330,6 @@ describe("metabase#28834", () => {
   // difficulties, I've decided to test with Cypress instead.
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     H.restore();
     cy.signInAsAdmin();
 
