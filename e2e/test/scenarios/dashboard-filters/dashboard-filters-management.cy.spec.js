@@ -135,7 +135,7 @@ describe("scenarios > dashboard > filters > management", () => {
         cy.findByText("No default").should("exist");
       });
 
-      cy.log("verify Number default value: Between");
+      cy.log("verify Number default value: Equal to");
       verifyOperatorValue("Equal to");
 
       H.getDashboardCard().should("not.contain", "People.Name");
@@ -152,7 +152,7 @@ describe("scenarios > dashboard > filters > management", () => {
 
       changeFilterType("Location");
 
-      cy.log("verify Date default value: Is");
+      cy.log("verify Location default value: Is");
       verifyOperatorValue("Is");
 
       H.saveDashboard();
