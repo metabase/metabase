@@ -2,9 +2,9 @@
   "Write-path machinery shared by v2 `_write` tools. Landed with its first consumers: [[readback]] with
    `bookmark_content`, `_write` method dispatch with `collection_write`."
   (:require
-   [clojure.string :as str]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.resolve :as v2.resolve]))
 
 (set! *warn-on-reflection* true)
@@ -29,9 +29,13 @@
     (if (empty? missing)
       row
       (assoc (select-keys row (into [:id :url] ack-keys))
-             :note (format "Written. Reading it back requires the %s scope%s this token doesn't have."
-                           (str/join " and " missing)
-                           (if (next missing) "s" ""))))))
+             ;; The note is a value in the JSON-encoded row, so it must be text.
+             :note (message/render
+                    (if (next missing)
+                      (message/msg ["Written. Reading it back requires the %s scopes this token doesn't have."]
+                                   (common/list-message missing))
+                      (message/msg ["Written. Reading it back requires the %s scope this token doesn't have."]
+                                   (first missing))))))))
 
 (defn- expand-clear
   "Turn a `clear` list of property names into explicit nils on `args`. Null can't carry this
@@ -49,14 +53,14 @@
         (when-not (contains? clearable field)
           (common/throw-teaching-error
            (if (seq clearable)
-             (format "`%s` can't be cleared. This tool can clear: %s."
-                     (name field) (str/join ", " (sort (map name clearable))))
-             (format "`%s` can't be cleared — this tool has no clearable properties."
-                     (name field)))))
+             (message/msg ["%s can't be cleared. This tool can clear: %s."]
+                          (name field) (common/list-message (sort (map name clearable))))
+             (message/msg ["%s can't be cleared — this tool has no clearable properties."]
+                          (name field)))))
         (when (some? (get args field))
           (common/throw-teaching-error
-           (format "`%s` is both set and cleared in the same call — pass one or the other."
-                   (name field)))))
+           (message/msg ["%s is both set and cleared in the same call — pass one or the other."]
+                        (name field)))))
       (reduce #(assoc %1 %2 nil) (dissoc args :clear) fields))))
 
 (defn dispatch-write
@@ -75,19 +79,23 @@
     (do
       (when (seq clear)
         (common/throw-teaching-error
-         "`clear` applies to method \"update\" only — a new object has nothing set to clear."))
+         (message/msg ["\"clear\" applies to method \"update\" only — a new object has nothing set to clear."])))
       (doseq [k create-required]
         (when (nil? (get args k))
-          (common/throw-teaching-error (format "`%s` is required when method is \"create\"." (name k)))))
+          (common/throw-teaching-error (message/msg ["%s is required when method is \"create\"."]
+                                                    (name k)))))
       [:create (dissoc args :method :clear)])
 
     "update"
     (do
       (when (nil? id)
-        (common/throw-teaching-error "`id` is required when method is \"update\"."))
+        (common/throw-teaching-error (message/msg ["\"id\" is required when method is \"update\"."])))
       ;; Every `_write` tool's `id` takes an int or a string, so a client that serializes such a
       ;; param as a string reaches the tool's own id handling already coerced (GHY-4498).
       [:update (v2.resolve/normalize-id id) (-> (dissoc args :method :id)
                                                 (expand-clear clearable clear))])
 
-    (common/throw-teaching-error (format "Invalid method %s — use \"create\" or \"update\"." (pr-str method)))))
+    (common/throw-teaching-error
+     (if (nil? method)
+       (message/msg ["\"method\" is required — use \"create\" or \"update\"."])
+       (message/msg ["Invalid method %s — use \"create\" or \"update\"."] method)))))

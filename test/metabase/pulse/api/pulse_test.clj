@@ -7,8 +7,8 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.response :as api.response]
-   [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
+   [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -113,10 +113,7 @@
    {:cards (str "one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
                 "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or Schema for an instance of a `:model/Card`: every real column of `:report_card` (see `::card.update`) plus `:id`,\n"
-                "  the `:persisted/*` columns some queries join in from `persisted_info`, and the keys some callers hydrate onto a\n"
-                "  Card before passing it here.")}})
+                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
 (deftest create-pulse-validation-test
   (doseq [[input expected-error]
@@ -155,6 +152,18 @@
     (testing (pr-str input)
       (is (=? expected-error
               (mt/user-http-request :rasta :post 400 "pulse" input))))))
+
+(deftest create-pulse-rejects-card-without-export-flags-test
+  (testing "POST /api/pulse rejects a card entry missing `include_csv` and `include_xls`"
+    (is (=? {:errors {:cards {:include_csv #".*valid boolean.*"
+                              :include_xls #".*valid boolean.*"}}}
+            (mt/user-http-request :rasta :post 400 "pulse" {:name     "abc"
+                                                            :cards    [{:id 100}]
+                                                            :channels [{:channel_type  "email"
+                                                                        :schedule_type "daily"
+                                                                        :schedule_hour 12
+                                                                        :enabled       true
+                                                                        :recipients    []}]})))))
 
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
@@ -451,10 +460,7 @@
    {:cards (str "nullable one or more value must be a map with the following keys "
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
                 "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or Schema for an instance of a `:model/Card`: every real column of `:report_card` (see `::card.update`) plus `:id`,\n"
-                "  the `:persisted/*` columns some queries join in from `persisted_info`, and the keys some callers hydrate onto a\n"
-                "  Card before passing it here.")}})
+                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"
@@ -1074,7 +1080,7 @@
 (deftest send-test-alert-with-http-channel-test
   (testing "POST /api/pulse/test send test alert to a http channel"
     (notification.tu/with-send-notification-sync
-      (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
+      (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
         (let [requests (atom [])
               endpoint (channel.http-test/make-route
                         :post "/test"

@@ -17,7 +17,7 @@ const { H } = cy;
 const TEST_TABLE = "scoreboard_actions";
 const MODEL_NAME = "Scoreboard model";
 
-/** `syncResources` takes the app's slug from its directory name. */
+/** The `slug` the app's `data_app.yaml` declares. */
 const APP_SLUG = "vite-6-data-app-host-app";
 
 const APP_ROOT = () => dataAppHostAppRoot();
@@ -426,10 +426,10 @@ describe(
       // `GET /api/action/:id` filters archived actions out, so an archived source
       // is unreadable rather than readable-and-flagged.
       it("copies nothing when the action's model is in the trash", () => {
-        declareOneAction().then(({ modelId }) => {
+        declareOneAction().then(({ modelId, action }) => {
           cy.request("PUT", `/api/card/${modelId}`, { archived: true });
 
-          syncExpectingRefusal(`references an action on model ${modelId}`);
+          syncExpectingRefusal(`Could not read action ${action.id}`);
           copiedModels().should("have.length", 0);
         });
       });

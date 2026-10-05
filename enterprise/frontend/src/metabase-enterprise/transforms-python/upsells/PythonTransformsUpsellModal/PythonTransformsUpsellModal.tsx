@@ -176,7 +176,7 @@ function SelfHostedStorePurchaseLink() {
   const storeUrl = useStoreUrl("account/transforms");
 
   return (
-    <Button component="a" href={storeUrl} variant="primary">
+    <Button component="a" href={storeUrl} variant="filled" size="lg">
       {t`Go to your store account to upgrade`}
     </Button>
   );

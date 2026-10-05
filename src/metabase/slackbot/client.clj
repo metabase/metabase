@@ -237,12 +237,19 @@
   #{301 302 303 307 308})
 
 (defn- redirect-target
-  "The absolute URL `resp` redirects to, resolved against the `url` that produced it, or nil if it is not a redirect."
+  "The absolute URL `resp` redirects to, resolved against the `url` that produced it.
+  Nil if `resp` is not a redirect, carries no `Location`, or its `Location` does not resolve to a URL."
   [url resp]
   (when (contains? redirect-statuses (:status resp))
     (when-let [location (or (get-in resp [:headers "location"])
                             (get-in resp [:headers "Location"]))]
-      (str (.resolve (URI. (str url)) (str location))))))
+      ;; The caller reads this with the response body still open, and only its own branches close it.
+      ;; An unresolvable `Location` therefore has to read as no redirect rather than throw.
+      (try
+        (str (.resolve (URI. (str url)) (str location)))
+        (catch Exception e
+          (log/debugf "[slackbot] Ignoring an unresolvable redirect Location: %s" (ex-message e))
+          nil)))))
 
 (defn download-file-stream
   "Download a file from Slack, returning an InputStream instead of buffering in memory.

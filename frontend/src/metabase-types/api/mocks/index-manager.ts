@@ -1,6 +1,7 @@
 import type {
   IndexField,
   IndexMethod,
+  ListTableIndexesResponse,
   RequestableIndexes,
   TableIndexEntry,
   TableIndexRequest,
@@ -41,6 +42,13 @@ export const createMockTableIndexEntry = (
   partial_predicate: null,
   access_method: null,
   request: createMockTableIndexRequest(),
+  ...opts,
+});
+
+export const createMockListTableIndexesResponse = (
+  opts?: Partial<ListTableIndexesResponse>,
+): ListTableIndexesResponse => ({
+  data: [],
   ...opts,
 });
 

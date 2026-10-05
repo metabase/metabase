@@ -42,12 +42,12 @@
            [:formula-version :int]
            [:format-version :int]
            [:synonym-threshold number?]
-           [:weights [:map {:closed true}
-                      [:entity :int]
-                      [:name-collision :int]
-                      [:synonym-pair :int]
-                      [:field :int]
-                      [:repeated-measure :int]]]
+           [:weights {:optional true} [:map {:closed true}
+                                       [:entity :int]
+                                       [:name-collision :int]
+                                       [:synonym-pair :int]
+                                       [:field :int]
+                                       [:repeated-measure :int]]]
            [:embedding-model {:optional true} [:maybe [:map {:closed true}
                                                        [:provider [:maybe [:or :string :keyword]]]
                                                        [:model-name [:maybe :string]]

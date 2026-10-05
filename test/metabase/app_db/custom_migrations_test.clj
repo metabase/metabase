@@ -1,4 +1,4 @@
-(ns metabase.app-db.custom-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.custom-migrations-test
   "Tests to make sure the custom migrations work as expected.
 
   As of #52254, any tests marked `^:mb/old-migrations-test` are only run on pushes to `master` or `release-`
@@ -2957,34 +2957,6 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
-(deftest backfill-mfa-confirmed-at-test
-  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
-    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
-      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
-        (let [confirmed-at "2026-07-01T12:00:00Z"
-              insert-identity!
-              (fn [user-id credentials-str]
-                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
-                                                         :provider    "totp"
-                                                         :credentials credentials-str
-                                                         :created_at  :%now
-                                                         :updated_at  :%now}))
-              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
-              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
-              pending         (insert-identity! (:id (new-instance-with-default :core_user))
-                                                (encryption/maybe-encrypt
-                                                 (json/encode {:secret "s3"})))]
-          (migrate!)
-          (testing "encrypted confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
-          (testing "legacy plaintext confirmed row gets the column"
-            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
-          (testing "pending (unconfirmed) enrollment stays null"
-            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
-
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
@@ -3015,13 +2987,42 @@
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
 
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v63.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v63.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
+
 (deftest retire-mcp-v1-oauth-scopes-test
   (testing (str "v64.2026-09-09T12:00:00/01: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
                 "registration snapshot and tokens scoped to it. The v2 surface gates on six coarse scopes that no "
                 "legacy scope satisfies, so without this migration the client gets HTTP 200 with an empty tools list "
                 "and never recovers — the refresh grant can only narrow. The migration widens the ceiling so a "
-                "re-authorization validates, then revokes the legacy-shaped tokens so the client actually "
-                "re-authenticates instead of refreshing.")
+                "re-authorization validates. GHY-4491: the second changeset is a no-op. tools/list now lists every "
+                "tool and a call short of scope gets a 403 insufficient_scope step-up, so a legacy client "
+                "re-authorizes on its own; revoking its tokens would only force it through the refresh-failure path.")
     (impl/test-migrations ["v64.2026-09-09T12:00:00" "v64.2026-09-09T12:00:01"] [migrate!]
       (let [;; The 17 scopes DCR snapshots on v0.63: 15 per-entity agent scopes + 2 mcp-ui resource scopes.
             legacy-scopes   ["agent:sql:construct" "agent:sql:create" "agent:sql:edit" "agent:sql:read"
@@ -3081,9 +3082,9 @@
               (is (every? scopes legacy-scopes)))))
         (testing "a statically registered client is left alone — it did not snapshot via DCR"
           (is (= (set legacy-scopes) (scopes-of :oauth_client static-id :scopes))))
-        (testing "legacy-scoped tokens are revoked — both tables, or the client refreshes instead of re-authing"
-          (is (revoked? :oauth_access_token legacy-access))
-          (is (revoked? :oauth_refresh_token legacy-refresh)))
+        (testing "GHY-4491: legacy-scoped tokens are NOT revoked; the client self-heals through the 403 step-up"
+          (is (not (revoked? :oauth_access_token legacy-access)))
+          (is (not (revoked? :oauth_refresh_token legacy-refresh))))
         (testing "tokens already carrying a v2 tool scope keep working"
           (is (not (revoked? :oauth_access_token v2-access)))
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))

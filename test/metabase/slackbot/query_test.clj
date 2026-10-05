@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.slackbot.query :as slackbot.query]
@@ -80,6 +81,32 @@
             image   (bytes->image png)]
         (testing "returns parseable PNG"
           (is (some? image)))))))
+
+(deftest generate-adhoc-png-chart-with-report-timezone-test
+  (testing "generate-adhoc-png renders a chart when a report timezone adds `:requested_timezone` to the results"
+    (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [mp      (mt/metadata-provider)
+              query   (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))
+              results (slackbot.query/execute-adhoc-query query)]
+          (is (= "US/Pacific" (get-in results [:data :requested_timezone])))
+          (is (some? (bytes->image (#'slackbot.query/generate-adhoc-png results :bar)))))))))
+
+(deftest generate-adhoc-png-chart-with-permissions-metadata-test
+  (when config/ee-available?
+    (testing "generate-adhoc-png renders a chart when EE permissions add `:download_perms` and `:is_sandboxed` to the results"
+      (mt/with-premium-features #{:advanced-permissions :sandboxes}
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [mp      (mt/metadata-provider)
+                query   (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                            (lib/aggregate (lib/count))
+                            (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))
+                results (slackbot.query/execute-adhoc-query query)]
+            (is (= {:download_perms :full, :is_sandboxed false}
+                   (select-keys (:data results) [:download_perms :is_sandboxed])))
+            (is (some? (bytes->image (#'slackbot.query/generate-adhoc-png results :bar))))))))))
 
 (deftest generate-adhoc-png-line-chart-test
   (testing "generate-adhoc-png renders line chart visualization as PNG"

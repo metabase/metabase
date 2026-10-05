@@ -206,11 +206,19 @@ export interface VersionInfoRecord {
   announcement_url?: string;
 }
 
+export interface AlertUpgradeVersion {
+  min: string;
+  fixed: string;
+  message: string;
+  id?: string;
+}
+
 export interface VersionInfo {
   nightly?: VersionInfoRecord;
   beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
+  alert_upgrade_versions?: AlertUpgradeVersion[];
 }
 
 export type LocaleData = [string, string];
@@ -242,7 +250,6 @@ export type GdrivePayload = {
   error?: string;
 };
 
-/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -286,6 +293,7 @@ const tokenStatusFeatures = [
   "sso",
   "transforms-basic",
   "transforms-python",
+  "transforms-testing",
   "upload-management",
   "whitelabel",
 ] as const;
@@ -369,6 +377,7 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms-python",
   "transforms-basic",
+  "transforms-testing",
   "library",
   "library_retrieval",
   "support-users",
@@ -454,7 +463,9 @@ interface InstanceSettings {
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
-  "enable-embedding-modular": boolean;
+  "enable-embedding-static": boolean;
+  "enable-embedding-sdk": boolean;
+  "enable-embedding-simple": boolean;
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
@@ -462,7 +473,6 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
-  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -507,7 +517,8 @@ interface AdminSettings {
   "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
-  "show-modular-embed-terms": boolean | null;
+  "show-sdk-embed-terms": boolean | null;
+  "show-simple-embed-terms": boolean | null;
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
@@ -532,6 +543,7 @@ interface SettingsManagerSettings {
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
   "llm-deepseek-api-key"?: string | null;
+  "llm-xai-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
   "llm-google-service-account-key"?: string | null;
@@ -619,7 +631,7 @@ interface PublicSettings {
   "ldap-group-sync": boolean;
   "ldap-group-base": string | null;
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
-  "ldap-group-membership-filter"?: string;
+  "ldap-group-membership-filter"?: string | null;
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
@@ -780,6 +792,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
   "llm-deepseek-api-key"?: string | null;
+  "llm-xai-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -840,7 +853,6 @@ export interface EnterpriseSettings extends Settings {
   "llm-mini-model"?: string | null;
   "llm-fast-mode"?: boolean | null;
   "llm-anthropic-api-key"?: string | null;
-  "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;
   "metabot-slack-signing-secret"?: string | null;
   "slack-connect-enabled"?: boolean | null;

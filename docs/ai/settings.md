@@ -58,7 +58,7 @@ To connect a provider with your own credentials:
 1. Go to **Admin > AI**.
 2. Click **Add a provider**.
 3. Pick your provider.
-4. Fill in its credentials. The **Where do I find this?** links open the provider's key management pages in a new tab.
+4. Enter your credentials. Most providers only need an **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab. For what each provider needs, see [AI providers](./providers.md).
 5. Click **Connect**.
 
 If you've already copied a key, one neat thing: just paste the key anywhere on the provider grid, and Metabase selects the matching provider and fills in the key for you. Check to make sure the provider matches.
@@ -217,7 +217,7 @@ Metabase will try to set semantic types automatically, but you should confirm th
 
 ### Define domain-specific terms in the glossary
 
-Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../exploration-and-organization/data-model-reference.md#glossary). When you submit a prompt, Metabot can look up terms in the glossary to better understand your request.
+Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../data-modeling/semantic-layer/glossary.md). Metabot can look up terms in the glossary to better understand your request.
 
 For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?" This is especially helpful for industry-specific jargon, internal product names, or abbreviations unique to your organization.
 

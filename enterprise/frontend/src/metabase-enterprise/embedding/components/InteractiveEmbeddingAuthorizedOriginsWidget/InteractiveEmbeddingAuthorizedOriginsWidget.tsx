@@ -20,7 +20,7 @@ const Description = () => {
 export const InteractiveEmbeddingAuthorizedOriginsWidget = () => (
   <AdminSettingInput
     name="embedding-app-origins-interactive"
-    title={t`Authorized origins for full-app embedding`}
+    title={t`Authorized origins`}
     description={<Description />}
     placeholder="https://*.example.com"
     inputType="text"

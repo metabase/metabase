@@ -6,7 +6,6 @@
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
   (:require
-   [clojure.java.jmx :as jmx]
    [clojure.string :as str]
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
@@ -15,8 +14,6 @@
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics-interface.core :as analytics.interface]
-   ;; We should not be using specific driver implementations
-   [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -24,6 +21,7 @@
    [potemkin.types :as p.types]
    [ring.adapter.jetty :as ring-jetty])
   (:import
+   (com.mchange.v2.c3p0 C3P0Registry PoolBackedDataSource WrapperConnectionPoolDataSource)
    (io.prometheus.client Collector GaugeMetricFamily SimpleCollector)
    (io.prometheus.client.hotspot
     GarbageCollectorExports
@@ -31,7 +29,6 @@
     StandardExports
     ThreadExports)
    (java.util ArrayList List)
-   (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -136,24 +133,40 @@
         (log/warnf "Unrecognized measurement %s in prometheus stats" raw-label)))
     arr))
 
-(defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
-  ;; Using this `locking` is non-obvious but absolutely required to avoid the deadlock inside c3p0 implementation. The
-  ;; act of JMX attribute reading first locks a DynamicPooledDataSourceManagerMBean object, and then a
-  ;; PoolBackedDataSource object. Conversely, the act of creating a pool (with
-  ;; com.mchange.v2.c3p0.DataSources/pooledDataSource) first locks PoolBackedDataSource and then
-  ;; DynamicPooledDataSourceManagerMBean. We have to lock a common monitor (which `pool-lock/monitor` is)
-  ;; to prevent the deadlock. Hopefully.
-  ;; Issue against c3p0: https://github.com/swaldman/c3p0/issues/95
-  (locking pool-lock/monitor
-    (let [bean-id   (.getCanonicalName jmx-bean)
-          props     [:numConnections :numIdleConnections :numBusyConnections
-                     :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-      (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props)))))
+(defn- pool-stats
+  "The stats for one c3p0 pool, read with its default-user getters."
+  [^PoolBackedDataSource pool]
+  ;; The pool-size bounds live on the wrapped ConnectionPoolDataSource, not on the pool itself.
+  (let [cpds (.getConnectionPoolDataSource pool)]
+    (cond-> {:numConnections                        (.getNumConnections pool)
+             :numIdleConnections                    (.getNumIdleConnections pool)
+             :numBusyConnections                    (.getNumBusyConnections pool)
+             :numThreadsAwaitingCheckoutDefaultUser (.getNumThreadsAwaitingCheckoutDefaultUser pool)}
+      (instance? WrapperConnectionPoolDataSource cpds)
+      (assoc :minPoolSize (.getMinPoolSize ^WrapperConnectionPoolDataSource cpds)
+             :maxPoolSize (.getMaxPoolSize ^WrapperConnectionPoolDataSource cpds)))))
 
 (defn connection-pool-info
-  "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."
+  "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance: every unclosed pool
+  of every kind (warehouse, application, Quartz, semantic search), keyed by pool name (the c3p0 `dataSourceName`). A
+  pool closed while this runs is skipped for this call and logged at debug."
   []
-  (reduce conn-pool-bean-diag-info {} (jmx/mbean-names "com.mchange.v2.c3p0:type=PooledDataSource,*")))
+  ;; Read the stats from the pool objects, never through their JMX MBeans. A JMX attribute read locks the MBean and
+  ;; then the pool, while pool construction locks the pool and then the MBean (its property-change listener), so a
+  ;; scrape that overlapped a pool build deadlocked: https://github.com/swaldman/c3p0/issues/95. Reading the pool
+  ;; directly takes the pool's own monitors in the same order construction does, so the cycle cannot form; a scrape
+  ;; only waits while that one pool is mid-construction. `getPooledDataSources` returns a copy made under the
+  ;; registry lock, which is released before any pool is touched.
+  (into {}
+        (keep (fn [pool]
+                (when (instance? PoolBackedDataSource pool)
+                  (let [^PoolBackedDataSource pool pool]
+                    (try
+                      [(.getDataSourceName pool) (pool-stats pool)]
+                      (catch Exception e
+                        (log/debugf e "Skipping c3p0 pool %s in this scrape" (.getDataSourceName pool))
+                        nil))))))
+        (C3P0Registry/getPooledDataSources)))
 
 (def ^:private c3p0-collector
   "c3p0 collector delay"
@@ -340,7 +353,7 @@
                       :labels      [:storage]})
    ;; Probed hourly, so an outage takes up to that long to show up. The dedicated probe opens its own
    ;; connection, so a store that is up but whose pool is saturated still reads as connected --
-   ;; metabase_database_c3p0_* covers that. The app-db probe shares the application pool, and does not.
+   ;; c3p0_* covers that. The app-db probe shares the application pool, and does not.
    (prometheus/gauge :metabase-pgvector/store-connected
                      {:description "Whether the last connection probe to the given pgvector storage succeeded."
                       :labels      [:storage]})
@@ -732,7 +745,7 @@
    (prometheus/counter :metabase-slackbot/responses-deleted
                        {:description "Number of Slack bot responses deleted by users."})
    (prometheus/counter :metabase-slackbot/file-uploads
-                       {:description "Number of file uploads via the Slack bot."
+                       {:description "Number of files attached to Slack bot messages, by what became of each."
                         :labels [:result]})
    (prometheus/counter :metabase-slackbot/responses-truncated
                        {:description (str "Number of Slack bot responses truncated because they exceeded "
@@ -744,35 +757,38 @@
                        {:description (str "Number of Slack bot responses that reached the user as nothing at all, "
                                           "because the plain-text fallback failed too.")})
    ;; metabot / LLM agent metrics
+   ;; The `:provider` label is one of the provider types in `metabase.llm.provider`, or `unknown` if a caller omits it.
+   ;; Resolution rejects anything else, so the set only grows when a type joins the registry.
+   ;; It is a projection of `:model`, which already carries the connection key, so it adds no series.
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-retries
                        {:description "LLM provider retry attempts"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-errors
                        {:description "LLM provider API errors (excluding retries)"
-                        :labels [:model :source :error-type]})
+                        :labels [:model :source :provider :error-type]})
    (prometheus/histogram :metabase-metabot/llm-duration-ms
                          {:description "LLM request duration (ms)"
-                          :labels [:model :source]
+                          :labels [:model :source :provider]
                           ;; 100 ms -> 2 minutes
                           :buckets [100 500 1000 2000 5000 10000 20000 30000 60000 120000]})
    (prometheus/counter :metabase-metabot/llm-input-tokens
                        {:description "LLM input tokens"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-output-tokens
                        {:description "LLM output tokens"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-cache-creation-tokens
                        {:description "LLM cache creation input tokens (Anthropic prompt caching)"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/counter :metabase-metabot/llm-cache-read-tokens
                        {:description "LLM cache read input tokens (Anthropic prompt caching)"
-                        :labels [:model :source]})
+                        :labels [:model :source :provider]})
    (prometheus/histogram :metabase-metabot/llm-tokens-per-call
                          {:description "Tokens per LLM call"
-                          :labels [:model :source]
+                          :labels [:model :source :provider]
                           :buckets [1000 2500 5000 10000 20000 50000 100000 200000]})
    (prometheus/counter :metabase-metabot/agent-requests
                        {:description "Agent loop invocations"

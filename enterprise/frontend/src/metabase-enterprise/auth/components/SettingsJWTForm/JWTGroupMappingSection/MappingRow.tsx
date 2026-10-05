@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import type { GroupLookup } from "metabase/admin/settings/auth/components/GroupMappings";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { ActionIcon, FixedSizeIcon, Flex, Icon, Text } from "metabase/ui";
 import type { GroupId } from "metabase-types/api";
 
 import S from "./JWTGroupMappingSection.module.css";
-import type { GroupLookup } from "./utils";
 
 export function MappingRow({
   name,

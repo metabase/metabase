@@ -6,14 +6,14 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const standalonePath = "/embedding/security";
+const standalonePath = "/admin/embedding/guest";
 
 // These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.updateSetting("show-modular-embed-terms", false);
+    H.updateSetting("show-sdk-embed-terms", false);
   });
 
   it("should not offer to share or embed models (metabase#20815)", () => {
@@ -39,14 +39,14 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should show the sdk upsell link in oss", () => {
-      cy.visit("/embedding/security");
+      cy.visit("/admin/embedding");
 
       mainPage().within(() => {
-        cy.findByRole("link", { name: "Try Metabase Pro" })
+        cy.findByRole("link", { name: "Upgrade" })
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-hub&utm_content=embedding-hub-security&source_plan=oss&utm_users=10",
+            "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embedding-page&source_plan=oss&utm_users=10&utm_campaign=embedding-methods",
           );
       });
     });
@@ -71,7 +71,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     };
     ["question", "dashboard"].forEach((object) => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
-        cy.request("PUT", "/api/setting/enable-embedding-modular", {
+        cy.request("PUT", "/api/setting/enable-embedding-static", {
           value: true,
         });
         const embeddableObject = object === "question" ? "card" : "dashboard";
@@ -181,10 +181,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.visit(standalonePath);
         cy.wait("@currentlyEmbeddedObject");
 
-        // The hub's Security tab renders this section only when published
-        // guest embeds exist, so unpublishing empties it rather than
-        // leaving a section with no rows.
-        mainPage().findByTestId("embedded-resources").should("not.exist");
+        mainPage()
+          .findAllByText(/No (questions|dashboards) have been embedded yet./)
+          .should("have.length", 2);
       });
     });
 
@@ -201,7 +200,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         enable_embedding: true,
       });
 
-      cy.request("PUT", "/api/setting/enable-embedding-modular", {
+      cy.request("PUT", "/api/setting/enable-embedding-static", {
         value: true,
       });
 
@@ -232,7 +231,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should regenerate embedding token and invalidate previous embed url", () => {
-      cy.request("PUT", "/api/setting/enable-embedding-modular", {
+      cy.request("PUT", "/api/setting/enable-embedding-static", {
         value: true,
       });
 
@@ -298,7 +297,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  H.updateSetting("enable-embedding-modular", false);
+  H.updateSetting("enable-embedding-static", false);
   H.updateSetting("embedding-secret-key", null);
 }
 
@@ -324,5 +323,5 @@ function visitAndEnableSharing(object, unpublishBeforeOpen = true) {
 }
 
 function mainPage() {
-  return cy.findByTestId("embedding-hub-main");
+  return cy.findByTestId("admin-layout-content");
 }

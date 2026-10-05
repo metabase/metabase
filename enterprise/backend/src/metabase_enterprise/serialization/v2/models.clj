@@ -35,6 +35,7 @@
   (concat data-model
           content
           ["CustomVizPlugin"
+           "DataApp"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
@@ -43,7 +44,8 @@
            "Setting"
            "Transform"
            "TransformJob"
-           "TransformTag"]))
+           "TransformTag"
+           "TransformTest"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
@@ -83,7 +85,6 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
-   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
@@ -98,7 +99,6 @@
    "ExplorationQueryResult"
    "ExplorationThread"
    "ExplorationThreadTimeline"
-   "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"
@@ -169,6 +169,7 @@
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformTestRun"
    "Undo"
    "User"
    "UserKeyValue"

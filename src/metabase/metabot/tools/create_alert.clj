@@ -11,7 +11,6 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -134,10 +133,10 @@
   `send_once` is optional (default false); when true the alert is deleted after it fires once."
   [{:keys [card_id send_condition schedule send_once]} :- alert-schema]
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
-    (when-not slack-channel-id
-      (throw (ex-info "This tool can only be used from a Slack channel"
-                      {:agent-error? true})))
     (try
+      (when-not slack-channel-id
+        (throw (ex-info "This tool can only be used from a Slack channel"
+                        {:agent-error? true})))
       (let [result (create-alert {:card-id        card_id
                                   :send-condition (keyword send_condition)
                                   :schedule       schedule
@@ -147,5 +146,4 @@
           {:output (:error result)}
           {:output (or (:output result) "Alert created successfully.")}))
       (catch Exception e
-        (log/errorf "Failed to create alert: %s" (ex-message e))
-        {:output (str "Failed to create alert: " (or (ex-message e) "Unknown error"))}))))
+        (metabot.tools.u/handle-agent-or-api-error e)))))

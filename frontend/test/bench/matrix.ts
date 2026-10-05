@@ -37,6 +37,7 @@ interface Series {
   locale: string;
   scripts: number;
   scriptKb: number;
+  cssKb: number;
   totalKb: number;
   median: Timings;
   secondLoad: Timings | null;
@@ -200,6 +201,7 @@ function spreadPercent(values: number[]) {
         locale: cold.locale,
         scripts: cold.scripts,
         scriptKb: cold.scriptKb,
+        cssKb: cold.cssKb,
         totalKb: cold.totalKb,
         runs: cold.runs,
       });

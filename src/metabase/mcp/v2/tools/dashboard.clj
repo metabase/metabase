@@ -21,6 +21,7 @@
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
@@ -70,8 +71,7 @@
   (doseq [[idx op] (map-indexed vector ops)
           card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
           :when    (and card-id (not (contains? cards card-id)))]
-    (dashboard-ops/op-error!
-     idx (format "%s): no card with id %s that you can read." (:op op) card-id))))
+    (dashboard-ops/op-error! idx (:op op) (message/msg ["no card with id %s that you can read."] card-id))))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
@@ -120,8 +120,8 @@
   [payload]
   (when-let [explanation (mr/explain dashboards.write/DashUpdates payload)]
     (common/throw-teaching-error
-     (format "The requested ops produce an invalid dashboard: %s"
-             (pr-str (me/humanize explanation))))))
+     (message/msg ["The requested ops produce an invalid dashboard: %s"]
+                  (common/humanize-detail (me/humanize explanation))))))
 
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
@@ -483,7 +483,8 @@
                                  validate-only? (boolean (:validate_only body))]
                              (when (contains? body :archived)
                                (common/throw-teaching-error
-                                "`archived` applies to method \"update\" only — remove it from this create call."))
+                                (message/msg [(str "\"archived\" applies to method \"update\" "
+                                                   "only — remove it from this create call.")])))
                              (cond
                                validate-only? (apply-ops! (blank-dashboard attrs) (or ops []) attrs true)
                                (seq ops)      (do

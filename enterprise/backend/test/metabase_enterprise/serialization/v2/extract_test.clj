@@ -1039,6 +1039,31 @@
                   (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/deserialization-dependencies ser)))))))))))))
 
+(deftest collection-export-includes-model-actions-test
+  (testing "GHY-4722: exporting a collection exports the actions of its models, though a model doesn't reference them"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}      {:name "My Database"}
+                         :model/Collection {coll-id :id}    {:name "Models"}
+                         :model/Card       {model-id :id}   {:name          "Model"
+                                                             :type          :model
+                                                             :database_id   db-id
+                                                             :collection_id coll-id
+                                                             :dataset_query {:database db-id
+                                                                             :type     :native
+                                                                             :native   {:query "select 1"}}}
+                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id}
+                         :model/Action     {archived-id :id} {:name "Old Action" :type :implicit :model_id model-id
+                                                              :archived true}]
+        (let [eid (fn [id] (t2/select-one-fn :entity_id :model/Action :id id))]
+          (is (= #{(eid action-id) (eid archived-id)}
+                 (ids-by-model "Action" (extract/extract {:targets       [["Collection" coll-id]]
+                                                          :no-data-model true}))))
+          (testing "with :skip-archived, the archived action is left out"
+            (is (= #{(eid action-id)}
+                   (ids-by-model "Action" (extract/extract {:targets       [["Collection" coll-id]]
+                                                            :no-data-model true
+                                                            :skip-archived true}))))))))))
+
 (deftest query-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
@@ -2170,12 +2195,14 @@
             (is (= expected result))))))))
 
 (deftest glossary-test
-  (testing "Glossary entries are extracted well"
-    (mt/with-temp [:model/Glossary _ {:term       "foobar"
-                                      :definition "It's foobar2000 actually"}]
+  (testing "Glossary entries are keyed on entity_id and carry the term"
+    (mt/with-temp [:model/Glossary {eid :entity_id} {:term       "foobar"
+                                                     :definition "It's foobar2000 actually"}]
       (let [ser (serdes/extract-one "Glossary" {} (t2/select-one :model/Glossary :term "foobar"))]
-        (is (=? {:serdes/meta [{:model "Glossary" :id "foobar"}]
-                 :term        "foobar"}
+        (is (=? {:serdes/meta [{:model "Glossary" :id eid}]
+                 :entity_id   eid
+                 :term        "foobar"
+                 :definition  "It's foobar2000 actually"}
                 ser))))))
 
 (deftest transform-tag-extraction-test

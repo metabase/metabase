@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { isEmbeddingHubTenancy } from "metabase/common/tenants";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -99,19 +98,15 @@ export function PeopleListingApp({
     return external ? t`Tenant users` : t`Internal users`;
   }, [external, isUsingTenants]);
 
-  const isEmbeddingHub = isEmbeddingHubTenancy();
-
   return (
     <div>
-      {(!isEmbeddingHub || !external) && (
-        <Group justify="space-between" w="100%" mb="xl">
-          {!isEmbeddingHub && <Title order={1}>{pageTitle}</Title>}
+      <Group justify="space-between" w="100%" mb="xl">
+        <Title order={1}>{pageTitle}</Title>
 
-          {!external && (
-            <PLUGIN_TENANTS.EditUserStrategySettingsButton page="people" />
-          )}
-        </Group>
-      )}
+        {!external && (
+          <PLUGIN_TENANTS.EditUserStrategySettingsButton page="people" />
+        )}
+      </Group>
 
       {isAdmin && hasDeactivatedUsers && (
         <Tabs
@@ -147,7 +142,9 @@ export function PeopleListingApp({
               {buttonText && (
                 <Box>
                   <Link to={external ? Urls.newTenantUser() : Urls.newUser()}>
-                    <Button variant="filled">{buttonText}</Button>
+                    <Button variant="filled" size="lg">
+                      {buttonText}
+                    </Button>
                   </Link>
                 </Box>
               )}

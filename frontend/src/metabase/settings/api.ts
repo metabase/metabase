@@ -90,7 +90,6 @@ export const settingsApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { key }) => {
         return invalidateTags(error, [
           tag("session-properties"),
-          listTag("setup-guide-checklist"),
           ...(key === "uploads-settings" ? [listTag("database")] : []),
           ...(key === "mfa-enforcement" ? [tag("mfa-status")] : []),
 
@@ -190,6 +189,13 @@ export const {
 // aliases for easier use
 export const useGetSettingsQuery = useGetSessionPropertiesQuery;
 export const useLazyGetSettingsQuery = useLazyGetSessionPropertiesQuery;
+
+/**
+ * The session properties (settings) request in flight, if there is one.
+ * Await `dispatch(joinSiteSettingsRequest())` to wait for it without sending one.
+ */
+export const joinSiteSettingsRequest = () =>
+  settingsApi.util.getRunningQueryThunk("getSessionProperties", undefined);
 
 /**
  * Force a refetch of the session properties (settings) from non-React code.

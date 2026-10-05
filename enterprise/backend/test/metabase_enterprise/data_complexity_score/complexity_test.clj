@@ -1209,6 +1209,21 @@
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
 
+(deftest ^:synchronized record-score-persists-an-appdb-score-test
+  (testing "the score `complexity-scores` computes against the app DB, whose `:meta` carries no `:weights`, persists"
+    (mt/initialize-if-needed! :db)
+    (let [fingerprint "record-score-appdb-test/current"]
+      (try
+        (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
+        (let [result (complexity/complexity-scores :embedder nil :emit-snowplow? false)
+              stored (data-complexity-score/record-score! fingerprint "appdb" result)]
+          (is (not (contains? (:meta result) :weights)))
+          (is (= (select-keys result [:library :universe :metabot])
+                 (select-keys stored [:library :universe :metabot])))
+          (is (= (:meta result) (dissoc (:meta stored) :calculated-at))))
+        (finally
+          (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
+
 (deftest ^:synchronized latest-score-filters-by-source-test
   (testing "passing source filters out representation-derived rows that share the cron's fingerprint"
     ;; The CLI's representation mode writes under the same `task.complexity-score/current-fingerprint`

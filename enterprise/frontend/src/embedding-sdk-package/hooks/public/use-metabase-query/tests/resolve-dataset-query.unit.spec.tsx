@@ -1,5 +1,5 @@
-/* eslint-disable import/order */
-
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import {
   createMockStore,
   mockFetchTableMetadata,
@@ -8,13 +8,14 @@ import {
   resetTestState,
   stagesOf,
 } from "./setup";
-import { TEST_METADATA, TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { cardApi } from "metabase/api";
 import * as Lib from "metabase-lib";
 
 import { avg, breakout, count, filter, orderBy, sum } from "..";
+
+import { TEST_METADATA, TEST_SCHEMA } from "./fixtures";
 
 beforeEach(resetTestState);
 
@@ -400,8 +401,8 @@ describe("resolveDatasetQuery", () => {
       filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
     });
 
-    // The generated field's `tableId`/`sourceName` scope it to the orders table;
-    // keeping them would stop it matching the question's own STATUS column.
+    // The question's STATUS column comes from the orders table, so the table
+    // field's `tableId` still matches it.
     expect(stagesOf(datasetQuery)[0].filters).toEqual([
       ["=", expect.anything(), ["field", expect.anything(), "STATUS"], "paid"],
     ]);

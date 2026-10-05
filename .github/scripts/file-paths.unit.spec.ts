@@ -49,9 +49,10 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
-      expect(
-        matches(name, ".clj-kondo/config/modules/ratchets.edn"),
-      ).toBe(false);
+      expect(matches(name, ".clj-kondo/ratchets-test.edn")).toBe(false);
+      expect(matches(name, ".clj-kondo/config/modules/ratchets.edn")).toBe(
+        false,
+      );
       expect(matches(name, ".clj-kondo/config.edn")).toBe(true);
       expect(matches(name, ".clj-kondo/config/modules/config.edn")).toBe(true);
     },
@@ -59,6 +60,32 @@ describe("file-paths.yaml", () => {
 
   it("runs CI script tests when the Node version changes", () => {
     expect(matches("ci_scripts", ".nvmrc")).toBe(true);
+  });
+
+  it.each([
+    "frontend/lint/config.mjs",
+    "frontend/lint/oxlint/rule-map.json",
+    "frontend/lint/eslint-plugin-metabase/rules/no-module-side-effects.js",
+    "frontend/lint/tests/oxlint-config.test.mjs",
+  ])(
+    "runs frontend checks without forcing full suites when %s changes",
+    (file) => {
+      expect(matches("frontend_all", file)).toBe(true);
+      expect(matches("frontend_unit_infra", file)).toBe(false);
+      expect(matches("frontend_loki_infra", file)).toBe(false);
+    },
+  );
+
+  it("treats frontend/lint/OXLINT.md as a documentation-only change", () => {
+    expect(matches("frontend_all", "frontend/lint/OXLINT.md")).toBe(false);
+    expect(matches("documentation", "frontend/lint/OXLINT.md")).toBe(true);
+  });
+
+  it.each([
+    "frontend/lint/module-boundaries.mjs",
+    "frontend/lint/shared-tiers.mjs",
+  ])("keeps CI script coverage for %s", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
   });
 
   it.each([
@@ -80,21 +107,113 @@ describe("file-paths.yaml", () => {
     ).toBe(true);
   });
 
-  it.each(["jest.config.js", "jest.base.conf.js", "jest.esm-packages.js"])(
-    "runs CI script tests when %s changes",
-    (path) => {
-      expect(matches("ci_scripts", path)).toBe(true);
-    },
-  );
+  it.each([
+    "jest.config.js",
+    "jest.base.conf.js",
+    "jest.esm-packages.js",
+    ".storybook/story-files.cjs",
+    ".github/workflows/loki.yml",
+  ])("runs CI script tests when %s changes", (path) => {
+    expect(matches("ci_scripts", path)).toBe(true);
+  });
 
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
     );
     expect(
+      matches("project_ratchet_checks", ".clj-kondo/ratchets-test.edn"),
+    ).toBe(true);
+    expect(
       matches(
         "project_ratchet_checks",
         ".clj-kondo/config/modules/ratchets.edn",
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    "loki.config.js",
+    ".storybook/story-files.cjs",
+    ".storybook/preview.tsx",
+    ".loki/reference/chrome.laptop-Button.png",
+    ".github/workflows/loki.yml",
+    ".github/workflows/run-tests.yml",
+    ".github/actions/prepare-frontend/action.yml",
+    "frontend/build/shared/rspack/css-config.js",
+    "frontend/test/__support__/custom-viz-fixtures/calendar-heatmap/index.js",
+    "patches/@loki+browser+0.35.0.patch",
+    "frontend/src/metabase/css/index.module.css",
+    "frontend/src/metabase/css/core/base.module.css",
+    "resources/frontend_client/app/fonts/Lato/lato-v16-latin-regular.woff2",
+    "resources/frontend_client/app/assets/img/no_results.svg",
+    "frontend/src/metabase/ui/components/icons/Icon/icons/warning.svg",
+    "enterprise/frontend/src/metabase-enterprise/google_drive/database-error.svg",
+  ])("runs all Loki stories when %s changes", (file) => {
+    expect(matches("frontend_loki_all", file)).toBe(true);
+    expect(matches("frontend_loki_infra", file)).toBe(true);
+  });
+
+  it.each([
+    "frontend/src/metabase/ui/Button.stories.tsx",
+    "frontend/src/metabase/ui/components/feedback/Alert/Alert.module.css",
+    "frontend/build/embedding-sdk/rspack.config.js",
+  ])("allows a change to %s to narrow the Loki run", (file) => {
+    expect(matches("frontend_loki_all", file)).toBe(true);
+    expect(matches("frontend_loki_infra", file)).toBe(false);
+  });
+
+  it.each([
+    ".github/workflows/frontend.yml",
+    "frontend/test/metabase/scenarios/Button.unit.spec.tsx",
+  ])("does not run Loki stories when %s changes", (file) => {
+    expect(matches("frontend_loki_all", file)).toBe(false);
+  });
+
+  it.each([
+    "e2e/support/cypress.config.js",
+    "e2e/test/scenarios/shared-helper.js",
+    "e2e/runner/read-spec-paths.js",
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/run-tests.yml",
+    ".github/actions/prepare-cypress/action.yml",
+    ".github/scripts/build-e2e-matrix.js",
+    ".github/file-paths.yaml",
+    "frontend/build/shared/esbuild/side-effect-free-modules-plugin.js",
+    "rspack.main.config.js",
+    "bun.lock",
+    "locales/fr.po",
+    "snowplow/events/event.yaml",
+    "patches/@cypress+grep+6.0.0.patch",
+  ])("runs all E2E specs when %s changes", (file) => {
+    expect(matches("e2e_all", file)).toBe(true);
+    expect(matches("e2e_infra", file)).toBe(true);
+  });
+
+  it.each(["js", "jsx", "ts", "tsx"])(
+    "allows changes to .cy.spec.%s files to narrow E2E",
+    (extension) => {
+      expect(
+        matches("e2e_infra", `e2e/test/scenarios/a.cy.spec.${extension}`),
+      ).toBe(false);
+    },
+  );
+
+  it.each([
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/e2e-tests.yml",
+    ".github/workflows/e2e-matrix-builder.yml",
+    "e2e/runner/read-spec-paths.js",
+    "e2e/support/cypress.config.js",
+  ])("runs CI-script tests when %s changes", (file) => {
+    expect(matches("ci_scripts", file)).toBe(true);
+  });
+
+  it("runs the module cycles test when a cluster is named", () => {
+    expect(
+      matches(
+        "project_backend_checks",
+        ".clj-kondo/config/modules/cycle-clusters.edn",
       ),
     ).toBe(true);
   });

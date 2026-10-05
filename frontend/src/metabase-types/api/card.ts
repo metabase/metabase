@@ -362,8 +362,11 @@ export type VisualizationSettings = {
   /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
 
-  /** Override the y-axis label. */
+  /** Override the y-axis label. On a split chart this labels the left axis. */
   "graph.y_axis.title_text"?: string;
+
+  /** Override the right y-axis label on a split chart. Falls back to `graph.y_axis.title_text`. */
+  "graph.y_axis.right.title_text"?: string;
 
   /** Y-axis numeric scale, such as linear, pow, or log. */
   "graph.y_axis.scale"?: YAxisScale;

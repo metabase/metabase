@@ -61,6 +61,7 @@
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.schema :as request.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -279,69 +280,32 @@
    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
    [:groups {:optional true} [:maybe [:sequential :string]]]])
 
-(def ^:private CookieAttrs
-  "One `:cookies` entry of a Ring request: a cookie's value and its attributes."
-  [:map {:closed true}
-   [:value {:optional true} :string]
-   [:path {:optional true} :string]
-   [:domain {:optional true} :string]
-   [:max-age {:optional true} :int]
-   [:secure {:optional true} :boolean]
-   [:http-only {:optional true} :boolean]])
-
 (def ^:private login-pipeline-entries
-  "Malli map entries shared by the login pipeline map threaded through [[apply-inactive-check]] and
-  [[create-session!]]: the raw Ring request keys plus every provider's request/result extension keys."
-  [[:accept {:optional true} [:maybe :string]]
-   [:auth-identity {:optional true} [:maybe ::auth-identity.schema/auth-identity]]
+  "Malli map entries every provider adds to the Ring request threaded through [[apply-inactive-check]] and
+  [[create-session!]] as the login pipeline map."
+  [[:auth-identity {:optional true} [:maybe ::auth-identity.schema/auth-identity]]
    [:authenticated-user {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.IDeref)]]
-   [:body {:optional true} [:maybe [:or ms/RingRequestBody (ms/InstanceOfClass java.io.InputStream)]]]
-   [:browser-id {:optional true} [:maybe :string]]
-   [:character-encoding {:optional true} [:maybe :string]]
    [:claims {:optional true} [:maybe ms/JWTClaims]]
    [:code {:optional true} [:maybe :string]]
-   [:content-length {:optional true} [:maybe :int]]
-   [:content-type {:optional true} [:maybe :string]]
-   [:cookies {:optional true} [:maybe [:map-of :string CookieAttrs]]]
    [:device-info {:optional true} [:maybe DeviceInfo]]
    [:email {:optional true} [:maybe :string]]
    [:error {:optional true} [:maybe :keyword]]
-   [:form-params {:optional true} [:maybe [:map-of :string [:or :string [:sequential :string]]]]]
-   [:headers {:optional true} [:maybe [:map-of :string :string]]]
    [:jwt-data {:optional true} [:maybe ms/JWTClaims]]
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
-   [:nonce {:optional true} [:maybe :string]]
    [:oidc-nonce {:optional true} [:maybe :string]]
    [:oidc-provider {:optional true} [:maybe :keyword]]
    [:oidc-provider-key {:optional true} [:maybe :string]]
-   [:params {:optional true} [:maybe ms/RingRequestParams]]
    [:password {:optional true} [:maybe :string]]
-   [:path-info {:optional true} [:maybe :string]]
-   [:protocol {:optional true} [:maybe :string]]
    [:provider-id {:optional true} [:maybe :string]]
-   [:query-params {:optional true} [:maybe [:map-of :string [:or :string [:sequential :string]]]]]
-   [:query-string {:optional true} [:maybe :string]]
-   [:redirect-strategy {:optional true} [:maybe :keyword]]
    [:redirect-uri {:optional true} [:maybe :string]]
    [:redirect-url {:optional true} [:maybe :string]]
-   [:remote-addr {:optional true} [:maybe :string]]
-   [:request-id {:optional true} [:maybe (ms/InstanceOfClass java.util.UUID)]]
-   [:request-method {:optional true} [:maybe :keyword]]
-   [:route-metadata {:optional true} [:maybe :metabase.api.macros/route-metadata]]
-   [:route-params {:optional true} [:maybe ms/RingRequestParams]]
    [:saml-data {:optional true} [:maybe ms/SAMLAttributes]]
-   [:scheme {:optional true} [:maybe :keyword]]
-   [:server-name {:optional true} [:maybe :string]]
-   [:server-port {:optional true} [:maybe :int]]
    [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
-   [:ssl-client-cert {:optional true} [:maybe (ms/InstanceOfClass java.security.cert.X509Certificate)]]
    [:state {:optional true} [:maybe :string]]
    [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
    [:tenant-attributes {:optional true} [:maybe ms/TenantAttributes]]
    [:tenant-slug {:optional true} [:maybe :string]]
    [:token {:optional true} [:maybe :string]]
-   [:token-exchange? {:optional true} :boolean]
-   [:uri {:optional true} [:maybe :string]]
    [:user-data {:optional true} [:maybe UserData]]
    [:user-id {:optional true} [:maybe :int]]
    [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
@@ -352,9 +316,11 @@
 
   If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
   request that resolved no user at all is left alone: link-only flows legitimately finish without one."
-  [request :- (into [:map {:closed true}
-                     [:user {:optional true} [:maybe ::users.schema/user]]]
-                    login-pipeline-entries)]
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
   (cond-> request
     (and (nil? (:error request))
          (:user request)
@@ -365,16 +331,24 @@
 (mu/defn- create-session!
   "Create a new session for a user with the given provider.
    Updates the last_used_at timestamp on the corresponding AuthIdentity."
-  [request :- (into [:map {:closed true}
-                     [:user ::users.schema/user]]
-                    login-pipeline-entries)
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user ::users.schema/user]]
+                     login-pipeline-entries)]
    provider :- :keyword]
   (if-not (get-in request [:user :is_active])
     (assoc request :success? false
            :error disabled-account-snippet
            :message disabled-account-message)
-    (let [{:keys [user device-info]} request
-          session (auth-session/create-session-with-auth-tracking! user device-info provider)]
+    (let [{:keys [user device-info saml-data]} request
+          session (auth-session/create-session-with-auth-tracking!
+                   user device-info provider nil
+                   ;; SAML logins carry the IdP's own identifiers; single logout needs them to
+                   ;; name the session and subject to end. Other providers have none and store NULL.
+                   {:saml-session-index  (:session-index saml-data)
+                    :saml-name-id        (:name-id saml-data)
+                    :saml-name-id-format (:name-id-format saml-data)})]
       (assoc request :session session))))
 
 (methodical/defmethod login! ::provider

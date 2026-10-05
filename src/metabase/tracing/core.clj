@@ -244,6 +244,7 @@
 
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *span-attrs*
   "Atom of attrs already written to the active `with-span`. Used by [[add-span-attrs!]] to detect duplicate writes; nil outside a `with-span`."
   nil)

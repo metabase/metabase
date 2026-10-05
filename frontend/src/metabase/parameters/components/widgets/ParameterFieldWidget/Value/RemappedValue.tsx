@@ -2,12 +2,13 @@ import type { ReactNode } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import AutoLoadRemapped from "metabase/hoc/Remapped";
 import { getRemappedFieldValue } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import { formatValue } from "metabase/value-formatting";
 import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import { isID } from "metabase-lib/v1/types/utils/isa";
+
+import AutoLoadRemapped from "./Remapped";
 
 type RenderNormal = (opts: {
   value?: unknown;

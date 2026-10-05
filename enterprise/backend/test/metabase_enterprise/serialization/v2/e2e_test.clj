@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -22,6 +23,7 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
    [reifyhealth.specmonstah.core :as rs]
@@ -120,11 +122,11 @@
         (ts/with-db source-db
           (testing "insert"
             (test-gen/insert!
-             {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
+             {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query or implicit)
               ;; We generate 10 actions for each subtype, and 10 of each subtype.
-              ;; actions 0-9 are query actions, 10-19 are implicit actions, and 20-29 are http actions.
+              ;; actions 0-9 are query actions, and 10-19 are implicit actions.
               :action                  (apply concat
-                                              (for [type [:query :implicit :http]]
+                                              (for [type [:query :implicit]]
                                                 (many-random-fks 10
                                                                  {:spec-gen {:type type}}
                                                                  {:model_id   [:sm 10]
@@ -138,12 +140,6 @@
                                           (update-in x [1 :refs]
                                                      (fn [refs]
                                                        (assoc refs :action_id (keyword (str "action" (+ 10 idx)))))))
-                                        (many-random-fks 10 {} {}))
-              :http-action             (map-indexed
-                                        (fn [idx x]
-                                          (update-in x [1 :refs]
-                                                     (fn [refs]
-                                                       (assoc refs :action_id (keyword (str "action" (+ 20 idx)))))))
                                         (many-random-fks 10 {} {}))
               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                         [10  {:refs     {:personal_owner_id ::rs/omit}
@@ -221,7 +217,10 @@
           (testing "storage"
             (storage/store! (seq @extraction) (storage.files/file-writer dump-dir))
             (testing "for Actions"
-              (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
+              (let [main-dir (io/file dump-dir "collections" "main")]
+                (is (= 20 (count (for [f (file-set main-dir)
+                                       :when (= "Action" (yaml-model-at main-dir f))]
+                                   f))))))
             (testing "for Collections"
               ;; +1 for the Trash collection
               (let [colls-dir  (io/file dump-dir "collections")
@@ -256,7 +255,7 @@
               ;; exact count may vary by 1 depending on naming collisions with collection names
               (let [main-dir (io/file dump-dir "collections" "main")]
                 (is (<= 269 (count (for [f (file-set main-dir)
-                                         :when (not= "Collection" (yaml-model-at main-dir f))]
+                                         :when (not (#{"Collection" "Action"} (yaml-model-at main-dir f)))]
                                      f)) 271))))
             (testing "for segments"
               (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
@@ -931,6 +930,50 @@
                                                      :breakout    [[:field {} (mt/id :orders :user_id)]]}]}}
                           (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
 
+(deftest metric-dimensions-round-trip-test
+  (testing "a metric's curated dimensions and mappings survive export to YAML files and import"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [dim-id "11111111-1111-4111-8111-111111111111"]
+            (mt/with-temp
+              [:model/Collection {coll-id :id} {:name "Collection"}
+               :model/Card       _metric       {:name               "Metric With Dimensions"
+                                                :collection_id      coll-id
+                                                :type               :metric
+                                                :dataset_query      (mt/mbql-query orders {:aggregation [[:count]]})
+                                                :dimensions         [{:id             dim-id
+                                                                      :name           "CATEGORY"
+                                                                      :display-name   "Category"
+                                                                      :effective-type :type/Text
+                                                                      :status         :status/active
+                                                                      :sources        [{:type     :field
+                                                                                        :field-id (mt/id :products :category)}]}]
+                                                :dimension_mappings [{:type         :table
+                                                                      :table-id     (mt/id :products)
+                                                                      :dimension-id dim-id
+                                                                      :target       [:field
+                                                                                     {:lib/uuid     "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+                                                                                      :source-field (mt/id :orders :product_id)}
+                                                                                     (mt/id :products :category)]}]}]
+              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+                (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
+              (ts/with-db dest-db
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (is (=? {:dimensions         [{:id             dim-id
+                                               :effective-type :type/Text
+                                               :status         :status/active
+                                               :sources        [{:type     :field
+                                                                 :field-id (mt/id :products :category)}]}]
+                         :dimension_mappings [{:type         :table
+                                               :table-id     (mt/id :products)
+                                               :dimension-id dim-id
+                                               :target       [:field
+                                                              {:source-field (mt/id :orders :product_id)}
+                                                              (mt/id :products :category)]}]}
+                        (t2/select-one :model/Card :name "Metric With Dimensions")))))))))))
+
 (deftest gui-question-joined-to-native-source-card-survives-roundtrip-test
   (testing "GUI question joining a native source-card should still run after serdes export+import (GHY-3801)"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -961,7 +1004,11 @@
                                                                                                               [:field %products.category {:join-alias "Products"}]]}]})}]
             ;; Populate the native source card's result_metadata the way the app does when a user runs and
             ;; saves the query. This is the state serdes must preserve across the round-trip.
-            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] native-id))
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query
+                                                                       [:model/Card :id :dataset_query :card_schema
+                                                                        :type :database_id :result_metadata
+                                                                        :dimensions :dimension_mappings]
+                                                                       native-id))
                                    (get-in [:data :results_metadata :columns]))
                   source-names (mapv :name source-cols)]
               (t2/update! :model/Card native-id {:result_metadata source-cols})
@@ -1043,3 +1090,155 @@
         (is (=? {:table_id (:id table) :name field-name :active false}             field))
         (is (= (:id table) (lib/primary-source-table-id imported)))
         (is (=? [[:field {} (:id field)]] (lib/fields imported)))))))
+
+(deftest orphaned-transform-yaml-round-trip-test
+  (testing "A Transform whose source database was deleted round-trips through YAML storage as a tombstone"
+    (mt/with-premium-features #{:transforms-basic}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "soon-to-be-deleted")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  mp    (lib-be/application-database-metadata-provider (:id db))]
+              (ts/create! :model/Transform
+                          :name   "Orphan Transform"
+                          :source {:type  "query"
+                                   :query (lib/query mp (lib.metadata/table mp (:id table)))}
+                          :target {:database (:id db)
+                                   :type     "table"
+                                   :schema   "public"
+                                   :name     "orphan_target"})
+              (t2/delete! :model/Database :id (:id db))
+              (storage/store! (serdes/with-cache (into [] (extract/extract {})))
+                              (storage.files/file-writer dump-dir))))
+          (let [file     (io/file dump-dir "collections" "transforms" "orphan_transform.yaml")
+                exported (yaml/from-file file)]
+            (testing "the exported query carries no metadata provider"
+              (is (=? {:database nil, :lib/type "mbql/query"} (get-in exported [:source :query])))
+              (is (not (contains? (get-in exported [:source :query]) :lib/metadata))))
+            (dump/spit-yaml! file (assoc-in exported [:source :query :lib/metadata] nil)))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                "an export written with a nil `lib/metadata` still loads")
+            (let [transform (t2/select-one :model/Transform :name "Orphan Transform")]
+              (is (=? {:source_database_id nil
+                       :source             {:type :query}}
+                      transform))
+              (is (=? {"database" nil
+                       "stages"   [{"source-table" pos-int?}]}
+                      (get-in transform [:source :query]))))))))))
+
+(deftest transform-test-round-trip-test
+  (testing "A transform test is exported under its transform's path and imported with its transform"
+    (mt/with-premium-features #{:transforms-basic}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (let [db        (ts/create! :model/Database :name "my-db")
+                  coll      (ts/create! :model/Collection :name "ETL" :namespace :transforms)
+                  creator   (ts/create! :model/User :email "creator@example.com")
+                  transform (ts/create! :model/Transform
+                                        :name          "Orders Summary"
+                                        :collection_id (:id coll)
+                                        :creator_id    (:id creator)
+                                        :source        {:type  "query"
+                                                        :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                                        :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "orders_summary"})]
+              (ts/create! :model/TransformTest
+                          :transform_id (:id transform)
+                          :creator_id   (:id creator)
+                          :name         "My test"
+                          :inputs       [{:table   {:schema "PUBLIC" :name "ORDERS"}
+                                          :format  :rows
+                                          :columns [{:name "ID" :cast_type "INTEGER"}]
+                                          :rows    [{"ID" 1}]}]
+                          :expectations [{:type :equals :name "one row" :format :sql :sql "SELECT 1 AS ID"}
+                                         {:type :empty :name "no nulls" :sql "SELECT * FROM PUBLIC.orders_summary WHERE ID IS NULL"}])
+              (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) (storage.files/file-writer dump-dir))))
+          (testing "the file sits under the transform's path, with keywords written as strings"
+            (is (=? {:transform_id string?
+                     :creator_id   "creator@example.com"
+                     :inputs       [{:format "rows" :columns [{:cast_type "INTEGER"}]}]
+                     :expectations [{:type "equals" :format "sql"} {:type "empty"}]}
+                    (yaml/parse-string
+                     (slurp (io/file dump-dir "collections" "transforms" "etl" "orders_summary" "my_test.yaml"))))))
+          (ts/with-db dest-db
+            (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+            (is (=? {:name         "My test"
+                     :transform_id (t2/select-one-pk :model/Transform :name "Orders Summary")
+                     :creator_id   (t2/select-one-pk :model/User :email "creator@example.com")
+                     :inputs       [{:table   {:schema "PUBLIC" :name "ORDERS"}
+                                     :format  :rows
+                                     :columns [{:name "ID" :cast_type "INTEGER"}]
+                                     :rows    [{"ID" 1}]}]
+                     :expectations [{:type :equals :name "one row" :format :sql :sql "SELECT 1 AS ID"}
+                                    {:type :empty :name "no nulls" :sql "SELECT * FROM PUBLIC.orders_summary WHERE ID IS NULL"}]}
+                    (t2/select-one :model/TransformTest :name "My test")))))))))
+
+;;; ---------------------------------- Transform test expectations round trip ----------------------------------
+;;; Companion to transform-test-round-trip-test above, which covers the `equals`/`sql` and `empty` shapes. This
+;;; one covers the `equals`/`rows` payload -- the only one carrying author-named columns and row maps -- and the
+;;; claim that import normalizes and validates it the way a POST does.
+
+(def ^:private round-trip-expectations
+  "An `equals` whose column names are the hazardous ones -- `2024` would come back a number from YAML and a keyword
+  from a JSON column, `order-id` a kebab-case keyword -- plus an `empty`."
+  [{:type    :equals
+    :name    "rows match"
+    :format  :rows
+    :columns [{:name "2024" :cast_type "INTEGER"}
+              {:name "order-id" :cast_type "VARCHAR"}]
+    :rows    [{"2024" 7 "order-id" "A-1"}
+              {"2024" nil "order-id" "B-2"}]}
+   {:type :empty
+    :name "no nulls"
+    :sql  "SELECT * FROM PUBLIC.revenue WHERE \"order-id\" IS NULL"}])
+
+(deftest transform-test-expectations-round-trip-test
+  (testing "A transform test's expectations come back from an import as validated records, payload intact"
+    (mt/with-premium-features #{:transforms-basic}
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-dbs [source-db dest-db]
+          (let [transform-eid
+                (ts/with-db source-db
+                  (let [db        (ts/create! :model/Database :name "my-db")
+                        coll      (ts/create! :model/Collection :name "ETL" :namespace :transforms)
+                        creator   (ts/create! :model/User :email "creator@example.com")
+                        transform (ts/create! :model/Transform
+                                              :name          "Revenue Report"
+                                              :collection_id (:id coll)
+                                              :creator_id    (:id creator)
+                                              :source        {:type  "query"
+                                                              :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                                              :target        {:database (:id db) :type "table" :schema "PUBLIC" :name "revenue"})]
+                    (ts/create! :model/TransformTest
+                                :transform_id (:id transform)
+                                :creator_id   (:id creator)
+                                :name         "Revenue by year"
+                                :inputs       []
+                                :expectations round-trip-expectations)
+                    (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) (storage.files/file-writer dump-dir))
+                    (:entity_id transform)))
+                ;; Pins the storage path: a transform test is stored under its transform's serdes path.
+                exported (yaml/parse-string
+                          (slurp (io/file dump-dir "collections" "transforms" "etl" "revenue_report" "revenue_by_year.yaml")))]
+            (testing "the transform is referenced by entity id, not by primary key"
+              (is (= transform-eid (:transform_id exported))))
+            (testing "row keys are written as YAML strings -- `2024:` unquoted would read back as a number"
+              (is (= [#{(keyword "2024") :order-id} #{(keyword "2024") :order-id}]
+                     (mapv (comp set keys) (get-in exported [:expectations 0 :rows])))))
+            (ts/with-db dest-db
+              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (let [imported     (t2/select-one :model/TransformTest :name "Revenue by year")
+                    expectations (:expectations imported)]
+                (testing "the transform reference resolves"
+                  (is (= (t2/select-one-pk :model/Transform :name "Revenue Report")
+                         (:transform_id imported))))
+                (testing "serdes import gets the same validation as a POST: what it stored satisfies the schema"
+                  (is (mr/validate ::transform-testing.schema/expectations expectations))
+                  (testing "and normalization ran, so a type arrives as a keyword rather than the YAML's string"
+                    (is (= [:equals :empty] (mapv :type expectations)))))
+                (testing "the payload is unchanged, row keys still strings"
+                  (is (= round-trip-expectations expectations)))))))))))

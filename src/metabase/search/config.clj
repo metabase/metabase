@@ -10,6 +10,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
@@ -50,9 +51,6 @@
   #{"dashboard-card"
     "dashboard-tab"
     "dimension"
-    ;; While explorations are disabled. Residue rows (from an instance that was upgraded, used explorations, then
-    ;; downgraded) are still ingested, so excluding the model here filters them out at query time.
-    "exploration"
     "permissions-group"
     "pulse"
     "pulse-card"
@@ -81,8 +79,7 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document"
-   "transform" "database"])
+  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "exploration" "transform" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 

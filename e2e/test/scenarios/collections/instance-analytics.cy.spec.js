@@ -7,9 +7,8 @@ import {
 const ANALYTICS_COLLECTION_NAME = "Usage analytics";
 const CUSTOM_REPORTS_COLLECTION_NAME = "Custom reports";
 const PEOPLE_MODEL_NAME = "People";
-const METRICS_DASHBOARD_NAME = "Metabase metrics";
 
-describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
+describe("scenarios > Metabase Analytics Collection (AuditV2)", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/field/*/values").as("fieldValues");
@@ -23,7 +22,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
     });
 
     it("should not show the sidebar preview when working with instance analyics (metabase#49904)", () => {
-      cy.signInAsAdmin();
       H.visitQuestion(ORDERS_QUESTION_ID);
       cy.findByRole("button", { name: /Editor/ }).click();
       cy.findByLabelText("View SQL").click();
@@ -58,7 +56,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
     });
 
     it(
-      "should default to saving audit content in custom reports collection",
+      "should default to saving audit content in custom reports collection and not allow editing or leaking analytics content (metabase#36228, metabase#44856)",
       { requestTimeout: 15000 },
       () => {
         cy.log("saving edited question");
@@ -79,7 +77,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.findByTestId("qb-header").findByText("Save").click();
 
-        cy.findByTestId("save-question-modal").within((modal) => {
+        cy.findByTestId("save-question-modal").within(() => {
           cy.findByTestId("dashboard-and-collection-picker-button").findByText(
             "Custom reports",
           );
@@ -98,7 +96,12 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.findByTestId("qb-header").icon("ellipsis").click();
 
-        H.popover().findByText("Duplicate").click();
+        cy.log("Analytics models can't be edited (metabase#36228)");
+        H.popover().within(() => {
+          cy.findByText("Duplicate").should("be.visible");
+          cy.findByText("Edit query definition").should("not.exist");
+          cy.findByText("Duplicate").click();
+        });
 
         H.modal().within(() => {
           cy.findByTextEnsureVisible("Custom reports");
@@ -113,13 +116,49 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           .button(/Duplicate/i)
           .should("not.exist");
 
+        cy.log(
+          "Instance analytics database doesn't leak into the SQL query builder (metabase#44856)",
+        );
+        H.newButton("SQL query").click();
+        cy.findByTestId("selected-database").should(
+          "have.text",
+          "Sample Database",
+        );
+        cy.findByTestId("gui-builder-data").should("not.exist");
+
+        cy.log(
+          "Instance analytics database doesn't leak into the permissions editor (metabase#44856)",
+        );
+        // it's important that we do this manually, as this will only reproduce if theres no page load
+        H.goToAdmin();
+        cy.findByLabelText("Navigation bar").findByText("Permissions").click();
+        H.sidebar().findByText("Administrators").click();
+        cy.findByTestId("permission-table")
+          .findByText("Sample Database")
+          .should("be.visible");
+        cy.findByTestId("permission-table")
+          .findByText(/internal metabase database/i)
+          .should("not.exist");
+
+        H.sidebar().findByText("Databases").click();
+
+        H.sidebar().findByText("Sample Database").should("be.visible");
+        H.sidebar()
+          .findByText(/internal metabase database/i)
+          .should("not.exist");
+
         cy.log("saving copied dashboard");
 
         getItemId(ANALYTICS_COLLECTION_NAME, "Person overview").then((id) => {
           H.visitDashboard(id);
         });
 
-        cy.findByTestId("dashboard-header").findByText("Make a copy").click();
+        cy.log("Analytics dashboards can't be edited (metabase#36228)");
+        cy.findByTestId("dashboard-header").within(() => {
+          cy.findByText("Make a copy").should("be.visible");
+          cy.icon("pencil").should("not.exist");
+          cy.findByText("Make a copy").click();
+        });
 
         H.modal().within(() => {
           cy.findByTextEnsureVisible("Custom reports");
@@ -138,10 +177,11 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       );
       visitCollection(CUSTOM_REPORTS_COLLECTION_NAME);
 
-      cy.findByTestId("collection-menu").within(() => {
-        cy.icon("ellipsis").click();
-        cy.contains("Move to trash").should("not.exist");
-        cy.contains("Move").should("not.exist");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Edit permissions").should("be.visible");
+        cy.findByText("Move to trash").should("not.exist");
+        cy.findByText("Move").should("not.exist");
       });
 
       visitCollection(ANALYTICS_COLLECTION_NAME);
@@ -166,7 +206,10 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       );
       visitCollection(ANALYTICS_COLLECTION_NAME);
 
-      cy.findByTestId("collection-menu").icon("ellipsis").should("not.exist");
+      H.getCollectionActions()
+        .findByLabelText("Edit permissions")
+        .should("be.visible");
+      H.getCollectionActions().icon("ellipsis").should("not.exist");
 
       visitCollection("Our analytics");
 
@@ -184,78 +227,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         cy.findByText("Move to trash").should("not.exist");
         cy.findByText("Move").should("not.exist");
       });
-    });
-
-    it("should not allow editing analytics content (metabase#36228)", () => {
-      // dashboard
-      getItemId(ANALYTICS_COLLECTION_NAME, METRICS_DASHBOARD_NAME).then(
-        (id) => {
-          H.visitDashboard(id);
-        },
-      );
-
-      cy.findByTestId("dashboard-header").within(() => {
-        cy.findByText("Make a copy");
-        cy.icon("pencil").should("not.exist");
-      });
-
-      // model
-      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
-        H.visitModel(id);
-      });
-
-      cy.findByTestId("qb-header").icon("ellipsis").click();
-
-      H.popover().within(() => {
-        cy.findByText("Duplicate").should("be.visible");
-        cy.findByText("Edit query definition").should("not.exist");
-      });
-    });
-
-    it("should not leak instance analytics database into SQL query builder (metabase#44856)", () => {
-      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
-        H.visitModel(id);
-      });
-
-      H.newButton("SQL query").click();
-
-      // sample DB should be the only one
-      cy.findByTestId("gui-builder-data")
-        .icon("cheverondown")
-        .should("not.exist");
-    });
-
-    it("should not leak instance analytics database into permissions editor (metabase#44856)", () => {
-      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
-        H.visitModel(id);
-      });
-
-      // it's important that we do this manually, as this will only reproduce if theres no page load
-      H.goToAdmin();
-      cy.findByLabelText("Navigation bar").findByText("Permissions").click();
-      H.sidebar().findByText("Administrators").click();
-      cy.findByTestId("permission-table")
-        .findByText(/internal metabase database/i)
-        .should("not.exist");
-
-      H.sidebar().findByText("Databases").click();
-
-      H.sidebar()
-        .findByText(/internal metabase database/i)
-        .should("not.exist");
-    });
-  });
-
-  describe("API tests", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      cy.intercept("POST", "api/card").as("saveCard");
-      cy.intercept("POST", "api/dashboard/*/copy").as("copyDashboard");
-
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
     });
 
     it("should not allow editing analytics content (metabase#36228)", () => {
@@ -306,7 +277,7 @@ describe("question and dashboard links", () => {
       H.activateToken("pro-self-hosted");
     });
 
-    it("should show an analytics link for questions", () => {
+    it("should show an analytics link for questions and dashboards", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       cy.intercept("GET", "/api/collection/**").as("collection");
@@ -334,9 +305,7 @@ describe("question and dashboard links", () => {
           cy.findByText("Entity Type");
           cy.findByText("question");
         });
-    });
 
-    it("should show an analytics link for dashboards", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       cy.intercept("GET", "/api/collection/**").as("collection");
 
@@ -369,14 +338,16 @@ describe("question and dashboard links", () => {
       cy.signInAsNormalUser();
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openQuestionInfoSidesheet()
-        .findByRole("link", { name: /Insights/i })
-        .should("not.exist");
+      H.openQuestionInfoSidesheet().within(() => {
+        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByRole("link", { name: /Insights/i }).should("not.exist");
+      });
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openDashboardInfoSidebar()
-        .findByRole("link", { name: /Insights/i })
-        .should("not.exist");
+      H.openDashboardInfoSidebar().within(() => {
+        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByRole("link", { name: /Insights/i }).should("not.exist");
+      });
     });
   });
 
@@ -389,15 +360,17 @@ describe("question and dashboard links", () => {
     it("should never appear in OSS", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openQuestionInfoSidesheet()
-        .findByRole("link", { name: /Insights/i })
-        .should("not.exist");
+      H.openQuestionInfoSidesheet().within(() => {
+        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByRole("link", { name: /Insights/i }).should("not.exist");
+      });
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-      H.openDashboardInfoSidebar()
-        .findByRole("link", { name: /Insights/i })
-        .should("not.exist");
+      H.openDashboardInfoSidebar().within(() => {
+        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByRole("link", { name: /Insights/i }).should("not.exist");
+      });
     });
   });
 });

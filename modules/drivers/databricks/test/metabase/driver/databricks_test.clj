@@ -22,6 +22,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *multi-level?* false)
 
 ;; certain tests need to be run twice; once with the multi-level schema and once without.

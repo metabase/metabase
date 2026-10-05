@@ -14,14 +14,14 @@ import { useLocation, useParams } from "metabase/router";
 import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
-  getDatabase,
-  getField,
+  getDatabaseId,
+  getFieldId,
   getIsEditing,
-  getTable,
   getTableId,
 } from "../selectors";
 
 import FieldSidebar from "./FieldSidebar";
+import { useReferenceTableFields } from "./use-reference-database";
 
 const mapDispatchToProps = {
   ...actions,
@@ -35,11 +35,15 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
   const dispatch = useDispatch();
   const params = useParams<ReferenceRouteParams>();
 
-  const database = useSelector((state) => getDatabase(state, { params }));
-  const table = useSelector((state) => getTable(state, { params }));
-  const field = useSelector((state) => getField(state, { params }));
+  const databaseId = useSelector((state) => getDatabaseId(state, { params }));
   const tableId = useSelector((state) => getTableId(state, { params }));
+  const fieldId = useSelector((state) => getFieldId(state, { params }));
   const isEditing = useSelector(getIsEditing);
+  const { database, table, fields } = useReferenceTableFields(
+    databaseId,
+    tableId,
+  );
+  const field = fields.find(({ id }) => id === fieldId);
   const { loading, loadingError } = useReferenceFetch(() =>
     fetchTableData(dispatch, tableId),
   );
@@ -56,10 +60,21 @@ function FieldDetailContainer(props: FieldDetailContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<FieldSidebar database={database} table={table} field={field} />}
+      sidebar={
+        <FieldSidebar
+          databaseId={databaseId}
+          databaseName={database?.name}
+          tableId={tableId}
+          tableName={table?.name}
+          fieldId={fieldId}
+          fieldName={field?.name}
+        />
+      }
     >
       <FieldDetail
-        params={params}
+        databaseId={databaseId}
+        table={table}
+        field={field}
         loading={loading}
         loadingError={loadingError}
       />

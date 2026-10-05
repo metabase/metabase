@@ -1,14 +1,10 @@
-import { SkeletonImage } from "./MapSkeleton.styled";
+import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 
 const MapSkeleton = (): JSX.Element => {
   return (
-    <SkeletonImage
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 242 157"
-      preserveAspectRatio="xMidYMid"
-    >
+    <ChartSkeletonImage viewBox="0 0 242 157" preserveAspectRatio="xMidYMid">
       <use xlinkHref="/app/assets/img/map.svg" />
-    </SkeletonImage>
+    </ChartSkeletonImage>
   );
 };
 

@@ -16,12 +16,10 @@ import {
 } from "./utils";
 
 type TransformsHeaderProps = {
-  showMetabotButton?: boolean;
   showTabs?: boolean;
 };
 
 export const TransformsHeader = memo(function TransformsHeader({
-  showMetabotButton,
   showTabs = true,
 }: TransformsHeaderProps) {
   const tabs: PillTab[] = [
@@ -54,7 +52,6 @@ export const TransformsHeader = memo(function TransformsHeader({
       tabs={showTabs ? <PillTabNavigation tabs={tabs} /> : undefined}
       py={0}
       mb="lg"
-      showMetabotButton={showMetabotButton}
     />
   );
 });

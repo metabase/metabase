@@ -1,7 +1,6 @@
 import _ from "underscore";
 
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Question from "metabase-lib/v1/Question";
 import type {
   ParameterWithTarget,
   UiParameter,
@@ -18,11 +17,11 @@ import type {
 import { isDimensionTarget } from "metabase-types/guards";
 
 export function getCardUiParameters(
-  card: SeriesCard,
-  metadata: Metadata,
+  question: Question,
   parameterValues: ParameterValuesMap = {},
-  parameters = getParametersFromCard(card, metadata),
+  parameters = getParametersFromCard(question.card(), question.metadata()),
 ): UiParameter[] {
+  const card = question.card();
   if (!card) {
     return [];
   }
@@ -35,7 +34,7 @@ export function getCardUiParameters(
 
   return hasParamFields(card)
     ? getSavedCardUiParameters(card, valuePopulatedParameters)
-    : getUnsavedCardUiParameters(card, metadata, valuePopulatedParameters);
+    : getUnsavedCardUiParameters(question, valuePopulatedParameters);
 }
 
 /**
@@ -82,12 +81,9 @@ function getSavedCardUiParameters(
  * against the query.
  */
 function getUnsavedCardUiParameters(
-  card: SeriesCard,
-  metadata: Metadata,
+  question: Question,
   parameters: Parameter[] | ParameterWithTarget[],
 ): UiParameter[] {
-  const question = new Question(card, metadata);
-
   return parameters.map((parameter) => {
     const target = getParameterTarget(parameter);
     const field =

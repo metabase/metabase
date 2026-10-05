@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  type GroupLookup,
+  withoutMapping,
+} from "metabase/admin/settings/auth/components/GroupMappings";
 import type {
   DeleteMappingModalValueType,
   GroupIds,
@@ -15,7 +19,6 @@ import type {
   GroupMappingSettings,
   GroupMappingSettingsState,
 } from "./use-group-mapping-settings";
-import { type GroupLookup, withoutMapping } from "./utils";
 
 type MappingCascade = {
   value: Exclude<DeleteMappingModalValueType, "nothing">;

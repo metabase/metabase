@@ -19,6 +19,8 @@
   [:map
    [:source                :string]
    [:model                 :string]
+   [:provider              {:optional true} [:maybe :string]]
+   [:model-name            {:optional true} [:maybe :string]]
    [:prompt-tokens         [:int {:min 0}]]
    [:completion-tokens     [:int {:min 0}]]
    [:cache-creation-tokens {:optional true} [:maybe [:int {:min 0}]]]

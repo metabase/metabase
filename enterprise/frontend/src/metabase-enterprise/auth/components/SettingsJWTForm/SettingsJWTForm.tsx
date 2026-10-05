@@ -13,7 +13,6 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import type { SettingsJWTFormProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -63,9 +62,7 @@ export type JWTFormValues = Pick<
   | "jwt-attribute-tenant"
 >;
 
-export const SettingsJWTForm = ({
-  title = t`JWT`,
-}: SettingsJWTFormProps = {}) => {
+export const SettingsJWTForm = () => {
   const {
     data: settingDetails,
     isLoading: isLoadingDetails,
@@ -143,7 +140,7 @@ export const SettingsJWTForm = ({
   );
 
   return (
-    <SettingsPageWrapper title={title}>
+    <SettingsPageWrapper title={t`JWT`}>
       <FormProvider
         initialValues={getFormValues(settingDetails)}
         onSubmit={saveSettings}

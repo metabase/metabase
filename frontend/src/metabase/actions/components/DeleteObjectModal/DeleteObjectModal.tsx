@@ -59,7 +59,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button
           key="delete"
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           disabled={
             typeof actionId === "undefined" ||
             typeof objectId === "undefined" ||

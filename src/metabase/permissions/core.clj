@@ -1,6 +1,5 @@
 (ns metabase.permissions.core
   "`permissions` module API namespace."
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:require
    [metabase.permissions.data-access-token]
    [metabase.permissions.models.application-permissions-revision]
@@ -85,6 +84,7 @@
   visible-database-filter-select
   visible-table-filter-select
   visible-table-filter-with-cte
+  visible-table-filter-subquery-clause
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
   namespace-clause
@@ -108,8 +108,7 @@
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
   non-magic-groups
-  all-users-magic-group-type
-  sync-data-analyst-group-for-oss!]
+  all-users-magic-group-type]
  [metabase.permissions.models.permissions-group-membership
   add-users-to-groups!
   add-user-to-groups!
@@ -117,6 +116,7 @@
   allow-changing-all-users-group-members
   allow-changing-all-external-users-group-members
   fail-to-remove-last-admin-msg
+  fail-to-add-data-analyst-msg
   remove-user-from-group!
   remove-user-from-groups!
   remove-all-users-from-group!
@@ -155,8 +155,7 @@
   can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?
-  published-table-visible-clause])
+  user-has-published-table-permission-for-database?])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 

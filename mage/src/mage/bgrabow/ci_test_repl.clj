@@ -227,7 +227,7 @@
         container-name (str container-prefix "-" suffix)
         host-port      (host-port-for-image image ci-port-mapping)
         container-port (second (str/split ci-port-mapping #":"))
-        port-mapping   (str host-port ":" container-port)
+        port-mapping   (str "127.0.0.1:" host-port ":" container-port)
         current-image  (running-container-image container-name)]
     (if (= current-image image)
       (do (println (c/green "Reusing existing") container-name (str "(" image ")"))
@@ -378,7 +378,7 @@
               container-name (str container-prefix "-" suffix)
               host-port      (host-port-for-image image ci-ports)
               container-port (second (str/split ci-ports #":"))
-              port-mapping   (str host-port ":" container-port)
+              port-mapping   (str "127.0.0.1:" host-port ":" container-port)
               env-args       (mapcat (fn [[k v]] ["-e" (str (name k) "=" v)]) (or svc-env {}))]]
     (vec (concat ["docker" "run" "-d"
                   "--name" container-name
@@ -441,7 +441,6 @@
         (println)
         (println (c/bold (str "=== CI Test REPL: " (display-name test-job) " ===")))
         (println)
-
         ;; Start Docker services and collect port remappings
         (let [port-remaps (if (has-services? test-job)
                             (start-services! test-job)
@@ -451,7 +450,6 @@
           (println (c/bold "Starting nREPL") "(aliases: :dev:ee:ee-dev:drivers:drivers-dev)...")
           (println "To stop containers:" (c/green (str "docker rm -f $(docker ps -q --filter name=" container-prefix ")")))
           (println)
-
           ;; Replace this process with the nREPL (like shell `exec`)
           (let [extra-env (into {} (map (fn [[k v]] [(name k) (str v)]) ci-env))]
             (process/exec {:extra-env extra-env}

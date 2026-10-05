@@ -25,11 +25,11 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
     });
 
     it("does not dim the option cards", async () => {
-      // showModularEmbedTerms is true in real OSS — the terms popup is
+      // showSimpleEmbedTerms is true in real OSS — the terms popup is
       // never shown to OSS users, so the setting never flips to false.
       landOnAppearanceStep({
-        modularEmbeddingEnabled: false,
-        showModularEmbedTerms: true,
+        simpleEmbeddingEnabled: false,
+        showSimpleEmbedTerms: true,
       });
 
       await waitFor(() => {
@@ -51,8 +51,8 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
 
     it("dims the option cards when the user has not accepted the simple-embedding terms", async () => {
       landOnAppearanceStep({
-        modularEmbeddingEnabled: true,
-        showModularEmbedTerms: true,
+        simpleEmbeddingEnabled: true,
+        showSimpleEmbedTerms: true,
       });
 
       await waitFor(() => {
@@ -64,8 +64,8 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
 
     it("does not dim the option cards once the user has accepted the simple-embedding terms", async () => {
       landOnAppearanceStep({
-        modularEmbeddingEnabled: true,
-        showModularEmbedTerms: false,
+        simpleEmbeddingEnabled: true,
+        showSimpleEmbedTerms: false,
       });
 
       await waitFor(() => {
@@ -82,8 +82,9 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
           resourceType: "dashboard",
           isGuest: true,
         },
-        modularEmbeddingEnabled: true,
-        showModularEmbedTerms: true,
+        simpleEmbeddingEnabled: true,
+        showSimpleEmbedTerms: true,
+        guestEmbeddingEnabled: false,
         showStaticEmbedTerms: true,
       });
 
@@ -101,8 +102,9 @@ describe("AppearanceStep > option cards dim state when landing on this step dire
           resourceType: "dashboard",
           isGuest: true,
         },
-        modularEmbeddingEnabled: true,
-        showModularEmbedTerms: true,
+        simpleEmbeddingEnabled: true,
+        showSimpleEmbedTerms: true,
+        guestEmbeddingEnabled: true,
         showStaticEmbedTerms: false,
       });
 

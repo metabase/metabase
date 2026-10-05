@@ -29,9 +29,7 @@
     ;; serdes path nests under that entity, so it has no generated entity_id.
     :model/OsiAiContext
     ;; Settings have human-selected unique names.
-    :model/Setting
-    ;; Glossary items have unique `term` key
-    :model/Glossary})
+    :model/Setting})
 
 (def ^:private entities-not-exported
   "Entities that are either:
@@ -44,7 +42,6 @@
     :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
-    :model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/ApplicationPermissionsRevision
@@ -56,7 +53,6 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
-    :model/DataApp
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
@@ -139,6 +135,8 @@
     :model/TaskRun
     :model/Tenant
     :model/TimelineEvent
+    ;; Run history is intentionally not serialized.
+    :model/TransformTestRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation

@@ -5,7 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.persistence :as metabot-persistence]
-   [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.used-tables :as used-tables]
@@ -1209,86 +1208,6 @@
             ;; CASCADE from metabot_message cleans up the used-table row.
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
-
-(defn- ->transform-python-parts
-  "Build a `write_transform_python` tool-input/output pair that declares `table-id` as its single source table.
-  Used to verify the end-to-end transform extraction path."
-  [call-id table-id]
-  [{:type      :tool-input
-    :id        call-id
-    :function  "write_transform_python"
-    :arguments {:transform_name "T"
-                :edit_action    {:mode        "replace"
-                                 :new_content "def transform(): pass"}
-                :source_tables  [{:alias       "t"
-                                  :table_id    table-id
-                                  :schema      "PUBLIC"
-                                  :database_id (mt/id)}]}}
-   {:type   :tool-output
-    :id     call-id
-    :result {:output            "ok"
-             :structured-output {:transform {:source {:type "python"}}
-                                 :thinking  "x"
-                                 :message   "Transform Python updated successfully."}}}])
-
-(defn- ->transform-sql-parts
-  "Build a `write_transform_sql` tool-input/output pair whose suggested transform's `[:source :query]` is a native query.
-  The structured-output's `:transform` key is dropped by the storable conversion, so this pair exercises finalize's
-  raw-parts extraction path."
-  [call-id db-id sql]
-  (let [query (lib/native-query (mt/metadata-provider) sql)]
-    [{:type      :tool-input
-      :id        call-id
-      :function  "write_transform_sql"
-      :arguments {:database_id db-id
-                  :edit_action {:mode "replace" :new_content sql}}}
-     {:type   :tool-output
-      :id     call-id
-      :result {:output "ok"
-               :structured-output
-               {:transform {:id          nil
-                            :name        "T"
-                            :description ""
-                            :target      {:type "table" :name "" :database db-id :schema nil}
-                            :source      {:type  "query"
-                                          :query query}}
-                :thinking  "x"
-                :message   "Transform SQL updated successfully."}}}]))
-
-(deftest finalize-records-used-tables-for-python-transform-test
-  (testing "finalize-assistant-turn! records `metabot_used_table` rows for a write_transform_python tool call."
-    (with-rasta-tx
-      (let [table-id                   (mt/id :orders)
-            conversation-id            (str (random-uuid))
-            {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
-                                        conversation-id
-                                        "transforms_codegen"
-                                        {:role "user" :content "make a transform"})]
-        (binding [used-tables/*run-synchronously?* true]
-          (metabot-persistence/finalize-assistant-turn!
-           assistant-msg-id
-           (into [{:type :text :text "ok"}] (->transform-python-parts "t1" table-id))))
-        (is (=? [{:message_id assistant-msg-id
-                  :table_id   table-id}]
-                (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))
-
-(deftest finalize-records-used-tables-for-sql-transform-test
-  (testing "finalize-assistant-turn! parses the SQL transform's native query."
-    (with-rasta-tx
-      (let [orders-id                  (mt/id :orders)
-            conversation-id            (str (random-uuid))
-            {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
-                                        conversation-id
-                                        "transforms_codegen"
-                                        {:role "user" :content "make a SQL transform"})]
-        (binding [used-tables/*run-synchronously?* true]
-          (mt/with-dynamic-fn-redefs [nqa/tables-for-native (fn [_ & _] {:tables [{:table-id orders-id}]})]
-            (metabot-persistence/finalize-assistant-turn!
-             assistant-msg-id
-             (into [{:type :text :text "ok"}]
-                   (->transform-sql-parts "t1" (mt/id) "SELECT * FROM orders")))))
-        (is (=? [{:message_id assistant-msg-id :table_id orders-id}]
-                (t2/select :model/MetabotUsedTable :message_id assistant-msg-id)))))))
 
 (deftest finalize-records-nothing-without-query-tools-test
   (testing "finalize-assistant-turn! inserts no used-table rows for text-only or non-query tool turns"

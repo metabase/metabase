@@ -109,7 +109,7 @@
    [:map {:closed true}
     [:user-id      ms/PositiveInt]
     [:dashboard-id ms/PositiveInt]
-    [:parameters   [:sequential :metabase.parameters.schema/parameter-with-value]]]
+    [:parameters   [:sequential :metabase.parameters.schema/parameter-with-stored-value]]]
    [:map {:closed true}
     [:user-id   ms/PositiveInt]
     [:model     [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]]

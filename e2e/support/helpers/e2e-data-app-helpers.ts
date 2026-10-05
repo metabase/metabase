@@ -16,23 +16,27 @@ import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
 export const DATA_APP_NAME = "kitchen-sink";
 export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
 
-export const visitDataAppRoute = (route: string) =>
-  cy.visit(`/apps/${DATA_APP_NAME}/${route}`);
+export const visitDataAppRoute = (route: string) => {
+  installDataAppScopeGuard();
+  return cy.visit(`/apps/${DATA_APP_NAME}/${route}`);
+};
 
 export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   id: 1,
+  entity_id: "e2eFakeDataAppEntityI",
   name: DATA_APP_NAME,
   display_name: DATA_APP_DISPLAY_NAME,
   description: null,
-  bundle_path: `data_apps/${DATA_APP_NAME}/dist/index.js`,
+  version: 1,
+  outdated: false,
+  bundle_path: "dist/index.js",
   enabled: true,
+  draft: false,
   resource_collection_id: null,
   permission_group_id: null,
+  table_ids: [],
   allowed_hosts: [],
   bundle_hash: "e2e-bundle-hash",
-  last_synced_sha: "e2e0000",
-  last_synced_at: "2024-01-01T00:00:00Z",
-  sync_error: null,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   ...overrides,
@@ -101,7 +105,71 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   });
 };
 
+/**
+ * The two rejections endpoint scope enforcement can emit. `scope_not_permitted` comes from
+ * `ensure-scopes-checked` — the endpoint declares no `:scope` at all, so a narrowed request
+ * may not reach it. `unsupported_scope` comes from `enforce-scope` — the endpoint is scoped,
+ * but not for the scope the request carries. Either one inside a data app means a route the
+ * SDK really uses was never tagged `data-apps:base`.
+ */
+const SCOPE_ERRORS = ["scope_not_permitted", "unsupported_scope"];
+
+let scopeDenials: string[] = [];
+let scopeGuardInstalled = false;
+
+/**
+ * Records every scope rejection the backend returns while a data app is open. Every request a
+ * sandboxed app makes is marked `X-Metabase-Client: data-app` and confined to `data-apps:base`,
+ * so a rejection here is a route missing its `{:scope api-scope/data-app}` tag, not a
+ * permission problem. `assertNoDataAppScopeDenials` (a root `afterEach`) fails the test on any.
+ */
+function installDataAppScopeGuard() {
+  if (scopeGuardInstalled) {
+    return;
+  }
+  scopeGuardInstalled = true;
+
+  cy.intercept("/api/**", (req) => {
+    // `after:response` rather than a `req.continue` callback: the latter buffers the body,
+    // which would sit in front of the streamed `/api/dataset` responses.
+    req.on("after:response", (res) => {
+      // `res.body` is whatever the endpoint returned; the scope middleware answers with a
+      // JSON `{error, message}` body.
+      const error = (res.body as { error?: string } | undefined)?.error;
+      if (
+        res.statusCode === 403 &&
+        error !== undefined &&
+        SCOPE_ERRORS.includes(error)
+      ) {
+        scopeDenials.push(
+          `${req.method} ${new URL(req.url).pathname} -> ${error}`,
+        );
+      }
+    });
+  });
+}
+
+/** Root `beforeEach` in `e2e/support/cypress.js`: intercepts reset between tests, so must this record. */
+export function resetDataAppScopeGuard() {
+  scopeDenials = [];
+  scopeGuardInstalled = false;
+}
+
+/** Root `afterEach` in `e2e/support/cypress.js`. Only a test that opened a data app pays for it. */
+export function assertNoDataAppScopeDenials() {
+  if (!scopeGuardInstalled) {
+    return;
+  }
+  cy.then(() => {
+    expect(
+      scopeDenials,
+      `data-app scope rejections:\n${scopeDenials.join("\n")}`,
+    ).to.be.empty;
+  });
+}
+
 export function openDataApp(slug: string) {
+  installDataAppScopeGuard();
   return cy.visit(Urls.dataApp(slug));
 }
 
@@ -289,7 +357,7 @@ export function createDataAppApiKey() {
 /**
  * A second app beside the host app, for cases that need two of them. It reuses
  * the host app's `node_modules`, so `defineQuery` still resolves through the
- * published SDK, and its directory name becomes the app's slug.
+ * published SDK, and its manifest declares `slug` as its slug.
  */
 export function createSecondDataApp(slug: string) {
   cy.task("scaffoldDataApp", { appName: slug, sdkFrom: dataAppHostAppRoot() });

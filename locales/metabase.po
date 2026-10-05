@@ -10,7 +10,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#\n"
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-08 05:49+0000\n"
+"POT-Creation-Date: 2026-09-22 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -157,11 +157,6 @@ msgid "Nothing here"
 msgstr ""
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
-#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-msgid "Select..."
-msgstr ""
-
-#: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineSelect.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
@@ -283,6 +278,7 @@ msgid "User attribute"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
@@ -290,13 +286,13 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetMoreMenu/SnippetModal/ArchiveSnippetModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetMoreMenu/SnippetModal/UnarchiveSnippetModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/google_drive/PausedModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/ConfirmCodeForm/ConfirmCodeForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/GitSyncControls.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/PushChangesModal/PushChangesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -328,6 +324,7 @@ msgstr ""
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
@@ -341,6 +338,7 @@ msgstr ""
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 #: frontend/src/metabase/common/components/ArchiveModal/ArchiveModal.tsx
 #: frontend/src/metabase/common/components/ConfirmModal/ConfirmModal.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryRowEditor.tsx
@@ -387,7 +385,6 @@ msgstr ""
 #: frontend/src/metabase/querying/components/QueryVisualization/RunButton.tsx
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorHeader/MetricEditorHeader.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/components/EditHeader.tsx
 #: frontend/src/metabase/reference/components/RevisionMessageModal.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -412,6 +409,7 @@ msgid "Cancel"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/NotificationChannelConfigModal/NotificationChannelConfigModal.tsx
@@ -423,6 +421,7 @@ msgstr ""
 #: frontend/src/metabase/actions/utils.ts
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/components/ActionButton/ActionButton.tsx
@@ -785,9 +784,9 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 #, javascript-format
 msgid ""
-"Add instructions here for the sidebar AI chat experience in {0}. You might "
-"want to give instructions about tone, types of entities to prefer, and "
-"things like that."
+"Add instructions here for the sidebar AI chat experience in {0} and for "
+"Metabot in Slack. You might want to give instructions about tone, types of "
+"entities to prefer, and things like that."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
@@ -1207,7 +1206,6 @@ msgstr ""
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group name"
 msgstr ""
 
@@ -1227,9 +1225,30 @@ msgstr ""
 msgid "Subscriptions and Alerts"
 msgstr ""
 
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/AnalyticsExportStatus.tsx
+msgid "Exporting analytics content…"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/AnalyticsExportStatus.tsx
+msgid "Analytics content exported"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/AnalyticsExportStatus.tsx
+msgid "Error exporting analytics"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/AnalyticsExportStatus.tsx
+msgid "Usage analytics"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/AnalyticsExportStatus.tsx
+msgid "Failed to export analytics"
+msgstr ""
+
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditTableVisualization/AuditTableVisualization.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsTable.tsx
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx
@@ -1246,6 +1265,18 @@ msgstr ""
 #: frontend/src/metabase/visualizations/components/Visualization/NoResultsView/NoResultsView.tsx
 #: metabase/channel/render/body.clj metabase/channel/render/pdf.clj
 msgid "No results"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/CollectionExportAnalytics.tsx
+msgid "Export analytics content"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/CollectionExportAnalytics.tsx
+msgid "Download as .tar.gz for local development"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/CollectionExportAnalytics.tsx
+msgid "Export analytics"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/InsightsLink.tsx
@@ -1315,16 +1346,6 @@ msgid "When enabled, users can additionally log in with email and password."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/Ldap.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
-#: frontend/src/metabase/palette/constants.ts
-msgid "User provisioning"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/Ldap.tsx
 msgid "Group membership filter"
 msgstr ""
 
@@ -1366,14 +1387,167 @@ msgstr ""
 msgid "Unit"
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-msgid "Error saving JWT Settings"
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "Mapping added"
 msgstr ""
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "Mapping updated"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Group mapping mode"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
+#: frontend/src/metabase/visualizations/visualizations/List/definition.ts
+#: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
+msgid "Automatic"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/transforms/utils.ts
+#: metabase/transforms/models/transform_run.clj
+msgid "Manual"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/dashboard/components/RefreshWidget/options.ts
+#: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
+#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
+#: frontend/src/metabase/viz-core/lib/settings/column.ts
+#: frontend/src/metabase/viz-core/lib/settings/series.ts
+msgid "Off"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "New mapping"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/utils.ts
+#, javascript-format
+msgid "Using {0}"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#, javascript-format
+msgid "Users will be assigned to {0} groups based on their JWT group names"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Add at least one mapping to use manual group mapping"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
+msgid "Add mapping"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "This is the last mapping, so group mapping will be turned off."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Switch to automatic group mapping?"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#, javascript-format
+msgid ""
+"Your existing group mappings will be deleted, and users will be assigned to "
+"{0} groups matching their JWT group names."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Delete mappings and switch"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+msgid "JWT group name"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+msgid "Enter JWT group..."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "A mapping for this group already exists"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "{0} groups"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "Pick {0} group..."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Edit mapping"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "Delete mapping"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
+msgid "No groups"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-mode.ts
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/EditUserStrategyModal/EditUserStrategyModal.tsx
 #: frontend/src/metabase/settings/use-admin-setting.ts
 msgid "Changes saved"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
+msgid "Error saving group mapping"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but not all of its groups could be updated"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+msgid "Mapping deleted and group mapping turned off"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "Mapping deleted"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Error saving JWT Settings"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
@@ -1392,7 +1566,7 @@ msgid "Server settings"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupJwtStep.tsx
 msgid "JWT Identity Provider URI"
 msgstr ""
 
@@ -1412,14 +1586,17 @@ msgid ""
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute key"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr ""
 
@@ -1434,7 +1611,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr ""
 
@@ -1442,10 +1619,6 @@ msgstr ""
 #, javascript-format
 msgid ""
 "Lets you assign users to custom {0} groups based on their JWT attributes"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-msgid "Group Name"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
@@ -1459,6 +1632,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/modals/UpdateRowActionFormModal.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
@@ -1651,17 +1825,14 @@ msgid ""
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute"
 msgstr ""
 
@@ -1704,6 +1875,12 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "Error loading SAML configuration"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid ""
+"You cannot enable SAML user provisioning while user provisioning is [managed "
+"by SCIM]"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
@@ -1808,6 +1985,7 @@ msgid "SAML keystore password"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Shh..."
 msgstr ""
 
@@ -1815,14 +1993,23 @@ msgstr ""
 msgid "SAML keystore alias"
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid ""
-"You cannot enable SAML user provisioning while user provisioning is [managed "
-"by SCIM]"
-msgstr ""
-
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SsoButton/SsoButton.tsx
 msgid "Sign in with SSO"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
+#: frontend/src/metabase/palette/constants.ts
+msgid "User provisioning"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid ""
+"Allow {0} sign-in to create accounts for new users and reactivate "
+"deactivated accounts. When disabled, only users with active {1} accounts can "
+"sign in."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
@@ -1843,19 +2030,6 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/SamlAuthCard/SamlAuthCard.tsx
 msgid "Allows users to login via a SAML Identity Provider."
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/auth/utils.ts
-#, javascript-format
-msgid ""
-"Enabled: When a user logs in via {0}, automatically create an account for "
-"them if they don't have one, or reactivate their existing account."
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/auth/utils.ts
-#, javascript-format
-msgid ""
-"Disabled: Only users with active Metabase accounts can log in using {0}."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/DatabaseCachingEditor.tsx
@@ -2007,6 +2181,7 @@ msgstr ""
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
@@ -2015,7 +2190,6 @@ msgstr ""
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionDiff.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePickerTreeTable.tsx
 #: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 #: frontend/src/metabase/transforms/components/TagMultiSelect/UpdateTagModal/UpdateTagModal.tsx
@@ -2541,14 +2715,13 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
+#: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 #: frontend/src/metabase/transforms/components/JobHeader/JobHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobListPage/JobListPage.tsx
 msgid "Disabled"
@@ -2682,12 +2855,11 @@ msgid "See the SDK changelog"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/AdminSettingInput.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
+#: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 msgid "Enabled"
 msgstr ""
 
@@ -2711,6 +2883,7 @@ msgid "Update"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/ManageCustomVizPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
@@ -2721,7 +2894,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/ManageCustomVizPage.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenuButton.tsx
 #: frontend/src/metabase/documents/components/DocumentHeader.tsx
-#: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
+#: frontend/src/metabase/home/components/SetupGuideHomePage/SetupGuideHomePage.tsx
 #: frontend/src/metabase/metrics/components/MetricHeader/MetricToolbar/MetricToolbar.tsx
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
 #: frontend/src/metabase/querying/common/components/BooleanPicker/BooleanPicker.tsx
@@ -2800,6 +2973,12 @@ msgstr ""
 msgid "Setting \"{0}\" has unsupported widget {1}. Use one of: {2}."
 msgstr ""
 
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/custom-viz-settings.ts
+#, javascript-format
+msgid ""
+"Setting \"{0}\" has an unsupported widget. Use a component or one of: ${ 1 }."
+msgstr ""
+
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/use-plugin-mount.ts
 #, javascript-format
 msgid "Failed to render plugin \"{0}\":"
@@ -2840,6 +3019,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
@@ -2902,6 +3082,7 @@ msgid "Snippet"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3129,6 +3310,7 @@ msgid "A source of truth for analytics"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/PublishingInfo/PublishingInfo.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePickerTreeTable.tsx
 msgid "Published"
 msgstr ""
@@ -3623,6 +3805,14 @@ msgstr ""
 msgid "Dependents"
 msgstr ""
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableOverviewPage/TableOverview/PublishingInfo/PublishingInfo.tsx
+#, javascript-format
+msgctxt ""
+"Describes when a table was published. {0} is a date and {1} is a person's "
+"name"
+msgid "{0} by {1}"
+msgstr ""
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/pages/TableSegmentsPage/TableSegments.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/SegmentList/SegmentList.tsx
 msgid "No segments yet"
@@ -3658,10 +3848,27 @@ msgstr ""
 msgid "Put metrics in the Library to see them here."
 msgstr ""
 
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
+msgid "Failed to add users"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
+msgid "Failed to remove user"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppsNavbarSection.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/DataAppsNav.tsx
 msgid "Data apps"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
+msgid "Manage access to this app"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
+msgid "Add users"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
@@ -3674,6 +3881,17 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 msgid "Apps"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
+msgid ""
+"Pick someone from the list, or paste a list of email addresses separated by "
+"commas"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
+#: frontend/src/metabase/admin/people/components/AddMemberRow.tsx
+msgid "Search for a user to add"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
@@ -3703,6 +3921,14 @@ msgid "Actions for {0}"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+msgid "View resources"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+msgid "Manage user access"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
 #: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
 msgid "Re-enable"
 msgstr ""
@@ -3713,6 +3939,19 @@ msgid "{0} allowed host"
 msgid_plural "{0} allowed hosts"
 msgstr[0] ""
 msgstr[1] ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppDataAccessWarning/DataAppDataAccessWarning.tsx
+msgid "Missing data access"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppDataAccessWarning/DataAppDataAccessWarning.tsx
+#, javascript-format
+msgid "{0} doesn’t have permission to view these tables used in this app:"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppListItem/DataAppListItem.tsx
+msgid "Some users are missing data access."
+msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppRepoSection/DataAppRepoSection.tsx
 msgid "Remote sync repo"
@@ -3746,6 +3985,10 @@ msgstr ""
 msgid "Install command"
 msgstr ""
 
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
+msgid "Outdated"
+msgstr ""
+
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
@@ -3759,6 +4002,24 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
 msgid "Not synced yet"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
+msgid "No one has access yet"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
+#: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
+#: frontend/src/metabase/explorations/components/NewExplorationData/Pills.tsx
+#: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricPill/MetricPill.tsx
+#, javascript-format
+msgid "Remove {0}"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
+msgid ""
+"We couldn't check data access for some users. You can still update access to "
+"this data app."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppsEmptyState/DataAppsEmptyState.tsx
@@ -3806,6 +4067,27 @@ msgid "This data app doesn’t exist or has been disabled."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "This data app is outdated"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "This data app isn’t published yet"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid ""
+"An administrator needs to publish this data app before it can be opened."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "You don’t have access to this data app"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "Ask an administrator for access to this data app."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "Couldn’t load this data app"
 msgstr ""
 
@@ -3837,6 +4119,14 @@ msgstr ""
 msgid ""
 "This data app didn’t load. It may have been blocked or is unreachable. Try "
 "refreshing the page, or go back."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/constants.ts
+#: metabase_enterprise/data_apps/api.clj
+#, javascript-format
+msgid ""
+"This app was built for version {0} of data apps. Migrate it to the current "
+"version, then rebuild and sync it again."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/runtime/components/DataAppIframeApp/DataAppIframeApp.tsx
@@ -4025,7 +4315,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/database_replication/DatabaseReplicationSuccess.tsx
 #: enterprise/frontend/src/metabase-enterprise/metabot/components/MetabotAdmin/MetabotSettingUpModal.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/RecoveryCodesForm/RecoveryCodesForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/RecoveryCodesForm/RecoveryCodesForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/components/PythonTransformEditor/PythonEditorResults/PythonEditorResults.tsx
 #: enterprise/frontend/src/metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal.tsx
@@ -4044,8 +4334,8 @@ msgstr ""
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/documents/components/EmbedQuestionSettingsSidebar.tsx
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/StepperWithCards/StepperWithCards.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
@@ -4084,7 +4374,7 @@ msgid "Database routing disabled"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
 msgid "Database routing"
 msgstr ""
 
@@ -4204,6 +4494,7 @@ msgstr ""
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 #: frontend/src/metabase/admin/upsells/UpsellRemoteSync.tsx
@@ -4370,6 +4661,7 @@ msgstr ""
 #: frontend/src/metabase/common/components/ListFilterPopover/ListFilterPopover.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePicker.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
+#: frontend/src/metabase/embedding/LocaleProvider.unit.spec.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearchPanel/MetricSearchPanel.tsx
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/FilterHeaderButton.tsx
@@ -4713,7 +5005,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/transforms-inspector/pages/TransformInspectPage/components/LensSections/GenericSummarySections/GenericSummarySection.tsx
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.tsx
 #: frontend/src/metabase/common/utils/model-names.ts
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
 #: frontend/src/metabase/metadata/components/PreviewSection/utils.ts
 #: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/VariableTypeSelect.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar.tsx
@@ -5139,6 +5431,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TransformsSyncRow/TransformsSyncRow.tsx
 #: frontend/src/metabase/databases/components/DatabaseSyncScheduleField/DatabaseSyncScheduleField.tsx
 #: frontend/src/metabase/monitor/tools/components/RunTypePicker/TaskRunTypePicker.tsx
@@ -5332,16 +5625,6 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "License"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
-#: frontend/src/metabase/admin/settings/utils.ts
-#, javascript-format
-msgid "Using {0}"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
@@ -5989,7 +6272,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationHeader.tsx
-msgid "View a group's permissions"
+msgid "View a group's usage"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ForkBoundary.tsx
@@ -6325,7 +6608,8 @@ msgid "Unavailable"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Complexity score"
+#, javascript-format
+msgid "Complexity score {0}"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils.ts
@@ -6421,7 +6705,7 @@ msgid "Dependency diagnostics"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/CopyableCodeBlock/CopyableCodeBlock.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/CopyableCodeBlock/CopyableCodeBlock.tsx
 #: frontend/src/metabase/admin/ai/MetabotAdminSuggestedPrompts.tsx
 #: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
@@ -6432,17 +6716,17 @@ msgstr ""
 #: frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkButton.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
 #: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Copied!"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/CopyableCodeBlock/CopyableCodeBlock.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/CopyableCodeBlock/CopyableCodeBlock.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
 #: frontend/src/metabase/common/components/CopyTextField/copy-text-field-props.tsx
 #: frontend/src/metabase/common/components/PasswordReveal/PasswordReveal.tsx
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Copy"
 msgstr ""
@@ -6470,6 +6754,7 @@ msgstr ""
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
@@ -6484,7 +6769,6 @@ msgstr ""
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobsTable.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/databases/DatabaseDetail.tsx
 #: frontend/src/metabase/reference/databases/FieldDetail.tsx
 #: frontend/src/metabase/reference/databases/TableDetail.tsx
@@ -6597,12 +6881,19 @@ msgid "Protect your account with a code from an authenticator app."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
+msgid ""
+"Two-factor authentication can not be disabled when it is required on your "
+"instance"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/RecoveryCodesModal/RecoveryCodesModal.tsx
 msgid "Generate recovery codes"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 msgid "Set up two-factor authentication"
 msgstr ""
 
@@ -6621,10 +6912,6 @@ msgid ""
 "working."
 msgstr ""
 
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/RecoveryCodesForm/RecoveryCodesForm.tsx
-msgid "Your recovery codes"
-msgstr ""
-
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/RecoveryCodesModal/RecoveryCodesModal.tsx
 #, javascript-format
 msgid ""
@@ -6634,6 +6921,7 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/RecoveryCodesModal/RecoveryCodesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthEnrollmentForm/AuthEnrollmentForm.tsx
 msgid "this is the only time they'll be shown."
 msgstr ""
 
@@ -6648,6 +6936,7 @@ msgid "Generate new codes"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthEnrollmentForm/AuthEnrollmentForm.tsx
 #, javascript-format
 msgid ""
 "Each code signs you in once if you lose your authenticator. Save them "
@@ -6667,26 +6956,32 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/utils.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-remote-sync-submit.ts
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Continue"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
-msgid "Scan this QR code with an authenticator app:"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
-msgid "Or enter this key in the app manually:"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthEnrollmentForm/AuthEnrollmentForm.tsx
 msgid "Enter the 6-digit code from the authenticator app"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/SetupModal/SetupModal.tsx
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthEnrollmentForm/AuthEnrollmentForm.tsx
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Set up authentication"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid "Don't require"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid "Require now"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid "Require by a certain date"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
@@ -6695,8 +6990,52 @@ msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
 msgid ""
+"Enable password or LDAP authentication to enable two-factor authentication"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid "Allow two-factor authentication"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid ""
+"Enable password or LDAP authentication to adjust two-factor authentication "
+"enforcement"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid "Require two-factor authentication"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+#, javascript-format
+msgid ""
+"{0} for your own account before requiring it, so you don't log yourself out."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid "Enrollment deadline"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid "Users must enroll before this date"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid ""
 "Make sure to set the MB_ENCRYPTION_SECRET_KEY environment variable to "
 "encrypt authenticator secrets."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid "Require 2FA right now?"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
+msgid ""
+"This will require everyone — including you — to log back in now if they "
+"haven't logged in with 2FA before. Users who haven't set up 2FA yet can do "
+"that from the log in screen."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AdminAuthCard/AdminAuthCard.tsx
@@ -6754,7 +7093,12 @@ msgid "Resend code"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthChallengeForm/AuthChallengeForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthEnrollmentForm/AuthEnrollmentForm.tsx
 msgid "Back to log in"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AuthEnrollmentForm/AuthEnrollmentForm.tsx
+msgid "Two-factor authentication is required. Finish setting it up to sign in."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/EnrolledUsersPage/EnrolledUsersPage.tsx
@@ -6840,6 +7184,18 @@ msgstr ""
 msgid "Users without two-factor authentication"
 msgstr ""
 
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/RecoveryCodesForm/RecoveryCodesForm.tsx
+msgid "Your recovery codes"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/TotpEnrollInstructions/TotpEnrollInstructions.tsx
+msgid "Scan this QR code with an authenticator app:"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/TotpEnrollInstructions/TotpEnrollInstructions.tsx
+msgid "Or enter this key in the app manually:"
+msgstr ""
+
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/schemas.ts
 msgid "must contain only digits"
 msgstr ""
@@ -6863,6 +7219,7 @@ msgid "No changes to push"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #, javascript-format
 msgctxt "{0} is the name of a metabase collection"
 msgid "Sync {0}"
@@ -7110,15 +7467,7 @@ msgid ""
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync collections with dependencies?"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Couldn’t sync selected collection"
-msgstr ""
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync to continue"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
@@ -7126,7 +7475,15 @@ msgid "Can't be synced"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync required collections"
+msgid "Item"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Used By"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Go to collection"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
@@ -7306,12 +7663,11 @@ msgid "What will be overwritten: "
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
-msgid "Snippets"
+msgid "Snippets and glossary"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-msgid "Library, Transforms and Snippets."
+msgid "Library, Transforms, Snippets and Glossary."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
@@ -7407,6 +7763,14 @@ msgid "An error occurred during sync."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "Sync stopped"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "The sync was cancelled."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Please wait until this finishes before editing content."
 msgstr ""
 
@@ -7415,13 +7779,31 @@ msgid "Cancelling…"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-msgid "Still working…"
+#, javascript-format
+msgctxt "{0} is a person's name, {1} is a time of day"
+msgid "Started by {0} at {1}"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #, javascript-format
-msgid "Still working. No update for {0} minute."
-msgid_plural "Still working. No update for {0} minutes."
+msgctxt "{0} is a time of day"
+msgid "Started at {0}"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgctxt "{0} is a percentage, {1} is a sync phase such as 'importing content'"
+msgid "Stopped at {0}% while {1}"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "No progress reported recently. The sync is still running."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgid "No progress for {0} minute. The sync is still running."
+msgid_plural "No progress for {0} minutes. The sync is still running."
 msgstr[0] ""
 msgstr[1] ""
 
@@ -7562,6 +7944,30 @@ msgid ""
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "preparing"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "exporting content"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "pushing"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "importing content"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "recording sync state"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "finishing"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid ""
 "The sync branch changed in another session. Refresh the page and try again."
 msgstr ""
@@ -7596,10 +8002,21 @@ msgid "Our analytics"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Unknown collection"
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid ""
 "Dashboards or questions in this collection rely on content saved in a "
 "personal collection, which can’t be synced. Move that content to a shared "
 "collection to continue."
+msgstr ""
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid ""
+"Dashboards or questions in this collection rely on content in usage "
+"analytics, which can’t be synced. Update them to use content you can sync to "
+"continue."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
@@ -7612,7 +8029,7 @@ msgstr ""
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid ""
 "Dashboards or questions in this collection rely on snippets, which sync with "
-"the Library. Sync the Library as well to continue."
+"the Library. Create the Library in Data Studio, then sync it to continue."
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
@@ -7906,7 +8323,7 @@ msgid "No user attributes"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/AttributeMappingEditor/DataAttributeMappingEditor.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
 msgid "Pick a column"
 msgstr ""
@@ -7992,7 +8409,7 @@ msgid "For this option to work, your users need to have some attributes"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
 #: frontend/src/metabase/explorations/components/ExplorationSummary/ExplorationSummary.tsx
@@ -8872,7 +9289,7 @@ msgid "Auto populated"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/modals/ModalParameterActionInput.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/StepperWithCards/StepperWithCards.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
 msgid "Optional"
 msgstr ""
 
@@ -9040,7 +9457,7 @@ msgid "New tenant"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/CreateTenantsOnboardingStep/CreateTenantsOnboardingStep.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
 msgid "Create tenants"
 msgstr ""
 
@@ -10032,7 +10449,7 @@ msgid "Remove this table"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/components/PythonTransformEditor/PythonDataPicker/TableSelector/TableSelector.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
 msgid "Pick a table"
 msgstr ""
 
@@ -12815,10 +13232,10 @@ msgstr ""
 #: frontend/src/metabase/actions/containers/ActionCreator/CreateActionForm/CreateActionForm.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/querying/components/NativeQueryEditor/SnippetForm/SnippetForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "It's optional but oh, so helpful"
 msgstr ""
 
@@ -13724,7 +14141,7 @@ msgid "Failed to load detailed documentation"
 msgstr ""
 
 #: frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
 #: frontend/src/metabase/home/components/Onboarding/items/DatabaseItem.tsx
 msgid "Add database"
 msgstr ""
@@ -14180,13 +14597,13 @@ msgstr ""
 
 #: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
 #: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: metabase/dashboards_rest/api.clj
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
 msgid "Duplicate"
 msgstr ""
 
@@ -14204,14 +14621,6 @@ msgstr ""
 
 #: frontend/src/metabase/admin/embedding/components/ThemeListing/NewThemeCard.tsx
 msgid "New theme"
-msgstr ""
-
-#: frontend/src/metabase/admin/embedding/embedding-hub/EmbeddingHubAdminSettingsPage.tsx
-msgid "Embedding setup guide"
-msgstr ""
-
-#: frontend/src/metabase/admin/embedding/embedding-hub/EmbeddingHubAdminSettingsPage.tsx
-msgid "Follow the guide to get started with modular embedding"
 msgstr ""
 
 #: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
@@ -14268,6 +14677,14 @@ msgstr ""
 msgid "Failed to save theme"
 msgstr ""
 
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Embedding setup guide"
+msgstr ""
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Follow the guide to get started with modular embedding"
+msgstr ""
+
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 msgid "Get help"
@@ -14311,10 +14728,6 @@ msgstr ""
 
 #: frontend/src/metabase/admin/people/components/AddMemberRow.tsx
 msgid "Julie McMemberson"
-msgstr ""
-
-#: frontend/src/metabase/admin/people/components/AddMemberRow.tsx
-msgid "Search for a user to add"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/components/Alert.tsx
@@ -14460,11 +14873,6 @@ msgid ""
 "groups and then go to the Permissions section to control each group's "
 "access. The Administrators and All Users groups are special default groups "
 "that can't be removed."
-msgstr ""
-
-#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
-msgid "No groups"
 msgstr ""
 
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
@@ -16219,9 +16627,33 @@ msgstr ""
 msgid "Get your token"
 msgstr ""
 
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#, javascript-format
+msgid ""
+"Automatically assign people to {0} groups based on their LDAP group "
+"membership"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "Manual group mappings"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "LDAP group name"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "No mappings yet"
+msgstr ""
+
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Error loading LDAP configuration"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
@@ -16265,11 +16697,30 @@ msgid "User search base"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid ""
+"The distinguished name (DN) of the entry in your LDAP server that {0} should "
+"use as the starting point when searching for users"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User filter"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid ""
+"Map LDAP attributes to the email, first name, and last name fields in {0}"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid ""
+"Not required for LDAP directories that provide a 'memberOf' overlay, such as "
+"Active Directory. It will be searched recursively."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx
@@ -16642,17 +17093,15 @@ msgid "Saturday"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
-msgid "Map tile server URL"
+msgid "Map tile server public URL"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
+#, javascript-format
 msgid ""
-"URL of the map tile server to use for rendering maps. If you're using a "
-"custom map tile server, you can set it here."
-msgstr ""
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
-msgid "Metabase uses OpenStreetMaps by default."
+"Public URL of the tile server to use when rendering maps. Defaults to "
+"OpenStreetMaps, but you can set a custom URL. This URL is visible to "
+"clients, so do not include private keys. {0}"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/PublicSharingSettingsPage.tsx
@@ -17001,23 +17450,19 @@ msgid "Remove mapping and delete group"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid ""
-"These groups' user memberships will no longer be synced with the directory "
-"server."
+msgid "The Administrators group is not affected."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid ""
-"This group's user membership will no longer be synced with the directory "
-"server."
+msgid "This mapping isn't linked to any group."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "What should happen with the groups themselves in Metabase?"
+msgid "Membership of these groups will no longer be synced when users log in."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "What should happen with the group itself in Metabase?"
+msgid "Membership of this group will no longer be synced when users log in."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
@@ -17025,27 +17470,38 @@ msgid "Remove this group mapping?"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the groups themselves in {0}?"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the group itself in {0}?"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 msgid "Nothing, just remove the mapping"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all group members (except from Admin)"
+msgid "Also remove all members from these groups"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the groups (except Admin)"
+msgid "Also remove all members from this group"
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "Members keep their {0} accounts."
+msgstr ""
+
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the groups"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 msgid "Also delete the group"
-msgstr ""
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid ""
-"Mappings allow Metabase to automatically add and remove users from groups "
-"based on the membership information provided by the directory server. If no "
-"mappings are defined, groups will automatically be assigned based on exactly "
-"matching names."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
@@ -17060,33 +17516,7 @@ msgid "No mappings yet, group sync is not on"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid ""
-"No mappings yet, groups will be automatically assigned by exactly matching "
-"names"
-msgstr ""
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr ""
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping added"
-msgstr ""
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping updated"
-msgstr ""
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping deleted"
-msgstr ""
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Synchronize Group Memberships"
-msgstr ""
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "New mapping"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
@@ -18258,18 +18688,6 @@ msgstr ""
 msgid "Add description"
 msgstr ""
 
-#: frontend/src/metabase/collections/components/CollectionHeader/CollectionExportAnalytics.tsx
-msgid "Export analytics content"
-msgstr ""
-
-#: frontend/src/metabase/collections/components/CollectionHeader/CollectionExportAnalytics.tsx
-msgid "Download as .tar.gz for local development"
-msgstr ""
-
-#: frontend/src/metabase/collections/components/CollectionHeader/CollectionExportAnalytics.tsx
-msgid "Export analytics"
-msgstr ""
-
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionNewButton.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewCollectionDialog/NewCollectionDialog.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
@@ -18470,8 +18888,8 @@ msgid "This comment was deleted."
 msgstr ""
 
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "What is the name of your dashboard?"
 msgstr ""
 
@@ -18790,6 +19208,14 @@ msgstr ""
 msgid "You can {0}"
 msgstr ""
 
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
+#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
+#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
+msgid "Where do you want to save this?"
+msgstr ""
+
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 msgid "Only duplicate the dashboard"
 msgstr ""
@@ -18847,7 +19273,7 @@ msgstr[1] "#-#-#-#-#  metabase-frontend.pot  #-#-#-#-#\n"
 
 #: frontend/src/metabase/common/components/CronExpressioInput/CronExpressionInput.tsx
 #: frontend/src/metabase/databases/components/DatabaseAuthCodeDescription/DatabaseAuthCodeDescription.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
 #: frontend/src/metabase/nav/components/AreaLayout/ToggleActionIcon.tsx
 #: metabase/channel/email/messages.clj
 #: metabase/collections/models/collection.clj metabase/lib/filter.cljc
@@ -18902,14 +19328,6 @@ msgstr ""
 
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 msgid "What is the name of your document?"
-msgstr ""
-
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
-#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
-msgid "Where do you want to save this?"
 msgstr ""
 
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
@@ -19243,13 +19661,6 @@ msgid "Other groups"
 msgstr ""
 
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
-#: frontend/src/metabase/explorations/components/NewExplorationData/Pills.tsx
-#: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricPill/MetricPill.tsx
-#, javascript-format
-msgid "Remove {0}"
-msgstr ""
-
-#: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 msgid "(Manager)"
 msgstr ""
 
@@ -19447,7 +19858,7 @@ msgid "Databases will appear here once your admins have added some"
 msgstr ""
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/metadata/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 msgid "Connect a database"
 msgstr ""
@@ -20048,11 +20459,11 @@ msgid "Confirm"
 msgstr ""
 
 #: frontend/src/metabase/common/components/UndoListing.tsx
-msgid "item"
+msgid "modified"
 msgstr ""
 
 #: frontend/src/metabase/common/components/UndoListing.tsx
-msgid "modified"
+msgid "item"
 msgstr ""
 
 #: frontend/src/metabase/common/components/Unsubscribe.tsx
@@ -20744,12 +21155,12 @@ msgid "Auto-connect this filter to all questions containing “{0}”?"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
-msgid "Auto-connect"
+#, javascript-format
+msgid "The filter was auto-connected to all questions containing “{0}”."
 msgstr ""
 
 #: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
-#, javascript-format
-msgid "The filter was auto-connected to all questions containing “{0}”."
+msgid "Auto-connect"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
@@ -20825,7 +21236,8 @@ msgid "Tab {0}"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/actions/tabs.ts
-#: metabase/embedding_rest/api/theme.clj metabase/queries_rest/api/card.clj
+#: metabase/embedding_rest/api/theme.clj metabase/mcp/v2/tools/duplicate.clj
+#: metabase/queries_rest/api/card.clj
 #, javascript-format
 msgid "Copy of {0}"
 msgstr ""
@@ -21796,10 +22208,6 @@ msgid "Attach CSV/XLSX with results"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/EmailAttachmentPicker.tsx
-msgid "Attachments can contain up to 2,000 rows of data."
-msgstr ""
-
-#: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/EmailAttachmentPicker.tsx
 msgid "Attach results"
 msgstr ""
 
@@ -22209,14 +22617,6 @@ msgid "Refreshing in"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/components/RefreshWidget/options.ts
-#: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
-#: frontend/src/metabase/visualizations/visualizations/PieChart/definition.ts
-#: frontend/src/metabase/viz-core/lib/settings/column.ts
-#: frontend/src/metabase/viz-core/lib/settings/series.ts
-msgid "Off"
-msgstr ""
-
-#: frontend/src/metabase/dashboard/components/RefreshWidget/options.ts
 msgid "1 minute"
 msgstr ""
 
@@ -22251,12 +22651,12 @@ msgid "Move this dashboard to trash?"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp/AutomaticDashboardApp.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/EmbeddingHubXrayPickerModal.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupGuideXrayPickerModal.tsx
 msgid "Your dashboard was saved"
 msgstr ""
 
 #: frontend/src/metabase/dashboard/containers/AutomaticDashboardApp/AutomaticDashboardApp.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/EmbeddingHubXrayPickerModal.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupGuideXrayPickerModal.tsx
 #: frontend/src/metabase/querying/components/DataReference/QuestionPane/QuestionPane.tsx
 msgid "See it"
 msgstr ""
@@ -24243,503 +24643,6 @@ msgstr ""
 msgid "Invite someone to view this"
 msgstr ""
 
-#: frontend/src/metabase/embedding/embedding-hub/components/EmbeddingHub.tsx
-msgid ""
-"If all you want is a simple embedded dashboard, you're done! \n"
-"If you have a more sophisticated setup in mind, with many users and tenants, "
-"then keep going."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/EmbeddingHub.tsx
-msgid ""
-"If all you want is a simple embedded dashboard, the steps above are all you "
-"need! \n"
-"If you have a more sophisticated setup in mind, with many users and tenants, "
-"then keep going."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/EmbeddingHubXrayPickerModal.tsx
-msgid "Failed to create dashboard"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/EmbeddingHubXrayPickerModal.tsx
-msgid "Choose a table to generate a dashboard"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
-msgid "Failed to configure connection impersonation"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
-msgid ""
-"None of your databases support connection impersonation. Pick a different "
-"data segregation strategy in the previous step, or connect a new database in "
-"the Database settings before proceeding. Metabase connects to more than 15 "
-"popular databases."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
-msgid ""
-"Select one or more databases to be made visible to all tenant users. Tenant "
-"users will be able to create queries on these databases with the query "
-"builder. The tenant attribute database_role will be used to manage "
-"permissions. You will specify this attribute for each tenant when you create "
-"tenants."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
-msgid "This database doesn't support connection impersonation"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/AddEndpointStep.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
-#: frontend/src/metabase/querying/common/components/DatePicker/RelativeDatePicker/DateOffsetIntervalPicker/utils.ts
-#: frontend/src/metabase/querying/common/components/DatePicker/RelativeDatePicker/constants.ts
-#: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx
-#: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx
-#: frontend/src/metabase/setup/components/UserForm/UserForm.tsx
-msgid "Next"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
-msgid "Row and column level security"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
-msgid ""
-"All data is stored in the same database and Metabase will apply a filter to "
-"queries for a table column to match a specific value (ex: customerId = 2)."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
-msgid "Use row and column level security"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
-#: metabase/permissions_rest/api.clj
-msgid "Connection impersonation"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
-msgid ""
-"All data is stored in the same database, but Metabase will use a different "
-"database role to connect for each tenant. Roles are configured at the "
-"database level to only query relevant data."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
-msgid "Use connection impersonation"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
-msgid ""
-"Each tenant has their own database with identical schema. Metabase will use "
-"a connection string from a tenant attribute to run queries against a "
-"different destination database."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
-msgid "Use database routing"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DatabaseRoutingStepContent.tsx
-msgid ""
-"Follow the steps in the documentation to manage data permissions with "
-"database routing."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DatabaseRoutingStepContent.tsx
-msgid "Manage data permissions with database routing"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DatabaseRoutingStepContent.tsx
-msgid ""
-"Follow the guide in the docs to enable database routing at the data source "
-"level, add destination databases and configure the relevant tenant "
-"attributes."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/DatabaseRoutingStepContent.tsx
-msgid "View the guide"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
-msgid "Shared collection"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
-msgid "Failed to enable tenants and create shared collection"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
-msgid ""
-"A tenant is a set of attributes assigned to a user to isolate them from "
-"other tenants. For example, in a SaaS app with embedded Metabase dashboards, "
-"you can assign each customer to a tenant."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
-msgid ""
-"The main benefit of tenants is that you can reuse the same dashboards and "
-"permissions across all tenants, instead of recreating them for each "
-"customer, while ensuring each tenant only sees its own data. A shared "
-"collection will be created to hold dashboards and charts that are shared "
-"between all tenants."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
-msgid "Enable tenants and create shared collection"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
-msgid "Failed to move dashboard to the shared collection"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
-msgid "Failed to create a sample dashboard"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
-msgid "The shared collection already has dashboards."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
-msgid "This will allow tenant users to see it."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
-msgid "Move to shared collection"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
-msgid "Create a sample dashboard"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
-msgid "Failed to configure row-level security"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
-msgid ""
-"Select one or more tables to be made visible to tenant users, and the column "
-"to filter by. Only rows where the value in the selected column matches the "
-"organization_id attribute will be visible to tenant users. You will create "
-"tenants and configure this attribute in the next step."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
-msgid ""
-"Tenant users will be able to create queries on these tables with the query "
-"builder. All other tables will be blocked."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
-msgid "Add table"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
-msgid "Remove table"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
-msgid "Will be visible to all tenant users"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
-msgid "Column to filter by"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
-msgid ""
-"Tenant users will only see rows where this equals the organization_id "
-"attribute."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupSsoPage.tsx
-msgid "Back to the setup guide"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Configure data permissions and enable tenants"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Enable multi-tenant user strategy"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Move a dashboard to the shared collection"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Create a dashboard in the shared collection"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Which data segregation strategy does your database use?"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Select data to make available"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/hooks/use-upsert-group-table-access-policies.ts
-msgid "Could not find the tenant users group. Please enable tenants first."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/hooks/use-xray-dashboards.ts
-msgid "Sample dashboard"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/hooks/use-xray-dashboards.ts
-msgid "Hello, world!"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/AddEndpointStep.tsx
-msgid ""
-"You'll need to add a library to your backend to sign your JSON Web Tokens."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/AddEndpointStep.tsx
-msgid "For Node.js, we recommend jsonwebtoken:"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/AddEndpointStep.tsx
-#, javascript-format
-msgctxt "{0} is '/sso/metabase'"
-msgid ""
-"Next, set up an endpoint on your backend (e.g., {0}) that uses your Metabase "
-"JWT shared secret to generate a JWT for the authenticated user. "
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/AddEndpointStep.tsx
-#, javascript-format
-msgctxt "{0} is 'jwt'"
-msgid ""
-"This endpoint must return a JSON object with a {0} property containing the "
-"signed JWT."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/AddEndpointStep.tsx
-#, javascript-format
-msgctxt "{0} is '{ \"jwt\": \"your-signed-jwt\" }'"
-msgid " For example: {0}."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/AddEndpointStep.tsx
-msgid "This example code for Node.js sets up an endpoint using Express:"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/AddEndpointStep.tsx
-#, javascript-format
-msgctxt "{0} is a link labeled 'docs'"
-msgid "You can view more examples in the {0}."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
-msgid "Failed to enable JWT authentication"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
-msgid ""
-"To implement SSO you will need to add a new endpoint to your app. You can "
-"connect Metabase to your identity provider using JSON Web Tokens (JWT) to "
-"authenticate people. Enabling JWT authentication will also create a signing "
-"key and enable group sync."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
-msgid "This is where Metabase will redirect login requests"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupJwtStep.tsx
-msgid "Enable JWT authentication and continue"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupSsoPage.tsx
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Configure SSO"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupSsoPage.tsx
-msgid "Set up JWT authentication"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupSsoPage.tsx
-msgid "Add a new endpoint to your app"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/SetupSsoPage.tsx
-msgid "Test that JWT authentication is working correctly"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "Failed to save SSO test status"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "Try logging in with SSO. Did it work?"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid ""
-"To check if JWT authentication was configured successfully, open Metabase in "
-"a different browser or in a private tab and try logging in to your account "
-"using single sign-on (SSO). Is login working correctly?"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "No, I couldn't log in"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "Log in works, I'm done"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "Troubleshooting"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid ""
-"Try the steps below before testing JWT authentication again. If nothing "
-"works, consider contacting support."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "404 error after SSO sign-in"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid ""
-"If after clicking on \"Sign in with SSO\", the browser returns a 404 error, "
-"make sure the value of the JWT SSO URI in admin settings / auth / JWT is "
-"pointing to your endpoint and your endpoint is up and running and available."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "JWT decryption error: \"Message seems corrupt\""
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid ""
-"If after being redirected from your app to Metabase, you see \"Message seems "
-"corrupt or manipulated\" there was an issue decrypting signed JWT. Ensure "
-"METABASE_JWT_SHARED_SECRET has the right value."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "Tenant ID mismatch error"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid ""
-"If after being redirected from your app to Metabase, you see an error "
-"message \"Tenant ID mismatch with existing user\", your application is "
-"trying to sign in a the user with the wrong tenant slug. Review @tenant "
-"claim in the JWT and ensure it matches the tenant this tenant user belongs "
-"to."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "User provisioning disabled for JWT SSO"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid ""
-"If after being redirected from your app to Metabase, you see an error "
-"message \"Sorry, but you'll need a $SITENAME account to view this page, "
-"contact your administrator. User provisioning is turned off for JWT SSO in "
-"admin settings/authentication. Either turn this feature on to have users be "
-"provisioned if they don't exist yet, or ensure users exist before signing "
-"them in via JWT SSO."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/SetupSsoPage/TestJwtStep.tsx
-msgid "Contact customer support"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/components/StepperWithCards/StepperWithCards.tsx
-msgid "Complete the other steps to unlock"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Create embed"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Get embed snippet"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid ""
-"Embed a dashboard, question, the query builder or the collection browser. "
-"Configure the experience and customize the appearance."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.tsx
-#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx
-msgid "Add your data"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid ""
-"Connect your own database or upload a CSV and start working with your real "
-"data."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Prepare data"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "Create a dashboard"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Automatically generate a dashboard from your data using x-rays."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Pick a strategy for users and permissions"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid ""
-"Set granular permissions for multi-tenancy to control data access. Share "
-"dashboards, questions, and models with external users and allow them to "
-"create content, while restricting access to internal or other tenants' data."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid ""
-"Configure JWT authentication to ensure only authorized users can access your "
-"embeds."
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Deployment"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid "Embed in production with SSO"
-msgstr ""
-
-#: frontend/src/metabase/embedding/embedding-hub/hooks/use-get-embedding-hub-steps.ts
-msgid ""
-"Deploy your embedded dashboard to a production environment and share with "
-"your users."
-msgstr ""
-
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/ThemeSelectorSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/steps/AppearanceStep/AppearanceCard.tsx
 msgid "Reset colors"
@@ -24927,6 +24830,20 @@ msgstr ""
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
 msgid "Get code"
+msgstr ""
+
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/AddEndpointStep.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts
+#: frontend/src/metabase/querying/common/components/DatePicker/RelativeDatePicker/DateOffsetIntervalPicker/utils.ts
+#: frontend/src/metabase/querying/common/components/DatePicker/RelativeDatePicker/constants.ts
+#: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx
+#: frontend/src/metabase/setup/components/UsageQuestionStep/UsageQuestionStep.tsx
+#: frontend/src/metabase/setup/components/UserForm/UserForm.tsx
+msgid "Next"
 msgstr ""
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
@@ -25226,6 +25143,7 @@ msgid "by {0}"
 msgstr ""
 
 #: frontend/src/metabase/embedding/mcp/utils/getMcpAppsUserAndSettingsFetchError.ts
+#: frontend/src/metabase/embedding/mcp/utils/getMcpQueryFetchError.ts
 msgid ""
 "Authentication failed. Try signing out and signing back in, then ask your "
 "MCP client to show this again."
@@ -25235,6 +25153,500 @@ msgstr ""
 msgid ""
 "Could not connect to Metabase. Make sure this MCP client is enabled in AI "
 "settings and that Metabase is reachable."
+msgstr ""
+
+#: frontend/src/metabase/embedding/mcp/utils/getMcpQueryFetchError.ts
+msgid ""
+"This visualization has expired. Ask your MCP client to run the query again."
+msgstr ""
+
+#: frontend/src/metabase/embedding/mcp/utils/getMcpQueryFetchError.ts
+msgid ""
+"Could not load this visualization. Make sure Metabase is reachable, then ask "
+"your MCP client to show this again."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
+msgid ""
+"If all you want is a simple embedded dashboard, you're done! \n"
+"If you have a more sophisticated setup in mind, with many users and tenants, "
+"then keep going."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
+msgid ""
+"If all you want is a simple embedded dashboard, the steps above are all you "
+"need! \n"
+"If you have a more sophisticated setup in mind, with many users and tenants, "
+"then keep going."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupGuideXrayPickerModal.tsx
+msgid "Failed to create dashboard"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupGuideXrayPickerModal.tsx
+msgid "Choose a table to generate a dashboard"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
+msgid "Failed to configure connection impersonation"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
+msgid ""
+"None of your databases support connection impersonation. Pick a different "
+"data segregation strategy in the previous step, or connect a new database in "
+"the Database settings before proceeding. Metabase connects to more than 15 "
+"popular databases."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
+msgid ""
+"Select one or more databases to be made visible to all tenant users. Tenant "
+"users will be able to create queries on these databases with the query "
+"builder. The tenant attribute database_role will be used to manage "
+"permissions. You will specify this attribute for each tenant when you create "
+"tenants."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/ConnectionImpersonationStepContent.tsx
+msgid "This database doesn't support connection impersonation"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+msgid "Row and column level security"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+msgid ""
+"All data is stored in the same database and Metabase will apply a filter to "
+"queries for a table column to match a specific value (ex: customerId = 2)."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+msgid "Use row and column level security"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+#: metabase/permissions_rest/api.clj
+msgid "Connection impersonation"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+msgid ""
+"All data is stored in the same database, but Metabase will use a different "
+"database role to connect for each tenant. Roles are configured at the "
+"database level to only query relevant data."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+msgid "Use connection impersonation"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+msgid ""
+"Each tenant has their own database with identical schema. Metabase will use "
+"a connection string from a tenant attribute to run queries against a "
+"different destination database."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DataSegregationStrategyPicker.tsx
+msgid "Use database routing"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DatabaseRoutingStepContent.tsx
+msgid ""
+"Follow the steps in the documentation to manage data permissions with "
+"database routing."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DatabaseRoutingStepContent.tsx
+msgid "Manage data permissions with database routing"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DatabaseRoutingStepContent.tsx
+msgid ""
+"Follow the guide in the docs to enable database routing at the data source "
+"level, add destination databases and configure the relevant tenant "
+"attributes."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/DatabaseRoutingStepContent.tsx
+msgid "View the guide"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
+msgid "Shared collection"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
+msgid "Failed to enable tenants and create shared collection"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
+msgid ""
+"A tenant is a set of attributes assigned to a user to isolate them from "
+"other tenants. For example, in a SaaS app with embedded Metabase dashboards, "
+"you can assign each customer to a tenant."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
+msgid ""
+"The main benefit of tenants is that you can reuse the same dashboards and "
+"permissions across all tenants, instead of recreating them for each "
+"customer, while ensuring each tenant only sees its own data. A shared "
+"collection will be created to hold dashboards and charts that are shared "
+"between all tenants."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/EnableTenantsStepContent.tsx
+msgid "Enable tenants and create shared collection"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
+msgid "Failed to move dashboard to the shared collection"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
+msgid "Failed to create a sample dashboard"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
+msgid "The shared collection already has dashboards."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
+msgid "This will allow tenant users to see it."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
+msgid "Move to shared collection"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/MoveDashboardStepContent.tsx
+msgid "Create a sample dashboard"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
+msgid "Failed to configure row-level security"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
+msgid ""
+"Select one or more tables to be made visible to tenant users, and the column "
+"to filter by. Only rows where the value in the selected column matches the "
+"organization_id attribute will be visible to tenant users. You will create "
+"tenants and configure this attribute in the next step."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
+msgid ""
+"Tenant users will be able to create queries on these tables with the query "
+"builder. All other tables will be blocked."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/RlsDataSelector.tsx
+msgid "Add table"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
+msgid "Remove table"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
+msgid "Will be visible to all tenant users"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
+msgid "Column to filter by"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/RlsDataSelector/TableColumnCard.tsx
+msgid ""
+"Tenant users will only see rows where this equals the organization_id "
+"attribute."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupSsoPage.tsx
+msgid "Back to the setup guide"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Configure data permissions and enable tenants"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Enable multi-tenant user strategy"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Move a dashboard to the shared collection"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Create a dashboard in the shared collection"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Which data segregation strategy does your database use?"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Select data to make available"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/hooks/use-upsert-group-table-access-policies.ts
+msgid "Could not find the tenant users group. Please enable tenants first."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/hooks/use-xray-dashboards.ts
+msgid "Sample dashboard"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/hooks/use-xray-dashboards.ts
+msgid "Hello, world!"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/AddEndpointStep.tsx
+msgid ""
+"You'll need to add a library to your backend to sign your JSON Web Tokens."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/AddEndpointStep.tsx
+msgid "For Node.js, we recommend jsonwebtoken:"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/AddEndpointStep.tsx
+#, javascript-format
+msgctxt "{0} is '/sso/metabase'"
+msgid ""
+"Next, set up an endpoint on your backend (e.g., {0}) that uses your Metabase "
+"JWT shared secret to generate a JWT for the authenticated user. "
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/AddEndpointStep.tsx
+#, javascript-format
+msgctxt "{0} is 'jwt'"
+msgid ""
+"This endpoint must return a JSON object with a {0} property containing the "
+"signed JWT."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/AddEndpointStep.tsx
+#, javascript-format
+msgctxt "{0} is '{ \"jwt\": \"your-signed-jwt\" }'"
+msgid " For example: {0}."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/AddEndpointStep.tsx
+msgid "This example code for Node.js sets up an endpoint using Express:"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/AddEndpointStep.tsx
+#, javascript-format
+msgctxt "{0} is a link labeled 'docs'"
+msgid "You can view more examples in the {0}."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupJwtStep.tsx
+msgid "Failed to enable JWT authentication"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupJwtStep.tsx
+msgid ""
+"To implement SSO you will need to add a new endpoint to your app. You can "
+"connect Metabase to your identity provider using JSON Web Tokens (JWT) to "
+"authenticate people. Enabling JWT authentication will also create a signing "
+"key and enable group sync."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupJwtStep.tsx
+msgid "This is where Metabase will redirect login requests"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupJwtStep.tsx
+msgid "Enable JWT authentication and continue"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupSsoPage.tsx
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Configure SSO"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupSsoPage.tsx
+msgid "Set up JWT authentication"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupSsoPage.tsx
+msgid "Add a new endpoint to your app"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/SetupSsoPage.tsx
+msgid "Test that JWT authentication is working correctly"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "Failed to save SSO test status"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "Try logging in with SSO. Did it work?"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid ""
+"To check if JWT authentication was configured successfully, open Metabase in "
+"a different browser or in a private tab and try logging in to your account "
+"using single sign-on (SSO). Is login working correctly?"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "No, I couldn't log in"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "Log in works, I'm done"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "Troubleshooting"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid ""
+"Try the steps below before testing JWT authentication again. If nothing "
+"works, consider contacting support."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "404 error after SSO sign-in"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid ""
+"If after clicking on \"Sign in with SSO\", the browser returns a 404 error, "
+"make sure the value of the JWT SSO URI in admin settings / auth / JWT is "
+"pointing to your endpoint and your endpoint is up and running and available."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "JWT decryption error: \"Message seems corrupt\""
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid ""
+"If after being redirected from your app to Metabase, you see \"Message seems "
+"corrupt or manipulated\" there was an issue decrypting signed JWT. Ensure "
+"METABASE_JWT_SHARED_SECRET has the right value."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "Tenant ID mismatch error"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid ""
+"If after being redirected from your app to Metabase, you see an error "
+"message \"Tenant ID mismatch with existing user\", your application is "
+"trying to sign in a the user with the wrong tenant slug. Review @tenant "
+"claim in the JWT and ensure it matches the tenant this tenant user belongs "
+"to."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "User provisioning disabled for JWT SSO"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid ""
+"If after being redirected from your app to Metabase, you see an error "
+"message \"Sorry, but you'll need a $SITENAME account to view this page, "
+"contact your administrator. User provisioning is turned off for JWT SSO in "
+"admin settings/authentication. Either turn this feature on to have users be "
+"provisioned if they don't exist yet, or ensure users exist before signing "
+"them in via JWT SSO."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
+msgid "Contact customer support"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
+msgid "Complete the other steps to unlock"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Create embed"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Get embed snippet"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid ""
+"Embed a dashboard, question, the query builder or the collection browser. "
+"Configure the experience and customize the appearance."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.tsx
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx
+msgid "Add your data"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid ""
+"Connect your own database or upload a CSV and start working with your real "
+"data."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Prepare data"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a dashboard"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Automatically generate a dashboard from your data using x-rays."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Pick a strategy for users and permissions"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid ""
+"Set granular permissions for multi-tenancy to control data access. Share "
+"dashboards, questions, and models with external users and allow them to "
+"create content, while restricting access to internal or other tenants' data."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid ""
+"Configure JWT authentication to ensure only authorized users can access your "
+"embeds."
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Deployment"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed in production with SSO"
+msgstr ""
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid ""
+"Deploy your embedded dashboard to a production environment and share with "
+"your users."
 msgstr ""
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationErrorMarker.tsx
@@ -25895,18 +26307,6 @@ msgstr ""
 msgid "Embed an example dashboard"
 msgstr ""
 
-#: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
-msgid "Get started with modular embedding"
-msgstr ""
-
-#: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
-msgid "Customize homepage"
-msgstr ""
-
-#: frontend/src/metabase/home/components/EmbeddingHubHomePage/EmbeddingHubHomePage.tsx
-msgid "Dismiss guide"
-msgstr ""
-
 #: frontend/src/metabase/home/components/HomeGreeting/HomeGreeting.tsx
 #, javascript-format
 msgid "Hey there{0}"
@@ -25939,6 +26339,11 @@ msgstr ""
 #: frontend/src/metabase/home/components/HomeHelpCard/HomeHelpCard.tsx
 #, javascript-format
 msgid "{0} tips"
+msgstr ""
+
+#: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
+msgid "Home"
 msgstr ""
 
 #: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
@@ -26212,6 +26617,18 @@ msgstr ""
 msgid "Explore your data"
 msgstr ""
 
+#: frontend/src/metabase/home/components/SetupGuideHomePage/SetupGuideHomePage.tsx
+msgid "Get started with modular embedding"
+msgstr ""
+
+#: frontend/src/metabase/home/components/SetupGuideHomePage/SetupGuideHomePage.tsx
+msgid "Customize homepage"
+msgstr ""
+
+#: frontend/src/metabase/home/components/SetupGuideHomePage/SetupGuideHomePage.tsx
+msgid "Dismiss guide"
+msgstr ""
+
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 msgid "Unable to remove this provider."
 msgstr ""
@@ -26365,7 +26782,6 @@ msgid "New conversation"
 msgstr ""
 
 #: frontend/src/metabase/metabot/components/MetabotAppBarButton.tsx
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
 #, javascript-format
 msgid "Chat with {0} ({1}+E)"
 msgstr ""
@@ -26398,26 +26814,26 @@ msgstr ""
 msgid "Next version"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPartMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPart.tsx
 #, javascript-format
 msgid "Chart {0} saved to {1}"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPartMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPart.tsx
 #, javascript-format
 msgid "Chart {0} saved"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPartMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPart.tsx
 msgid "Visit"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPartMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPart.tsx
 #, javascript-format
 msgid "Buffer ID: {0}"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPartMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataPart.tsx
 msgid "Rewrite"
 msgstr ""
 
@@ -26442,14 +26858,6 @@ msgid "Data sources used"
 msgstr ""
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applying..."
-msgstr ""
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applied"
-msgstr ""
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
 msgstr ""
 
@@ -26461,56 +26869,52 @@ msgstr ""
 msgid "Loading preview"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Read only"
-msgstr ""
-
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentTodoMessage.tsx
 msgid "Todo List"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #, javascript-format
 msgid "Tool Call: {0}"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Request"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Copy request JSON"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Response"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Copy response"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Errored"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Structured output"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Copy structured output"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Other fields"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Copy other fields"
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallMessage.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 msgid "Copy tool call JSON"
 msgstr ""
 
@@ -26808,15 +27212,6 @@ msgstr ""
 msgid "Try refreshing the page."
 msgstr ""
 
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
-#, javascript-format
-msgid "{0} can't be viewed on this page"
-msgstr ""
-
-#: frontend/src/metabase/metabot/components/MetabotDataStudioSidebar.tsx
-msgid "Let's transform your data together!"
-msgstr ""
-
 #: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
 msgid "Describe what SQL you want, type @ to mention an item."
 msgstr ""
@@ -26842,6 +27237,12 @@ msgstr ""
 #: frontend/src/metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner.tsx
 #: frontend/src/metabase/transforms/components/LockedTransformsHoverCard/LockedTransformsHoverCard.tsx
 msgid "Start paid subscription"
+msgstr ""
+
+#: frontend/src/metabase/metabot/components/MetabotPromptButton/MetabotPromptButton.tsx
+#: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
+#, javascript-format
+msgid "Ask {0}"
 msgstr ""
 
 #: frontend/src/metabase/metabot/components/SlackConnectSuccess.tsx
@@ -27350,10 +27751,6 @@ msgstr ""
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 msgid ""
 "You need unrestricted data access on this table to map custom display values."
-msgstr ""
-
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Edit mapping"
 msgstr ""
 
 #: frontend/src/metabase/metadata/components/FieldSection/DataSection/DataSection.tsx
@@ -28366,12 +28763,6 @@ msgid "No log entries"
 msgstr ""
 
 #: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
-#: frontend/src/metabase/visualizations/visualizations/List/definition.ts
-#: frontend/src/metabase/visualizations/visualizations/Table/definition.ts
-msgid "Automatic"
-msgstr ""
-
-#: frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.tsx
 msgid "Queued"
 msgstr ""
 
@@ -29101,10 +29492,6 @@ msgstr ""
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
 msgid "Internal Collections"
-msgstr ""
-
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
-msgid "Home"
 msgstr ""
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
@@ -30921,6 +31308,10 @@ msgstr ""
 msgid "Custom Expression"
 msgstr ""
 
+#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
+msgid "Select..."
+msgstr ""
+
 #: frontend/src/metabase/querying/common/components/DataSelector/constants.ts
 msgid "Trustworthy definitions to start from."
 msgstr ""
@@ -31208,12 +31599,6 @@ msgstr ""
 msgid "This question is written in {0}."
 msgstr ""
 
-#: frontend/src/metabase/querying/components/NativeQueryEditor/MetabotPromptButton/MetabotPromptButton.tsx
-#: frontend/src/metabase/rich_text_editing/tiptap/extensions/Command/utils.ts
-#, javascript-format
-msgid "Ask {0}"
-msgstr ""
-
 #: frontend/src/metabase/querying/components/NativeQueryEditor/NativeQueryEditorActionButtons/NativeQueryEditorActionButtons.tsx
 #: frontend/src/metabase/querying/components/expressions/Editor/Editor.tsx
 msgid "Auto-format"
@@ -31335,6 +31720,10 @@ msgstr ""
 
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
+msgstr ""
+
+#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+msgid "Snippets"
 msgstr ""
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
@@ -32144,10 +32533,6 @@ msgstr ""
 msgid "Metric moved to {0}"
 msgstr ""
 
-#: frontend/src/metabase/redux/analytics-export.ts
-msgid "Failed to export analytics"
-msgstr ""
-
 #: frontend/src/metabase/redux/downloads.ts
 msgid ""
 "The download was interrupted and the file may be incomplete. Please try "
@@ -32912,7 +33297,7 @@ msgstr ""
 msgid "Let's get started"
 msgstr ""
 
-#: frontend/src/metabase/static-viz/components/ComboChart/ComboChart.tsx
+#: frontend/src/metabase/static-viz/components/DataOutOfRangeOverlay/DataOutOfRangeOverlay.tsx
 #: frontend/src/metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover.tsx
 msgid "Every data point is out of range"
 msgstr ""
@@ -32932,26 +33317,6 @@ msgstr ""
 #: frontend/src/metabase/static-viz/components/ProgressBar/ProgressBar.tsx
 msgctxt "Label when no goal is set in progress chart"
 msgid "Goal: Not set"
-msgstr ""
-
-#: frontend/src/metabase/status/components/AnalyticsExportStatus/AnalyticsExportStatus.tsx
-msgid "Exporting analytics content…"
-msgstr ""
-
-#: frontend/src/metabase/status/components/AnalyticsExportStatus/AnalyticsExportStatus.tsx
-msgid "Analytics content exported"
-msgstr ""
-
-#: frontend/src/metabase/status/components/AnalyticsExportStatus/AnalyticsExportStatus.tsx
-msgid "Error exporting analytics"
-msgstr ""
-
-#: frontend/src/metabase/status/components/AnalyticsExportStatus/AnalyticsExportStatus.tsx
-msgid "Usage analytics"
-msgstr ""
-
-#: frontend/src/metabase/status/components/AnalyticsExportStatus/AnalyticsExportStatus.tsx
-msgid "Export failed"
 msgstr ""
 
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
@@ -34318,10 +34683,6 @@ msgid "Are you sure you want to archive this folder?"
 msgstr ""
 
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
-msgid "Create a transform that "
-msgstr ""
-
-#: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "Transforms can't be created when Remote Sync is in read-only mode"
 msgstr ""
 
@@ -34644,11 +35005,6 @@ msgid "Canceling"
 msgstr ""
 
 #: frontend/src/metabase/transforms/utils.ts
-#: metabase/transforms/models/transform_run.clj
-msgid "Manual"
-msgstr ""
-
-#: frontend/src/metabase/transforms/utils.ts
 msgid "Transforms can't be enabled on the Sample Database."
 msgstr ""
 
@@ -34699,6 +35055,10 @@ msgid ""
 "Separate values with commas, tabs, or newlines. Use double quotes if what "
 "you're searching for has commas — and if it itself includes quotes, use "
 "backslashes like this: \"searching, you see, is a \\\"simple\\\" thing.\""
+msgstr ""
+
+#: frontend/src/metabase/ui/components/inputs/PasswordInput/PasswordInput.config.tsx
+msgid "Toggle password visibility"
 msgstr ""
 
 #: frontend/src/metabase/utils/constants.ts metabase/pivot/core.cljc
@@ -35855,11 +36215,11 @@ msgid "Inner Ring"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/DimensionsWidget.tsx
-msgid "Middle Ring"
+msgid "Outer Ring"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/DimensionsWidget.tsx
-msgid "Outer Ring"
+msgid "Middle Ring"
 msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/DimensionsWidget.tsx
@@ -37173,18 +37533,15 @@ msgid ""
 "{2}, so it cannot be reached implicitly. To group or filter by a column from "
 "that table, add an explicit `joins:` entry and reference the field using the "
 "join alias. If you are aggregating a metric that relates to that table "
-"(metrics can join tables that have no foreign key), read that metric "
-"dimensions resource `metabase://metric/<metric_id>/dimensions` which lists "
-"the exact join clause to paste into `joins:` and the columns it unlocks. "
+"(metrics can join tables that have no foreign key), its dimensions list the "
+"exact join clause to paste into `joins:` and the columns it unlocks. "
 "Otherwise use a field from the source table."
 msgstr ""
 
 #: metabase/agent_lib/representations/repair.clj
 msgid ""
 "Field {0} can be reached from {1} via {2} foreign keys. Specify the `source-"
-"field` option on the field clause to disambiguate; call `read_resource` with "
-"`metabase://table/<numeric id>/fields` for the source table to list the "
-"available foreign-key columns."
+"field` option on the field clause to disambiguate."
 msgstr ""
 
 #: metabase/agent_lib/representations/repair.clj
@@ -37350,6 +37707,10 @@ msgid "Invalid Request."
 msgstr ""
 
 #: metabase/api/common.clj
+msgid "The request contains keys or values this endpoint does not accept."
+msgstr ""
+
+#: metabase/api/common.clj
 msgid "Internal server error."
 msgstr ""
 
@@ -37375,6 +37736,10 @@ msgstr ""
 
 #: metabase/api_routes/routes.clj
 msgid "API endpoint does not exist."
+msgstr ""
+
+#: metabase/api_scope/data_app.clj
+msgid "Read and query access for a sandboxed data app."
 msgstr ""
 
 #: metabase/app_db/encryption.clj
@@ -38099,12 +38464,6 @@ msgid ""
 msgstr ""
 
 #: metabase/channel/settings.clj
-msgid ""
-"Invalid http-channel-allowed-networks! Only values of external-only, allow-"
-"private, and allow-all are allowed."
-msgstr ""
-
-#: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
 msgstr ""
 
@@ -38215,6 +38574,10 @@ msgstr ""
 msgid "Clearing default entries created by Liquibase migrations..."
 msgstr ""
 
+#: metabase/cmd/copy.clj
+msgid "Seeding metabot permissions for magic groups without any..."
+msgstr ""
+
 #: metabase/cmd/core.clj
 msgid "{0} does not exist"
 msgstr ""
@@ -38249,7 +38612,7 @@ msgstr ""
 msgid "FAIL [[[{0}]]]"
 msgstr ""
 
-#: metabase/collections/create.clj metabase/collections_rest/api.clj
+#: metabase/collections/create.clj metabase/collections/update.clj
 msgid "Official Collections"
 msgstr ""
 
@@ -38386,6 +38749,10 @@ msgstr ""
 msgid "Comment context must be a valid JSON object."
 msgstr ""
 
+#: metabase/comments/schema.clj
+msgid "Emoji must be 1 to 10 Unicode code points."
+msgstr ""
+
 #: metabase/content_translation/models.clj
 #: metabase_enterprise/api_routes/routes.clj
 #: metabase_enterprise/content_translation/dictionary.clj
@@ -38402,18 +38769,18 @@ msgid ""
 "Whether dashboards should default to a user''s last used parameters on load."
 msgstr ""
 
-#: metabase/dashboards_rest/api.clj
-msgid ""
-"You cannot do a shallow copy of this dashboard because it contains Dashboard "
-"Questions."
-msgstr ""
-
-#: metabase/dashboards_rest/api.clj
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
 msgid "Card {0} does not exist or does not have a valid query."
 msgstr ""
 
-#: metabase/dashboards_rest/api.clj
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
 msgid "This dashboard has tab, makes sure every card has a tab"
+msgstr ""
+
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
+msgid ""
+"You cannot do a shallow copy of this dashboard because it contains Dashboard "
+"Questions."
 msgstr ""
 
 #: metabase/documents/api/document.clj
@@ -39050,18 +39417,12 @@ msgstr ""
 msgid ""
 "Controls which networks Metabase may connect to for warehouse connections.\n"
 "Options:\n"
-"- external-only (only globally routable public addresses)\n"
+"- external-only (only globally reachable public addresses)\n"
 "- allow-private (external + private networks but NOT loopback or link-"
 "local)\n"
 "- allow-all (no restrictions).\n"
 "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
 "Also covers the SSH tunnel host and the database auth-provider URLs."
-msgstr ""
-
-#: metabase/driver/settings.clj
-msgid ""
-"Invalid warehouse-allowed-networks! Only values of `external-only`, `allow-"
-"private`,` and `allow-all` are allowed."
 msgstr ""
 
 #: metabase/driver/settings.clj
@@ -39158,7 +39519,7 @@ msgstr ""
 msgid "All but first argument to subtraction must be an interval."
 msgstr ""
 
-#: metabase/driver/sql/query_processor.clj
+#: metabase/driver/sql/query_processor/format.clj
 msgid "Error compiling HoneySQL form: {0}"
 msgstr ""
 
@@ -39542,14 +39903,14 @@ msgstr ""
 
 #: metabase/embedding/settings.clj
 msgid ""
-"Indicates if a test embed snippet has been created for tracking in the "
-"embedding hub"
+"Indicates if a test embed snippet has been created for tracking in the setup "
+"guide"
 msgstr ""
 
 #: metabase/embedding/settings.clj
 msgid ""
 "Indicates if a production embed snippet has been created for tracking in the "
-"embedding hub"
+"setup guide"
 msgstr ""
 
 #: metabase/embedding/settings.clj
@@ -41367,7 +41728,10 @@ msgid "vLLM"
 msgstr ""
 
 #: metabase/llm/provider.clj
-msgid "Your server''s OpenAI-compatible API. It should end in /v1."
+msgid ""
+"Your server''s OpenAI-compatible API. It should end in /v1. Metabase must be "
+"able to reach it: self-hosted, a server on your private network or on this "
+"machine needs MB_LLM_ALLOWED_NETWORKS."
 msgstr ""
 
 #: metabase/llm/provider.clj
@@ -41396,6 +41760,97 @@ msgstr ""
 
 #: metabase/llm/provider.clj
 msgid "{0} takes {1} only together with {2}."
+msgstr ""
+
+#: metabase/llm/provider.clj
+msgid ""
+"This connection''s credentials come from environment variables. Change its "
+"base URL there too."
+msgstr ""
+
+#: metabase/llm/provider.clj
+msgid ""
+"Use the provider connection settings to change the base URL and enter the "
+"credentials again."
+msgstr ""
+
+#: metabase/llm/provider.clj
+msgid ""
+"Enter this connection''s credentials again to point it at a different base "
+"URL."
+msgstr ""
+
+#: metabase/llm/provider.clj
+msgid ""
+"This connection has its own base URL. Use the provider connection settings "
+"to enter its credentials."
+msgstr ""
+
+#: metabase/llm/provider.clj
+msgid ""
+"This connection''s base URL comes from an environment variable. Change it "
+"there."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid ""
+"Controls which networks Metabase may connect to for LLM provider base URLs. "
+"Set through the environment only; on Metabase Cloud the default applies.\n"
+"Options:\n"
+"- external-only (default; only globally reachable public addresses)\n"
+"- allow-private (external + private networks but NOT loopback or link-"
+"local)\n"
+"- allow-all (no restrictions).\n"
+"The Metabase AI service and LLM proxy are deployment configuration and may "
+"always use private addresses."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid ""
+"The base URL host {0} is not permitted by Metabase Cloud''s LLM network "
+"policy. Use an LLM provider on the public internet."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid ""
+"The base URL host {0} is on a network Metabase is not allowed to connect to. "
+"Set MB_LLM_ALLOWED_NETWORKS=allow-all for a server on this machine."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid ""
+"The base URL host {0} is on a network Metabase is not allowed to connect to. "
+"Set MB_LLM_ALLOWED_NETWORKS=allow-private for a server on your private "
+"network, or allow-all for one on this machine."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid "Invalid base URL: it must start with http:// or https://."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid "Invalid base URL: it must not contain a username or password."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid ""
+"JSON array of configured LLM provider connections. Each entry has a `key` (a "
+"URL-safe slug identifying the connection), a `type` (the provider type, e.g. "
+"`anthropic`), a display `name`, and a `config` map of that provider type''s "
+"credential fields."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid ""
+"Manage LLM provider connections through the provider connection settings."
+msgstr ""
+
+#: metabase/llm/provider/settings.clj
+msgid ""
+"Base URL for the LLM proxy. When set, requests to the managed Metabase AI "
+"service are routed through this proxy and authenticated with the instance "
+"token instead of a provider API key. Harbormaster adds /llm component into "
+"the url."
 msgstr ""
 
 #: metabase/llm/settings.clj
@@ -41570,22 +42025,6 @@ msgid "Socket timeout in milliseconds for requests to your vLLM server."
 msgstr ""
 
 #: metabase/llm/settings.clj
-msgid ""
-"JSON array of configured LLM provider connections. Each entry has a `key` (a "
-"URL-safe slug identifying the connection), a `type` (the provider type, e.g. "
-"`anthropic`), a display `name`, and a `config` map of that provider type''s "
-"credential fields."
-msgstr ""
-
-#: metabase/llm/settings.clj
-msgid ""
-"Base URL for the LLM proxy. When set, requests to the managed Metabase AI "
-"service are routed through this proxy and authenticated with the instance "
-"token instead of a provider API key. Harbormaster adds /llm component into "
-"the url."
-msgstr ""
-
-#: metabase/llm/settings.clj
 msgid "Base URL for the managed Metabase AI service."
 msgstr ""
 
@@ -41640,10 +42079,6 @@ msgid "Serialization troubleshooting"
 msgstr ""
 
 #: metabase/logger/api.clj
-msgid "Log levels should be an object, {0} received"
-msgstr ""
-
-#: metabase/logger/api.clj
 msgid ""
 "The format of the provided logging configuration is incorrect. Please follow "
 "the following JSON structure:\n"
@@ -41669,12 +42104,6 @@ msgstr ""
 
 #: metabase/mcp/settings.clj
 msgid "Whether the MCP server is enabled."
-msgstr ""
-
-#: metabase/mcp/settings.clj
-msgid ""
-"v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from "
-"tools/list and rejected by tools/call."
 msgstr ""
 
 #: metabase/mcp/settings.clj
@@ -41721,11 +42150,16 @@ msgstr ""
 msgid "This conversation has changed. Reload to see the latest messages."
 msgstr ""
 
+#: metabase/metabot/api.clj
+msgid "Unknown profile"
+msgstr ""
+
 #: metabase/metabot/api/conversations.clj
 msgid "Can only fork from a completed Metabot response."
 msgstr ""
 
-#: metabase/metabot/api/conversations.clj metabase/queries_rest/api/card.clj
+#: metabase/metabot/api/conversations.clj
+#: metabase/queries/card_write_checks.clj
 msgid ""
 "Mismatch detected between Dashboard''s `collection_id` ({0}) and "
 "`collection_id` ({1})"
@@ -41815,10 +42249,6 @@ msgid "View transforms"
 msgstr ""
 
 #: metabase/metabot/scope.clj
-msgid "Create and edit transforms"
-msgstr ""
-
-#: metabase/metabot/scope.clj
 msgid "View SQL snippets"
 msgstr ""
 
@@ -41899,7 +42329,7 @@ msgid "View database metadata"
 msgstr ""
 
 #: metabase/metabot/scope.clj
-msgid "View resources"
+msgid "Read MCP resources"
 msgstr ""
 
 #: metabase/metabot/scope.clj
@@ -42109,6 +42539,12 @@ msgstr ""
 
 #: metabase/metabot/self/deepseek.clj
 msgid "DeepSeek API error (HTTP {0})"
+msgstr ""
+
+#: metabase/metabot/self/google.clj
+msgid ""
+"Invalid Google service account key: token_uri must be a Google OAuth "
+"endpoint."
 msgstr ""
 
 #: metabase/metabot/self/google.clj
@@ -42539,7 +42975,7 @@ msgstr ""
 #: metabase/metabot/settings.clj
 msgid ""
 "Custom instructions appended to Metabot''s system prompt for the chat "
-"experience (the AI sidebar and embedded Metabot)."
+"experience (the AI sidebar, embedded Metabot, and Metabot in Slack)."
 msgstr ""
 
 #: metabase/metabot/settings.clj
@@ -42622,14 +43058,31 @@ msgid ""
 msgstr ""
 
 #: metabase/metabot/tools/construct.clj
-msgid "`source-table:` does not accept URIs like `{0}`. {1}"
+msgid "`source-table:` does not accept URIs like `{0}`."
 msgstr ""
 
 #: metabase/metabot/tools/construct.clj
-msgid ""
-"Unknown database: `{0}`. Use the exact database name as reported by search / "
-"`read_resource` (it appears as the first element of every portable FK, e.g. "
-"`source-table: [<db-name>, <schema>, <table>]`)."
+#: metabase/models/serialization/resolve/mp.clj
+msgid "No table found with id {0}."
+msgstr ""
+
+#: metabase/metabot/tools/construct.clj
+#: metabase/models/serialization/resolve/mp.clj
+msgid "No field found with id {0}."
+msgstr ""
+
+#: metabase/metabot/tools/construct.clj
+#: metabase/models/serialization/resolve/mp.clj
+msgid "No measure found with id {0}."
+msgstr ""
+
+#: metabase/metabot/tools/construct.clj
+#: metabase/models/serialization/resolve/mp.clj
+msgid "No segment found with id {0}."
+msgstr ""
+
+#: metabase/metabot/tools/construct.clj
+msgid "Unknown database: `{0}`."
 msgstr ""
 
 #: metabase/metabot/tools/construct.clj
@@ -42640,17 +43093,18 @@ msgid ""
 msgstr ""
 
 #: metabase/metabot/tools/construct.clj
-msgid ""
-"No saved question or model found with entity_id {0}. Do not invent or guess "
-"entity_ids: call `read_resource` with `metabase://question/<numeric id>` or "
-"`metabase://model/<numeric id>` first, then copy the exact "
-"`portable_entity_id` from the response into `source-card:`."
+#: metabase/models/serialization/resolve/mp.clj
+msgid "No saved question or model found with entity_id {0}."
+msgstr ""
+
+#: metabase/metabot/tools/construct.clj
+#: metabase/models/serialization/resolve/mp.clj
+msgid "No saved question or model found with id {0}."
 msgstr ""
 
 #: metabase/metabot/tools/construct.clj
 msgid ""
-"First stage must have either `source-table:` (as a portable FK `[<db-name>, "
-"<schema>, <table>]`) or `source-card:` (as an entity_id string). Neither was "
+"First stage must have either `source-table:` or `source-card:`; neither was "
 "found in `stages[0]`."
 msgstr ""
 
@@ -42670,6 +43124,106 @@ msgstr ""
 
 #: metabase/metabot/tools/metadata.clj
 msgid "Too many {0} IDs provided ({1}). Limit to {2}."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Metrics are aggregations, not sources. To use metric {0}, put its base table "
+"into `source-table:` — combine the `database_name` and "
+"`base_table_fully_qualified_name` attributes from its search result or "
+"`read_resource metabase://metric/{1}` — and reference the metric as:"
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"To reference a saved question or model as a query source, put its "
+"`portable_entity_id` (the 21-char string from its search result or "
+"`read_resource`) into `source-card:` — not a URI."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Use the portable FK `[<db-name>, <schema>, <table-name>]` in `source-table:` "
+"— not a URI. `read_resource metabase://table/{0}` reports the exact names."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
+"or, via `source-card:`, a saved-card `portable_entity_id`."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Call `read_resource` with `metabase://database/<numeric id>/tables` to list "
+"available tables and schemas, then retry with an exact portable FK from the "
+"response."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"That numeric table id does not resolve. Call `read_resource` with "
+"`metabase://database/<numeric id>/tables` to find the table, then use its "
+"portable FK `[<db-name>, <schema>, <table-name>]` in `source-table:`."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Call `read_resource` with `metabase://database/<numeric id>/tables` to list "
+"available tables and retry with a more specific portable FK."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Call `read_resource` with `metabase://table/<numeric id>/fields` to list "
+"this table''s columns."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Call `read_resource` with `metabase://table/<numeric id>/fields` for the "
+"source table to list the available foreign-key columns."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"If a metric relates to that table, read its dimensions resource `metabase://"
+"metric/<metric_id>/dimensions`, which lists the exact `joins:` clause to "
+"paste and the columns it unlocks."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Do not invent or guess entity_ids: call `read_resource` with `metabase://"
+"question/<numeric id>` or `metabase://model/<numeric id>` first, then copy "
+"the exact `portable_entity_id` from the response into `source-card:`."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Do not invent or guess entity_ids: read the table that owns the measure with "
+"`read_resource` (`metabase://table/<numeric id>`) and copy the exact "
+"`portable_entity_id` from its `<measure>` tag."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Do not invent or guess entity_ids: read the table that owns the segment with "
+"`read_resource` (`metabase://table/<numeric id>`) and copy the exact "
+"`portable_entity_id` from its `<segment>` tag."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"Use the exact database name as reported by search / `read_resource` (it "
+"appears as the first element of every portable FK, e.g. `source-table: [<db-"
+"name>, <schema>, <table>]`)."
+msgstr ""
+
+#: metabase/metabot/tools/recovery_hints.clj
+msgid ""
+"`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; "
+"`source-card:` takes an entity_id string."
 msgstr ""
 
 #: metabase/metabot/tools/resources.clj
@@ -42801,6 +43355,24 @@ msgstr ""
 msgid "Cannot set an orphaned dimension as the default."
 msgstr ""
 
+#: metabase/mfa/settings.clj
+msgid ""
+"Controls whether two-factor authentication is available to users. :off "
+"disables it entirely; :optional allows users to enroll voluntarily, :"
+"required mandates users enroll."
+msgstr ""
+
+#: metabase/mfa/settings.clj
+msgid ""
+"Invalid value for mfa-enforcement: {0}. Allowed values are :off, :optional, "
+"and :required."
+msgstr ""
+
+#: metabase/mfa/settings.clj metabase_enterprise/mfa/management.clj
+#: metabase_enterprise/mfa/settings.clj
+msgid "Multi-factor authentication"
+msgstr ""
+
 #: metabase/model_persistence/api.clj
 msgid "String representing a cron schedule"
 msgstr ""
@@ -42853,17 +43425,6 @@ msgstr ""
 
 #: metabase/model_persistence/settings.clj
 msgid "Whether to enable models persistence for a specific Database."
-msgstr ""
-
-#: metabase/models/humanization.clj
-msgid "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
-msgstr ""
-
-#: metabase/models/humanization.clj
-msgid ""
-"To make table and field names more human-friendly, Metabase will replace "
-"dashes and underscores in them with spaces. We’ll capitalize each word while "
-"at it, so ‘last_visited_at’ will become ‘Last Visited At’."
 msgstr ""
 
 #: metabase/models/serialization/resolve/mp.clj
@@ -42924,10 +43485,6 @@ msgid ""
 msgstr ""
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No saved question or model found with entity_id {0}."
-msgstr ""
-
-#: metabase/models/serialization/resolve/mp.clj
 msgid ""
 "Saved question / model {0} belongs to database {1}, but this query targets "
 "database {2}. Cross-database queries are not supported."
@@ -42944,10 +43501,6 @@ msgid ""
 msgstr ""
 
 #: metabase/models/serialization/resolve/mp.clj
-msgid "No measure found with id {0}."
-msgstr ""
-
-#: metabase/models/serialization/resolve/mp.clj
 msgid ""
 "Measure id {0} belongs to a table in a different database than this query. "
 "Cross-database queries are not supported."
@@ -42957,10 +43510,6 @@ msgstr ""
 msgid ""
 "Measure id {0} does not have an entity_id, so it cannot be exported as a "
 "portable representation."
-msgstr ""
-
-#: metabase/models/serialization/resolve/mp.clj
-msgid "No segment found with id {0}."
 msgstr ""
 
 #: metabase/models/serialization/resolve/mp.clj
@@ -42983,14 +43532,6 @@ msgstr ""
 msgid ""
 "Segment {0} belongs to a table in a different database than this query "
 "(target database id {1}). Cross-database queries are not supported."
-msgstr ""
-
-#: metabase/models/serialization/resolve/mp.clj
-msgid "No table found with id {0}."
-msgstr ""
-
-#: metabase/models/serialization/resolve/mp.clj
-msgid "No field found with id {0}."
 msgstr ""
 
 #: metabase/mq/settings.clj
@@ -43089,6 +43630,10 @@ msgstr ""
 
 #: metabase/parameters/chain_filter.clj
 msgid "Error executing chain filter query"
+msgstr ""
+
+#: metabase/parameters/chain_filter.clj
+msgid "Error executing chain filter range query"
 msgstr ""
 
 #: metabase/parameters/chain_filter.clj
@@ -43279,6 +43824,14 @@ msgstr ""
 
 #: metabase/permissions_rest/api.clj
 msgid "Tenant groups cannot be created while the Tenants feature is disabled."
+msgstr ""
+
+#: metabase/permissions_rest/api.clj metabase_enterprise/api_routes/routes.clj
+msgid "Data Apps"
+msgstr ""
+
+#: metabase/permissions_rest/api.clj metabase_enterprise/data_apps/api.clj
+msgid "Deactivated users cannot be added to data apps."
 msgstr ""
 
 #: metabase/permissions_rest/api.clj
@@ -43596,6 +44149,10 @@ msgstr ""
 msgid "The parameter {0} does not exist on this card."
 msgstr ""
 
+#: metabase/queries/card_write_checks.clj
+msgid "Card of type {0} is invalid, cannot be saved."
+msgstr ""
+
 #: metabase/queries/models/card.clj
 msgid ""
 "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is "
@@ -43660,10 +44217,6 @@ msgstr ""
 
 #: metabase/queries_rest/api/card.clj
 msgid "Card with type {0} is not compatible to have series"
-msgstr ""
-
-#: metabase/queries_rest/api/card.clj
-msgid "Card of type {0} is invalid, cannot be saved."
 msgstr ""
 
 #: metabase/query_permissions/impl.clj
@@ -44394,6 +44947,10 @@ msgid ""
 "order by, or limit"
 msgstr ""
 
+#: metabase/server/middleware/body_limit.clj
+msgid "Request body exceeds the maximum size of {0} bytes."
+msgstr ""
+
 #: metabase/server/routes/index.clj
 msgid ""
 "Failed to load template ''{0}''. Did you remember to build the Metabase "
@@ -44450,6 +45007,13 @@ msgid ""
 msgstr ""
 
 #: metabase/server/settings.clj
+msgid ""
+"Maximum size in bytes of an HTTP request body from a caller who is not "
+"authenticated. Larger requests are rejected with HTTP 413 before the body is "
+"read."
+msgstr ""
+
+#: metabase/server/settings.clj
 msgid "Signing secret for verifying requests from the Metabot Slack app"
 msgstr ""
 
@@ -44472,6 +45036,11 @@ msgstr ""
 
 #: metabase/session/api.clj
 msgid "Multi-factor authentication is not available."
+msgstr ""
+
+#: metabase/session/api.clj metabase_enterprise/mfa/management.clj
+msgid ""
+"Two-factor authentication is already set up. Disable it before re-enrolling."
 msgstr ""
 
 #: metabase/session/api.clj
@@ -44668,6 +45237,14 @@ msgstr ""
 msgid "Unable to connect to Slack API: {0}"
 msgstr ""
 
+#: metabase/slackbot/client.clj
+msgid "Refusing to download a file from a non-Slack host."
+msgstr ""
+
+#: metabase/slackbot/client.clj
+msgid "Unexpected response downloading file from Slack (status {0})."
+msgstr ""
+
 #: metabase/slackbot/settings.clj
 msgid "Maximum number of concurrent Slack event handler threads."
 msgstr ""
@@ -44709,6 +45286,14 @@ msgstr ""
 
 #: metabase/sso/integrations/slack_connect.clj
 msgid "Slack authentication failed"
+msgstr ""
+
+#: metabase/sso/ldap/settings.clj
+msgid "Is LDAP currently enabled?"
+msgstr ""
+
+#: metabase/sso/ldap/settings.clj
+msgid "Unable to connect to LDAP server with current settings"
 msgstr ""
 
 #: metabase/sso/oidc/state.clj
@@ -44827,21 +45412,13 @@ msgid "JSON containing LDAP to Metabase group mappings."
 msgstr ""
 
 #: metabase/sso/settings.clj
-msgid "{0} is not a valid DN."
+msgid "{0} is not a valid DN. Example: {1}"
 msgstr ""
 
 #: metabase/sso/settings.clj
 msgid ""
 "Have the mandatory LDAP settings (host and user search base) been validated "
 "and saved?"
-msgstr ""
-
-#: metabase/sso/settings.clj
-msgid "Is LDAP currently enabled?"
-msgstr ""
-
-#: metabase/sso/settings.clj
-msgid "Unable to connect to LDAP server with current settings"
 msgstr ""
 
 #: metabase/sso/settings.clj
@@ -45001,14 +45578,9 @@ msgstr ""
 
 #: metabase/tiles/settings.clj
 msgid ""
-"Invalid map-tile-server-allowed-networks! Only values of external-only, "
-"allow-private, and allow-all are allowed."
-msgstr ""
-
-#: metabase/tiles/settings.clj
-msgid ""
 "The map tile server URL template used in map visualizations, for example "
-"from OpenStreetMaps or MapBox."
+"from OpenStreetMaps or MapBox. This URL is visible to clients, so do not "
+"include private keys."
 msgstr ""
 
 #: metabase/tiles/settings.clj
@@ -45278,6 +45850,15 @@ msgid "There was an error uploading the file"
 msgstr ""
 
 #: metabase/upload/impl.clj
+msgid ""
+"Column count in data ({0}) exceeds the number of columns in the header ({1})"
+msgstr ""
+
+#: metabase/upload/impl.clj
+msgid "Unable to determine separator"
+msgstr ""
+
+#: metabase/upload/impl.clj
 msgid "Uploads are not enabled."
 msgstr ""
 
@@ -45395,10 +45976,6 @@ msgstr ""
 
 #: metabase/users/models/user.clj
 msgid "Metabase instance has not been initialized"
-msgstr ""
-
-#: metabase/users/schema.clj
-msgid "login attribute keys must be a keyword or string"
 msgstr ""
 
 #: metabase/users/schema.clj
@@ -45666,10 +46243,6 @@ msgid "value must be a valid coercion strategy (keyword or string)."
 msgstr ""
 
 #: metabase/util/malli/schema.clj
-msgid "value must be a valid entity type (keyword or string)."
-msgstr ""
-
-#: metabase/util/malli/schema.clj
 msgid "Value must be a map."
 msgstr ""
 
@@ -45691,10 +46264,6 @@ msgstr ""
 
 #: metabase/util/malli/schema.clj
 msgid "value must be a valid date string"
-msgstr ""
-
-#: metabase/util/malli/schema.clj
-msgid "value must be a valid JSON string."
 msgstr ""
 
 #: metabase/util/malli/schema.clj
@@ -45792,6 +46361,17 @@ msgstr ""
 msgid "Timed out waiting for field values."
 msgstr ""
 
+#: metabase/warehouse_schema/settings.clj
+msgid "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
+msgstr ""
+
+#: metabase/warehouse_schema/settings.clj
+msgid ""
+"To make table and field names more human-friendly, Metabase will replace "
+"dashes and underscores in them with spaces. We’ll capitalize each word while "
+"at it, so ‘last_visited_at’ will become ‘Last Visited At’."
+msgstr ""
+
 #: metabase/warehouse_schema_rest/api/field.clj
 msgid "Incompatible coercion strategy."
 msgstr ""
@@ -45799,6 +46379,10 @@ msgstr ""
 #: metabase/warehouse_schema_rest/api/field.clj
 msgid ""
 "Failed to scan field values. Check the server logs for the underlying error."
+msgstr ""
+
+#: metabase/warehouse_schema_rest/api/table.clj
+msgid "value must be a valid entity type (keyword or string)."
 msgstr ""
 
 #: metabase/warehouse_schema_rest/api/table.clj
@@ -46211,10 +46795,6 @@ msgid "Collection Cleanup"
 msgstr ""
 
 #: metabase_enterprise/api_routes/routes.clj
-msgid "Data Apps"
-msgstr ""
-
-#: metabase_enterprise/api_routes/routes.clj
 msgid "Dependency Tracking"
 msgstr ""
 
@@ -46266,6 +46846,10 @@ msgstr ""
 
 #: metabase_enterprise/api_routes/routes.clj
 msgid "Transforms Python"
+msgstr ""
+
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Transforms Testing"
 msgstr ""
 
 #: metabase_enterprise/audit_app/analytics_dev.clj
@@ -46405,6 +46989,28 @@ msgstr ""
 msgid "Turn on the image CSP setting before enabling Custom Visualizations."
 msgstr ""
 
+#: metabase_enterprise/data_apps/api.clj
+msgid "This data app has not been published yet."
+msgstr ""
+
+#: metabase_enterprise/data_apps/api.clj
+msgid "One or more tables do not exist."
+msgstr ""
+
+#: metabase_enterprise/data_apps/api.clj
+msgid "Tenant users cannot be added to data apps."
+msgstr ""
+
+#: metabase_enterprise/data_apps/api.clj
+msgid ""
+"Data app queries cannot use metrics that reference other saved questions or "
+"metrics: {0}"
+msgstr ""
+
+#: metabase_enterprise/data_apps/config.clj
+msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
+msgstr ""
+
 #: metabase_enterprise/data_apps/config.clj
 msgid "{0}/{1}: \"description\" must be a one-line string."
 msgstr ""
@@ -46449,6 +47055,10 @@ msgstr ""
 
 #: metabase_enterprise/data_apps/config.clj
 msgid "{0}/{1}: \"path\" must not contain \"..\"."
+msgstr ""
+
+#: metabase_enterprise/data_apps/sync.clj
+msgid "Bundle not synced yet."
 msgstr ""
 
 #: metabase_enterprise/data_apps/sync.clj
@@ -46671,10 +47281,6 @@ msgid ""
 "administrator."
 msgstr ""
 
-#: metabase_enterprise/mfa/management.clj metabase_enterprise/mfa/settings.clj
-msgid "Multi-factor authentication"
-msgstr ""
-
 #: metabase_enterprise/mfa/management.clj
 msgid "Two-factor authentication is not enabled on this instance."
 msgstr ""
@@ -46685,25 +47291,12 @@ msgstr ""
 
 #: metabase_enterprise/mfa/management.clj
 msgid ""
-"Two-factor authentication is already set up. Disable it before re-enrolling."
-msgstr ""
-
-#: metabase_enterprise/mfa/management.clj
-msgid ""
 "You cannot administratively remove your own two-factor authentication. "
 "Please use the normal removal method in your account settings."
 msgstr ""
 
 #: metabase_enterprise/mfa/settings.clj
-msgid ""
-"Controls whether two-factor authentication is available to users. :off "
-"disables it entirely; :optional allows users to enroll voluntarily."
-msgstr ""
-
-#: metabase_enterprise/mfa/settings.clj
-msgid ""
-"Invalid value for mfa-enforcement: {0}. Allowed values are :off and :"
-"optional. (:required is reserved for a future release.)"
+msgid "Time after which mfa-enforcement will take effect for all users"
 msgstr ""
 
 #: metabase_enterprise/permission_debug/impl.clj
@@ -46760,8 +47353,8 @@ msgstr ""
 
 #: metabase_enterprise/remote_sync/settings.clj
 msgid ""
-"The location of your git repository, e.g. https://github.com/acme-inco/"
-"metabase.git"
+"The location of your git repository, e.g. `https://github.com/acme-inco/"
+"metabase.git`"
 msgstr ""
 
 #: metabase_enterprise/remote_sync/settings.clj
@@ -46781,7 +47374,11 @@ msgid ""
 msgstr ""
 
 #: metabase_enterprise/remote_sync/settings.clj
-msgid "The maximum amount of time a remote sync task will be given to complete"
+msgid ""
+"How long a remote sync task may go without proving its process is alive (via "
+"heartbeat, or progress on rows without one) before it is treated as dead and "
+"superseded. A slow but live task is never affected. The task itself is "
+"aborted after ten times this limit."
 msgstr ""
 
 #: metabase_enterprise/remote_sync/settings.clj
@@ -46861,6 +47458,10 @@ msgid "Query requires user attribute `{0}`"
 msgstr ""
 
 #: metabase_enterprise/sandbox/query_processor/middleware/sandboxing.clj
+msgid "User attribute `{0}` value `{1}` cannot be coerced to column type {2}"
+msgstr ""
+
+#: metabase_enterprise/sandbox/query_processor/middleware/sandboxing.clj
 msgid "Error preprocessing query when applying Sandbox: {0}"
 msgstr ""
 
@@ -46930,6 +47531,18 @@ msgstr ""
 
 #: metabase_enterprise/semantic_search/settings.clj
 msgid "URL of the OpenAI-compatible embedding service (e.g. a LiteLLM proxy)."
+msgstr ""
+
+#: metabase_enterprise/semantic_search/settings.clj
+msgid ""
+"The embedding service API key comes from an environment variable. Set its "
+"base URL there too."
+msgstr ""
+
+#: metabase_enterprise/semantic_search/settings.clj
+msgid ""
+"Clear the embedding service API key before changing its base URL, then set a "
+"replacement key."
 msgstr ""
 
 #: metabase_enterprise/semantic_search/settings.clj
@@ -47396,6 +48009,86 @@ msgstr ""
 
 #: metabase_enterprise/tenants/models.clj
 msgid "Tenant collection: {0}"
+msgstr ""
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid ""
+"Expectation {0} names column {1}, which matches more than one output column: "
+"{2}. Write it exactly as the output spells it."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid ""
+"Expectation {0} compares column {1}, which the transform output does not "
+"have. It has: {2}"
+msgstr ""
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid ""
+"Expectation {0} compares against a SQL query, which is not implemented yet. "
+"Give ''columns'' and ''rows'' instead."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/expectations/protocol.clj
+msgid "Expectation {0} is of type {1}, which is not implemented yet."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The expectation could not be run, and the database gave no reason."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Only query transforms can be tested."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The {0} database of this transform does not support transform testing."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid ""
+"The transform source SQL could not be parsed for test input validation: {0}"
+msgstr ""
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Could not create the test input for {0}:"
+msgstr ""
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform under test failed to run:"
+msgstr ""
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid ""
+"Expectation {0} reads table(s) this test does not stand in for: {1}. An "
+"expectation may only read the transform''s output and its declared inputs."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid ""
+"The transform test could not fully remap the source to test tables; these "
+"reference(s) remain: {0}. Alias each source table and qualify its columns by "
+"the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} has SQL that could not be parsed: {1}"
+msgstr ""
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid ""
+"The transform reads table(s) with no declared test input: {0}. Add an input "
+"for each."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid ""
+"Test input(s) declared for table(s) the transform does not read: {0}. Remove "
+"them."
+msgstr ""
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Duplicate test inputs; each input table may be declared only once: {0}"
 msgstr ""
 
 #: metabase_enterprise/transforms_inspector/core.clj

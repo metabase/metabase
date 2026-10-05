@@ -59,6 +59,7 @@
   (when (instance? ErrorResponseFnProvider os)
     (.errorResponseFn ^ErrorResponseFnProvider os)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *response*
   "The `HttpServletResponse` for the current streaming response.
    Bound automatically inside `streaming-response` bodies in the Jetty async path.
@@ -66,6 +67,7 @@
    [[set-content-type!]] to interact with it."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *request*
   "The Jetty `Request` for the current streaming response.
    Bound automatically inside `streaming-response` bodies in the Jetty async path.
@@ -73,6 +75,7 @@
    occurs after the response has already been committed."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *completed?*
   "An `AtomicBoolean` that is set to `true` when the async context has been completed,
    either by the worker thread or by Jetty's timeout/error callbacks. When `true`, the

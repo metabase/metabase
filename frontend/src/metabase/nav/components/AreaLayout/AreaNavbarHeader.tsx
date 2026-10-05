@@ -1,14 +1,13 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Box, Flex, Group, Text } from "metabase/ui";
+import { Box, Flex, Group } from "metabase/ui";
 
 import S from "./AreaLayout.module.css";
 import { ToggleActionIcon } from "./ToggleActionIcon";
 
 type AreaNavbarHeaderProps = {
   logo: ReactNode;
-  title?: ReactNode;
   headerControls?: ReactNode;
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
@@ -16,7 +15,6 @@ type AreaNavbarHeaderProps = {
 
 export function AreaNavbarHeader({
   logo,
-  title,
   headerControls,
   isNavbarOpened,
   onNavbarToggle,
@@ -40,11 +38,6 @@ export function AreaNavbarHeader({
             />
           )}
         </Box>
-        {isNavbarOpened && title && (
-          <Text fw="bold" c="text-primary">
-            {title}
-          </Text>
-        )}
         {isNavbarOpened && headerControls}
       </Group>
       {isNavbarOpened && (

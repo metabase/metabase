@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/redux";

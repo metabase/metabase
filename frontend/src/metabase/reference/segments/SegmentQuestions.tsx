@@ -1,29 +1,27 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useListCardsQuery } from "metabase/api";
+import { skipToken, useListCardsQuery } from "metabase/api";
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { selectMetadataProvider } from "metabase/metadata-store";
-import { connect } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
 import * as Urls from "metabase/urls";
 import { visualizations } from "metabase/viz-core";
 import type * as Lib from "metabase-lib";
+import type { Segment, Table } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import { getSegment, getTableBySegment } from "../selectors";
-import type { StubbedSegment, StubbedTable } from "../types";
 import { getDescription, getQuestionUrl } from "../utils";
 
 const emptyStateData = (
-  table: StubbedTable,
-  segment: StubbedSegment,
+  table: Table,
+  segment: Segment,
   metadataProvider: Lib.MetadataProvider,
 ) => {
   return {
@@ -31,48 +29,39 @@ const emptyStateData = (
     icon: "folder" as const,
     action: t`Ask a question`,
     link: getQuestionUrl({
-      tableId: segment.table_id!,
+      tableId: table.id,
       segmentId: segment.id,
       metadataProvider: metadataProvider,
     }),
   };
 };
 
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  segment: getSegment(state, props),
-  table: getTableBySegment(state, props),
-  metadataProvider: selectMetadataProvider(
-    state,
-    getTableBySegment(state, props)?.db_id ?? null,
-  ),
-});
-
-interface SegmentQuestionsInnerProps {
-  style: React.CSSProperties;
-  table: StubbedTable;
-  segment: StubbedSegment;
-  metadataProvider: Lib.MetadataProvider;
+interface SegmentQuestionsProps {
+  style?: React.CSSProperties;
+  table: Table | undefined;
+  segment: Segment | undefined;
 }
 
-const SegmentQuestionsInner = ({
+export const SegmentQuestions = ({
   style,
   table,
   segment,
-  metadataProvider,
-}: SegmentQuestionsInnerProps) => {
+}: SegmentQuestionsProps) => {
+  const metadataProvider = useSelector((state) =>
+    selectMetadataProvider(state, table?.db_id ?? null),
+  );
   const {
     data: cards = [],
     isLoading,
     error,
-  } = useListCardsQuery({ f: "using_segment", model_id: segment.id });
+  } = useListCardsQuery(
+    segment != null ? { f: "using_segment", model_id: segment.id } : skipToken,
+  );
 
   return (
     <div style={style} className={CS.full}>
       <ReferenceHeader
-        name={t`Questions about ${segment.name}`}
+        name={t`Questions about ${segment?.name}`}
         headerIcon={modelIconMap.segment}
       />
       <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
@@ -109,8 +98,3 @@ const SegmentQuestionsInner = ({
     </div>
   );
 };
-
-export const SegmentQuestions = connect(
-  mapStateToProps,
-  // Unjustified type cast. FIXME
-)(SegmentQuestionsInner as unknown as React.ComponentType);

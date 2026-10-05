@@ -57,11 +57,10 @@ jobs:
       build_scripts: ${{ steps.changes.outputs.build_scripts }}
       embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
-      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
+      frontend_loki_all: ${{ steps.changes.outputs.frontend_loki_all }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
       embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
@@ -87,7 +86,7 @@ jobs:
       frontend_sources_files: ${{ steps.changes.outputs.frontend_sources_files }}
       backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
@@ -107,7 +106,7 @@ jobs:
       stats: ${{ steps.compute.outputs.stats }}
       artifact-id: ${{ steps.compute.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Create test plan
         id: compute
         uses: ./.github/actions/create-test-plan
@@ -132,7 +131,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/prepare-node-bun
       - name: Upload affected tests stats
         env:
@@ -188,7 +187,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -215,7 +214,7 @@ jobs:
     outputs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -320,7 +319,7 @@ jobs:
         needs.files-changed.outputs.ci_scripts != 'true' }}
 
   loki-tests:
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, create-test-plan]
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
@@ -329,12 +328,12 @@ jobs:
     with:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_ci != 'true' &&
-        needs.files-changed.outputs.frontend_sources != 'true' &&
-        needs.files-changed.outputs.frontend_loki_ci != 'true' }}
+        needs.files-changed.outputs.frontend_loki_all != 'true' }}
+      # A skipped/failed planner supplies no artifact, so the suite runs in full.
+      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
 
   e2e-tests:
-    needs: [should-run, files-changed, uberjar]
+    needs: [should-run, files-changed, uberjar, create-test-plan]
     # Skip e2e tests when the uberjar build failed or was cancelled — the
     # downstream tests can't fetch a missing artifact, and we don't want to
     # mask the uberjar failure with a wave of misleading e2e errors. We still
@@ -354,19 +353,13 @@ jobs:
       skip: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.e2e_all != 'true' }}
-      # here we pass the list of changed files
-      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
-      # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
-      # list of changed specs files, then only specs are changed and we can run only those specs.
-      # Only narrow to changed specs on pull requests that haven't been forced to run everything.
-      # On push to master/release branches (and the merge queue) the paths-filter still computes
-      # these file lists, so without this guard a run that touched only specs would silently run a
-      # narrowed suite — we always want the full suite there.
-      specs: >-
+      # Only narrow specs on pull requests that haven't been forced to run everything.
+      # Push and merge-queue runs always use the full suite.
+      test-plan-artifact-id: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         github.event_name == 'pull_request' &&
-        needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files &&
-        needs.files-changed.outputs.e2e_specs_files || '' }}
+        needs.create-test-plan.result == 'success' &&
+        needs.create-test-plan.outputs.artifact-id || '' }}
 
   embedding-sdk-package:
     needs: [should-run, files-changed]

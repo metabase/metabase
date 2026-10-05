@@ -148,6 +148,7 @@
 
 (def ^:private transforms-dir "transforms/")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *transform-specs*
   "Delay for all transform specs, loaded from YAML and coerced to the [[TransformSpec]] schema."
   (delay (yaml/load-dir transforms-dir (comp coerce-to-transform-spec add-metadata-to-steps))))

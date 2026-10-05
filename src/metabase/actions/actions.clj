@@ -95,6 +95,7 @@
                          (pr-str driver))
                     {:status-code 400}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *misc-value-cache*
   "A cache that lives for the duration of the top-level Action invoked by [[perform-action!]]. You can use this to store
   miscellaneous values such as things that need to be fetched from the application database to avoid duplicate calls
@@ -119,7 +120,7 @@
           (swap! *misc-value-cache* assoc unique-key value))
         value)))
 
-(defn check-actions-enabled-for-database!
+(defn check-actions-enabled-for-database
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions db)
@@ -135,7 +136,7 @@
 
   nil)
 
-(defn check-data-editing-enabled-for-database!
+(defn check-data-editing-enabled-for-database
   "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
   [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions/data-editing db)
@@ -154,11 +155,11 @@
 (defn- database-for-action [action-or-id]
   (actions.db/database-for-action (u/the-id action-or-id)))
 
-(defn check-actions-enabled!
-  "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
-   otherwise returns nil."
+(defn check-actions-enabled
+  "Throws an appropriate error if actions are unsupported or disabled for the database the action runs against,
+  otherwise returns nil."
   [action-or-id]
-  (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
+  (check-actions-enabled-for-database (api/check-404 (database-for-action action-or-id))))
 
 (defmulti handle-effects!*
   "Trigger bulk side effects in response to individual effects within actions, e.g. table row modified system events."
@@ -330,15 +331,15 @@
       (when db
         (case policy
           :ad-hoc-invocation
-          (check-actions-enabled-for-database! db)
+          (check-actions-enabled-for-database db)
           :model-action
-          (check-actions-enabled-for-database! db)
+          (check-actions-enabled-for-database db)
           :data-editing
           (do
             ;; TODO more granular controls
             (when-not (api/check-superuser)
               (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
-            (check-data-editing-enabled-for-database! db))))
+            (check-data-editing-enabled-for-database db))))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
           (let [context  (-> existing-context

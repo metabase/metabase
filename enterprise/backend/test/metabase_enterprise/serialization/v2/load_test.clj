@@ -115,6 +115,41 @@
                 (is (some (partial re-find #"Invalid input.*:template-tags") messages))
                 (is (not (ours? messages)))))))))))
 
+(deftest http-action-dashcards-are-dropped-test
+  (testing "an older export's HTTP action does not load, and only the dashboard buttons that ran it are dropped"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db        (ts/create! :model/Database :name "my-db")
+                coll      (ts/create! :model/Collection :name "Actions")
+                model     (ts/create! :model/Card
+                                      :name          "A model"
+                                      :type          :model
+                                      :collection_id (:id coll)
+                                      :database_id   (:id db)
+                                      :dataset_query {:database (:id db)
+                                                      :type     :native
+                                                      :native   {:query "SELECT 1"}})
+                action    (ts/create! :model/Action :name "Old HTTP" :type :query :model_id (:id model))
+                _         (ts/create! :model/QueryAction
+                                      :action_id     (:id action)
+                                      :dataset_query {:database (:id db) :type :native :native {:query "UPDATE t SET x = 1"}})
+                dashboard (ts/create! :model/Dashboard :name "Buttons" :collection_id (:id coll))]
+            (ts/create! :model/DashboardCard :dashboard_id (:id dashboard) :action_id (:id action))
+            (ts/create! :model/DashboardCard :dashboard_id (:id dashboard) :card_id (:id model))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory
+                                       (for [entity @serialized]
+                                         (cond-> entity
+                                           (= "Action" (-> entity :serdes/meta last :model))
+                                           (-> (assoc :type "http") (dissoc :query))))))
+          (let [dashboard-id (t2/select-one-pk :model/Dashboard :name "Buttons")]
+            (is (not (t2/exists? :model/Action :name "Old HTTP")))
+            (is (some? dashboard-id))
+            (is (=? [{:card_id pos-int? :action_id nil}]
+                    (t2/select :model/DashboardCard :dashboard_id dashboard-id)))))))))
+
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
@@ -2982,3 +3017,64 @@
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
+
+(deftest glossary-round-trip-test
+  (let [serialized (atom nil)
+        eid        (atom nil)]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [entry (ts/create! :model/Glossary :term "ARR" :definition "Annual recurring revenue")]
+          (reset! eid (:entity_id entry))
+          (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
+      (testing "the export is keyed on entity_id"
+        (is (contains? (ids-by-model @serialized "Glossary") @eid)))
+      (testing "importing into an empty app db reproduces the term, definition and entity_id"
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (=? [{:term "ARR" :definition "Annual recurring revenue" :entity_id @eid}]
+                  (t2/select :model/Glossary)))))
+      (testing "importing again updates in place rather than duplicating"
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (= 1 (t2/count :model/Glossary))))))))
+
+(deftest glossary-load-find-local-test
+  (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+    (testing "an entity_id path finds the row"
+      (is (= (:id entry) (:id (serdes/load-find-local [{:model "Glossary" :id (:entity_id entry)}])))))
+    (testing "a term-keyed path from a pre-entity_id export finds the row"
+      (is (= (:id entry) (:id (serdes/load-find-local [{:model "Glossary" :id "ARR"}])))))
+    (testing "a term that is itself 21 nano-id characters still finds the row by term"
+      (mt/with-temp [:model/Glossary shaped {:term "CustomerLifetimeValue" :definition "x"}]
+        (is (= (:id shaped) (:id (serdes/load-find-local [{:model "Glossary" :id "CustomerLifetimeValue"}]))))))
+    (testing "an unknown term finds nothing"
+      (is (nil? (serdes/load-find-local [{:model "Glossary" :id "No such term"}]))))))
+
+(deftest glossary-import-matches-existing-term-test
+  (let [glossary-file (fn [id entity]
+                        (merge {:serdes/meta [{:model "Glossary" :id id}]
+                                :term        "ARR"
+                                :definition  "Annual recurring revenue (imported)"
+                                :creator_id  "crowberto@metabase.com"
+                                :created_at  "2026-09-11T00:00:00Z"
+                                :updated_at  "2026-09-11T00:00:00Z"}
+                               entity))]
+    (testing "a term-keyed file exported before entity_id existed updates the same-term row and keeps its entity_id"
+      (mt/with-empty-h2-app-db!
+        (let [{local-eid :entity_id} (ts/create! :model/Glossary :term "ARR" :definition "local")]
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file "ARR" nil)]))
+          (is (=? [{:term "ARR" :definition "Annual recurring revenue (imported)" :entity_id local-eid}]
+                  (t2/select :model/Glossary))))))
+    (testing "a file whose term exists locally under another entity_id updates that row in place and adopts the file's entity_id"
+      (mt/with-empty-h2-app-db!
+        (let [file-eid       "glossaryfileeid000001"
+              {local-id :id} (ts/create! :model/Glossary :term "ARR" :definition "local")]
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
+          (is (=? [{:id local-id :term "ARR" :definition "Annual recurring revenue (imported)" :entity_id file-eid}]
+                  (t2/select :model/Glossary))))))
+    (testing "a file whose entity_id and term are both new inserts a row"
+      (mt/with-empty-h2-app-db!
+        (let [file-eid "glossaryfileeid000002"]
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
+          (is (=? [{:term "ARR" :entity_id file-eid}]
+                  (t2/select :model/Glossary))))))))

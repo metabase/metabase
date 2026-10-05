@@ -28,8 +28,8 @@ describe("Embed flow > setup guide step completion tracking", () => {
     async ({ useExistingUserSession, trigger }) => {
       setup({
         jwtReady: !useExistingUserSession,
-        modularEmbeddingEnabled: true,
-        showModularEmbedTerms: false,
+        simpleEmbeddingEnabled: true,
+        showSimpleEmbedTerms: false,
         initialState: {
           useExistingUserSession,
         },

@@ -10,7 +10,7 @@ export {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   type AuthSettingsPageProps,
   type AuthSettingsPageTab,
-  type SettingsJWTFormProps,
+  type LdapUserProvisioningProps,
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,
@@ -75,13 +75,7 @@ export {
 export { PLUGIN_DATA_APPS } from "./oss/data-apps";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
-export {
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
-  type SdkIframeEmbedSetupModalProps,
-  type SdkIframeEmbedSetupModalInitialState,
-  type SdkIframeEmbedSetupExperience,
-  type LegacyStaticEmbeddingModalProps,
-} from "./oss/embedding-iframe-sdk-setup";
+export { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
 export {
   PLUGIN_NOTIFICATIONS_SDK,

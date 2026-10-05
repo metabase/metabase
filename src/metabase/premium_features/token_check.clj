@@ -163,9 +163,21 @@
   also being the license server's."
   [:map {:closed false, ::mr/deliberately-open true, :description "license-server meters"}])
 
+(def ^:private StoreUser
+  "A store user of a token status response, whose keys are the license server's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "license-server store user"}
+   [:email :string]])
+
+(def ^:private Quota
+  "A quota of a token status response, whose keys are the license server's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "license-server quota"}
+   [:hosting-feature {:optional true} :string]
+   [:soft-limit      {:optional true} number?]
+   [:usage           {:optional true} number?]])
+
 (def TokenStatus
-  "Schema for a response from the token status API."
-  [:map {:closed true}
+  "Schema for a response from the token status API, whose keys are the license server's."
+  [:map {:closed false, ::mr/deliberately-open true, :description "license-server token status"}
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
@@ -176,13 +188,19 @@
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]
-   [:store-users   {:optional true} [:maybe [:sequential [:map {:closed true}
-                                                          [:email :string]]]]]
+   [:store-users   {:optional true} [:maybe [:sequential StoreUser]]]
    [:meters        {:optional true} Meters]
-   [:quotas        {:optional true} [:sequential [:map {:closed true}
-                                                  [:hosting-feature {:optional true} :string]
-                                                  [:soft-limit      {:optional true} number?]
-                                                  [:usage           {:optional true} number?]]]]])
+   [:quotas        {:optional true} [:sequential Quota]]])
+
+(def ^:private MinimalTokenStatus
+  "The least a decoded token-status body must carry before we treat it as the store's answer and cache it.
+
+  This is deliberately not [[TokenStatus]]: we want to be relatively loose with this schema so that we don't
+  risk marking responses as invalid even if they're usable."
+  [:map {:closed false}
+   [:valid                     :boolean]
+   [:status                    [:string {:min 1}]]
+   [:features {:optional true} [:maybe [:sequential :string]]]])
 
 (defn- http-fetch
   [base-url token site-uuid]
@@ -194,22 +212,39 @@
                      :socket-timeout     5000     ;; in milliseconds
                      :connection-timeout 2000})))     ;; in milliseconds
 
+(defn- canonical
+  "Mark a decoded token status as canonical: an authoritative answer from the store, one we may cache and hold
+  on to, including a 4xx that definitively rejects the token (expired, does not exist). Anything transient
+  (network error, 5xx, missing or unparseable body) must throw instead so cached state is left alone."
+  [decoded]
+  (assoc decoded :canonical? true))
+
+(defn- parse-status-body
+  "Decode a token-status response body, returning the status map, or nil when the body is missing,
+  unparseable (e.g. a proxy's HTML error page), or does not satisfy [[MinimalTokenStatus]]."
+  [body]
+  (let [decoded (try
+                  (some-> body json/decode+kw)
+                  (catch Exception _e nil))]
+    (when (mr/validate MinimalTokenStatus decoded)
+      decoded)))
+
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
-    (cond
-      (http/success? resp) (do (analytics/inc! :metabase-token-check/attempt {:status :success})
-                               (some-> body json/decode+kw (assoc :canonical? true)))
-      (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
-                              {:valid         false
-                               :canonical?    false
-                               :status        "Unable to validate token"
-                               :error-details "Token validation provided no response"})
+    (if (or (http/success? resp) (<= 400 status 499))
+      (do (when (http/success? resp)
+            (analytics/inc! :metabase-token-check/attempt {:status :success}))
+          (or (some-> (parse-status-body body) canonical)
+              ;; a 2xx/4xx whose body is missing or undecodable (a proxy's or WAF's error page, a stripped
+              ;; body) carries no verdict from the store, so it is transient like a network error: not cached,
+              ;; retried under the breaker, and the previous canonical status stands meanwhile
+              (throw (ex-info "Token validation provided no response." {:status status}))))
       ;; exceptions are not cached.
-      :else (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
-                (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                                    :body body}))))))
+      (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
+          (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                              :body body}))))))
 
 (defn- metering-url
   [token base-url]
@@ -282,16 +317,17 @@
         (mr/validate [:re AirgapToken] token)
         (do
           (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (assoc (decode-airgap-token token) :canonical? true))
+          (canonical (decode-airgap-token token)))
 
         :else
         (do
           (log/error (u/format-color 'red "Invalid token format!"))
-          {:valid         false
-           :canonical?    true
-           :status        "invalid"
-           :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
+          (canonical
+           {:valid         false
+            :status        "invalid"
+            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *token-check-happening* "Var to prevent recursive calls to `fetch-token-status`" false)
 
 (p/defprotocol+ TokenChecker
@@ -334,10 +370,13 @@
                  (catch dev.failsafe.CircuitBreakerOpenException _e
                    (throw (ex-info (tru "Token validation is currently unavailable.")
                                    {:cause :token-check/circuit-breaker})))
+                 ;; a timed-out execution has no cause to unwrap — translate it ourselves
+                 (catch dev.failsafe.TimeoutExceededException _e
+                   (throw (ex-info (tru "Token validation timed out.") {})))
                  ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before
                  ;; rethrowing.
                  (catch dev.failsafe.FailsafeException e
-                   (throw (.getCause e)))))))
+                   (throw (or (.getCause e) e)))))))
       (-clear-cache! [_]
         (-clear-cache! token-checker)))))
 
@@ -404,6 +443,7 @@
       (catch Throwable t
         (log/warnf "Failed to mirror :locked-meters from token-check response: %s" (ex-message t))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
    For testing only — do not use in production."
@@ -424,15 +464,20 @@
   (let [local-cache          (or local-cache (atom {}))
         refresh-in-progress? (atom false)]
     (letfn [(do-refresh! [token token-hash]
-              (let [result      (-check-token token-checker token)
-                    result-hash (hash-token-status result)
-                    now         (t/instant)]
-                (write-cache-to-db! token-hash result-hash)
-                (update-locked-meters! result)
-                (swap! local-cache assoc token-hash {:result      result
-                                                     :result-hash result-hash
-                                                     :updated-at  now})
-                result))]
+              (let [result (-check-token token-checker token)]
+                ;; a non-authoritative return here is an internal bug: every legitimate inner path
+                ;; returns a canonical map or throws
+                (when-not (:canonical? result)
+                  (throw (ex-info "Refusing to cache a non-authoritative token status"
+                                  {:status (:status result)})))
+                (let [result-hash (hash-token-status result)
+                      now         (t/instant)]
+                  (write-cache-to-db! token-hash result-hash)
+                  (update-locked-meters! result)
+                  (swap! local-cache assoc token-hash {:result      result
+                                                       :result-hash result-hash
+                                                       :updated-at  now})
+                  result)))]
       (reify TokenChecker
         (-check-token [_ token]
           (if-not (app-db/db-is-set-up?)
@@ -506,6 +551,7 @@
               :error-details (.getMessage e)})))
     (-clear-cache! [_] (-clear-cache! token-checker))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *customize-checker*
   "Dynamic variable allowing for customized token checkers. In the app, we want all of these in place. Only in tests
   should we construct ones without circuit breakers "
@@ -531,16 +577,21 @@
                                   :hard-ttl     hard-ttl
                                   :local-cache  db-hash-local-cache})
 
-    local-ttl
-    (local-cached-token-checker {:local-ttl local-ttl})
-
+    ;; inside the memoize so failure maps are memoized for local-ttl (negative cache; core.memoize
+    ;; single-flights values but not thrown exceptions), outside db-hash so they never reach the
+    ;; durable cache
     :always
-    (error-catching-token-checker)))
+    (error-catching-token-checker)
+
+    local-ttl
+    (local-cached-token-checker {:local-ttl local-ttl})))
 
 (def token-checker
   "The token checker. Combines http/airgapping validation, circuit breaking, DB-hash-aware caching, and error handling."
   (make-checker {:base            store-and-airgap-token-checker
-                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 60)]
+                 ;; the window must fit 10 worst-case failures (10s timeout + 5s negative cache
+                 ;; each ≈ 135s) or slow failures can never open the breaker
+                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 180)]
                                    :delay-ms          (u/seconds->ms 30)
                                    :success-threshold 1
                                    :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
@@ -576,6 +627,9 @@
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")
                         {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
+      ;; validate against the store, not a cached verdict — the token may be the same string with a
+      ;; renewed subscription behind it
+      (clear-cache!)
       (let [decoded (check-token new-value)]
         (when-not (:valid decoded)
           (throw (ex-info (:status decoded)
@@ -606,13 +660,17 @@
                        (log/errorf "Error validating token: %s" (ex-message e)))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
+  #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
   (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
     "Get the features associated with the system's premium features token."
     []
     (try
-      (or (some-> (premium-features.settings/premium-embedding-token)
-                  (check-token)
-                  :features set)
+      ;; an invalid token (e.g. expired) confers no features, even if the token-status response still
+      ;; lists them (EMB-2341)
+      (or (let [{:keys [valid features]} (some-> (premium-features.settings/premium-embedding-token)
+                                                 (check-token))]
+            (when valid
+              (set features)))
           #{})
       (catch Throwable e
         (when (:pass-thru (ex-data e))
@@ -669,7 +727,8 @@
   (if-let [token (premium-features.settings/premium-embedding-token)]
     (let [result (check-token token)]
       (when (:canonical? result)
-        (boolean (contains? (set (:features result)) (name feature)))))
+        (boolean (and (:valid result)
+                      (contains? (set (:features result)) (name feature))))))
     false))
 
 (defn ee-feature-error

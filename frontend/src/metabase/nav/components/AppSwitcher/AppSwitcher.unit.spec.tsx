@@ -9,7 +9,7 @@ import {
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
-import type { HelpLinkSetting } from "metabase-types/api";
+import type { HelpLinkSetting, TokenFeatures } from "metabase-types/api";
 import {
   createMockMetabaseInfo,
   createMockTokenFeatures,
@@ -40,7 +40,7 @@ const REGULAR_ITEMS = [
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Main app", "Admin"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
 
-const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Monitor", "Embedding hub"];
+const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Monitor"];
 
 const adminNavItem = {
   getName: () => `People`,
@@ -50,18 +50,22 @@ const adminNavItem = {
 
 async function setup({
   isAdmin = false,
+  isAnalyst = false,
   isHosted = false,
   isPaidPlan = true,
   helpLinkSetting = "metabase",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
+  tokenFeatures = {},
 }: {
   isAdmin?: boolean;
+  isAnalyst?: boolean;
   isHosted?: boolean;
   isPaidPlan?: boolean;
   helpLinkSetting?: HelpLinkSetting;
   helpLinkCustomDestinationSetting?: string;
   instanceCreationDate?: string;
+  tokenFeatures?: Partial<TokenFeatures>;
 } = {}) {
   setupBugReportingDetailsEndpoint();
 
@@ -71,7 +75,7 @@ async function setup({
     "help-link": helpLinkSetting,
     "help-link-custom-destination": helpLinkCustomDestinationSetting,
     "instance-creation": instanceCreationDate,
-    "token-features": createMockTokenFeatures(),
+    "token-features": createMockTokenFeatures(tokenFeatures),
   });
 
   const admin = createMockAdminState({
@@ -86,14 +90,17 @@ async function setup({
       <Route path="/admin" element={<AppSwitcher />} />
       <Route path="/data-studio" element={<AppSwitcher />} />
       <Route path="/monitor" element={<AppSwitcher />} />
-      <Route path="/embedding" element={<AppSwitcher />} />
     </>,
     {
       withRouter: true,
       storeInitialState: {
         admin,
         settings,
-        currentUser: { ...USER, is_superuser: isAdmin },
+        currentUser: {
+          ...USER,
+          is_superuser: isAdmin,
+          is_data_analyst: isAnalyst,
+        },
       },
     },
   );
@@ -176,10 +183,6 @@ describe("ProfileLink", () => {
       await openProfileLink();
       await assertActiveApp("monitor");
 
-      await userEvent.click(await getEmbeddingHubMenuItem());
-      await openProfileLink();
-      await assertActiveApp("embedding-hub");
-
       await userEvent.click(await getMainAppMenuItem());
       await openProfileLink();
       await assertActiveApp("main");
@@ -214,30 +217,35 @@ describe("ProfileLink", () => {
       });
     });
 
-    it("should not show the embedding hub to non-admins", async () => {
-      await setup({ isAdmin: false });
+    it("should show data studio and monitor for analysts when advanced-permissions is available", async () => {
+      await setup({
+        isAnalyst: true,
+        tokenFeatures: { advanced_permissions: true },
+      });
 
-      expect(screen.queryByText("Embedding hub")).not.toBeInTheDocument();
+      expect(screen.getByText("Data studio")).toBeInTheDocument();
+      expect(screen.getByText("Monitor")).toBeInTheDocument();
     });
 
-    it("should render the app entries in the designed order", async () => {
-      await setup({ isAdmin: true });
+    // Data Studio and Monitor diagnostics both come with the Data Analyst role rather than a
+    // permissions graph, so both pause while the plan lacks the feature.
+    it("should hide data studio and monitor from analysts when advanced-permissions is absent", async () => {
+      await setup({
+        isAnalyst: true,
+        tokenFeatures: { advanced_permissions: false },
+      });
 
-      const appOrder = [
-        "Main app",
-        "Admin",
-        "Data studio",
-        "Monitor",
-        "Embedding hub",
-      ];
-      const menuItems = await screen.findAllByRole("menuitem");
-      const appMenuItems = menuItems.filter((menuItem) =>
-        appOrder.includes(menuItem.textContent ?? ""),
-      );
+      expect(screen.queryByText("Data studio")).not.toBeInTheDocument();
+      expect(screen.queryByText("Monitor")).not.toBeInTheDocument();
+    });
 
-      expect(appMenuItems.map((menuItem) => menuItem.textContent)).toEqual(
-        appOrder,
-      );
+    it("should show data studio for admins when advanced-permissions is absent", async () => {
+      await setup({
+        isAdmin: true,
+        tokenFeatures: { advanced_permissions: false },
+      });
+
+      expect(screen.getByText("Data studio")).toBeInTheDocument();
     });
 
     it("tracks opening Monitor from the app switcher", async () => {
@@ -382,11 +390,6 @@ const assertActiveApp = async (current: CurrentApp) => {
       name: current === "monitor" ? /check_filled/i : /pulse/i,
     }),
   ).toBeInTheDocument();
-  expect(
-    await within(await getEmbeddingHubMenuItem()).findByRole("img", {
-      name: current === "embedding-hub" ? /check_filled/i : /embed/i,
-    }),
-  ).toBeInTheDocument();
 };
 
 const getMainAppMenuItem = () =>
@@ -397,5 +400,3 @@ const getDataStudioMenuItem = () =>
   screen.findByRole("menuitem", { name: /data studio/i });
 const getMonitorMenuItem = () =>
   screen.findByRole("menuitem", { name: /monitor/i });
-const getEmbeddingHubMenuItem = () =>
-  screen.findByRole("menuitem", { name: /embedding hub/i });

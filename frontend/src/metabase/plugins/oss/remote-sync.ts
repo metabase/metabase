@@ -83,6 +83,7 @@ const getDefaultPluginRemoteSync = () => ({
   useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
   useHasLibraryDirtyChanges: () => false,
   useHasTransformDirtyChanges: () => false,
+  useHasGlossaryDirtyChanges: () => false,
   getIsRemoteSyncReadOnly: () => false,
   useRemoteSyncDirtyState: () =>
     // Unjustified type cast. FIXME
@@ -115,6 +116,7 @@ export const PLUGIN_REMOTE_SYNC: {
   };
   useHasLibraryDirtyChanges: () => boolean;
   useHasTransformDirtyChanges: () => boolean;
+  useHasGlossaryDirtyChanges: () => boolean;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
   useRemoteSyncDirtyState: () => RemoteSyncDirtyState;
 } = definePluginSlot(getDefaultPluginRemoteSync);

@@ -1809,6 +1809,27 @@
                                    (<= 1 day-int 31))))
                           (next result))))))))))
 
+(deftest temporal-bucketing-and-binning-breakouts-test
+  (testing "A sandboxed user can break out by a temporal bucket and a binned column, and gets the unsandboxed column metadata"
+    (mt/test-drivers (into #{} (filter (mt/normal-drivers-with-feature :binning)) (e2e-test-drivers))
+      (met/with-gtaps! {:gtaps      {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}}
+                        :attributes {"user_id" 1}}
+        (let [mp       (mt/metadata-provider)
+              query    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :year))
+                           (lib/breakout (lib/with-binning (lib.metadata/field mp (mt/id :orders :total))
+                                                           {:strategy :num-bins, :num-bins 10})))
+              expected (mt/with-test-user :crowberto
+                         (qp/process-query (lib/filter query (lib/= (lib.metadata/field mp (mt/id :orders :user_id)) 1))))
+              result   (qp/process-query query)]
+          (is (true? (-> result :data :is_sandboxed)))
+          (is (seq (mt/rows expected)))
+          (is (= (mt/rows expected)
+                 (mt/rows result)))
+          (is (= (map (juxt :display_name :unit (comp :num_bins :binning_info)) (mt/cols expected))
+                 (map (juxt :display_name :unit (comp :num_bins :binning_info)) (mt/cols result)))))))))
+
 (deftest sandboxed-join-excludes-hidden-columns-test
   (testing "When joining to a sandboxed table, hidden columns should not be added to join fields (#64317)"
     (mt/dataset test-data

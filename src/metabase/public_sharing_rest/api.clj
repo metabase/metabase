@@ -516,8 +516,7 @@
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)
                                        ;; `as-admin` grants perms but leaves the user nil, so the audit row has no
                                        ;; executor; the context is what says the run came from a public link
-                                       {:allow-http-actions? false
-                                        :context             :public-action-execute})))))))
+                                       {:context :public-action-execute})))))))
 
 (defn- iframe
   "Return an `<iframe>` HTML fragment to embed a public page."
@@ -563,7 +562,7 @@
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/check-404 (actions/select-action :id (public-sharing/public-uuid->id :model/Action uuid)))]
-    (actions/check-actions-enabled! action)
+    (actions/check-actions-enabled action)
     (public-action action)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -753,7 +752,7 @@
         ;; you're by definition allowed to run it without a perms check anyway
         (request/as-admin
           (let [action (api/check-404 (actions/select-action :id (public-sharing/public-uuid->id :model/Action uuid)))]
-            (actions/check-actions-enabled! action)
+            (actions/check-actions-enabled action)
             (analytics/track-event! :snowplow/action
                                     {:event     :action-executed
                                      :source    :public_form
@@ -762,8 +761,7 @@
             ;; Undo middleware string->keyword coercion
             (actions/execute-action! action (update-keys parameters name)
                                      ;; see the note on the public dashcard endpoint above
-                                     {:allow-http-actions? false
-                                      :context             :public-action-execute})))))))
+                                     {:context :public-action-execute})))))))
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 

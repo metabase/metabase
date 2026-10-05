@@ -17,13 +17,24 @@
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :dataset_query [:model/Card :dataset_query] card-id))
+  ;; Written out by hand rather than using `metabase.queries.core/card-query-info`: `queries` already uses
+  ;; `pulse`, so requiring it back would add a module cycle for one query. Keep in sync with
+  ;; `metabase.queries.card-schema/schema-upgrade-triggers`.
+  (t2/select-one-fn :dataset_query
+                    [:model/Card :id :dataset_query :card_schema :type
+                     :result_metadata :dimensions :dimension_mappings]
+                    card-id))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
   which case the result is nil."
   [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
   (t2/select-one :model/Dashboard :id dashboard-id))
+
+(mu/defn dashboard-archived? :- :boolean
+  "Whether the Dashboard with `dashboard-id` exists and is archived."
+  [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
+  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
 
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."

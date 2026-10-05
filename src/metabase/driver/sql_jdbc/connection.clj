@@ -133,6 +133,22 @@
             :catalog)
    details))
 
+(def ^:private pool-type->name-suffix
+  "Suffix appended to the pool name for each non-default [[driver.conn/connection-pool-type]]."
+  {:write-data "-write"
+   :admin      "-admin"
+   :transform  "-transform"})
+
+(defn- pool-data-source-name
+  "The c3p0 `dataSourceName` for `database`'s pool of the current connection type: `db-<id>-<driver>-<name>`, with
+  `-write` (or the other suffixes in [[pool-type->name-suffix]]) appended for a non-default pool type."
+  [driver database]
+  (str (format "db-%d-%s-%s"
+               (u/the-id database)
+               (name driver)
+               (data-source-name driver (driver.conn/effective-details database)))
+       (pool-type->name-suffix (driver.conn/connection-pool-type database))))
+
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
   {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
@@ -224,12 +240,10 @@
                                                         "com.mchange namespace. You must raise the log level for"
                                                         "com.mchange to INFO via a custom Log4j config in order to"
                                                         "see stacktraces in the logs.")))
-   ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
-   ;; and name from the details
-   "dataSourceName"                       (format "db-%d-%s-%s"
-                                                  (u/the-id database)
-                                                  (name driver)
-                                                  (data-source-name driver (driver.conn/effective-details database)))})
+   ;; Set the data source name so that the pool has a useful identifier, which incorporates the DB ID, driver, and name
+   ;; from the details. It is the `database` label on the exported c3p0_* pool metrics, so a non-default pool type gets
+   ;; a suffix: otherwise the default and write pools of one warehouse would share a label and overwrite each other.
+   "dataSourceName"                       (pool-data-source-name driver database)})
 
 (defn- connection-pool-spec
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
@@ -277,8 +291,11 @@
      ;; also capture entries related to ssh tunneling for later use
      (select-internal-keys-for-spec details-with-auth)
      (select-internal-keys-for-spec spec)
-     ;; remember when the password expires
-     (select-keys details-with-auth [:password-expiry-timestamp]))))
+     ;; remember when the password/token expires — either baked into the details by an auth-provider,
+     ;; or into the spec by a driver that derives it from the credential itself (e.g. Snowflake WIF's
+     ;; JWT exp claim).
+     (select-keys details-with-auth [:password-expiry-timestamp])
+     (select-keys spec              [:password-expiry-timestamp]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   ;; INFO (not DEBUG) so pool destruction is visible in CI test-log artifacts: destroying a pool closes its

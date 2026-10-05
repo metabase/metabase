@@ -20,7 +20,7 @@ export const useDatabaseConnection = ({
   const queryParams = new URLSearchParams(location.search);
   const preselectedEngine =
     queryParams.get("engine") ?? getDefaultEngineKey(engines || {});
-  const returnToSetupGuide = queryParams.get(RETURN_TO_SETUP_GUIDE_PARAM);
+  const fromEmbeddingSetupGuide = queryParams.has(RETURN_TO_SETUP_GUIDE_PARAM);
   const addingNewDatabase = databaseId === undefined;
 
   const databaseReq = useGetDatabaseQuery(
@@ -42,12 +42,9 @@ export const useDatabaseConnection = ({
 
   const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
     if (addingNewDatabase) {
-      // Carried through so the post-sync modal returns to whichever host
-      // opened the guide, not always the default one.
-      const param =
-        returnToSetupGuide != null
-          ? `?${RETURN_TO_SETUP_GUIDE_PARAM}=${encodeURIComponent(returnToSetupGuide)}`
-          : "";
+      const param = fromEmbeddingSetupGuide
+        ? `?${RETURN_TO_SETUP_GUIDE_PARAM}=true`
+        : "";
       navigate(`/admin/databases/${savedDB.id}${param}`);
     } else {
       handleCancel();

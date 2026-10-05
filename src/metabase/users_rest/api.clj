@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -189,7 +190,7 @@
                                                    [:enum :all :internal :external]]]
        [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
-      api/*is-data-analyst?*
+      (api/entitled-data-analyst?)
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
@@ -395,6 +396,7 @@
 
 (api.macros/defendpoint :get "/current" :- ::current-user-response
   "Fetch the current `User`."
+  {:scope api-scope/data-app}
   []
   (-> (api/check-404 @api/*current-user*)
       ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this

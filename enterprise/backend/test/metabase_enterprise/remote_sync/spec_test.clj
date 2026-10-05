@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -43,7 +44,7 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :parent :setting :library-synced :always}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -57,8 +58,9 @@
             "events :prefix should be a keyword")
         (is (vector? (get-in spec [:events :types]))
             "events :types should be a vector")
-        (is (every? #{:create :update :delete :publish :unpublish} (get-in spec [:events :types]))
-            "events :types should only contain :create, :update, :delete, :publish, :unpublish")))))
+        (is (every? #{:create :update :delete :publish :unpublish :public-link-created :public-link-deleted}
+                    (get-in spec [:events :types]))
+            "events :types should only contain :create, :update, :delete, :publish, :unpublish, :public-link-created, :public-link-deleted")))))
 
 (deftest all-specs-have-valid-tracking-test
   (testing "Every spec has valid tracking configuration"
@@ -130,7 +132,11 @@
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 13 (count types))))))
+      (is (contains? types "TransformTest"))
+      (is (contains? types "Glossary"))
+      (is (contains? types "Action"))
+      (is (contains? types "DataApp"))
+      (is (= 17 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -164,10 +170,16 @@
   (testing "excluded-model-types when transforms enabled"
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (let [excluded (spec/excluded-model-types)]
-        ;; NativeQuerySnippet is still excluded because Library isn't remote-synced
+        ;; Library content is still excluded because Library isn't remote-synced
         (is (not (contains? excluded "Transform")))
         (is (not (contains? excluded "TransformTag")))
-        (is (contains? excluded "NativeQuerySnippet"))))))
+        (is (contains? excluded "NativeQuerySnippet"))
+        (is (contains? excluded "Glossary")))))
+  (testing "excluded-model-types when Library is remote-synced"
+    (collections.tu/with-library-synced
+      (let [excluded (spec/excluded-model-types)]
+        (is (not (contains? excluded "NativeQuerySnippet")))
+        (is (not (contains? excluded "Glossary")))))))
 
 (deftest spec-enabled?-test
   (testing "spec-enabled? with always-enabled spec"
@@ -190,7 +202,16 @@
       (let [enabled (spec/enabled-specs)]
         (is (contains? enabled :model/Card))
         (is (contains? enabled :model/Transform))
-        (is (contains? enabled :model/TransformTag))))))
+        (is (contains? enabled :model/TransformTag)))))
+  (testing "enabled-specs includes Library content only when the Library is remote-synced"
+    (collections.tu/with-library-not-synced
+      (let [enabled (spec/enabled-specs)]
+        (is (not (contains? enabled :model/NativeQuerySnippet)))
+        (is (not (contains? enabled :model/Glossary)))))
+    (collections.tu/with-library-synced
+      (let [enabled (spec/enabled-specs)]
+        (is (contains? enabled :model/NativeQuerySnippet))
+        (is (contains? enabled :model/Glossary))))))
 
 ;;; ------------------------------------------------ Event Helper Tests ------------------------------------------------
 
@@ -305,6 +326,47 @@
       (is (nil? (spec/query-export-roots field-spec)))
       (is (nil? (spec/query-export-roots segment-spec)))
       (is (nil? (spec/query-export-roots measure-spec))))))
+
+;;; ---------------------------------------------------- Actions ----------------------------------------------------
+
+(defn- do-with-synced-and-plain-actions!
+  "Runs `f` with `{:synced-coll :synced-action :plain-action}`: one action on a model in a remote-synced collection,
+  one on a model outside any."
+  [f]
+  (mt/with-temp [:model/Collection {synced-coll :id}   {:name "Synced" :is_remote_synced true :location "/"}
+                 :model/Collection {plain-coll :id}    {:name "Plain" :location "/"}
+                 :model/Card       {synced-model :id}  {:type :model :collection_id synced-coll}
+                 :model/Card       {plain-model :id}   {:type :model :collection_id plain-coll}
+                 :model/Action     {synced-action :id} {:type :implicit :name "In Sync" :model_id synced-model}
+                 :model/Action     {plain-action :id}  {:type :implicit :name "Outside" :model_id plain-model}]
+    (f {:synced-coll synced-coll :synced-action synced-action :plain-action plain-action})))
+
+(deftest action-eligibility-follows-model-test
+  (testing "an action takes its model's collection, so it is eligible for remote sync exactly when its model is"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-action plain-action]}]
+       (let [action-spec (spec/spec-for-model-key :model/Action)]
+         (is (true? (spec/check-eligibility action-spec (t2/select-one :model/Action :id synced-action))))
+         (is (false? (spec/check-eligibility action-spec (t2/select-one :model/Action :id plain-action)))))))))
+
+(deftest action-removal-scoped-to-synced-models-test
+  (testing "a pull removes absent actions only when they are in a synced collection"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-coll synced-action plain-action]}]
+       (remote-sync.db/delete-removed-instances!
+        :model/Action
+        (spec/removal-opts (spec/spec-for-model-key :model/Action) [synced-coll] #{}))
+       (is (not (t2/exists? :model/Action :id synced-action)))
+       (is (t2/exists? :model/Action :id plain-action))))))
+
+(deftest action-sync-rows-carry-model-collection-test
+  (testing "GHY-4722: the ledger rows rebuilt after a pull give an action its model's collection"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-coll synced-action]}]
+       (let [eid (t2/select-one-fn :entity_id :model/Action :id synced-action)]
+         (is (=? [{:model_type "Action" :model_id synced-action :model_name "In Sync"
+                   :model_collection_id synced-coll :status "synced"}]
+                 (spec/sync-all-entities! (t/offset-date-time) {:by-entity-id {"Action" #{eid}}}))))))))
 
 ;;; -------------------------------------------- Editability Checking Tests ----------------------------------------
 
@@ -660,3 +722,8 @@
               "the Table has no settings row of its own")
           (is (contains? (set (get exportable "TableUserSettings")) table-id)
               "the Table is still exportable, synthesized from its Field's edit"))))))
+
+(deftest ^:parallel exportable-entity-count-test
+  (testing "exportable-entity-count sums the ids across every model in the targets map"
+    (is (= 0 (spec/exportable-entity-count {})))
+    (is (= 5 (spec/exportable-entity-count {"Card" [1 2 3] "Collection" [4 5]})))))
