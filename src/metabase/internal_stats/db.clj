@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.internal-stats.util :as u]
    [metabase.models.interface :as mi]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -142,7 +143,9 @@
             "$.native.\"template-tags\".*"]
     :postgres [:jsonb_path_exists
                [:cast :dataset_query :jsonb]
-               "$.native.\"template-tags\" ? (exists(@.*))"]))
+               ;; the path is a `jsonpath`, not a value: as a `?` parameter Postgres binds it as `varchar` and can't
+               ;; find a matching `jsonb_path_exists` overload, so it has to be a real SQL literal
+               (h2x/literal "$.native.\"template-tags\" ? (exists(@.*))")]))
 
 (defn- contains-embedding-param
   [param]
@@ -154,7 +157,7 @@
             nil]
     :postgres [:jsonb_path_exists
                [:cast :embedding_params :jsonb]
-               "$.* ? (@ == $val)"
+               (h2x/literal "$.* ? (@ == $val)")
                [:jsonb_build_object "val" param]]))
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])

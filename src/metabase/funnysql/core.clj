@@ -92,9 +92,16 @@
 (defn- -commas! [xs context]
   (-interpose! ", " xs context))
 
-(defn- -parens! [x context]
+(declare map!)
+
+(defn- -parens!
+  "Compile `x` wrapped in parens. A `^:allow-subquery` map is compiled directly rather than via [[compile!]], which
+  would parenthesize it a second time."
+  [x context]
   (append-sql! context "(")
-  (compile! x context)
+  ((if (subquery? x)
+     map!
+     compile!) x context)
   (append-sql! context ")"))
 
 (defn- -list! [xs context]
@@ -141,9 +148,7 @@
   (let [[lhs rhs] (if (vector? table)
                     table
                     [table])]
-    ((if (subquery? lhs)
-       -parens!
-       compile!) lhs context)
+    (compile! lhs context)
     (when rhs
       (check-identifier-form rhs)
       (append-sql! context " AS ")
@@ -277,7 +282,10 @@
         (-identifier-list! columns context)))
     (when subquery
       (append-sql! context \space)
-      (compile! subquery context))))
+      ;; `INSERT INTO t SELECT ...` -- the subquery is not wrapped in parens here
+      ((if (subquery? subquery)
+         map!
+         compile!) subquery context))))
 
 (defn- values! [rows context]
   (when-not (and (coll? rows)
@@ -300,11 +308,13 @@
   (let [options (butlast table)
         table   (last table)]
     (append-sql! context "DROP TABLE ")
-    (check-identifier-form table)
-    (compile! table context)
+    ;; options like `IF EXISTS` have to come before the table name -- Postgres and MySQL reject
+    ;; `DROP TABLE x IF EXISTS` (H2 is the only one of the three that accepts it)
     (doseq [option options]
       (case option
-        :if-exists (append-sql! context " IF EXISTS")))))
+        :if-exists (append-sql! context "IF EXISTS ")))
+    (check-identifier-form table)
+    (compile! table context)))
 
 (defn- update! [identifier context]
   (append-sql! context "UPDATE ")
@@ -432,6 +442,16 @@
   (append-sql! context "RETURNING ")
   (-commas! (->sequence cols) context))
 
+(defn- union!
+  "Compile the queries combined by a `UNION`. These are complete `SELECT`s rather than scalar subqueries, so unlike
+  [[compile!]] don't wrap them in parens -- use `:nest` for that."
+  [separator queries context]
+  (interpose-fn queries
+                #((if (subquery? %)
+                    map!
+                    compile!) % context)
+                #(append-sql! context separator)))
+
 (def ^:private clause-fns
   (ordered-map/ordered-map
    :with            (partial with! "WITH ")
@@ -458,8 +478,8 @@
    :partition-by    partition-by!
    ;; a `UNION` combines complete `SELECT`s and any trailing `ORDER BY`/`LIMIT`/`OFFSET` applies to the combined
    ;; result, so the union body has to be emitted *before* those, not after
-   :union           (partial -interpose! " UNION ")
-   :union-all       (partial -interpose! " UNION ALL ")
+   :union           (partial union! " UNION ")
+   :union-all       (partial union! " UNION ALL ")
    :order-by        order-by!
    :limit           limit!
    :offset          offset!
@@ -559,10 +579,9 @@
   ;; `[:= nil nil]` keeps a literal `NULL` on the left, giving `NULL IS NULL`.
   (letfn [(operand! [v]
             ;; make sure if the operand is itself something like `[:= x nil]` we get `(x IS NULL) = <y>` instead of
-            ;; the unparsable `x IS NULL = y`. A scalar subquery needs the same treatment: without parens
-            ;; `[:= {:select [...] :limit 1} y]` compiles to `SELECT ... LIMIT 1 = ?`, where the comparison gets
-            ;; swallowed by the subquery instead of applying to its result.
-            ((if (or (predicate-call? v) (subquery? v))
+            ;; the unparsable `x IS NULL = y`. (A scalar subquery gets the same treatment, but [[compile!]] already
+            ;; parenthesizes those.)
+            ((if (predicate-call? v)
                -parens!
                compile!) v context))]
     (if (or (nil? x) (nil? y))
@@ -637,7 +656,7 @@
                                :not-in " NOT IN "))
         (cond
           (subquery? vs)
-          (-parens! vs context)
+          (compile! vs context)
 
           ;; sequence of sequences
           (and (sequential? (first vs))
@@ -871,7 +890,7 @@
     :param                  (param! (first args) context)
     :timestampdiff          (timestamp-diff! args context)
 
-    (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :%)
+    (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :||)
     (-binary-operator! f args context)
 
     ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
@@ -929,10 +948,13 @@
      :replace
      :row_number
      :round
+     :setweight
+     :split_part
      :sum
      :substring
      :to_regclass
      :to_tsquery
+     :to_tsvector
      :trim
      :ts_rank
      :upper
@@ -955,8 +977,10 @@
   Boolean                     (compile! [this context] (boolean! this context))
   Number                      (compile! [this context] (number! this context))
   clojure.lang.Keyword        (compile! [this context] (keyword! this context))
+  ;; a `^:allow-subquery` map compiled anywhere other than the top level is a subquery -- a scalar subquery in a
+  ;; `SELECT` list or function argument, a derived table in `FROM`, etc. -- all of which need to be parenthesized.
   clojure.lang.IPersistentMap (compile! [this context] ((if (:allow-subquery (meta this))
-                                                          map!
+                                                          -parens!
                                                           object!) this context))
   clojure.lang.IPersistentSet (compile! [this context] (sequence! this context))
   clojure.lang.Sequential     (compile! [this context] (sequence! this context)))

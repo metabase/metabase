@@ -871,6 +871,36 @@
     (is (= ["WHERE \"name\" ILIKE ?" "%foo%"]
            (funnysql/format {:where [:ilike :name "%foo%"]} :postgres)))))
 
+(deftest ^:parallel concat-operator-test
+  (testing "`:||` is an infix operator, e.g. for concatenating `tsvector`s"
+    (is (= ["SELECT \"a\" || \"b\" || \"c\""]
+           (funnysql/format {:select [[[:|| :a :b :c]]]} :postgres)))))
+
+(deftest ^:parallel scalar-subquery-test
+  (testing "a subquery in a `SELECT` list or function argument has to be parenthesized"
+    (is (= [(str "SELECT \"id\", (SELECT count(*) FROM \"b\" WHERE \"b\".\"a_id\" = \"a\".\"id\") AS \"n\","
+                 " coalesce((SELECT max(\"x\") FROM \"b\"), 0) AS \"m\" FROM \"a\"")]
+           (funnysql/format {:select [:id
+                                      [^:allow-subquery {:select [:%count.*]
+                                                         :from   [:b]
+                                                         :where  [:= :b.a_id :a.id]}
+                                       :n]
+                                      [[:coalesce ^:allow-subquery {:select [[:%max.x]] :from [:b]} 0]
+                                       :m]]
+                             :from   [:a]}
+                            :postgres))))
+  (testing "but not double-parenthesized where the position already brings its own parens"
+    (is (= ["SELECT * FROM (SELECT \"id\" FROM \"b\") AS \"sub\" WHERE (\"x\" IN (SELECT \"id\" FROM \"c\")) AND ((SELECT max(\"y\") FROM \"d\") = 1)"]
+           (funnysql/format {:select [:*]
+                             :from   [[^:allow-subquery {:select [:id] :from [:b]} :sub]]
+                             :where  [:and
+                                      [:in :x ^:allow-subquery {:select [:id] :from [:c]}]
+                                      [:= ^:allow-subquery {:select [[:%max.y]] :from [:d]} 1]]}
+                            :postgres))))
+  (testing "`INSERT INTO ... SELECT` doesn't parenthesize the `SELECT`"
+    (is (= ["INSERT INTO \"a\" (\"id\") SELECT \"id\" FROM \"b\""]
+           (funnysql/format {:insert-into [[:a [:id]] ^:allow-subquery {:select [:id] :from [:b]}]} :postgres)))))
+
 (deftest ^:parallel unknown-function-is-rejected-test
   (testing "a function that isn't whitelisted in `-fn-call!` must throw rather than being spliced into the SQL"
     (is (thrown-with-msg?
@@ -1093,5 +1123,5 @@
 (deftest ^:parallel drop-table-test
   (is (= ["DROP TABLE \"table\""]
          (funnysql/format {:drop-table [:table]} :postgres)))
-  (is (= ["DROP TABLE \"table\" IF EXISTS"]
+  (is (= ["DROP TABLE IF EXISTS \"table\""]
          (funnysql/format {:drop-table [:if-exists :table]} :postgres))))
