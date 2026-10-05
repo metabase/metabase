@@ -28,7 +28,7 @@ const DEFAULT_FIELD = "UUID";
 const TEST_TABLE_ROW_COUNT = 2;
 const TARGET_ROW_ID = 2;
 
-describe("scenarios > table-editing", () => {
+describe("scenarios > actions > table editing", () => {
   beforeEach(() => {
     resetSnowplow();
 
