@@ -306,6 +306,17 @@
     (when (str/starts-with? (u/lower-case-en auth) "bearer ")
       (str/trim (subs auth 7)))))
 
+(defn- live-token?
+  "Whether an access token with `expiry` (epoch millis, or nil for none), issued to `client-id` for `user-id`, still
+  authenticates: it is unexpired, its client still exists, and its user is active."
+  [expiry client-id user-id]
+  (and (or (nil? expiry)
+           (t/after? (t/instant expiry) (t/instant)))
+       ;; Fail closed if the issuing client is gone (SEC-863).
+       (oauth-server.db/oauth-client-exists? client-id)
+       (some? user-id)
+       (oauth-server.db/active-user-exists? user-id)))
+
 (defn resolve-access-token
   "Validate an OAuth bearer access token string against the token store. Returns
    `{:user-id <int> :token-id <int> :scopes <set-of-strings> :resource <vector-of-strings or nil>}` on success, where
@@ -329,17 +340,12 @@
   (when (seq token-string)
     (when-let [provider (get-provider)]
       (when-let [token-data (oidc.store/get-access-token (:token-store provider) token-string)]
-        (let [expiry (:expiry token-data)]
-          (when (and (or (nil? expiry)
-                         (t/after? (t/instant expiry) (t/instant)))
-                     ;; Fail closed if the issuing client is gone (SEC-863).
-                     (oauth-server.db/oauth-client-exists? (:client-id token-data)))
-            (when-let [user-id (some-> (:user-id token-data) parse-long)]
-              (when (oauth-server.db/active-user-exists? user-id)
-                {:user-id  user-id
-                 :token-id (:id token-data)
-                 :scopes   (or (some->> (:scope token-data) (into #{})) #{})
-                 :resource (not-empty (:resource token-data))}))))))))
+        (let [user-id (some-> (:user-id token-data) parse-long)]
+          (when (live-token? (:expiry token-data) (:client-id token-data) user-id)
+            {:user-id  user-id
+             :token-id (:id token-data)
+             :scopes   (or (some->> (:scope token-data) (into #{})) #{})
+             :resource (not-empty (:resource token-data))}))))))
 
 (defn live-mcp-access-token?
   "Whether the access token with row id `token-id` still authenticates `user-id` at the MCP endpoint: it exists, is
@@ -350,7 +356,5 @@
    (when (and (pos-int? token-id) (pos-int? user-id))
      (when-let [{:keys [expiry client_id resource] :as row} (oauth-server.db/unrevoked-access-token-by-id token-id)]
        (and (= user-id (:user_id row))
-            (or (nil? expiry) (> expiry (System/currentTimeMillis)))
-            (oauth-server.db/oauth-client-exists? client_id)
             (mcp-resource? resource)
-            (oauth-server.db/active-user-exists? user-id))))))
+            (live-token? expiry client_id user-id))))))
