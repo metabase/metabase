@@ -110,6 +110,13 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldUserSettings" :id "1"}))
 
+(defmethod serdes/deserialization-dependencies "FieldUserSettings" [field-user-settings]
+  [[(first (serdes/path field-user-settings))]])
+
+(defmethod serdes/load-find-local "FieldUserSettings" [path]
+  (when-let [field (serdes/load-find-local (pop path))]
+    (warehouse-schema.db/field-user-settings (:id field))))
+
 (defn- field-path->field-ref [field-values-path]
   (let [[db schema table field :as field-ref] (map :id (pop field-values-path))]
     (if field
@@ -132,3 +139,10 @@
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
                                                        (serdes/*import-field-fk* field-ref)))}}})
+
+(def ^:private field-user-settings-slug "___fieldusersettings")
+
+(defmethod serdes/storage-path "FieldUserSettings" [field-user-settings _ctx]
+  (let [field-path (serdes/storage-path-prefixes (pop (serdes/path field-user-settings)))]
+    (update field-path (dec (count field-path))
+            (fn [segment] (update segment :label str field-user-settings-slug)))))

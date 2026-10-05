@@ -25,10 +25,23 @@
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})
 
-(defmethod serdes/extract-query "Dimension" [model-name {:keys [filter-column filter-ids] :as opts}]
-  (if (= filter-column :table_id)
-    (warehouse-schema.db/dimensions-for-tables filter-ids)
-    ((get-method serdes/extract-query :default) model-name opts)))
+(defmethod serdes/generate-path "Dimension" [_ {:keys [field_id entity_id]}]
+  (conj (serdes/generate-path "Field" {:id field_id})
+        {:model "Dimension" :id entity_id}))
+
+(defmethod serdes/load-find-local "Dimension" [path]
+  (or ((get-method serdes/load-find-local :default) path)
+      (when-let [field (serdes/load-find-local (pop path))]
+        (warehouse-schema.db/dimension-for-field (:id field)))))
+
+(defmethod serdes/deserialization-dependencies "Dimension" [dimension]
+  [[(first (serdes/path dimension))]])
+
+(defn- dimension-path->field-ref [dimension-path]
+  (let [[db schema table field :as field-ref] (map :id (pop dimension-path))]
+    (if field
+      field-ref
+      [db nil schema table])))
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
   {:copy      [:name :type :entity_id]
@@ -36,5 +49,15 @@
    :transform {:created_at              (serdes/date)
                :human_readable_field_id (serdes/fk :model/Field)
                :field_id                {::serdes/fk true
-                                         :export     serdes/*export-field-fk*
-                                         :import     #(if (vector? %) (serdes/*import-field-fk* %) %)}}})
+                                         :export     (constantly ::serdes/skip)
+                                         :import-with-context
+                                         (fn [current _ field-id]
+                                           (or field-id
+                                               (serdes/*import-field-fk* (dimension-path->field-ref (serdes/path current)))))}}})
+
+(def ^:private dimension-slug "___dimension")
+
+(defmethod serdes/storage-path "Dimension" [dimension _ctx]
+  (let [field-path (serdes/storage-path-prefixes (pop (serdes/path dimension)))]
+    (update field-path (dec (count field-path))
+            (fn [segment] (update segment :label str dimension-slug)))))

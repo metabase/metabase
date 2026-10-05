@@ -568,12 +568,17 @@
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
   (let [fields   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
                             [["Field" field-id] {"Table" id}]))
-        settings {["TableUserSettings" id] {"Table" id}}
+        settings (when (warehouse-schema.db/table-user-settings-exist? id)
+                   {["TableUserSettings" id] {"Table" id}})
+        field-settings (into {} (for [field-id (warehouse-schema.db/field-ids-with-user-settings-for-table id)]
+                                  [["FieldUserSettings" field-id] {"Table" id}]))
+        dimensions (into {} (for [dimension-id (warehouse-schema.db/dimension-ids-for-table id)]
+                              [["Dimension" dimension-id] {"Table" id}]))
         segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]
                             [["Measure" measure-id] {"Table" id}]))]
-    (merge fields settings segments measures)))
+    (merge fields settings field-settings dimensions segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (warehouse-schema.db/database-name (:db_id table))]

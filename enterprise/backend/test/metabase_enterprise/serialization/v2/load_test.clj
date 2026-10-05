@@ -178,125 +178,81 @@
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
 
-(deftest table-user-settings-round-trip-test
-  (testing "a TableUserSettings replaces its Table's FieldUserSettings wholesale on import"
-    (let [serialized (atom nil)]
-      (ts/with-dbs [source-db dest-db]
-        (testing "extracting inline from the source"
-          (ts/with-db source-db
-            (let [db    (ts/create! :model/Database :name "my-db")
-                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
-                  f1    (ts/create! :model/Field :name "age" :table_id (:id table))
-                  _f2   (ts/create! :model/Field :name "email" :table_id (:id table))]
-              (t2/insert! :model/TableUserSettings {:table_id (:id table) :display_name "Renamed"})
-              (t2/insert! :model/FieldUserSettings {:field_id (:id f1) :description "edited"})
-              (reset! serialized
-                      (into [(ts/extract-one "Database" (:id db))
-                             (ts/extract-one "Table" (:id table))]
-                            (serdes/extract-all "TableUserSettings"
-                                                {:filter-column :table_id
-                                                 :filter-ids    [(:id table)]}))))))
-        (testing "the extracted TableUserSettings nests F1's edit and no others"
-          (let [tus (first (by-model @serialized "TableUserSettings"))]
-            (is (= "Renamed" (:display_name tus)))
-            (is (= 1 (count (:fields tus))))
-            (is (= "edited" (:description (first (:fields tus)))))))
-        (testing "loading into a destination where the same Database/Table/Fields exist, and F2 has a stale row"
-          (ts/with-db dest-db
-            (let [db    (ts/create! :model/Database :name "my-db")
-                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
-                  f1    (ts/create! :model/Field :name "age" :table_id (:id table))
-                  f2    (ts/create! :model/Field :name "email" :table_id (:id table))]
-              (t2/insert! :model/FieldUserSettings {:field_id (:id f2) :description "stale"})
-              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-              (testing "the Table's settings arrive"
-                (is (= "Renamed" (t2/select-one-fn :display_name :model/TableUserSettings :table_id (:id table)))))
-              (testing "F1's settings arrive"
-                (is (= "edited" (t2/select-one-fn :description :model/FieldUserSettings :field_id (:id f1)))))
-              (testing "F2's stale row is deleted -- replace semantics"
-                (is (nil? (t2/select-one :model/FieldUserSettings :field_id (:id f2))))))))))))
-
-(deftest table-user-settings-dimensions-round-trip-test
-  (testing "a Table's settings carry the Dimensions of all its Fields and replace the target's"
-    (let [serialized (atom nil)]
+(deftest user-settings-round-trip-test
+  (testing "Table settings, Field settings and Dimensions round-trip as entities of their own"
+    (let [serialized (atom nil)
+          extract    (fn [model-name filter-column ids]
+                       (serdes/extract-all model-name {:filter-column filter-column :filter-ids ids}))]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
           (let [db    (ts/create! :model/Database :name "my-db")
                 table (ts/create! :model/Table :name "customers" :db_id (:id db))
                 age   (ts/create! :model/Field :name "age" :table_id (:id table))
                 email (ts/create! :model/Field :name "email" :table_id (:id table))]
+            (t2/insert! :model/TableUserSettings {:table_id (:id table) :display_name "Renamed"})
             (t2/insert! :model/FieldUserSettings {:field_id (:id age) :description "edited"})
             (ts/create! :model/Dimension :field_id (:id email) :name "Email" :type :internal)
             (reset! serialized
-                    (into [(ts/extract-one "Database" (:id db))
-                           (ts/extract-one "Table" (:id table))
-                           (ts/extract-one "Field" (:id email))]
-                          (serdes/extract-all "TableUserSettings" {:filter-column :table_id
-                                                                   :filter-ids    [(:id table)]})))))
-        (testing "the Dimension is listed on the Table's settings with its Field's path, not under the Field"
-          (let [tus (first (by-model @serialized "TableUserSettings"))]
-            (is (=? [{:description "edited"}] (:fields tus)))
-            (is (=? [{:name "Email" :field_id ["my-db" nil "customers" "email"]}] (:dimensions tus)))
-            (is (not (contains? (first (by-model @serialized "Field")) :dimensions)))))
+                    (-> [(ts/extract-one "Database" (:id db))
+                         (ts/extract-one "Table" (:id table))
+                         (ts/extract-one "Field" (:id age))
+                         (ts/extract-one "Field" (:id email))]
+                        (into (extract "TableUserSettings" :table_id [(:id table)]))
+                        (into (extract "FieldUserSettings" :field_id [(:id age)]))
+                        (into (extract "Dimension" :field_id [(:id email)]))))))
+        (testing "each is extracted on its own, with nothing nested"
+          (is (=? {:display_name "Renamed"} (first (by-model @serialized "TableUserSettings"))))
+          (is (not (contains? (first (by-model @serialized "TableUserSettings")) :fields)))
+          (is (=? [{:description "edited"}] (by-model @serialized "FieldUserSettings")))
+          (is (=? [{:name "Email"}] (by-model @serialized "Dimension")))
+          (is (not-any? #(contains? % :dimensions) (by-model @serialized "Field"))))
         (ts/with-db dest-db
           (let [db    (ts/create! :model/Database :name "my-db")
                 table (ts/create! :model/Table :name "customers" :db_id (:id db))
-                email (ts/create! :model/Field :name "email" :table_id (:id table))
-                stale (ts/create! :model/Field :name "stale" :table_id (:id table))]
-            (ts/create! :model/Dimension :field_id (:id stale) :name "Stale" :type :internal)
-            (t2/insert! :model/FieldUserSettings {:field_id (:id stale) :description "stale"})
+                age   (ts/create! :model/Field :name "age" :table_id (:id table))
+                email (ts/create! :model/Field :name "email" :table_id (:id table))]
+            (ts/create! :model/Dimension :field_id (:id email) :name "Local" :type :internal)
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (testing "the Dimension arrives on its Field"
-              (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email)))))
-            (testing "Field settings and Dimensions the export no longer has are deleted"
-              (is (not (t2/exists? :model/FieldUserSettings :field_id (:id stale))))
-              (is (not (t2/exists? :model/Dimension :field_id (:id stale)))))))))))
+            (is (= "Renamed" (t2/select-one-fn :display_name :model/TableUserSettings :table_id (:id table))))
+            (is (= "edited" (t2/select-one-fn :description :model/FieldUserSettings :field_id (:id age))))
+            (testing "the imported Dimension replaces the Field's local one"
+              (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension :field_id (:id email)))))))))))
 
-(deftest dimension-import-compatibility-test
-  (mt/with-empty-h2-app-db!
-    (let [db        (ts/create! :model/Database :name "my-db")
-          table     (ts/create! :model/Table :name "customers" :db_id (:id db))
-          email     (ts/create! :model/Field :name "email" :table_id (:id table))
-          dimension (ts/create! :model/Dimension :field_id (:id email) :name "Email" :type :internal)
-          tus       (first (serdes/extract-all "TableUserSettings" {:filter-column :table_id
-                                                                    :filter-ids    [(:id table)]}))
-          load!     (fn [entities] (serdes.load/load-metabase! (ingestion-in-memory entities)))]
-      (testing "re-importing a Dimension keeps its id"
-        (load! [tus])
-        (is (= (:id dimension) (t2/select-one-pk :model/Dimension :field_id (:id email)))))
-      (testing "a settings file without a `dimensions` key, as v64 wrote, leaves them alone"
-        (load! [(dissoc tus :dimensions)])
-        (is (= (:id dimension) (t2/select-one-pk :model/Dimension :field_id (:id email)))))
-      (testing "a v64 Field file imports its Dimensions"
-        (t2/delete! :model/Dimension :field_id (:id email))
-        (load! [(assoc (ts/extract-one "Field" (:id email))
-                       :dimensions [(dissoc (first (:dimensions tus)) :field_id)])])
-        (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email)))))
-      (testing "a v64 Field file with `dimensions: []` deletes its Field's Dimensions"
-        (load! [(assoc (ts/extract-one "Field" (:id email)) :dimensions [])])
-        (is (not (t2/exists? :model/Dimension :field_id (:id email)))))
-      (testing "a local settings row holding only a flag is cleared without stopping the import"
-        (t2/insert! :model/TableUserSettings {:table_id (:id table) :description nil :description_set true})
-        (load! [tus])
-        (is (not (t2/exists? :model/TableUserSettings :table_id (:id table))))
-        (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email))))))))
-
-(deftest table-without-settings-clears-target-test
-  (testing "a Table with nothing set on the source clears the target's table settings, Field settings and Dimensions"
+(deftest legacy-field-dimensions-import-test
+  (testing "a Field file written before Dimensions got files of their own still carries them"
     (mt/with-empty-h2-app-db!
-      (let [db    (ts/create! :model/Database :name "my-db")
-            table (ts/create! :model/Table :name "customers" :db_id (:id db))
-            email (ts/create! :model/Field :name "email" :table_id (:id table))
-            tus   (first (serdes/extract-all "TableUserSettings" {:filter-column :table_id
-                                                                  :filter-ids    [(:id table)]}))]
-        (is (=? {:fields [] :dimensions []} tus))
-        (t2/insert! :model/TableUserSettings {:table_id (:id table) :display_name "Local"})
-        (t2/insert! :model/FieldUserSettings {:field_id (:id email) :description "local"})
-        (ts/create! :model/Dimension :field_id (:id email) :name "Local" :type :internal)
-        (serdes.load/load-metabase! (ingestion-in-memory [tus]))
-        (is (not (t2/exists? :model/TableUserSettings :table_id (:id table))))
-        (is (not (t2/exists? :model/FieldUserSettings :field_id (:id email))))
-        (is (not (t2/exists? :model/Dimension :field_id (:id email))))))))
+      (let [db        (ts/create! :model/Database :name "my-db")
+            table     (ts/create! :model/Table :name "customers" :db_id (:id db))
+            email     (ts/create! :model/Field :name "email" :table_id (:id table))
+            dimension (dissoc (ts/extract-one "Dimension" (:entity_id (ts/create! :model/Dimension :field_id (:id email)
+                                                                                  :name "Email" :type :internal)))
+                              :serdes/meta)
+            field     (ts/extract-one "Field" (:id email))
+            load!     (fn [entity] (serdes.load/load-metabase! (ingestion-in-memory [entity])))]
+        (t2/delete! :model/Dimension :field_id (:id email))
+        (load! (assoc field :dimensions [dimension]))
+        (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email))))
+        (testing "an empty list deletes them"
+          (load! (assoc field :dimensions []))
+          (is (not (t2/exists? :model/Dimension :field_id (:id email)))))))))
+
+(deftest legacy-table-user-settings-fields-import-test
+  (testing "a settings file written before Field settings got files of their own replaces its Table's Field settings"
+    (mt/with-empty-h2-app-db!
+      (let [db     (ts/create! :model/Database :name "my-db")
+            table  (ts/create! :model/Table :name "customers" :db_id (:id db))
+            age    (ts/create! :model/Field :name "age" :table_id (:id table))
+            email  (ts/create! :model/Field :name "email" :table_id (:id table))
+            _      (t2/insert! :model/FieldUserSettings {:field_id (:id age) :description "edited"})
+            legacy {:serdes/meta [{:model "Database" :id "my-db"}
+                                  {:model "Table" :id "customers"}
+                                  {:model "TableUserSettings" :id "1"}]
+                    :fields      [(ts/extract-one "FieldUserSettings" (:id age))]}]
+        (t2/delete! :model/FieldUserSettings :field_id (:id age))
+        (t2/insert! :model/FieldUserSettings {:field_id (:id email) :description "stale"})
+        (serdes.load/load-metabase! (ingestion-in-memory [legacy]))
+        (is (= "edited" (t2/select-one-fn :description :model/FieldUserSettings :field_id (:id age))))
+        (is (not (t2/exists? :model/FieldUserSettings :field_id (:id email))))))))
 
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
@@ -2289,9 +2245,9 @@
             (reset! serialized (into [] (serdes.extract/extract {})))
             (testing "the labeled Field and its FieldUserSettings both export the label"
               (is (= :PII (:data_sensitivity (field-ser @serialized "CONTACT_EMAIL"))))
-              (is (= :PII (-> (u/seek #(and (in-db? %) (-> % :serdes/meta last :model (= "TableUserSettings")))
+              (is (= :PII (-> (u/seek #(and (in-db? %) (-> % :serdes/meta last :model (= "FieldUserSettings")))
                                       @serialized)
-                              :fields first :data_sensitivity))))
+                              :data_sensitivity))))
             (testing "the unlabeled Field exports no data_sensitivity key"
               (is (not (contains? (field-ser @serialized "CONTACT_ROW") :data_sensitivity))))))
         (ts/with-db dest-db

@@ -11,7 +11,8 @@
 
    Tracked model types:
    - Card, Dashboard, Document, NativeQuerySnippet, Timeline, Collection
-   - Table and TableUserSettings, which also carries a Field's own edits (when published in a remote-synced collection)
+   - Table and TableUserSettings (when published in a remote-synced collection)
+   - FieldUserSettings and Dimension, keyed by their Field (when its Table is published in a remote-synced collection)
    - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
    - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)"
@@ -378,7 +379,7 @@
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
 
-;;; ----------------------------------------- TableUserSettings Tracking -----------------------------------------------
+;;; ------------------------------------------- User Settings Tracking -------------------------------------------------
 
 (def ^:private table-spec (get spec/remote-sync-specs :model/Table))
 (def ^:private field-spec (get spec/remote-sync-specs :model/Field))
@@ -389,32 +390,39 @@
   (let [details (spec/hydrate-model-details table-spec table-id)]
     (assoc details :table_id (:id details) :table_name (:name details))))
 
-(defn- sync-table-user-settings!
-  "Track the Table's TableUserSettings when eligible, else mark it removed."
-  [table-id eligible?]
-  (cond
-    eligible?
-    (create-or-update-remote-sync-object-entry!
-     "TableUserSettings" table-id "update" hydrate-table-user-settings-details)
+(defn- hydrate-field-details
+  "The RemoteSyncObject details of the Field with `field-id`."
+  [field-id]
+  (spec/hydrate-model-details field-spec field-id))
 
-    (remote-sync.db/rso-exists? "TableUserSettings" table-id)
-    (create-or-update-remote-sync-object-entry!
-     "TableUserSettings" table-id "removed" hydrate-table-user-settings-details)))
+(defn- sync-user-settings!
+  "Track `model-type` `id` as updated when `eligible?` and `exists?` holds for it, else mark it removed when tracked."
+  [model-type id eligible? exists? hydrate-details]
+  (cond
+    (and eligible? (exists? id))
+    (create-or-update-remote-sync-object-entry! model-type id "update" hydrate-details)
+
+    (remote-sync.db/rso-exists? model-type id)
+    (create-or-update-remote-sync-object-entry! model-type id "removed" hydrate-details)))
 
 (events/derive! :event/field-update ::field-update-event)
 (events/derive! ::field-update-event :metabase/event)
 
 (methodical/defmethod events/publish-event! ::field-update-event
   [_topic {:keys [object]}]
-  (when-let [table-id (:table_id object)]
-    (sync-table-user-settings! table-id (spec/check-eligibility field-spec object))))
+  (let [eligible? (spec/check-eligibility field-spec object)]
+    (sync-user-settings! "FieldUserSettings" (:id object) eligible?
+                         remote-sync.db/field-user-settings-exist? hydrate-field-details)
+    (sync-user-settings! "Dimension" (:id object) eligible?
+                         remote-sync.db/dimension-exists-for-field? hydrate-field-details)))
 
 (defn- handle-table-event!
   "The generic Table handler plus the Table's TableUserSettings; one handler, since a second primary method on the
   same events would displace the generic one."
   [topic {:keys [object] :as event}]
   (handle-model-event-from-spec table-spec topic event)
-  (sync-table-user-settings! (:id object) (spec/check-eligibility table-spec object)))
+  (sync-user-settings! "TableUserSettings" (:id object) (spec/check-eligibility table-spec object)
+                       remote-sync.db/table-user-settings-exist? hydrate-table-user-settings-details))
 
 (let [event-kws (spec/event-keywords table-spec)
       parent-kw (:parent event-kws)]

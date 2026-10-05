@@ -19,6 +19,8 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -2277,12 +2279,18 @@ serdes/meta:
                                                  :base-snapshot (export-test-snapshot "base-B")))))
           (assert-extracted-once probe))))))
 
-;;; ------------------------------------ Table/Field user-settings round trip -------------------------------------
+;;; --------------------------------- Table/Field user-settings inline round trip ---------------------------------
+
+(defn- import-snapshot!
+  "Run a forced import of `mock-source`, closing the task afterwards, returning the import result."
+  [mock-source]
+  (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+    (u/prog1 (impl/import! (source.p/snapshot mock-source) task-id :force? true)
+      (remote-sync.task/complete-sync-task! task-id))))
 
 (deftest table-and-field-user-settings-round-trip-test
-  (testing "a full export writes one file per published Table with user edits -- the TableUserSettings entity beside
-            the Table's path, nesting its edited Fields' settings and Dimensions under :fields -- and a later import
-            restores it, pruning field edits the file no longer lists"
+  (testing "a full export writes a file per settings row and Dimension of a published Table, and an import makes the
+            instance match them, deleting what has no file"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
                      :model/Collection {coll-id :id}  {:name "RS" :is_remote_synced true :location "/"}
@@ -2295,43 +2303,39 @@ serdes/meta:
         (t2/insert! :model/Dimension {:field_id f2-id :name "Remapped F2" :type :internal})
         (let [export-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
               mock-source    (test-helpers/create-mock-source)
-              export-result  (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true)]
-          (is (= :success (:status export-result)))
+              table-files    #(into {} (filter (fn [[path _]] (str/includes? path "test_table"))) (get @(:files-atom mock-source) "main"))]
+          (is (= :success (:status (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true))))
           (remote-sync.task/complete-sync-task! export-task-id)
-          (let [files       (get @(:files-atom mock-source) "main")
-                table-files (into {} (filter (fn [[p _]] (str/includes? p "test_table"))) files)]
-            (is (= 1 (count table-files))
-                (str "expected exactly one Table-related file, got " (keys table-files)))
-            (let [[path content] (first table-files)]
-              (is (str/ends-with? path "test_table___tableusersettings.yaml")
-                  "the file is the Table's settings file; the Table itself is never written")
-              (is (str/includes? content "Renamed"))
-              (is (str/includes? content "fields:"))
-              (is (str/includes? content "curated"))
-              (is (str/includes? content "Remapped F2"))))
-          (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "stale"})
-          (t2/delete! :model/Dimension :field_id f2-id)
-          (t2/update! :model/TableUserSettings :table_id table-id {:display_name "Local Edit"})
-          (let [import-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                import-result  (impl/import! (source.p/snapshot mock-source) import-task-id :force? true)]
-            (is (= :success (:status import-result)))
-            (is (= "Renamed" (:display_name (t2/select-one :model/TableUserSettings :table_id table-id)))
-                "T's user display_name is restored from the import")
-            (is (= "curated" (:description (t2/select-one :model/FieldUserSettings :field_id f1-id)))
-                "F1's edited description is present")
-            (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id))
-                "F2's stale local row, absent from the imported file's :fields, is gone")
-            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))
-                "F2's Dimension is restored from the file's :dimensions"))
-          (testing "deleting the file drops the Table's settings, its Field settings and its Dimensions"
-            (remote-sync.task/complete-sync-task! (t2/select-one-pk :model/RemoteSyncTask :ended_at nil))
+          (testing "each settings row and Dimension is a file of its own, and the Table and Fields are not written"
+            (is (= #{"test_table___tableusersettings.yaml" "f1___fieldusersettings.yaml" "f2___dimension.yaml"}
+                   (set (map #(last (str/split % #"/")) (keys (table-files)))))))
+          (testing "an import restores the files' rows and deletes the ones with no file"
+            (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "stale"})
+            (t2/update! :model/TableUserSettings :table_id table-id {:display_name "Local Edit"})
+            (t2/delete! :model/Dimension :field_id f2-id)
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (= "Renamed" (t2/select-one-fn :display_name :model/TableUserSettings :table_id table-id)))
+            (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
+            (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id)))
+            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
+          (testing "a settings file v64 wrote, carrying its Fields' settings under `fields`, keeps them"
+            (let [files    (table-files)
+                  content  (fn [suffix] (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files))))
+                  legacy   (assoc (content "test_table___tableusersettings.yaml")
+                                  :fields [(content "f1___fieldusersettings.yaml")])
+                  [path _] (u/seek #(str/ends-with? (key %) "test_table___tableusersettings.yaml") files)]
+              (swap! (:files-atom mock-source) update "main"
+                     #(-> (into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %)
+                          (assoc (str/replace path "___tableusersettings" "") (yaml/generate-string legacy)))))
+            (is (= :success (:status (import-snapshot! mock-source))))
+            (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
+            (is (not (t2/exists? :model/Dimension :field_id f2-id))))
+          (testing "deleting the files drops the Table's settings and its Fields'"
             (swap! (:files-atom mock-source) update "main"
-                   #(into {} (remove (fn [[path _]] (str/includes? path "test_table___tableusersettings"))) %))
-            (let [import-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-              (is (= :success (:status (impl/import! (source.p/snapshot mock-source) import-task-id :force? true)))))
+                   #(into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %))
+            (is (= :success (:status (import-snapshot! mock-source))))
             (is (not (t2/exists? :model/TableUserSettings :table_id table-id)))
-            (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id)))
-            (is (not (t2/exists? :model/Dimension :field_id f2-id)))))))))
+            (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id)))))))))
 
 ;; ---------- run-task-body!: the row is always closed, whatever the worker does ----------------
 

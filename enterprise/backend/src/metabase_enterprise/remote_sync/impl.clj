@@ -77,20 +77,30 @@
      model-key
      (spec/removal-opts model-spec synced-collection-ids entity-ids))))
 
-(defn- remove-unsynced-table-settings!
-  "Drops the user settings, Field settings, and Dimensions of the Tables published in `synced-collection-ids` whose
-  TableUserSettings is not among `seen-paths`."
-  [synced-collection-ids seen-paths]
-  (when (seq synced-collection-ids)
-    (let [imported (into #{}
-                         (keep (fn [path]
-                                 (when (= "TableUserSettings" (:model (last path)))
-                                   (:id (serdes/load-find-local (pop path))))))
-                         seen-paths)]
-      (when-let [table-ids (not-empty (vec (remove imported (remote-sync.db/published-table-ids synced-collection-ids))))]
-        (remote-sync.db/delete-dimensions-for-tables! table-ids)
-        (remote-sync.db/delete-field-user-settings-for-tables! table-ids)
-        (remote-sync.db/delete-table-user-settings-for-tables! table-ids)))))
+(defn- imported-ids
+  "The local ids of the `model-name` entities among `seen-paths`, found with `local-id` of each path."
+  [seen-paths model-name local-id]
+  (into [] (keep (fn [path] (when (= model-name (:model (last path))) (local-id path)))) seen-paths))
+
+(defn- remove-unsynced-user-settings!
+  "Deletes the TableUserSettings, FieldUserSettings, and Dimensions of the Tables published in
+  `synced-collection-ids` that were NOT part of the import; a settings file from `ingestable` that still carries its
+  Fields' settings under `fields` keeps them."
+  [synced-collection-ids ingestable seen-paths]
+  (when-let [table-ids (some-> (not-empty synced-collection-ids) remote-sync.db/published-table-ids not-empty vec)]
+    (let [parent-id       #(:id (serdes/load-find-local (pop %)))
+          legacy-fields   (into []
+                                (comp (filter #(= "TableUserSettings" (:model (last %))))
+                                      (filter #(contains? (serialization/ingest-one ingestable %) :fields))
+                                      (keep parent-id)
+                                      (mapcat remote-sync.db/field-ids-with-user-settings))
+                                seen-paths)]
+      (remote-sync.db/delete-table-user-settings-except!
+       table-ids (imported-ids seen-paths "TableUserSettings" parent-id))
+      (remote-sync.db/delete-field-user-settings-except!
+       table-ids (into legacy-fields (imported-ids seen-paths "FieldUserSettings" parent-id)))
+      (remote-sync.db/delete-dimensions-except!
+       table-ids (imported-ids seen-paths "Dimension" #(:id (last %)))))))
 
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
@@ -369,7 +379,7 @@
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)]
         (remove-unsynced! synced-collection-ids imported-data)
-        (remove-unsynced-table-settings! synced-collection-ids seen-paths))
+        (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths))
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
       ;; insert. Chunked so insert/IN params and memory stay bounded.

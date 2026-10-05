@@ -455,10 +455,11 @@
   [path]
   (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
         table               (serdes/load-find-local table-path)]
-    (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields)))))
+    (when table
+      (warehouse-schema.db/field-in-path (:id table) (map :id (reverse fields))))))
 
 (def ^:private legacy-dimensions
-  "The Dimensions a Field file carried before they moved to its FieldUserSettings."
+  "The Dimensions a Field file carried before they got files of their own."
   (serdes/nested :model/Dimension :field_id {}))
 
 (defmethod serdes/load-one! "Field" [ingested maybe-local]
