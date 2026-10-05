@@ -55,11 +55,6 @@
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/McpSessionLog {:where [:< :created_at cutoff]}))
 
-(defn- default-group-ids
-  "The IDs of All Users and All tenant users."
-  []
-  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
-
 (mu/defn advanced-mode? :- :boolean
   "Whether MCP tool access is set per group instead of for All Users only. That is the state in which All Users has no
   McpGroupPermission: the migration seeds one, only entering group-level mode deletes it, and leaving re-seeds it."
@@ -72,20 +67,12 @@
   [advanced? :- :boolean]
   (if advanced?
     [(u/the-id (perms/data-analyst-group))]
-    (default-group-ids)))
-
-(defn- visible-groups-expr
-  "Matches, on `column`, the groups the MCP tool access page shows in the mode selected by `advanced?`:
-  Administrators, All Users, and All tenant users in simple mode, every other group in group-level mode."
-  [column advanced?]
-  (if advanced?
-    [:not-in column (default-group-ids)]
-    [:in column (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
+    (perms/usage-controls-simple-mode-group-ids)))
 
 (mu/defn visible-group-ids :- [:set ms/PositiveInt]
   "The IDs of the groups the mode selected by `advanced?` shows."
   [advanced? :- :boolean]
-  (t2/select-pks-set :model/PermissionsGroup {:where (visible-groups-expr :id advanced?)}))
+  (t2/select-pks-set :model/PermissionsGroup {:where (perms/usage-controls-visible-groups-clause :id advanced?)}))
 
 (mu/defn group-permissions-for-user
   "The McpGroupPermission rows of the groups of the User with `user-id`."
@@ -129,9 +116,11 @@
 (mu/defn hidden-group-permissions
   "The McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
-  (t2/select :model/McpGroupPermission {:where [:not (visible-groups-expr :group_id advanced?)]}))
+  (t2/select :model/McpGroupPermission
+             {:where [:not (perms/usage-controls-visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
-  (t2/delete! :model/McpGroupPermission {:where [:not (visible-groups-expr :group_id advanced?)]}))
+  (t2/delete! :model/McpGroupPermission
+              {:where [:not (perms/usage-controls-visible-groups-clause :group_id advanced?)]}))

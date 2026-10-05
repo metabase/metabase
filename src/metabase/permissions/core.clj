@@ -182,4 +182,6 @@
 
 (p/import-vars [metabase.permissions.models.permissions-group
                 check-tenant-groups-visible!
-                hidden-tenant-group-ids])
+                hidden-tenant-group-ids
+                usage-controls-simple-mode-group-ids
+                usage-controls-visible-groups-clause])
