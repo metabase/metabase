@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.kondo-ratchet :as kondo-ratchet]
+   [dev.module-cycle-names :as cycle-names]
    [dev.module-cycles :as module-cycles]))
 
 (set! *warn-on-reflection* true)
@@ -97,7 +98,7 @@
 
 (deftest ^:parallel names-file-test
   (testing "malformed names throw"
-    (are [anchors msg] (thrown-with-msg? clojure.lang.ExceptionInfo msg (module-cycles/validate-anchors anchors))
+    (are [anchors msg] (thrown-with-msg? clojure.lang.ExceptionInfo msg (cycle-names/validate-anchors anchors))
       '[foundation app-db]               #"must hold a map"
       '{:foundation app-db}              #"not a cluster name"
       '{foundation "app-db"}             #"must be anchored by a module symbol"
@@ -107,14 +108,14 @@
       (try
         (are [contents msg] (thrown-with-msg? clojure.lang.ExceptionInfo msg
                                               (do (spit file contents)
-                                                  (module-cycles/read-anchors (.getPath file))))
+                                                  (cycle-names/read-anchors (.getPath file))))
           ";; nothing\n"            #"is empty"
           "{a app-db}\n{b qp}\n"    #"more than one form")
         (finally
           (io/delete-file file true)))))
   (testing "a missing file throws"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is missing"
-                          (module-cycles/read-anchors "no/such/cycle-clusters.edn")))))
+                          (cycle-names/read-anchors "no/such/cycle-clusters.edn")))))
 
 (deftest ^:parallel messages-test
   (testing "a merge names the clusters, shows the chains, and keeps removing a name as the last resort"
@@ -169,4 +170,4 @@
     (let [problems (module-cycles/report)]
       (is (empty? problems)
           (str "Every cyclic cluster of the module require graph holds exactly one anchor from "
-               module-cycles/clusters-file ".\n\n" (str/join "\n\n" problems))))))
+               cycle-names/clusters-file ".\n\n" (str/join "\n\n" problems))))))

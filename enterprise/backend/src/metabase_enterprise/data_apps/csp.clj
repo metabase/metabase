@@ -12,5 +12,5 @@
    CSP `connect-src` so the sandboxed bundle can fetch/XHR those origins."
   :feature :data-apps
   [slug]
-  (or (:allowed_hosts (data-apps.db/enabled-non-blob-data-app-by-slug slug))
+  (or (:allowed_hosts (data-apps.db/enabled-data-app-by-slug slug))
       []))

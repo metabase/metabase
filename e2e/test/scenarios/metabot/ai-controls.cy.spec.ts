@@ -270,12 +270,12 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.reload();
       cy.findByRole("textbox", {
         name: /SQL generation prompt instructions/,
-      }).should("contain.value", "Always use uppercase SQL keywords.");
+      }).should("have.text", "Always use uppercase SQL keywords.");
 
       cy.visit("/admin/metabot/system-prompts/metabot-chat");
       cy.findByRole("textbox", {
         name: /AI chat prompt instructions/,
-      }).should("contain.value", "Be concise and helpful.");
+      }).should("have.text", "Be concise and helpful.");
     });
   });
 });

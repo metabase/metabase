@@ -398,6 +398,32 @@
    archived?      :- :boolean]
   (t2/update! :model/Timeline {:collection_id [:in collection-ids]} {:archived archived?}))
 
+(mu/defn set-action-archived-in-collections!
+  "Archive the unarchived Actions in the Collections with `collection-ids` along with them, or unarchive the ones
+  archived along with them whose model, if any, is not archived, returning the number updated."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]
+   archived?      :- :boolean]
+  (if archived?
+    (t2/update! :model/Action {:collection_id [:in collection-ids], :archived false}
+                {:archived true, :archived_directly false})
+    (if-let [action-ids (not-empty (into #{} (map :id)
+                                         (t2/query {:select    [:action.id]
+                                                    :from      [[(t2/table-name :model/Action) :action]]
+                                                    :left-join [[(t2/table-name :model/Card) :model]
+                                                                [:= :model.id :action.model_id]]
+                                                    :where     [:and
+                                                                [:in :action.collection_id collection-ids]
+                                                                [:= :action.archived true]
+                                                                [:= :action.archived_directly false]
+                                                                [:or [:= :action.model_id nil] [:= :model.archived false]]]})))]
+      (t2/update! :model/Action :id [:in action-ids] {:archived false})
+      0)))
+
+(mu/defn delete-actions-in-collections!
+  "Delete the Actions in the Collections with `collection-ids`, returning the number deleted."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/delete! :model/Action :collection_id [:in collection-ids]))
+
 (mu/defn set-card-archived-in-collections-not-directly!
   "Set `archived?` on the Cards in the Collections with `collection-ids` that were not archived directly, returning
   the number updated."
@@ -488,6 +514,13 @@
                                               [:= :collection_id collection-id]
                                               [:= :exploration_id nil]
                                               (when skip-archived? [:not :archived])]}))
+
+(mu/defn action-ids-in-collection
+  "The IDs of the Actions in the Collection with `collection-id`, excluding archived ones when `skip-archived?`."
+  [collection-id  :- [:maybe ::lib.schema.id/collection]
+   skip-archived? :- [:maybe :boolean]]
+  (t2/select-pks-set :model/Action
+                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
 
 (mu/defn timeline-ids-in-collection
   "The IDs of the Timelines in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?`."
