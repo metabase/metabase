@@ -7,7 +7,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { action } from "./actions";
+import { dataAction, modelAction } from "./actions";
 import { browseDatabase } from "./browse";
 import { card } from "./cards";
 import { collection } from "./collections";
@@ -83,10 +83,9 @@ export function modelToUrl(item: UrlableModel): string {
       // Unjustified type cast. FIXME
       return indexedEntity(item as IndexedEntity);
     case "action":
-      if (item.model_id != null) {
-        return action({ id: item.model_id }, item.id);
-      }
-      return NOT_FOUND_URL;
+      return item.model_id != null
+        ? modelAction({ id: item.model_id }, item.id)
+        : dataAction(item.id);
     case "segment":
       if (databaseId != null && item.table_id != null) {
         return tableRowsQuery(databaseId, item.table_id, undefined, item.id);

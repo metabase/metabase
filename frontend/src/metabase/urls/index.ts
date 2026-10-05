@@ -6,7 +6,6 @@ export * from "./browse";
 export * from "./cards";
 export * from "./collections";
 export * from "./dashboards";
-export * from "./data-actions";
 export * from "./data-apps";
 export * from "./data-studio";
 export * from "./dependencies";

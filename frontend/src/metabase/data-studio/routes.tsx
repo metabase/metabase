@@ -1,7 +1,7 @@
+import { getDataStudioActionRoutes } from "metabase/actions/data-studio";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
-import { getDataStudioActionRoutes } from "metabase/data-actions";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,

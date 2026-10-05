@@ -2,12 +2,12 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
+import { useHasActionDatabases } from "metabase/actions/data-studio";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   canAccessDataModel as canAccessDataModelSelector,
   useUserKeyValue,
 } from "metabase/current-user";
-import { useHasActionDatabases } from "metabase/data-actions";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import {
   AreaLayout,

@@ -94,7 +94,7 @@ function ModelActionDetails({ model }: Props) {
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
-      const actionUrl = Urls.action(model.card(), action.id);
+      const actionUrl = Urls.modelAction(model.card(), action.id);
 
       return (
         <li key={action.id} aria-label={action.name}>

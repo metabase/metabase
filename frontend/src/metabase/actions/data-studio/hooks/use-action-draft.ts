@@ -33,8 +33,7 @@ export function useActionDraft({
     [query, formSettings],
   );
   const isDirty = !Lib.areLegacyQueriesEqual(datasetQuery, initialDatasetQuery);
-  const isValid =
-    definition != null && Lib.rawNativeQuery(query).trim().length > 0;
+  const isValid = definition != null && Lib.canSave(query, "question");
 
   return { datasetQuery, definition, isDirty, isValid, setDatasetQuery };
 }
