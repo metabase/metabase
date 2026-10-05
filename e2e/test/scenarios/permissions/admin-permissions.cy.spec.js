@@ -1,6 +1,9 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP, DATA_GROUP } =
   USER_GROUPS;
@@ -177,9 +180,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       H.selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
       H.assertPermissionOptions(["Curate", "View"]);
 
-      cy.realPress("Escape");
-      H.popover().should("not.exist");
-      H.selectSidebarItem("Second collection");
+      cy.visit(`/admin/permissions/collections/${SECOND_COLLECTION_ID}`);
+      cy.get("main")
+        .findByText("Permissions for Second collection")
+        .should("be.visible");
 
       H.modifyPermission(
         "All Users",
