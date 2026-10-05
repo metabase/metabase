@@ -11,7 +11,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     H.restore();
     cy.signInAsAdmin();
-    cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
 
     H.setupSMTP();
   });
@@ -49,11 +48,8 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should respect email alerts toggled off and save the Slack channel_id (metabase#12349)", () => {
-    H.updateSetting("report-timezone", "America/New_York");
-
     //For this test, we need to pretend that slack is set up
     H.mockSlackConfigured();
-    H.setupNotificationChannel({ name: "Webhook" });
 
     openAlertForQuestion(ORDERS_QUESTION_ID);
 

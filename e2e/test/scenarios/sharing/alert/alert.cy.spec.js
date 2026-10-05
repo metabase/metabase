@@ -67,7 +67,6 @@ describe("scenarios > alert", () => {
         name: "Bar Hook",
         description: "This is another hook",
       });
-      cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
     });
 
     it("should be able to create and delete alerts with webhooks enabled", () => {
@@ -155,101 +154,95 @@ describe("scenarios > alert", () => {
     });
   });
 
-  describe(
-    "scenarios > sharing > approved domains (EE)",
-    { tags: "@external" },
-    () => {
-      const allowedDomain = "metabase.test";
-      const deniedDomain = "metabase.example";
-      const deniedEmail = `mailer@${deniedDomain}`;
-      // We're not exposing allowed domains to normal users.
-      const normalUserAlertError = `Failed save alert. The following email addresses are not allowed: ${deniedEmail}`;
-      const normalUserSubscriptionError = `Cannot create subscription. The following email addresses are not allowed: ${deniedEmail} Please contact your administrator.`;
-      const adminAlertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
-      const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
+  describe("approved domains (EE)", { tags: "@external" }, () => {
+    const allowedDomain = "metabase.test";
+    const deniedDomain = "metabase.example";
+    const deniedEmail = `mailer@${deniedDomain}`;
+    // We're not exposing allowed domains to normal users.
+    const normalUserAlertError = `Failed save alert. The following email addresses are not allowed: ${deniedEmail}`;
+    const normalUserSubscriptionError = `Cannot create subscription. The following email addresses are not allowed: ${deniedEmail} Please contact your administrator.`;
+    const adminAlertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
+    const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 
-      function addEmailRecipient(email) {
-        cy.findByTestId("token-field")
-          .findByRole("combobox")
-          .click()
-          .type(`${email}`)
-          .blur();
-      }
+    function addEmailRecipient(email) {
+      cy.findByTestId("token-field")
+        .findByRole("combobox")
+        .click()
+        .type(`${email}`)
+        .blur();
+    }
 
-      function setAllowedDomains() {
-        H.updateSetting("subscription-allowed-domains", allowedDomain);
-      }
+    function setAllowedDomains() {
+      H.updateSetting("subscription-allowed-domains", allowedDomain);
+    }
 
-      beforeEach(() => {
-        H.restore();
-        cy.signInAsAdmin();
-        H.activateToken("pro-self-hosted");
-        H.setupSMTP();
-        setAllowedDomains();
+    beforeEach(() => {
+      H.activateToken("pro-self-hosted");
+      H.setupSMTP();
+      setAllowedDomains();
+    });
+
+    it("should validate approved email domains for a question alert and a dashboard subscription (metabase#17977)", () => {
+      H.visitQuestion(ORDERS_QUESTION_ID);
+
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+
+      H.selectScheduleTime();
+      H.modal().within(() => {
+        cy.findByText("New alert").should("be.visible");
+
+        addEmailRecipient(deniedEmail);
+
+        cy.findByText(adminAlertError);
+        cy.button("Done").should("be.disabled");
       });
 
-      it("should validate approved email domains for a question alert and a dashboard subscription (metabase#17977)", () => {
-        H.visitQuestion(ORDERS_QUESTION_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.toggleDashboardSubscriptionsSidebar();
 
-        cy.findByLabelText("Move, trash, and more…").click();
-        H.popover().findByText("Create an alert").click();
+      H.sidebar().within(() => {
+        cy.findByText("Email it").click();
+        addEmailRecipient(deniedEmail);
 
-        H.selectScheduleTime();
-        H.modal().within(() => {
-          cy.findByText("New alert").should("be.visible");
+        // Reproduces metabase#17977
+        cy.button("Send email now").should("be.disabled");
+        cy.button("Done").should("be.disabled");
+        cy.findByText(adminSubscriptionError);
+      });
+    });
 
-          addEmailRecipient(deniedEmail);
+    it("should not display the list of approved domains for non-admins (metabase#57138)", () => {
+      cy.signInAsNormalUser();
+      H.visitQuestion(ORDERS_QUESTION_ID);
 
-          cy.findByText(adminAlertError);
-          cy.button("Done").should("be.disabled");
-        });
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+      H.selectScheduleTime();
+      H.modal().within(() => {
+        cy.findByText("New alert").should("be.visible");
 
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.toggleDashboardSubscriptionsSidebar();
+        addEmailRecipient(deniedEmail);
 
-        H.sidebar().within(() => {
-          cy.findByText("Email it").click();
-          addEmailRecipient(deniedEmail);
-
-          // Reproduces metabase#17977
-          cy.button("Send email now").should("be.disabled");
-          cy.button("Done").should("be.disabled");
-          cy.findByText(adminSubscriptionError);
-        });
+        cy.button("Done").click();
+      });
+      cy.findByTestId("toast-undo").within(() => {
+        cy.root().should("have.attr", "color", "feedback-negative");
+        cy.root().should("have.text", normalUserAlertError);
       });
 
-      it("should not display the list of approved domains for non-admins (metabase#57138)", () => {
-        cy.signInAsNormalUser();
-        H.visitQuestion(ORDERS_QUESTION_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.toggleDashboardSubscriptionsSidebar();
 
-        cy.findByLabelText("Move, trash, and more…").click();
-        H.popover().findByText("Create an alert").click();
-        H.selectScheduleTime();
-        H.modal().within(() => {
-          cy.findByText("New alert").should("be.visible");
+      H.sidebar().within(() => {
+        addEmailRecipient(deniedEmail);
 
-          addEmailRecipient(deniedEmail);
-
-          cy.button("Done").click();
-        });
-        cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.attr", "color", "feedback-negative");
-          cy.root().should("have.text", normalUserAlertError);
-        });
-
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.toggleDashboardSubscriptionsSidebar();
-
-        H.sidebar().within(() => {
-          addEmailRecipient(deniedEmail);
-
-          cy.button("Done").click();
-        });
-        cy.findByTestId("toast-undo").within(() => {
-          cy.root().should("have.attr", "color", "feedback-negative");
-          cy.root().should("have.text", normalUserSubscriptionError);
-        });
+        cy.button("Done").click();
       });
-    },
-  );
+      cy.findByTestId("toast-undo").within(() => {
+        cy.root().should("have.attr", "color", "feedback-negative");
+        cy.root().should("have.text", normalUserSubscriptionError);
+      });
+    });
+  });
 });
