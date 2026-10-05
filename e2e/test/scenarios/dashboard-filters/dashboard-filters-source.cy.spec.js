@@ -152,6 +152,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       H.filterWidget().click();
       H.popover().within(() => {
         cy.findByText("Rustic Paper Wallet").should("be.visible");
+        cy.findByText("1").should("not.exist");
         cy.findByText("Rustic Paper Wallet").click();
         cy.button("Add filter").click();
       });
