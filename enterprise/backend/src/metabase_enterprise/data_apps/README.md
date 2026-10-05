@@ -89,7 +89,7 @@ middleware's lookup doesn't pull in route code.
 
 Each app owns two server-managed resources (`resources.clj`), created with the app (or its draft)
 and reasserted on every import: a **collection** holding the copies the app is served from (saved
-questions, action models, table-sourced metrics) and a **permissions group** its users belong to.
+questions, actions, table-sourced metrics) and a **permissions group** its users belong to.
 
 The group is set database-level `view-data :blocked` on every database, so it grants **no data
 access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
