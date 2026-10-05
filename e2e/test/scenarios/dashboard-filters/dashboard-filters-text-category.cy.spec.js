@@ -98,45 +98,6 @@ describe("scenarios > dashboard > filters > text/category", () => {
     );
   });
 
-  it("should reset filter state when all values are unselected (metabase#25533)", () => {
-    const filterType = "Is";
-    const filterValue = "Organic";
-
-    cy.log(`Make sure we can connect '${filterType}' filter`);
-    H.setFilter("Text or Category", filterType);
-
-    cy.findByTestId("dashcard").findByText("Select…").click();
-    H.popover().contains("Source").click();
-
-    H.saveDashboard();
-    waitDashboardCardQuery();
-
-    H.filterWidget().click();
-    applyFilterByType(filterType, filterValue);
-    waitDashboardCardQuery();
-    H.filterWidget()
-      .should("contain", filterValue)
-      .icon("close")
-      .should("be.visible");
-
-    H.filterWidget().click();
-    cy.log("uncheck all values");
-
-    H.popover().within(() => {
-      cy.findByText(filterValue).click();
-      cy.button("Update filter").click();
-      waitDashboardCardQuery();
-    });
-
-    H.filterWidget()
-      .should("contain", "Text")
-      .and("not.contain", filterValue)
-      .within(() => {
-        cy.icon("close").should("not.exist");
-      });
-    cy.location("search").should("eq", "?text=");
-  });
-
   it("should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)", () => {
     H.setFilter("Text or Category", "Is");
 
@@ -222,23 +183,56 @@ describe("scenarios > dashboard > filters > text/category", () => {
     assertOrganicOnly();
 
     // Removing value resets back to default
-    H.toggleFilterWidgetValues(["Organic"], {
+    H.toggleFilterWidgetValues(["Google", "Twitter"], {
+      buttonLabel: "Update filter",
+    });
+    waitDashboardCardQuery();
+    H.ensureDashboardCardHasText("37.65");
+    H.toggleFilterWidgetValues(["Organic", "Google", "Twitter"], {
       buttonLabel: "Set to default",
     });
+    waitDashboardCardQuery();
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
     H.filterWidget().findByText("Organic").should("be.visible");
     assertOrganicOnly();
   });
 
-  it("should use the list value picker for single- and multi-value category filters (metabase#49323)", () => {
+  it("should use the list value picker for single- and multi-value category filters (metabase#49323) and reset when all values are unselected (metabase#25533)", () => {
     H.setFilter("Text or Category", "Is", "Single title");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
     H.sidebar().findByText("A single value").click();
 
     H.setFilter("Text or Category", "Is", "Multiple titles");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
+
+    H.setFilter("Text or Category", "Is", "Source");
+    H.selectDashboardFilter(cy.findByTestId("dashcard"), "Source");
     H.saveDashboard();
     waitDashboardCardQuery();
+
+    cy.log(
+      "reset filter state when all values are unselected (metabase#25533)",
+    );
+    H.filterWidget({ name: "Source" }).click();
+    applyFilterByType("Is", "Organic");
+    waitDashboardCardQuery();
+    H.filterWidget({ name: "Source" })
+      .should("contain", "Organic")
+      .icon("close")
+      .should("be.visible");
+
+    H.filterWidget({ name: "Source" }).click();
+    H.popover().within(() => {
+      cy.findByText("Organic").click();
+      cy.button("Update filter").click();
+    });
+    waitDashboardCardQuery();
+    H.filterWidget({ name: "Source" })
+      .should("not.contain", "Organic")
+      .within(() => {
+        cy.icon("close").should("not.exist");
+      });
+    cy.location("search").should("match", /[?&]source=(&|$)/);
 
     [
       {
