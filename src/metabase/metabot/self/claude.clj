@@ -394,12 +394,13 @@
   (get-in supported-models [(strip-vendor-prefix model) :context-window]))
 
 (defn- claude-model-version
-  "`[family major minor]` for a Claude opus/sonnet model id, or nil."
+  "`[family major minor]` for a Claude opus/sonnet model id, or nil.
+  The minor version is one or two digits, so a date suffix doesn't read as one: `claude-opus-5-20261005` is 5.0."
   [model]
   ;; the minor version accepts both separators: canonical ids are hyphenated (claude-opus-4-8)
   ;; but Azure admins name deployments freely, and the dotted display-name spelling
   ;; (claude-opus-4.8) is the norm for the GPT family next to it
-  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:[-.](\d+))?"
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 

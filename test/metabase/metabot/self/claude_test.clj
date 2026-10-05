@@ -650,13 +650,16 @@
   (let [schema {:type "object" :properties {:answer {:type "string"}}}
         tools  [(metabot.tu/get-time-tool)]
         body   #(claude/claude-request-body (merge {:input [{:role :user :content "hi"}]} %))]
-    (testing "structured output and a required tool choice force the call"
-      (is (=? {:tool_choice {:type "tool" :name "structured_output"} :max_tokens 512}
-              (body {:model "claude-opus-5" :schema schema :max-tokens 512})))
-      (is (=? {:tool_choice {:type "any"}}
-              (body {:model "claude-sonnet-5" :tools tools :tool_choice "required"}))))
+    (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names"
+      (doseq [model ["claude-opus-5" "claude-sonnet-5" "claude-opus-5-20261005" "claude-sonnet-5-2026-10-05"]]
+        (testing model
+          (is (=? {:tool_choice {:type "tool" :name "structured_output"} :max_tokens 512}
+                  (body {:model model :schema schema :max-tokens 512})))
+          (is (=? {:tool_choice {:type "any"}}
+                  (body {:model model :tools tools :tool_choice "required"}))))))
     (testing "Opus and Sonnet from 5.5 reject a forced tool choice, so they get auto and keep thinking"
-      (doseq [model ["claude-opus-5-5" "claude-sonnet-5-5" "anthropic.claude-sonnet-5-5" "claude-opus-5.5"]]
+      (doseq [model ["claude-opus-5-5" "claude-sonnet-5-5" "anthropic.claude-sonnet-5-5" "claude-opus-5.5"
+                     "claude-opus-5-5-20261005" "claude-sonnet-5-5-2026-10-05"]]
         (testing model
           (is (=? {:tool_choice {:type "auto"}
                    :tools       [{:name "structured_output"}]
@@ -865,7 +868,7 @@
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"
     (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
-                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
+                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1" "claude-opus-4-20250514"]]
       (is (true? (#'claude/model-supports-temperature? model))
           model)))
   (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
