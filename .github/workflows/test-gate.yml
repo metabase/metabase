@@ -34,11 +34,6 @@ on:
         value: >-
           ${{ (jobs.should-run.outputs.verdict == 'force-run' && jobs.should-run.outputs.filters)
           || jobs.files-changed.outputs.matched || '[]' }}
-      files:
-        description: >-
-          The changed files behind each requested filter, as a JSON object of filter name to array
-          of paths. An empty object when the paths filter did not run.
-        value: ${{ jobs.files-changed.outputs.files || '{}' }}
       force-run:
         description: Whether the suite should run in full, ignoring the diff.
         value: ${{ jobs.should-run.outputs.verdict == 'force-run' }}
@@ -80,33 +75,33 @@ jobs:
     outputs:
       matched: ${{ steps.match.outputs.matched }}
       any: ${{ steps.match.outputs.any }}
-      files: ${{ steps.match.outputs.files }}
     steps:
       # The filter definitions are the only thing on disk that paths-filter reads.
       - uses: actions/checkout@v7
         with:
           sparse-checkout: .github
+      # No file lists: one filter's list can outgrow the 128 KiB a single environment variable may
+      # hold on Linux, and every caller after the gate pays for it. A job that needs the paths runs
+      # its own paths filter.
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
-          list-files: json
           filters: .github/file-paths.yaml
       - name: Match the diff against the requested filters
         id: match
         uses: actions/github-script@v9
         env:
           REQUESTED: ${{ inputs.filters }}
-          # Every filter's verdict and file list, as paths-filter set them.
-          CHANGES: ${{ toJSON(steps.changes.outputs) }}
+          # The names of every filter the diff matched, as a JSON array.
+          CHANGED: ${{ steps.changes.outputs.changes }}
         with:
           script: | # js
             const fs = require('fs');
 
             const requested = process.env.REQUESTED.split(/[\s,]+/).filter(Boolean);
-            const changes = JSON.parse(process.env.CHANGES);
-            const changed = JSON.parse(changes.changes);
+            const changed = JSON.parse(process.env.CHANGED);
 
             // A filter name that no longer exists would silently gate the suite off forever.
             const defined = [...fs.readFileSync('.github/file-paths.yaml', 'utf8')
@@ -122,5 +117,3 @@ jobs:
             core.info(`matched: ${matched.join(', ') || 'none'}`);
             core.setOutput('matched', JSON.stringify(matched));
             core.setOutput('any', matched.length > 0);
-            core.setOutput('files', JSON.stringify(Object.fromEntries(
-              requested.map((filter) => [filter, JSON.parse(changes[`${filter}_files`] ?? '[]')]))));
