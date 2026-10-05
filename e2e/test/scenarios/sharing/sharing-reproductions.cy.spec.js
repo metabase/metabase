@@ -391,7 +391,7 @@ describe("issue 22524", () => {
   });
 });
 
-describe("issue 24223", () => {
+describe("issue 24223", { tags: "@external" }, () => {
   const questionDetails = {
     name: "24223",
     query: {

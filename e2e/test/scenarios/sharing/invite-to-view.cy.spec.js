@@ -96,7 +96,7 @@ describe("scenarios > sharing > invite someone to view", () => {
     });
   });
 
-  describe("invite email", () => {
+  describe("invite email", { tags: "@external" }, () => {
     beforeEach(() => H.setupSMTP());
 
     it("uses the SSO login link (not a password reset) when password login is disabled", () => {
@@ -117,7 +117,7 @@ describe("scenarios > sharing > invite someone to view", () => {
     });
   });
 
-  describe("landing after signup", () => {
+  describe("landing after signup", { tags: "@external" }, () => {
     beforeEach(() => H.setupSMTP());
 
     it("scopes the invite email to the dashboard and lands the invited user on it after they set a password", () => {
@@ -143,7 +143,7 @@ describe("scenarios > sharing > invite someone to view", () => {
     });
   });
 
-  describe("permissions", () => {
+  describe("permissions", { tags: "@external" }, () => {
     beforeEach(() => H.setupSMTP());
 
     // The redirect only navigates; it is not an access grant. An invitee whose
