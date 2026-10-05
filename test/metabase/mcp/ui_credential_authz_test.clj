@@ -57,6 +57,19 @@
         (testing route
           (is (= 403 (:status (handle-post! #{"agent:search"} route (venues-query))))))))))
 
+(deftest wildcard-scopes-grant-nothing-test
+  (testing "MCP compares scopes literally: a credential whose claim holds only a wildcard is refused"
+    (mt/with-full-data-perms-for-all-users!
+      (doseq [scopes [#{"agent:*"} #{"agent:query:*"} #{"*"}]]
+        (testing (pr-str scopes)
+          (is (= 403 (:status (handle-post! scopes "run" (venues-query)))))
+          (is (= 403 (:status (handle-post! scopes "derive" (venues-query)
+                                            {:operations [{:type "date-filter/clear"}]}))))))
+      (testing "agent:sql:* does not stand in for agent:sql:run on a native handle"
+        (is (= 403 (:status (handle-post! #{"agent:query:run" "agent:sql:*"} "run" (native-query))))))
+      (testing "control: the literal scopes are served"
+        (is (= 202 (:status (handle-post! #{"agent:query:run" "agent:sql:run"} "run" (native-query)))))))))
+
 (deftest run-runs-only-what-the-user-may-query-test
   (testing "Gate 2: the credential's scope lets the iframe run a handle, and the user's own data permissions decide
             what runs. Rasta, with no data permissions, is refused."
