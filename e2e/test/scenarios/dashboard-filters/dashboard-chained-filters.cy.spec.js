@@ -176,9 +176,9 @@ describe("scenarios > dashboard > chained filter", () => {
   }
 });
 
-describe("scenarios > dashboard > chained filter > field types", () => {
+describe("scenarios > dashboard > chained filter > UUID primary key", () => {
   it(
-    "should work for all field types (metabase#15170)",
+    "should offer a UUID primary key column for an ID filter in 'Update a dashboard filter' click behavior (metabase#15170)",
     { tags: "@external" },
 
     () => {
