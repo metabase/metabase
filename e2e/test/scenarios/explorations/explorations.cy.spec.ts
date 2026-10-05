@@ -374,38 +374,6 @@ describe("scenarios > explorations > detail page", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("changes sidebar selection on click and shows the corresponding visualization area", () => {
-    H.createExplorationViaApi({ name: "Click selection fixture" }).then(
-      (id) => {
-        visitExplorationUntilSettled(id, 2);
-
-        // The page auto-selects a row on load, so clicking the first (already
-        // selected) row would pass even with click-to-select broken. Click a
-        // row that is NOT selected and assert the selection moves to it.
-        cy.findAllByRole("treeitem")
-          .filter('[aria-selected="false"]')
-          .eq(1) // first treeitem is the summary document
-          .invoke("attr", "href")
-          .then((href) => {
-            cy.get(`[role="treeitem"][href="${href}"]`).click();
-            cy.get(`[role="treeitem"][href="${href}"]`).should(
-              "have.attr",
-              "aria-selected",
-              "true",
-            );
-          });
-
-        // The clicked page's chart renders in the main area — assert a real
-        // visualization anchor, not just "main is not empty" (a spinner
-        // satisfies that).
-        cy.location("pathname").should("match", /\/page\/\d+$/);
-        cy.findByRole("main")
-          .findByTestId("visualization-root", { timeout: 15000 })
-          .should("be.visible");
-      },
-    );
-  });
-
   it("preserves the URL `timeline` param across navigation and reload", () => {
     createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
       cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
@@ -577,10 +545,36 @@ describe("scenarios > explorations > sidebar triage", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("filters pages with the Stars and Discussions tabs and persists the sort preference across reloads", () => {
+  it("selects a page on click, filters pages with the Stars and Discussions tabs, and persists the sort preference across reloads", () => {
     createTwoPageExploration("Sidebar tabs fixture").then(
-      ({ explorationId, pageNames }) => {
+      ({ explorationId }) => {
         visitExplorationUntilSettled(explorationId, 2);
+
+        cy.log("Clicking an unselected page selects it and shows its chart");
+        // The page auto-selects a row on load, so clicking the first (already
+        // selected) row would pass even with click-to-select broken. Click a
+        // row that is NOT selected and assert the selection moves to it.
+        cy.findAllByRole("treeitem").should("have.length", 3); // summary document + 2 pages
+        cy.findAllByRole("treeitem")
+          .filter('[aria-selected="false"]')
+          .eq(1) // first treeitem is the summary document
+          .invoke("attr", "href")
+          .then((href) => {
+            cy.get(`[role="treeitem"][href="${href}"]`).click();
+            cy.get(`[role="treeitem"][href="${href}"]`)
+              .should("have.attr", "aria-selected", "true")
+              .invoke("text")
+              .then((text) => text.trim())
+              .as("clickedPageName");
+          });
+
+        // The clicked page's chart renders in the main area — assert a real
+        // visualization anchor, not just "main is not empty" (a spinner
+        // satisfies that).
+        cy.location("pathname").should("match", /\/page\/\d+$/);
+        cy.findByRole("main")
+          .findByTestId("visualization-root", { timeout: 15000 })
+          .should("be.visible");
 
         cy.log("Stars tab is empty until something is starred");
         cy.findByRole("radio", { name: "Stars" }).click({ force: true });
@@ -596,8 +590,10 @@ describe("scenarios > explorations > sidebar triage", () => {
         cy.log("Star the selected page with the s shortcut");
         cy.findByRole("radio", { name: "All" }).click({ force: true });
         cy.findAllByRole("treeitem").should("have.length", 3); // summary document + 2 pages
-        sidebar().findByText(pageNames[0]).click();
-        selectedRows().should("contain.text", pageNames[0]);
+        cy.get<string>("@clickedPageName").then((name) => {
+          sidebar().findByText(name).click();
+          selectedRows().should("contain.text", name);
+        });
         cy.intercept("PUT", "/api/exploration/page/*/starred").as("setStarred");
         cy.get("body").type("s");
         cy.wait("@setStarred").its("request.body.starred").should("eq", true);
@@ -632,10 +628,12 @@ describe("scenarios > explorations > sidebar triage", () => {
 
         cy.log("Stars tab now shows only the starred page");
         cy.findByRole("radio", { name: "Stars" }).click({ force: true });
-        cy.findAllByRole("treeitem")
-          .should("have.length", 1)
-          .first()
-          .should("contain.text", pageNames[0]);
+        cy.get<string>("@clickedPageName").then((name) => {
+          cy.findAllByRole("treeitem")
+            .should("have.length", 1)
+            .first()
+            .should("contain.text", name);
+        });
 
         cy.log("Alphabetical sort is remembered per exploration");
         cy.findByRole("radio", { name: "All" }).click({ force: true });
