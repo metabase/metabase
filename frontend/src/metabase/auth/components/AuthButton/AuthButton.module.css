@@ -22,6 +22,14 @@
   font-weight: 700;
   line-height: 1rem;
   background-color: var(--mb-color-background_page-primary);
+  /*
+   * Same border box in both themes.
+   */
+  border: 1px solid transparent;
   box-shadow: 0 3px 10px var(--mb-color-shadow-default);
   border-radius: 6px;
+}
+
+[data-mantine-color-scheme="dark"] .card {
+  border-color: var(--mb-color-border-neutral);
 }
