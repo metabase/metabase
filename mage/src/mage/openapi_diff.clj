@@ -58,13 +58,6 @@
      (sequential? node) (mapv #(resolve-refs % spec seen) node)
      :else node)))
 
-(defn- object-variants
-  "The object variants of a `oneOf`/`anyOf` union, in order."
-  [node]
-  (when (map? node)
-    (filterv #(and (map? %) (get % "properties"))
-             (concat (get node "oneOf") (get node "anyOf")))))
-
 (defn- non-null
   "The single real variant of a nullable union such as `oneOf [<array> {type: null}]`, else `node`."
   [node]
@@ -73,23 +66,15 @@
     (if (and (= 1 (count others)) (< 1 (count variants))) (first others) node)))
 
 (defn- schema-props
-  "`[properties required-set]` for an object-ish schema, else `[nil #{}]`. Unwraps the common
-  `oneOf [<object> {type: null}]` nullable pattern.
-
-  A union of two or more object variants has no single property set, so it is `[nil #{}]` and
-  callers compare it whole. Taking the first variant's properties would hide any change to the
-  others, including removing one."
+  "`[properties required-set]` for an object schema, else `[nil #{}]`. Unwraps the nullable
+  `oneOf [<object> {type: null}]` pattern, and only that: any other union, such as
+  `string | object` or two object variants, has no single property set, so callers compare it
+  whole. Taking one variant's properties would hide every change to the others."
   [node]
-  (if (map? node)
-    (if-let [props (get node "properties")]
-      [props (set (get node "required"))]
-      (or (when (next (object-variants node)) [nil #{}])
-          (some (fn [variant]
-                  (when-let [props (and (map? variant) (get variant "properties"))]
-                    [props (set (get variant "required"))]))
-                (concat (get node "oneOf") (get node "anyOf")))
-          [nil #{}]))
-    [nil #{}]))
+  (let [n (non-null node)]
+    (if-let [props (and (map? n) (get n "properties"))]
+      [props (set (get n "required"))]
+      [nil #{}])))
 
 (defn- type-set
   "Set of JSON types a schema accepts, or nil when unconstrained."
@@ -129,14 +114,14 @@
     (sequential? node) (mapv strip-docs node)
     :else node))
 
-(def ^:private lower-bounds ["minimum" "exclusiveMinimum" "minLength" "minItems"])
-(def ^:private upper-bounds ["maximum" "exclusiveMaximum" "maxLength" "maxItems"])
+(def ^:private lower-bounds ["minLength" "minItems"])
+(def ^:private upper-bounds ["maxLength" "maxItems"])
 
 (def ^:private modeled-keys
   "Keywords [[compatible?]] compares. A change to any other keyword is ranked incompatible."
   (into #{"type" "enum" "const" "oneOf" "anyOf" "allOf" "prefixItems" "items" "properties"
           "required" "additionalProperties" "pattern" "format" "uniqueItems"}
-        (concat lower-bounds upper-bounds)))
+        (concat lower-bounds upper-bounds ["minimum" "exclusiveMinimum" "maximum" "exclusiveMaximum"])))
 
 (defn- union? [node]
   (and (map? node) (seq (concat (get node "oneOf") (get node "anyOf")))))
@@ -146,19 +131,46 @@
   [node]
   (if (union? node) (concat (get node "oneOf") (get node "anyOf")) [node]))
 
+(defn- numeric-bound
+  "A schema's effective numeric bound as `[value strictness]`, comparable with `compare`, or nil.
+  `inclusive`/`exclusive` name the keywords; exclusive is stricter at the same value, so it sorts
+  inward: above an inclusive lower bound, below an inclusive upper one."
+  [s inclusive exclusive inward]
+  (let [i (get s inclusive), x (get s exclusive)
+        candidates (cond-> []
+                     (number? i) (conj [i 0])
+                     (number? x) (conj [x inward]))]
+    (when (seq candidates)
+      (reduce #(if (pos? (* inward (compare %2 %1))) %2 %1) (first candidates) (rest candidates)))))
+
+(defn- literal-types
+  "JSON types of an enum's or const's values, or nil when the schema is neither."
+  [node]
+  (when-let [vs (cond (contains? node "const") [(get node "const")]
+                      (sequential? (get node "enum")) (get node "enum"))]
+    (set (map #(cond (string? %) "string" (integer? %) "integer" (number? %) "number"
+                     (boolean? %) "boolean" (nil? %) "null" (map? %) "object" :else "array")
+              vs))))
+
 (defn- accepts-all-values?
   "True when the type, enum, bound, and pattern constraints of `wide` admit every value that
   `narrow`'s admit. Object and array structure is [[compatible?]]'s job."
   [wide narrow]
-  (let [tw (type-set wide), tn (type-set narrow)
+  (let [tw (type-set wide), tn (or (type-set narrow) (literal-types narrow))
         ew (enum-set wide), en (enum-set narrow)
         bound-ok? (fn [k cmp] (let [w (get wide k), n (get narrow k)]
-                                (or (not (number? w)) (and (number? n) (cmp n w)))))]
+                                (or (not (number? w)) (and (number? n) (cmp n w)))))
+        numeric-ok? (fn [inclusive exclusive inward]
+                      (let [w (numeric-bound wide inclusive exclusive inward)
+                            n (numeric-bound narrow inclusive exclusive inward)]
+                        (or (nil? w) (and n (not (neg? (* inward (compare n w))))))))]
     (boolean
      (and (or (nil? tw) (and tn (set/subset? tn (cond-> tw (contains? tw "number") (conj "integer")))))
           (or (nil? ew) (and en (set/subset? en ew)))
           (every? #(bound-ok? % >=) lower-bounds)
           (every? #(bound-ok? % <=) upper-bounds)
+          (numeric-ok? "minimum" "exclusiveMinimum" 1)
+          (numeric-ok? "maximum" "exclusiveMaximum" -1)
           ;; Two regexes cannot be compared, so any change to a pattern or format narrows.
           (every? #(or (not (contains? wide %)) (= (get wide %) (get narrow %))) ["pattern" "format"])
           (or (not (true? (get wide "uniqueItems"))) (true? (get narrow "uniqueItems")))))))
@@ -202,9 +214,14 @@
             ;; must not shift the positions of the members that do.
             members     (fn [s k] (cond->> (get s k)
                                     (= k "allOf") (remove #(contains? #{{} {"allOf" []}} %))))
+            ;; Members pair by position. `allOf` members are conjuncts, so the narrower side may carry
+            ;; extra trailing ones: the old side for a request, the new side for a response.
             positional? (fn [k] (let [o (members old k), n (members new k)]
                                   (or (= o n)
-                                      (and (= (count o) (count n)) (every? true? (map same? o n))))))
+                                      (and (if (= k "allOf")
+                                             (if req? (<= (count n) (count o)) (<= (count o) (count n)))
+                                             (= (count o) (count n)))
+                                           (every? true? (map same? o n))))))
             open-values (fn [s] (let [a (get s "additionalProperties")] (if (map? a) a {})))
             closed?     (fn [s] (false? (get s "additionalProperties")))
             old-props (get old "properties" {}), new-props (get new "properties" {})
@@ -241,7 +258,12 @@
                               :schema   (strip-docs (get p "schema" {}))}]))
             ;; nil when there is no body at all. An empty MAP means "any value" (Malli `:any`) and
             ;; must still be compared: narrowing it to a type requires more of the caller.
-            :body (some-> (get-in op ["requestBody" "content" "application/json" "schema"]) strip-docs)
+            :body-required (boolean (get-in op ["requestBody" "required"]))
+            :body-types (set (keys (get-in op ["requestBody" "content"])))
+            :body (let [content (get-in op ["requestBody" "content"])]
+                    (some-> (or (get-in content ["application/json" "schema"])
+                                (some #(get % "schema") (vals content)))
+                            strip-docs))
             :responses (into {}
                              (for [[code resp] (get op "responses")
                                    :when (map? resp)
@@ -308,6 +330,23 @@
   [severities]
   (or (first (sort-by severity-order severities)) doc-only))
 
+(defn- object-shell
+  "An object schema without its properties, and without the null of a nullable union: the
+  keywords (`allOf`, a map-of `additionalProperties`, `minProperties`, ...) that the property walk
+  does not see. A boolean `additionalProperties` is reported separately."
+  [node]
+  (let [n (non-null node)]
+    (cond-> (dissoc n "properties" "required")
+      (boolean? (get n "additionalProperties")) (dissoc "additionalProperties"))))
+
+(defn- shell-lines
+  "A finding for the keywords beside an object's properties, when they changed."
+  [dir pad label old-schema new-schema]
+  (let [o (object-shell old-schema), n (object-shell new-schema)]
+    (when (not= o n)
+      [[(if (compatible? dir o n) additive breaking)
+        (str pad "~ " label ": " (brief-change o n))]])))
+
 (defn- body-lines
   "Recursively compare request-body schemas, reporting leaf-level changes as `[severity text]`."
   ([label old-schema new-schema] (body-lines label old-schema new-schema 0))
@@ -340,6 +379,7 @@
             [[(if (or (nil? new-types) (and old-types (set/subset? old-types new-types)))
                 additive breaking)
               (str pad "~ " label " type: " (sort old-types) " -> " (sort new-types))]])
+          (shell-lines :request pad label old-schema new-schema)
           (when (and (false? (get (non-null new-schema) "additionalProperties"))
                      (not (false? (get (non-null old-schema) "additionalProperties"))))
             [[breaking (str pad "! " label " now rejects undeclared keys (additionalProperties: false)")]])
@@ -409,6 +449,7 @@
             [[(if (or (nil? old-types) (and new-types (set/subset? new-types old-types)))
                 additive breaking)
               (str pad "~ " label " type: " (sort old-types) " -> " (sort new-types))]])
+          (shell-lines :response pad label old-schema new-schema)
           (for [k (sort (set/difference old-keys new-keys))]
             [breaking (str pad "- " label "." k " REMOVED (provides less): " (brief (get old-props k)))])
           (for [k (sort (set/difference new-keys old-keys))]
@@ -446,6 +487,13 @@
                     [[(if (compatible? :request (:schema po) (:schema pn)) additive breaking)
                       (str "    ~ param " p " schema: " (brief-change (:schema po) (:schema pn)))]]))))
              (sort (set/intersection old-keys new-keys)))
+     (when (and (:body-required new-op) (not (:body-required old-op)))
+       [[breaking "    ! body is now REQUIRED (breaking)"]])
+     (when (and (:body-required old-op) (not (:body-required new-op)))
+       [[additive "    ! body is no longer required"]])
+     ;; A caller sends one content type; dropping it fails that caller even if the schema is the same.
+     (when-let [dropped (seq (sort (set/difference (:body-types old-op) (:body-types new-op))))]
+       [[breaking (str "    - body content type no longer accepted: " (str/join ", " dropped))]])
      (when (not= (:body old-op) (:body new-op))
        (body-lines "body" (:body old-op) (:body new-op)))
      (let [old-resp (:responses old-op), new-resp (:responses new-op)]
@@ -455,7 +503,9 @@
                      (filter #(not= (get old-resp %) (get new-resp %)))
                      sort))
         (for [code (sort (set/difference (set (keys old-resp)) (set (keys new-resp))))]
-          [breaking (str "    - response " code " schema removed (provides less)")]))))))
+          [breaking (str "    - response " code " schema removed (provides less)")])
+        (for [code (sort (set/difference (set (keys new-resp)) (set (keys old-resp))))]
+          [additive (str "    + response " code " schema now declared: " (brief (get new-resp code)))]))))))
 
 (defn diff
   "Structured diff of two parsed specs.
@@ -479,6 +529,15 @@
                                    ;; reworded docstring is worth surfacing.
                                    findings (cond
                                               (seq findings) findings
+                                              ;; The walk found nothing, yet the stripped schemas
+                                              ;; differ: rank the whole schema rather than let a
+                                              ;; real change fall through to doc-only below.
+                                              (not= (dissoc o :description :docs) (dissoc n :description :docs))
+                                              [[(if (and (compatible? :request (:body o) (:body n))
+                                                         (every? #(compatible? :response (get-in o [:responses %]) (get-in n [:responses %]))
+                                                                 (keys (:responses o))))
+                                                  additive breaking)
+                                                "    ~ schema changed in a shape the field-by-field comparison does not cover"]]
                                               (not= (:description o) (:description n))
                                               [[doc-only "    ~ description changed"]]
                                               ;; Schemas are compared without their doc keys, so a
@@ -795,6 +854,8 @@
               [old-arg new-arg []])]
         (when (:refs options) (println))
         (let [read-spec (fn [path]
+                          (when-not (.exists (io/file path))
+                            (u/exit (str path " does not exist.") 1))
                           (let [s (try (json/read-str (slurp path) {:key-fn identity})
                                        (catch Exception _ nil))]
                             ;; An empty or non-spec file would otherwise diff as zero operations

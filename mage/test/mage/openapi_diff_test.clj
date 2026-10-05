@@ -512,3 +512,36 @@
   (testing "a Malli :fn predicate adds an empty allOf member, which the spec cannot compare"
     (is (not (body-change-breaking? {"allOf" [(obj {"a" {"type" "string"}}) {}]}
                                     {"allOf" [(obj {"a" {"type" "string"}}) {} {}]})))))
+
+;; ---- shapes the verifier found falling through to doc-only ----
+
+(deftest union-with-one-object-variant-is-compared-test
+  (testing "a string | object request field whose string enum narrows requires more"
+    (is (body-change-breaking? (obj {"x" {"oneOf" [{"type" "string" "enum" ["a" "b"]} (obj {"k" {"type" "string"}})]}})
+                               (obj {"x" {"oneOf" [{"type" "string" "enum" ["a"]} (obj {"k" {"type" "string"}})]}})))))
+
+(deftest keywords-beside-properties-are-compared-test
+  (testing "an allOf beside an object's properties that gains a required field requires more"
+    (is (body-change-breaking? (assoc (obj {"z" {"type" "string"}}) "allOf" [(obj {"a" {"type" "string"}})])
+                               (assoc (obj {"z" {"type" "string"}}) "allOf" [(obj {"a" {"type" "string"} "c" {"type" "string"}} ["c"])]))))
+  (testing "minProperties added beside properties requires more"
+    (is (body-change-breaking? (obj {"a" {"type" "string"}}) (assoc (obj {"a" {"type" "string"}}) "minProperties" 1)))))
+
+(deftest exclusive-and-inclusive-bounds-compare-as-one-test
+  (testing "exclusiveMinimum 0 -> minimum 0 accepts 0 too, so it requires less"
+    (is (not (body-change-breaking? (obj {"x" {"type" "integer" "exclusiveMinimum" 0}})
+                                    (obj {"x" {"type" "integer" "minimum" 0}})))))
+  (testing "minimum 0 -> exclusiveMinimum 0 rejects 0, so it requires more"
+    (is (body-change-breaking? (obj {"x" {"type" "integer" "minimum" 0}})
+                               (obj {"x" {"type" "integer" "exclusiveMinimum" 0}})))))
+
+(deftest request-body-envelope-is-compared-test
+  (let [with-body (fn [content required?] {"description" "" "parameters" []
+                                           "requestBody" {"required" required? "content" content}})
+        json      {"application/json" {"schema" (obj {"a" {"type" "string"}})}}]
+    (testing "a body that becomes required requires more"
+      (is (breaking? (spec {"/api/x" {"post" (with-body json false)}})
+                     (spec {"/api/x" {"post" (with-body json true)}}))))
+    (testing "dropping a content type fails callers that send it"
+      (is (breaking? (spec {"/api/x" {"post" (with-body json false)}})
+                     (spec {"/api/x" {"post" (with-body {"multipart/form-data" (get json "application/json")} false)}}))))))
