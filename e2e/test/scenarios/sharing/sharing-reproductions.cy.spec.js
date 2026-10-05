@@ -298,6 +298,8 @@ describe("issue 21559", { tags: "@external" }, () => {
   });
 
   it("should respect dashboard card visualization (metabase#21559)", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
     H.getDashboardCard(0)
       .realHover({ scrollBehavior: "bottom" })
       .findByLabelText("Visualize another way")
@@ -970,6 +972,7 @@ describe("issue 49525", { tags: "@external" }, () => {
     cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(({ body }) => {
       cy.wrap(body.slice(-1)[0].id).as("plainEmailId");
     });
+    H.sidebar().button("Send email now", 10000).should("be.enabled");
 
     H.sidebar().within(() => {
       cy.findByLabelText("Attach results")

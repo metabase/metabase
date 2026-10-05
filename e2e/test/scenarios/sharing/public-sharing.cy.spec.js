@@ -267,10 +267,12 @@ describe("scenarios > admin > settings > public sharing", () => {
       .scrollIntoView()
       .should("be.visible");
 
-    cy.findByTestId("enable-public-sharing-setting").within(() => {
-      cy.findByText("Enabled").should("be.visible");
-      cy.findByLabelText("Enabled").click();
-    });
+    cy.findByTestId("enable-public-sharing-setting")
+      .scrollIntoView()
+      .within(() => {
+        cy.findByText("Enabled").should("be.visible");
+        cy.findByLabelText("Enabled").click();
+      });
     cy.wait("@updatePublicSharing");
     cy.findByTestId("enable-public-sharing-setting")
       .findByText("Disabled")

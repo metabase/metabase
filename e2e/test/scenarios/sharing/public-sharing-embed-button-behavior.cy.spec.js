@@ -136,6 +136,7 @@ describe("Embed JS modal display", () => {
         H.embedModalContent().should("be.visible");
         H.embedModalContent()
           .findByTestId("upsell-card")
+          .scrollIntoView()
           .within(() => {
             cy.findByText("Get more powerful embedding").should("be.visible");
             cy.findByText("Upgrade to Metabase Pro").should("be.visible");

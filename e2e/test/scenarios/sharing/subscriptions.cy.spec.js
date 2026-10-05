@@ -162,6 +162,10 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.sidebar().button("Done").should("be.enabled");
 
         cy.findByTestId("select-frequency").click();
+        H.popover().findByText("hourly").click();
+        H.sidebar().button("Done").should("be.enabled");
+
+        cy.findByTestId("select-frequency").click();
         H.popover().findByText("weekly").click();
 
         H.sidebar().button("Done").should("be.disabled");
@@ -269,12 +273,14 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.emailSubscriptionRecipients();
 
         H.openEmailPage(dashboardName).then(() => {
-          cy.intercept("POST", { pathname: "/api/pulse/unsubscribe" }).as(
-            "unsubscribe",
-          );
-          cy.intercept("POST", { pathname: "/api/pulse/unsubscribe/undo" }).as(
-            "resubscribe",
-          );
+          cy.intercept({
+            method: "POST",
+            pathname: "/api/pulse/unsubscribe",
+          }).as("unsubscribe");
+          cy.intercept({
+            method: "POST",
+            pathname: "/api/pulse/unsubscribe/undo",
+          }).as("resubscribe");
 
           cy.findByText("Unsubscribe").click();
           cy.wait("@unsubscribe");
@@ -559,7 +565,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.sendEmailAndAssert(({ html }) => {
         expect(html).to.include(questionDetails.name);
         expect(html).to.match(
-          /<img style="display: block; width: 100%;" src="cid:/,
+          /<img src="cid:[^"]+" style="display: block; width: 100%;"/,
         );
         expect(html).not.to.include(
           "An error occurred while displaying this card.",
