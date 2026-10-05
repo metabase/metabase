@@ -95,9 +95,7 @@
     "react-hooks/exhaustive-deps": "warn"
   },
   "i18next": {
-    "i18next/no-literal-string": [
-      2
-    ]
+    "i18next/no-literal-string": [2]
   },
   "typescript": [
     {
@@ -107,12 +105,7 @@
       }
     },
     {
-      "files": [
-        "**/*.ts",
-        "**/*.tsx",
-        "**/*.mts",
-        "**/*.cts"
-      ],
+      "files": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       "rules": {
         "constructor-super": "off",
         "getter-return": "off",
@@ -215,18 +208,13 @@
     "testing-library/no-await-sync-events": [
       "error",
       {
-        "eventModules": [
-          "fire-event"
-        ]
+        "eventModules": ["fire-event"]
       }
     ],
     "testing-library/no-await-sync-queries": "error",
     "testing-library/no-container": "error",
     "testing-library/no-debugging-utils": "warn",
-    "testing-library/no-dom-import": [
-      "error",
-      "react"
-    ],
+    "testing-library/no-dom-import": ["error", "react"],
     "testing-library/no-global-regexp-flag-in-query": "error",
     "testing-library/no-manual-cleanup": "error",
     "testing-library/no-node-access": "error",
@@ -269,9 +257,7 @@
     },
     {
       "name": "storybook:recommended:main-rules",
-      "files": [
-        ".storybook/main.@(js|cjs|mjs|ts)"
-      ],
+      "files": [".storybook/main.@(js|cjs|mjs|ts)"],
       "rules": {
         "storybook/no-uninstalled-addons": "error"
       }

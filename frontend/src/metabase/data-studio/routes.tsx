@@ -1,4 +1,3 @@
-import { getDataStudioActionRoutes } from "metabase/actions/data-studio";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
@@ -20,6 +19,7 @@ import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
+import { getDataStudioActionRoutes } from "./data-actions/routes";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { GuidePage } from "./guide/pages/GuidePage/GuidePage";

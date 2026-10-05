@@ -9,7 +9,7 @@ import { Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackActionId } from "metabase-types/api";
 
-import type { ActionField } from "../../hooks/use-action-fields";
+import type { ActionField } from "../../../hooks/use-action-fields";
 
 import { ActionFieldItem } from "./ActionFieldItem";
 

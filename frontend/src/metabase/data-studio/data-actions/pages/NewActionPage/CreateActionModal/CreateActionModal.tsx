@@ -15,8 +15,8 @@ import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { WritebackAction } from "metabase-types/api";
 
-import { ACTION_NAME_MAX_LENGTH } from "../../constants";
-import type { ActionDefinition } from "../../utils";
+import { ACTION_NAME_MAX_LENGTH } from "../../../constants";
+import type { ActionDefinition } from "../../../utils";
 
 const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string()

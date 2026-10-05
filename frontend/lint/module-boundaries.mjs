@@ -80,13 +80,6 @@ const elements = [
 
   // shared
   createElement({ type: "feature", name: "account" }),
-  // The Data Studio pages for actions. A pattern element ahead of shared/actions (first match wins), so the
-  // pages can compose querying and parameters while the rest of actions stays a low platform module.
-  createElement({
-    type: "shared",
-    name: "data-actions",
-    pattern: "frontend/src/metabase/actions/data-studio/**",
-  }),
   createElement({ type: "shared", name: "actions" }),
   createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
