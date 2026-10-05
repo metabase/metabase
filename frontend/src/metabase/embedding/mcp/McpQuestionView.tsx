@@ -17,7 +17,6 @@ import { TimeRangeControl } from "./TimeControlBar/TimeRangeControl";
 import type { DerivedQuery } from "./api";
 import type { ApplyMcpOperations, McpDeriveOperation } from "./derive";
 import { useMcpQueryControls } from "./hooks/useMcpQueryControls";
-import { setCurrentMcpQueryHandle } from "./requests";
 
 export const MCP_CONTENT_HEIGHT = "500px";
 
@@ -32,8 +31,8 @@ export interface McpQuestionViewProps {
 }
 
 /**
- * Applies operations by asking the server to derive a new query handle, then
- * shows that handle's query. Runs of the question then go through the new
+ * Applies operations by asking the server to derive a new query handle, which
+ * becomes the current one, then shows that handle's query. Runs of the question then go through the new
  * handle, so the question never runs a query the iframe built.
  */
 function useApplyMcpOperations(
@@ -48,14 +47,13 @@ function useApplyMcpOperations(
       }
 
       deriveQuery(operations)
-        .then(({ handle, query }) => {
+        .then(({ query }) => {
           const derived = getMcpDeserializedQuery(query);
 
           if (!derived) {
             throw new Error("The derived query could not be read.");
           }
 
-          setCurrentMcpQueryHandle(handle);
           updateQuestion(question.setDatasetQuery(derived.card.dataset_query), {
             run: true,
           });

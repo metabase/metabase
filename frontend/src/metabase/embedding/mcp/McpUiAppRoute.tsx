@@ -1,10 +1,4 @@
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { type CSSProperties, useEffect, useMemo, useRef } from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -18,9 +12,8 @@ import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
-import { type DerivedQuery, deriveMcpQuery } from "./api";
 import { createMcpClickActionMode } from "./clickActions";
-import type { ApplyMcpOperations, McpDeriveOperation } from "./derive";
+import type { ApplyMcpOperations } from "./derive";
 import {
   useHandleMcpDrill,
   useHandleMcpDrillThrough,
@@ -28,7 +21,7 @@ import {
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
 import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
-import { getCurrentMcpQueryHandle } from "./requests";
+import { useSerializedMcpDerive } from "./hooks/useSerializedMcpDerive";
 import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 
 const store = getSdkStore();
@@ -147,24 +140,11 @@ function McpUiAppRouteContent({
     [handleDrill],
   );
 
-  const deriveQuery = useCallback(
-    (operations: McpDeriveOperation[]): Promise<DerivedQuery> => {
-      const queryHandle = getCurrentMcpQueryHandle();
-
-      if (!instanceUrl || !uiCredential || !mcpSessionId || !queryHandle) {
-        return Promise.reject(new Error("The query cannot be changed here."));
-      }
-
-      return deriveMcpQuery({
-        instanceUrl,
-        uiCredential,
-        mcpSessionId,
-        queryHandle,
-        operations,
-      });
-    },
-    [instanceUrl, mcpSessionId, uiCredential],
-  );
+  const deriveQuery = useSerializedMcpDerive({
+    instanceUrl,
+    uiCredential,
+    mcpSessionId,
+  });
 
   const deserializedQuery = useMemo(() => {
     if (!query) {
