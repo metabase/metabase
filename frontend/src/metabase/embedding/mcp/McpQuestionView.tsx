@@ -30,6 +30,7 @@ export interface McpQuestionViewProps {
   safeAreaPaddingTop: number;
   deriveQuery: (operations: McpDeriveOperation[]) => Promise<DerivedQuery>;
   applyOperationsRef: MutableRefObject<ApplyMcpOperations | null>;
+  isQueryRunningRef: MutableRefObject<boolean>;
 }
 
 /**
@@ -90,7 +91,14 @@ export function McpQuestionView({
   safeAreaPaddingTop,
   deriveQuery,
   applyOperationsRef,
+  isQueryRunningRef,
 }: McpQuestionViewProps) {
+  const { isQueryRunning } = useSdkQuestionContext();
+
+  useEffect(() => {
+    isQueryRunningRef.current = isQueryRunning;
+  }, [isQueryRunning, isQueryRunningRef]);
+
   const [deriveError, setDeriveError] = useState<string | null>(null);
   const applyOperations = useApplyMcpOperations(deriveQuery, setDeriveError);
 

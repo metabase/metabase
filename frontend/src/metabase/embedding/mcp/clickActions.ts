@@ -19,7 +19,9 @@ type McpDrillHandler = (
 
 /**
  * The click actions the MCP Apps iframe offers for `clicked`. A drill the
- * server can derive becomes an action that hands its operation to `onDrill`.
+ * server can derive becomes an action that hands its operation to `onDrill`,
+ * unless `isChartChanging()` is true: a drill's click comes from the results
+ * on screen, and a pending change or a running query is about to replace them.
  * Any other action that would change the query is dropped, because the iframe
  * never runs a query it built itself. Actions that leave the query alone stay.
  */
@@ -27,6 +29,7 @@ export function getMcpClickActions(
   actions: ClickAction[],
   clicked: ClickObject,
   onDrill: McpDrillHandler,
+  isChartChanging: () => boolean,
 ): ClickAction[] {
   return actions.flatMap((action): ClickAction[] => {
     if (isPopoverClickAction(action)) {
@@ -42,7 +45,9 @@ export function getMcpClickActions(
       return [action];
     }
 
-    const operation = getDrillOperation(action.name, clicked);
+    const operation = isChartChanging()
+      ? null
+      : getDrillOperation(action.name, clicked);
 
     if (!operation) {
       return [];
@@ -71,12 +76,24 @@ export function getMcpClickActions(
   });
 }
 
+/**
+ * Whether the chart is about to change: a derive is pending, or the question's
+ * query is running.
+ */
+export function isMcpChartChanging(
+  pendingDerives: { readonly current: number },
+  isQueryRunning: { readonly current: boolean },
+): boolean {
+  return pendingDerives.current > 0 || isQueryRunning.current;
+}
+
 /** The click-action mode for the MCP Apps iframe's question. */
 export function createMcpClickActionMode(
   onDrill: McpDrillHandler,
+  isChartChanging: () => boolean,
 ): ClickActionsMode {
   return new Mode(() => EmbeddingSdkMode, {
     mapActions: (actions, clicked) =>
-      getMcpClickActions(actions, clicked, onDrill),
+      getMcpClickActions(actions, clicked, onDrill, isChartChanging),
   });
 }

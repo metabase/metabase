@@ -51,7 +51,7 @@ describe("useSerializedMcpDerive", () => {
     );
     fetchMock.post(deriveUrl("handle-2"), { handle: "handle-3", query: "q3" });
 
-    const derive = setup();
+    const { deriveQuery: derive } = setup();
     const first = derive([YEAR]);
     const second = derive([CLEAR]);
 
@@ -68,7 +68,7 @@ describe("useSerializedMcpDerive", () => {
       ++calls === 1 ? 400 : { handle: "handle-2", query: "q2" },
     );
 
-    const derive = setup();
+    const { deriveQuery: derive } = setup();
     const failed = derive([YEAR]);
     const next = derive([CLEAR]);
 
@@ -77,5 +77,27 @@ describe("useSerializedMcpDerive", () => {
 
     expect(derivedHandles()).toEqual(["handle-1", "handle-1"]);
     expect(getCurrentMcpQueryHandle()).toBe("handle-2");
+  });
+
+  it("counts the derives still pending, failed ones included", async () => {
+    let calls = 0;
+    fetchMock.post(
+      deriveUrl("handle-1"),
+      () => (++calls === 1 ? 400 : { handle: "handle-2", query: "q2" }),
+      { delay: 50 },
+    );
+
+    const { deriveQuery: derive, pendingDerivesRef } = setup();
+    expect(pendingDerivesRef.current).toBe(0);
+
+    const failed = derive([YEAR]).catch(() => undefined);
+    const next = derive([CLEAR]);
+    expect(pendingDerivesRef.current).toBe(2);
+
+    await failed;
+    expect(pendingDerivesRef.current).toBe(1);
+
+    await next;
+    expect(pendingDerivesRef.current).toBe(0);
   });
 });

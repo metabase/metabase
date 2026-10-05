@@ -100,6 +100,7 @@ const BOOTSTRAP = createMockMcpAppsBootstrapResponse({
 
 function setup() {
   const { user, settings } = BOOTSTRAP;
+  const isQueryRunningRef = { current: false };
   const deriveQuery = jest.fn<Promise<DerivedQuery>, [McpDeriveOperation[]]>(
     () => new Promise(() => {}),
   );
@@ -145,6 +146,7 @@ function setup() {
         safeAreaPaddingTop={0}
         deriveQuery={deriveQuery}
         applyOperationsRef={{ current: null }}
+        isQueryRunningRef={isQueryRunningRef}
       />
     </SdkQuestion>,
     {

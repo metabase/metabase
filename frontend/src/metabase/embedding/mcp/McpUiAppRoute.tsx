@@ -12,7 +12,7 @@ import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
-import { createMcpClickActionMode } from "./clickActions";
+import { createMcpClickActionMode, isMcpChartChanging } from "./clickActions";
 import type { ApplyMcpOperations } from "./derive";
 import {
   useHandleMcpDrill,
@@ -135,16 +135,22 @@ function McpUiAppRouteContent({
     applyOperationsRef,
   });
 
-  const clickActionMode = useMemo(
-    () => createMcpClickActionMode(handleDrill),
-    [handleDrill],
-  );
-
-  const deriveQuery = useSerializedMcpDerive({
+  const { deriveQuery, pendingDerivesRef } = useSerializedMcpDerive({
     instanceUrl,
     uiCredential,
     mcpSessionId,
   });
+
+  // Set by the question view from the SDK question's running state.
+  const isQueryRunningRef = useRef(false);
+
+  const clickActionMode = useMemo(
+    () =>
+      createMcpClickActionMode(handleDrill, () =>
+        isMcpChartChanging(pendingDerivesRef, isQueryRunningRef),
+      ),
+    [handleDrill, pendingDerivesRef],
+  );
 
   const deserializedQuery = useMemo(() => {
     if (!query) {
@@ -236,6 +242,7 @@ function McpUiAppRouteContent({
           safeAreaPaddingTop={safeAreaPadding.top}
           deriveQuery={deriveQuery}
           applyOperationsRef={applyOperationsRef}
+          isQueryRunningRef={isQueryRunningRef}
         />
 
         <McpCardFooter
