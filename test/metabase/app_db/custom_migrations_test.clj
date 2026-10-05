@@ -3143,7 +3143,11 @@
                            "(g) empty scope"
                            [(json/encode []) nil nil]
                            "(g) malformed scope"
-                           ["not json" nil nil]}
+                           ["not json" nil nil]
+                           "(h) only agent:resource:read, the scope of the agent API's read-resource endpoint"
+                           [(json/encode ["agent:resource:read"]) nil nil]
+                           "(i) agent:resource:read plus agent:content:read"
+                           [(json/encode ["agent:resource:read" "agent:content:read"]) nil mcp-resource]}
             rows          (into {} (for [table           [:oauth_access_token :oauth_refresh_token]
                                          [label [scope resource]] cases]
                                      [[table label] (insert-token! table scope resource)]))

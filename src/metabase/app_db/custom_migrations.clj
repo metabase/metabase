@@ -2311,6 +2311,10 @@
 ;;; such tokens, scoped with the MCP v2 scopes of that time. Bind them to the MCP endpoint, so they keep working there
 ;;; and stop working anywhere else.
 ;;;
+;;; A token is bound when every scope it holds is one of the six pre-binding MCP v2 scopes, AND at least one of them
+;;; is not `agent:resource:read`. That scope alone is also the declared scope of the agent API's read-resource
+;;; endpoint, so a token holding only it may be a legitimate agent API REST token.
+;;;
 ;;; The resource is always `http://localhost/api/metabase-mcp`. Binding is decided by the resource's path, not its
 ;;; host, and reading `site-url` here would mean handling an encrypted setting row and an environment override.
 
@@ -2318,15 +2322,17 @@
   ["http://localhost/api/metabase-mcp"])
 
 (defn- legacy-mcp-token?
-  "Whether the `scope` column value holds a non-empty array of scopes that are all MCP v2 scopes as they were before
-  audience binding."
+  "Whether the `scope` column value holds an array of scopes that are all MCP v2 scopes as they were before audience
+  binding, at least one of which is not `agent:resource:read`. A token holding only `agent:resource:read` may be an
+  agent API token for the read-resource endpoint, which declares that scope, so it is left alone."
   [scope]
   (let [scopes (json-array-out scope)]
-    (boolean (and (seq scopes) (every? (set mcp-v2-scopes) scopes)))))
+    (boolean (and (every? (set mcp-v2-scopes) scopes)
+                  (some (disj (set mcp-v2-scopes) "agent:resource:read") scopes)))))
 
 (defn- bind-legacy-mcp-oauth-tokens!
-  "Bind every OAuth access and refresh token that has no resource and holds only pre-binding MCP v2 scopes to the
-  MCP endpoint. Idempotent: a bound token is never selected again."
+  "Bind every OAuth access and refresh token that has no resource and passes [[legacy-mcp-token?]] to the MCP
+  endpoint. Idempotent: a bound token is never selected again."
   []
   (doseq [table [:oauth_access_token :oauth_refresh_token]]
     ;; Collect the ids first: updating rows while a reducible query over the same table is open is not safe on every
