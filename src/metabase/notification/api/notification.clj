@@ -316,10 +316,6 @@
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (let [notification (-> body
-                         ;; a client may send back `:creator`, whose timestamps arrive as JSON strings and fail
-                         ;; `send-notification!`'s input schema. The creator is never read from the body anyway:
-                         ;; it is loaded from `:creator_id`, so the key can be dropped.
-                         (dissoc :creator)
                          (assoc :creator_id api/*current-user-id*)
                          (assoc-in [:payload :disable_links]
                                    (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request))
