@@ -62,6 +62,24 @@ describe("deriveMcpQuery", () => {
     expect(sentHeader("mcp-session-id")).toBe("session-1");
   });
 
+  it("carries the server's explanation on the error", async () => {
+    fetchMock.post(DERIVE_URL, {
+      status: 400,
+      body: "This click offers no sort drill.",
+    });
+
+    await expect(
+      deriveMcpQuery({
+        ...OPTIONS,
+        queryHandle: "handle-1",
+        operations: [{ type: "date-filter/clear" }],
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      serverMessage: "This click offers no sort drill.",
+    });
+  });
+
   it("carries the status on the error", async () => {
     fetchMock.post(DERIVE_URL, 400);
 

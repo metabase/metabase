@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupAlertsEndpoints,
@@ -24,6 +25,7 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
+import { utf8_to_b64 } from "metabase/utils/encoding";
 import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
 import {
@@ -191,5 +193,52 @@ describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", ()
     expect(deriveQuery).toHaveBeenCalledWith([
       { type: "temporal-bucket/set", unit: "month" },
     ]);
+  });
+
+  it("shows why a change failed, and clears it once a change succeeds", async () => {
+    const { deriveQuery } = setup();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock.post("path:/api/dataset", QUERY_RESULT);
+    fetchMock.post(
+      "path:/api/dataset/query_metadata",
+      createMockCardQueryMetadata({ databases: [TEST_DATABASE] }),
+    );
+
+    deriveQuery.mockRejectedValueOnce(
+      Object.assign(new Error("deriveMcpQuery failed"), {
+        status: 400,
+        serverMessage: "This breakout cannot be bucketed by month.",
+      }),
+    );
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Month" }));
+
+    expect(
+      await screen.findByText("This breakout cannot be bucketed by month."),
+    ).toBeInTheDocument();
+
+    deriveQuery.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Year" }));
+
+    expect(
+      await screen.findByText("This change could not be applied."),
+    ).toBeInTheDocument();
+
+    deriveQuery.mockResolvedValueOnce({
+      handle: "handle-2",
+      query: utf8_to_b64(JSON.stringify(TEST_CARD.dataset_query)),
+    });
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Week" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("This change could not be applied."),
+      ).not.toBeInTheDocument();
+    });
   });
 });
