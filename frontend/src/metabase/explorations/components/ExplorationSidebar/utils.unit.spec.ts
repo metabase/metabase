@@ -829,7 +829,7 @@ describe("getExplorationSidebarTree omits failed variant pages", () => {
     defaultQuery: ReturnType<typeof createQuery>,
     variantQuery: ReturnType<typeof createQuery>,
   ) {
-    return getAllTabExplorationSidebarTree({
+    return sidebarTree({
       queries: [defaultQuery, variantQuery],
       blocks: [
         createBlock({
@@ -912,7 +912,7 @@ describe("getExplorationSidebarTree omits failed variant pages", () => {
       dimension_id: "user_id",
       query_type: "top-n-other",
     });
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [variant],
       blocks: [
         createBlock({
@@ -943,7 +943,7 @@ describe("getExplorationSidebarTree omits failed variant pages", () => {
       card_id: 10,
       dimension_id: "created_at",
     });
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [erroredDefault],
       blocks: [
         createBlock({
