@@ -1,5 +1,6 @@
 (ns metabase.funnysql.core-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [is are deftest testing]]
    [metabase.funnysql.core :as funnysql]
    [metabase.util.honey-sql-2 :as h2x]))
@@ -536,6 +537,18 @@
     :%sum.total_tokens           "sum(\"total_tokens\")"
     :%isnull.last_edit_timestamp "isnull(\"last_edit_timestamp\")"))
 
+(deftest ^:parallel percent-keyword-with-qualified-arg-test
+  (testing "the `:%fn.arg` shorthand accepts a `/`-qualified argument, as Honey SQL does -- the keyword is a qualified
+            keyword whose namespace starts with `%`, which must not be mistaken for an identifier"
+    (are [k sql] (= [(str "WHERE " sql " = 1")]
+                    (funnysql/format {:where [:= k 1]} :postgres))
+      :%lower.metabase_field/name "lower(\"metabase_field\".\"name\")"
+      :%lower.name                "lower(\"name\")"
+      :%count.*                   "count(*)"
+      :%now                       "now()"
+      ;; a `.` separates arguments, so this is a two-argument call
+      :%coalesce.a.b              "coalesce(\"a\", \"b\")")))
+
 (deftest ^:parallel percent-keyword-rejects-unknown-function-test
   (testing "the `:%function` shorthand must not let an arbitrary, attacker-derived function name reach the SQL --
             an unrecognized name must be rejected, not passed through raw"
@@ -801,6 +814,57 @@
 (deftest ^:parallel date-part-test
   (is (= ["date_part(?, \"started_at\")" "year"]
          (funnysql/format [:date_part "year" :started_at] :postgres))))
+
+(deftest ^:parallel empty-condition-clause-test
+  (testing "a nil or empty `:where`/`:having` is dropped, the way Honey SQL drops it"
+    ;; `[]` would otherwise compile to `()`, which H2 reads as an empty ROW
+    (are [form] (= ["SELECT \"id\" FROM \"t\""]
+                   (update (funnysql/format form :postgres) 0 str/trim))
+      {:select :id, :from :t, :where []}
+      {:select :id, :from :t, :where nil}
+      {:select :id, :from :t, :having []}
+      {:select :id, :from :t, :having nil}))
+  (testing "a real condition is still compiled"
+    (is (= ["SELECT \"id\" FROM \"t\" WHERE \"a\" = 1"]
+           (funnysql/format {:select :id, :from :t, :where [:= :a 1]} :postgres)))))
+
+(deftest ^:parallel bare-value-clause-test
+  (testing "a clause that takes a list also accepts a single bare value, the way Honey SQL does"
+    (are [form expected] (= [expected]
+                            (funnysql/format form :postgres))
+      {:select :id, :from :t, :group-by :id}             "SELECT \"id\" FROM \"t\" GROUP BY \"id\""
+      {:select [:id], :from [:t], :group-by [:id]}       "SELECT \"id\" FROM \"t\" GROUP BY \"id\""
+      {:select :id, :from :t, :order-by :id}             "SELECT \"id\" FROM \"t\" ORDER BY \"id\" ASC"
+      {:select :id, :from :t, :group-by :a, :order-by :b} "SELECT \"id\" FROM \"t\" GROUP BY \"a\" ORDER BY \"b\" ASC"))
+  (testing "`:order-by` with an explicit direction still works, and is not mistaken for two columns"
+    (is (= ["SELECT \"id\" FROM \"t\" ORDER BY \"id\" DESC"]
+           (funnysql/format {:select :id, :from :t, :order-by [[:id :desc]]} :postgres))))
+  (testing "nil and empty mean the clause is absent, not `GROUP BY NULL`"
+    ;; `map!` emits its \" \" clause separator between every key whether or not the clause itself writes anything, so
+    ;; an absent clause leaves behind whitespace. That is cosmetic and predates this test; what matters is that no
+    ;; dangling `GROUP BY`/`ORDER BY` is emitted.
+    (let [[sql & args] (funnysql/format {:select :id, :from :t, :group-by nil, :order-by []} :postgres)]
+      (is (= "SELECT \"id\" FROM \"t\"" (str/trim sql)))
+      (is (empty? args))
+      (is (not (str/includes? sql "GROUP BY")))
+      (is (not (str/includes? sql "ORDER BY"))))))
+
+(deftest ^:parallel union-with-order-by-and-paging-test
+  (testing "a `UNION`'s body comes before the `ORDER BY`/`LIMIT`/`OFFSET` that apply to the combined result"
+    (is (= [(str "(SELECT \"id\" FROM \"a\") UNION ALL (SELECT \"id\" FROM \"b\")"
+                 " ORDER BY \"id\" DESC LIMIT 50 OFFSET 10")]
+           (funnysql/format {:union-all [^:allow-subquery {:nest ^:allow-subquery {:select [:id] :from [:a]}}
+                                         ^:allow-subquery {:nest ^:allow-subquery {:select [:id] :from [:b]}}]
+                             :order-by  [[:id :desc]]
+                             :limit     50
+                             :offset    10}
+                            :postgres))))
+  (testing "same for plain `:union`"
+    (is (= ["SELECT \"id\" FROM \"a\" UNION SELECT \"id\" FROM \"b\" ORDER BY \"id\" ASC"]
+           (funnysql/format {:union    [^:allow-subquery {:select [:id] :from [:a]}
+                                        ^:allow-subquery {:select [:id] :from [:b]}]
+                             :order-by [:id]}
+                            :postgres)))))
 
 (deftest ^:parallel ilike-test
   (testing "`:ilike` is an infix operator like `:like`, not a function call"

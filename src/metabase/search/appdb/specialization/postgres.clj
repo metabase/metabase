@@ -32,7 +32,9 @@
   {:select select-items
    :from   [[active-table :search_index]]
    ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
-   :join   [[[:to_tsquery (search.util/tsv-language)
+   ;; the text-search config name is a `regconfig`, not a value: as a `?` parameter Postgres cannot resolve the
+   ;; overload, so it has to be a real SQL literal
+   :join   [[[:to_tsquery (h2x/literal (search.util/tsv-language))
               [:lift (search.util/to-tsquery-expr search-term)]]
              :query] [:= 1 1]]
    :where  (if (str/blank? search-term)
@@ -78,7 +80,8 @@
 
 (defmethod specialization/text-score :postgres
   []
-  [:ts_rank ts-rank-weights :search_vector :query [:inline ts-rank-normalization]])
+  ;; the weights are a `float4[]` literal; a `?` parameter leaves the `ts_rank` overload unresolvable
+  [:ts_rank (h2x/literal ts-rank-weights) :search_vector :query [:inline ts-rank-normalization]])
 
 (defmethod specialization/view-count-percentile-query :postgres
   [index-table p-value]

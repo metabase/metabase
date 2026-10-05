@@ -73,6 +73,17 @@
           (separator-fn)
           (recur more))))))
 
+(defn- ->sequence
+  "Normalize a clause value that is allowed to be either a single item or a sequence of them. Honey SQL accepts
+  `{:group-by :id}` as shorthand for `{:group-by [:id]}` -- likewise `:select`, `:order-by`, `:columns`, `:returning`
+  and `:partition-by` -- and plenty of app-db queries rely on that, so accept it instead of blowing up on `(seq :id)`."
+  [x]
+  (cond
+    ;; `nil` means the clause is absent, not a one-element list containing `NULL`
+    (nil? x)                      nil
+    (or (sequential? x) (set? x)) x
+    :else                         [x]))
+
 (defn- -interpose!
   "Compile all the forms in `xs` and interpose the `separator` string between them."
   [separator xs context]
@@ -91,32 +102,6 @@
   (-commas! xs context)
   (append-sql! context ")"))
 
-(defn- -identifier-with-optional-as!
-  "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
-  unaliased identifier while a vector with two elements will emit `<x> AS <y>`."
-  [identifier context]
-  (let [[lhs rhs] (if (vector? identifier)
-                    identifier
-                    [identifier])]
-    (compile! lhs context)
-    (when rhs
-      (append-sql! context " AS ")
-      (compile! rhs context))))
-
-(defn- -table-with-optional-as!
-  "Like [[-identifier-with-optional-as!]], but for the table positions in `:from` and `:join`, where the thing being
-  named can be a `^:allow-subquery` subquery as well as an identifier. A subquery has to be wrapped in parens."
-  [table context]
-  (let [[lhs rhs] (if (vector? table)
-                    table
-                    [table])]
-    ((if (subquery? lhs)
-       -parens!
-       compile!) lhs context)
-    (when rhs
-      (append-sql! context " AS ")
-      (compile! rhs context))))
-
 (defn- identifier-form?
   "True if `x` is something we already know how to compile as an identifier: a keyword, or an `h2x/identifier`
   tagged form."
@@ -134,9 +119,40 @@
   (when-not (identifier-form? x)
     (throw (ex-info "Expected an identifier" {:x x}))))
 
+(defn- -identifier-with-optional-as!
+  "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
+  unaliased identifier while a vector with two elements will emit `<x> AS <y>`."
+  [identifier context]
+  (let [[lhs rhs] (if (vector? identifier)
+                    identifier
+                    [identifier])]
+    (compile! lhs context)
+    (when rhs
+      ;; the alias is a name, not a value: a string here would otherwise become a `?` parameter and the database
+      ;; would reject `count(*) AS ?`
+      (check-identifier-form rhs)
+      (append-sql! context " AS ")
+      (compile! rhs context))))
+
+(defn- -table-with-optional-as!
+  "Like [[-identifier-with-optional-as!]], but for the table positions in `:from` and `:join`, where the thing being
+  named can be a `^:allow-subquery` subquery as well as an identifier. A subquery has to be wrapped in parens."
+  [table context]
+  (let [[lhs rhs] (if (vector? table)
+                    table
+                    [table])]
+    ((if (subquery? lhs)
+       -parens!
+       compile!) lhs context)
+    (when rhs
+      (check-identifier-form rhs)
+      (append-sql! context " AS ")
+      (compile! rhs context))))
+
 (defn- -identifier-list! [xs context]
-  (run! check-identifier-form xs)
-  (-list! xs context))
+  (let [xs (->sequence xs)]
+    (run! check-identifier-form xs)
+    (-list! xs context)))
 
 (defn- -kvs-map! [kvs context]
   (letfn [(-x-equals-y! [[x y]]
@@ -307,12 +323,8 @@
     (compile! identifier context)))
 
 (defn- select! [sql cols context]
-  (if-not (sequential? cols)
-    ;; TODO (Cam 2026-09-29) we shouldn't allow this, but the hairball search query does `:select :id` at some point
-    (recur sql [cols] context)
-    (do
-      (append-sql! context sql)
-      (interpose-fn cols #(-identifier-with-optional-as! % context) #(append-sql! context ", ")))))
+  (append-sql! context sql)
+  (interpose-fn (->sequence cols) #(-identifier-with-optional-as! % context) #(append-sql! context ", ")))
 
 (defn- from! [from context]
   (append-sql! context "FROM ")
@@ -336,30 +348,35 @@
         (append-sql! context \space)
         (recur more)))))
 
+(defn- -condition!
+  "Compile a `WHERE`/`HAVING` condition, dropping the clause entirely when there isn't one. Honey SQL ignores a nil or
+  empty clause value and callers rely on that -- the `dashboard` search spec declares `:where []` to mean \"no extra
+  filter\". Emitting it anyway is not merely untidy: `[]` compiles to `()`, which H2 reads as an empty ROW
+  (`Data conversion error converting \"ROW to BOOLEAN\"`), and `WHERE NULL` would silently match no rows at all."
+  [sql condition context]
+  (when-not (or (nil? condition)
+                (and (coll? condition) (empty? condition)))
+    (append-sql! context sql)
+    (compile! condition context)))
+
 (defn- where! [condition context]
-  (append-sql! context "WHERE ")
-  (compile! condition context))
+  (-condition! "WHERE " condition context))
 
 (defn- group-by! [cols context]
-  (when (seq cols)
+  (when-let [cols (not-empty (->sequence cols))]
     (append-sql! context "GROUP BY ")
-    (interpose-fn cols #(compile! % context) #(append-sql! context ", "))))
+    (-commas! cols context)))
 
 (defn- having! [condition context]
-  (append-sql! context "HAVING ")
-  (compile! condition context))
+  (-condition! "HAVING " condition context))
 
 (defn- partition-by! [xs context]
-  (when xs
-    (let [xs (if (coll? xs)
-               xs
-               [xs])]
-      (when (seq xs)
-        (append-sql! context "PARTITION BY ")
-        (-commas! xs context)))))
+  (when-let [xs (not-empty (->sequence xs))]
+    (append-sql! context "PARTITION BY ")
+    (-commas! xs context)))
 
 (defn- order-by! [subclauses context]
-  (when (seq subclauses)
+  (when-let [subclauses (not-empty (->sequence subclauses))]
     (append-sql! context "ORDER BY ")
     (letfn [(subclause! [subclause]
               (let [[expr direction] (if (vector? subclause)
@@ -413,7 +430,7 @@
 
 (defn- returning! [cols context]
   (append-sql! context "RETURNING ")
-  (-commas! cols context))
+  (-commas! (->sequence cols) context))
 
 (def ^:private clause-fns
   (ordered-map/ordered-map
@@ -439,6 +456,10 @@
    :group-by        group-by!
    :having          having!
    :partition-by    partition-by!
+   ;; a `UNION` combines complete `SELECT`s and any trailing `ORDER BY`/`LIMIT`/`OFFSET` applies to the combined
+   ;; result, so the union body has to be emitted *before* those, not after
+   :union           (partial -interpose! " UNION ")
+   :union-all       (partial -interpose! " UNION ALL ")
    :order-by        order-by!
    :limit           limit!
    :offset          offset!
@@ -446,8 +467,6 @@
    :on-conflict     on-conflict!
    :do-update-set   do-update-set!
    :returning       returning!
-   :union           (partial -interpose! " UNION ")
-   :union-all       (partial -interpose! " UNION ALL ")
    :nest            -parens!))
 
 (def ^:private clause-rank
@@ -492,22 +511,28 @@
 (defn- keyword!
   "Compile a keyword as a quoted and escaped identifier."
   [k context]
-  (cond
-    (qualified-keyword? k)
-    (do
-      (-identifier! (namespace k) context)
-      (append-sql! context ".")
-      (-identifier! (name k) context))
+  ;; the `%` shorthand can carry a `/` (`:%lower.metabase_field/name`), so match against the keyword's whole printed
+  ;; form rather than just its name
+  (let [s (if-let [kw-ns (namespace k)]
+            (str kw-ns "/" (name k))
+            (name k))]
+    (cond
+      ;; function keyword e.g. `:%now`, `:%count.*`, or `:%lower.metabase_field/name`. This has to come before the
+      ;; qualified-keyword case: `:%lower.metabase_field/name` *is* a qualified keyword -- its namespace is
+      ;; `%lower.metabase_field` -- but it means `lower(metabase_field.name)`, not an identifier. `.` separates the
+      ;; function name from its arguments, and a `/` within an argument qualifies it as `table.column`.
+      (str/starts-with? s "%")
+      (let [[f & args] (str/split (subs s 1) #"\.")]
+        (compile! (into [(keyword f)] (map keyword) args) context))
 
-    ;; function keyword e.g. `:%now` or `%count.*`
-    (and (simple-keyword? k)
-         (str/starts-with? (name k) "%"))
-    (let [[f & args] (str/split (name k) #"\.")
-          f          (subs f 1)]
-      (compile! (into [(keyword f)] (map keyword) args) context))
+      (qualified-keyword? k)
+      (do
+        (-identifier! (namespace k) context)
+        (append-sql! context ".")
+        (-identifier! (name k) context))
 
-    :else
-    (-identifier! (name k) context)))
+      :else
+      (-identifier! (name k) context))))
 
 (def ^:private predicate-operators
   "Operators that compile to a bare SQL predicate -- `x IS NULL`, `a AND b`, `x IN (...)`, `x < 1`. Used as the operand
@@ -534,8 +559,10 @@
   ;; `[:= nil nil]` keeps a literal `NULL` on the left, giving `NULL IS NULL`.
   (letfn [(operand! [v]
             ;; make sure if the operand is itself something like `[:= x nil]` we get `(x IS NULL) = <y>` instead of
-            ;; the unparsable `x IS NULL = y`
-            ((if (predicate-call? v)
+            ;; the unparsable `x IS NULL = y`. A scalar subquery needs the same treatment: without parens
+            ;; `[:= {:select [...] :limit 1} y]` compiles to `SELECT ... LIMIT 1 = ?`, where the comparison gets
+            ;; swallowed by the subquery instead of applying to its result.
+            ((if (or (predicate-call? v) (subquery? v))
                -parens!
                compile!) v context))]
     (if (or (nil? x) (nil? y))

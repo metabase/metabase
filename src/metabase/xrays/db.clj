@@ -58,7 +58,7 @@
                 [:= :ts.count_non_pks 1]] :list-like?]]
              {:from       [(warehouse-schema-overlay/table-query)]
               :inner-join [[^:allow-subquery {:select   [:f.table_id
-                                                         [:%count.* "count"]
+                                                         [:%count.* :count]
                                                          [[:count [:case [:or [:not= :semantic_type "type/PK"]
                                                                           [:= :f.semantic_type nil]]
                                                                    [:inline 1] :else [:inline nil]]]

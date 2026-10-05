@@ -625,11 +625,13 @@
 ;;; ------------------------------------------ Root run listing ------------------------------------------
 
 ;; Each branch must project the same columns in the same order for the UNION ALL to line up;
-;; `[nil :col]` fills in columns a table lacks.
+;; `[nil :col]` fills in columns a table lacks. The `run_type`/`run_method` discriminators have to be real SQL
+;; literals rather than plain strings: a string compiles to a `?` parameter, and H2 cannot work out the type of
+;; a parameter in the select list of a derived table (`Unknown data type: "RUN_TYPE"`).
 
 (defn- job-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [["job" :run_type]
+  {:select [[(h2x/literal "job") :run_type]
             :id
             [:job_id :entity_id]
             [:job_name :entity_name]
@@ -650,13 +652,13 @@
 
 (defn- dag-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [["dag" :run_type]
+  {:select [[(h2x/literal "dag") :run_type]
             :id
             [:source_transform_id :entity_id]
             [:source_transform_name :entity_name]
             :direction
             :transform_count
-            ["manual" :run_method]
+            [(h2x/literal "manual") :run_method]
             :status :is_active :start_time :end_time :message
             :user_id]
    :from   [:transform_dag_run]
@@ -670,7 +672,7 @@
 
 (defn- transform-run-subquery [transform-ids]
   ^:allow-subquery
-  {:select [["transform" :run_type]
+  {:select [[(h2x/literal "transform") :run_type]
             :id
             [:transform_id :entity_id]
             [:transform_name :entity_name]

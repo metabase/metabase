@@ -453,7 +453,10 @@
                                                                           location-column default-visible-restriction)
         all-joins (set/union joins sort-joins)
         item-visible-expr (edge-restriction-expr (name entity-type) :entity.id item-visible-restriction)
-        select-clause [[(name entity-type) :entity_type]
+        ;; a plain string here compiles to a `?` parameter, and H2 can't work out the type of a parameter in the
+        ;; select list of a derived table -- `h2x/literal` emits a real quoted SQL literal instead. The value comes
+        ;; from the closed `dependency-types` enum, never from user input.
+        select-clause [[(h2x/literal (name entity-type)) :entity_type]
                        [:entity.id :entity_id]
                        [sort-expr :sort_key]]]
     ^:allow-subquery
