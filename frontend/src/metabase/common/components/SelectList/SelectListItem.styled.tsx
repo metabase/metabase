@@ -5,23 +5,15 @@ import styled from "@emotion/styled";
 
 import { Text, type TextProps } from "metabase/ui";
 
-import { EntityIcon } from "../EntityIcon";
-
 // Unjustified type cast. FIXME
 export const ItemTitle = styled(Text)<TextProps>`
   margin: 0;
   word-break: break-word;
 ` as unknown as typeof Text;
 
-export const ItemIcon = styled(EntityIcon)`
-  justify-self: end;
-  color: var(--mb-color-core-brand);
-`;
-
 const activeItemCss = css`
   background-color: var(--mb-color-core-brand);
 
-  ${ItemIcon},
   ${ItemTitle} {
     color: var(--mb-color-text-primary-inverse);
   }
