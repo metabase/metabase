@@ -220,12 +220,20 @@
    (uncurated-query-sources query (metric-context)))
   ([query {:keys [seen definitions] :as ctx}]
    (let [{:keys [table card metric]} (lib/all-referenced-entity-ids [query])
-         ;; `:card` also lists the metrics the query references; judge those as metrics, not as source Cards
+         ;; `:card` also lists the metrics the query references, and a metric Card may be a source Card; judge
+         ;; both as metrics, not as source Cards
          card            (set/difference card metric)
+         source-metrics  (into #{} (filter #(= :metric (:type (lib.metadata/card query %)))) card)
+         metric          (into (set metric) source-metrics)
+         card            (set/difference card source-metrics)
          _               (load-metric-definitions! query definitions metric (- max-metric-nesting (count seen)))
          id->definition  (metric-closure @definitions metric)
-         curated         (curated-ids (concat (for [id table] ["table" id])
-                                              (for [id (concat card (keys id->definition))] ["card" id])))
+         ;; `metric` as well as the loaded closure: a curated metric passes on its curation alone, including one
+         ;; the walk stopped short of loading
+         curated         (curated-ids (into #{}
+                                            (concat (for [id table] ["table" id])
+                                                    (for [id (concat card metric (keys id->definition))]
+                                                      ["card" id]))))
          curated?        (fn [model id] (contains? curated [model id]))
          curated-metric-queries (keep (fn [[id q]] (when (curated? "card" id) q)) id->definition)
          {:keys [covered metric-sources]} (query-coverage query curated? table card curated-metric-queries)

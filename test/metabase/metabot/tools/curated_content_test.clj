@@ -193,6 +193,66 @@
                                 :query    {:source-table (mt/id :orders)
                                            :aggregation  [["metric" question-id]]}}))))))))))
 
+(deftest curated-question-fields-stay-within-its-results-test
+  (testing "a verified question's field reads expose its own result columns, not every column of the raw table it
+            reads: REVIEWS is neither curated nor FK-related to the question's results, and construct_notebook_query
+            rejects joining it to the question"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {question-id :id} {:type          :question
+                                                      :name          "verified review count"
+                                                      :dataset_query (lib/aggregate
+                                                                      (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
+                                                                      (lib/count))}
+                       :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+          (verify-card! question-id)
+          (let [rating (mt/id :reviews :rating)]
+            (testing "construct_notebook_query's rule rejects the raw table joined to the question"
+              (let [on-question (lib/query mp (lib.metadata/card mp question-id))
+                    joined      (lib/join on-question
+                                          (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
+                                                           [(lib/= (first (lib/returned-columns on-question))
+                                                                   (lib.metadata/field mp (mt/id :reviews :id)))]))]
+                (is (= [["table" (mt/id :reviews)]] (curation/uncurated-query-sources joined)))))
+            (testing "read_resource doesn't serve the raw table's column through the question"
+              (let [[resource] (read-uris metabot-id :internal
+                                          (str "metabase://question/" question-id "/fields/" rating))]
+                (is (nil? (get-in resource [:content :structured-output :value_metadata])))))
+            (testing "get_field_values doesn't either"
+              (is (nil? (get-in (as-metabot metabot-id :internal
+                                            #(metadata-tools/get-field-values-tool {:data_source "question"
+                                                                                    :source_id   question-id
+                                                                                    :field_id    rating}))
+                                [:structured-output :value_metadata]))))))))))
+
+(deftest covered-metric-as-source-card-test
+  (testing "an uncurated metric that passes the metric rule may be a query's source card, as it may be read and used in
+            an aggregation; one that doesn't pass is still rejected"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {metric-id :id metric-eid :entity_id} {:type          :metric
+                                                                        :name          "plain metric"
+                                                                        :dataset_query (count-metric-query (orders-query))}
+                     :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (let [q         {:lib/type "mbql/query"
+                         :stages   [{:lib/type "mbql.stage/mbql" :source-card metric-eid}]}
+              construct (fn [metabot-id profile-id]
+                          (as-metabot metabot-id profile-id #(construct/execute-representations-query q)))
+              rejected? (fn []
+                          (try
+                            (construct metabot-id :internal)
+                            false
+                            (catch clojure.lang.ExceptionInfo e
+                              (if (= :uncurated-source (:error (ex-data e))) true (throw e)))))]
+          (testing "the query is valid without a restricted Metabot"
+            (is (some? (:structured-output (construct nil nil)))))
+          (testing "over a raw table the metric is rejected as a source"
+            (is (rejected?)))
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (testing "over a curated table it is readable"
+              (is (not (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" metric-id)))))))
+            (testing "and queryable as a source card"
+              (is (not (rejected?))))))))))
+
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -411,6 +471,32 @@
                 (is (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" (:id (peek chain)))))))
                 (is (<= @loads (inc limit))
                     (str "loaded " @loads " definitions for a chain the limit should cut at " limit))))))))))
+
+(deftest curated-metric-at-the-nesting-limit-test
+  (testing "a curated metric passes on its own curation wherever it sits: the one the deepest walked definition
+            references isn't judged as missing because the walk didn't load it"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (mt/with-model-cleanup [:model/Card :model/ModerationReview]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (let [limit @#'curation/max-metric-nesting
+                  ;; chain[0] counts ORDERS and is verified; chain[1..limit] are uncurated, each on the previous one.
+                  ;; Judging chain[limit] walks `limit` uncurated definitions and reaches chain[0] at depth `limit`.
+                  chain (metric-chain! (inc limit))
+                  top   (peek chain)]
+              (verify-card! (:id (first chain)))
+              (testing "read_resource"
+                (is (not (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" (:id top)))))))
+                (testing "(one level shallower passes too)"
+                  (is (not (denied? (first (read-uris metabot-id :internal
+                                                      (str "metabase://metric/" (:id (nth chain (dec limit)))))))))))
+              (testing "construct_notebook_query's rule"
+                (is (= [] (curation/uncurated-query-sources
+                           (lib/query (mt/metadata-provider)
+                                      {:database (mt/id)
+                                       :type     :query
+                                       :query    {:source-table (mt/id :orders)
+                                                  :aggregation  [["metric" (:id top)]]}}))))))))))))
 
 (deftest read-resource-curated-check-ordering-test
   (testing "the curation check runs after the entity's existence and read checks, but before its handler"
