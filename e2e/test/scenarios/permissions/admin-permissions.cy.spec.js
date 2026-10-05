@@ -104,10 +104,55 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.url().should("include", "/admin/permissions/data/group");
     });
 
-    it("allows to view and edit permissions", () => {
+    it("doesn't propagate permissions after turning off 'Also change sub-collections' toggle (#30494), and allows to view and edit permissions", () => {
       cy.visit("/admin/permissions/collections");
 
       const collections = ["Our analytics", "First collection"];
+      H.assertSidebarItems(collections);
+
+      H.selectSidebarItem("First collection");
+      H.assertSidebarItems([...collections, "Second collection"]);
+
+      H.selectSidebarItem("Second collection");
+
+      H.assertPermissionTable([
+        ["Administrators", "Curate"],
+        ["All Users", "No access"],
+        ["collection", "Curate"],
+        ["data", "No access"],
+        ["nosql", "No access"],
+        ["readonly", "View"],
+      ]);
+
+      H.modifyPermission(
+        "All Users",
+        COLLECTION_ACCESS_PERMISSION_INDEX,
+        "View",
+        true, // Turn 'Also change sub-collections' toggle on
+      );
+
+      H.modifyPermission(
+        "All Users",
+        COLLECTION_ACCESS_PERMISSION_INDEX,
+        null,
+        false, // Turn 'Also change sub-collections' toggle off
+      );
+
+      // Navigate to children
+      H.selectSidebarItem("Third collection");
+
+      H.assertPermissionTable([
+        ["Administrators", "Curate"],
+        ["All Users", "No access"], // Check permission hasn't been propagated
+        ["collection", "Curate"],
+        ["data", "No access"],
+        ["nosql", "No access"],
+        ["readonly", "View"],
+      ]);
+
+      cy.log("View and edit permissions");
+      cy.visit("/admin/permissions/collections");
+
       H.assertSidebarItems(collections);
 
       H.selectSidebarItem("First collection");
@@ -207,53 +252,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
   });
 
-  it("don't propagate permissions after turning off 'Also change sub-collections' toggle (#30494)", () => {
-    cy.visit("/admin/permissions/collections");
-
-    const collections = ["Our analytics", "First collection"];
-    H.assertSidebarItems(collections);
-
-    H.selectSidebarItem("First collection");
-    H.assertSidebarItems([...collections, "Second collection"]);
-
-    H.selectSidebarItem("Second collection");
-
-    H.assertPermissionTable([
-      ["Administrators", "Curate"],
-      ["All Users", "No access"],
-      ["collection", "Curate"],
-      ["data", "No access"],
-      ["nosql", "No access"],
-      ["readonly", "View"],
-    ]);
-
-    H.modifyPermission(
-      "All Users",
-      COLLECTION_ACCESS_PERMISSION_INDEX,
-      "View",
-      true, // Turn 'Also change sub-collections' toggle on
-    );
-
-    H.modifyPermission(
-      "All Users",
-      COLLECTION_ACCESS_PERMISSION_INDEX,
-      null,
-      false, // Turn 'Also change sub-collections' toggle off
-    );
-
-    // Navigate to children
-    H.selectSidebarItem("Third collection");
-
-    H.assertPermissionTable([
-      ["Administrators", "Curate"],
-      ["All Users", "No access"], // Check permission hasn't been propagated
-      ["collection", "Curate"],
-      ["data", "No access"],
-      ["nosql", "No access"],
-      ["readonly", "View"],
-    ]);
-  });
-
   context("data permissions", () => {
     it("warns about leaving with unsaved changes", () => {
       cy.visit("/admin/permissions");
@@ -332,7 +330,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         ]);
       });
 
-      it("should show a modal when a revision changes while an admin is editing", () => {
+      it("should show a modal when a revision changes while an admin is editing, in the group and database focused views", () => {
         cy.intercept("/api/permissions/graph/group/1").as("graph");
         cy.visit("/admin/permissions");
 
@@ -354,12 +352,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
             H.modal().findByText("Someone just changed permissions");
           });
         });
-      });
-    });
 
-    context("database focused view", () => {
-      it("should show a modal when a revision changes while an admin is editing", () => {
-        cy.intercept("/api/permissions/graph/group/1").as("graph");
+        cy.log("Database focused view");
+        cy.intercept("/api/permissions/graph/group/1").as("graph2");
         cy.visit("/admin/permissions/");
 
         H.selectSidebarItem("collection");
@@ -370,7 +365,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           "Query builder and native",
         );
 
-        cy.get("@graph").then((data) => {
+        cy.get("@graph2").then((data) => {
           cy.request("PUT", "/api/permissions/graph", {
             groups: {},
             revision: data.response.body.revision,

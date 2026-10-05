@@ -45,7 +45,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
         setImpersonatedPermission();
       });
 
-      it("have limited access", () => {
+      it("have limited access, and caching does not circumvent it", () => {
         cy.signInAsImpersonatedUser();
 
         cy.visit(`/browse/databases/${PG_DB_ID}`);
@@ -87,9 +87,11 @@ describe("impersonated permission", { tags: "@external" }, () => {
         H.runNativeQuery();
 
         cy.findAllByTestId("header-cell").contains("subtotal");
-      });
 
-      it("caching should not circumvent impersonation permissions", () => {
+        cy.log("Caching should not circumvent impersonation permissions");
+        cy.signInAsAdmin();
+        cy.visit("/");
+
         cy.log(
           "create a question for a table the impersonated user does not have access to",
         );

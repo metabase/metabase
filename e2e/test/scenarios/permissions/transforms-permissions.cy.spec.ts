@@ -316,7 +316,7 @@ describe(
     });
 
     describe("permission changes affect access immediately", () => {
-      it("grants access after permission is added", () => {
+      it("grants access after permission is added, and revokes it after permission is removed", () => {
         denyTransformsPermissionToAllGroups();
         H.setUserAsAnalyst(NORMAL_USER_ID, false);
 
@@ -326,16 +326,6 @@ describe(
         cy.findByRole("img", { name: /key/ }).should("exist");
 
         cy.signInAsAdmin();
-        grantTransformsPermissionToAllGroups();
-        H.setUserAsAnalyst(NORMAL_USER_ID);
-
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/transforms");
-        getTransformsNavLink().should("be.visible");
-        H.DataStudio.Transforms.list().should("be.visible");
-      });
-
-      it("revokes access after permission is removed", () => {
         grantTransformsPermissionToAllGroups();
         H.setUserAsAnalyst(NORMAL_USER_ID);
 

@@ -182,7 +182,46 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     });
   });
 
-  it("should allow making permissions granular in the group focused view", () => {
+  it("should preserve parent value for children when selecting granular, infer parent permissions if all granular permissions are equal, and allow making permissions granular in the group focused view", () => {
+    cy.log("Preserve parent value for children when selecting granular");
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Blocked");
+
+    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
+
+    H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
+
+    cy.log("Infer parent permissions if all granular permissions are equal");
+    // TODO: this feature (not test) is broken when changing permissions for all schemas to the samve value
+
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
+
+    makeOrdersSandboxed();
+
+    H.selectSidebarItem("All Users");
+
+    H.assertPermissionTable([
+      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
+    ]);
+
+    cy.findByTestId("permission-table")
+      .find("tbody > tr")
+      .contains("Sample Database")
+      .closest("a")
+      .click();
+
+    H.modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Can view");
+
+    H.selectSidebarItem("All Users");
+
+    H.assertPermissionTable([
+      ["Sample Database", "Can view", "No", "1 million rows", "No", "No", "No"],
+    ]);
+
+    cy.log("Make permissions granular in the group focused view");
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
     H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
@@ -213,46 +252,6 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     cy.wait("@saveGraph").then(({ response }) => {
       expect(response.statusCode).to.equal(200);
     });
-  });
-
-  it("should infer parent permissions if all granular permissions are equal", () => {
-    // TODO: this feature (not test) is broken when changing permissions for all schemas to the samve value
-
-    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
-    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
-
-    makeOrdersSandboxed();
-
-    H.selectSidebarItem("All Users");
-
-    H.assertPermissionTable([
-      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
-    ]);
-
-    cy.findByTestId("permission-table")
-      .find("tbody > tr")
-      .contains("Sample Database")
-      .closest("a")
-      .click();
-
-    H.modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Can view");
-
-    H.selectSidebarItem("All Users");
-
-    H.assertPermissionTable([
-      ["Sample Database", "Can view", "No", "1 million rows", "No", "No", "No"],
-    ]);
-  });
-
-  it("should preserve parent value for children when selecting granular for permissions available to child entities", () => {
-    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
-    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Blocked");
-
-    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
-
-    H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
   });
 });
 
