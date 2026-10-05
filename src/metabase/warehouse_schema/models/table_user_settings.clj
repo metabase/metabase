@@ -204,14 +204,11 @@
                                                       (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}
                :fields        (serdes/nested :model/FieldUserSettings :table_id
                                              {:sort-by          :field_name
-                                              :delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})
+                                              :delete-children! warehouse-schema.db/delete-field-user-settings-and-dimensions-for-table!})}})
 
 (def ^:private table-user-settings-slug "___tableusersettings")
 
-(defmethod serdes/storage-path "TableUserSettings" [tus {:keys [inline-user-settings]}]
+(defmethod serdes/storage-path "TableUserSettings" [tus _ctx]
   (let [table-path (pop (serdes/path tus))]
-    (if inline-user-settings
-      (conj (serdes/storage-path-prefixes table-path)
-            {:label (:id (peek table-path)) :key (:id (peek table-path))})
-      (conj (serdes/storage-path-prefixes table-path)
-            {:label (str (:id (peek table-path)) table-user-settings-slug)}))))
+    (conj (serdes/storage-path-prefixes table-path)
+          {:label (str (:id (peek table-path)) table-user-settings-slug)})))

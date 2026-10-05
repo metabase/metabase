@@ -2280,8 +2280,8 @@ serdes/meta:
 ;;; --------------------------------- Table/Field user-settings inline round trip ---------------------------------
 
 (deftest table-and-field-user-settings-round-trip-test
-  (testing "a full export writes one file per published Table with user edits -- the TableUserSettings entity at
-            the Table's own path, inlining its edited Fields' settings under :fields -- and a later import
+  (testing "a full export writes one file per published Table with user edits -- the TableUserSettings entity beside
+            the Table's path, nesting its edited Fields' settings and Dimensions under :fields -- and a later import
             restores it, pruning field edits the file no longer lists"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
@@ -2292,6 +2292,7 @@ serdes/meta:
                      :model/Field      {f2-id :id}    {:name "F2" :table_id table-id :base_type :type/Text}]
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
         (t2/insert! :model/FieldUserSettings {:field_id f1-id :description "curated"})
+        (t2/insert! :model/Dimension {:field_id f2-id :name "Remapped F2" :type :internal})
         (let [export-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
               mock-source    (test-helpers/create-mock-source)
               export-result  (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true)]
@@ -2302,14 +2303,14 @@ serdes/meta:
             (is (= 1 (count table-files))
                 (str "expected exactly one Table-related file, got " (keys table-files)))
             (let [[path content] (first table-files)]
-              (is (str/ends-with? path "test_table.yaml")
-                  "the file lives at the Table's own path, not a ___tableusersettings/___fieldusersettings file")
-              (is (not (str/includes? path "___tableusersettings")))
-              (is (not (str/includes? path "___fieldusersettings")))
+              (is (str/ends-with? path "test_table___tableusersettings.yaml")
+                  "the file is the Table's settings file; the Table itself is never written")
               (is (str/includes? content "Renamed"))
               (is (str/includes? content "fields:"))
-              (is (str/includes? content "curated"))))
+              (is (str/includes? content "curated"))
+              (is (str/includes? content "Remapped F2"))))
           (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "stale"})
+          (t2/delete! :model/Dimension :field_id f2-id)
           (t2/update! :model/TableUserSettings :table_id table-id {:display_name "Local Edit"})
           (let [import-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 import-result  (impl/import! (source.p/snapshot mock-source) import-task-id :force? true)]
@@ -2319,7 +2320,9 @@ serdes/meta:
             (is (= "curated" (:description (t2/select-one :model/FieldUserSettings :field_id f1-id)))
                 "F1's edited description is present")
             (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id))
-                "F2's stale local row, absent from the imported file's :fields, is gone")))))))
+                "F2's stale local row, absent from the imported file's :fields, is gone")
+            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))
+                "F2's Dimension is restored from its entry under :fields")))))))
 
 ;; ---------- run-task-body!: the row is always closed, whatever the worker does ----------------
 

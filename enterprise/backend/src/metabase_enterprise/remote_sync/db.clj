@@ -293,13 +293,18 @@
   (t2/select [:model/Card :id :type :display] :id [:in card-ids]))
 
 (mu/defn user-settings-exist-for-table?
-  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row."
+  "Whether the Table with `table-id` has a user-settings row, or any of its Fields has one or a Dimension."
   [table-id :- ::lib.schema.id/table]
   (or (t2/exists? :model/TableUserSettings :table_id table-id)
       (t2/exists? :model/FieldUserSettings
                   {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
                    :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
                            [:= :f.id :u.field_id]]
+                   :where [:= :f.table_id table-id]})
+      (t2/exists? :model/Dimension
+                  {:from  [[(t2/table-name :model/Dimension) :d]]
+                   :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
+                           [:= :f.id :d.field_id]]
                    :where [:= :f.table_id table-id]})))
 
 (mu/defn snippets

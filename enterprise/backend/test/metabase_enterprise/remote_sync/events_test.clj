@@ -1368,6 +1368,22 @@
                  :model_table_id (:id table)}
                 (first entries)))))))
 
+(deftest dimension-change-creates-table-user-settings-rso-test
+  (testing "adding or removing a Field's Dimension through the API tracks the Table's TableUserSettings, which carry it"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
+                     :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}
+                     :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
+        (t2/delete! :model/RemoteSyncObject)
+        (mt/user-http-request :crowberto :post 200 (format "field/%d/dimension" (:id field))
+                              {:type "internal" :name "Remapped"})
+        (is (=? [{:model_type "TableUserSettings" :model_id (:id table) :status "update"}]
+                (t2/select :model/RemoteSyncObject)))
+        (mt/user-http-request :crowberto :delete 204 (format "field/%d/dimension" (:id field)))
+        (is (=? [{:model_type "TableUserSettings" :model_id (:id table) :status "removed"}]
+                (t2/select :model/RemoteSyncObject))
+            "with neither settings nor a Dimension left, the Table's settings file is removed")))))
+
 ;;; ------------------------------------- Concurrent Un-Sync Race Tests -------------------------------------
 ;;;
 ;;; When a card-update event and a collection disable run concurrently, the handler must not resurrect the

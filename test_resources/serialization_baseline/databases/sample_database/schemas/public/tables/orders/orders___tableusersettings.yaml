@@ -4,6 +4,7 @@ display_name: Customer Orders
 fields:
 - created_at: '2025-06-13T12:52:06.383265Z'
   description: Total order amount including tax
+  dimensions: []
   serdes/meta:
   - id: Sample Database
     model: Database

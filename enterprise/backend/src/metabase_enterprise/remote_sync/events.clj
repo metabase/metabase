@@ -397,8 +397,7 @@
     (create-or-update-remote-sync-object-entry!
      "TableUserSettings" table-id "update" hydrate-table-user-settings-details)
 
-    (and (not eligible?)
-         (remote-sync.db/rso-exists? "TableUserSettings" table-id))
+    (remote-sync.db/rso-exists? "TableUserSettings" table-id)
     (create-or-update-remote-sync-object-entry!
      "TableUserSettings" table-id "removed" hydrate-table-user-settings-details)))
 

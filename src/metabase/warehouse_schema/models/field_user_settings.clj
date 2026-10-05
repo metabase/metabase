@@ -100,9 +100,10 @@
            ks))))
 
 (defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids] :as opts}]
-  (if (= filter-column :table_id)
-    (warehouse-schema.db/field-user-settings-for-tables filter-ids)
-    (serdes/extract-query-collections :model/FieldUserSettings opts)))
+  (serdes/extract-reducible-nested "FieldUserSettings" (dissoc opts :filter-column :filter-ids)
+                                   (if (= filter-column :table_id)
+                                     (warehouse-schema.db/field-user-settings-for-tables filter-ids)
+                                     (serdes/extract-query-collections :model/FieldUserSettings opts))))
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
@@ -126,6 +127,7 @@
                :semantic_type_set      false
                :fk_target_field_id_set false}
    :transform {:created_at   (serdes/date)
+               :dimensions   (serdes/nested :model/Dimension :field_id {:sort-by (juxt :name :created_at)})
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
                               :export     (constantly ::serdes/skip)

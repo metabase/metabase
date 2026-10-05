@@ -165,7 +165,7 @@
           (testing "an unlabeled field's file has no data_sensitivity line"
             (is (not (contains? (read-yaml "id.yaml") :data_sensitivity)))))))))
 
-(deftest inline-user-settings-storage-path-test
+(deftest table-user-settings-storage-path-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
                        :model/Table             table {:name "Customers" :db_id (:id db)}
@@ -173,9 +173,7 @@
                        :model/FieldUserSettings _     {:field_id (:id email) :description "edited"}]
       (let [[tus] (into [] (serdes/extract-all "TableUserSettings" {:filter-column :table_id :filter-ids [(:id table)]}))]
         (is (= 1 (count (:fields tus))))
-        (testing "git sync writes the entity at the Table's own path"
-          (is (= "Customers" (-> (serdes/storage-path tus {:inline-user-settings true}) peek :label))))
-        (testing "the CLI export writes it beside the Table's file"
+        (testing "the entity is written beside the Table's file"
           (is (= "Customers___tableusersettings" (-> (serdes/storage-path tus {}) peek :label))))))))
 (deftest entity-counts-report-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

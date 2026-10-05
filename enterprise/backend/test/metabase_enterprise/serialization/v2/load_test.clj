@@ -178,8 +178,8 @@
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
 
-(deftest inline-user-settings-round-trip-test
-  (testing "git sync's inline-user-settings mode replaces a Table's FieldUserSettings wholesale on import"
+(deftest table-user-settings-round-trip-test
+  (testing "a TableUserSettings replaces its Table's FieldUserSettings wholesale on import"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (testing "extracting inline from the source"
@@ -187,19 +187,16 @@
             (let [db    (ts/create! :model/Database :name "my-db")
                   table (ts/create! :model/Table :name "customers" :db_id (:id db))
                   f1    (ts/create! :model/Field :name "age" :table_id (:id table))
-                  f2    (ts/create! :model/Field :name "email" :table_id (:id table))]
+                  _f2   (ts/create! :model/Field :name "email" :table_id (:id table))]
               (t2/insert! :model/TableUserSettings {:table_id (:id table) :display_name "Renamed"})
               (t2/insert! :model/FieldUserSettings {:field_id (:id f1) :description "edited"})
               (reset! serialized
                       (into [(ts/extract-one "Database" (:id db))
-                             (ts/extract-one "Table" (:id table))
-                             (ts/extract-one "Field" (:id f1))
-                             (ts/extract-one "Field" (:id f2))]
+                             (ts/extract-one "Table" (:id table))]
                             (serdes/extract-all "TableUserSettings"
-                                                {:inline-user-settings true
-                                                 :filter-column        :table_id
-                                                 :filter-ids           [(:id table)]}))))))
-        (testing "the extracted TableUserSettings inlines F1's edit and no others"
+                                                {:filter-column :table_id
+                                                 :filter-ids    [(:id table)]}))))))
+        (testing "the extracted TableUserSettings nests F1's edit and no others"
           (let [tus (first (by-model @serialized "TableUserSettings"))]
             (is (= "Renamed" (:display_name tus)))
             (is (= 1 (count (:fields tus))))
@@ -218,6 +215,42 @@
                 (is (= "edited" (t2/select-one-fn :description :model/FieldUserSettings :field_id (:id f1)))))
               (testing "F2's stale row is deleted -- replace semantics"
                 (is (nil? (t2/select-one :model/FieldUserSettings :field_id (:id f2))))))))))))
+
+(deftest field-user-settings-nest-dimensions-round-trip-test
+  (testing "FieldUserSettings carry their Field's Dimension, also for a Field with no settings row"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                age   (ts/create! :model/Field :name "age" :table_id (:id table))
+                email (ts/create! :model/Field :name "email" :table_id (:id table))]
+            (t2/insert! :model/FieldUserSettings {:field_id (:id age) :description "edited"})
+            (ts/create! :model/Dimension :field_id (:id email) :name "Email" :type :internal)
+            (reset! serialized
+                    (into [(ts/extract-one "Database" (:id db))
+                           (ts/extract-one "Table" (:id table))
+                           (ts/extract-one "Field" (:id email))]
+                          (serdes/extract-all "TableUserSettings" {:filter-column :table_id
+                                                                   :filter-ids    [(:id table)]})))))
+        (testing "the Dimension is nested under a synthesized FieldUserSettings, not under the Field"
+          (let [[age-settings email-settings] (:fields (first (by-model @serialized "TableUserSettings")))]
+            (is (=? {:description "edited"} age-settings))
+            (is (nil? (:description email-settings)))
+            (is (=? [{:name "Email"}] (:dimensions email-settings)))
+            (is (not (contains? (first (by-model @serialized "Field")) :dimensions)))))
+        (ts/with-db dest-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                email (ts/create! :model/Field :name "email" :table_id (:id table))
+                stale (ts/create! :model/Field :name "stale" :table_id (:id table))]
+            (ts/create! :model/Dimension :field_id (:id stale) :name "Stale" :type :internal)
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (testing "the Dimension arrives without leaving an empty FieldUserSettings row"
+              (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email))))
+              (is (not (t2/exists? :model/FieldUserSettings :field_id (:id email)))))
+            (testing "a Dimension the export no longer has is deleted"
+              (is (not (t2/exists? :model/Dimension :field_id (:id stale)))))))))))
 
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
