@@ -126,6 +126,47 @@
         (is (= #{verified-model}
                (item-ids (first (read-uris metabot-id :internal (str "metabase://collection/" coll-id "/items"))))))))))
 
+(deftest metric-read-judges-metric-cards-only-test
+  (testing "the metric rule judges metric Cards with structured definitions, and nothing else passes through it"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}
+                     :model/Card {native-question :id} {:type :question :name "native question"
+                                                        :dataset_query (mt/native-query {:query "SELECT 1"})}
+                     :model/Card {plain-model :id} {:type :model :name "plain model"
+                                                    :dataset_query (orders-query)}
+                     :model/Card {native-metric :id native-metric-eid :entity_id}
+                     {:type :metric :name "native metric"
+                      :dataset_query (mt/native-query {:query "SELECT count(*) FROM ORDERS"})}
+                     :model/Card {verified-native-metric :id}
+                     {:type :metric :name "verified native metric"
+                      :dataset_query (mt/native-query {:query "SELECT count(*) FROM ORDERS"})}]
+        (verify-card! verified-native-metric)
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (let [read     (fn [id] (first (read-uris metabot-id :internal (str "metabase://metric/" id))))
+                metadata (fn [id] (as-metabot metabot-id :internal
+                                              #(:structured-output (metadata-tools/get-metadata {:metric-ids [id]}))))
+                db-name  (t2/select-one-fn :name :model/Database :id (mt/id))
+                query    (fn [metric-eid]
+                           {:lib/type "mbql/query"
+                            :stages   [{:lib/type     "mbql.stage/mbql"
+                                        :source-table [db-name "PUBLIC" "ORDERS"]
+                                        :aggregation  [["metric" {} metric-eid]]}]})]
+            (testing "an uncurated native question isn't readable through the metric URI"
+              (is (denied? (read native-question)))
+              (is (some #(str/includes? % "only uses curated content") (:errors (metadata native-question)))))
+            (testing "an uncurated model on a curated table isn't readable through the metric URI"
+              (is (denied? (read plain-model)))
+              (is (some #(str/includes? % "only uses curated content") (:errors (metadata plain-model)))))
+            (testing "an uncurated metric with a native definition is denied: it references no tables to judge it by"
+              (is (denied? (read native-metric)))
+              (testing "and construct_notebook_query fails closed on it (resolve rejects it before the rule runs)"
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"."
+                                      (as-metabot metabot-id :internal
+                                                  #(construct/execute-representations-query
+                                                    (query native-metric-eid)))))))
+            (testing "a curated metric with a native definition is readable, being curated itself"
+              (is (not (denied? (read verified-native-metric)))))))))))
+
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -329,6 +370,21 @@
               (testing "one deeper is rejected"
                 (is (rejected? (query-on beyond)))
                 (is (denied? (read beyond)))))))))))
+
+(deftest metric-definition-walk-is-bounded-test
+  (testing "judging a metric chain loads each definition once and stops at the nesting limit"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (mt/with-model-cleanup [:model/Card]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (let [limit    @#'curation/max-metric-nesting
+                  chain    (metric-chain! (+ limit 5))
+                  loads    (atom 0)
+                  original lib.metadata/card]
+              (mt/with-dynamic-fn-redefs [lib.metadata/card (fn [& args] (swap! loads inc) (apply original args))]
+                (is (denied? (first (read-uris metabot-id :internal (str "metabase://metric/" (:id (peek chain)))))))
+                (is (<= @loads (inc limit))
+                    (str "loaded " @loads " definitions for a chain the limit should cut at " limit))))))))))
 
 (deftest read-resource-curated-check-ordering-test
   (testing "the curation check runs after the entity's existence and read checks, but before its handler"
