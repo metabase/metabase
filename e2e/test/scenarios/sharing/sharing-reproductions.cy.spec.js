@@ -907,21 +907,6 @@ describe("issue 17547", () => {
   });
 });
 
-describe("issue 16108", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    cy.icon("download").realHover();
-    H.tooltip().findByText("Download results");
-    H.sharingMenuButton().realHover();
-    H.tooltip().findByText("Share");
-  });
-});
-
 describe("issue 49525", { tags: "@external" }, () => {
   const {
     admin: { first_name, last_name },

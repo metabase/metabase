@@ -154,7 +154,7 @@ describe("scenarios > question > download", () => {
       cy.intercept("GET", formatUrl).as("fetchFormat");
     });
 
-    it("should remember the downloaded format across page reloads", () => {
+    it("should show tooltips for the download and share buttons and remember the downloaded format across page reloads (metabase#16108)", () => {
       H.createQuestion(
         {
           name: "Format Preference Test",
@@ -170,6 +170,12 @@ describe("scenarios > question > download", () => {
       cy.findByTestId("view-footer")
         .findByText("Showing 5 rows")
         .should("be.visible");
+
+      cy.icon("download").realHover();
+      H.tooltip().findByText("Download results");
+      H.sharingMenuButton().realHover();
+      H.tooltip().findByText("Share");
+
       cy.findByTestId("view-footer").button("Download results").click();
 
       H.popover().findByText(".xlsx").click();
