@@ -171,7 +171,9 @@
     (cond-> {:value (when (contains? context :value)
                       (if (nil? (:value context)) :null (:value context)))}
       column           (merge (let [col (resolve column)] {:column col :column-ref (lib/ref col)}))
-      (seq row)        (assoc :row (mapv cell row))
+      ;; Row cells are context only, and a row carries display columns the query does not return, such as an FK
+      ;; remapping's, so cells naming no returned column are dropped.
+      (seq row)        (assoc :row (into [] (keep #(when (contains? columns (:column %)) (cell %))) row))
       (seq dimensions) (assoc :dimensions (mapv cell dimensions)))))
 
 (defn- drill-args
