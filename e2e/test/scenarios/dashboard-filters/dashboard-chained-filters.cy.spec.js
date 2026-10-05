@@ -174,7 +174,9 @@ describe("scenarios > dashboard > chained filter", () => {
       });
     });
   }
+});
 
+describe("scenarios > dashboard > chained filter > field types", () => {
   it(
     "should work for all field types (metabase#15170)",
     { tags: "@external" },
