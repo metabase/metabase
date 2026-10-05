@@ -218,9 +218,8 @@ describe("DatabaseConnectionInfoSection", () => {
   });
 
   describe("Stub databases", () => {
-    it("should explain that the database is not connected instead of showing the sync actions", async () => {
+    it("should hide the sync actions but allow editing the connection details", async () => {
       setup({ database: createMockDatabase({ is_stub: true }) });
-      expect(screen.getByText("Not connected")).toBeInTheDocument();
       expect(
         screen.queryByText(/Sync database schema/i),
       ).not.toBeInTheDocument();

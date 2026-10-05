@@ -1427,12 +1427,15 @@
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
-    ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
-    (binding [driver.settings/*allow-testing-h2-connections* true
-              driver.settings/*allow-testing-sqlite-connections* true]
-      (if-let [err-map (warehouses/test-database-connection engine connection-details)]
-        (merge err-map {:status "error"})
-        {:status "ok"}))))
+    (if (:is_stub database)
+      {:status  "error"
+       :message (tru "No connection details have been set for this database.")}
+      ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
+      (binding [driver.settings/*allow-testing-h2-connections* true
+                driver.settings/*allow-testing-sqlite-connections* true]
+        (if-let [err-map (warehouses/test-database-connection engine connection-details)]
+          (merge err-map {:status "error"})
+          {:status "ok"})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

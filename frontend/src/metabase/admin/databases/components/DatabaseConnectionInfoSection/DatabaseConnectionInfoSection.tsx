@@ -57,7 +57,7 @@ export const DatabaseConnectionInfoSection = ({
 
   return (
     <DatabaseInfoSection
-      condensed
+      condensed={!database.is_stub}
       name={t`Connection and sync`}
       description={t`Manage details about the database connection and when Metabase ingests new data.`}
       data-testid="database-connection-info-section"
@@ -76,7 +76,7 @@ export const DatabaseConnectionInfoSection = ({
         </Tooltip>
       </Flex>
 
-      <DatabaseInfoSectionDivider condensed />
+      {!database.is_stub && <DatabaseInfoSectionDivider condensed />}
 
       {isSyncAborted(database) && database.initial_sync_error && (
         <Alert
@@ -87,17 +87,6 @@ export const DatabaseConnectionInfoSection = ({
           mb="md"
         >
           {database.initial_sync_error}
-        </Alert>
-      )}
-
-      {database.is_stub && (
-        <Alert
-          size="compact"
-          color="warning"
-          icon={<Icon name="warning" />}
-          title={t`Not connected`}
-        >
-          {t`This database was created by a serialization import. Add its connection details to make the content that uses it work.`}
         </Alert>
       )}
 

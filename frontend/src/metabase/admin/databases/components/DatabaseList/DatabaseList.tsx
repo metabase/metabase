@@ -93,7 +93,12 @@ export const DatabaseList = ({
                           {database.name}
                         </Link>
                         {database.is_stub && (
-                          <Badge ml="sm" variant="light" color="warning">
+                          <Badge
+                            ml="sm"
+                            size="sm"
+                            variant="light"
+                            color="warning"
+                          >
                             {t`Not connected`}
                           </Badge>
                         )}
