@@ -82,9 +82,7 @@ describe("scenarios > dashboard > filters > reset", () => {
 
     cy.location("search").should("eq", "?filter_one=&filter_two=");
 
-    cy.log(
-      "Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder",
-    );
+    cy.log("Replacing Filter Two's default value updates its value in the url");
     H.editDashboard();
 
     H.filterWidget({ name: "Filter Two", isEditing: true }).click();
