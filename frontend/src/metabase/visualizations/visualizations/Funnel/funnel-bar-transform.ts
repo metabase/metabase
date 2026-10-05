@@ -51,6 +51,7 @@ export const funnelToBarTransform: TransformSeries = (rawSeries, settings) => {
           "graph.y_axis.auto_split": false,
           "graph.y_axis.title_text": cols[metricIndex].display_name,
           "legend.is_reversed": false,
+          "legend.is_visible": settings["legend.is_visible"],
         },
       },
       data: {

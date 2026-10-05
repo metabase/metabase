@@ -139,7 +139,7 @@ describe("getPieChartModel", () => {
     ],
     "pie.sort_rows_dimension": ["birth_year"],
     series_settings: {},
-    "pie.show_legend": true,
+    "legend.is_visible": true,
     "pie.show_total": true,
     "pie.show_labels": false,
     "pie.percent_visibility": "legend",

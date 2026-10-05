@@ -200,7 +200,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       }),
       readDependencies: ["pie.dimension", "pie.rows"],
     },
-    "pie.show_legend": {
+    "legend.is_visible": {
       getSection: () => t`Display`,
       get title() {
         return t`Show legend`;

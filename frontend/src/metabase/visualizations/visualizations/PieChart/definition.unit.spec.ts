@@ -1,5 +1,11 @@
+import { registerVisualizations } from "metabase/visualizations/register";
 import { PIE_CHART_DEFINITION } from "metabase/visualizations/visualizations/PieChart/definition";
-import type { RawSeries, RowValues } from "metabase-types/api";
+import { getComputedSettingsForSeries } from "metabase/viz-core";
+import type {
+  RawSeries,
+  RowValues,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -57,5 +63,34 @@ describe("PieChart pie.rows caching", () => {
     const rebuilt: RawSeries = JSON.parse(JSON.stringify(series));
 
     expect(readPieRows(rebuilt)).not.toBe(readPieRows(series));
+  });
+});
+
+describe("PieChart legend.is_visible", () => {
+  registerVisualizations();
+
+  const computeLegend = (settings: VisualizationSettings) =>
+    getComputedSettingsForSeries([
+      {
+        ...makeSeries()[0],
+        card: createMockCard({
+          display: "pie",
+          visualization_settings: settings,
+        }),
+      },
+    ])["legend.is_visible"];
+
+  it("shows the legend by default", () => {
+    expect(computeLegend({})).toBe(true);
+  });
+
+  it("honors a card saved with pie.show_legend", () => {
+    expect(computeLegend({ "pie.show_legend": false })).toBe(false);
+  });
+
+  it("prefers legend.is_visible over pie.show_legend", () => {
+    expect(
+      computeLegend({ "pie.show_legend": false, "legend.is_visible": true }),
+    ).toBe(true);
   });
 });

@@ -46,7 +46,10 @@ export function getDefaultPieColumns(rawSeries: RawSeries) {
   };
 }
 
-export const getDefaultShowLegend = () => true;
+export const getDefaultShowLegend = (
+  _series: unknown,
+  settings: ComputedVisualizationSettings,
+) => settings["pie.show_legend"] ?? true;
 
 export const getDefaultShowTotal = () => true;
 

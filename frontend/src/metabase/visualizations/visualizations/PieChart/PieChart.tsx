@@ -23,6 +23,8 @@ import S from "./PieChart.module.css";
 import { PIE_CHART_DEFINITION } from "./definition";
 import { useChartEvents } from "./use-chart-events";
 
+const NO_HIDDEN_SLICES = new Set<string | number>();
+
 function PieChartComponent(props: VisualizationProps) {
   const {
     fontFamily,
@@ -43,6 +45,8 @@ function PieChartComponent(props: VisualizationProps) {
   const [hiddenSlices, { toggle: toggleSliceVisibility }] = useSet<
     string | number
   >();
+  const showLegend = settings["legend.is_visible"];
+  const appliedHiddenSlices = showLegend ? hiddenSlices : NO_HIDDEN_SLICES;
 
   const showWarning = useCallback(
     (warning: string) => onRender({ warnings: [warning] }),
@@ -64,11 +68,17 @@ function PieChartComponent(props: VisualizationProps) {
       getPieChartModel(
         seriesToRender,
         settings,
-        Array.from(hiddenSlices),
+        Array.from(appliedHiddenSlices),
         renderingContext,
         showWarning,
       ),
-    [seriesToRender, settings, hiddenSlices, renderingContext, showWarning],
+    [
+      seriesToRender,
+      settings,
+      appliedHiddenSlices,
+      renderingContext,
+      showWarning,
+    ],
   );
   const formatters = useMemo(
     () => getPieChartFormatters(chartModel, settings),
@@ -148,8 +158,6 @@ function PieChartComponent(props: VisualizationProps) {
   const legendColors = slices
     .filter((s) => s.includeInLegend)
     .map((s) => s.color);
-
-  const showLegend = settings["pie.show_legend"];
 
   const onHoverChange = (hoverData: any) =>
     props.onHoverChange(

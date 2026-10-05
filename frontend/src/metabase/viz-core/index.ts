@@ -221,6 +221,7 @@ export {
   getDefaultMapMetric,
   getLegendTitles,
   HEAT_MAP_ZERO_COLOR,
+  REGION_MAP_LEGEND_SETTINGS,
 } from "./lib/choropleth";
 export { withColorName } from "./lib/color-name";
 export { getColorScale } from "./lib/color-scales";
@@ -325,6 +326,7 @@ export {
   BOXPLOT_DATA_SETTINGS,
   BOXPLOT_SETTINGS,
   getDefaultDimensionLabel,
+  getLegendIsVisibleSetting,
   GRAPH_AXIS_SETTINGS,
   GRAPH_BUBBLE_SETTINGS,
   GRAPH_COLORS_SETTINGS,
@@ -332,6 +334,7 @@ export {
   GRAPH_DISPLAY_VALUES_SETTINGS,
   GRAPH_TREND_SETTINGS,
   LEGEND_SETTINGS,
+  LEGEND_VISIBILITY_SETTINGS,
   LINE_SETTINGS,
   SPLIT_PANELS_SETTINGS,
   STACKABLE_SETTINGS,

@@ -31,6 +31,8 @@ import {
 import { BOXPLOT_CHART_DEFINITION } from "./definition";
 import { useBoxPlotEvents } from "./events";
 
+const NO_HIDDEN_SERIES = new Set<string>();
+
 function BoxPlotInner({
   rawSeries,
   settings: originalSettings,
@@ -88,15 +90,18 @@ function BoxPlotInner({
     [onRender],
   );
 
+  const isLegendEnabled = settings["legend.is_visible"] !== false;
+  const appliedHiddenSeries = isLegendEnabled ? hiddenSeries : NO_HIDDEN_SERIES;
+
   const chartModel = useMemo(
     () =>
       getBoxPlotModel(
         rawSeriesWithRemappings,
         settings,
-        Array.from(hiddenSeries),
+        Array.from(appliedHiddenSeries),
         showWarning,
       ),
-    [rawSeriesWithRemappings, settings, hiddenSeries, showWarning],
+    [rawSeriesWithRemappings, settings, appliedHiddenSeries, showWarning],
   );
 
   const description = settings["card.description"];
@@ -105,7 +110,7 @@ function BoxPlotInner({
     () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
     [chartModel, showAllLegendItems],
   );
-  const hasLegend = legendItems.length > 0;
+  const hasLegend = isLegendEnabled && legendItems.length > 0;
 
   const canSelectTitle = !!onChangeCardAndRun;
 

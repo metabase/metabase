@@ -403,6 +403,39 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
+export const getLegendIsVisibleSetting = (
+  getHidden: SeriesSettingDefinition["getHidden"],
+  readDependencies: string[],
+): SeriesSettingDefinition => ({
+  getSection: () => t`Display`,
+  get title() {
+    return t`Show legend`;
+  },
+  widget: "toggle",
+  getDefault: () => true,
+  inline: true,
+  getWrapperStyle: () => ({
+    marginBottom: "1rem",
+  }),
+  getHidden,
+  readDependencies,
+});
+
+const hasSingleSeries = (
+  series: Series,
+  settings: ComputedVisualizationSettings,
+) =>
+  series.length <= 1 &&
+  (settings["graph.dimensions"]?.length ?? 0) <= 1 &&
+  (settings["graph.metrics"]?.length ?? 0) <= 1;
+
+export const LEGEND_VISIBILITY_SETTINGS: VisualizationSettingsDefinitions = {
+  "legend.is_visible": getLegendIsVisibleSetting(hasSingleSeries, [
+    "graph.dimensions",
+    "graph.metrics",
+  ]),
+};
+
 export const LEGEND_SETTINGS: VisualizationSettingsDefinitions = {
   "legend.is_reversed": {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),

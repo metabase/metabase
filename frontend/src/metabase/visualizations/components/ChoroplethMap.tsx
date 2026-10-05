@@ -452,6 +452,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
       aspectRatio={aspectRatio}
       legendTitles={legendTitles}
       legendColors={heatMapColors}
+      showLegend={settings["legend.is_visible"]}
       gridSize={gridSize}
       hovered={hovered}
       onHoverChange={onLegendHoverChange}

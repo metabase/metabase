@@ -32,6 +32,8 @@ import {
   getHoveredFromHighlighted,
 } from "./utils";
 
+const NO_HIDDEN_SERIES = new Set<string>();
+
 function CartesianChartInner(props: VisualizationProps) {
   const { timelineEvents } = useTimelineEvents(props);
 
@@ -87,6 +89,9 @@ function CartesianChartInner(props: VisualizationProps) {
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
 
+  const isLegendEnabled =
+    !hideLegend && settings["legend.is_visible"] !== false;
+
   const {
     chartModel,
     chartLayout,
@@ -98,7 +103,7 @@ function CartesianChartInner(props: VisualizationProps) {
       ...props,
       width: chartSize.width,
       height: chartSize.height,
-      hiddenSeries,
+      hiddenSeries: isLegendEnabled ? hiddenSeries : NO_HIDDEN_SERIES,
       settings,
       timelineEvents,
     },
@@ -120,7 +125,7 @@ function CartesianChartInner(props: VisualizationProps) {
     () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
     [chartModel, showAllLegendItems],
   );
-  const hasLegend = !hideLegend && legendItems.length > 0;
+  const hasLegend = isLegendEnabled && legendItems.length > 0;
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;

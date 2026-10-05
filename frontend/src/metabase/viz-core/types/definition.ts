@@ -284,6 +284,7 @@ export type VisualizationSettingsDefinitions = {
   "graph.y_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.unpin_from_zero"?: SeriesSettingDefinition<Value, Props>;
   "legend.is_reversed"?: SeriesSettingDefinition<Value, Props>;
+  "legend.is_visible"?: SeriesSettingDefinition<Value, Props>;
   "line.interpolate"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.marker_enabled"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
@@ -313,7 +314,6 @@ export type VisualizationSettingsDefinitions = {
   "pie.rows"?: SeriesSettingDefinition<Value, Props>;
   "pie.slice_threshold"?: SeriesSettingDefinition<Value, Props>;
   "pie.show_labels"?: SeriesSettingDefinition<Value, Props>;
-  "pie.show_legend"?: SeriesSettingDefinition<Value, Props>;
   "pie.show_total"?: SeriesSettingDefinition<Value, Props>;
   "pie.sort_rows"?: SeriesSettingDefinition<Value, Props>;
   "pie.sort_rows_dimension"?: SeriesSettingDefinition<Value, Props>;

@@ -10,6 +10,10 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
+import type { VisualizationSettingsDefinitions } from "../types";
+
+import { getLegendIsVisibleSetting } from "./settings/graph";
+
 // Shared choropleth (region map) helpers, kept Leaflet-free (unlike the runtime ChoroplethMap) so the
 // static-viz bundle — which runs in GraalJS where Leaflet can't load — can use them too.
 export function getDefaultMapDimension(
@@ -22,6 +26,13 @@ export function getDefaultMapDimension(
 export function getDefaultMapMetric(cols: DatasetColumn[]): string | undefined {
   return cols.find(isMetric)?.name;
 }
+
+export const REGION_MAP_LEGEND_SETTINGS: VisualizationSettingsDefinitions = {
+  "legend.is_visible": getLegendIsVisibleSetting(
+    (_series, settings) => settings["map.type"] !== "region",
+    ["map.type"],
+  ),
+};
 
 /* eslint-disable metabase/no-color-literals */
 export const HEAT_MAP_COLORS = [
