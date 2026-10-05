@@ -172,7 +172,7 @@
              :group_id [:not= group-id]))
 
 (defn table
-  "The Table with `table-id` as the current user sees it, or nil."
+  "The Table with `table-id`, or nil."
   [table-id]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
