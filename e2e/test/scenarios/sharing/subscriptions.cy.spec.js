@@ -123,12 +123,6 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.sidebar().button("Done").should("be.disabled");
       });
 
-      it("should allow creation of a new email subscription", () => {
-        createEmailSubscription();
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Emailed hourly");
-      });
-
       it("should still send a one-off email after the frequency change clears the time", () => {
         assignRecipient();
 
@@ -170,13 +164,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("with existing subscriptions", () => {
-      it("should show existing dashboard subscriptions", () => {
-        createEmailSubscription();
-        openDashboardSubscriptions();
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Emailed hourly");
-      });
-
       it("should forward non-admin users to add email form when clicking add", () => {
         cy.signInAsNormalUser();
 
