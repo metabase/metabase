@@ -1,9 +1,9 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
 import {
   useCreateActionPublicLinkMutation,
+  useDeleteActionPublicLinkMutation,
   useUpdateActionMutation,
 } from "metabase/api";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
@@ -11,6 +11,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
@@ -29,8 +30,6 @@ import type { WritebackQueryAction } from "metabase-types/api";
 import { ActionHeader } from "../../components/ActionHeader";
 import { useActionPermissions } from "../../hooks/use-action-permissions";
 import { useRouteAction } from "../../hooks/use-route-action";
-
-import { DisablePublicLinkModal } from "./DisablePublicLinkModal";
 
 export function ActionSettingsPage() {
   const {
@@ -81,16 +80,28 @@ type SectionProps = {
 function PublicSharingSection({ action }: SectionProps) {
   const siteUrl = useSetting("site-url");
   const [createPublicLink] = useCreateActionPublicLinkMutation();
-  const [
-    isDisableModalOpened,
-    { open: openDisableModal, close: closeDisableModal },
-  ] = useDisclosure();
+  const [deletePublicLink] = useDeleteActionPublicLinkMutation();
+  const { modalContent: confirmationModal, show: showConfirmation } =
+    useConfirmation();
   const { sendErrorToast } = useMetadataToasts();
   const isPublic = action.public_uuid != null;
 
+  const handleDisable = async () => {
+    const { error } = await deletePublicLink({ id: action.id });
+    if (error) {
+      sendErrorToast(t`Failed to disable the public link`);
+    }
+  };
+
   const handleToggle = async (checked: boolean) => {
     if (!checked) {
-      openDisableModal();
+      showConfirmation({
+        title: t`Disable this public link?`,
+        message: t`The existing link will stop working. If you make the action public again, it will get a new link.`,
+        confirmButtonText: t`Disable link`,
+        confirmButtonProps: { color: "negative" },
+        onConfirm: handleDisable,
+      });
       return;
     }
     const { error } = await createPublicLink({ id: action.id });
@@ -129,12 +140,7 @@ function PublicSharingSection({ action }: SectionProps) {
           </Stack>
         </>
       )}
-      {isDisableModalOpened && (
-        <DisablePublicLinkModal
-          actionId={action.id}
-          onClose={closeDisableModal}
-        />
-      )}
+      {confirmationModal}
     </TitleSection>
   );
 }
