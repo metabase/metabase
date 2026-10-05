@@ -122,10 +122,9 @@ describe("issue 14636", () => {
     cy.findByRole("heading", { name: "Background tasks" }).should("be.visible");
 
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("field values scanning");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("513");
+    cy.findByTestId("tasks-table")
+      .should("contain.text", "field values scanning")
+      .and("contain.text", "513");
 
     cy.findByLabelText("Previous page").should("be.disabled");
     cy.findByLabelText("Next page").should("not.be.disabled").click();
@@ -137,15 +136,20 @@ describe("issue 14636", () => {
       .findByText(`51 - ${total}`)
       .should("be.visible");
     cy.findByLabelText("pagination").findByText("1 - 50").should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("analyze");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("200");
+    cy.findByTestId("tasks-table")
+      .should("contain.text", "analyze")
+      .and("contain.text", "200")
+      .and("not.contain.text", "field values scanning");
 
     cy.findByLabelText("Next page").should("be.disabled");
     cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
+    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByTestId("tasks-table").should(
+      "contain.text",
+      "field values scanning",
+    );
 
     cy.log("pagination should affect browser history");
     cy.go("back");
@@ -597,6 +601,9 @@ describe("monitor > tools", () => {
 
     cy.findByTestId("monitor-nav").findByText("Model persistence log").click();
     cy.location("pathname").should("eq", "/monitor/model-persistence-log");
+    cy.findByTestId("monitor-main")
+      .findByRole("heading", { name: "Model persistence log" })
+      .should("be.visible");
 
     cy.log(
       "Back to Tasks should go to the tasks list even with no browser history (metabase#57113)",
@@ -632,7 +639,7 @@ describe("monitor > tools", () => {
       name: "Troubleshoot faster",
     }).should("be.visible");
     cy.findByTestId("erroring-questions-table").should("not.exist");
-    cy.findByRole("link", { name: "Upgrade to Pro" });
+    cy.findByRole("link", { name: "Upgrade to Pro" }).should("be.visible");
   });
 });
 
@@ -744,6 +751,7 @@ describe("scenarios > monitor > tools > task runs", () => {
 
     cy.findByTestId("monitor-main").within(() => {
       cy.findByText("Run type").should("be.visible");
+      cy.findByText("Sync").should("be.visible");
       cy.findByText("Entity").should("be.visible");
       cy.findByText("Sample Database").should("be.visible");
     });
@@ -865,6 +873,8 @@ describe("scenarios > monitor > tools > task runs pagination", () => {
     cy.findByLabelText("Previous page").should("not.be.disabled").click();
 
     cy.location("search").should("eq", "");
+    cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.findByTestId("task-runs-table").should("contain.text", "Sync");
   });
 });
 
@@ -873,7 +883,7 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.intercept("GET", "/api/task/runs?*", (request) => {
+    cy.intercept({ method: "GET", pathname: "/api/task/runs" }, (request) => {
       request.reply((response) => {
         response.body = {
           data: [],
@@ -910,11 +920,15 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     getFilterByRun().click();
     H.popover().findByText("Sync").click();
     cy.location("search").should("contain", "run-type=sync");
-    cy.wait("@getTaskRuns");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "run-type=sync");
     cy.log("Filter by started at");
     selectStartedAt("Previous 30 days");
     cy.location("search").should("contain", "started-at=past30days");
-    cy.wait("@getTaskRuns");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "started-at=past30days");
 
     cy.wait("@getEntities");
     cy.log("Filter by entity");
@@ -922,13 +936,18 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     H.popover().findByText("Sample Database").click();
     cy.location("search").should("contain", "entity-type=database");
     cy.location("search").should("contain", "entity-id=1");
-    cy.wait("@getTaskRuns");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "entity-type=database")
+      .and("contain", "entity-id=1");
 
     cy.log("Filter by status");
     getFilterByStatus().click();
     H.popover().findByText("Success").click();
     cy.location("search").should("contain", "status=success");
-    cy.wait("@getTaskRuns");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "status=success");
 
     cy.log("Clear all filters");
     getFilterByRun().parent().findByLabelText("Clear").click();
