@@ -1758,6 +1758,13 @@
           (is (= #{"Postgres DB"} (ids-by-model "Database" ser))
               "Only non-H2 databases should appear in the extract"))))))
 
+(deftest skip-stub-databases-test
+  (testing "Stub databases are not extracted, so an import can never turn a real database into a stub"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _stub {:name "Stub DB"     :engine :postgres :is_stub true}
+                     :model/Database _real {:name "Postgres DB" :engine :postgres}]
+        (is (= #{"Postgres DB"} (ids-by-model "Database" (extract/extract {:no-settings true}))))))))
+
 (deftest xray-of-analytics-model-export-test
   (testing "X-rays of analytics models can be exported without errors"
     (mt/with-empty-h2-app-db!

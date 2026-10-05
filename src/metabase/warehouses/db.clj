@@ -147,7 +147,7 @@
              {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn databases-for-serdes-reducible
-  "A reducible of the Databases to export via serdes: routing destinations and the sample database are always
+  "A reducible of the Databases to export via serdes: routing destinations, stubs and the sample database are always
   excluded, H2 databases unless `include-h2?`, and the export is restricted to the rows whose `filter-column` is one
   of `filter-ids` when `filter-column` is given."
   [filter-column :- [:maybe :keyword]
@@ -160,6 +160,7 @@
                                 [:= :router_database_id nil]
                                 ;; never export the sample database, regardless of its driver
                                 [:not= :is_sample true]
+                                [:not= :is_stub true]
                                 (when-not include-h2?
                                   [:not= :engine "h2"])]}))
 
