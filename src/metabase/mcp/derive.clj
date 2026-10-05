@@ -138,7 +138,9 @@
     "relative" (lib/relative-date-filter-clause column value (keyword unit) offsetValue
                                                 (some-> offsetUnit keyword)
                                                 {:include-current (boolean (:includeCurrent options))})
-    "exclude"  (lib/exclude-date-filter-clause (keyword operator) column (some-> unit keyword) values)))
+    "exclude"  (if (and (= operator "!=") (nil? unit))
+                 (throw (bad-request (tru "An exclude filter on values must name the unit they are in.")))
+                 (lib/exclude-date-filter-clause (keyword operator) column (some-> unit keyword) values))))
 
 (defn- set-date-filter [query {:keys [value]}]
   (let [[_ column] (temporal-breakout query)
@@ -231,9 +233,10 @@
     (throw (bad-request (tru "A native query cannot be changed here; only MBQL queries can."))))
   (try
     (reduce apply-operation query operations)
-    (catch Exception e
+    ;; Only an ExceptionInfo is Lib refusing the input; any other exception is a bug, left to propagate as a 500.
+    (catch clojure.lang.ExceptionInfo e
       (if (:status-code (ex-data e))
         (throw e)
-        ;; Lib refusing the click's values or the operation: the caller's input, so a 400 that names no internals.
+        ;; The caller's input, so a 400 that names no internals.
         (do (log/debug e "Lib refused an MCP derive operation")
             (throw (bad-request (tru "This change does not apply to this query."))))))))

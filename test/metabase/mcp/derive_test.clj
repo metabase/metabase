@@ -256,17 +256,33 @@
                                               :context {:column     "count" :value 10
                                                         :dimensions [{:column "DISCOUNT" :value nil}]}}]})))))))
 
+(def ^:private point-in-january
+  {:type    "drill-thru" :drill "underlying-records"
+   :context {:column "count" :value 8 :dimensions [{:column "DATE" :value "2013-01-01T00:00:00Z"}]}})
+
 (deftest drill-with-a-context-lib-rejects-test
-  (testing "a click context Lib refuses as invalid is a 400 with a short plain-text body, not a 500"
+  (testing "Lib refusing a click as invalid input is a 400 with a short plain-text body, not a 500"
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [response (derive! (checkins-by-month)
-                              {:operations [{:type    "drill-thru" :drill "underlying-records"
-                                             :context {:column     "count" :value 8
-                                                       :dimensions [{:column "DATE" :value true}]}}]})]
-        (is (= 400 (:status response)))
-        (is (re-find #"(?i)^text/plain" (str (get-in response [:headers "Content-Type"]))))
-        (is (string? (:body response)))
-        (is (< (count (:body response)) 300))))))
+      (mt/with-dynamic-fn-redefs [lib/available-drill-thrus
+                                  (fn [& _] (throw (ex-info "Invalid input: {:value [\"should be nil\"]}"
+                                                            {:type :metabase.util.malli.fn/invalid-input})))]
+        (let [response (derive! (checkins-by-month) {:operations [point-in-january]})]
+          (is (= 400 (:status response)))
+          (is (re-find #"(?i)^text/plain" (str (get-in response [:headers "Content-Type"]))))
+          (is (= "This change does not apply to this query." (:body response))))))))
+
+(deftest derive-bug-is-a-500-test
+  (testing "an exception that is not Lib refusing the input is a server bug: a 500, not a 400 that hides it"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (mt/with-dynamic-fn-redefs [lib/available-drill-thrus (fn [& _] (throw (NullPointerException. "boom")))]
+        (is (= 500 (:status (derive! (checkins-by-month) {:operations [point-in-january]}))))))))
+
+(deftest exclude-date-filter-needs-a-unit-test
+  (testing "an exclude filter on values names the unit they are in, or it is refused"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (is (= 400 (:status (derive! (checkins-by-month)
+                                   {:operations [{:type  "date-filter/set"
+                                                  :value {:type "exclude" :operator "!=" :values [1]}}]})))))))
 
 (defn- orders-count-binned-by
   "Count of orders broken out by each of `column-names`, binned."
