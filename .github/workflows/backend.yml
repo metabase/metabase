@@ -58,8 +58,8 @@ jobs:
         - name: Run migration checks
           if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
           run: ./bin/mage project-tests migrations
-        # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
-        # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
+        # Babashka plus a scoped clj-kondo run, not a JVM test run, so it is cheap enough to run alongside the
+        # backend checks. It needs the JDK and Clojure CLI prepare-backend installs.
         - name: Run ratchet checks
           if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
           run: ./bin/mage kondo-ratchets

@@ -174,7 +174,8 @@
    [:access-key-id     {:optional true} [:maybe :string]]
    [:secret-access-key {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
-   [:region            {:optional true} [:maybe :string]]])
+   [:region            {:optional true} [:maybe :string]]
+   [:model-id          {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleCredentials
   [:map {:closed true}
