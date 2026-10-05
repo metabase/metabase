@@ -96,6 +96,7 @@
            metabase.actions.types}
    :uses #{analytics
            api
+           collections
            driver
            events
            lib
@@ -117,10 +118,7 @@
            util
            warehouse-schema-overlay
            warehouses}
-   :model-exports #{:model/Action
-                    :model/HTTPAction
-                    :model/ImplicitAction
-                    :model/QueryAction}
+   :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -142,11 +140,9 @@
            api.eid-translation
            collections
            events
-           lib
            lib.schema
            permissions
            public-sharing
-           queries
            util}
    :model-imports #{:model/Action :model/Card :model/Database}}
 
@@ -639,7 +635,8 @@
            util.config
            warehouse-schema-overlay}
    :model-exports #{:model/Collection}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/CollectionBookmark
                     :model/CollectionPermissionGraphRevision
                     :model/Dashboard
@@ -1496,7 +1493,6 @@
               query-permissions
               query-processor
               request
-              request.schema
               search
               search.entity-retrieval
               server
@@ -1733,7 +1729,6 @@
                     :model/FieldUserSettings
                     :model/FieldValues
                     :model/Glossary
-                    :model/HTTPAction
                     :model/ImplicitAction
                     :model/Measure
                     :model/Metabot
@@ -3291,8 +3286,10 @@
            warehouse-schema-overlay
            warehouses.secrets}
    :model-exports #{:model/Database}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Field
+                    :model/QueryAction
                     :model/Table
                     :model/User}}
 

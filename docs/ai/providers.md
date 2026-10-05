@@ -169,19 +169,37 @@ Credentials:
 
 - Provider key: `deepseek`
 - Default model: `deepseek-v4-pro`
-- Model for short tasks like naming a conversation: `deepseek-v4-flash`
+- Model for short tasks like naming a conversation: `deepseek-flash`
 
 Supported models:
 
-| Model             | Model ID            |
-| ----------------- | ------------------- |
-| DeepSeek V4 Flash | `deepseek-v4-flash` |
-| DeepSeek V4 Pro   | `deepseek-v4-pro`   |
+| Model           | Model ID          |
+| --------------- | ----------------- |
+| DeepSeek Flash  | `deepseek-flash`  |
+| DeepSeek V4 Pro | `deepseek-v4-pro` |
 
 Credentials:
 
 - **API key** (required). [Where do I find this?](https://platform.deepseek.com/api_keys) You can also set it with the environment variable `MB_LLM_DEEPSEEK_API_KEY`.
 - **API base URL** (advanced). The root both surfaces hang off; leave off any /anthropic or /v1 path. Defaults to `https://api.deepseek.com`. You can also set it with the environment variable `MB_LLM_DEEPSEEK_API_BASE_URL`.
+
+## xAI
+
+- Provider key: `xai`
+- Default model: `grok-4.7`
+- Model for short tasks like naming a conversation: `grok-4.3`
+
+Supported models:
+
+| Model    | Model ID   | Context window (tokens) |
+| -------- | ---------- | ----------------------- |
+| Grok 4.3 | `grok-4.3` | 1,000,000               |
+| Grok 4.7 | `grok-4.7` | 500,000                 |
+
+Credentials:
+
+- **API key** (required). [Where do I find this?](https://console.x.ai/team/default/api-keys) You can also set it with the environment variable `MB_LLM_XAI_API_KEY`.
+- **API base URL** (advanced). Defaults to `https://api.x.ai/v1`. You can also set it with the environment variable `MB_LLM_XAI_API_BASE_URL`.
 
 ## Google Gemini Enterprise
 
@@ -268,11 +286,12 @@ Credentials:
 - **Access key ID**. Only together with **Secret access key**. Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile). On Metabase Cloud, Bedrock always authenticates with your own AWS keys. [Where do I find this?](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.
 - **Secret access key**. Only together with **Access key ID**. Required on Metabase Cloud. You can also set it with the environment variable `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`.
 - **Region**. Pick one from the dropdown in **Admin > AI**. Defaults to `us-east-1`. You can also set it with the environment variable `MB_LLM_BEDROCK_REGION`.
+- **Model ID**. Optional. Use an inference profile, or a model that isn't listed for this region, by its ID or ARN.
 - **Session token** (advanced). Only together with **Access key ID** and **Secret access key**. Only needed for temporary credentials. You can also set it with the environment variable `MB_LLM_BEDROCK_SESSION_TOKEN`.
 
 ### IAM permissions for Bedrock
 
-Metabase talks to Bedrock through the mantle endpoint, `https://bedrock-mantle.{region}.api.aws`, not through `bedrock-runtime`. Mantle is a separate IAM namespace with its own actions, so a policy written against the `bedrock` prefix won't grant access. Metabase lists models and runs conversations, so it needs `bedrock-mantle:ListModels` and `bedrock-mantle:CreateInference`.
+Metabase talks to Bedrock through the mantle endpoint, `https://bedrock-mantle.{region}.api.aws`, unless the connection's **Model ID** sends it to `bedrock-runtime` (see [Use an inference profile](#use-an-inference-profile)). Mantle is a separate IAM namespace with its own actions, so a policy written against the `bedrock` prefix won't grant access. Metabase lists models and runs conversations, so it needs `bedrock-mantle:ListModels` and `bedrock-mantle:CreateInference`.
 
 Here's a least-privilege policy that grants both:
 
@@ -295,12 +314,37 @@ If Metabase reports "AWS Bedrock credentials lack permission for this model or a
 
 ### The Bedrock models you can pick depend on the region
 
-The table above lists the models Metabase can use. The **Models** card only offers the ones Bedrock serves in the connection's region, so what you can pick depends on the region. The mantle catalog has no cross-region inference profiles, so a model that isn't served in your region can't be reached from that region at all.
+The table above lists the models Metabase can use. The **Models** card only offers the ones Bedrock serves in the connection's region, so what you can pick depends on the region. The mantle catalog has no cross-region inference profiles, so to reach a model that isn't served in your region, [use an inference profile](#use-an-inference-profile).
 
 If the model list is empty or shorter than you expect after connecting:
 
 - **Check the region**: the **Region** dropdown lists every AWS region, including regions where Bedrock serves none of these models. The [AWS model cards](https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html) show where each model is available. For example, the GPT models are only served in US regions.
 - **Check your account's data retention setting**: Bedrock marks a model unavailable when your account's data retention mode doesn't meet what that model requires. For example, [Claude Fable 5](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-fable-5.html) requires the `aws_review` data retention mode.
+
+### Use an inference profile
+
+To use an [inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles.html), or a Claude model that isn't listed for your region, enter its ID or ARN in **Model ID**, like `eu.anthropic.claude-sonnet-4-6` or `us.anthropic.claude-haiku-4-5-20251001-v1:0`. That connection serves this model instead of the models above: connecting checks it by generating a single token, and the model picker offers it as the connection's only model. To use the models above too, add a second Amazon Bedrock provider without a model ID.
+
+Metabase sends inference profile IDs, ARNs, and model IDs with a version suffix like `-v1:0` to `bedrock-runtime`, `https://bedrock-runtime.{region}.amazonaws.com`, instead of mantle. Through `bedrock-runtime`, Metabase only talks to Claude models, and it needs `bedrock:InvokeModelWithResponseStream` on the inference profile and on the foundation model in every region the profile routes to:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "bedrock:InvokeModelWithResponseStream",
+      "Resource": [
+        "arn:aws:bedrock:*:*:inference-profile/*",
+        "arn:aws:bedrock:*:*:application-inference-profile/*",
+        "arn:aws:bedrock:*::foundation-model/*"
+      ]
+    }
+  ]
+}
+```
+
+If you configure the Bedrock connection with environment variables, it has no model ID. Set `MB_LLM_METABOT_PROVIDER` to `bedrock/` followed by the ID instead, and set `MB_LLM_MINI_MODEL` the same way, since short tasks otherwise run on `anthropic.claude-haiku-4-5` through mantle.
 
 ## vLLM
 

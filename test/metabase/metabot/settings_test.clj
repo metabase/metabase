@@ -200,7 +200,8 @@
                        (connection "zai" "zai")
                        (connection "openrouter" "openrouter")
                        (connection "mistral" "mistral")
-                       (connection "moonshot" "moonshot")]
+                       (connection "moonshot" "moonshot")
+                       (connection "xai" "xai")]
       (doseq [[model-ref expected]
               {"anthropic/claude-sonnet-4-6"                true
                "anthropic/claude-haiku-4-5"                 false
@@ -239,7 +240,9 @@
                "moonshot/kimi-k3"                           true
                "moonshot/kimi-k2.6"                         true
                ;; thinking-capable but excluded from supported-models — see moonshot/reasoning-model?
-               "moonshot/kimi-k2.7-code"                    false}]
+               "moonshot/kimi-k2.7-code"                    false
+               "xai/grok-4.7"                               true
+               "xai/grok-4.3"                               true}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
@@ -478,6 +481,13 @@
                                                         :endpoint-id        "1234567890123456789"})]
         (with-selected-model "google/endpoints/1234567890123456789"
           (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-mini-model))))))
+    (testing "so does a Bedrock connection that names its model, while one without a model ID keeps its mini model"
+      (with-connections [(connection "bedrock" "bedrock" {:model-id "eu.anthropic.claude-sonnet-4-6"})]
+        (with-selected-model "bedrock/eu.anthropic.claude-sonnet-4-6"
+          (is (= "bedrock/eu.anthropic.claude-sonnet-4-6" (metabot.settings/llm-mini-model)))))
+      (with-connections [(connection "bedrock" "bedrock")]
+        (with-selected-model "bedrock/anthropic.claude-opus-4-8"
+          (is (= "bedrock/anthropic.claude-haiku-4-5" (metabot.settings/llm-mini-model))))))
     (testing "so does a model reference naming a connection that does not exist"
       (with-connections []
         (with-selected-model "gone/some-model"

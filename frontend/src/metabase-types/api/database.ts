@@ -240,6 +240,21 @@ export interface UpdateDatabaseRequest {
   settings?: DatabaseSettings | null;
 }
 
+export interface ValidateDatabaseRequest {
+  details: {
+    engine: string;
+    details: Record<string, unknown>;
+    /** Validate against an existing database, resolving details it left redacted */
+    id?: DatabaseId;
+  };
+}
+
+export type ValidateDatabaseResponse = {
+  valid: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+};
+
 export type DatabaseEditErrorType = {
   data: {
     message: string;

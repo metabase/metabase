@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
@@ -379,6 +379,24 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.queryByRole("button", { name: "Create a new collection" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should move focus through the new collection modal with Tab (#83338)", async () => {
+      await setup();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Create a new collection" }),
+      );
+
+      const modal = await screen.findByRole("dialog", {
+        name: "New collection",
+      });
+      await waitFor(() => {
+        expect(within(modal).getByLabelText("Name")).toHaveFocus();
+      });
+
+      await userEvent.tab();
+      expect(within(modal).getByLabelText("Description")).toHaveFocus();
     });
 
     it("should toggle active collection on click", async () => {
