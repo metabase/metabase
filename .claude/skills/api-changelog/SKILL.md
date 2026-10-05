@@ -94,20 +94,29 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
 
    Findings are classified and sorted breaking-first.
 
-   **A change is breaking when it requires MORE from the caller, or provides LESS
-   to the caller.** Anything else is just a change. The rule is directional, and
-   it inverts between request and response:
+   **A change is breaking when an existing caller, sending exactly what it sent
+   before, can now fail or get a different result.** That covers three cases: the
+   API requires more of the request, provides less in the response, or behaves
+   differently for the same request. The first two invert between request and
+   response:
 
-   | | Breaking (requires more / provides less) | Not breaking |
+   | | Breaking | Not breaking |
    |---|---|---|
-   | **Request** | field or param becomes required; type, enum, or bound (`minimum`, `minLength`, `pattern`, ...) narrowed; `additionalProperties: false` added; field removed | new *optional* field or param; type, enum, or bound widened; field made nullable; schema opened |
+   | **Request** | field or param becomes required; type, enum, or bound (`minimum`, `minLength`, `pattern`, ...) narrowed; `additionalProperties: false` added; default changed or dropped | new *optional* field or param; type, enum, or bound widened; field made nullable; schema opened; default added |
    | **Response** | field removed or no longer always returned; field may now be `null`; new enum value | new field returned; field that was nullable never is |
    | **Endpoint** | removed | added |
 
-   A change to a schema keyword the tool does not model is ranked breaking, so
-   it is never hidden; read it before drafting. A reworded description, title,
-   or example is DOC_ONLY. A request default that changes or disappears is
-   breaking: callers who omit the field now get different behavior.
+   When the tool cannot tell, it ranks the change breaking: a false alarm costs
+   you one look, a miss ships undocumented. Two rules follow from that, not from
+   the definition, so check them before drafting an entry:
+
+   - **A removed request field** is ranked breaking because the spec does not say
+     whether the server rejects or acts on keys it does not declare. If the
+     endpoint ignores unknown keys, the removal is not breaking.
+   - **A change to a schema keyword the tool does not model** is ranked breaking
+     so that it is never hidden. Read the finding to decide.
+
+   A reworded description, title, or example is DOC_ONLY.
 
    Adding an optional parameter is not breaking. Returning extra data is not
    breaking. Existing callers keep working in both cases.

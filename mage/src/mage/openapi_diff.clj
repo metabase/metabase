@@ -5,19 +5,26 @@
   git ref is what the API was at that ref. Diffing two specs answers \"what changed for a client?\"
   without reading endpoint source or booting a server.
 
-  A change is BREAKING when it requires MORE from the caller, or provides LESS to the caller.
-  Anything else is just a change. That rule is directional, and it inverts between request and
-  response, so severity is decided from both schemas rather than from how a change happens to
-  render:
+  A change is BREAKING when an existing caller, sending exactly what it sent before, can now fail
+  or get a different result. That covers three cases: the API requires more of the request, provides
+  less in the response, or behaves differently for the same request. The first two invert between
+  request and response, so severity is decided from both schemas rather than from how a change
+  happens to render:
 
-    request   breaking: newly required, type/enum/bound narrowed, schema closed, field removed
-              additive: new OPTIONAL field or param, type/enum/bound widened, made nullable
+    request   breaking: newly required, type/enum/bound narrowed, schema closed,
+                        default changed or dropped (same request, different behavior)
+              additive: new OPTIONAL field or param, type/enum/bound widened, made nullable,
+                        default added
     response  breaking: field removed or no longer always returned, may now be null, new enum value
               additive: new field returned, values narrowed
 
-  A change to a schema keyword the comparison does not model ranks breaking, so it is never hidden.
-  Descriptions, titles, and examples are compared separately and rank doc-only. A request default
-  that changes or disappears is breaking: callers who omit the field now get different behavior.
+  When the comparison cannot tell, it ranks the change breaking. A false alarm costs a reviewer
+  one look; a miss ships undocumented. Two rules follow from that, not from the definition:
+    - a removed request field is breaking, because the spec does not say whether the server rejects
+      or acts on keys it does not declare
+    - a change to a schema keyword the comparison does not model is breaking
+
+  Descriptions, titles, and examples are compared separately and rank doc-only.
 
   Response coverage is partial: only endpoints that declare a response schema can be compared. Most
   emit description-only 2XX/4XX/5XX stubs."
@@ -692,7 +699,8 @@
         (doseq [c dc] (print-operation c true))))
     (println)
     (println "# Legend: + added  - removed  ~ modified  ! requiredness changed")
-    (println "# Breaking = requires MORE from the caller, or provides LESS to the caller.")))
+    (println "# Breaking = an existing caller, sending what it sent before, can now fail or get a")
+    (println "# different result. When the tool cannot tell, it ranks breaking.")))
 
 (def ^:private spec-path "resources/openapi/openapi.json")
 
