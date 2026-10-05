@@ -471,14 +471,6 @@ describe("scenarios > dashboard > parameters", () => {
         H.visitDashboard(dashboardId),
       );
 
-      // create a disconnected filter + a default value
-      H.editDashboard();
-      H.setFilter("Date picker", "Relative Date");
-
-      H.sidebar().findByText("Default value").next().click();
-      H.popover().contains("Previous 7 days").click({ force: true });
-      H.saveDashboard();
-
       const { interceptor } = H.spyRequestFinished("dashcardRequestSpy");
 
       cy.intercept(
@@ -486,29 +478,26 @@ describe("scenarios > dashboard > parameters", () => {
         "/api/dashboard/*/dashcard/*/card/*/query",
         interceptor,
       );
-    });
 
-    it("should not fetch dashcard data when filter is disconnected", () => {
-      cy.get("@dashcardRequestSpy").should("not.have.been.called");
-    });
-
-    it("should fetch dashcard data after save when parameter is mapped", () => {
-      // Connect filter to 2 cards
+      // create a disconnected filter + a default value
       H.editDashboard();
+      H.setFilter("Date picker", "Relative Date");
 
-      cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Date")
-        .click();
-
-      H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
-      H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
-
+      H.sidebar().findByText("Default value").next().click();
+      H.popover().contains("Previous 7 days").click({ force: true });
       H.saveDashboard();
-
-      cy.get("@dashcardRequestSpy").should("have.callCount", 2);
     });
 
     it("should fetch dashcard data when parameter mapping is removed", () => {
+      cy.log("Saving a disconnected filter does not fetch dashcard data");
+      cy.get("@dashcardRequestSpy").should("not.have.been.called");
+
+      cy.log("Saving without changes does not fetch dashcard data");
+      H.editDashboard();
+      H.saveDashboard({ awaitRequest: false });
+
+      cy.get("@dashcardRequestSpy").should("have.callCount", 0);
+
       cy.log("Connect filter to 1 card only");
 
       H.editDashboard();
@@ -533,13 +522,20 @@ describe("scenarios > dashboard > parameters", () => {
       H.saveDashboard();
 
       cy.get("@dashcardRequestSpy").should("have.callCount", 2);
-    });
 
-    it("should not fetch dashcard data when nothing changed on save", () => {
+      cy.log("Connect filter to 2 cards");
       H.editDashboard();
-      H.saveDashboard({ awaitRequest: false });
 
-      cy.get("@dashcardRequestSpy").should("have.callCount", 0);
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Date")
+        .click();
+
+      H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
+      H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
+
+      H.saveDashboard();
+
+      cy.get("@dashcardRequestSpy").should("have.callCount", 4);
     });
   });
 
