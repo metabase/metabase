@@ -1316,161 +1316,115 @@ describe("scenarios > explorations > collection placement + archive", () => {
     );
   });
 
-  it("permanently deletes an archived exploration via the Delete permanently action on the /trash page", () => {
-    // `ActionMenu`'s `handleDeletePermanently` previously routed
-    // every non-collection model through the legacy entity factory
-    // (`entityForObject`), which has no `explorations` entry — so
-    // the delete crashed. The fix dispatches the RTKQ
-    // `deleteExploration` mutation, which calls
-    // `DELETE /api/exploration/:id` (a new BE endpoint that cascades
-    // through threads/queries/documents via the FK tree).
-    const explorationName = "Trash-page delete-permanently fixture";
+  it("restores and permanently deletes archived explorations from the trash banner and the /trash page", () => {
+    const bannerName = "Exploration-page trash banner fixture";
+    const restoreName = "Trash-page restore fixture";
+    const deleteName = "Trash-page delete-permanently fixture";
 
-    H.createExplorationViaApi({ name: explorationName }).then(
-      (explorationId) => {
-        cy.request("PUT", `/api/exploration/${explorationId}`, {
-          archived: true,
+    H.createExplorationViaApi({ name: bannerName }).then((bannerId) => {
+      H.createExplorationViaApi({ name: restoreName }).then((restoreId) => {
+        H.createExplorationViaApi({ name: deleteName }).then((deleteId) => {
+          for (const id of [bannerId, restoreId, deleteId]) {
+            cy.request("PUT", `/api/exploration/${id}`, { archived: true });
+          }
+
+          cy.log("An archived exploration opens with the trash banner");
+          cy.intercept("PUT", `/api/exploration/${bannerId}`).as(
+            "bannerRestore",
+          );
+          H.visitExploration(bannerId);
+          cy.findByTestId("archive-banner")
+            .should("contain", "This research is in the trash.")
+            .findByRole("button", { name: /Restore/ })
+            .click();
+
+          cy.wait("@bannerRestore").then(({ request, response }) => {
+            expect(request.body).to.deep.eq({ archived: false });
+            expect(response?.statusCode).to.eq(200);
+          });
+          cy.findByTestId("exploration-page-sidebar").should("be.visible");
+          cy.findByTestId("archive-banner").should("not.exist");
+
+          cy.log("Delete permanently from the banner lands on the trash page");
+          cy.request("PUT", `/api/exploration/${bannerId}`, {
+            archived: true,
+          });
+          cy.intercept("DELETE", `/api/exploration/${bannerId}`).as(
+            "bannerDelete",
+          );
+          cy.reload();
+          cy.findByTestId("archive-banner")
+            .findByRole("button", { name: /Delete permanently/ })
+            .click();
+          H.modal()
+            .findByRole("button", { name: /Delete permanently/i })
+            .click();
+
+          cy.wait("@bannerDelete").its("response.statusCode").should("eq", 204);
+          cy.location("pathname").should("eq", "/trash");
+          H.undoToast()
+            .findByText("This item has been permanently deleted.")
+            .should("be.visible");
+          cy.request({
+            method: "GET",
+            url: `/api/exploration/${bannerId}`,
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 404);
+
+          cy.log("Restore from the /trash page row menu");
+          cy.findByTestId("collection-table")
+            .findByText(restoreName)
+            .should("be.visible");
+          cy.findByTestId("collection-table")
+            .findByText(deleteName)
+            .should("be.visible");
+
+          cy.intercept("PUT", `/api/exploration/${restoreId}`).as(
+            "trashRestore",
+          );
+          H.openCollectionItemMenu(restoreName);
+          H.popover().findByText("Restore").click();
+
+          cy.wait("@trashRestore").then(({ request, response }) => {
+            expect(request.body).to.deep.eq({ archived: false });
+            expect(response?.statusCode).to.eq(200);
+          });
+          cy.findByText(restoreName).should("not.exist");
+          cy.request("GET", `/api/exploration/${restoreId}`).then(
+            ({ body }) => {
+              expect(body.archived, "exploration is no longer archived").to.eq(
+                false,
+              );
+            },
+          );
+
+          cy.log("Delete permanently from the /trash page row menu");
+          cy.findByTestId("collection-table")
+            .findByText(deleteName)
+            .should("be.visible");
+          cy.intercept("DELETE", `/api/exploration/${deleteId}`).as(
+            "trashDelete",
+          );
+          H.openCollectionItemMenu(deleteName);
+          H.popover().findByText("Delete permanently").click();
+          // The confirmation modal owns the final destructive button.
+          H.modal()
+            .findByRole("button", { name: /Delete permanently/i })
+            .click();
+
+          cy.wait("@trashDelete").its("response.statusCode").should("eq", 204);
+          cy.findByText(deleteName).should("not.exist");
+          cy.request({
+            method: "GET",
+            url: `/api/exploration/${deleteId}`,
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 404);
         });
-
-        cy.visit("/trash");
-        cy.findByTestId("collection-table")
-          .findByText(explorationName)
-          .should("be.visible");
-
-        cy.intercept("DELETE", `/api/exploration/${explorationId}`).as(
-          "deleteExploration",
-        );
-        H.openCollectionItemMenu(explorationName);
-        H.popover().findByText("Delete permanently").click();
-        // The confirmation modal owns the final destructive button.
-        H.modal()
-          .findByRole("button", { name: /Delete permanently/i })
-          .click();
-
-        cy.wait("@deleteExploration")
-          .its("response.statusCode")
-          .should("eq", 204);
-
-        // The row is gone from the trash listing…
-        cy.findByText(explorationName).should("not.exist");
-
-        // …and the BE returns 404 for the now-hard-deleted exploration.
-        cy.request({
-          method: "GET",
-          url: `/api/exploration/${explorationId}`,
-          failOnStatusCode: false,
-        })
-          .its("status")
-          .should("eq", 404);
-      },
-    );
-  });
-
-  it("shows the trash banner on an archived exploration and restores or permanently deletes it from there", () => {
-    const explorationName = "Exploration-page trash banner fixture";
-
-    H.createExplorationViaApi({ name: explorationName }).then(
-      (explorationId) => {
-        cy.request("PUT", `/api/exploration/${explorationId}`, {
-          archived: true,
-        });
-
-        cy.log("An archived exploration opens with the trash banner");
-        cy.intercept("PUT", `/api/exploration/${explorationId}`).as(
-          "restoreExploration",
-        );
-        H.visitExploration(explorationId);
-        cy.findByTestId("archive-banner")
-          .should("contain", "This research is in the trash.")
-          .findByRole("button", { name: /Restore/ })
-          .click();
-
-        cy.wait("@restoreExploration").then(({ request, response }) => {
-          expect(request.body).to.deep.eq({ archived: false });
-          expect(response?.statusCode).to.eq(200);
-        });
-        cy.findByTestId("exploration-page-sidebar").should("be.visible");
-        cy.findByTestId("archive-banner").should("not.exist");
-
-        cy.log("Delete permanently from the banner lands on the trash page");
-        cy.request("PUT", `/api/exploration/${explorationId}`, {
-          archived: true,
-        });
-        cy.intercept("DELETE", `/api/exploration/${explorationId}`).as(
-          "deleteExploration",
-        );
-        cy.reload();
-        cy.findByTestId("archive-banner")
-          .findByRole("button", { name: /Delete permanently/ })
-          .click();
-        H.modal()
-          .findByRole("button", { name: /Delete permanently/i })
-          .click();
-
-        cy.wait("@deleteExploration")
-          .its("response.statusCode")
-          .should("eq", 204);
-        cy.location("pathname").should("eq", "/trash");
-        H.undoToast()
-          .findByText("This item has been permanently deleted.")
-          .should("be.visible");
-        cy.request({
-          method: "GET",
-          url: `/api/exploration/${explorationId}`,
-          failOnStatusCode: false,
-        })
-          .its("status")
-          .should("eq", 404);
-      },
-    );
-  });
-
-  it("restores an archived exploration via the Restore action on the /trash page", () => {
-    // `useSetArchive`'s undo toast is one path back, but the trash
-    // page exposes a separate `Restore` action that runs through
-    // `ActionMenu.tsx`'s `handleRestore`. Without an explicit
-    // `exploration` branch in that handler it falls through to the
-    // legacy `entityForObject(...)`, which has no `explorations`
-    // entry — so the restore would silently throw. This test
-    // exercises the dedicated branch end-to-end.
-    const explorationName = "Trash-page restore fixture";
-
-    H.createExplorationViaApi({ name: explorationName }).then(
-      (explorationId) => {
-        // Archive directly via the BE so we land on /trash with the
-        // exploration already in it.
-        cy.request("PUT", `/api/exploration/${explorationId}`, {
-          archived: true,
-        });
-
-        cy.visit("/trash");
-        cy.findByTestId("collection-table")
-          .findByText(explorationName)
-          .should("be.visible");
-
-        cy.intercept("PUT", `/api/exploration/${explorationId}`).as(
-          "restoreExploration",
-        );
-        H.openCollectionItemMenu(explorationName);
-        H.popover().findByText("Restore").click();
-
-        cy.wait("@restoreExploration").then(({ request, response }) => {
-          expect(request.body).to.deep.eq({ archived: false });
-          expect(response?.statusCode).to.eq(200);
-        });
-
-        // The trash listing no longer shows the exploration.
-        cy.findByText(explorationName).should("not.exist");
-
-        // And the BE reports the exploration as un-archived again.
-        cy.request("GET", `/api/exploration/${explorationId}`).then(
-          ({ body }) => {
-            expect(body.archived, "exploration is no longer archived").to.eq(
-              false,
-            );
-          },
-        );
-      },
-    );
+      });
+    });
   });
 });
