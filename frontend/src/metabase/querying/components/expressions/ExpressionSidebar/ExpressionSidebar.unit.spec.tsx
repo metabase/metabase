@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -81,6 +81,45 @@ describe("expression editor sidebar", () => {
       "data-open",
       "none",
     );
+  });
+
+  it("should swap the function browser for the column browser", async () => {
+    setup({ hosted: true });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Function browser" }),
+    );
+    expect(screen.getByTestId("host-slot")).toHaveTextContent(
+      "Custom expression functions",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Available columns" }),
+    );
+
+    const slot = screen.getByTestId("host-slot");
+    expect(slot).toHaveAttribute("data-open", "columns");
+    expect(slot).toHaveTextContent("Available columns");
+    expect(
+      await screen.findByTestId("expression-editor-columns-browser"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("expression-editor-function-browser"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should list the columns available at this stage", async () => {
+    setup({ hosted: true });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Available columns" }),
+    );
+
+    const browser = await screen.findByTestId(
+      "expression-editor-columns-browser",
+    );
+    expect(within(browser).getByText("Total")).toBeInTheDocument();
+    expect(within(browser).getByText("Orders")).toBeInTheDocument();
   });
 
   it("should keep the sidebar in its own layout when no host offers one", async () => {

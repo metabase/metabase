@@ -3,6 +3,7 @@ export * from "./diagnostics";
 export * from "./errors";
 export * from "./formatter";
 export * from "./help-text";
+export * from "./identifier";
 export * from "./mode";
 export * from "./position";
 export * from "./suggestions";

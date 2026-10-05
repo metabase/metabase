@@ -1,5 +1,4 @@
 import { EditorSelection, type EditorState } from "@codemirror/state";
-import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -17,6 +16,7 @@ import {
   type ExpressionError,
   diagnoseAndCompile,
   format,
+  formatIdentifier,
   getClauseDefinition,
 } from "metabase/querying/expressions";
 import { tokenAtPos } from "metabase/querying/expressions";
@@ -25,6 +25,8 @@ import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import { AvailableColumnsBrowser } from "../AvailableColumnsBrowser";
+import type { ExpressionSidebarName } from "../ExpressionSidebar";
 import {
   ExpressionSidebarPanel,
   useExpressionSidebarHost,
@@ -110,24 +112,20 @@ export function Editor(props: EditorProps) {
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
-  const [isLocalBrowserOpen, { toggle: toggleLocalBrowser }] = useDisclosure();
+  const [localSidebar, setLocalSidebar] =
+    useState<ExpressionSidebarName | null>(null);
 
   const sidebarHost = useExpressionSidebarHost();
   const host = withHostedSidebar ? sidebarHost : null;
 
-  const isFunctionBrowserOpen = host
-    ? host.openSidebar === "functions"
-    : isLocalBrowserOpen;
+  const openSidebar = host ? host.openSidebar : localSidebar;
+  const setOpenSidebar = host ? host.setOpenSidebar : setLocalSidebar;
 
-  const toggleFunctionBrowser = useCallback(() => {
-    if (host) {
-      host.setOpenSidebar(
-        host.openSidebar === "functions" ? null : "functions",
-      );
-    } else {
-      toggleLocalBrowser();
-    }
-  }, [host, toggleLocalBrowser]);
+  const toggleSidebar = useCallback(
+    (name: ExpressionSidebarName) =>
+      setOpenSidebar(openSidebar === name ? null : name),
+    [openSidebar, setOpenSidebar],
+  );
 
   const {
     source,
@@ -194,6 +192,28 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
+  const handleColumnClick = useCallback(
+    (column: Lib.ColumnMetadata) => {
+      const view = ref.current?.view;
+      if (!view) {
+        return;
+      }
+
+      // Same text the autocomplete inserts for a column.
+      const { longDisplayName } = Lib.displayInfo(query, stageIndex, column);
+      const text = formatIdentifier(longDisplayName);
+
+      view.focus();
+      view.dispatch(
+        view.state.changeByRange((range) => ({
+          range: EditorSelection.cursor(range.from + text.length),
+          changes: [{ from: range.from, to: range.to, insert: text }],
+        })),
+      );
+    },
+    [query, stageIndex],
+  );
+
   const applyInitialSnippet = useInitialClause({
     initialExpressionClause,
   });
@@ -203,14 +223,27 @@ export function Editor(props: EditorProps) {
     setIsSnippetActive(hasActiveSnippet(update.state));
   }, []);
 
-  const functionBrowser = (
-    <FunctionBrowser
-      expressionMode={expressionMode}
-      reportTimezone={reportTimezone}
-      query={query}
-      onClauseClick={handleFunctionBrowserClauseClick}
-    />
-  );
+  const sidebarTitle =
+    openSidebar === "columns"
+      ? t`Available columns`
+      : t`Custom expression functions`;
+
+  const sidebarContent =
+    openSidebar === "columns" ? (
+      <AvailableColumnsBrowser
+        query={query}
+        stageIndex={stageIndex}
+        availableColumns={availableColumns}
+        onColumnClick={handleColumnClick}
+      />
+    ) : (
+      <FunctionBrowser
+        expressionMode={expressionMode}
+        reportTimezone={reportTimezone}
+        query={query}
+        onClauseClick={handleFunctionBrowserClauseClick}
+      />
+    );
 
   return (
     <>
@@ -250,11 +283,21 @@ export function Editor(props: EditorProps) {
           <ButtonTooltip label={t`Function browser`}>
             <Button
               aria-label={t`Function browser`}
-              onClick={toggleFunctionBrowser}
+              onClick={() => toggleSidebar("functions")}
               size="sm"
-              variant={isFunctionBrowserOpen ? "filled" : "subtle"}
+              variant={openSidebar === "functions" ? "filled" : "subtle"}
               className={S.toolbarButton}
               leftSection={<Icon name="function" />}
+            />
+          </ButtonTooltip>
+          <ButtonTooltip label={t`Available columns`}>
+            <Button
+              aria-label={t`Available columns`}
+              onClick={() => toggleSidebar("columns")}
+              size="sm"
+              variant={openSidebar === "columns" ? "filled" : "subtle"}
+              className={S.toolbarButton}
+              leftSection={<Icon name="list" />}
             />
           </ButtonTooltip>
           {source.trim() !== "" && error == null && isValidated && (
@@ -277,20 +320,20 @@ export function Editor(props: EditorProps) {
         {portal}
       </LayoutMain>
 
-      {isFunctionBrowserOpen &&
+      {openSidebar != null &&
         (host?.container ? (
           createPortal(
             <ExpressionSidebarPanel
-              title={t`Custom expression functions`}
-              onClose={() => host.setOpenSidebar(null)}
+              title={sidebarTitle}
+              onClose={() => setOpenSidebar(null)}
             >
-              {functionBrowser}
+              {sidebarContent}
             </ExpressionSidebarPanel>,
             host.container,
           )
         ) : (
           <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
-            {functionBrowser}
+            {sidebarContent}
           </LayoutSidebar>
         ))}
 
