@@ -55,6 +55,25 @@ describe("scenarios > dashboard > filters > date", () => {
   it("should support being required", () => {
     visitOrdersDashboardInEditMode();
 
+    cy.log("show sub-day resolutions in relative date filter (metabase#6660)");
+    H.setFilter("Date picker", "All Options");
+    H.dashboardParameterSidebar().findByText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Relative date range…").click();
+      cy.findByText("Next").click();
+      cy.findByDisplayValue("days").click();
+    });
+    H.selectDropdown().within(() => {
+      cy.findByText("hours").should("be.visible");
+      cy.findByText("minutes").click();
+    });
+    H.popover()
+      .findByLabelText(/Include this minute/)
+      .should("not.be.checked")
+      .click()
+      .should("be.checked");
+    H.dashboardParameterSidebar().button("Remove").click();
+
     H.setFilter("Date picker", "Month and Year", "Month and Year");
 
     // Can't save without a default value
@@ -89,39 +108,12 @@ describe("scenarios > dashboard > filters > date", () => {
     H.filterWidget().should("contain.text", "November 2026").click();
     H.popover().findByText("Dec").click();
     H.filterWidget().findByText("December 2026");
-    H.ensureDashboardCardHasText("76.83");
+    H.getDashboardCard().should("contain", "76.83").and("not.contain", "27.74");
 
     // Resets the value back by clicking widget icon
     H.resetFilterWidgetToDefault();
     H.filterWidget().findByText("November 2026");
-    H.ensureDashboardCardHasText("27.74");
-  });
-
-  it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
-    visitOrdersDashboardInEditMode();
-
-    H.setFilter("Date picker", "All Options");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No default").click();
-    // click on Relative date range…, to open the relative date filter type tabs
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative date range…").click();
-    // choose Next, under which the new options should be available
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Next").click();
-    // click on Days (the default value), which should open the resolution dropdown
-    cy.findByDisplayValue("days").click();
-    // Hours should appear in the selection box (don't click it)
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("hours");
-    // Minutes should appear in the selection box; click it
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("minutes").click();
-    // also check the "Include this minute" checkbox
-    // which is actually "Include" followed by "this minute" wrapped in <strong>, so has to be clicked this way
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Include this minute").click();
+    H.getDashboardCard().should("contain", "27.74").and("not.contain", "76.83");
   });
 
   it("correctly serializes exclude filter on non-English locales (metabase#29122)", () => {
