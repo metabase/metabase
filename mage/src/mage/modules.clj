@@ -130,6 +130,7 @@
 (def driver-affecting-overrides
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
   '#{metabot.agent-api
+     metabot.agent-api.usage
      analytics
      analytics.interface
      api
@@ -184,6 +185,7 @@
      pulse
      remote-sync
      request
+     request.schema
      sample-data
      search
      warehouses.secrets
@@ -203,6 +205,7 @@
      tiles
      timeline
      tracing
+     transforms.feature-gating
      lib.types
      users
      util
@@ -317,7 +320,8 @@
 (defn- write-explorer!
   "Write the HTML explorer to `output`, or to stdout, and exit."
   [modules-config {:keys [output no-stats]}]
-  (let [html (module-explorer/page (module-explorer/explorer-data modules-config {:stats? (not no-stats)}))]
+  (let [data (module-explorer/explorer-data modules-config {:stats? (not no-stats), :resolve-any? true})
+        html (module-explorer/page data)]
     (if output
       (do (spit output html)
           (println (c/green (str "Wrote " output))))

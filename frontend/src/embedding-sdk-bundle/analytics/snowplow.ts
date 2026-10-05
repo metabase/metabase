@@ -6,8 +6,8 @@ import {
 import { version as reactVersion } from "react";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-import { isEmbedPreviewRequest } from "metabase/embedding/lib/auth/set-embed-preview-header";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbedPreviewRequest } from "metabase/embedding/lib/auth/set-embed-preview-header";
 import { getSettings } from "metabase/settings";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";

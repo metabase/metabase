@@ -41,6 +41,7 @@
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
+  data-app-collection-ids
   data-app-group-ids
   data-app-view-data-permission-level
   disable-perms-cache
@@ -84,6 +85,7 @@
   visible-database-filter-select
   visible-table-filter-select
   visible-table-filter-with-cte
+  visible-table-filter-subquery-clause
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
   namespace-clause
@@ -154,8 +156,7 @@
   can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?
-  published-table-visible-clause])
+  user-has-published-table-permission-for-database?])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 
