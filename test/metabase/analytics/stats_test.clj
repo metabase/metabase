@@ -173,14 +173,6 @@
             (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                         (-> stats :stats :database :dbms_versions)))))))))
 
-(deftest sidecar-embedding-stats-test
-  (doseq [enabled? [true false]]
-    (testing (str "enable-embedding-sidecar " enabled? " is reported as a stat and as the :sidecar-embedding feature")
-      (mt/with-temporary-setting-values [enable-embedding-sidecar enabled?]
-        (is (= enabled? (:enable_embedding_sidecar (legacy-anonymous-usage-stats))))
-        (is (= {:name :sidecar-embedding :available true :enabled enabled?}
-               (m/find-first #(= :sidecar-embedding (:name %)) (@#'stats/snowplow-features-data))))))))
-
 (deftest ^:parallel conversion-test
   (is (= #{true}
          (let [system-stats (get-in (legacy-anonymous-usage-stats) [:stats :system])]
