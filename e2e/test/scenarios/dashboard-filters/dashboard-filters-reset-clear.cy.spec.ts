@@ -618,6 +618,24 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
+    cy.log("required filter can be set to default after deselecting all");
+    filter(DEFAULT_REQUIRED).click();
+    H.popover().within(() => {
+      cy.findAllByRole("listitem").contains("Gizmo").click();
+      cy.button("Update filter").click();
+    });
+    filter(DEFAULT_REQUIRED).should("contain.text", "Gadget");
+    checkStatusIcon(DEFAULT_REQUIRED, "reset");
+
+    filter(DEFAULT_REQUIRED).click();
+    H.popover().within(() => {
+      cy.findAllByRole("listitem").contains("Select all").click();
+      cy.findAllByRole("listitem").contains("Select all").click();
+      cy.button("Set to default").click();
+    });
+    filter(DEFAULT_REQUIRED).should("contain.text", "2 selections");
+    checkStatusIcon(DEFAULT_REQUIRED, "none");
+
     checkDashboardParameters({
       defaultValueFormatted: "2 selections",
       otherValue: "Doohickey,Widget,",
@@ -699,30 +717,6 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       checkResetAllFiltersToDefaultWorksAcrossTabs({
         autoApplyFilters: false,
       });
-    });
-  });
-
-  describe("issue 57388", () => {
-    it("should be possible to reset a required text filter to it's default value (metabase#57388)", () => {
-      const textFilter = {
-        name: "Filter",
-        slug: "filter",
-        id: "75d67d39",
-        type: "string/=",
-        required: true,
-        sectionId: "string",
-        default: ["Gizmo", "Gadget", "Widget", "Doohickey"],
-      };
-      createDashboardWithParameters(ORDERS_QUESTION, PRODUCTS_CATEGORY_FIELD, [
-        textFilter,
-      ]);
-
-      filter(textFilter.name).click();
-      H.popover().within(() => {
-        cy.findByText("Select all").click();
-        cy.findByText("Set to default").click();
-      });
-      H.filterWidget().eq(0).should("contain.text", "4 selections");
     });
   });
 });
