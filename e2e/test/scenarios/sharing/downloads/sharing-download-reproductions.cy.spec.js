@@ -26,20 +26,20 @@ describe("issue 10803", () => {
     );
   });
 
-  testCases.forEach((fileType) => {
-    it(`should format the date properly for ${fileType} in saved questions (metabase#10803)`, () => {
-      cy.get("@questionId").then((questionId) => {
+  it("should format the date properly in saved and unsaved questions (metabase#10803)", () => {
+    cy.get("@questionId").then((questionId) => {
+      testCases.forEach((fileType) => {
         H.downloadAndAssert({ fileType, questionId });
       });
     });
 
-    it(`should format the date properly for ${fileType} in unsaved questions`, () => {
-      // Add a space at the end of the query to make it "dirty"
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains(/open editor/i).click();
-      H.NativeEditor.focus().type("{movetoend} ");
+    // Add a space at the end of the query to make it "dirty"
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.contains(/open editor/i).click();
+    H.NativeEditor.focus().type("{movetoend} ");
 
-      H.runNativeQuery();
+    H.runNativeQuery();
+    testCases.forEach((fileType) => {
       H.downloadAndAssert({ fileType });
     });
   });
@@ -125,14 +125,14 @@ describe("issue 18382", () => {
     H.visitQuestionAdhoc(questionDetails);
   });
 
-  testCases.forEach((fileType) => {
-    it(`should handle the old syntax in downloads for ${fileType} (metabase#18382)`, () => {
+  it("should handle the old syntax in downloads (metabase#18382)", () => {
+    testCases.forEach((fileType) => {
       H.downloadAndAssert({ fileType });
     });
   });
 });
 
-describe("issue 18440", () => {
+describe("issues 18440 and 18573", () => {
   const query = { "source-table": ORDERS_ID, limit: 5 };
 
   const questionDetails = {
@@ -140,6 +140,21 @@ describe("issue 18440", () => {
       type: "query",
       query,
       database: SAMPLE_DB_ID,
+    },
+  };
+
+  const renamedColumnQuestionDetails = {
+    dataset_query: {
+      type: "query",
+      query: { "source-table": ORDERS_ID, limit: 2 },
+      database: SAMPLE_DB_ID,
+    },
+    visualization_settings: {
+      column_settings: {
+        [`["ref",["field",${ORDERS.PRODUCT_ID},null]]`]: {
+          column_title: "Foo",
+        },
+      },
     },
   };
 
@@ -159,61 +174,33 @@ describe("issue 18440", () => {
     });
   });
 
-  testCases.forEach((fileType) => {
-    it(`export should include a column with remapped values for ${fileType} (metabase#18440-1)`, () => {
-      H.visitQuestionAdhoc(questionDetails);
+  it("export should include remapped values and preserve renamed remapped columns (metabase#18440, metabase#18573)", () => {
+    cy.log("ad-hoc question (metabase#18440-1)");
+    H.visitQuestionAdhoc(questionDetails);
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Product ID");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Awesome Concrete Shoes");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Product ID");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Awesome Concrete Shoes");
 
+    testCases.forEach((fileType) => {
       H.downloadAndAssert({ fileType });
     });
 
-    it(`export should include a column with remapped values for ${fileType} for a saved question (metabase#18440-2)`, () => {
-      H.createQuestion({ query }).then(({ body: { id } }) => {
-        H.visitQuestion(id);
+    cy.log("saved question (metabase#18440-2)");
+    H.createQuestion({ query }).then(({ body: { id } }) => {
+      H.visitQuestion(id);
 
-        cy.findByText("Product ID");
-        cy.findByText("Awesome Concrete Shoes");
+      cy.findByText("Product ID");
+      cy.findByText("Awesome Concrete Shoes");
 
+      testCases.forEach((fileType) => {
         H.downloadAndAssert({ fileType, questionId: id });
       });
     });
-  });
-});
 
-describe("issue 18573", () => {
-  const questionDetails = {
-    dataset_query: {
-      type: "query",
-      query: { "source-table": ORDERS_ID, limit: 2 },
-      database: SAMPLE_DB_ID,
-    },
-    visualization_settings: {
-      column_settings: {
-        [`["ref",["field",${ORDERS.PRODUCT_ID},null]]`]: {
-          column_title: "Foo",
-        },
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    // Remap Product ID -> Product Title
-    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-      name: "Product ID",
-      type: "external",
-      human_readable_field_id: PRODUCTS.TITLE,
-    });
-  });
-
-  it("for the remapped columns, it should preserve renamed column name in exports for xlsx (metabase#18573)", () => {
-    H.visitQuestionAdhoc(questionDetails);
+    cy.log("renamed remapped column (metabase#18573)");
+    H.visitQuestionAdhoc(renamedColumnQuestionDetails);
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo");
@@ -247,10 +234,10 @@ describe("issue 18729", () => {
     cy.signInAsAdmin();
   });
 
-  ["csv", "xlsx"].forEach((fileType) => {
-    it(`should properly format the 'X of Y'dates in ${fileType} exports (metabase#18729)`, () => {
-      H.visitQuestionAdhoc(questionDetails);
+  it("should properly format the 'X of Y' dates in exports (metabase#18729)", () => {
+    H.visitQuestionAdhoc(questionDetails);
 
+    ["csv", "xlsx"].forEach((fileType) => {
       H.downloadAndAssert({ fileType });
     });
   });
@@ -303,31 +290,33 @@ describe("issue 19889", () => {
     cy.findByText("Started from").click(); // Give DOM some time to update
   });
 
-  testCases.forEach((fileType) => {
-    it("should order columns correctly in unsaved native query exports", () => {
+  it("should order columns correctly in unsaved and saved native query exports", () => {
+    testCases.forEach((fileType) => {
       H.downloadAndAssert({ fileType });
     });
 
-    it("should order columns correctly in saved native query exports", () => {
-      saveAndOverwrite();
+    saveAndOverwrite();
 
-      cy.get("@questionId").then((questionId) => {
+    cy.get("@questionId").then((questionId) => {
+      testCases.forEach((fileType) => {
         H.downloadAndAssert({ fileType, questionId });
       });
     });
+  });
 
-    it("should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains(/open editor/i).click();
-      H.NativeEditor.focus().type(
-        '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
-      );
+  it("should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)", () => {
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.contains(/open editor/i).click();
+    H.NativeEditor.focus().type(
+      '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
+    );
 
-      saveAndOverwrite();
+    saveAndOverwrite();
 
-      cy.get("@questionId").then((questionId) => {
-        H.visitQuestion(questionId);
+    cy.get("@questionId").then((questionId) => {
+      H.visitQuestion(questionId);
 
+      testCases.forEach((fileType) => {
         H.downloadAndAssert({ fileType, questionId });
       });
     });
@@ -361,13 +350,9 @@ describe("metabase#28834", () => {
     H.NativeEditor.focus().type(', select 2 "column b"');
   });
 
-  it("should be able to export unsaved native query results as CSV even after the query has changed", () => {
-    const fileType = "csv";
-    H.downloadAndAssert({ fileType });
-  });
-
-  it("should be able to export unsaved native query results as XLSX even after the query has changed", () => {
-    const fileType = "xlsx";
-    H.downloadAndAssert({ fileType });
+  it("should be able to export unsaved native query results as CSV and XLSX even after the query has changed", () => {
+    ["csv", "xlsx"].forEach((fileType) => {
+      H.downloadAndAssert({ fileType });
+    });
   });
 });
