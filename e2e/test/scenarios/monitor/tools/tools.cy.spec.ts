@@ -460,11 +460,13 @@ describe("monitor > tools > erroring questions ", () => {
     cy.icon("variable").click();
     cy.findByPlaceholderText("Enter a default value…").type("Foo");
 
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.findByText("Save").click();
 
     H.modal().within(() => {
       cy.button("Save").click();
     });
+    cy.wait("@updateCard");
   }
 
   function selectQuestion(name: string) {
@@ -501,24 +503,31 @@ describe("monitor > tools > erroring questions ", () => {
         cy.button("Rerun selected").should("not.exist");
         selectQuestion(brokenQuestionDetails.name);
 
+        cy.intercept("POST", "/api/dataset").as("rerunRefetch");
         cy.button("Rerun selected").should("not.be.disabled").click();
 
-        cy.wait("@dataset");
+        cy.wait("@rerunRefetch");
+        cy.findByTestId("erroring-questions-table").should(
+          "have.attr",
+          "aria-busy",
+          "false",
+        );
 
         // The question is still there because we didn't fix it
-        cy.findByTestId("erroring-questions-table").findByText(
-          brokenQuestionDetails.name,
-        );
+        cy.findByTestId("erroring-questions-table")
+          .findByText(brokenQuestionDetails.name)
+          .should("be.visible");
         // rerunning clears the selection, so the bulk action bar closes
         cy.button("Rerun selected").should("not.exist");
 
+        cy.intercept("POST", "/api/dataset").as("searchRefetch");
         cy.findByPlaceholderText(
           "Search by question, error, database, or collection",
         )
           .should("be.enabled")
           .type("foo");
 
-        cy.wait("@dataset");
+        cy.wait("@searchRefetch");
 
         cy.findByTestId("erroring-questions-table")
           .findByText("No results")
@@ -534,9 +543,10 @@ describe("monitor > tools > erroring questions ", () => {
 
         selectQuestion(brokenQuestionDetails.name);
 
+        cy.intercept("POST", "/api/dataset").as("fixedRerunRefetch");
         cy.button("Rerun selected").should("not.be.disabled").click();
 
-        cy.wait("@dataset");
+        cy.wait("@fixedRerunRefetch");
 
         cy.findByTestId("erroring-questions-table")
           .findByText("No results")
@@ -621,6 +631,7 @@ describe("monitor > tools", () => {
     cy.findByRole("heading", {
       name: "Troubleshoot faster",
     }).should("be.visible");
+    cy.findByTestId("erroring-questions-table").should("not.exist");
     cy.findByRole("link", { name: "Upgrade to Pro" });
   });
 });
@@ -709,7 +720,10 @@ describe("scenarios > monitor > tools > task runs", () => {
 
     cy.findByRole("link", { name: "Runs" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
-    cy.findByTestId("task-runs-table").should("be.visible");
+    cy.wait("@getTaskRuns");
+    cy.findByTestId("task-runs-table")
+      .findAllByTestId("task-run")
+      .should("have.length", 1);
 
     cy.findByRole("link", { name: "Tasks" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/list");
@@ -962,7 +976,9 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     cy.wait("@getEntitiesDelayed");
 
     cy.log("Should be enabled after entities are loaded");
-    getFilterByEntity().should("not.be.disabled");
+    getFilterByEntity().should("not.be.disabled").click();
+    H.popover().findByText("Sample Database").click();
+    getFilterByEntity().should("have.value", "Sample Database");
 
     cy.log("Should clear and disable entity filter when run type is cleared");
     getFilterByRun().parent().findByLabelText("Clear").click();
@@ -973,6 +989,9 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     cy.log("Should clear and disable entity filter when started at is cleared");
     getFilterByRun().click();
     H.popover().findByText("Sync").click();
+    getFilterByEntity().should("not.be.disabled").click();
+    H.popover().findByText("Sample Database").click();
+    getFilterByEntity().should("have.value", "Sample Database");
     getFilterByStartedAt().parent().findByLabelText("Clear").click();
 
     getFilterByEntity().should("be.disabled");

@@ -31,7 +31,6 @@ function seedMcpToolCall(
 
 function visitMcpAnalyticsPage(): void {
   cy.intercept("GET", "/api/database/13371337/metadata*").as("auditMetadata");
-  cy.intercept("POST", "/api/dataset").as("dataset");
 
   cy.visit(MCP_ANALYTICS_PATH);
   cy.wait("@auditMetadata");
@@ -61,11 +60,9 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
     cy.log("Nav item lives in the AI Auditing group");
     cy.findByRole("link", { name: "MCP analytics" }).should("be.visible");
 
-    cy.log("The page renders with the seeded data (not the empty state)");
-    H.main().within(() => {
-      cy.findByRole("heading", { name: "MCP analytics" }).should("be.visible");
-      cy.findByText("No MCP activity").should("not.exist");
-    });
+    H.main()
+      .findByRole("heading", { name: "MCP analytics" })
+      .should("be.visible");
 
     cy.log(
       "The Usage tab surfaces an Errors section once there are failed calls",
@@ -75,9 +72,13 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
       .scrollIntoView()
       .should("be.visible");
 
+    cy.log("The page renders with the seeded data (not the empty state)");
+    H.main().findByText("No MCP activity").should("not.exist");
+
     cy.log("The seeded tool calls show up in the Events table");
+    cy.intercept("POST", "/api/dataset").as("toolCalls");
     H.main().findByRole("link", { name: "Tool calls" }).click();
-    cy.wait("@dataset");
+    cy.wait("@toolCalls");
     H.main().within(() => {
       cy.findByText(SEED_TOOL_NAME).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");
@@ -99,6 +100,9 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
 
     cy.log("The MCP analytics route is not registered without audit_app");
     cy.findByLabelText("error page").should("be.visible");
+    cy.findByTestId("monitor-nav")
+      .findByRole("link", { name: /Background tasks/ })
+      .should("be.visible");
     cy.findByRole("heading", { name: "MCP analytics" }).should("not.exist");
     cy.findByRole("link", { name: "MCP analytics" }).should("not.exist");
   });
