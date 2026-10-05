@@ -1365,7 +1365,7 @@ describe("issue 55678", () => {
   });
 });
 
-describe("issue 14595", () => {
+describe("issue 14595", { tags: ["@external"] }, () => {
   const dialect = "postgres";
   const tableName = "many_data_types";
 
