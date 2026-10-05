@@ -872,70 +872,9 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
         };
       });
     }).as("getTaskRuns");
-
-    cy.intercept("GET", "/api/task/runs/entities?*", (request) => {
-      request.reply((response) => {
-        response.body = [
-          {
-            entity_type: "database",
-            entity_id: 1,
-            entity_name: "Sample Database",
-          },
-          {
-            entity_type: "database",
-            entity_id: 2,
-            entity_name: "Test Database",
-          },
-        ];
-      });
-    }).as("getEntities");
   });
 
-  it("filtering should work for task runs", () => {
-    cy.visit("/monitor/tasks/runs");
-    cy.wait("@getTaskRuns");
-
-    cy.log("Filter by run type");
-    getFilterByRun().click();
-    H.popover().findByText("Sync").click();
-    cy.location("search").should("contain", "run-type=sync");
-    cy.wait("@getTaskRuns")
-      .its("request.url")
-      .should("contain", "run-type=sync");
-    cy.log("Filter by started at");
-    selectStartedAt("Previous 30 days");
-    cy.location("search").should("contain", "started-at=past30days");
-    cy.wait("@getTaskRuns")
-      .its("request.url")
-      .should("contain", "started-at=past30days");
-
-    cy.wait("@getEntities");
-    cy.log("Filter by entity");
-    getFilterByEntity().click();
-    H.popover().findByText("Sample Database").click();
-    cy.location("search").should("contain", "entity-type=database");
-    cy.location("search").should("contain", "entity-id=1");
-    cy.wait("@getTaskRuns")
-      .its("request.url")
-      .should("contain", "entity-type=database")
-      .and("contain", "entity-id=1");
-
-    cy.log("Filter by status");
-    getFilterByStatus().click();
-    H.popover().findByText("Success").click();
-    cy.location("search").should("contain", "status=success");
-    cy.wait("@getTaskRuns")
-      .its("request.url")
-      .should("contain", "status=success");
-
-    cy.log("Clear all filters");
-    getFilterByRun().parent().findByLabelText("Clear").click();
-    getFilterByStartedAt().parent().findByLabelText("Clear").click();
-    getFilterByStatus().parent().findByLabelText("Clear").click();
-    cy.location("search").should("eq", "");
-  });
-
-  it("entity picker should be disabled/enabled based on run type, started at and entities availability", () => {
+  it("filtering and the entity picker should work for task runs", () => {
     cy.visit("/monitor/tasks/runs");
     cy.wait("@getTaskRuns");
     cy.intercept("GET", "/api/task/runs/entities?*", {
@@ -953,8 +892,13 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     getFilterByEntity().should("be.disabled");
     assertFilterByEntityTooltipText("Select a run type first");
 
+    cy.log("Filter by run type");
     getFilterByRun().click();
     H.popover().findByText("Sync").click();
+    cy.location("search").should("contain", "run-type=sync");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "run-type=sync");
 
     cy.log("Should be still disabled until started at is selected");
     getFilterByEntity().should("be.disabled");
@@ -962,7 +906,12 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
     cy.log("Should show tooltip 'Select a start time' when hovering");
     assertFilterByEntityTooltipText("Select a start time first");
 
+    cy.log("Filter by started at");
     selectStartedAt("Previous 30 days");
+    cy.location("search").should("contain", "started-at=past30days");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "started-at=past30days");
 
     cy.log("Should show loader while loading entities");
     getFilterByEntity()
@@ -973,16 +922,33 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
 
     cy.wait("@getEntitiesDelayed");
 
-    cy.log("Should be enabled after entities are loaded");
+    cy.log("Filter by entity, enabled after entities are loaded");
     getFilterByEntity().should("not.be.disabled").click();
     H.popover().findByText("Sample Database").click();
     getFilterByEntity().should("have.value", "Sample Database");
+    cy.location("search").should("contain", "entity-type=database");
+    cy.location("search").should("contain", "entity-id=1");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "entity-type=database")
+      .and("contain", "entity-id=1");
+
+    cy.log("Filter by status");
+    getFilterByStatus().click();
+    H.popover().findByText("Success").click();
+    cy.location("search").should("contain", "status=success");
+    cy.wait("@getTaskRuns")
+      .its("request.url")
+      .should("contain", "status=success");
 
     cy.log("Should clear and disable entity filter when run type is cleared");
     getFilterByRun().parent().findByLabelText("Clear").click();
 
     getFilterByEntity().should("be.disabled");
     getFilterByEntity().should("have.value", "");
+    cy.location("search")
+      .should("not.contain", "run-type")
+      .and("not.contain", "entity-id");
 
     cy.log("Should clear and disable entity filter when started at is cleared");
     getFilterByRun().click();
@@ -1007,6 +973,12 @@ describe("scenarios > monitor > tools > task runs filtering", () => {
 
     getFilterByEntity().should("be.disabled");
     assertFilterByEntityTooltipText("No entities available");
+
+    cy.log("Clear all filters");
+    getFilterByRun().parent().findByLabelText("Clear").click();
+    getFilterByStartedAt().parent().findByLabelText("Clear").click();
+    getFilterByStatus().parent().findByLabelText("Clear").click();
+    cy.location("search").should("eq", "");
   });
 });
 
