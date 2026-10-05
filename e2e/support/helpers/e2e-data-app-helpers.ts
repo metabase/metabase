@@ -23,21 +23,20 @@ export const visitDataAppRoute = (route: string) => {
 
 export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   id: 1,
+  entity_id: "e2eFakeDataAppEntityI",
   name: DATA_APP_NAME,
   display_name: DATA_APP_DISPLAY_NAME,
   description: null,
   version: 1,
   outdated: false,
-  bundle_path: `data_apps/${DATA_APP_NAME}/dist/index.js`,
+  bundle_path: "dist/index.js",
   enabled: true,
+  draft: false,
   resource_collection_id: null,
   permission_group_id: null,
   table_ids: [],
   allowed_hosts: [],
   bundle_hash: "e2e-bundle-hash",
-  last_synced_sha: "e2e0000",
-  last_synced_at: "2024-01-01T00:00:00Z",
-  sync_error: null,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   ...overrides,
@@ -358,7 +357,7 @@ export function createDataAppApiKey() {
 /**
  * A second app beside the host app, for cases that need two of them. It reuses
  * the host app's `node_modules`, so `defineQuery` still resolves through the
- * published SDK, and its directory name becomes the app's slug.
+ * published SDK, and its manifest declares `slug` as its slug.
  */
 export function createSecondDataApp(slug: string) {
   cy.task("scaffoldDataApp", { appName: slug, sdkFrom: dataAppHostAppRoot() });

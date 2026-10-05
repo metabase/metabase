@@ -152,6 +152,11 @@
                        [:not= :dashboard_id nil]
                        [:in :id card-ids]]}))
 
+(mu/defn action-entity-ids-in
+  "The entity ids among `entity-ids` that name an existing Action."
+  [entity-ids :- [:set :string]]
+  (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in entity-ids]))
+
 (mu/defn dashcard-serdes-columns
   "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
   `dashboard-id`."

@@ -78,7 +78,9 @@
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
-    (dashboards.db/delete-dashboard-revisions! dashboard-id)))
+    (dashboards.db/delete-dashboard-revisions! dashboard-id)
+    ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
+    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
@@ -106,9 +108,7 @@
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
-      (when (:archived changes)
-        (dashboards.db/delete-pulses-for-dashboard! (u/the-id dashboard))))))
+      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
@@ -446,6 +446,17 @@
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps allow-int-ids? parameters))))
+
+(defn- without-unloaded-action-dashcards
+  "`ingested` without the dashcards whose action has no local row."
+  [{:keys [dashcards] :as ingested}]
+  (if-let [action-eids (not-empty (into #{} (keep :action_id) dashcards))]
+    (let [loaded (dashboards.db/action-entity-ids-in action-eids)]
+      (assoc ingested :dashcards (filterv #(or (nil? (:action_id %)) (contains? loaded (:action_id %))) dashcards)))
+    ingested))
+
+(defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
+  (serdes/default-load-one! (without-unloaded-action-dashcards ingested) maybe-local))
 
 (defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
   (dashboard-deps false dashboard))

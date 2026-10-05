@@ -19,7 +19,7 @@ import {
 
 import { useCancelCloudMigrationMutation } from "../../api/cloud-migration";
 
-import { MigrationCard } from "./CloudPanel.styled";
+import { MigrationCard } from "./MigrationCard";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
 import { getMigrationUrl } from "./utils";
 

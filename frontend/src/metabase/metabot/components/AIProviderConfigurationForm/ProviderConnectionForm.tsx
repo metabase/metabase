@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { FormEvent, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -52,8 +52,8 @@ export function ProviderConnectionForm({
   onCancel?: () => void;
 }) {
   const isEditing = connection != null;
-  const [typeName, setTypeName] = useState<string | undefined>(
-    connection?.type,
+  const [providerType, setProviderType] = useState(() =>
+    providerTypes.find((option) => option.type === connection?.type),
   );
   const [name, setName] = useState(connection?.name ?? "");
   const [config, setConfig] = useState<LlmProviderConfig>(
@@ -89,11 +89,6 @@ export function ProviderConnectionForm({
   const [updateProvider, updateResult] = useUpdateLlmProviderMutation();
   const isSaving = createResult.isLoading || updateResult.isLoading;
 
-  const providerType = useMemo(
-    () => providerTypes.find((option) => option.type === typeName),
-    [providerTypes, typeName],
-  );
-
   const fields = getFormFields(providerType, config);
   const primaryFields = fields.filter((field) => !field.advanced);
   const advancedFields = fields.filter((field) => field.advanced);
@@ -104,7 +99,7 @@ export function ProviderConnectionForm({
 
   const selectProviderType = useCallback(
     (selected: LlmProviderType, nextConfig: LlmProviderConfig = {}) => {
-      setTypeName(selected.type);
+      setProviderType(selected);
       setName(selected.label);
       setConfig(nextConfig);
       setModel(selected.default_model ?? undefined);
@@ -142,7 +137,7 @@ export function ProviderConnectionForm({
   }, [isPickingType, providerTypes, selectProviderType]);
 
   const handleBack = () => {
-    setTypeName(undefined);
+    setProviderType(undefined);
     setName("");
     setConfig({});
     setModel(undefined);

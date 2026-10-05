@@ -13,18 +13,17 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at])
+  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at :draft])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
   [:maybe [:map-of ConditionKey [:maybe [:or :string :int :boolean :keyword sequential?]]]])
 
 (def ^:private RemovalOpts
-  "The `:scope-key`, `:scope-table`, `:synced-collection-ids`, `:entity-ids`, and `:removal-conditions` describing
-  which rows an import removes (see [[removal-exprs]])."
+  "The `:scope-key`, `:synced-collection-ids`, `:entity-ids`, and `:removal-conditions` describing which rows an
+  import removes (see [[removal-exprs]])."
   [:map {:closed true}
    [:scope-key             [:maybe :keyword]]
-   [:scope-table           {:optional true} [:maybe :keyword]]
    [:synced-collection-ids [:maybe [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
    [:entity-ids            [:maybe [:or [:set :string] [:sequential :string]]]]
    [:removal-conditions    Conditions]])
@@ -86,17 +85,12 @@
 
 (defn- removal-exprs
   "The `:where` fragments (see [[removal-condition-exprs]]) selecting the `model-key` rows an import removes:
-  scoped to `synced-collection-ids` (when `scope-key` is given; through the `scope-table` rows in those collections
-  when that is given too), excluding `entity-ids`, and matching `removal-conditions`. Returns nil for a scoped model
-  with no synced collections (removes nothing)."
-  [{:keys [scope-key scope-table synced-collection-ids entity-ids removal-conditions]}]
+  scoped to `synced-collection-ids` (when `scope-key` is given), excluding `entity-ids`, and matching
+  `removal-conditions`. Returns nil for a scoped model with no synced collections (removes nothing)."
+  [{:keys [scope-key synced-collection-ids entity-ids removal-conditions]}]
   (when-not (and scope-key (empty? synced-collection-ids))
     (cond-> []
-      scope-key        (conj [:in scope-key (if scope-table
-                                              ^:allow-subquery {:select [:id]
-                                                                :from   [scope-table]
-                                                                :where  [:in :collection_id synced-collection-ids]}
-                                              synced-collection-ids)])
+      scope-key        (conj [:in scope-key synced-collection-ids])
       (seq entity-ids) (conj [:not-in :entity_id entity-ids])
       :always          (into (removal-condition-exprs removal-conditions)))))
 
@@ -199,16 +193,11 @@
   (t2/delete! model :id [:in ids]))
 
 (defn- tracking-select-parts
-  "The SELECT/FROM/JOIN joining a `model-key` instance to the parent that carries its collection for sync tracking
-  (Field, Segment, or Measure to its Table; Action to its model Card), plus the `alias` its own table is joined under
-  (so callers can address its `:id` and `:entity_id` columns). Segment and Measure share alias \"s\" — both are
-  looked up the same way by [[tracking-details-by-entity-ids]]."
+  "The SELECT/FROM/JOIN joining a `model-key` instance (Field, Segment, or Measure) to its Table for sync tracking,
+  plus the `alias` its own table is joined under (so callers can address its `:id` and `:entity_id` columns).
+  Segment and Measure share alias \"s\" — both are looked up the same way by [[tracking-details-by-entity-ids]]."
   [model-key]
   (case model-key
-    :model/Action  {:alias  "a"
-                    :select [:a.name [:c.collection_id :collection_id]]
-                    :from   [[:action :a]]
-                    :join   [[:report_card :c] [:= :a.model_id :c.id]]}
     :model/Field   {:alias  "f"
                     :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:metabase_field :f]]
@@ -223,16 +212,16 @@
                     :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}))
 
 (mu/defn tracking-details-by-id
-  "The name, table id, collection id, and table name of the `model-key` (Field, Segment, Measure, or Action) instance
-  with `model-id`, or nil. An Action has no table, and its collection is its model's."
+  "The name, table id, collection id, and table name of the `model-key` (Field, Segment, or Measure) instance with
+  `model-id`, or nil."
   [model-key :- :keyword
    model-id  :- ms/PositiveInt]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)]
     (first (t2/query {:select select :from from :join join :where [:= (keyword alias "id") model-id]}))))
 
 (mu/defn tracking-details-by-entity-ids
-  "The `:id`, name, table id, collection id, and table name of the `model-key` (Segment, Measure, or Action)
-  instances with `entity-ids`."
+  "The `:id`, name, table id, collection id, and table name of the `model-key` (Segment or Measure) instances with
+  `entity-ids`."
   [model-key  :- :keyword
    entity-ids :- [:or [:set :string] [:sequential :string]]]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)
@@ -537,47 +526,13 @@
   (t2/select :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
 (mu/defn active-child-rsos
-  "The RemoteSyncObjects of `model-type` whose `parent-rso-key` column is `parent-id`, and that are not pending removal
-  or deletion."
-  [model-type     :- :string
-   parent-rso-key :- :keyword
-   parent-id      :- ms/PositiveInt]
+  "The RemoteSyncObjects of `model-type` under the Table with `table-id` that are not pending removal or deletion."
+  [model-type :- :string
+   table-id   :- ::lib.schema.id/table]
   (t2/select :model/RemoteSyncObject
              :model_type model-type
-             parent-rso-key parent-id
+             :model_table_id table-id
              :status [:not-in ["removed" "delete"]]))
-
-(mu/defn untracked-actions-in-collections
-  "The `:id`, `:name`, and model `:collection_id` of the unarchived Actions whose unarchived model Card is in the
-  Collections with `collection-ids`, and that have no Action RemoteSyncObject."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/query {:select [:a.id :a.name [:c.collection_id :collection_id]]
-             :from   [[:action :a]]
-             :join   [[:report_card :c] [:= :a.model_id :c.id]]
-             :where  [:and
-                      [:in :c.collection_id collection-ids]
-                      [:= :a.archived false]
-                      [:= :c.archived false]
-                      [:not [:exists ^:allow-subquery {:select [1]
-                                                       :from   [:remote_sync_object]
-                                                       :where  [:and
-                                                                [:= :remote_sync_object.model_type "Action"]
-                                                                [:= :remote_sync_object.model_id :a.id]]}]]]}))
-
-(mu/defn active-rsos-of-children
-  "The RemoteSyncObjects of `child-model-type` whose `child-model-key` rows have `fk` equal to `parent-id`, and that
-  are not pending removal or deletion."
-  [child-model-key  :- :keyword
-   child-model-type :- :string
-   fk               :- :keyword
-   parent-id        :- ms/PositiveInt]
-  (t2/select :model/RemoteSyncObject
-             {:where [:and
-                      [:= :model_type child-model-type]
-                      [:not-in :status ["removed" "delete"]]
-                      [:in :model_id ^:allow-subquery {:select [:id]
-                                                       :from   [(t2/table-name child-model-key)]
-                                                       :where  [:= fk parent-id]}]]}))
 
 (mu/defn content-rso-statuses
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
