@@ -13,7 +13,7 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at])
+  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at :draft])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."

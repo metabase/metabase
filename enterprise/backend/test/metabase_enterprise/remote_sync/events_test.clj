@@ -137,6 +137,47 @@
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 0 (count entries)))))))
 
+(defn- action-rso [action-id]
+  (t2/select-one :model/RemoteSyncObject :model_type "Action" :model_id action-id))
+
+(deftest action-create-event-creates-entry-test
+  (testing "action-create on a synced model tracks the action under its model's collection"
+    ;; remote-sync-type defaults to :read-only, where synced items are not tracked
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id}   {:is_remote_synced true :name "Remote-Sync"}
+                     :model/Card       {model-id :id}  {:type :model :collection_id coll-id}
+                     :model/Action     action          {:type :implicit :name "Create Venue" :model_id model-id}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/action-create {:object action :user-id (mt/user->id :rasta)})
+        (is (=? {:status "create" :model_name "Create Venue" :model_collection_id coll-id}
+                (action-rso (:id action))))))))
+
+(deftest action-event-on-unsynced-model-no-entry-test
+  (testing "GHY-4722: action events on a model outside synced collections are not tracked"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id}  {:name "Normal"}
+                     :model/Card       {model-id :id} {:type :model :collection_id coll-id}
+                     :model/Action     action         {:type :implicit :name "Create Venue" :model_id model-id}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/action-create {:object action :user-id (mt/user->id :rasta)})
+        (is (nil? (action-rso (:id action))))))))
+
+(deftest action-moved-with-its-model-test
+  (testing "an action that moves out of synced collections with its model is marked removed"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {synced-id :id} {:is_remote_synced true :name "Remote-Sync"}
+                     :model/Collection {plain-id :id}  {:name "Normal"}
+                     :model/Card       {model-id :id}  {:type :model :collection_id synced-id}
+                     :model/Action     {action-id :id} {:type :implicit :name "Create Venue" :model_id model-id}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject {:model_type "Action" :model_id action-id :model_name "Create Venue"
+                                             :model_collection_id synced-id :status "synced"
+                                             :status_changed_at (t/offset-date-time)})
+        (t2/update! :model/Card model-id {:collection_id plain-id})
+        (events/publish-event! :event/action-update {:object  (t2/select-one :model/Action :id action-id)
+                                                     :user-id (mt/user->id :rasta)})
+        (is (=? {:status "removed"} (action-rso action-id)))))))
+
 (deftest dashboard-create-event-creates-entry-test
   (testing "dashboard-create event creates remote sync object entry with create status"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]

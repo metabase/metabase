@@ -68,4 +68,17 @@
    :sql            "SELECT * FROM nonexistent"
    :default-schema "PUBLIC"
    :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "snowflake ILIKE against another column, not a literal pattern"
+   :dialect        "snowflake"
+   :sql            "SELECT * FROM products WHERE title ILIKE category"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "postgres NOT LIKE still resolves its column"
+   :sql            "SELECT * FROM products WHERE title NOT LIKE '%deluxe%'"
+   :default-schema "PUBLIC"
+   :schema         :products
    :expected       {:status "ok"}}]}

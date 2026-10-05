@@ -128,6 +128,17 @@
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
+;; action events
+
+(mr/def ::action
+  [:map {:closed true}
+   [:user-id  [:maybe pos-int?]]
+   [:object   [:fn #(t2/instance-of? :model/Action %)]]])
+
+(mr/def :event/action-create ::action)
+(mr/def :event/action-update ::action)
+(mr/def :event/action-delete ::action)
+
 ;; segment events
 
 (mr/def ::segment

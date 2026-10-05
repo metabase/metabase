@@ -134,8 +134,6 @@ export const SelectTime = ({
       <Group gap="sm">
         {isClock12Hour && (
           <SegmentedControl<AmPm>
-            lh="1rem"
-            radius="xs"
             value={amPm}
             onChange={(value) => {
               setPendingAmPm(value);

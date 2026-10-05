@@ -44,7 +44,7 @@
 
 (deftest all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
-    (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
+    (let [valid-eligibility-types #{:collection :published-table :parent-table :parent :setting :library-synced :always}]
       (doseq [[model-key spec] spec/remote-sync-specs]
         (testing (str "Spec for " model-key)
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
@@ -134,7 +134,9 @@
       (is (contains? types "TransformTag"))
       (is (contains? types "TransformTest"))
       (is (contains? types "Glossary"))
-      (is (= 15 (count types))))))
+      (is (contains? types "Action"))
+      (is (contains? types "DataApp"))
+      (is (= 17 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -324,6 +326,47 @@
       (is (nil? (spec/query-export-roots field-spec)))
       (is (nil? (spec/query-export-roots segment-spec)))
       (is (nil? (spec/query-export-roots measure-spec))))))
+
+;;; ---------------------------------------------------- Actions ----------------------------------------------------
+
+(defn- do-with-synced-and-plain-actions!
+  "Runs `f` with `{:synced-coll :synced-action :plain-action}`: one action on a model in a remote-synced collection,
+  one on a model outside any."
+  [f]
+  (mt/with-temp [:model/Collection {synced-coll :id}   {:name "Synced" :is_remote_synced true :location "/"}
+                 :model/Collection {plain-coll :id}    {:name "Plain" :location "/"}
+                 :model/Card       {synced-model :id}  {:type :model :collection_id synced-coll}
+                 :model/Card       {plain-model :id}   {:type :model :collection_id plain-coll}
+                 :model/Action     {synced-action :id} {:type :implicit :name "In Sync" :model_id synced-model}
+                 :model/Action     {plain-action :id}  {:type :implicit :name "Outside" :model_id plain-model}]
+    (f {:synced-coll synced-coll :synced-action synced-action :plain-action plain-action})))
+
+(deftest action-eligibility-follows-model-test
+  (testing "an action takes its model's collection, so it is eligible for remote sync exactly when its model is"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-action plain-action]}]
+       (let [action-spec (spec/spec-for-model-key :model/Action)]
+         (is (true? (spec/check-eligibility action-spec (t2/select-one :model/Action :id synced-action))))
+         (is (false? (spec/check-eligibility action-spec (t2/select-one :model/Action :id plain-action)))))))))
+
+(deftest action-removal-scoped-to-synced-models-test
+  (testing "a pull removes absent actions only when they are in a synced collection"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-coll synced-action plain-action]}]
+       (remote-sync.db/delete-removed-instances!
+        :model/Action
+        (spec/removal-opts (spec/spec-for-model-key :model/Action) [synced-coll] #{}))
+       (is (not (t2/exists? :model/Action :id synced-action)))
+       (is (t2/exists? :model/Action :id plain-action))))))
+
+(deftest action-sync-rows-carry-model-collection-test
+  (testing "GHY-4722: the ledger rows rebuilt after a pull give an action its model's collection"
+    (do-with-synced-and-plain-actions!
+     (fn [{:keys [synced-coll synced-action]}]
+       (let [eid (t2/select-one-fn :entity_id :model/Action :id synced-action)]
+         (is (=? [{:model_type "Action" :model_id synced-action :model_name "In Sync"
+                   :model_collection_id synced-coll :status "synced"}]
+                 (spec/sync-all-entities! (t/offset-date-time) {:by-entity-id {"Action" #{eid}}}))))))))
 
 ;;; -------------------------------------------- Editability Checking Tests ----------------------------------------
 

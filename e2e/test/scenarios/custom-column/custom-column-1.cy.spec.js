@@ -487,6 +487,40 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
+  it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
+    cy.viewport(1920, 800); // we're looking for a column name beyond the right of the default viewport
+    H.openProductsTable({ mode: "notebook" });
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom column").click();
+    addSimpleCustomColumn("EXPR");
+
+    H.getNotebookStep("expression").within(() => {
+      cy.icon("add").click();
+    });
+    addSimpleCustomColumn("EXPR");
+
+    H.getNotebookStep("expression").within(() => {
+      cy.icon("add").click();
+    });
+    addSimpleCustomColumn("EXPR");
+
+    H.getNotebookStep("expression").within(() => {
+      cy.findByText("EXPR");
+      cy.findByText("EXPR (1)");
+      cy.findByText("EXPR (2)");
+    });
+
+    H.visualize();
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("EXPR");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("EXPR (1)");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("EXPR (2)");
+  });
+
   it("should be able to add a date range filter to a custom column", () => {
     H.visitQuestionAdhoc({
       display: "table",
@@ -644,6 +678,40 @@ describe("scenarios > question > custom column", () => {
         )
       `.trim(),
     );
+  });
+
+  it("should allow using `Custom Expression` in orders metrics and keep manually entered parenthesis intact if they affect the result (metabase#12899, metabase#13306)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().contains("Custom Expression").click();
+
+    H.enterCustomColumnDetails({
+      formula: "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      format: true,
+    });
+
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        Sum([Total]) /
+          (Sum([Product → Price]) * Average([Quantity]))
+      `.trim(),
+    );
+
+    H.enterCustomColumnDetails({
+      formula: "2 * Max([Total])",
+      name: "twice max total",
+    });
+
+    H.expressionEditorWidget().button("Done").click();
+    cy.findByTestId("aggregate-step")
+      .contains("twice max total")
+      .should("exist");
+
+    H.visualize();
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("318.7");
   });
 
   it("should not allow formatting or saving an invalid expression, and validate it when typing", () => {
@@ -886,3 +954,9 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("eq", "[Bar]");
   });
 });
+
+function addSimpleCustomColumn(name) {
+  H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
+  H.CustomExpressionEditor.nameInput().click().type(name);
+  cy.button("Done").click();
+}

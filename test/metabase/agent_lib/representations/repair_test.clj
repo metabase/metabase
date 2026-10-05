@@ -7,6 +7,7 @@
    [clojure.test.check.properties :as prop]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repair]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.date-2 :as u.date]))
 
@@ -727,7 +728,7 @@
   namespaces mutate it, and the tests below are `^:parallel`. Under the default Sunday `2025-01-01`
   gives `2024-12-29`."
   [literal]
-  (str (u.date/truncate (u.date/parse literal) :week)))
+  (str (u.date/truncate (lib-be/time-config) (u.date/parse literal) :week)))
 
 (defn- repair-in-stage
   "Run `repair` on a query carrying `stage-kvs`, returning the repaired first stage. The hoist pass

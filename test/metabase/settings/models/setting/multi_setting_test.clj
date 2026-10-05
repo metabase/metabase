@@ -10,7 +10,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *parakeet* :green-friend)
 
 (multi-setting/define-multi-setting ^:private multi-setting-test-bird-name

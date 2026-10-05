@@ -274,3 +274,47 @@
               (is (= (keyword latest-source) (:source secret)))))
           (testing "get-secret-string"
             (is (= latest-value (secret/value-as-string :secret-test-driver details secret-property)))))))))
+
+(deftest secret-loading-from-path-test
+  (testing "Loading secrets from a path only works if it is under an allowed path"
+    (mt/with-temp-file [file-db "-1-key.pem"]
+      (spit file-db "apple")
+      (let [read-secret #(secret/value-as-string
+                          :secret-test-driver
+                          {:keystore-path    file-db
+                           :keystore-options "local"}
+                          "keystore")]
+        (testing "Works when readable paths is set to root"
+          (mt/with-temp-env-var-value! [mb-readable-paths "/"]
+            (is (= "apple" (read-secret)))))
+        (testing "Cannot read when readable paths has no allowed values"
+          (mt/with-temp-env-var-value! [mb-readable-paths "NONE"]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (read-secret)))))
+        (testing "Can read when the readable paths includes the file we want"
+          (mt/with-temp-env-var-value! [mb-readable-paths (str "/abc," file-db)]
+            (is (= "apple" (read-secret)))))
+        (testing "Cannot read when the readable paths doesn't include the file we want"
+          (mt/with-temp-env-var-value! [mb-readable-paths "/abc"]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (read-secret)))))))))
+
+(deftest secret-file-from-path-test
+  (testing "value-as-file! only hands out a local file path under an allowed path"
+    (mt/with-temp-file [file-db "-1-key.pem"]
+      (spit file-db "apple")
+      (let [file-for #(secret/value-as-file!
+                       :secret-test-driver
+                       {:keystore-path    %
+                        :keystore-options "local"}
+                       "keystore")]
+        (mt/with-temp-env-var-value! [mb-readable-paths "/abc"]
+          (testing "an existing file outside the allowlist"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (file-for file-db))))
+          (testing "a missing file outside the allowlist does not reveal that it is missing"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (file-for (str file-db ".missing"))))))
+        (mt/with-temp-env-var-value! [mb-readable-paths file-db]
+          (testing "a file under the allowlist"
+            (is (= "apple" (slurp (file-for file-db))))))))))

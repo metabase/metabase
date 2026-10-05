@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { SegmentedControl, type SegmentedControlProps } from "metabase/ui";
 import type { TableFieldOrder } from "metabase-types/api";
 
-import S from "./FieldOrderPicker.module.css";
 import { Label } from "./Label";
 
 interface Props extends Omit<
@@ -33,9 +32,7 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   return (
     <SegmentedControl
       aria-label={t`Column order`}
-      className={S.root}
       data={data}
-      size="sm"
       value={localValue}
       onChange={handleChange}
       {...props}

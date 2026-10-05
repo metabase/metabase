@@ -94,7 +94,7 @@ describe("PublicResources", () => {
         },
         {
           name: "Test Question 3",
-          id: 2,
+          id: 3,
           public_uuid: "5bec9624-3102-428a-8b9f-47c56bd96c6c",
         },
       ]);
@@ -139,7 +139,7 @@ describe("PublicResources", () => {
         },
         {
           name: "Test Dashboard 3",
-          id: 2,
+          id: 3,
           public_uuid: "2b80845e-0ff4-4182-8a9a-083cc904f5dd",
         },
       ]);

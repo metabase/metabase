@@ -152,11 +152,16 @@
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
 (mu/defn dashcard-counts-by-card
-  "Rows of `:card_id` and `:count` of DashboardCards for each of `card-ids`."
+  "Rows of `:card_id` and `:count` of DashboardCards each of `card-ids` appears on, directly or as a series."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
-             :from     [:report_dashboardcard]
-             :where    [:in :card_id card-ids]
+             :from     [[^:allow-subquery {:union-all [^:allow-subquery {:select [:card_id]
+                                                                         :from   [:report_dashboardcard]
+                                                                         :where  [:in :card_id card-ids]}
+                                                       ^:allow-subquery {:select [:card_id]
+                                                                         :from   [:dashboardcard_series]
+                                                                         :where  [:in :card_id card-ids]}]}
+                         :placements]]
              :group-by [:card_id]}))
 
 (mu/defn parameter-card-counts-by-card
@@ -349,15 +354,45 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
+(mu/defn move-actions-of-models!
+  "Move the Actions of the Cards with `model-ids` to the Collection with `collection-id`, returning the number
+  updated."
+  [model-ids     :- [:set ::lib.schema.id/card]
+   collection-id :- [:maybe ::lib.schema.id/collection]]
+  (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
+
+(mu/defn set-actions-of-model-archived!
+  "Archive the unarchived Actions of the Card with `model-id` along with it, or unarchive the ones archived along with
+  it, returning the number updated."
+  [model-id  :- ms/PositiveInt
+   archived? :- :boolean]
+  (if archived?
+    (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false})
+    (t2/update! :model/Action {:model_id model-id, :archived true, :archived_directly false} {:archived false})))
+
+(mu/defn actions-for-model
+  "The Actions of the model Card with `model-id`."
+  [model-id :- ms/PositiveInt]
+  (t2/select :model/Action :model_id model-id))
+
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
 
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the non-implicit Actions of the model Card with `model-id`, returning the number updated."
+(mu/defn delete-dashcards-for-model-actions!
+  "Delete the DashboardCards of the Actions of the model Card with `model-id`, returning the number deleted."
   [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id :type [:not= :implicit]} {:archived true}))
+  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action :model_id model-id))]
+    (t2/delete! :model/DashboardCard :action_id [:in action-ids])
+    0))
+
+(mu/defn archive-explicit-actions-for-model!
+  "Archive the unarchived non-implicit Actions of the model Card with `model-id` directly, returning the number
+  updated."
+  [model-id :- ms/PositiveInt]
+  (t2/update! :model/Action {:model_id model-id, :type [:not= :implicit], :archived false}
+              {:archived true, :archived_directly true}))
 
 (mu/defn delete-implicit-actions-for-model!
   "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."
