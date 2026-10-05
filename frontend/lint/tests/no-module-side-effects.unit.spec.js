@@ -1,17 +1,10 @@
 import path from "path";
 
-import { RuleTester } from "eslint";
-import tseslint from "typescript-eslint";
-
 import rule from "../eslint-plugin-metabase/rules/no-module-side-effects";
 
-const ruleTester = new RuleTester({
-  languageOptions: {
-    parser: tseslint.parser,
-    parserOptions: { ecmaFeatures: { jsx: true } },
-    sourceType: "module",
-  },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const FILENAME = "/repo/frontend/src/metabase/widgets/Widget/Widget.tsx";
 const REGISTRATION_FILE =
@@ -21,10 +14,8 @@ const REGISTRATION_DIR = "/repo/frontend/src/metabase/widgets/api/";
 
 const options = [{ sideEffectPaths: [REGISTRATION_FILE, REGISTRATION_DIR] }];
 
-// Real files, because the import check resolves each import on disk before looking it up.
-// registry.json classifies effects/{global,entry,self,registration}.ts, leaves unclassified.ts
-// unclassified, names facade/ a facade, and lists the packages leaflet-draw and @mantine/core/styles.css.
-// pure.ts is not listed.
+// The import checks resolve each specifier on disk before consulting the registry,
+// so these cases point at real fixture files.
 const FIXTURES = path.resolve(__dirname, "fixtures/side-effect-files");
 const IMPORTER = path.join(FIXTURES, "importer/Widget.tsx");
 const registryOptions = {

@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { MantineProvider } from "@mantine/core";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { useEffect } from "react";

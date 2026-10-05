@@ -9,15 +9,15 @@
  * bundle since the bootstrap entry is excluded from splitChunks.
  */
 
+import type { MetabaseProviderPropsStoreExternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import * as MetabaseError from "embedding-sdk-shared/errors";
+import type { MetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   validateSession,
 } from "embedding/auth-common";
-import type { MetabaseProviderPropsStoreExternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import * as MetabaseError from "embedding-sdk-shared/errors";
-import type { MetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 
 const SDK_AUTH_STATE_KEY = "METABASE_EMBEDDING_SDK_AUTH_STATE";
 

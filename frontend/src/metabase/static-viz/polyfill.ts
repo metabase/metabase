@@ -1,5 +1,4 @@
 import "fast-text-encoding";
-
 import ResizeObserver from "resize-observer-polyfill";
 
 const defineGlobal = (name: PropertyKey, value: unknown): void => {

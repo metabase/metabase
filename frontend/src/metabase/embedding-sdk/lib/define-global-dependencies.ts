@@ -1,8 +1,8 @@
 import * as React from "react";
-import * as ReactJSXRuntime from "react/jsx-runtime";
 import * as ReactDOM from "react-dom";
 import * as ReactDOMClient from "react-dom/client";
 import * as ReactDOMServer from "react-dom/server";
+import * as ReactJSXRuntime from "react/jsx-runtime";
 
 import type { EXTERNAL_DEPENDENCIES } from "../../../../build/embedding-sdk/constants/external-dependencies";
 
