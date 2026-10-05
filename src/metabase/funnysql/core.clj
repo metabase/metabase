@@ -933,6 +933,8 @@
      :greatest
      :least
      :isnull
+     :json_contains_path
+     :json_search
      :jsonb_build_object
      :jsonb_path_exists
      :left

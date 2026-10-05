@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as app-db]
    [metabase.funnysql.core :as funnysql]
-   [metabase.search.appdb.core]
+   [metabase.search.appdb.core :as appdb.core]
    [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as appdb.scoring]
    [metabase.search.config :as search.config]
@@ -38,4 +38,6 @@
       (appdb.query/base-filtered-query :search_index search-ctx (:search-string search-ctx) [:legacy_input]))))
 
 (deftest ^:parallel compile-hairball-search-query-test
-  (is (some? (funnysql/format (search-hsql) (app-db/db-type)))))
+  ;; the appdb search engine only supports some app DBs (not MySQL/MariaDB), so the query can't be built on the others
+  (when (appdb.core/supported-db? (app-db/db-type))
+    (is (some? (funnysql/format (search-hsql) (app-db/db-type))))))
