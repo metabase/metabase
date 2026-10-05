@@ -43,9 +43,18 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
     cy.signInAsAdmin();
   });
 
-  it("shows the audit-app nav item and a seeded tool call on the page", () => {
+  it("shows seeded tool calls, their errors and the gated error message", () => {
     H.activateToken("pro-self-hosted");
     seedMcpToolCall();
+    // error_message is gated PII — the backend only records/shows it when retention is on.
+    H.updateSetting("analytics-pii-retention-enabled", true);
+    seedMcpToolCall({
+      tool_name: SEED_ERROR_TOOL,
+      status: "error",
+      error_code: SEED_ERROR_CODE,
+      error_message: SEED_ERROR_MESSAGE,
+    });
+    H.updateSetting("analytics-pii-retention-enabled", false);
 
     visitMcpAnalyticsPage();
 
@@ -58,25 +67,6 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
       cy.findByText("No MCP activity").should("not.exist");
     });
 
-    cy.log("The seeded tool call shows up in the Events table");
-    H.main().findByRole("link", { name: "Tool calls" }).click();
-    cy.wait("@dataset");
-    H.main().findByText(SEED_TOOL_NAME).should("be.visible");
-  });
-
-  it("surfaces a failed tool call's error type and message", () => {
-    H.activateToken("pro-self-hosted");
-    // error_message is gated PII — the backend only records/shows it when retention is on.
-    H.updateSetting("analytics-pii-retention-enabled", true);
-    seedMcpToolCall({
-      tool_name: SEED_ERROR_TOOL,
-      status: "error",
-      error_code: SEED_ERROR_CODE,
-      error_message: SEED_ERROR_MESSAGE,
-    });
-
-    visitMcpAnalyticsPage();
-
     cy.log(
       "The Usage tab surfaces an Errors section once there are failed calls",
     );
@@ -85,14 +75,21 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
       .scrollIntoView()
       .should("be.visible");
 
-    cy.log(
-      "The Tool calls table shows the derived error type and gated message",
-    );
+    cy.log("The seeded tool calls show up in the Events table");
     H.main().findByRole("link", { name: "Tool calls" }).click();
     cy.wait("@dataset");
     H.main().within(() => {
+      cy.findByText(SEED_TOOL_NAME).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_TYPE).scrollIntoView().should("be.visible");
+      cy.findByText(SEED_ERROR_MESSAGE).should("not.exist");
+    });
+
+    cy.log("The error message shows once PII retention is on");
+    H.updateSetting("analytics-pii-retention-enabled", true);
+    cy.reload();
+    H.main().within(() => {
+      cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_MESSAGE).scrollIntoView().should("be.visible");
     });
   });

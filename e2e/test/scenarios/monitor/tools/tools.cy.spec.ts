@@ -491,28 +491,6 @@ describe("monitor > tools > erroring questions ", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
-    describe("without broken questions", () => {
-      it("should render the Monitor nav and navigate to Erroring questions by clicking on it", () => {
-        cy.visit("/monitor");
-
-        cy.findByTestId("monitor-nav")
-          .findByRole("link", { name: /Erroring questions/ })
-          .click();
-        cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
-
-        cy.log("test no results state");
-
-        cy.findByTestId("erroring-questions-table")
-          .findByText("No results")
-          .should("be.visible");
-        // nothing selected -> the bulk action bar (and its button) is hidden
-        cy.button("Rerun selected").should("not.exist");
-        cy.findByPlaceholderText(
-          "Search by question, error, database, or collection",
-        ).should("be.enabled");
-      });
-    });
-
     describe("with the existing broken questions", () => {
       beforeEach(() => {
         // Unjustified type cast. FIXME
@@ -526,6 +504,8 @@ describe("monitor > tools > erroring questions ", () => {
       it("should render correctly", () => {
         cy.wait("@dataset");
 
+        // nothing selected -> the bulk action bar (and its button) is hidden
+        cy.button("Rerun selected").should("not.exist");
         selectQuestion(brokenQuestionDetails.name);
 
         cy.button("Rerun selected").should("not.be.disabled").click();
@@ -574,22 +554,41 @@ describe("monitor > tools > erroring questions ", () => {
 });
 
 describe("monitor > tools", () => {
+  const TOOLS_ERRORS_URL = "/monitor/errors";
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
   });
 
-  it("should show either the erroring questions or the upsell (based on the `audit_app` feature flag)", () => {
+  it("should navigate the Monitor tools and show the upsell without the `audit_app` feature flag", () => {
     cy.log(
       "Enable model persistence in order to have multiple tabs/routes in tools",
     );
     cy.request("POST", "/api/persist/enable");
-    cy.visit("/monitor/errors");
+    cy.visit("/monitor");
+    cy.location("pathname").should(
+      "match",
+      /^\/monitor\/dependency-diagnostics/,
+    );
+
+    cy.findByTestId("monitor-nav")
+      .findByRole("link", { name: /Erroring questions/ })
+      .click();
+    cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
 
     cy.findByRole("heading", {
       name: "Erroring questions",
     }).should("be.visible");
+
+    cy.log("test no results state");
+    cy.findByTestId("erroring-questions-table")
+      .findByText("No results")
+      .should("be.visible");
+    cy.findByPlaceholderText(
+      "Search by question, error, database, or collection",
+    ).should("be.enabled");
 
     cy.log("We should be able to switch to the model persistence log page");
 
@@ -597,40 +596,39 @@ describe("monitor > tools", () => {
     cy.location("pathname").should("eq", "/monitor/model-persistence-log");
 
     cy.log(
+      "Back to Tasks should go to the tasks list even with no browser history (metabase#57113)",
+    );
+    cy.visit("/monitor/tasks/list");
+
+    cy.log("Pick an existing task url");
+
+    cy.findAllByTestId("task").should("be.visible").first().click();
+
+    cy.location("pathname")
+      .should("match", /\/monitor\/tasks\/list\/[0-9]+$/)
+      .then((pathname) => {
+        // Clear all history and navigate to the task detail page
+        cy.window().then((window) => {
+          window.history.replaceState(null, "", pathname);
+          // Clear the entire history stack by going to about:blank first
+          window.location.href = "about:blank";
+        });
+
+        cy.visit(pathname);
+        cy.findByText("Back to Tasks").click();
+        cy.location("pathname").should("eq", "/monitor/tasks/list");
+      });
+
+    cy.log(
       "Once the audit_app feature flag is gone, tools should display an upsell",
     );
     H.deleteToken();
-    cy.visit("/monitor/errors");
+    cy.visit(TOOLS_ERRORS_URL);
 
     cy.findByRole("heading", {
       name: "Troubleshoot faster",
     }).should("be.visible");
     cy.findByRole("link", { name: "Upgrade to Pro" });
-  });
-
-  describe("issue 57113", () => {
-    it("should navigate to /monitor/tasks/list when clicking Back to Tasks even with no browser history", () => {
-      cy.visit("/monitor/tasks/list");
-
-      cy.log("Pick an existing task url");
-
-      cy.findAllByTestId("task").should("be.visible").first().click();
-
-      cy.location("pathname")
-        .should("match", /\/monitor\/tasks\/list\/[0-9]+$/)
-        .then((pathname) => {
-          // Clear all history and navigate to the task detail page
-          cy.window().then((window) => {
-            window.history.replaceState(null, "", pathname);
-            // Clear the entire history stack by going to about:blank first
-            window.location.href = "about:blank";
-          });
-
-          cy.visit(pathname);
-          cy.findByText("Back to Tasks").click();
-          cy.location("pathname").should("eq", "/monitor/tasks/list");
-        });
-    });
   });
 });
 
