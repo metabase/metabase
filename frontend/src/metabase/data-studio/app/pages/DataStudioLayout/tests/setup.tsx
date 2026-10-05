@@ -112,7 +112,6 @@ interface StoreStateOptions {
   tokenFeatures?: Partial<TokenFeatures>;
   transformsEnabled?: boolean;
   transformsSetupComplete?: boolean;
-  databases?: Database[];
 }
 
 const createSettingsValues = ({
@@ -175,6 +174,7 @@ interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   transformsEnabled?: boolean;
   transformsSetupComplete?: boolean;
+  databases?: Database[];
 }
 
 export const setup = ({
