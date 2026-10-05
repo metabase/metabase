@@ -181,7 +181,6 @@
   [:map {:closed true}
    [:queries [:sequential ExportedQuery]]
    [:actions [:sequential ExportedEntity]]
-   [:models  [:sequential ExportedEntity]]
    [:metrics [:sequential ExportedEntity]]])
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -352,8 +351,8 @@
 (api.macros/defendpoint :post "/export-resources" :- ExportResourcesResponse
   "Export what a data app's `resources/` files are written from, as serialization writes it: the saved question
   holding the query Metabase builds from each `defineQuery` definition in `queries`, in the app's `collection`,
-  the actions in `actions`, the models they belong to, and the metrics the queries aggregate. Each item answers on
-  its own, with its export or the error that stops it."
+  the actions in `actions`, which must belong to no model, and the metrics the queries aggregate. Each item answers
+  on its own, with its export or the error that stops it."
   [_route-params
    _query-params
    {:keys [queries actions collection]} :- ExportResourcesRequest]

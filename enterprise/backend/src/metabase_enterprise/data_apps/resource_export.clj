@@ -1,8 +1,8 @@
 (ns metabase-enterprise.data-apps.resource-export
   "What a data app's `resources/` files are written from, as serialization writes it: the saved question that holds
-  the query Metabase builds from each `defineQuery` definition, and each action the app runs together with its model
-  and the metrics its queries aggregate. Nothing here references an entity by numeric ID, so the author copies it into
-  the app's resources as it is, apart from what makes it a copy.
+  the query Metabase builds from each `defineQuery` definition, each action the app runs, and the metrics its queries
+  aggregate. Nothing here references an entity by numeric ID, so the author copies it into the app's resources as it
+  is, apart from what makes it a copy.
 
   Permissions are the typed schema's: the caller must be able to read each source, and what a routing destination
   backs is left out, as the schema leaves it out. A table the caller can't read answers as if it didn't exist, before
@@ -155,61 +155,52 @@
                                    collection-entity-id (assoc :collection_id collection-entity-id)))
          :metric_ids (vec (sort (lib/all-source-card-ids built)))}))))
 
-(defn- export-card
-  "The model or metric `card` as `{:id :entity}`, or `{:id :error}` when the app can't copy it. `exported` is its
+(defn- export-metric
+  "The metric `card` as `{:id :entity}`, or `{:id :error}` when the app can't copy it. `exported` is its
   serialization export, if it has one."
-  [card-type card-id card exported]
+  [card-id card exported]
   (with-item-error
     {:id card-id}
     (fn []
-      (let [label (case card-type
-                    :model  (tru "Model {0}" (str card-id))
-                    :metric (tru "Metric {0}" (str card-id)))]
-        (when-not (and card (= card-type (keyword (:type card))) (mi/can-read? card))
+      (let [label (tru "Metric {0}" (str card-id))]
+        (when-not (and card (= :metric (keyword (:type card))) (mi/can-read? card))
           (fail (tru "{0} does not exist, or you can''t read it." label)))
         (check-copyable label "Card" card exported #{})
         {:id card-id, :entity (as-written exported)}))))
 
 (defn- export-action
-  "The action with `action-id` as `{:id :entity}`, or `{:id :error}` when the app can't copy it, including when its
-  model can't be copied: `model-error` is the error of the model's export, if it failed. `exported` is the action's
-  serialization export, if it has one, which references its model by entity ID."
-  [action-id action exported model-error]
+  "The action with `action-id` as `{:id :entity}`, or `{:id :error}` when the app can't copy it. `exported` is the
+  action's serialization export, if it has one. A data app runs only actions that belong to no model, as the typed
+  schema lists only those."
+  [action-id action exported]
   (with-item-error
     {:id action-id}
     (fn []
       (let [label (tru "Action {0}" (str action-id))]
         (when-not (and action (mi/can-read? action))
           (fail (tru "{0} does not exist, or you can''t read it." label)))
-        (check-copyable label "Action" action exported #{(:model_id action)})
-        (when model-error
-          (fail (tru "{0} can''t be copied because its model can''t: {1}" label model-error)))
+        (when (:model_id action)
+          (fail (tru "{0} belongs to a model. A data app runs query actions that belong to no model." label)))
+        (check-copyable label "Action" action exported #{})
         {:id action-id, :entity (as-written exported)}))))
 
 (defn export-resources
   "Export the saved question built from each of `queries` (`{:export <name> :query <definition> :entity_id <id>}`),
-  in the app's collection with `collection-entity-id`, the actions with `action-ids`, the models those actions
-  belong to, and the metrics the queries aggregate. Each item comes back on its own, with what it exports or the
-  error that stops it, so one item that can't be exported doesn't hide the rest. A query lists the entity IDs of the
-  metrics it references, which the author points at the app's copies."
+  in the app's collection with `collection-entity-id`, the actions with `action-ids`, and the metrics the queries
+  aggregate. Each item comes back on its own, with what it exports or the error that stops it, so one item that
+  can't be exported doesn't hide the rest. A query lists the entity IDs of the metrics it references, which the
+  author points at the app's copies."
   [queries action-ids & {:keys [collection-entity-id]}]
   (serdes/with-cache
     (let [queries       (mapv (partial export-query collection-entity-id) queries)
           actions-by-id (into {} (map (juxt :id identity)) (actions/select-actions-for-ids nil action-ids))
-          model-ids     (into (sorted-set) (keep :model_id) (vals actions-by-id))
           metric-ids    (into (sorted-set) (mapcat :metric_ids) queries)
-          cards-by-id   (into {} (map (juxt :id identity)) (data-apps.db/cards-by-ids (concat model-ids metric-ids)))
+          cards-by-id   (into {} (map (juxt :id identity)) (data-apps.db/cards-by-ids metric-ids))
           exported-card (comp (extract-by-entity-id "Card" (keys cards-by-id)) :entity_id cards-by-id)
-          exported-act  (comp (extract-by-entity-id "Action" (keys actions-by-id)) :entity_id actions-by-id)
-          models        (mapv #(export-card :model % (cards-by-id %) (exported-card %)) model-ids)
-          model-errors  (into {} (keep (fn [{:keys [id error]}] (when error [id error]))) models)]
+          exported-act  (comp (extract-by-entity-id "Action" (keys actions-by-id)) :entity_id actions-by-id)]
       {:queries (mapv (fn [{:keys [metric_ids] :as query}]
                         (cond-> (dissoc query :metric_ids)
                           (not (:error query)) (assoc :metrics (mapv (comp :entity_id cards-by-id) metric_ids))))
                       queries)
-       :actions (mapv (fn [action-id]
-                        (let [action (actions-by-id action-id)]
-                          (export-action action-id action (exported-act action-id) (model-errors (:model_id action)))))
-                      action-ids)
-       :models  models
-       :metrics (mapv #(export-card :metric % (cards-by-id %) (exported-card %)) metric-ids)})))
+       :actions (mapv #(export-action % (actions-by-id %) (exported-act %)) action-ids)
+       :metrics (mapv #(export-metric % (cards-by-id %) (exported-card %)) metric-ids)})))

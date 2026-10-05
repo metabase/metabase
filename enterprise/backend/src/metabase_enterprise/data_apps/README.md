@@ -69,8 +69,8 @@ assets (`metabase.server.routes/static-files-handler`).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
 - `POST /api/apps/export-resources` — what an app's `resources/` are written from: the query Metabase builds
-  from each `defineQuery` definition, and the actions, models, and metrics it copies, all as serialization
-  exports them (`resource_export.clj`). Permissions are the typed schema's: the caller must be able to read
+  from each `defineQuery` definition, and the actions and metrics it copies, all as serialization exports
+  them (`resource_export.clj`). An action must belong to no model. Permissions are the typed schema's: the caller must be able to read
   each source.
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
@@ -116,7 +116,7 @@ the typed schema does.
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
 | `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
-| `resource_export.clj` | The export an app's resource files are written from: built queries, actions, models, metrics.     |
+| `resource_export.clj` | The export an app's resource files are written from: built queries, actions, metrics.             |
 | `query_definition.clj`| The closed schema of a `defineQuery` definition the export accepts.                                 |
 | `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
