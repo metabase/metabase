@@ -1,0 +1,23 @@
+.table {
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  padding: 1rem 1.5rem;
+  vertical-align: top;
+}
+
+.questionLink {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  border-radius: 2px;
+}
+
+.questionIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
+}

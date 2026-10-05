@@ -3,6 +3,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
 import {
   PLUGIN_DEPENDENCIES,
+  PLUGIN_EMBEDDING_MAP,
   PLUGIN_LIBRARY,
   PLUGIN_SCHEMA_VIEWER,
 } from "metabase/plugins";
@@ -126,6 +127,11 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
             </Route>
           ) : (
             <Route path="schema-viewer" lazy={schemaViewerUpsellPage} />
+          )}
+          {PLUGIN_EMBEDDING_MAP.isEnabled && (
+            <Route path="embedding-map">
+              {PLUGIN_EMBEDDING_MAP.getDataStudioEmbeddingMapRoutes()}
+            </Route>
           )}
           <Route path="git-sync" lazy={gitSyncSectionLayout} />
 

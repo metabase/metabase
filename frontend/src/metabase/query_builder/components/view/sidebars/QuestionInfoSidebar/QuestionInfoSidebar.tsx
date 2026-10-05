@@ -27,6 +27,7 @@ import { onCloseQuestionInfo } from "../../../../store/actions";
 import { QuestionActivityTimeline } from "../../../QuestionActivityTimeline";
 
 import { QuestionDetails } from "./QuestionDetails";
+import { QuestionDuplicates } from "./components/QuestionDuplicates";
 import { QuestionRelationshipsTab } from "./components/QuestionRelationshipsTab";
 import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
 
@@ -118,6 +119,7 @@ export const QuestionInfoSidebar = ({
                 <QuestionDetails question={question} />
               </SidesheetCard>
               <SidesheetCardWithFields question={question} />
+              <QuestionDuplicates question={question} />
               <EntityIdCard entityId={question._card.entity_id} />
             </Stack>
           </Tabs.Panel>
