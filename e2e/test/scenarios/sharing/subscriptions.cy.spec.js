@@ -180,11 +180,16 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByPlaceholderText("Enter user names or email addresses").click();
         H.popover().should("be.visible").and("contain", `${admin.first_name}`);
         H.popover().isRenderedWithinViewport();
+
+        cy.findByPlaceholderText("Enter user names or email addresses").type(
+          admin.first_name,
+        );
+        H.popover().should("contain", `${admin.first_name}`);
         cy.realPress("Escape");
         H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
         cy.findByPlaceholderText("Enter user names or email addresses")
           .should("be.visible")
-          .and("not.have.value");
+          .and("have.value", admin.first_name);
         H.sidebar().button("Done").should("be.disabled");
       });
     });
