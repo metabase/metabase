@@ -358,10 +358,12 @@
   "Export what a data app's `resources/` files are written from, as serialization writes it: the saved question
   holding the query Metabase builds from each `defineQuery` definition in `queries`, in the app's `collection`,
   the actions in `actions`, which must belong to no model, and the metrics the queries aggregate. Each item answers
-  on its own, with its export or the error that stops it."
+  on its own, with its export or the error that stops it. For superusers: the files are written into the app's
+  repository, which only an admin works with."
   [_route-params
    _query-params
    {:keys [queries actions collection]} :- ExportResourcesRequest]
+  (api/check-superuser)
   (data-app.resource-export/export-resources queries actions :collection-entity-id collection))
 
 ;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until

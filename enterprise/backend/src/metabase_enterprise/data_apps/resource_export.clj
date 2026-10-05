@@ -4,13 +4,14 @@
   aggregate. Nothing here references an entity by numeric ID, so the author copies it into the app's resources as it
   is, apart from what makes it a copy.
 
-  Permissions are the typed schema's: the caller must be able to read each source, and what a routing destination
-  backs is left out, as the schema leaves it out. A table the caller can't read answers as if it didn't exist, before
-  its columns are looked at, so the export reveals nothing the schema wouldn't."
+  The endpoint is for superusers, who write an app's repository. The export itself still holds each source to what
+  its caller can read, as the typed schema does, and leaves out what a routing destination backs, as the schema
+  leaves it out. A table the caller can't read answers as if it didn't exist, before its columns are looked at."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
@@ -19,7 +20,9 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -132,20 +135,26 @@
    :dimensions             nil
    :dimension_mappings     nil})
 
-(defn- built-query
+(mu/defn- built-query
   "The query Metabase builds from `query-definition`, as the dev preview does. The table has to be one the typed
   schema would show the caller: one they can read. (A routing destination has no tables of its own, only cards.)"
-  [query-definition]
-  (let [table-id (get-in query-definition [:stages 0 :source :id])
-        table    (data-apps.db/table table-id)]
+  [{[{{table-id :id} :source}] :stages, :as query-definition} :- ::query-definition/query-definition]
+  (let [table (data-apps.db/table table-id)]
     (when-not (and table (mi/can-read? table))
       (fail (tru "Table {0} does not exist, or you can''t read it." (str table-id))))
+    ;; Only the source table is checked. A column can name a table the source reaches through a foreign key, and the
+    ;; builder finds it in metadata no permission filters. A superuser reads every table, so that is sound while the
+    ;; endpoint is theirs alone; opening it to anyone else needs those tables checked as well.
     (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)))
 
-(defn- export-query
+(mu/defn- export-query
   "A `defineQuery` definition as `{:export :entity :metric_ids}`, the entity being the saved question that holds the
   query Metabase builds from it, in the collection with `collection-entity-id`, or `{:export :error}`."
-  [collection-entity-id {:keys [export query] :as definition}]
+  [collection-entity-id        :- [:maybe ms/NanoIdString]
+   {:keys [export query] :as definition} :- [:map {:closed true}
+                                             [:export ms/NonBlankString]
+                                             [:entity_id {:optional true} [:maybe ms/NanoIdString]]
+                                             [:query ::query-definition/query-definition]]]
   (with-item-error
     {:export export}
     (fn []
