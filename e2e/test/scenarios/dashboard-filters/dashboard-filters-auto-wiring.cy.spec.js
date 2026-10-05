@@ -77,9 +77,35 @@ describe("dashboard filters auto-wiring", () => {
         cy.findByText("Auto-connected").should("not.exist");
         cy.icon("sparkles").should("not.exist");
       });
+
+      cy.log("verify auto-wire suggestion when a card is replaced");
+
+      goToFilterMapping();
+
+      H.getDashboardCard(1)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Replace")
+        .click();
+
+      H.modal().findByText("Orders, Count").click();
+
+      H.undoToastList()
+        .contains("Auto-connect “Orders, Count” to “Text”?")
+        .closest("[data-testid='toast-undo']")
+        .button("Auto-connect")
+        .click();
+
+      H.undoToastList().should(
+        "contain",
+        "“Orders, Count” was auto-connected to “Text”.",
+      );
+
+      goToFilterMapping();
+
+      H.getDashboardCard(1).findByText("User.Name").should("exist");
     });
 
-    it("should not wire parameters to cards that already have a parameter, despite matching fields", () => {
+    it("should undo auto-wiring and not wire parameters to cards that already have a parameter, despite matching fields", () => {
       createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
@@ -102,9 +128,14 @@ describe("dashboard filters auto-wiring", () => {
         .findByRole("button", { name: "Auto-connect" })
         .click();
 
-      H.getDashboardCard(1).within(() => {
-        cy.findByLabelText("close icon").click();
-      });
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(1).findByText("User.Name").should("exist");
+
+      cy.log("verify undo functionality");
+      H.undoToast().findByRole("button", { name: "Undo" }).click();
+
+      H.getDashboardCard(0).findByText("User.Name").should("exist");
+      H.getDashboardCard(1).findByText("Select…").should("exist");
 
       H.selectDashboardFilter(H.getDashboardCard(1), "Address");
 
@@ -116,7 +147,7 @@ describe("dashboard filters auto-wiring", () => {
         cy.findByText("User.Address").should("exist");
       });
 
-      H.undoToast().should("contain", "Undo");
+      H.undoToast().should("not.exist");
     });
 
     it("should not suggest to wire parameters to cards that don't have a matching field", () => {
@@ -155,36 +186,7 @@ describe("dashboard filters auto-wiring", () => {
       H.undoToast().should("not.exist");
     });
 
-    it("should undo parameter wiring when 'Undo' is clicked", () => {
-      createDashboardWithCards({ cards }).then((dashboardId) => {
-        H.visitDashboard(dashboardId);
-      });
-
-      H.editDashboard();
-
-      H.setFilter("Text or Category", "Is");
-      addCardToDashboard();
-      goToFilterMapping();
-
-      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-
-      H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
-
-      H.getDashboardCard(0).findByText("User.Name").should("exist");
-
-      for (let i = 0; i < cards.length; i++) {
-        H.getDashboardCard(i).findByText("User.Name").should("exist");
-      }
-
-      H.undoToast().findByRole("button", { name: "Undo" }).click();
-
-      H.getDashboardCard(0).findByText("User.Name").should("exist");
-      for (let i = 1; i < cards.length; i++) {
-        H.getDashboardCard(i).findByText("Select…").should("exist");
-      }
-    });
-
-    it("in case of two auto-wiring undo toast, the second one should last the default timeout of 12s", () => {
+    it("should dismiss auto-wire toasts on timeout, restarting the 12s timeout for a second suggestion toast", () => {
       // The auto-wiring undo toasts use the same id, a bug in the undo logic caused the second toast to be dismissed by the
       // timeout set by the first. See https://github.com/metabase/metabase/pull/35461#pullrequestreview-1731776862
       const cardTemplate = {
@@ -234,6 +236,21 @@ describe("dashboard filters auto-wiring", () => {
 
       cy.tick(2000);
       H.undoToast().should("not.exist");
+
+      cy.log("verify the undo toast after auto-connect lasts 8s");
+
+      removeFilterFromDashCard(0);
+
+      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
+      cy.tick(1000);
+
+      H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
+      cy.tick(7000);
+      H.undoToast().should("exist");
+
+      cy.tick(2000);
+      H.undoToast().should("not.exist");
     });
 
     describe("multiple tabs", () => {
@@ -274,7 +291,7 @@ describe("dashboard filters auto-wiring", () => {
   });
 
   describe("add a card", () => {
-    it("should wire parameters to cards that are added to the dashboard", () => {
+    it("should wire parameters to cards that are added to the dashboard and undo it", () => {
       createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
@@ -291,57 +308,17 @@ describe("dashboard filters auto-wiring", () => {
       }
 
       addCardToDashboard();
-
-      cy.log("verify toast text and enable auto-connect");
+      goToFilterMapping();
 
       H.undoToastList()
         .eq(1)
         .should("contain", "Auto-connect “Orders Model” to “Text”?")
         .findByRole("button", { name: "Auto-connect" })
         .click();
-
-      cy.log("verify toast text after auto-connect");
 
       H.undoToastList()
         .eq(1)
         .should("contain", "“Orders Model” was auto-connected to “Text”.");
-
-      goToFilterMapping();
-
-      for (let i = 0; i < cards.length + 1; i++) {
-        H.getDashboardCard(i).findByText("User.Name").should("exist");
-      }
-
-      H.undoToastList()
-        .eq(1)
-        .findByText("“Orders Model” was auto-connected to “Text”.")
-        .should("be.visible");
-    });
-
-    it("should undo parameter wiring when 'Undo' is clicked", () => {
-      createDashboardWithCards({ cards }).then((dashboardId) => {
-        H.visitDashboard(dashboardId);
-      });
-
-      H.editDashboard();
-
-      H.setFilter("Text or Category", "Is");
-
-      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-      H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
-
-      for (let i = 0; i < cards.length; i++) {
-        H.getDashboardCard(i).findByText("User.Name").should("exist");
-      }
-
-      addCardToDashboard();
-      goToFilterMapping();
-
-      H.undoToastList()
-        .eq(1)
-        .should("contain", "Auto-connect “Orders Model” to “Text”?")
-        .findByRole("button", { name: "Auto-connect" })
-        .click();
 
       for (let i = 0; i < cards.length + 1; i++) {
         H.getDashboardCard(i).findByText("User.Name").should("exist");
@@ -411,41 +388,6 @@ describe("dashboard filters auto-wiring", () => {
           .eq(1)
           .should("contain", "“Orders Model” was auto-connected to 2 filters.");
       });
-    });
-  });
-
-  describe("replace a card", () => {
-    it("should show auto-wire suggestion toast when a card is replaced", () => {
-      createDashboardWithCards({ cards }).then((dashboardId) => {
-        H.visitDashboard(dashboardId);
-      });
-
-      H.editDashboard();
-
-      H.setFilter("Text or Category", "Is");
-
-      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-
-      H.undoToast().findByText("Auto-connect").click();
-
-      goToFilterMapping();
-
-      H.getDashboardCard(1)
-        .realHover({ scrollBehavior: "bottom" })
-        .findByLabelText("Replace")
-        .click();
-
-      H.modal().findByText("Orders, Count").click();
-
-      H.undoToastList()
-        .eq(2)
-        .should("contain", "Auto-connect “Orders, Count” to “Text”?")
-        .button("Auto-connect")
-        .click();
-
-      H.undoToastList()
-        .eq(2)
-        .should("contain", "“Orders, Count” was auto-connected to “Text”.");
     });
   });
 
@@ -644,42 +586,6 @@ describe("dashboard filters auto-wiring", () => {
       H.undoToastList()
         .should("have.length", 1)
         .should("contain", "Removed card");
-    });
-
-    it("should dismiss toasts on timeout", () => {
-      createDashboardWithCards({ cards }).then((dashboardId) => {
-        H.visitDashboard(dashboardId);
-      });
-
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
-
-      cy.clock();
-      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-
-      cy.tick(1000);
-
-      H.undoToast().should("be.visible");
-
-      // AUTO_WIRE_TOAST_TIMEOUT
-      cy.tick(12000);
-
-      H.undoToast().should("not.exist");
-
-      removeFilterFromDashCard(0);
-
-      H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-      cy.tick(1000);
-
-      // cy.clock();
-      H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
-
-      cy.tick(1000);
-      H.undoToast().should("be.visible");
-
-      // AUTO_WIRE_UNDO_TOAST_TIMEOUT
-      cy.tick(8000);
-      H.undoToast().should("not.exist");
     });
   });
 
