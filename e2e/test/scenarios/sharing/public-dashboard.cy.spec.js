@@ -269,7 +269,7 @@ describe("scenarios [EE] > public > dashboard", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("should set the window title to `{dashboard name} · {application name}` and keep the background via `#background=false` without an iframe", () => {
+  it("should set the window title to `{dashboard name} · {application name}`, keep the background via `#background=false` without an iframe, and disable it inside an iframe (metabase#62391)", () => {
     H.updateSetting("application-name", "Custom Application Name");
 
     cy.get("@dashboardId").then((id) => {
@@ -287,28 +287,10 @@ describe("scenarios [EE] > public > dashboard", () => {
       "background-color",
       "rgba(0, 0, 0, 0)",
     );
-  });
 
-  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
-    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
+    cy.signInAsAdmin();
+    cy.visit("/");
 
-    cy.get("@dashboardId").then((id) => {
-      H.visitPublicDashboard(id, {
-        hash: { locale: "de-CH" },
-      });
-    });
-
-    cy.wait("@deLocale");
-
-    cy.findByRole("button", {
-      name: "Automatische Aktualisierung",
-    }).should("exist");
-
-    cy.url().should("include", "locale=de");
-  });
-
-  it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
     cy.get("@dashboardId").then((id) => {
       H.visitPublicDashboard(id, {
         hash: { background: "false" },
@@ -329,6 +311,25 @@ describe("scenarios [EE] > public > dashboard", () => {
     cy.window().then((win) => {
       delete win.overrideIsWithinIframe;
     });
+  });
+
+  it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
+
+    cy.get("@dashboardId").then((id) => {
+      H.visitPublicDashboard(id, {
+        hash: { locale: "de-CH" },
+      });
+    });
+
+    cy.wait("@deLocale");
+
+    cy.findByRole("button", {
+      name: "Automatische Aktualisierung",
+    }).should("exist");
+
+    cy.url().should("include", "locale=de");
   });
 
   it("should handle /api/session/properties incorrect response (metabase#62501)", () => {

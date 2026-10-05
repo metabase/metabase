@@ -84,6 +84,26 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       expect(slackDetails.value).to.eq("#work");
       expect(slackDetails.channel_id).to.eq("C001");
     });
+
+    cy.log(
+      "ensure that when the alert is deleted, the delete modal is correct metabase#48402",
+    );
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Edit alerts").click();
+    H.modal().within(() => {
+      cy.findByText("Edit alerts").should("be.visible");
+      cy.findByText(/Created by you/).realHover();
+    });
+
+    cy.findByRole("button", { name: "Delete this alert" }).click();
+
+    cy.findByTestId("alert-delete").within(() => {
+      cy.findByText("Delete this alert?").should("be.visible");
+      cy.findByText("This can't be undone.").should("be.visible");
+      cy.findByText(/email/i).should("not.exist");
+      cy.button("Cancel").should("be.visible");
+      cy.button("Delete it").should("be.visible");
+    });
   });
 
   it("should set up an email alert for a new question and update it without updating the question (metabase#36866)", () => {

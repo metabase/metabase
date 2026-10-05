@@ -108,8 +108,24 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setupSMTP();
     });
 
-    it("renders an object detail as a label/value table in a subscription email", () => {
-      const questionDetails = {
+    it("renders object detail, month-of-year line, and region map cards in a subscription email (metabase#16918)", () => {
+      const regionMapDetails = {
+        name: "Region map static-viz smoke",
+        native: {
+          query:
+            "SELECT 'CA' AS state, 99999 AS metric " +
+            "UNION ALL SELECT 'NY' AS state, 11111 AS metric",
+        },
+        display: "map",
+        visualization_settings: {
+          "map.type": "region",
+          "map.region": "us_states",
+          "map.dimension": "STATE",
+          "map.metric": "METRIC",
+        },
+      };
+
+      const objectDetailDetails = {
         name: "Object detail static-viz smoke",
         native: {
           query: "SELECT 'Hammer' AS product, 19 AS price, NULL AS discount",
@@ -117,11 +133,32 @@ describe("scenarios > dashboard > subscriptions", () => {
         display: "object",
       };
 
-      H.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ dashboardId }) => {
-          H.visitDashboard(dashboardId);
+      const monthOfYearDetails = {
+        name: "16918",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "temporal-unit": "month-of-year" },
+            ],
+            ["field", PRODUCTS.CATEGORY, null],
+          ],
         },
-      );
+        display: "line",
+      };
+
+      const dashboardName = "Repro Dashboard";
+
+      H.createDashboardWithQuestions({
+        dashboardName,
+        questions: [regionMapDetails, objectDetailDetails, monthOfYearDetails],
+        cards: [{ row: 0 }, { row: 8 }, { row: 16 }],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
+      });
 
       H.openAndAddEmailsToSubscriptions([
         `${admin.first_name} ${admin.last_name}`,
@@ -131,9 +168,33 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(html).not.to.include(
           "An error occurred while displaying this card.",
         );
-        expect(html).to.include("Hammer");
+        expect(html).to.include(dashboardName);
+
+        const regionMapStart = html.indexOf(regionMapDetails.name);
+        const objectDetailStart = html.indexOf(objectDetailDetails.name);
+        const monthOfYearStart = html.indexOf(monthOfYearDetails.name);
+        expect(regionMapStart).to.be.greaterThan(-1);
+        expect(objectDetailStart).to.be.greaterThan(regionMapStart);
+        expect(monthOfYearStart).to.be.greaterThan(objectDetailStart);
+
+        const regionMapSection = html.slice(regionMapStart, objectDetailStart);
+        const objectDetailSection = html.slice(
+          objectDetailStart,
+          monthOfYearStart,
+        );
+
+        expect(regionMapSection).to.match(
+          /<img src="cid:[^"]+" style="display: block; width: 100%;"/,
+        );
+        // The map rasterizes to a PNG; a table fallback would instead leak these values as text.
+        expect(html).not.to.include("99999");
+        expect(html).not.to.include("11111");
+        expect(html).not.to.include("99,999");
+        expect(html).not.to.include("11,111");
+
+        expect(objectDetailSection).to.include("Hammer");
         // "Empty" (the null column) is unique to the :object renderer — a table fallback leaves it blank.
-        expect(html).to.include("Empty");
+        expect(objectDetailSection).to.include("Empty");
       });
     });
 
@@ -503,80 +564,6 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(email.html).to.include(TEXT_CARD);
       });
     });
-
-    it('should load question binned by "Month of year" or similar granularity (metabase#16918)', () => {
-      const questionDetails = {
-        name: "16918",
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              PRODUCTS.CREATED_AT,
-              { "temporal-unit": "month-of-year" },
-            ],
-            ["field", PRODUCTS.CATEGORY, null],
-          ],
-        },
-        display: "line",
-      };
-
-      const dashboardDetails = { name: "Repro Dashboard" };
-
-      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: { dashboard_id } }) => {
-          assignRecipient({ dashboard_id });
-        },
-      );
-
-      H.sendEmailAndAssert((email) => {
-        expect(email.html).not.to.include(
-          "An error occurred while displaying this card.",
-        );
-        expect(email.html).to.include(dashboardDetails.name);
-        expect(email.html).to.include(questionDetails.name);
-      });
-    });
-
-    it("renders a region (choropleth) map as an image in a subscription email", () => {
-      const questionDetails = {
-        name: "Region map static-viz smoke",
-        native: {
-          query:
-            "SELECT 'CA' AS state, 99999 AS metric " +
-            "UNION ALL SELECT 'NY' AS state, 11111 AS metric",
-        },
-        display: "map",
-        visualization_settings: {
-          "map.type": "region",
-          "map.region": "us_states",
-          "map.dimension": "STATE",
-          "map.metric": "METRIC",
-        },
-      };
-
-      H.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ dashboardId }) => {
-          assignRecipient({ dashboard_id: dashboardId });
-        },
-      );
-
-      H.sendEmailAndAssert(({ html }) => {
-        expect(html).to.include(questionDetails.name);
-        expect(html).to.match(
-          /<img src="cid:[^"]+" style="display: block; width: 100%;"/,
-        );
-        expect(html).not.to.include(
-          "An error occurred while displaying this card.",
-        );
-        // The map rasterizes to a PNG; a table fallback would instead leak these values as text.
-        expect(html).not.to.include("99999");
-        expect(html).not.to.include("11111");
-        expect(html).not.to.include("99,999");
-        expect(html).not.to.include("11,111");
-      });
-    });
   });
 
   describe("with Slack set up", () => {
@@ -720,17 +707,6 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setupSMTP();
     });
 
-    it("should not include branding", () => {
-      assignRecipient();
-      H.sendEmailAndVisitIt();
-      cy.findAllByRole("link")
-        .filter(":contains(Orders in a dashboard)")
-        .should("be.visible");
-      cy.findAllByRole("link")
-        .filter(":contains(Made with)")
-        .should("not.exist");
-    });
-
     it("should show recipients in dropdown based on the `user-visiblity` setting", () => {
       openRecipientsWithUserVisibilitySetting("none");
       H.popover().find("span").should("have.length", 1);
@@ -744,7 +720,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.popover().find("span").should("have.length", 10);
     });
 
-    it("should send a dashboard with questions saved in the dashboard", () => {
+    it("should send a dashboard with questions saved in the dashboard and without branding", () => {
       H.createQuestion({
         name: "Total Orders",
         database_id: SAMPLE_DATABASE.id,
@@ -758,6 +734,13 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       assignRecipient();
       H.sendEmailAndVisitIt();
+
+      cy.findAllByRole("link")
+        .filter(":contains(Orders in a dashboard)")
+        .should("be.visible");
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("not.exist");
 
       cy.get(".container").within(() => {
         cy.findByText("Total Orders");
@@ -775,7 +758,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         addParametersToDashboard();
       });
 
-      it("should show a filter description containing default values, even when not explicitly added to subscription", () => {
+      it("should show default filter values in the subscription and allow setting parameters", () => {
         assignRecipient();
         clickButton("Done");
 
@@ -822,6 +805,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           .click();
 
         // verify existing subscription show new default in email
+        H.clearInbox();
         H.sendEmailAndVisitIt();
         cy.get("table.header")
           .first()
@@ -829,17 +813,13 @@ describe("scenarios > dashboard > subscriptions", () => {
             cy.findByText("Text").next().findByText("Sallie Flatley");
             cy.findByText("Text 1").should("not.exist");
           });
-      });
 
-      it("should allow for setting parameters in subscription", () => {
-        assignRecipient();
-        clickButton("Done");
-
+        openDashboardSubscriptions();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly").click();
 
         // eslint-disable-next-line metabase/no-unsafe-element-filtering
-        cy.findAllByText("Corbin Mertz").last().click();
+        cy.findAllByText("Sallie Flatley").last().click();
         H.popover().within(() => {
           H.fieldValuesCombobox().type("Bob");
           cy.findByText("Bobby Kessler").click();
@@ -860,11 +840,12 @@ describe("scenarios > dashboard > subscriptions", () => {
           .findByText("Text: 2 selections and 1 more filter")
           .click();
 
+        H.clearInbox();
         H.sendEmailAndVisitIt();
         cy.get("table.header").within(() => {
           cy.findByText("Text")
             .next()
-            .findByText("Corbin Mertz and Bobby Kessler");
+            .findByText("Sallie Flatley and Bobby Kessler");
           cy.findByText("Text 1").next().findByText("Gizmo");
         });
       });

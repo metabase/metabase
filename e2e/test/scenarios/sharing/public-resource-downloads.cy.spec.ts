@@ -60,7 +60,7 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       H.getEmbeddedDashboardCardMenu().should("not.exist");
     });
 
-    it("#downloads=pdf should enable only PDF downloads", () => {
+    it("#downloads=pdf should enable only PDF downloads and allow downloading a public dashboard as PDF", () => {
       cy.visit(`${publicLink}#downloads=pdf`);
       waitLoading();
 
@@ -71,37 +71,6 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
         .findAllByTestId("cell-data")
         .should("have.length.above", 0);
       H.getEmbeddedDashboardCardMenu().should("not.exist");
-    });
-
-    it("#downloads=results should enable only dashcard results downloads", () => {
-      cy.visit(`${publicLink}#downloads=results`);
-      waitLoading();
-
-      cy.get("header")
-        .findByRole("button", { name: "Download as PDF" })
-        .should("not.exist");
-
-      H.main().realHover();
-      H.getEmbeddedDashboardCardMenu().click();
-      cy.findByLabelText("Download results").should("be.visible");
-    });
-
-    it("#downloads=results, pdf should handle whitespace between parameters", () => {
-      cy.visit(`${publicLink}#downloads=results, pdf`);
-      waitLoading();
-
-      cy.get("header")
-        .findByRole("button", { name: "Download as PDF" })
-        .should("exist");
-
-      H.main().realHover();
-      H.getEmbeddedDashboardCardMenu().click();
-      cy.findByLabelText("Download results").should("be.visible");
-    });
-
-    it("should be able to download a public dashboard as PDF", () => {
-      cy.visit(`${publicLink}#downloads=true`);
-      waitLoading();
 
       cy.get("header")
         .findByRole("button", { name: "Download as PDF" })
@@ -116,9 +85,13 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       });
     });
 
-    it("should be able to download a public dashcard as CSV", () => {
-      cy.visit(`${publicLink}`);
+    it("#downloads=results should enable only dashcard results downloads and allow downloading a public dashcard as CSV", () => {
+      cy.visit(`${publicLink}#downloads=results`);
       waitLoading();
+
+      cy.get("header")
+        .findByRole("button", { name: "Download as PDF" })
+        .should("not.exist");
 
       const uuid = publicLink.split("/").at(-1);
 
@@ -137,6 +110,19 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
         accessed_via: "public-link",
         export_type: "csv",
       });
+    });
+
+    it("#downloads=results, pdf should handle whitespace between parameters", () => {
+      cy.visit(`${publicLink}#downloads=results, pdf`);
+      waitLoading();
+
+      cy.get("header")
+        .findByRole("button", { name: "Download as PDF" })
+        .should("exist");
+
+      H.main().realHover();
+      H.getEmbeddedDashboardCardMenu().click();
+      cy.findByLabelText("Download results").should("be.visible");
     });
   });
 

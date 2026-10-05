@@ -439,7 +439,7 @@ describe("[snowplow] scenarios > dashboard", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should allow you to download a PDF of a dashboard", () => {
+  it("should download a PDF of a dashboard and png images from dashcards", () => {
     const date = Date.now();
     H.createDashboardWithQuestions({
       dashboardName: `saving pdf dashboard - ${date}`,
@@ -461,15 +461,6 @@ describe("[snowplow] scenarios > dashboard", () => {
 
     cy.log("We're adding a 'Metabase-' prefix for non-whitelabelled instances");
     cy.verifyDownload(`Metabase - saving pdf dashboard - ${date}.pdf`);
-  });
-
-  it("should download png images from dashcards and send the `download_results_clicked` event", () => {
-    H.createDashboardWithQuestions({
-      dashboardName: "saving pngs dashboard",
-      questions: [canSavePngQuestion, cannotSavePngQuestion],
-    }).then(({ dashboard }) => {
-      H.visitDashboard(dashboard.id);
-    });
 
     H.showDashboardCardActions(0);
     H.getDashboardCard(0).findByText("Created At: Month").should("be.visible");
@@ -507,4 +498,18 @@ function assertOrdersExport({ assertParameters } = {}) {
     isDashboard: true,
     assertParameters,
   });
+
+  if (assertParameters) {
+    cy.get("@fileDownload")
+      .its("request.body")
+      .then((body) => {
+        const parameters = JSON.parse(
+          new URLSearchParams(body).get("parameters"),
+        );
+        expect(parameters).to.have.lengthOf(assertParameters.length);
+        assertParameters.forEach((expectedParam, index) => {
+          expect(parameters[index]).to.deep.include(expectedParam);
+        });
+      });
+  }
 }
