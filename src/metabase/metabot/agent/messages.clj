@@ -159,24 +159,33 @@
   - `{:type :tool-input, :id ..., :function ..., :arguments ...}` for tool calls
   - `{:type :tool-output, :id ..., :result ...}` for tool results
 
+  `tools` is the active tool registry (name -> tool). The SQL dialect skill is preloaded only when it
+  contains a SQL-writing tool: the dialect body is SQL-writing guidance, and a profile without those
+  tools (e.g. `:embedding_next` with the native editor open in a full-app embed) is told never to write
+  SQL, so preloading would contradict its prompt. The 2-arity has no tools and never preloads.
+
   Each LLM adapter converts this to its own wire format."
-  [context memory]
-  (let [input-messages (messages-with-injected-context context memory)
-        steps          (memory/get-steps memory)
-        input-parts    (mapcat input-message->parts input-messages)
-        step-parts     (mapcat step->parts steps)
-        ;; Preload the active SQL dialect (if any) as a synthetic load_skill
-        ;; tool-call/result pair. It is placed after the input messages (so the
-        ;; first message is still the user's) and before this turn's steps, which
-        ;; keeps it below the system cache breakpoint.
-        preload-parts  (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
-        result         (vec (concat input-parts preload-parts step-parts))]
-    (log/info "Building message history"
-              {:input-message-count (count input-messages)
-               :step-count          (count steps)
-               :preload-parts       (count preload-parts)
-               :total-parts         (count result)})
-    result))
+  ([context memory]
+   (build-message-history context memory nil))
+  ([context memory tools]
+   (let [input-messages (messages-with-injected-context context memory)
+         steps          (memory/get-steps memory)
+         input-parts    (mapcat input-message->parts input-messages)
+         step-parts     (mapcat step->parts steps)
+         ;; Preload the active SQL dialect (if any) as a synthetic load_skill
+         ;; tool-call/result pair. It is placed after the input messages (so the
+         ;; first message is still the user's) and before this turn's steps, which
+         ;; keeps it below the system cache breakpoint.
+         preload-parts  (if (prompts/sql-generation-tools? tools)
+                          (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
+                          [])
+         result         (vec (concat input-parts preload-parts step-parts))]
+     (log/info "Building message history"
+               {:input-message-count (count input-messages)
+                :step-count          (count steps)
+                :preload-parts       (count preload-parts)
+                :total-parts         (count result)})
+     result)))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; System message

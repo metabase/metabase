@@ -340,3 +340,17 @@
          context
          (memory/initialize [{:role :user :content "Hello"}] {}))
         (is (= 1 @calls))))))
+
+(deftest ^:parallel build-message-history-dialect-preload-gates-on-sql-tools-test
+  (let [context  {:user_is_viewing [{:type       "adhoc"
+                                     :sql_engine "postgres"
+                                     :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
+        memory   (memory/initialize [{:role :user :content "Hello"}] {})
+        preload? (fn [parts]
+                   (boolean (some #(and (= :tool-input (:type %)) (= "load_skill" (:function %))) parts)))]
+    (testing "a profile with a SQL-writing tool gets the dialect skill preloaded"
+      (is (preload? (messages/build-message-history context memory {"create_sql_query" nil}))))
+    (testing "a profile without SQL tools does not, even with the native editor open"
+      (is (not (preload? (messages/build-message-history context memory {"construct_notebook_query" nil})))))
+    (testing "the 2-arity has no tools and never preloads"
+      (is (not (preload? (messages/build-message-history context memory)))))))
