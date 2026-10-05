@@ -53,12 +53,13 @@
 
   This is accomplished using `display-info`; see that section for more details."
   (:refer-clojure
-   :exclude
-   [filter])
+   :rename
+   {filter cfilter})
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [goog.object :as gobject]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.experiment]
@@ -2819,3 +2820,21 @@
   (-> js-native-query-spec
       (js->clj :keywordize-keys true)
       (->> (lib.query.test-spec/test-native-query metadata-providerable))))
+
+(defn- unique-name [names original-name index]
+  (let [indexed-name (str original-name " (" index ")")]
+    (if (names indexed-name)
+      (recur names original-name (inc index))
+      indexed-name)))
+
+(defn ^:export  unique-expression-name
+  "Generates an expression name that's unique in the query."
+  [all-expressions suggested-name]
+  (let [expression-names (-> all-expressions js->clj keys set)]
+    (if (not (expression-names suggested-name))
+      suggested-name
+      (let [re-duplicates (re-pattern (str "^" suggested-name " \\([0-9]+\\)$"))
+            duplicates    (set (cfilter #(or (= % suggested-name)
+                                             (re-matches re-duplicates %))
+                                        expression-names))]
+        (unique-name duplicates suggested-name (count duplicates))))))

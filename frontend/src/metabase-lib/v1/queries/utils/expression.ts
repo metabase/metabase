@@ -1,4 +1,4 @@
-import { unique_expression_name } from "cljs/metabase.xrays.domain_entities.queries.util";
+import { unique_expression_name } from "cljs/metabase.lib.js";
 import type { ExpressionClause } from "metabase-types/api";
 
 /**
