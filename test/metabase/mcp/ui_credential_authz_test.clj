@@ -141,6 +141,23 @@
         (is (some #(= (mt/id :venues) (:id %)) (get-in metadata [:body :tables]))))
       (is (= 202 (:status (handle-post! ui.tu/query-scopes "pivot" (venues-query))))))))
 
+(deftest pivot-reads-its-layout-from-the-body-test
+  (testing "The pivot route runs the stored query with the layout the body names: pivot rows and columns, and
+            whether to compute totals. Without them the QP pivots on its defaults."
+    (mt/with-full-data-perms-for-all-users!
+      (let [mp       (mt/metadata-provider)
+            base     (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/count))
+            by-name  (fn [query column-name]
+                       (some #(when (= column-name (:name %)) %) (lib/breakoutable-columns query)))
+            query    (as-> base q
+                       (lib/breakout q (by-name q "CATEGORY_ID"))
+                       (lib/breakout q (by-name q "PRICE")))
+            pivot!   (fn [body] (count (rows (handle-post! ui.tu/query-scopes "pivot" query body))))
+            default  (pivot! {})
+            no-total (pivot! {:pivot_rows [0] :pivot_cols [1] :show_row_totals false :show_column_totals false})]
+        (is (pos? no-total))
+        (is (< no-total default) "dropping the totals leaves fewer rows")))))
+
 (deftest handle-routes-are-user-scoped-test
   (testing "A handle another user stored does not resolve for this credential's user, on any route"
     (mt/with-full-data-perms-for-all-users!
