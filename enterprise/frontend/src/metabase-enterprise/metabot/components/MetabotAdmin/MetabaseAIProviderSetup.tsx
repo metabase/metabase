@@ -101,11 +101,11 @@ export function MetabaseAIProviderSetup({
       await metabaseManagedAiPurchase.purchaseMetabaseManagedAi(
         hasAcceptedTerms,
       );
-      await handleConnect();
+      await createLlmProvider({ type: "metabase" }).unwrap();
     } catch {
       setIsSettingUpModalOpen(false);
     }
-  }, [handleConnect, hasAcceptedTerms, metabaseManagedAiPurchase]);
+  }, [createLlmProvider, hasAcceptedTerms, metabaseManagedAiPurchase]);
 
   const connectAction = match({
     hasMetabaseManagedAiProviderFeature,
@@ -256,7 +256,10 @@ export function MetabaseAIProviderSetup({
             metabaseManagedAiPurchase.isLoading)
         }
         opened={isSettingUpModalOpen}
-        onClose={() => setIsSettingUpModalOpen(false)}
+        onClose={() => {
+          setIsSettingUpModalOpen(false);
+          onConnect?.();
+        }}
       />
     </>
   );

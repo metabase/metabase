@@ -96,6 +96,7 @@
            metabase.actions.types}
    :uses #{analytics
            api
+           collections
            driver
            events
            lib
@@ -117,10 +118,7 @@
            util
            warehouse-schema-overlay
            warehouses}
-   :model-exports #{:model/Action
-                    :model/HTTPAction
-                    :model/ImplicitAction
-                    :model/QueryAction}
+   :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -142,11 +140,9 @@
            api.eid-translation
            collections
            events
-           lib
            lib.schema
            permissions
            public-sharing
-           queries
            util}
    :model-imports #{:model/Action :model/Card :model/Database}}
 
@@ -639,7 +635,8 @@
            util.config
            warehouse-schema-overlay}
    :model-exports #{:model/Collection}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/CollectionBookmark
                     :model/CollectionPermissionGraphRevision
                     :model/Dashboard
@@ -1496,7 +1493,6 @@
               query-permissions
               query-processor
               request
-              request.schema
               search
               search.entity-retrieval
               server
@@ -1723,6 +1719,7 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/DashboardTab
+                    :model/DataApp
                     :model/Database
                     :model/Dimension
                     :model/Document
@@ -1732,7 +1729,6 @@
                     :model/FieldUserSettings
                     :model/FieldValues
                     :model/Glossary
-                    :model/HTTPAction
                     :model/ImplicitAction
                     :model/Measure
                     :model/Metabot
@@ -3290,8 +3286,10 @@
            warehouse-schema-overlay
            warehouses.secrets}
    :model-exports #{:model/Database}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Field
+                    :model/QueryAction
                     :model/Table
                     :model/User}}
 
@@ -3736,10 +3734,11 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init metabase-enterprise.data-apps.sync}
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{api
            api-scope
            collections
+           events
            lib
            lib.be
            lib.schema
@@ -3757,7 +3756,8 @@
                     :model/Permissions
                     :model/PermissionsGroup
                     :model/Table
-                    :model/User}}
+                    :model/User}
+   :model-exports #{:model/DataApp}}
 
   enterprise/data-studio
   {:team "UX West"
@@ -4193,7 +4193,6 @@
            task.history
            util
            warehouse-schema-overlay
-           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
@@ -4201,6 +4200,7 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DataApp
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
