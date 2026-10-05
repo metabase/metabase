@@ -206,14 +206,13 @@ describe("scenarios > table-editing", () => {
         cy.findByTestId("update-row-save-button").click();
       });
 
-      cy.wait("@updateTableData").then(({ response }) => {
-        expect(response?.body.outputs[0].op).to.equal("updated");
-        expect(response?.body.outputs[0].row.integer).to.equal(123);
-      });
-
+      cy.wait("@updateTableData");
       H.modal().should("not.exist");
 
       dismissUndoToast("Successfully updated");
+      cy.get("@rowId").then((rowId) => {
+        getEditableCell(Number(rowId), "integer").should("have.text", "123");
+      });
       H.getTableId({
         databaseId: WRITABLE_DB_ID,
         name: INLINE_EDIT_TEST_TABLE_NAME,
@@ -228,12 +227,12 @@ describe("scenarios > table-editing", () => {
       });
 
       const inputCases = [
-        { column: "integer", value: 1234 },
-        { column: "tinyint", value: 42 },
-        { column: "string", value: "test" },
+        { column: "integer", value: 1234, displayValue: "1,234" },
+        { column: "tinyint", value: 42, displayValue: "42" },
+        { column: "string", value: "test", displayValue: "test" },
       ];
 
-      inputCases.forEach(({ column, value }, index) => {
+      inputCases.forEach(({ column, value, displayValue }, index) => {
         cy.log(`inline-edit a ${column} cell`);
         getEditableCell(TARGET_ROW_ID, column)
           .as("targetCell")
@@ -250,12 +249,12 @@ describe("scenarios > table-editing", () => {
           .should("have.value", String(value))
           .blur();
 
-        cy.wait("@updateTableData").then(({ response }) => {
-          expect(response?.body.outputs[0].op).to.equal("updated");
-          expect(response?.body.outputs[0].row[column]).to.equal(value);
-        });
-
+        cy.wait("@updateTableData");
         dismissUndoToast("Successfully updated");
+        getEditableCell(TARGET_ROW_ID, column).should(
+          "have.text",
+          displayValue,
+        );
 
         H.getTableId({
           databaseId: WRITABLE_DB_ID,
@@ -286,16 +285,12 @@ describe("scenarios > table-editing", () => {
         cy.findByRole("button", { name: `${day} February 2020` }).click();
       });
 
-      cy.wait("@updateTableData").then(({ response }) => {
-        const targetDate = dayjs(new Date(2020, 1, day)).format("YYYY-MM-DD");
-        const responseDate = dayjs(response?.body.outputs[0].row.date).format(
-          "YYYY-MM-DD",
-        );
-
-        expect(responseDate).to.equal(targetDate);
-      });
-
+      cy.wait("@updateTableData");
       dismissUndoToast("Successfully updated");
+      getEditableCell(TARGET_ROW_ID, "date").should(
+        "have.text",
+        `February ${day}, 2020`,
+      );
 
       cy.log("inline-edit a datetime cell");
       getEditableCell(TARGET_ROW_ID, "datetime").click({
@@ -316,21 +311,14 @@ describe("scenarios > table-editing", () => {
         cy.findAllByRole("button").last().click();
       });
 
-      cy.wait("@updateTableData").then(({ response, request }) => {
-        const targetDate = "2020-02-15T11:35:00";
-
-        const requestDate = request.body.params.datetime;
-        const responseDate = response?.body.outputs[0].row.datetime;
-
-        // Check if request date matches the response date.
-        // In theory FE should preserve the initial input date timezone offset (might be based on the CI environment)
-        expect(requestDate).to.equal(responseDate);
-
-        // Check if date param matches the input date (without timezone offset at offset 19)
-        expect(requestDate.slice(0, 19)).to.equal(targetDate);
-      });
-
+      cy.wait("@updateTableData");
       dismissUndoToast("Successfully updated");
+      // The saved value renders at the picked wall-clock time, so the
+      // timezone offset survived the round trip.
+      getEditableCell(TARGET_ROW_ID, "datetime").should(
+        "have.text",
+        `February ${day}, 2020, ${hour}:${minute} AM`,
+      );
 
       cy.log("inline-edit a boolean cell through its select");
       // The target row's boolean is `false`, so "True" is always a change.
@@ -344,12 +332,9 @@ describe("scenarios > table-editing", () => {
         cy.findByRole("option", { name: "True" }).click();
       });
 
-      cy.wait("@updateTableData").then(({ response }) => {
-        expect(response?.body.outputs[0].op).to.equal("updated");
-        expect(response?.body.outputs[0].row.boolean).to.equal(true);
-      });
-
+      cy.wait("@updateTableData");
       dismissUndoToast("Successfully updated");
+      getEditableCell(TARGET_ROW_ID, "boolean").should("have.text", "true");
 
       cy.log("PK cells are not editable");
       getEditableCell(TARGET_ROW_ID, "id")
@@ -473,22 +458,15 @@ describe("scenarios > table-editing", () => {
 
     cy.findByTestId("create-row-form-submit-button").click();
 
-    cy.wait("@executeBulk").then(({ response, request }) => {
-      expect(request.body.action).to.equal("data-grid.row/create");
-      expect(response?.body.outputs[0].op).to.equal("created");
-      expect(response?.body.outputs[0].row.score).to.equal(987);
-      expect(response?.body.outputs[0].row.status).to.equal("active");
-      expect(response?.body.outputs[0].row.team_name).to.equal(
-        "New York Bricks",
-      );
-    });
-
+    cy.wait("@executeBulk");
     dismissUndoToast("Record successfully created");
 
-    cy.findByTestId("table-root").within(() => {
-      cy.findByText("New York Bricks").should("be.visible");
-      cy.findByText("987").should("be.visible");
-    });
+    cy.findByTestId("table-root")
+      .findByText("New York Bricks")
+      .should("be.visible")
+      .closest("[role=row]")
+      .should("contain.text", "987")
+      .and("contain.text", "active");
 
     H.getTableId({ name: "scoreboard_actions" }).then((tableId) => {
       H.expectUnstructuredSnowplowEvent({
@@ -502,8 +480,8 @@ describe("scenarios > table-editing", () => {
 
     cy.log("bulk delete rows");
     cy.findAllByTestId("row-edit-icon").should("exist");
-    cy.findAllByTestId("row-select-checkbox").eq(1).click();
-    cy.findAllByTestId("row-select-checkbox").eq(2).click();
+    selectRowByText("New York Bricks");
+    selectRowByText("Bouncy Bears");
 
     cy.log("should not show edit icon when rows are selected");
     cy.findByTestId("row-edit-icon").should("not.exist");
@@ -515,14 +493,15 @@ describe("scenarios > table-editing", () => {
       cy.findByRole("button", { name: "Delete 2 records" }).click();
     });
 
-    cy.wait("@executeBulk").then(({ response, request }) => {
-      expect(request.body.action).to.equal("data-grid.row/delete");
-      expect(response?.body.outputs[0].op).to.equal("deleted");
-    });
-
+    cy.wait("@executeBulk");
     cy.findByTestId("toast-card").should("not.exist");
 
     H.undoToast().findByText("Successfully deleted").should("be.visible");
+    cy.findByTestId("table-root").within(() => {
+      cy.findByText("Amorous Aardvarks").should("be.visible");
+      cy.findByText("New York Bricks").should("not.exist");
+      cy.findByText("Bouncy Bears").should("not.exist");
+    });
 
     cy.log("should show edit icon when no rows are selected");
     cy.findAllByTestId("row-edit-icon").should("exist");
@@ -632,18 +611,12 @@ describe("scenarios > table-editing", () => {
         .should("be.enabled")
         .click();
 
-      cy.wait("@executeBulk").then(({ request, response }) => {
-        expect(request.body.action).to.equal("data-grid.row/create");
-        expect(response?.body.outputs[0].op).to.equal("created");
-
-        const responseDate = dayjs(
-          response?.body.outputs[0].row.sale_date,
-        ).format("YYYY-MM-DD");
-        expect(responseDate).to.equal(targetDay.format("YYYY-MM-DD"));
-      });
-
+      cy.wait("@executeBulk");
       H.undoToast()
         .findByText("Record successfully created")
+        .should("be.visible");
+      cy.findByTestId("table-root")
+        .findByText(targetDay.format("MMMM D, YYYY"))
         .should("be.visible");
 
       H.queryWritableDB(`DROP TABLE IF EXISTS ${TABLE_NAME}`, "postgres");
@@ -695,6 +668,23 @@ function getEditableRow(rowId: number) {
 
 function getEditableCell(rowId: number, column: string) {
   return getEditableRow(rowId).find(`[data-column-id='${column}']`);
+}
+
+/**
+ * The row checkbox sits in the pinned quadrant and the cell text in the
+ * center one; both halves of a row share its dataset index.
+ */
+function selectRowByText(text: string) {
+  cy.findByTestId("table-root")
+    .findByText(text)
+    .closest("[role=row]")
+    .invoke("attr", "data-dataset-index")
+    .then((datasetIndex) => {
+      cy.findByTestId("table-root")
+        .find(`[role=row][data-dataset-index='${datasetIndex}']`)
+        .findByTestId("row-select-checkbox")
+        .click();
+    });
 }
 
 /**
