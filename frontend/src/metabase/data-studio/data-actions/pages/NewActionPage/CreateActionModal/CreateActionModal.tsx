@@ -11,7 +11,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Box, Button, Group, Modal, Stack } from "metabase/ui";
+import { Alert, Box, Button, Group, Icon, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { WritebackAction } from "metabase-types/api";
 
@@ -84,6 +84,9 @@ export function CreateActionModal({
               title={t`Collection`}
               style={{ marginBottom: 0 }}
             />
+            <Alert variant="light" icon={<Icon name="info" />}>
+              {t`Anyone who can view this collection can run this action.`}
+            </Alert>
             <Group>
               <Box flex={1}>
                 <FormErrorMessage />
