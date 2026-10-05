@@ -17,111 +17,76 @@ const { H } = cy;
       });
     });
 
-    describe("when embedding is disabled", () => {
+    describe("when embedding and public sharing are disabled", () => {
       beforeEach(() => {
+        H.updateSetting("enable-public-sharing", false);
         H.updateSetting("enable-embedding-static", false);
       });
 
-      describe("when user is admin", () => {
-        it(`should always show the embed button for ${resource}`, () => {
+      it(`should hide the public link option for ${resource} and still let an admin open the embed modal`, () => {
+        cy.get("@resourceId").then((id) => {
+          visitResource(resource, id);
+        });
+
+        H.openSharingMenu();
+
+        H.sharingMenu().within(() => {
+          cy.findByRole("button", { name: "Embed" })
+            .should("be.visible")
+            .and("be.enabled");
+          cy.findByText(/public link/i).should("not.exist");
+          cy.findByText("Enable").should("not.exist");
+        });
+
+        H.sharingMenu().findByRole("button", { name: "Embed" }).click();
+
+        H.embedModalContent().should("be.visible");
+      });
+    });
+
+    describe("when embedding and public sharing are enabled", () => {
+      beforeEach(() => {
+        H.updateSetting("enable-public-sharing", true);
+        H.updateSetting("enable-embedding-static", true);
+      });
+
+      describe("when user is non-admin", () => {
+        it(`should not prompt a non-admin to create a public link for a ${resource} without an existing link`, () => {
+          cy.signInAsNormalUser();
+
           cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
-          H.openSharingMenu();
-          H.sharingMenu()
-            .findByRole("button", { name: "Embed" })
-            .should("be.visible")
-            .and("be.enabled")
-            .click();
-
-          H.embedModalContent().should("be.visible");
-        });
-      });
-    });
-
-    describe("when embedding is enabled", () => {
-      describe("when public sharing is enabled", () => {
-        beforeEach(() => {
-          H.updateSetting("enable-public-sharing", true);
-          H.updateSetting("enable-embedding-static", true);
+          assertNonAdminCannotCreatePublicLink(resource);
         });
 
-        describe("when user is admin", () => {
-          it(`should let the user create a public link for ${resource}`, () => {
-            cy.get("@resourceId").then((id) => {
-              createPublicResourceLink(resource, id);
-              visitResource(resource, id);
-            });
-
-            H.openSharingMenu(/public link/i);
-
-            assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
-          });
-        });
-
-        describe("when user is non-admin", () => {
-          it(`should not prompt a non-admin to create a public link for a ${resource} without an existing link`, () => {
-            cy.signInAsNormalUser();
-
-            cy.get("@resourceId").then((id) => {
-              visitResource(resource, id);
-            });
-
-            assertNonAdminCannotCreatePublicLink(resource);
+        it(`should let a non-admin copy the existing public link for a ${resource}`, () => {
+          cy.get("@resourceId").then((id) => {
+            createPublicResourceLink(resource, id);
           });
 
-          it(`should let a non-admin copy the existing public link for a ${resource}`, () => {
-            cy.get("@resourceId").then((id) => {
-              createPublicResourceLink(resource, id);
-            });
+          cy.signInAsNormalUser();
 
-            cy.signInAsNormalUser();
-
-            cy.get("@resourceId").then((id) => {
-              visitResource(resource, id);
-            });
-
-            cy.window().then((win) => {
-              cy.stub(win.navigator.clipboard, "writeText")
-                .as("copyLink")
-                .resolves();
-            });
-
-            H.openSharingMenu("Copy public link");
-            H.tooltip().findByText("Public link copied to clipboard");
-
-            cy.get("@copyLink").should((stub) => {
-              expect(stub.firstCall.args[0]).to.match(
-                new RegExp(`/public/${resource}/`),
-              );
-            });
-            cy.findByTestId("public-link-popover-content").should("not.exist");
+          cy.get("@resourceId").then((id) => {
+            visitResource(resource, id);
           });
-        });
-      });
 
-      describe("when public sharing is disabled", () => {
-        beforeEach(() => {
-          H.updateSetting("enable-public-sharing", false);
-          H.updateSetting("enable-embedding-static", true);
-        });
-
-        describe("when user is admin", () => {
-          it(`should hide the public link option for ${resource} and allow the user to access the embed modal`, () => {
-            cy.get("@resourceId").then((id) => {
-              visitResource(resource, id);
-            });
-
-            H.openSharingMenu();
-
-            H.sharingMenu().within(() => {
-              cy.findByText(/public link/i).should("not.exist");
-              cy.findByText("Enable").should("not.exist");
-            });
-
-            H.sharingMenu().findByRole("button", { name: "Embed" }).click();
+          cy.window().then((win) => {
+            cy.stub(win.navigator.clipboard, "writeText")
+              .as("copyLink")
+              .resolves();
           });
+
+          H.openSharingMenu("Copy public link");
+          H.tooltip().findByText("Public link copied to clipboard");
+
+          cy.get("@copyLink").should((stub) => {
+            expect(stub.firstCall.args[0]).to.match(
+              new RegExp(`/public/${resource}/`),
+            );
+          });
+          cy.findByTestId("public-link-popover-content").should("not.exist");
         });
       });
     });
@@ -225,59 +190,38 @@ describe("#39152 sharing an unsaved question", () => {
       });
     });
 
-    [
-      { embeddingType: "guest-embed", shouldShowAlert: false },
-      { embeddingType: null, shouldShowAlert: true },
-    ].forEach(({ embeddingType, shouldShowAlert }) => {
-      it(`should ${shouldShowAlert ? "show" : "not show"} legacy alert for ${embeddingType} embedding type`, () => {
-        cy.get("@resourceId").then((id) => {
-          visitResource(resource, id);
-
-          const apiPath = resource === "question" ? "card" : "dashboard";
-
-          cy.request("PUT", `/api/${apiPath}/${id}`, {
-            enable_embedding: true,
-            embedding_type: embeddingType,
-          });
-
-          openSharingMenu("Embed");
-
-          embedModalContent().should("exist");
-
-          legacyStaticEmbeddingButton().should(
-            shouldShowAlert ? "exist" : "not.exist",
-          );
-        });
-      });
-    });
-
-    it("should set a proper embedding_type", () => {
+    it("should show the legacy alert for a null embedding type but not for guest-embed", () => {
       cy.get("@resourceId").then((id) => {
         visitResource(resource, id);
 
-        H.openLegacyStaticEmbeddingModal({
-          resource,
-          resourceId: id,
-          activeTab: "parameters",
+        cy.request("PUT", `/api/${apiPath}/${id}`, {
+          enable_embedding: true,
+          embedding_type: null,
         });
-      });
 
-      H.publishChanges(apiPath, ({ request, response }) => {
-        assert.deepEqual(request.body.embedding_type, "static-legacy");
-        assert.deepEqual(response.body.embedding_type, "static-legacy");
-      });
+        openSharingMenu("Embed");
 
-      H.modal().findByLabelText("Price").click();
-      H.selectDropdown().findByText("Editable").click();
+        embedModalContent().should("exist");
+        legacyStaticEmbeddingButton().should("exist");
 
-      H.publishChanges(apiPath, ({ request, response }) => {
-        assert.deepEqual(request.body.embedding_type, "static-legacy");
-        assert.deepEqual(response.body.embedding_type, "static-legacy");
-      });
+        cy.intercept({
+          method: "GET",
+          pathname: `/api/${apiPath}/${id}`,
+        }).as("getResource");
 
-      H.unpublishChanges(apiPath, ({ request, response }) => {
-        assert.deepEqual(request.body.embedding_type, null);
-        assert.deepEqual(response.body.embedding_type, null);
+        embedModalContent().findByLabelText("Close").click();
+        embedModalContent().should("not.exist");
+
+        cy.request("PUT", `/api/${apiPath}/${id}`, {
+          enable_embedding: true,
+          embedding_type: "guest-embed",
+        });
+
+        openSharingMenu("Embed");
+        cy.wait("@getResource");
+
+        embedModalContent().should("exist");
+        legacyStaticEmbeddingButton().should("not.exist");
       });
     });
   });
@@ -301,12 +245,16 @@ describe("#39152 sharing an unsaved question", () => {
 
     describe(`when embedding ${resource}`, () => {
       describe("when interacting with public link popover", () => {
-        it("should send `public_link_copied` event when copying public link", () => {
+        it("should show, copy, and remove an existing public link and send `public_link_copied` and `public_link_removed` events", () => {
           cy.get("@resourceId").then((id) => {
+            createPublicResourceLink(resource, id);
             visitResource(resource, id);
           });
 
           H.openSharingMenu(/public link/i);
+
+          assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
+
           cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
             H.expectUnstructuredSnowplowEvent({
@@ -347,14 +295,7 @@ describe("#39152 sharing an unsaved question", () => {
               format: "json",
             });
           }
-        });
 
-        it("should send `public_link_removed` when removing the public link", () => {
-          cy.get("@resourceId").then((id) => {
-            visitResource(resource, id);
-          });
-
-          H.openSharingMenu(/public link/i);
           H.popover().button("Remove public link").click();
           H.expectUnstructuredSnowplowEvent({
             event: "public_link_removed",
@@ -519,6 +460,78 @@ describe("#39152 sharing an unsaved question", () => {
               });
             });
 
+            // Individual download options are only supported for dashboards
+            if (resource === "dashboard") {
+              H.modal().within(() => {
+                cy.findByRole("tab", { name: "Look and Feel" }).click();
+              });
+
+              cy.log(
+                "Assert that it sends `enabled_download_types: { pdf: false, results: true }` when only results download is enabled",
+              );
+
+              // Disable PDF exports
+              cy.findByLabelText("Export to PDF").click({ force: true });
+
+              cy.findByTestId("embed-backend")
+                .findByTestId("copy-button")
+                .realClick();
+
+              H.expectUnstructuredSnowplowEvent({
+                event: "static_embed_code_copied",
+                artifact: resource,
+                language: "node",
+                location: "code_appearance",
+                code: "backend",
+                appearance: {
+                  background: true,
+                  bordered: true,
+                  titled: true,
+                  font: "instance",
+                  theme: "light",
+                  enabled_download_types: { pdf: false, results: true },
+                },
+              });
+
+              cy.log(
+                "Assert that it sends `enabled_download_types: { pdf: true, results: false }` when only PDF is enabled",
+              );
+
+              // Enable PDF exports again
+              cy.findByLabelText("Export to PDF").click({ force: true });
+
+              // Disable results download
+              cy.findByLabelText("Results (csv, xlsx, json, png)").click({
+                force: true,
+              });
+
+              cy.findByTestId("embed-backend")
+                .findByTestId("copy-button")
+                .realClick();
+
+              H.expectUnstructuredSnowplowEvent({
+                event: "static_embed_code_copied",
+                artifact: resource,
+                language: "node",
+                location: "code_appearance",
+                code: "backend",
+                appearance: {
+                  background: true,
+                  bordered: true,
+                  titled: true,
+                  font: "instance",
+                  theme: "light",
+                  enabled_download_types: { pdf: true, results: false },
+                },
+              });
+
+              cy.log("Restore the default download options");
+              cy.findByLabelText("Results (csv, xlsx, json, png)").click({
+                force: true,
+              });
+              H.modal().findByRole("tab", { name: "Overview" }).click();
+            }
+
             cy.log("Assert copying codes in Overview tab");
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
@@ -645,88 +658,9 @@ describe("#39152 sharing an unsaved question", () => {
               },
             });
           });
-
-          // Individual download options are only supported for dashboards
-          if (resource === "dashboard") {
-            it("should support disabling PDF and result downloads individually in `static_embed_code_copied`", () => {
-              cy.get("@resourceId").then((id) => {
-                visitResource(resource, id);
-
-                H.openLegacyStaticEmbeddingModal({
-                  resource: "dashboard",
-                  resourceId: id,
-                });
-              });
-
-              H.modal().within(() => {
-                cy.findByRole("tab", { name: "Look and Feel" }).click();
-              });
-
-              cy.log(
-                "Assert that it sends `enabled_download_types: { pdf: false, results: true }` when only results download is enabled",
-              );
-
-              // Disable PDF exports
-              cy.findByLabelText("Export to PDF").click({ force: true });
-
-              cy.findByTestId("embed-backend")
-                .findByTestId("copy-button")
-                .realClick();
-
-              H.expectUnstructuredSnowplowEvent({
-                event: "static_embed_code_copied",
-                artifact: resource,
-                language: "node",
-                location: "code_appearance",
-                code: "backend",
-                appearance: {
-                  background: true,
-                  bordered: true,
-                  titled: true,
-                  font: "instance",
-                  theme: "light",
-                  enabled_download_types: { pdf: false, results: true },
-                },
-              });
-
-              cy.log(
-                "Assert that it sends `enabled_download_types: { pdf: true, results: false }` when only PDF is enabled",
-              );
-
-              // Enable PDF exports again
-              cy.findByLabelText("Export to PDF").click({ force: true });
-
-              // Disable results download
-              cy.findByLabelText(
-                resource === "dashboard"
-                  ? "Results (csv, xlsx, json, png)"
-                  : "Download (csv, xlsx, json, png)",
-              ).click({ force: true });
-
-              cy.findByTestId("embed-backend")
-                .findByTestId("copy-button")
-                .realClick();
-
-              H.expectUnstructuredSnowplowEvent({
-                event: "static_embed_code_copied",
-                artifact: resource,
-                language: "node",
-                location: "code_appearance",
-                code: "backend",
-                appearance: {
-                  background: true,
-                  bordered: true,
-                  titled: true,
-                  font: "instance",
-                  theme: "light",
-                  enabled_download_types: { pdf: true, results: false },
-                },
-              });
-            });
-          }
         });
 
-        it("should send `static_embed_discarded` when discarding changes in the static embed modal", () => {
+        it("should set a proper embedding_type and send `static_embed_discarded` and `static_embed_unpublished` in the static embed modal", () => {
           cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
 
@@ -735,8 +669,11 @@ describe("#39152 sharing an unsaved question", () => {
               resourceId: id,
               activeTab: "parameters",
             });
+          });
 
-            H.publishChanges(apiPath);
+          H.publishChanges(apiPath, ({ request, response }) => {
+            assert.deepEqual(request.body.embedding_type, "static-legacy");
+            assert.deepEqual(response.body.embedding_type, "static-legacy");
           });
 
           cy.log("changing parameters, so we could discard changes");
@@ -750,6 +687,29 @@ describe("#39152 sharing an unsaved question", () => {
           H.expectUnstructuredSnowplowEvent({
             event: "static_embed_discarded",
             artifact: resource,
+          });
+
+          H.modal().findByLabelText("Price").click();
+          H.selectDropdown().findByText("Editable").click();
+
+          H.publishChanges(apiPath, ({ request, response }) => {
+            assert.deepEqual(request.body.embedding_type, "static-legacy");
+            assert.deepEqual(response.body.embedding_type, "static-legacy");
+          });
+
+          const HOUR = 60 * 60 * 1000;
+          cy.clock(new Date(Date.now() + HOUR));
+
+          H.unpublishChanges(apiPath, ({ request, response }) => {
+            assert.deepEqual(request.body.embedding_type, null);
+            assert.deepEqual(response.body.embedding_type, null);
+          });
+
+          H.expectUnstructuredSnowplowEvent({
+            event: "static_embed_unpublished",
+            artifact: resource,
+            time_since_creation: closeTo(toSecond(HOUR), 10),
+            time_since_initial_publication: closeTo(toSecond(HOUR), 10),
           });
         });
 
@@ -821,29 +781,6 @@ describe("#39152 sharing an unsaved question", () => {
                 enabled: 1,
               },
             });
-          });
-        });
-
-        it("should send `static_embed_unpublished` when unpublishing changes in the static embed modal", () => {
-          cy.get("@resourceId").then((id) => {
-            visitResource(resource, id);
-
-            H.openLegacyStaticEmbeddingModal({ resource, resourceId: id });
-
-            H.publishChanges(apiPath);
-          });
-
-          const HOUR = 60 * 60 * 1000;
-          cy.clock(new Date(Date.now() + HOUR));
-          cy.findByTestId("embed-modal-content-status-bar").within(() => {
-            cy.findByText("Unpublish").click();
-          });
-
-          H.expectUnstructuredSnowplowEvent({
-            event: "static_embed_unpublished",
-            artifact: resource,
-            time_since_creation: closeTo(toSecond(HOUR), 10),
-            time_since_initial_publication: closeTo(toSecond(HOUR), 10),
           });
         });
       });
