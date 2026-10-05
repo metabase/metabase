@@ -141,11 +141,14 @@ export async function deriveMcpQuery({
   );
 
   if (!response.ok) {
+    // The server explains a refused change in a plain-text body.
+    const serverMessage = await response.text().catch(() => "");
+
     throw Object.assign(
       new Error(
         `deriveMcpQuery failed: ${response.status} ${response.statusText}`,
       ),
-      { status: response.status },
+      { status: response.status, serverMessage: serverMessage || undefined },
     );
   }
 

@@ -3,11 +3,13 @@ import {
   type MutableRefObject,
   useCallback,
   useEffect,
+  useState,
 } from "react";
+import { t } from "ttag";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
-import { Box, Divider, Flex } from "metabase/ui";
+import { Alert, Box, Divider, Flex } from "metabase/ui";
 
 import { ChartTypePicker } from "./ChartTypePicker/ChartTypePicker";
 import { McpQuestionTitle } from "./McpQuestionTitle";
@@ -35,8 +37,23 @@ export interface McpQuestionViewProps {
  * becomes the current one, then shows that handle's query. Runs of the question then go through the new
  * handle, so the question never runs a query the iframe built.
  */
+function getDeriveErrorMessage(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "serverMessage" in error &&
+    typeof error.serverMessage === "string" &&
+    error.serverMessage
+  ) {
+    return error.serverMessage;
+  }
+
+  return t`This change could not be applied.`;
+}
+
 function useApplyMcpOperations(
   deriveQuery: McpQuestionViewProps["deriveQuery"],
+  onError: (message: string | null) => void,
 ): ApplyMcpOperations {
   const { question, updateQuestion } = useSdkQuestionContext();
 
@@ -54,15 +71,17 @@ function useApplyMcpOperations(
             throw new Error("The derived query could not be read.");
           }
 
+          onError(null);
           updateQuestion(question.setDatasetQuery(derived.card.dataset_query), {
             run: true,
           });
         })
         .catch((error) => {
           console.error("Error changing the MCP query", error);
+          onError(getDeriveErrorMessage(error));
         });
     },
-    [deriveQuery, question, updateQuestion],
+    [deriveQuery, onError, question, updateQuestion],
   );
 }
 
@@ -72,7 +91,8 @@ export function McpQuestionView({
   deriveQuery,
   applyOperationsRef,
 }: McpQuestionViewProps) {
-  const applyOperations = useApplyMcpOperations(deriveQuery);
+  const [deriveError, setDeriveError] = useState<string | null>(null);
+  const applyOperations = useApplyMcpOperations(deriveQuery, setDeriveError);
 
   useEffect(() => {
     applyOperationsRef.current = applyOperations;
@@ -151,6 +171,20 @@ export function McpQuestionView({
           height={resolvedVisualizationHeight}
         />
       </Flex>
+
+      {deriveError && (
+        <Box px="xl">
+          <Alert
+            color="error"
+            variant="outline"
+            p="xs"
+            withCloseButton
+            onClose={() => setDeriveError(null)}
+          >
+            {deriveError}
+          </Alert>
+        </Box>
+      )}
 
       {hasTimeControls && (
         <Flex px="xl" justify="center">
