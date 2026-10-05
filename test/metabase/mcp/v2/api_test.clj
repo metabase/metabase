@@ -736,7 +736,8 @@
                         "resource_metadata=\"http://localhost:3000/.well-known/oauth-protected-resource"
                         "/api/" path "\", "
                         "scope=\"agent:content:read agent:query:run\", "
-                        "error=\"invalid_token\"")
+                        "error=\"invalid_token\", "
+                        "error_description=\"This token is not valid for this server. Authorize again for this resource.\"")
                    (get-in response [:headers "WWW-Authenticate"])))))))
     (testing "auth-params are comma-delimited per RFC 7235, the form every spec and vendor example
               uses and the only one a strict parser accepts"

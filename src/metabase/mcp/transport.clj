@@ -666,6 +666,11 @@
        (when (seq default-ask-scopes)
          (str ", scope=" (quoted-string (str/join " " default-ask-scopes))))))
 
+(def ^:private invalid-token-description
+  "The `error_description` of the `invalid_token` challenge. Its JSON-RPC error message spells the same text as a
+  literal, which `message/msg` requires."
+  "This token is not valid for this server. Authorize again for this resource.")
+
 (defn- oauth-surface-scopes
   "The scopes an OAuth token holds at the MCP endpoint: those of `granted` that are literally MCP v2 scopes.
   `mb:full`, the unrestricted sentinel, and wildcards such as `*` or `agent:*` grant nothing here."
@@ -704,12 +709,15 @@
            session-auth  api/*current-user-id*
            token-scopes  (:token-scopes request)
            ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose token
-           ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
-           invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
+           ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST). The session
+           ;; middleware only tells us the token did not authenticate here -- expired, revoked, bound to another
+           ;; resource, or naming a deactivated user -- so the description is true of all of them.
+           invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["This token is not valid for this server. Authorize again for this resource."]))
                                                {"WWW-Authenticate"
                                                 (str (www-authenticate-discovery endpoint-paths default-path
                                                                                  default-ask-scopes request)
-                                                     ", error=\"invalid_token\"")}))]
+                                                     ", error=\"invalid_token\""
+                                                     ", error_description=" (quoted-string invalid-token-description))}))]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    ;; Charge the throttle per JSON-RPC message, not per HTTP request, so a batch can't smuggle many

@@ -350,6 +350,27 @@
              (is (= 401 (bearer-status (mint ["agent:search"]) :post "agent/v1/search"
                                        {:term_queries ["orders"]} :expected-status 401))))))))))
 
+(def ^:private mcp-invalid-token-description
+  "The `error_description` auth-param of the MCP endpoint's `invalid_token` challenge."
+  "error_description=\"This token is not valid for this server. Authorize again for this resource.\"")
+
+(deftest expired-mcp-token-gets-the-explained-challenge-test
+  (testing "An expired MCP-bound token gets the same 401 invalid_token challenge, with its error_description and the
+            RFC 9728 discovery parameters, as any other bearer the MCP endpoint does not accept"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (do-with-committed-oauth-client!
+       (fn [client-id]
+         (let [token     (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id
+                                                               mcp.paths/v2-baseline-scopes
+                                                               :resource (oauth-server.tu/mcp-resource)
+                                                               :expiry (one-hour-ago))
+               response  (mcp-initialize-response token "metabase-mcp" :expected-status 401)
+               challenge (get-in response [:headers "WWW-Authenticate"] "")]
+           (is (= 401 (:status response)))
+           (is (str/includes? challenge "error=\"invalid_token\""))
+           (is (str/includes? challenge mcp-invalid-token-description))
+           (is (str/includes? challenge "resource_metadata="))))))))
+
 (deftest rest-token-is-refused-by-the-mcp-endpoint-test
   (testing "A token with no stored resource is a REST token. The MCP endpoint refuses it with 401 and an
             `invalid_token` challenge carrying the RFC 9728 discovery parameters, so the client re-authorizes for
@@ -367,6 +388,7 @@
                          challenge (get-in response [:headers "WWW-Authenticate"] "")]
                      (is (= 401 (:status response)))
                      (is (str/includes? challenge "error=\"invalid_token\""))
+                     (is (str/includes? challenge mcp-invalid-token-description))
                      (is (str/includes? challenge "resource_metadata=")))))))
            (testing "the CLI `mb:full` token reaches the REST API"
              (let [token (oauth-server.tu/insert-access-token! (mt/user->id :rasta) client-id

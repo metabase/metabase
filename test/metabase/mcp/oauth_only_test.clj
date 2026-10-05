@@ -123,7 +123,7 @@
 (deftest only-mcp-bound-oauth-tokens-reach-the-mcp-endpoint-test
   (testing "Every caller that is not an OAuth token bound to the MCP resource gets the 401 discovery challenge at
             every MCP path, for every request the transport serves, and no tool runs. A request that carried a bearer
-            token gets the same challenge with `error=\"invalid_token\"`."
+            token gets the same challenge with `error=\"invalid_token\"` and an `error_description`."
     (mcp.tu/do-with-site-url!
      (fn []
        (mt/test-helpers-set-global-values!
@@ -149,7 +149,9 @@
                           (let [session-id (mcp.session/create! user-id)
                                 response   (send! 401 method path headers session-id (body-fn session-id))
                                 challenge  (cond-> (anonymous-challenge path)
-                                             (contains? headers "authorization") (str ", error=\"invalid_token\""))]
+                                             (contains? headers "authorization")
+                                             (str ", error=\"invalid_token\", error_description=\"This token is not valid "
+                                                  "for this server. Authorize again for this resource.\""))]
                             (is (= 401 (:status response)))
                             (is (= challenge (get-in response [:headers "WWW-Authenticate"])))
                             (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
