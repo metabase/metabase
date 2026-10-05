@@ -42,6 +42,9 @@ describe("scenarios > admin > permissions > application", () => {
       cy.visit("/");
       H.getProfileLink().click();
 
+      H.popover()
+        .findByTestId("mode-switcher-profile-link")
+        .should("be.visible");
       H.popover().findByText(adminAppLinkText).should("not.exist");
 
       cy.visit("/monitor/errors");
@@ -67,6 +70,7 @@ describe("scenarios > admin > permissions > application", () => {
           cy.button("Yes").click();
         });
 
+        H.setupSMTP();
         createSubscription(NORMAL_USER_ID);
 
         cy.signInAsNormalUser();
@@ -75,7 +79,13 @@ describe("scenarios > admin > permissions > application", () => {
       it("revokes ability to create subscriptions and alerts and manage them", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
+        H.sharingMenuButton().should("be.visible");
+        H.dashboardHeader()
+          .findByTestId("dashboard-subscriptions-button")
+          .should("not.exist");
+
         H.openSharingMenu();
+        H.sharingMenu().findByText("Copy link").should("be.visible");
         H.sharingMenu()
           .findByText(/subscri/i)
           .should("not.exist");
@@ -87,6 +97,7 @@ describe("scenarios > admin > permissions > application", () => {
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
+          cy.findByText("Subscription").should("be.visible");
           cy.icon("close").should("not.exist");
         });
       });

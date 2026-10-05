@@ -1008,6 +1008,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
       createJoinedQuestion("14841", { visitQuestion: true });
+      H.tableInteractive().should("contain", "37.65");
 
       H.openVizSettingsSidebar();
       cy.findByTestId("sidebar-left")

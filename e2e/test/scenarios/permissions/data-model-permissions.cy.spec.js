@@ -61,6 +61,7 @@ describe("scenarios > admin > permissions", () => {
     H.DataModel.TablePicker.getTable("Changed Name")
       .button("Hide table")
       .click();
+    cy.wait("@tableUpdate");
     H.DataModel.TablePicker.getTable("Changed Name")
       .button("Hide table")
       .should("not.exist");

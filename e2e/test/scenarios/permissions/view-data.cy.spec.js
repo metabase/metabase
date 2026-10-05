@@ -127,10 +127,16 @@ describe("scenarios > admin > permissions > view data > granular", () => {
   it("should not allow making permissions granular in the either database or group focused view", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
+    cy.findByTestId("permission-table")
+      .findByText("Create queries")
+      .should("exist");
     cy.get("main").findByText("View data").should("not.exist");
 
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
+    cy.findByTestId("permission-table")
+      .findByText("Create queries")
+      .should("exist");
     cy.get("main").findByText("View data").should("not.exist");
   });
 });
@@ -266,7 +272,9 @@ describe(
 
       // Check there is no Impersonated option on H2
       H.selectPermissionRow("Sample Database", DATA_ACCESS_PERM_IDX);
-      H.popover().should("not.contain", "Impersonated");
+      H.popover()
+        .should("contain", "Blocked")
+        .and("not.contain", "Impersonated");
 
       // Set impersonated access on Postgres database
       H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
@@ -499,7 +507,9 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
     H.selectPermissionRow("Sample Database", DATA_ACCESS_PERM_IDX);
-    H.popover().should("not.contain", "No self-service (Deprecated)");
+    H.popover()
+      .should("contain", "Can view")
+      .and("not.contain", "No self-service (Deprecated)");
 
     H.selectPermissionRow("Sample Database", CREATE_QUERIES_PERM_IDX);
 
@@ -511,7 +521,6 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
     );
 
     // load the page w/ legacy value in the graph and test that it does exist
-    cy.reload();
     cy.intercept("GET", `/api/permissions/graph/group/${ALL_USERS_GROUP}`, {
       statusCode: 200,
       body: {
@@ -527,6 +536,7 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
         },
       },
     });
+    cy.reload();
 
     H.assertPermissionTable([
       [
@@ -989,6 +999,7 @@ function assertCollectionGroupUserHasAccess(questionId, isQbQuestion) {
   cy.signIn("sandboxed");
 
   H.visitQuestion(questionId);
+  cy.findByTestId("query-visualization-root").should("be.visible");
   lackPermissionsView(false);
 
   cy.signOut();

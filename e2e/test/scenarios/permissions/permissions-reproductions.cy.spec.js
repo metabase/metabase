@@ -2,6 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ID,
   NODATA_USER_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -106,6 +107,10 @@ describe("issue 19603", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First collection").click();
+    cy.url().should(
+      "include",
+      `/admin/permissions/collections/${FIRST_COLLECTION_ID}`,
+    );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second collection").should("not.exist");
   });
@@ -113,6 +118,7 @@ describe("issue 19603", () => {
 
 describe("issue 20436", () => {
   const url = `/admin/permissions/data/group/${ALL_USERS_GROUP}`;
+  const CREATE_QUERIES_PERMISSION_INDEX = 1;
 
   function changePermissions(from, to) {
     cy.findAllByText(from).first().click();
@@ -166,8 +172,11 @@ describe("issue 20436", () => {
     cy.wait("@updatePermissions");
 
     cy.visit(url);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Query builder only");
+    H.assertPermissionForItem(
+      "Sample Database",
+      CREATE_QUERIES_PERMISSION_INDEX,
+      "Query builder only",
+    );
   });
 });
 
@@ -377,7 +386,7 @@ describe("issues 22726 and 22727", () => {
     );
 
     cy.button("Duplicate").click();
-    cy.wait("@createCard");
+    cy.wait("@createCard").its("response.statusCode").should("eq", 200);
   });
 });
 
@@ -416,9 +425,10 @@ describe("issue 23981", () => {
     ).click();
 
     H.entityPickerModal().within(() => {
+      cy.findByText("Collections").should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
       cy.log('ensure that "Collections" is not selectable');
-      cy.findByText("Collections").should("be.visible").click();
+      cy.findByText("Collections").click();
       cy.button("Select this collection").should("be.disabled");
     });
   });
@@ -459,6 +469,20 @@ describe("issue 24966", () => {
   };
 
   const dashboardDetails = { parameters: [dashboardFilter] };
+
+  const allCategories = ["Doohickey", "Gadget", "Gizmo", "Widget"];
+
+  function verifyCategoryList(visibleCategories) {
+    H.popover().within(() => {
+      allCategories.forEach((value) => {
+        if (visibleCategories.includes(value)) {
+          cy.findByText(value).should("be.visible");
+        } else {
+          cy.findByText(value).should("not.exist");
+        }
+      });
+    });
+  }
 
   beforeEach(() => {
     H.restore();
@@ -523,6 +547,7 @@ describe("issue 24966", () => {
     cy.signIn("nodata");
     H.visitDashboard("@dashboardId");
     H.filterWidget().click();
+    verifyCategoryList(["Gizmo"]);
     cy.findByLabelText("Gizmo").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Gizmo");
@@ -530,6 +555,7 @@ describe("issue 24966", () => {
     cy.signInAsSandboxedUser();
     H.visitDashboard("@dashboardId");
     H.filterWidget().click();
+    verifyCategoryList(["Widget"]);
     cy.findByLabelText("Widget").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");

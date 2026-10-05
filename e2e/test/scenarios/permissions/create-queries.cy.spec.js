@@ -1,7 +1,7 @@
 const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
-const { ALL_USERS_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
@@ -59,7 +59,9 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
 
     // should not allow 'query builder and native' as a granular permissions permission options
     H.selectPermissionRow("Orders", NATIVE_QUERIES_PERMISSION_INDEX);
-    H.popover().should("not.contain", "Query builder and native");
+    H.popover()
+      .should("contain", "Query builder only")
+      .and("not.contain", "Query builder and native");
 
     // should have db set to granular
     H.selectSidebarItem("All Users");
@@ -117,7 +119,9 @@ describe("scenarios > admin > permissions > create queries > query builder and n
 
     // Test that query builder and native is not an option when it's not selected at table level
     H.selectPermissionRow("Orders", NATIVE_QUERIES_PERMISSION_INDEX);
-    H.popover().should("not.contain", "Query builder and native");
+    H.popover()
+      .should("contain", "Query builder only")
+      .and("not.contain", "Query builder and native");
 
     // Navigate back
     H.selectSidebarItem("collection");
@@ -163,6 +167,9 @@ describe("scenarios > admin > permissions > create queries > query builder and n
 
     // After saving permissions, user should be able to make further edits without refreshing the page
     // metabase#37811
+    cy.intercept("GET", `/api/permissions/graph/group/${DATA_GROUP}`).as(
+      "dataGroupGraph",
+    );
     H.selectSidebarItem("data");
 
     H.modifyPermission(
@@ -173,6 +180,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
 
     H.assertPermissionTable([["Sample Database", "No"]]);
 
+    cy.wait("@dataGroupGraph");
     cy.button("Refresh the page").should("not.exist");
 
     cy.button("Save changes").click();
@@ -335,6 +343,9 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
     // After saving permissions, user should be able to make further edits without refreshing the page
     // metabase#37811
+    cy.intercept("GET", `/api/permissions/graph/group/${DATA_GROUP}`).as(
+      "dataGroupGraph",
+    );
     H.selectSidebarItem("data");
 
     H.modifyPermission(
@@ -343,6 +354,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       "No",
     );
 
+    cy.wait("@dataGroupGraph");
     cy.button("Refresh the page").should("not.exist");
 
     // User should have the option to change permissions back to query builder only at the database level

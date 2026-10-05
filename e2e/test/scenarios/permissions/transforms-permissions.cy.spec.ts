@@ -29,7 +29,6 @@ describe(
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
       cy.intercept("POST", "/api/transform").as("createTransform");
-      cy.intercept("POST", "/api/transform/*/run").as("runTransform");
     });
 
     describe("permission editor UI", () => {
@@ -44,7 +43,8 @@ describe(
         );
         cy.findByTestId("permission-table")
           .find("thead")
-          .should("not.contain.text", "Transforms");
+          .should("contain.text", "Create queries")
+          .and("not.contain.text", "Transforms");
       });
 
       it("allows changing and saving transforms permission", () => {
@@ -167,6 +167,7 @@ describe(
           H.DataStudio.Transforms.header()
             .findByDisplayValue("Admin Created Transform")
             .should("be.visible");
+          H.DataStudio.Transforms.editDefinitionButton().should("be.visible");
         });
       });
     });
@@ -341,6 +342,7 @@ describe(
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
         getTransformsNavLink().should("be.visible");
+        H.DataStudio.Transforms.list().should("be.visible");
 
         cy.signInAsAdmin();
         denyTransformsPermissionToAllGroups();

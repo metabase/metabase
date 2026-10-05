@@ -81,6 +81,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
       // Navigation to other collection should not show any warnings
       H.selectSidebarItem("Our analytics");
+      cy.url().should("include", "/admin/permissions/collections/root");
 
       H.modal().should("not.exist");
 
@@ -525,10 +526,10 @@ describe("scenarios > admin > permissions", () => {
     });
   });
 
-  it("should show a dismissable modal and banner showing split permission changes (#metabase#45073", () => {
+  it("should show a dismissable modal and banner showing split permission changes (metabase#45073)", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
-    // we set them to false and ensure a modal is shown explaining the new permissions structure
+    // we set them to true and ensure a modal is shown explaining the new permissions structure
     const tempState = {
       "show-updated-permission-modal": true,
       "show-updated-permission-banner": true,
@@ -572,6 +573,8 @@ describe("scenarios > admin > permissions", () => {
     cy.wait("@sessionProps");
 
     cy.reload();
+    cy.wait("@sessionProps");
+    cy.findByRole("menuitem", { name: "All Users" }).should("be.visible");
 
     cy.findByRole("dialog", { name: /permissions may look different/ }).should(
       "not.exist",
@@ -582,7 +585,7 @@ describe("scenarios > admin > permissions", () => {
   it("split permission change modal should dismiss even if network request fails", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
-    // we set them to false and ensure a modal is shown explaining the new permissions structure
+    // we set them to true and ensure a modal is shown explaining the new permissions structure
     const tempState = {
       "show-updated-permission-modal": true,
     };
@@ -610,6 +613,10 @@ describe("scenarios > admin > permissions", () => {
       "not.exist",
     );
     cy.findByRole("menuitem", { name: "All Users" }).click();
+    cy.url().should(
+      "include",
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}`,
+    );
   });
 });
 

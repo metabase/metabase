@@ -76,12 +76,14 @@ describe("issue 11994", () => {
 
   it("does not show raw data toggle for pivot questions, nor offer to save combo question viewed in raw mode (metabase#11994)", () => {
     H.visitQuestion("@pivotQuestionId");
+    cy.findByTestId("pivot-table").should("be.visible");
     cy.icon("table2").should("not.exist");
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
 
     H.visitQuestion("@comboQuestionId");
     cy.location().then((questionLocation) => {
       cy.icon("table2").click();
+      H.tableInteractive().should("be.visible");
       cy.location("href").should("eq", questionLocation.href);
     });
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");

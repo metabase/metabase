@@ -43,7 +43,9 @@ describe("scenarios > permissions", () => {
       { autorun: false },
     );
 
-    cy.findAllByLabelText("Refresh").should("be.disabled");
+    cy.findAllByLabelText("Refresh")
+      .should("have.length.at.least", 1)
+      .each(($button) => cy.wrap($button).should("be.disabled"));
   });
 });
 

@@ -358,6 +358,7 @@ describe(
           cy.findByLabelText("WA").should("not.exist");
           cy.findByLabelText("Add filter").click();
         });
+        cy.location("search").should("contain", "Location=CA");
 
         signInAs(users["Washington"]);
         H.visitDashboard(dashboard_id);

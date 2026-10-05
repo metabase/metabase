@@ -113,6 +113,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows");
+    cy.findByLabelText("Download results").should("not.exist");
     cy.icon("download").should("not.exist");
   });
 
@@ -132,6 +133,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows");
+    cy.findByLabelText("Download results").should("not.exist");
     cy.icon("download").should("not.exist");
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -214,6 +216,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
         H.visitQuestion(id);
 
         cy.findByText("Showing first 2,000 rows");
+        cy.findByLabelText("Download results").should("not.exist");
         cy.icon("download").should("not.exist");
 
         // Ad-hoc nested query also shouldn't be downloadable
@@ -221,6 +224,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
         cy.wait("@dataset");
 
         cy.findByText("Showing first 2,000 rows");
+        cy.findByLabelText("Download results").should("not.exist");
         cy.icon("download").should("not.exist");
 
         // Convert question to a model, which also shouldn't be downloadable
@@ -229,6 +233,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
         H.visitQuestion(id);
 
         cy.findByText("Showing first 2,000 rows");
+        cy.findByLabelText("Download results").should("not.exist");
         cy.icon("download").should("not.exist");
       });
     });
