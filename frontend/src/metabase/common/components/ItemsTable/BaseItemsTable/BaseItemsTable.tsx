@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { HTMLAttributes, PropsWithChildren } from "react";
 import { useMemo } from "react";
 
@@ -14,6 +15,7 @@ import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseIt
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
+import { FixedSizeIcon } from "metabase/ui";
 import type {
   Bookmark,
   Collection,
@@ -24,14 +26,11 @@ import type {
   SortingOptions,
 } from "metabase-types/api";
 
-import {
-  ColumnHeader,
-  SortingControlContainer,
-  SortingIcon,
-  Table,
-} from "../BaseItemsTable.styled";
 import { Columns } from "../Columns";
+import { ColumnHeader, Table } from "../TableElements";
 import type { ResponsiveProps } from "../utils";
+
+import S from "./BaseItemsTable.module.css";
 
 export type SortableColumnHeaderProps<SortColumn extends string> = {
   name?: SortColumn;
@@ -48,8 +47,8 @@ export const SortableColumnHeader = <SortColumn extends string>({
   onSortingOptionsChange,
   children,
   hideAtContainerBreakpoint,
-  containerName,
   columnHeaderProps,
+  className,
   ...props
 }: SortableColumnHeaderProps<SortColumn> & ResponsiveProps) => {
   const isSortable = !!onSortingOptionsChange && !!name;
@@ -76,23 +75,28 @@ export const SortableColumnHeader = <SortColumn extends string>({
   return (
     <ColumnHeader
       hideAtContainerBreakpoint={hideAtContainerBreakpoint}
-      containerName={containerName}
       {...columnHeaderProps}
     >
-      <SortingControlContainer
+      <div
         {...props}
-        isActive={isSortingThisColumn}
+        className={cx(
+          S.sortingControl,
+          { [S.sortable]: isSortable, [S.active]: isSortingThisColumn },
+          className,
+        )}
         onClick={onSortingControlClick}
         role="button"
-        isSortable={isSortable}
       >
         {children}
         {isSortable && (
-          <SortingIcon
+          <FixedSizeIcon
+            className={S.sortingIcon}
             name={direction === "asc" ? "chevronup" : "chevrondown"}
+            size={8}
+            ms="xxs"
           />
         )}
-      </SortingControlContainer>
+      </div>
     </ColumnHeader>
   );
 };

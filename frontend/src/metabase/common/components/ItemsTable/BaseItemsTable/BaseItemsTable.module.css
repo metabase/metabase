@@ -1,0 +1,18 @@
+.sortingControl {
+  display: flex;
+  align-items: center;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortingIcon {
+  visibility: hidden;
+}
+
+.active .sortingIcon,
+.sortingControl:hover .sortingIcon {
+  visibility: visible;
+}
