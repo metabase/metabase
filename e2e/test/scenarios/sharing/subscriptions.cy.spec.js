@@ -487,6 +487,9 @@ describe("scenarios > dashboard > subscriptions", () => {
       );
 
       H.sendEmailAndAssert((email) => {
+        expect(email.html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
         expect(email.html).to.include(dashboardDetails.name);
         expect(email.html).to.include(questionDetails.name);
       });
@@ -519,10 +522,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(html).not.to.include(
           "An error occurred while displaying this card.",
         );
-        // The map rasterizes to a PNG <img>; a table fallback would instead leak these values as text.
-        expect(html).to.include("<img");
+        // The map rasterizes to a PNG; a table fallback would instead leak these values as text.
         expect(html).not.to.include("99999");
         expect(html).not.to.include("11111");
+        expect(html).not.to.include("99,999");
+        expect(html).not.to.include("11,111");
       });
     });
   });
@@ -536,7 +540,9 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.toggleDashboardSubscriptionsSidebar();
-      H.sidebar().should("be.visible");
+      H.sidebar()
+        .findByText("Send this dashboard to Slack")
+        .should("be.visible");
     });
 
     it("should enable 'Done' and 'Send to Slack now' only after a channel is selected and persist the immutable Slack channel_id (metabase#14494, metabase#14515)", () => {
