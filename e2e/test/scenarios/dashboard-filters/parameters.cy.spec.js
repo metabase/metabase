@@ -488,7 +488,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.saveDashboard();
     });
 
-    it("should fetch dashcard data when parameter mapping is removed", () => {
+    it("should fetch dashcard data on save only when parameter mappings change", () => {
       cy.log("Saving a disconnected filter does not fetch dashcard data");
       cy.get("@dashcardRequestSpy").should("not.have.been.called");
 
@@ -583,7 +583,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should retain the last used value for a dashboard filter", () => {
+    it("should retain the last used value for a dashboard filter and allow resetting it", () => {
       cy.intercept("GET", "/api/**/items?pinned-state*").as("getPinnedItems");
 
       H.filterWidget().click();
@@ -1144,7 +1144,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should correctly undo dashcard removal (VIZ-1236)", () => {
+    it("should correctly undo dashcard removal and remove filters with the dashcard (VIZ-1236)", () => {
       cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
       H.createQuestionAndDashboard({
@@ -1819,7 +1819,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should be able to edit filters", () => {
+    it("should be able to edit filters and remove them with the dashcard", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
         dashboardDetails: {
@@ -1900,7 +1900,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should remove filters correctly", () => {
+    it("should show all inline parameters while editing one and remove filters correctly", () => {
       cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
       H.createQuestionAndDashboard({
@@ -2293,7 +2293,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should not allow connecting inline parameters to cards on a different tab", () => {
+    it("should allow connecting inline parameters only to their own card, not to cards on another tab", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
       }).then(({ body: dashcard }) => {
@@ -2364,7 +2364,7 @@ describe("scenarios > dashboard > parameters", () => {
       { "source-field": ORDERS.PRODUCT_ID },
     ];
 
-    it("should allow moving filters on a single tab dashboard", () => {
+    it("should allow moving filters and undoing moves on a single tab dashboard", () => {
       H.createQuestionAndDashboard({
         dashboardDetails: {
           parameters: [categoryParameter, countParameter],
@@ -2634,7 +2634,7 @@ describe("scenarios > dashboard > parameters", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should track dashboard_filter_created event when adding a filter", () => {
+  it("should track dashboard_filter_created and dashboard_filter_moved events", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
 

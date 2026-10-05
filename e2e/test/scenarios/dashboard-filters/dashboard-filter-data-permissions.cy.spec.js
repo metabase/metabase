@@ -44,7 +44,7 @@ describe("support > permissions (metabase#8472)", () => {
     cy.contains("Save").click();
   });
 
-  it("should allow a nodata user to select the filter", () => {
+  it("should let admin and nodata users use the filter, and hide filter mapping from nodata users in edit mode", () => {
     filterDashboard();
 
     cy.signIn("nodata");
