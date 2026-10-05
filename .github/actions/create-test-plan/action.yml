@@ -1,9 +1,7 @@
-name: Create test plan
+name: Create frontend test plan
 description: Compute the affected-tests plan for the changed files.
 
 inputs:
-  # A composite action has no `secrets` context, so the eng-stats credentials come in as inputs.
-  # Without them the plan is still computed and the stats row is simply not landed.
   stats-url:
     description: Endpoint that stores the affected-tests stats row.
     required: false
@@ -77,7 +75,7 @@ runs:
 
     - name: Report test plan
       shell: bash
-      run: |
+      run: | # sh
         plan=test-plan.json
         row() { # name, selected, total
           if [ "$2" -eq "$3" ]; then echo "| $1 | all ($3) | $3 |"; else echo "| $1 | $2 | $3 |"; fi
