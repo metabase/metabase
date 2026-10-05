@@ -204,6 +204,7 @@ describe("action reconciliation", () => {
     expect(client.deleteAction).toHaveBeenCalledWith(91);
     expect(lockfile.actions).toEqual([]);
   });
+
   it("refuses a declared action that is one of the app's own copies", async () => {
     const appRoot = makeApp();
     writeAction(
