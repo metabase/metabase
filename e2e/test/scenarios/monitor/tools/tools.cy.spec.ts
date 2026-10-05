@@ -259,6 +259,7 @@ describe("scenarios > monitor > tools > tasks", () => {
         information: true,
       },
     },
+    logs: [],
   });
 
   const formattedTaskJson = JSON.stringify(task.task_details, null, 2);
@@ -296,6 +297,12 @@ describe("scenarios > monitor > tools > tasks", () => {
     cy.get("@lines").eq(2).should("have.text", '    "information": true');
     cy.get("@lines").eq(3).should("have.text", "  }");
     cy.get("@lines").eq(4).should("have.text", "}");
+
+    cy.log("empty logs");
+    cy.findByTestId("monitor-main")
+      .findByText("There are no captured logs")
+      .should("be.visible");
+    cy.findByTestId("task-logs").should("not.exist");
 
     cy.log("copy button");
     cy.window().then((window) => {
@@ -351,25 +358,6 @@ describe("scenarios > monitor > tools > tasks", () => {
       cy.findByText(new RegExp(taskWithLogs.logs[0].msg)).should("be.visible");
       cy.findByText(new RegExp(taskWithLogs.logs[1].msg)).should("be.visible");
     });
-  });
-
-  it("should show empty state when no logs are present", () => {
-    const taskWithoutLogs = {
-      ...task,
-      logs: [],
-    };
-
-    cy.intercept("GET", `/api/task/${task.id}`, {
-      body: taskWithoutLogs,
-    }).as("getTaskWithoutLogs");
-
-    cy.visit(`/monitor/tasks/list/${task.id}`);
-    cy.wait("@getTaskWithoutLogs");
-
-    cy.findByTestId("task-logs").should("not.exist");
-    cy.findByTestId("monitor-main")
-      .findByText("There are no captured logs")
-      .should("be.visible");
   });
 });
 
