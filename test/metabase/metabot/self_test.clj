@@ -16,6 +16,7 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
@@ -45,6 +46,7 @@
 (def ^:private supported-models-by-provider-type
   {"anthropic"  #'self.claude/supported-models
    "bedrock"    #'bedrock/supported-models
+   "deepseek"   #'deepseek/supported-models
    "mistral"    #'mistral/supported-models
    "moonshot"   #'moonshot/supported-models
    "openai"     #'openai/supported-models
@@ -82,8 +84,8 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
-      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
-              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
+      (is (=? {:provider "deepseek" :model "deepseek-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-flash")))
       (is (=? {:provider "xai" :model "grok-4.7" :ai-proxy? false}
               (#'self/parse-provider-model "xai/grok-4.7")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
