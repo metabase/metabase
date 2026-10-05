@@ -642,6 +642,19 @@
                                                 "Available tools: convert-currency, get-time, mock-llm, no-arg.")}})
               result)))))
 
+(deftest ^:parallel tool-executor-xf-stream-error-test
+  (testing "once an :error chunk comes through, a call still streaming never runs and a running one keeps its result"
+    (let [running  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
+          cut-off  (test-util/parts->aisdk-chunks
+                    [{:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Paris"}}])
+          streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+        (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
+                (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
+        (testing "and a warning names the call that never ran"
+          (is (=? [{:level :warn :message #".*call-2.*"}] (messages))))))))
+
 ;;; tool argument validation tests
 
 (defn- schema-tool
