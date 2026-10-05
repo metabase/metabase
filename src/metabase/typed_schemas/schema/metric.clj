@@ -6,8 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
-   [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
@@ -165,18 +163,16 @@
   (let [{:keys [dimensions dimension_mappings]} (typed-schemas.db/card-dimensions id)]
     (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
-(defn- readable-table-source-rows
-  "Returns readable table rows for table-backed metric dimensions."
+(defn- table-source-rows
+  "Returns table rows for table-backed metric dimensions."
   [table-ids]
   (when (seq table-ids)
-    (perms/prime-table-perms-cache {:table-ids (set table-ids)})
-    (->> (typed-schemas.db/table-names table-ids)
-         (filter mi/can-read?))))
+    (typed-schemas.db/table-names table-ids)))
 
 (defn- table-key-disambiguators
   "Returns table display keys used to disambiguate compacted metric dimensions."
   ([table-ids]
-   (table-key-disambiguators table-ids (readable-table-source-rows table-ids)))
+   (table-key-disambiguators table-ids (table-source-rows table-ids)))
   ([_dimension-table-ids table-rows]
    (when (seq table-rows)
      (->> table-rows
@@ -187,7 +183,7 @@
 (defn- table-source-names
   "Returns table names emitted as metric dimension source names."
   ([table-ids]
-   (table-source-names table-ids (readable-table-source-rows table-ids)))
+   (table-source-names table-ids (table-source-rows table-ids)))
   ([_dimension-table-ids table-rows]
    (when (seq table-rows)
      (->> table-rows
@@ -252,7 +248,7 @@
   [metric-id details source-card-id-value]
   (let [dimension-table-id-pairs (metric-dimensions-with-table-ids details source-card-id-value)
         table-ids                (->> dimension-table-id-pairs (keep second) (filter integer?) distinct)
-        table-rows               (readable-table-source-rows table-ids)
+        table-rows               (table-source-rows table-ids)
         table-key-by-id          (table-key-disambiguators table-ids table-rows)
         table-source-name-by-id  (table-source-names table-ids table-rows)
         dimension-schemas        (mapv (fn [[dimension table-id]]

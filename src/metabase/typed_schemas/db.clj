@@ -25,7 +25,7 @@
       [:= column -1])))
 
 (mu/defn cards-ordered-by-name
-  "The readable, non-archived Cards of `card-type` among `database-ids` and/or `collection-ids` (either nil for
+  "The non-archived Cards of `card-type` in visible collections, among `database-ids` and/or `collection-ids` (either nil for
   unscoped), in name then id order."
   [card-type      :- [:enum :model :question :metric]
    database-ids   :- [:maybe [:set ::lib.schema.id/database]]
@@ -56,7 +56,7 @@
   (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn model-less-query-action-ids
-  "The ids of the unarchived query Actions without a model in collections the current user can see, outside
+  "The ids of the unarchived query Actions without a model in visible collections, outside
   `excluded-collection-ids`, among `database-ids` (nil for unscoped), in name then id order."
   [database-ids            :- [:maybe [:set ::lib.schema.id/database]]
    excluded-collection-ids :- [:set ::lib.schema.id/collection]]

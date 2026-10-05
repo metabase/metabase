@@ -5,7 +5,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
-   [metabase.models.interface :as mi]
    [metabase.typed-schemas.db :as typed-schemas.db]))
 
 (set! *warn-on-reflection* true)
@@ -21,14 +20,13 @@
     (typed-schemas.db/destination-database-ids db-ids)))
 
 (defn select-schema-cards
-  "Returns readable, non-archived cards for schema generation.
+  "Returns non-archived cards for schema generation.
 
   Metrics, models and saved questions are backed by cards. They need
-  the same visibility, archived, database and collection filters, and exclude cards backed by a
+  the same archived, database and collection filters, and exclude cards backed by a
   destination (routed) database -- see [[destination-db-ids]]."
   [card-type database-ids collection-ids]
-  (let [cards (->> (typed-schemas.db/cards-ordered-by-name card-type database-ids collection-ids)
-                   (filter mi/can-read?))
+  (let [cards (typed-schemas.db/cards-ordered-by-name card-type database-ids collection-ids)
         destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
     (if (seq destination-ids)
       (remove #(contains? destination-ids (:database_id %)) cards)

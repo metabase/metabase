@@ -10,9 +10,10 @@
     (-> options build-semantic-schema render-typescript) ; options -> TS string
 
   These public functions are compositions of the internal pipeline stages;
-  their definitions below show the whole pipeline. Fetching filters by what
-  the current user can read, so callers outside a request must bind a
-  current-user context first.
+  their definitions below show the whole pipeline. The schema is for
+  superusers, so fetching checks nothing against the caller. It still asks
+  which collections are visible, to leave out archived ones and the trash, so
+  callers outside a request must bind a current-user context first.
 
   Keep the separation when extending this module:
 
