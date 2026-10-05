@@ -63,7 +63,9 @@ Scope parameters:
 
 Combine library scopes when the app needs both tables and curated metrics.
 
-Add `include-actions=true` for any write flow — creating, updating, deleting, submitting, approving, running an action — even when the user names one specific action: actions are discoverable only through the generated schema. It combines with the library scopes, so one schema can hold selected tables and metrics plus every readable action.
+Use `include-actions=true` when the app needs any saved action under `schema.actions`; it includes all readable actions, unless `database` scopes them to one database. It can be combined with `library-collections`, `include-data-library`, or `include-metric-library` so one schema can include selected tables/metrics plus all readable actions.
+
+If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-actions=true` in the typed-schema URL. Do this even when the user names one specific action, because actions are only discoverable through the generated schema.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
@@ -107,7 +109,7 @@ fi
 
 After a successful export, verify that the schema contains every entity needed for the requested app. If any are missing, revise the scope using available context or ask for the missing context before building the UI.
 
-If schema generation fails, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user as it is.
+If schema generation fails, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing ids, names, and message when present.
 
 ## Synchronize every query and action
 
@@ -144,7 +146,7 @@ Wire `package.json` with `"sync-resources": "embedding-sdk-react data-apps sync-
 
 Inline generated IDs and `resources_metadata.json` are generated state: never delete or hand-edit either. A missing ID is restored automatically when the definition still identifies its resource — a query by its table and authored hash matching one unclaimed lockfile entry, an action by declaring the same source action — while a duplicated ID fails the run. Do not test or hand off the app until `npm run build` succeeds, every live definition carries a positive generated ID, and `resources_metadata.json` holds its matching entry. Commit every generated change. The build stops before bundling when synchronization fails.
 
-If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, and ownership failures must not trigger creating, moving, or deleting saved questions or action copies by hand, ID replacement, or lockfile editing. Treat a successful run that discovers nothing as a failure when the app has queries or actions. Synchronization copies actions but never creates them (see the actions skill for a missing one); if the run reports that actions are not enabled for the database, stop and tell the user to enable them rather than working around it.
+If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, collection-ownership, and Card-type failures must not trigger manual Card or action creation, deletion, ID replacement, or lockfile editing. Treat a successful run that discovers nothing as a failure when the app has queries or actions. Synchronization copies actions but never creates them, so an action the app needs must already exist in Metabase, without a model, and be picked up by a regenerated schema; if the run reports that actions are not enabled for the database, stop and tell the user to enable them rather than working around it.
 
 ## Standard pattern
 

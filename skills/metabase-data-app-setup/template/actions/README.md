@@ -24,7 +24,7 @@ import { useAction } from "@metabase/embedding-sdk-react/data-app";
 import type { FormEvent } from "react";
 import { CreateOrder } from "../../actions/orders.action";
 
-export function CreateOrderForm({ onCreated }: { onCreated: () => Promise<void> }) {
+export function CreateOrderForm({ onCreated }: { onCreated: () => void }) {
   const { execute, isExecuting, error } = useAction(CreateOrder);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -32,7 +32,7 @@ export function CreateOrderForm({ onCreated }: { onCreated: () => Promise<void> 
     try {
       // keys and value types come from the action's parameters
       await execute({ status: "paid" });
-      await onCreated(); // refresh what the write changed
+      onCreated();
     } catch {
       // the failure is also in `error`, rendered below
     }
@@ -43,7 +43,7 @@ export function CreateOrderForm({ onCreated }: { onCreated: () => Promise<void> 
       <button type="submit" disabled={isExecuting}>
         Create order
       </button>
-      {error && <pre style={{ whiteSpace: "pre-wrap" }}>{error.data.message}</pre>}
+      {error && <p>{error.data.message}</p>}
     </form>
   );
 }
