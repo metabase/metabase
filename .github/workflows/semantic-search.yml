@@ -16,22 +16,20 @@ env:
 
 jobs:
   # A CI run is a smoke run -- Postgres Latest alone, to keep PRs cheap -- unless the whole suite is
-  # forced to run or the PR carries `ci:run-semantic-search-tests`. Each job repeats that rule
+  # forced to run (master, release branches, `ci:run-all`) or profiled. Each job repeats that rule
   # because a job `if` cannot read a shared value.
   gate:
     uses: ./.github/workflows/test-gate.yml
     with:
-      # A profiling dispatch (test.profile-backend.yml) picks its own leg and always runs, so it asks
-      # for no filters: the gate then only checks for a force-cancel.
+      # A profiling dispatch (test.profile-backend.yml) always runs the suite, so it asks for no
+      # filters: the gate then only checks for a force-cancel.
       filters: ${{ github.event.inputs.suite == '' && 'backend_all' || '' }}
 
   semantic-search-tests-h2:
     needs: gate
     if: >-
       ${{ needs.gate.outputs.run == 'true'
-      && (github.event.inputs.db == '' || github.event.inputs.db == 'h2')
-      && (github.event.inputs.suite != '' || needs.gate.outputs.force-run == 'true'
-      || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')) }}
+      && (needs.gate.outputs.force-run == 'true' || github.event.inputs.suite != '') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -78,9 +76,7 @@ jobs:
     needs: gate
     if: >-
       ${{ needs.gate.outputs.run == 'true'
-      && (github.event.inputs.db == '' || github.event.inputs.db == 'mariadb')
-      && (github.event.inputs.suite != '' || needs.gate.outputs.force-run == 'true'
-      || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')) }}
+      && (needs.gate.outputs.force-run == 'true' || github.event.inputs.suite != '') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -148,9 +144,7 @@ jobs:
     needs: gate
     if: >-
       ${{ needs.gate.outputs.run == 'true'
-      && (github.event.inputs.db == '' || github.event.inputs.db == 'mysql')
-      && (github.event.inputs.suite != '' || needs.gate.outputs.force-run == 'true'
-      || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')) }}
+      && (needs.gate.outputs.force-run == 'true' || github.event.inputs.suite != '') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -223,9 +217,7 @@ jobs:
 
   semantic-search-tests-postgres:
     needs: gate
-    if: >-
-      ${{ needs.gate.outputs.run == 'true'
-      && (github.event.inputs.db == '' || github.event.inputs.db == 'postgres') }}
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -241,8 +233,7 @@ jobs:
             postgres-image: postgres:latest
             pgvector-image: pgvector/pgvector:pg17
         exclude: >-
-          ${{ (github.event.inputs.suite == '' && needs.gate.outputs.force-run != 'true'
-          && !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests'))
+          ${{ (needs.gate.outputs.force-run != 'true' && github.event.inputs.suite == '')
           && fromJSON('[{"version":{"name":"Postgres 14.x with pgvector pg17"}}]')
           || fromJSON('[]') }}
         job:
@@ -300,9 +291,7 @@ jobs:
     needs: gate
     if: >-
       ${{ needs.gate.outputs.run == 'true'
-      && (github.event.inputs.db == '' || github.event.inputs.db == 'appdb-mode')
-      && (github.event.inputs.suite != '' || needs.gate.outputs.force-run == 'true'
-      || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')) }}
+      && (needs.gate.outputs.force-run == 'true' || github.event.inputs.suite != '') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:

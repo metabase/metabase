@@ -25,27 +25,23 @@ jobs:
     with:
       filters: build_embedding_sdk_package build_uberjar e2e_all
 
-  # Always runs, so the suites that consume the plan are never skipped by a skipped dependency. The
-  # plan only ever narrows a PR's suites; every other run leaves the outputs empty and they run in
-  # full. A planner failure does the same, so it must not fail the run either.
+  # The plan only ever narrows a PR's suites; every other run skips this and they run in full. A
+  # planner failure does the same, so it must not fail the run either.
   create-test-plan:
     needs: gate
     name: Create test plan
+    if: ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer' }}
     continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
-    env:
-      PLAN: ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer' }}
     outputs:
       # The artifact is uploaded before the planner's last steps, so a later failure would otherwise
       # hand the suites a plan from a run that errored. Anything short of a clean run means no plan.
       artifact-id: ${{ steps.compute.outcome == 'success' && steps.compute.outputs.artifact-id || '' }}
     steps:
       - uses: actions/checkout@v7
-        if: ${{ env.PLAN == 'true' }}
       - name: Create test plan
         id: compute
-        if: ${{ env.PLAN == 'true' }}
         uses: ./.github/actions/create-test-plan
         with:
           stats-url: ${{ secrets.ENG_STATS_URL }}
@@ -136,7 +132,10 @@ jobs:
 
   frontend-tests:
     needs: [gate, create-test-plan]
-    if: ${{ needs.gate.outputs.verdict != 'force-skip' }}
+    # `!cancelled()` so a skipped planner (no plan) still runs the suite.
+    if: >-
+      ${{ !cancelled() && needs.gate.result == 'success'
+      && needs.gate.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
@@ -145,7 +144,10 @@ jobs:
 
   loki-tests:
     needs: [gate, create-test-plan]
-    if: ${{ needs.gate.outputs.verdict != 'force-skip' }}
+    # `!cancelled()` so a skipped planner (no plan) still runs the suite.
+    if: >-
+      ${{ !cancelled() && needs.gate.result == 'success'
+      && needs.gate.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/loki.yml
     with:
       # No artifact means the suite runs in full.

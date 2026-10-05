@@ -7,20 +7,6 @@ on:
       test-plan-artifact-id:
         type: string
         default: ""
-  workflow_dispatch:
-    inputs:
-      skip:
-        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
-        type: boolean
-        default: false
-      skip-lint:
-        description: "Skip linting jobs (oxfmt, oxlint, css variables check)"
-        type: boolean
-        default: false
-      skip-custom-viz:
-        description: "Skip custom-viz package tests"
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -44,9 +30,8 @@ jobs:
     needs: gate
     # Linting covers the e2e specs too.
     if: >-
-      ${{ !inputs.skip-lint
-      && (contains(fromJSON(needs.gate.outputs.matched), 'frontend_all')
-      || contains(fromJSON(needs.gate.outputs.matched), 'e2e_all')) }}
+      ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_all')
+      || contains(fromJSON(needs.gate.outputs.matched), 'e2e_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -71,7 +56,7 @@ jobs:
 
   fe-type-check:
     needs: gate
-    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -87,7 +72,7 @@ jobs:
 
   fe-tests-unit:
     needs: gate
-    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -152,7 +137,7 @@ jobs:
 
   fe-tests-timezones:
     needs: gate
-    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -179,7 +164,7 @@ jobs:
   # enterprise/frontend/src/custom-viz
   fe-custom-viz:
     needs: gate
-    if: ${{ !inputs.skip-custom-viz && contains(fromJSON(needs.gate.outputs.matched), 'custom_viz_all') }}
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'custom_viz_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     defaults:

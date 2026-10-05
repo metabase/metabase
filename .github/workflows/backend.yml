@@ -26,35 +26,28 @@ jobs:
         || '' }}
 
   # Generated static-viz output can shift without any backend source changing, so the suite follows
-  # it too. The job always runs -- a skipped one would skip every job below -- but its steps only do
-  # the work when nothing else has already decided the suite.
+  # it too. Only worth probing when nothing else has already decided the suite.
   static-viz-files-changed:
     name: Check whether static-viz files changed
     needs: gate
+    if: >-
+      ${{ needs.gate.outputs.verdict == 'defer' && github.event.inputs.suite == ''
+      && !contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
-    env:
-      PROBE: >-
-        ${{ needs.gate.outputs.verdict == 'defer' && github.event.inputs.suite == ''
-        && !contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
     outputs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
       - uses: actions/checkout@v7
-        if: ${{ env.PROBE == 'true' }}
       - name: Prepare front-end environment
-        if: ${{ env.PROBE == 'true' }}
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
-        if: ${{ env.PROBE == 'true' }}
         uses: ./.github/actions/prepare-backend
       - name: Build static-viz frontend
-        if: ${{ env.PROBE == 'true' }}
         run: bun run build-static-viz
         env:
           MB_EDITION: ee
       - name: Check for static viz changes
-        if: ${{ env.PROBE == 'true' }}
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: static_viz
         with:
@@ -154,10 +147,14 @@ jobs:
 
   be-linter-clj-kondo:
     needs: &backend-gate-needs [gate, static-viz-files-changed]
+    # `!cancelled()` so a skipped static-viz probe -- the suite was already decided -- does not skip
+    # this job; its failure still does.
     if: &backend-gate >-
-      ${{ github.event.inputs.suite != ''
+      ${{ !cancelled() && needs.gate.result == 'success'
+      && needs.static-viz-files-changed.result != 'failure'
+      && (github.event.inputs.suite != ''
       || contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
-      || needs.static-viz-files-changed.outputs.static_viz == 'true' }}
+      || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
@@ -182,12 +179,12 @@ jobs:
         name: Run Eastwood linter
 
   be-linter-eastwood-test:
-    # Master / release safety net: lint every backend test namespace.
-    needs: *backend-gate-needs
+    # Master / release safety net: lint every backend test namespace. A force-run never probes
+    # static-viz, so the gate alone decides this one.
+    needs: gate
     if: >-
       ${{ needs.gate.outputs.force-run == 'true'
-      && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
-      || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
+      && contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -202,7 +199,9 @@ jobs:
     # Lint only the test namespaces touched by the diff.
     needs: *backend-gate-needs
     if: >-
-      ${{ needs.gate.outputs.force-run != 'true' && github.event_name == 'pull_request'
+      ${{ !cancelled() && needs.gate.result == 'success'
+      && needs.static-viz-files-changed.result != 'failure'
+      && needs.gate.outputs.force-run != 'true' && github.event_name == 'pull_request'
       && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
       || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

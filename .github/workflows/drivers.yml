@@ -18,8 +18,8 @@ jobs:
   gate:
     uses: ./.github/workflows/test-gate.yml
     with:
-      # A profiling dispatch (test.profile-backend.yml) picks its own driver and always runs, so it asks for
-      # no filters: the gate then only checks for a force-cancel.
+      # A profiling dispatch (test.profile-backend.yml) always runs the suite, so it asks for no
+      # filters: the gate then only checks for a force-cancel.
       filters: ${{ github.event.inputs.suite == '' && 'backend_all' || '' }}
 
   # This job determines which driver tests should run based on PR context.
@@ -70,7 +70,6 @@ jobs:
             --git-ref="${BASE_REF}"
             --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-            --only-driver="${PROFILE_DRIVER}"
           )
           echo "Running:"
           echo "./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
@@ -85,9 +84,6 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
           FORCE_RUN: ${{ needs.gate.outputs.force-run == 'true' }}
-          # Set only by test.profile-backend.yml. Absent on a normal CI run, which leaves the decision rules
-          # alone; mage rejects a name that is not a driver.
-          PROFILE_DRIVER: ${{ github.event.inputs.db }}
         shell: bash
 
   be-tests-athena-ee:

@@ -18,8 +18,8 @@ jobs:
   gate:
     uses: ./.github/workflows/test-gate.yml
     with:
-      # A profiling dispatch (test.profile-backend.yml) picks its own leg and always runs, so it asks for
-      # no filters: the gate then only checks for a force-cancel.
+      # A profiling dispatch (test.profile-backend.yml) always runs the suite, so it asks for no
+      # filters: the gate then only checks for a force-cancel.
       filters: ${{ github.event.inputs.suite == '' && 'backend_all' || '' }}
 
   app-db-matrix:
@@ -130,7 +130,6 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ github.event.inputs.db == '' || github.event.inputs.db == 'mariadb' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -191,7 +190,6 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ github.event.inputs.db == '' || github.event.inputs.db == 'mysql' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -250,7 +248,6 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ github.event.inputs.db == '' || github.event.inputs.db == 'postgres' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
