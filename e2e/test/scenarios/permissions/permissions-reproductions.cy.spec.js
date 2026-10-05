@@ -357,14 +357,14 @@ describe("issues 22726 and 22727", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.findByTestId("save-question-modal").then((modal) => {
-      // This part reproduces https://github.com/metabase/metabase/issues/20717
-      cy.findByText(/^Replace original qeustion/).should("not.exist");
-
+    cy.findByTestId("save-question-modal").within(() => {
       // This part is an actual repro for https://github.com/metabase/metabase/issues/22727
       cy.findByLabelText(/Where do you want to save this/)
-        .invoke("text")
-        .should("not.eq", "Our analytics");
+        .should("contain.text", "Personal Collection")
+        .and("not.contain.text", "Our analytics");
+
+      // This part reproduces https://github.com/metabase/metabase/issues/20717
+      cy.findByText(/^Replace original question/).should("not.exist");
     });
 
     cy.log("metabase#22726");

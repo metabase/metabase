@@ -91,7 +91,6 @@ describe("issue 11994", () => {
 describe("issue 39221", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/setting").as("siteSettings");
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
     H.restore();
   });
@@ -102,12 +101,31 @@ describe("issue 39221", () => {
       // Unjustified type cast. FIXME
       cy.signIn(user as "admin" | "normal");
       H.openReviewsTable({ mode: "notebook" });
-      // Opening a SQL preview sidebar will trigger a user-local setting update
       cy.findByLabelText("View SQL").click();
+      cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
-      cy.wait("@sessionProperties");
+      cy.intercept(
+        "PUT",
+        "/api/setting/notebook-native-preview-sidebar-width",
+      ).as("updateSidebarWidth");
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
-      cy.get("@siteSettings").should("be.null");
+      // Resizing the SQL preview sidebar triggers a user-local setting update
+      const options = { pointer: "mouse", button: "left" } as const;
+      cy.findByTestId("notebook-native-preview-resize-handle").realMouseDown(
+        options,
+      );
+      cy.findByTestId("notebook-native-preview-resize-handle").realMouseMove(
+        -200,
+        0,
+      );
+      cy.findByTestId("notebook-native-preview-resize-handle").realMouseUp(
+        options,
+      );
+
+      cy.wait(["@updateSidebarWidth", "@sessionProperties"]);
+
+      cy.get("@siteSettings.all").should("have.length", 0);
     });
   });
 });

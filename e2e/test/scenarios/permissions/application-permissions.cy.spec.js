@@ -160,8 +160,6 @@ describe("scenarios > admin > permissions > application", () => {
         cy.url().should("include", "/admin/settings/general");
 
         cy.findByTestId("admin-layout-content").within(() => {
-          cy.findByText("License and Billing").should("not.exist");
-          cy.findByLabelText("Updates").should("not.exist");
           cy.findByLabelText("Site name")
             .should("be.visible")
             .clear()

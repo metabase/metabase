@@ -33,6 +33,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     });
 
     it("should add key attributes to an existing user and to a new user", () => {
+      cy.intercept("PUT", "/api/user/*").as("updateUser");
+      cy.intercept("POST", "/api/user").as("createUser");
+
       cy.findByTestId("admin-people-list-table")
         .icon("ellipsis")
         .first()
@@ -44,6 +47,10 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.findByPlaceholderText("Key").type("User ID");
         cy.findByPlaceholderText("Value").type("3");
         cy.findByText("Update").click();
+      });
+      cy.wait("@updateUser").then(({ request, response }) => {
+        expect(response.statusCode).to.eq(200);
+        expect(request.body.login_attributes).to.have.property("User ID", "3");
       });
       H.modal().should("not.exist");
 
@@ -60,8 +67,12 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         cy.findByPlaceholderText("Key").type("User ID");
         cy.findByPlaceholderText("Value").type("1");
         cy.findAllByText("Create").click();
-        cy.button("Done").click();
       });
+      cy.wait("@createUser").then(({ request, response }) => {
+        expect(response.statusCode).to.eq(200);
+        expect(request.body.login_attributes).to.have.property("User ID", "1");
+      });
+      H.modal().button("Done").click();
     });
   });
 
@@ -156,7 +167,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.log("Make sure user is still sandboxed");
       H.assertDatasetReqIsSandboxed({
         columnId: ORDERS.USER_ID,
-        columnAssetion: ATTRIBUTE_VALUE,
+        columnAssertion: Number(ATTRIBUTE_VALUE),
       });
       cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
         "have.length",
@@ -325,7 +336,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       // 1 row filtered on User ID
       cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 1);
       H.assertDatasetReqIsSandboxed({
-        columnId: PEOPLE.USER_ID,
+        columnId: PEOPLE.ID,
         columnAssertion: Number(ATTRIBUTE_VALUE),
       });
     });

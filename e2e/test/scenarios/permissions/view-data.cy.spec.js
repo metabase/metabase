@@ -479,7 +479,7 @@ describe(
       H.selectImpersonatedAttribute("role");
       H.saveImpersonationSettings();
 
-      H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
+      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Granular");
 
       H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Can view");
     });
@@ -604,6 +604,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
   });
 
   it("allows editing sandboxed access in the database focused view", () => {
+    cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // make sure that we have native permissions now so that we can validate that
@@ -690,7 +691,9 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       "not.exist",
     );
 
-    cy.button("Save changes").click();
+    H.savePermissions();
+    cy.wait("@saveGraph").its("response.statusCode").should("eq", 200);
+    cy.reload();
 
     H.assertPermissionTable(expectedFinalPermissions);
   });

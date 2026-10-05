@@ -438,17 +438,15 @@ describe("scenarios > admin > permissions", () => {
       cy.findByText("Data permissions");
 
       cy.findByText("Database ‘View data’ levels").click();
-      cy.findByTestId("database-view-data-level").should(
-        "not.contain",
-        /No self-service/,
-      );
+      cy.findByTestId("database-view-data-level")
+        .should("contain", "Can view")
+        .and("not.contain", "No self-service");
       cy.findByText("Database ‘View data’ levels").click();
 
       cy.findByText(/Schema or table ‘View data’ levels/).click();
-      cy.findByTestId("schema-table-level").should(
-        "not.contain",
-        /No self-service/,
-      );
+      cy.findByTestId("schema-table-level")
+        .should("contain", "Can view")
+        .and("not.contain", "No self-service");
       cy.findByText(/Schema or table ‘View data’ levels/).click();
 
       cy.findByText("‘Create queries’ levels");
@@ -457,8 +455,6 @@ describe("scenarios > admin > permissions", () => {
     });
 
     // Data permissions w/ `legacy-no-self-service` in graph
-    cy.visit("/admin/permissions");
-
     cy.intercept("GET", `/api/permissions/graph/group/${ALL_USERS_GROUP}`, {
       statusCode: 200,
       body: {
@@ -474,6 +470,7 @@ describe("scenarios > admin > permissions", () => {
         },
       },
     });
+    cy.visit("/admin/permissions");
 
     cy.get("main").within(() => {
       cy.findByText("Permissions help").as("permissionHelpButton").click();
@@ -484,7 +481,10 @@ describe("scenarios > admin > permissions", () => {
       .as("permissionsHelpContent")
       .within(() => {
         cy.findByText("Database ‘View data’ levels").click();
-        cy.findAllByText(/No self-service/);
+        cy.findByTestId("database-view-data-level").should(
+          "contain",
+          "No self-service",
+        );
         cy.findByLabelText("Close").click();
       });
 

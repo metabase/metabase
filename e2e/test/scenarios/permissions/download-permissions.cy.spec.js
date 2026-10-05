@@ -43,6 +43,8 @@ describe("scenarios > admin > permissions > data > downloads", () => {
   });
 
   it("setting downloads permission UI flow should work", () => {
+    cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
+
     cy.log("allows changing download results permission for a database");
 
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
@@ -56,6 +58,8 @@ describe("scenarios > admin > permissions > data > downloads", () => {
       cy.findByText("Are you sure you want to do this?");
       cy.button("Yes").click();
     });
+    cy.wait("@saveGraph").its("response.statusCode").should("eq", 200);
+    cy.reload();
 
     H.assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
 
@@ -76,6 +80,8 @@ describe("scenarios > admin > permissions > data > downloads", () => {
       cy.findByText("Are you sure you want to do this?");
       cy.button("Yes").click();
     });
+    cy.wait("@saveGraph").its("response.statusCode").should("eq", 200);
+    cy.reload();
 
     H.assertPermissionForItem(
       "All Users",
@@ -153,6 +159,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
 
     cy.signInAsNormalUser();
     H.visitQuestion(ORDERS_QUESTION_ID);
+    assertDownloadPerms(`@cardQuery${ORDERS_QUESTION_ID}`, "limited");
 
     H.downloadAndAssert({ fileType: "xlsx", questionId: ORDERS_QUESTION_ID });
   });
@@ -177,12 +184,14 @@ describe("scenarios > admin > permissions > data > downloads", () => {
 
       cy.get("@nativeQuestionId").then((id) => {
         H.visitQuestion(id);
+        assertDownloadPerms(`@cardQuery${id}`, "full");
 
         H.downloadAndAssert({ fileType: "xlsx", questionId: id });
 
         // Make sure we can download results from an ad-hoc nested query based on a native question
         cy.findByText("Explore results").click();
         cy.wait("@dataset");
+        assertDownloadPerms("@dataset", "full");
 
         H.downloadAndAssert({ fileType: "xlsx" });
 
@@ -190,6 +199,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
         cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
 
         H.visitQuestion(id);
+        assertDownloadPerms(`@cardQuery${id}`, "full");
 
         H.downloadAndAssert({ fileType: "xlsx", questionId: id });
       });
@@ -230,12 +240,14 @@ describe("scenarios > admin > permissions > data > downloads", () => {
 
       cy.get("@nativeQuestionId").then((id) => {
         H.visitQuestion(id);
+        assertDownloadPerms(`@cardQuery${id}`, "limited");
 
         H.downloadAndAssert({ fileType: "xlsx", questionId: id });
 
         // Ad-hoc nested query based on a native question should also have a download row limit
         cy.findByText("Explore results").click();
         cy.wait("@dataset");
+        assertDownloadPerms("@dataset", "limited");
 
         H.downloadAndAssert({ fileType: "xlsx" });
 
@@ -243,6 +255,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
         cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
 
         H.visitQuestion(id);
+        assertDownloadPerms(`@cardQuery${id}`, "limited");
 
         H.downloadAndAssert({ fileType: "xlsx", questionId: id });
       });
@@ -271,4 +284,10 @@ function setDownloadPermissionsForProductsTable(permission) {
       },
     },
   });
+}
+
+function assertDownloadPerms(requestAlias, downloadPerms) {
+  cy.get(requestAlias)
+    .its("response.body.data.download_perms")
+    .should("eq", downloadPerms);
 }
