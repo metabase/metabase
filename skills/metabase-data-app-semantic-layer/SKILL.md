@@ -155,6 +155,8 @@ Write the YAML in the Metabase representation format. **Before writing or editin
 
    The numeric `id` beside an action or metric only says which source it is; nothing in `resources/` holds it.
 
+   The export answers only an admin, so the API key must be one in the Administrators group. With any other key the command fails with `403`: stop and tell the user, and never write the files another way.
+
    An item that can't be built or copied has an `error` instead (for example a field the query names that doesn't exist, an action that belongs to a model, or a metric or action that reads another card); stop and tell the user. Run it again after any definition changes, and update the files it affects.
 
 3. **A saved question per query.** Write the printed `entity` to `resources/cards/<name>.yaml` as it is. Its name, `type`, `display`, `creator_id`, `collection_id`, entity ID, and `serdes/meta` are already set; add nothing. The one change is in its `dataset_query`: each metric reference (`[metric, {}, <entity ID>]`) points at the app's copy of that metric (step 4) instead of the source metric's entity ID. Write it yourself in the format skill's layout (how it lays out MBQL clauses), keeping the printed key order, not by serializing the printed JSON with a script: a script skips the format skill, and its output isn't checked against the format. The query is what the dev preview ran, so any difference in it changes what production runs; after writing the file, parse it back and compare it with the printed entity, and fix every difference other than the metric references.
