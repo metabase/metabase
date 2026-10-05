@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
@@ -32,15 +31,6 @@ export function ActionMoreMenu({ action, readOnly }: ActionMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          {action.model_id != null && (
-            <Menu.Item
-              component={Link}
-              to={Urls.modelDetail({ id: action.model_id }, "actions")}
-              leftSection={<Icon name="model" />}
-            >
-              {t`View model`}
-            </Menu.Item>
-          )}
           {!readOnly && action.model_id == null && (
             <Menu.Item
               leftSection={<Icon name="move" />}

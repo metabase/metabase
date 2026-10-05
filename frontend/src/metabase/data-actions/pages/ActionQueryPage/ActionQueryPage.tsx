@@ -11,14 +11,13 @@ import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHe
 import { useMetadataToasts } from "metabase/common/hooks";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { type Location, useLocation, useNavigate } from "metabase/router";
-import { Box, Button, Center, Flex } from "metabase/ui";
+import { Button, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, WritebackQueryAction } from "metabase-types/api";
 
 import { ActionEditor } from "../../components/ActionEditor";
 import { ActionEditorPane } from "../../components/ActionEditorPane";
 import { ActionHeader } from "../../components/ActionHeader";
-import { ActionParametersPreview } from "../../components/ActionParametersPreview";
 import { useActionDraft } from "../../hooks/use-action-draft";
 import { useActionPermissions } from "../../hooks/use-action-permissions";
 import { useRouteAction } from "../../hooks/use-route-action";
@@ -76,39 +75,26 @@ function ActionDefinitionPage({
     <PageContainer data-testid="action-definition">
       <ActionHeader action={action} readOnly={readOnly} />
       <ActionEditorPane>
-        <Flex h="100%">
-          <Box flex="2 1 0" miw={0}>
-            <ActionEditor
-              datasetQuery={action.dataset_query}
-              uiState={uiState}
-              databases={databases}
-              readOnly
-              topBarInnerContent={
-                !readOnly && (
-                  <Button
-                    component={Link}
-                    to={Urls.dataActionEdit(action.id)}
-                    size="sm"
-                    style={{ flexShrink: 0 }}
-                  >
-                    {t`Edit definition`}
-                  </Button>
-                )
-              }
-              onChangeDatasetQuery={() => undefined}
-              onChangeUiState={setUiState}
-            />
-          </Box>
-          <Box
-            w="40%"
-            style={{
-              borderLeft: "1px solid var(--mb-color-border-neutral)",
-              overflow: "auto",
-            }}
-          >
-            <ActionParametersPreview action={action} />
-          </Box>
-        </Flex>
+        <ActionEditor
+          datasetQuery={action.dataset_query}
+          uiState={uiState}
+          databases={databases}
+          readOnly
+          topBarInnerContent={
+            !readOnly && (
+              <Button
+                component={Link}
+                to={Urls.dataActionEdit(action.id)}
+                size="sm"
+                style={{ flexShrink: 0 }}
+              >
+                {t`Edit definition`}
+              </Button>
+            )
+          }
+          onChangeDatasetQuery={() => undefined}
+          onChangeUiState={setUiState}
+        />
       </ActionEditorPane>
     </PageContainer>
   );
