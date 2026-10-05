@@ -36,6 +36,7 @@ export function ActionEditor({
       canChangeDatabase: !readOnly,
       hidePreview: true,
       hideRunButton: true,
+      hidePreviewQueryButton: true,
       resizable: false,
       shouldShowLibrary: false,
       shouldDisableDatabasePickerItem: (item) =>

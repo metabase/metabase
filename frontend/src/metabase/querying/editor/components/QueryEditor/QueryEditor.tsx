@@ -139,6 +139,7 @@ export function QueryEditor({
             editorHeight={uiOptions?.editorHeight}
             hideRunButton={uiOptions?.hideRunButton}
             hidePreview={uiOptions?.hidePreview}
+            hidePreviewQueryButton={uiOptions?.hidePreviewQueryButton}
             onBlur={onBlur}
             topBarInnerContent={topBarInnerContent}
             extraButton={extraEditorButton}
