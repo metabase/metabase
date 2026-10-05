@@ -308,7 +308,7 @@ describe("issue 45659", () => {
       H.visitPublicDashboard(dashboard.id);
     });
     verifyFilterWithRemapping();
-    H.getDashboardCard().findByText("Tressa White").should("be.visible");
+    H.getDashboardCard().within(() => H.assertTableRowsCount(1));
     cy.get("@publicDashcardData.all").should("have.length", 1);
 
     cy.get("@dashboardId").then((dashboardId) =>

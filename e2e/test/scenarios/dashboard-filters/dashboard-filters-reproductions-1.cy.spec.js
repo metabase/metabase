@@ -1965,6 +1965,10 @@ describe("issues 29347, 29346", () => {
 
       verifyRemappedValues(filterValue);
 
+      // Clear the last used value so the url value is the only source
+      H.clearFilterWidget();
+      cy.wait("@cardQuery");
+
       H.visitDashboard("@dashboardId", {
         params: { [filterDetails.slug]: filterValue },
       });
