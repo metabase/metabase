@@ -116,7 +116,7 @@
       thinking-only?
       (assoc :reasoning_effort (if thinking? "max" "low"))
 
-      (and thinking-only? forced? (:max_tokens body))
+      (and thinking-only? forced?)
       (update :max_tokens max forced-tool-call-token-floor)
 
       (not thinking-only?)

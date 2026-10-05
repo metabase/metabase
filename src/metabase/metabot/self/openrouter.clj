@@ -244,10 +244,10 @@
   [body {:keys [model reasoning? schema] :or {reasoning? true}}]
   (let [forced? (or (some? schema) (= "required" (:tool_choice body)))
         ;; Safety net: the mandatory tool call must survive the un-disableable thinking spend
-        ;; (theory vs practice in [[forced-tool-call-token-floor]]); only an existing cap is
-        ;; raised, and only where a tool call is actually forced.
+        ;; (theory vs practice in [[forced-tool-call-token-floor]]); the cap is raised only
+        ;; where a tool call is actually forced.
         body    (cond-> body
-                  (and (reasoning-mandatory? model) forced? (:max_tokens body))
+                  (and (reasoning-mandatory? model) forced?)
                   (update :max_tokens max forced-tool-call-token-floor))]
     (if-not (= :renderable (reasoning-class model))
       body

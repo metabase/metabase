@@ -185,12 +185,12 @@
                        reasoning? {:includeThoughts true}))
         max-tokens (or max-tokens core/chat-max-output-tokens)
         ;; Safety net: the forced tool call must survive the un-disableable thinking spend, which
-        ;; Gemini bills against maxOutputTokens (see [[forced-tool-call-token-floor]]). Only an
-        ;; existing cap is raised, and only where a tool call is actually forced. The default cap is
-        ;; well above the floor, so this bites only on a smaller caller cap. Independent of
-        ;; :reasoning?, because a catalog model thinks whether or not we asked it to.
+        ;; Gemini bills against maxOutputTokens (see [[forced-tool-call-token-floor]]). The cap is
+        ;; raised only where a tool call is actually forced. The default cap is well above the
+        ;; floor, so this bites only on a smaller caller cap. Independent of :reasoning?, because a
+        ;; catalog model thinks whether or not we asked it to.
         max-tokens (cond-> max-tokens
-                     (and max-tokens forced? (models/reasoning-model? model))
+                     (and forced? (models/reasoning-model? model))
                      (max forced-tool-call-token-floor))
         gen-config (cond-> {}
                      max-tokens  (assoc :maxOutputTokens max-tokens)

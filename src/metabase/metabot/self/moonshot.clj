@@ -91,9 +91,9 @@
   2048)
 
 (defn- floor-max-tokens
-  "Raises an existing `max_tokens` cap to [[forced-tool-call-token-floor]]; an uncapped body stays uncapped."
+  "Raises the `max_tokens` cap to [[forced-tool-call-token-floor]]."
   [body]
-  (cond-> body (:max_tokens body) (update :max_tokens max forced-tool-call-token-floor)))
+  (update body :max_tokens max forced-tool-call-token-floor))
 
 (defn- reasoning-message
   "The replayed assistant message for a coalesced in-turn :reasoning part.
