@@ -18,18 +18,24 @@
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
 (t2/deftransforms :model/TableUserSettings
-  {:entity_type     mi/transform-keyword
-   :visibility_type mi/transform-keyword
-   :field_order     mi/transform-keyword
-   :data_layer      (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum table/data-layers)
-                     (some-fn table/legacy-data-layer->current identity))
-   :data_source     (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum table/data-sources)
-                     (some-fn keyword identity))
-   :data_authority  table/transform-data-authority})
+  {:entity_type            mi/transform-keyword
+   :visibility_type        mi/transform-keyword
+   :field_order            mi/transform-keyword
+   :data_layer             (mi/transform-validator-with-fixes
+                            mi/transform-keyword
+                            (partial mi/assert-optional-enum table/data-layers)
+                            (some-fn table/legacy-data-layer->current identity))
+   :data_source            (mi/transform-validator-with-fixes
+                            mi/transform-keyword
+                            (partial mi/assert-optional-enum table/data-sources)
+                            (some-fn keyword identity))
+   :data_authority         table/transform-data-authority
+   :description_set        mi/transform-boolean
+   :visibility_type_set    mi/transform-boolean
+   :caveats_set            mi/transform-boolean
+   :points_of_interest_set mi/transform-boolean
+   :data_layer_set         mi/transform-boolean
+   :data_source_set        mi/transform-boolean})
 
 (doto :model/TableUserSettings
   (derive :metabase/model)
@@ -153,7 +159,7 @@
 
 (defmethod serdes/extract-query "TableUserSettings" [_model-name {:keys [filter-ids] :as opts}]
   (serdes/extract-reducible-nested "TableUserSettings" (dissoc opts :filter-column :filter-ids)
-                                   (warehouse-schema.db/table-user-settings-with-field-settings filter-ids)))
+                                   (warehouse-schema.db/table-user-settings-for-tables filter-ids)))
 
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
@@ -166,24 +172,16 @@
     (cond-> [[db-path]]
       (:collection_id tus) (conj [{:model "Collection" :id (:collection_id tus)}]))))
 
-(defn- listed-field-ids
-  "The ids of the local Fields the FieldUserSettings entries in `fields` belong to."
-  [fields]
-  (into [] (keep #(:id (serdes/load-find-local (pop (serdes/path %))))) fields))
-
 (defmethod serdes/load-one! "TableUserSettings" [ingested maybe-local]
-  (let [settings (serdes/default-load-one! ingested maybe-local)
-        fields   (:fields ingested)]
+  (let [settings (serdes/default-load-one! ingested maybe-local)]
     (when (:field_order ingested)
       (table/update-field-positions! (warehouse-schema.db/table (:table_id settings))))
-    (when (and (seq fields) (every? #(contains? % :dimensions) fields))
-      (when-let [field-ids (not-empty (listed-field-ids fields))]
-        (warehouse-schema.db/delete-dimensions-for-table-except-fields! (:table_id settings) field-ids)))
     settings))
 
 (defmethod serdes/load-update! "TableUserSettings" [model-name ingested local]
-  (or ((get-method serdes/load-update! :default) model-name ingested local)
-      (t2/instance :model/TableUserSettings {:table_id (:table_id local)})))
+  (let [cleared (zipmap warehouse-schema-overlay/user-settable-table-columns (repeat nil))]
+    (or ((get-method serdes/load-update! :default) model-name (merge cleared ingested) local)
+        (t2/instance :model/TableUserSettings {:table_id (:table_id local)}))))
 
 (defmethod serdes/load-find-local "TableUserSettings" [path]
   (let [found-table (serdes/load-find-local (pop path))]
@@ -195,6 +193,18 @@
       table-ref
       ;; It's too short, so no schema. Shift them over and add a nil schema.
       [db nil schema])))
+
+(def ^:private dimensions-transform
+  "The Dimensions of the Table's Fields, left alone on import when the entity has no `dimensions` key."
+  (update (serdes/nested :model/Dimension :table_id
+                         {:sort-by                 (juxt :field_name :name :entity_id)
+                          :delete-children!        warehouse-schema.db/delete-dimensions-for-table!
+                          :delete-children-except! warehouse-schema.db/delete-dimensions-for-table-except!})
+          :import-with-context
+          (fn [import-dimensions]
+            (fn [current k dimensions]
+              (when (some? dimensions)
+                (import-dimensions current k dimensions))))))
 
 (defmethod serdes/make-spec "TableUserSettings" [_model-name _opts]
   {:copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
@@ -215,6 +225,7 @@
                                :export     (constantly ::serdes/skip)
                                :import-with-context (fn [current _ _]
                                                       (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}
+               :dimensions    dimensions-transform
                :fields        (serdes/nested :model/FieldUserSettings :table_id
                                              {:sort-by          :field_name
                                               :delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})

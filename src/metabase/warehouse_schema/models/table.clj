@@ -568,9 +568,7 @@
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
   (let [fields   (into {} (for [field-id (warehouse-schema.db/field-ids-for-table id)]
                             [["Field" field-id] {"Table" id}]))
-        settings (when (or (warehouse-schema.db/table-user-settings-exist? id)
-                           (warehouse-schema.db/field-user-settings-or-dimensions-exist-for-table? id))
-                   {["TableUserSettings" id] {"Table" id}})
+        settings {["TableUserSettings" id] {"Table" id}}
         segments (into {} (for [segment-id (warehouse-schema.db/segment-ids-for-table id skip-archived)]
                             [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (warehouse-schema.db/measure-ids-for-table id skip-archived)]

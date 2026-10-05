@@ -2322,7 +2322,16 @@ serdes/meta:
             (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id))
                 "F2's stale local row, absent from the imported file's :fields, is gone")
             (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))
-                "F2's Dimension is restored from its entry under :fields")))))))
+                "F2's Dimension is restored from the file's :dimensions"))
+          (testing "deleting the file drops the Table's settings, its Field settings and its Dimensions"
+            (remote-sync.task/complete-sync-task! (t2/select-one-pk :model/RemoteSyncTask :ended_at nil))
+            (swap! (:files-atom mock-source) update "main"
+                   #(into {} (remove (fn [[path _]] (str/includes? path "test_table___tableusersettings"))) %))
+            (let [import-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+              (is (= :success (:status (impl/import! (source.p/snapshot mock-source) import-task-id :force? true)))))
+            (is (not (t2/exists? :model/TableUserSettings :table_id table-id)))
+            (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id)))
+            (is (not (t2/exists? :model/Dimension :field_id f2-id)))))))))
 
 ;; ---------- run-task-body!: the row is always closed, whatever the worker does ----------------
 

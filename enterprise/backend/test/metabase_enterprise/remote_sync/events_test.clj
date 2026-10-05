@@ -1058,12 +1058,9 @@
         (t2/delete! :model/RemoteSyncObject)
         (events/publish-event! :event/table-update
                                {:object table :user-id (mt/user->id :rasta)})
-        (let [entries (t2/select :model/RemoteSyncObject)]
-          (is (= 1 (count entries)))
-          (is (=? {:model_type "Table"
-                   :model_id (:id table)
-                   :status "update"}
-                  (first entries))))))))
+        (is (=? [{:model_type "Table" :model_id (:id table) :status "update"}
+                 {:model_type "TableUserSettings" :model_id (:id table) :status "update"}]
+                (t2/select :model/RemoteSyncObject {:order-by [:model_type]})))))))
 
 (deftest table-update-event-no-entry-for-unpublished-table-test
   (testing "table-update event doesn't create entry for unpublished table"
@@ -1100,7 +1097,7 @@
         (events/publish-event! :event/table-update
                                {:object (assoc table :archived_at (t/offset-date-time))
                                 :user-id (mt/user->id :rasta)})
-        (let [entries (t2/select :model/RemoteSyncObject)]
+        (let [entries (t2/select :model/RemoteSyncObject :model_type "Table")]
           (is (= 1 (count entries)))
           (is (=? {:model_type "Table"
                    :model_id (:id table)
@@ -1379,10 +1376,11 @@
                               {:type "internal" :name "Remapped"})
         (is (=? [{:model_type "TableUserSettings" :model_id (:id table) :status "update"}]
                 (t2/select :model/RemoteSyncObject)))
+        (t2/delete! :model/RemoteSyncObject)
         (mt/user-http-request :crowberto :delete 204 (format "field/%d/dimension" (:id field)))
-        (is (=? [{:model_type "TableUserSettings" :model_id (:id table) :status "removed"}]
+        (is (=? [{:model_type "TableUserSettings" :model_id (:id table) :status "update"}]
                 (t2/select :model/RemoteSyncObject))
-            "with neither settings nor a Dimension left, the Table's settings file is removed")))))
+            "removing the Dimension rewrites the Table's settings file")))))
 
 ;;; ------------------------------------- Concurrent Un-Sync Race Tests -------------------------------------
 ;;;
@@ -1487,16 +1485,16 @@
                  (deref handler 10000 nil)))))
          (assert-removal-survived coll-id card))))))
 
-(deftest field-update-no-rso-when-no-fus-row-test
-  (testing "field-update on an eligible field with NO FUS row, and no TableUserSettings row either, creates no
-            RSOs at all"
+(deftest field-update-tracks-table-user-settings-without-fus-row-test
+  (testing "field-update on an eligible field with NO FUS row, and no TableUserSettings row either, still tracks the
+            Table's TableUserSettings, whose file every published Table has"
     (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
                    :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}
                    :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
-      (is (empty? (t2/select :model/RemoteSyncObject))
-          "no RSOs created — neither the Field nor the Table has user-curated metadata to track"))))
+      (is (=? [{:model_type "TableUserSettings" :model_id (:id table) :status "update"}]
+              (t2/select :model/RemoteSyncObject))))))
 
 (deftest field-update-no-rso-for-unpublished-table-test
   (testing "field-update creates no RSOs when the table is not published"

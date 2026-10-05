@@ -216,8 +216,8 @@
               (testing "F2's stale row is deleted -- replace semantics"
                 (is (nil? (t2/select-one :model/FieldUserSettings :field_id (:id f2))))))))))))
 
-(deftest field-user-settings-nest-dimensions-round-trip-test
-  (testing "FieldUserSettings carry their Field's Dimension, also for a Field with no settings row"
+(deftest table-user-settings-dimensions-round-trip-test
+  (testing "a Table's settings carry the Dimensions of all its Fields and replace the target's"
     (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
@@ -233,11 +233,10 @@
                            (ts/extract-one "Field" (:id email))]
                           (serdes/extract-all "TableUserSettings" {:filter-column :table_id
                                                                    :filter-ids    [(:id table)]})))))
-        (testing "the Dimension is nested under a synthesized FieldUserSettings, not under the Field"
-          (let [[age-settings email-settings] (:fields (first (by-model @serialized "TableUserSettings")))]
-            (is (=? {:description "edited"} age-settings))
-            (is (nil? (:description email-settings)))
-            (is (=? [{:name "Email"}] (:dimensions email-settings)))
+        (testing "the Dimension is listed on the Table's settings with its Field's path, not under the Field"
+          (let [tus (first (by-model @serialized "TableUserSettings"))]
+            (is (=? [{:description "edited"}] (:fields tus)))
+            (is (=? [{:name "Email" :field_id ["my-db" nil "customers" "email"]}] (:dimensions tus)))
             (is (not (contains? (first (by-model @serialized "Field")) :dimensions)))))
         (ts/with-db dest-db
           (let [db    (ts/create! :model/Database :name "my-db")
@@ -245,11 +244,12 @@
                 email (ts/create! :model/Field :name "email" :table_id (:id table))
                 stale (ts/create! :model/Field :name "stale" :table_id (:id table))]
             (ts/create! :model/Dimension :field_id (:id stale) :name "Stale" :type :internal)
+            (t2/insert! :model/FieldUserSettings {:field_id (:id stale) :description "stale"})
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (testing "the Dimension arrives without leaving an empty FieldUserSettings row"
-              (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email))))
-              (is (not (t2/exists? :model/FieldUserSettings :field_id (:id email)))))
-            (testing "a Dimension the export no longer has is deleted"
+            (testing "the Dimension arrives on its Field"
+              (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email)))))
+            (testing "Field settings and Dimensions the export no longer has are deleted"
+              (is (not (t2/exists? :model/FieldUserSettings :field_id (:id stale))))
               (is (not (t2/exists? :model/Dimension :field_id (:id stale)))))))))))
 
 (deftest dimension-import-compatibility-test
@@ -264,19 +264,39 @@
       (testing "re-importing a Dimension keeps its id"
         (load! [tus])
         (is (= (:id dimension) (t2/select-one-pk :model/Dimension :field_id (:id email)))))
-      (testing "a settings file written before Dimensions moved under FieldUserSettings leaves them alone"
-        (load! [(update tus :fields (partial mapv #(dissoc % :dimensions)))])
+      (testing "a settings file without a `dimensions` key, as v64 wrote, leaves them alone"
+        (load! [(dissoc tus :dimensions)])
         (is (= (:id dimension) (t2/select-one-pk :model/Dimension :field_id (:id email)))))
-      (testing "a Field file written before Dimensions moved still imports its Dimensions"
+      (testing "a v64 Field file imports its Dimensions"
         (t2/delete! :model/Dimension :field_id (:id email))
-        (load! [(assoc (ts/extract-one "Field" (:id email)) :dimensions (:dimensions (first (:fields tus))))])
+        (load! [(assoc (ts/extract-one "Field" (:id email))
+                       :dimensions [(dissoc (first (:dimensions tus)) :field_id)])])
         (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email)))))
+      (testing "a v64 Field file with `dimensions: []` deletes its Field's Dimensions"
+        (load! [(assoc (ts/extract-one "Field" (:id email)) :dimensions [])])
+        (is (not (t2/exists? :model/Dimension :field_id (:id email)))))
       (testing "a local settings row holding only a flag is cleared without stopping the import"
         (t2/insert! :model/TableUserSettings {:table_id (:id table) :description nil :description_set true})
-        (t2/delete! :model/Dimension :field_id (:id email))
         (load! [tus])
         (is (not (t2/exists? :model/TableUserSettings :table_id (:id table))))
         (is (= "Email" (t2/select-one-fn :name :model/Dimension :field_id (:id email))))))))
+
+(deftest table-without-settings-clears-target-test
+  (testing "a Table with nothing set on the source clears the target's table settings, Field settings and Dimensions"
+    (mt/with-empty-h2-app-db!
+      (let [db    (ts/create! :model/Database :name "my-db")
+            table (ts/create! :model/Table :name "customers" :db_id (:id db))
+            email (ts/create! :model/Field :name "email" :table_id (:id table))
+            tus   (first (serdes/extract-all "TableUserSettings" {:filter-column :table_id
+                                                                  :filter-ids    [(:id table)]}))]
+        (is (=? {:fields [] :dimensions []} tus))
+        (t2/insert! :model/TableUserSettings {:table_id (:id table) :display_name "Local"})
+        (t2/insert! :model/FieldUserSettings {:field_id (:id email) :description "local"})
+        (ts/create! :model/Dimension :field_id (:id email) :name "Local" :type :internal)
+        (serdes.load/load-metabase! (ingestion-in-memory [tus]))
+        (is (not (t2/exists? :model/TableUserSettings :table_id (:id table))))
+        (is (not (t2/exists? :model/FieldUserSettings :field_id (:id email))))
+        (is (not (t2/exists? :model/Dimension :field_id (:id email))))))))
 
 (deftest escape-continue-on-error-roundtrip-test
   (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"

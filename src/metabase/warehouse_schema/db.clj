@@ -185,41 +185,15 @@
   "The columns an insert or update of a FieldUserSettings accepts."
   [:field_id :created_at :updated_at :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position :description_set :semantic_type_set :fk_target_field_id_set])
 
-(defn- field-has-user-settings
-  "The condition that the Field aliased `field-alias` has a FieldUserSettings row or a Dimension."
-  [field-alias]
-  (let [field-id (u/qualified-key field-alias :id)]
-    [:or
-     [:exists ^:allow-subquery {:select [1]
-                                :from   [[(t2/table-name :model/FieldUserSettings) :fu]]
-                                :where  [:= :fu.field_id field-id]}]
-     [:exists ^:allow-subquery {:select [1]
-                                :from   [[(t2/table-name :model/Dimension) :d]]
-                                :where  [:= :d.field_id field-id]}]]))
-
-(mu/defn field-user-settings-or-dimensions-exist-for-table?
-  "Whether any Field of the ::warehouse-schema.schema/table with `table-id` has a FieldUserSettings row or a
-  Dimension."
-  [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/Field
-              {:from  [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
-               :where [:and [:= :f.table_id table-id] (field-has-user-settings :f)]}))
-
 (mu/defn field-user-settings-for-tables
-  "One FieldUserSettings per Field of `table-ids` that has a settings row or a Dimension, each with its Field's
-  `:table_id` and `:field_name`, synthesized as `{:field_id id}` when the Field has no row of its own, in Field name
-  order."
+  "The FieldUserSettings of the Fields of `table-ids`, each with its Field's `:table_id`, in Field name order."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (let [flag-columns  (set (vals warehouse-schema-overlay/field-user-settings-flags))
-        value-columns (remove (some-fn #{:field_id} flag-columns) field-user-settings-update-keys)]
-    (t2/select :model/FieldUserSettings
-               {:select    (into [[:f.id :field_id] [:f.table_id :table_id] [:f.name :field_name]]
-                                 (concat (map #(u/qualified-key :u %) value-columns)
-                                         (map (fn [flag] [[:coalesce (u/qualified-key :u flag) false] flag]) flag-columns)))
-                :from      [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
-                :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
-                :where     [:and [:in :f.table_id table-ids] (field-has-user-settings :f)]
-                :order-by  [[:f.name :asc]]})))
+  (t2/select :model/FieldUserSettings
+             {:select   [:u.* [:f.table_id :table_id] [:f.name :field_name]]
+              :from     [[(t2/table-name :model/FieldUserSettings) :u]]
+              :join     [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
+              :where    [:in :f.table_id table-ids]
+              :order-by [[:f.name :asc]]}))
 
 (mu/defn insert-field-user-settings!
   "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."
@@ -304,9 +278,9 @@
   [table-id :- ::lib.schema.id/table]
   (t2/delete! :model/TableUserSettings :table_id table-id))
 
-(mu/defn table-user-settings-with-field-settings
-  "One TableUserSettings per Table among `table-ids` (all when nil) that has a settings row or a Field with one or
-  with a Dimension, synthesized as `{:table_id id}` when the Table has no row of its own."
+(mu/defn table-user-settings-for-tables
+  "One TableUserSettings per Table among `table-ids` (all when nil), synthesized as `{:table_id id}` when the Table
+  has no row of its own."
   [table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
   (let [flag-columns  (set (vals warehouse-schema-overlay/table-user-settings-flags))
         value-columns (remove (some-fn #{:table_id} flag-columns) table-user-settings-update-keys)]
@@ -317,14 +291,7 @@
                                (map (fn [flag] [[:coalesce (u/qualified-key :u flag) false] flag]) flag-columns)))
       :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
       :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]
-      :where     [:and
-                  (if table-ids [:in :t.id table-ids] true)
-                  [:or
-                   [:not= :u.table_id nil]
-                   [:exists ^:allow-subquery
-                    {:select [1]
-                     :from   [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false})]
-                     :where  [:and [:= :f.table_id :t.id] (field-has-user-settings :f)]}]]]})))
+      :where     (if table-ids [:in :t.id table-ids] true)})))
 
 (mu/defn delete-field-user-settings-for-table!
   "Delete the FieldUserSettings of the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the
@@ -335,19 +302,6 @@
                        {:select 1
                         :from   [[(t2/table-name :model/Field) :f]]
                         :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]}))
-
-(mu/defn delete-dimensions-for-table-except-fields!
-  "Delete the Dimensions of the Fields of the ::warehouse-schema.schema/table with `table-id` other than `field-ids`,
-  returning the number deleted."
-  [table-id  :- ::lib.schema.id/table
-   field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (t2/delete! :model/Dimension
-              {:where [:and
-                       [:not-in :field_id field-ids]
-                       [:exists ^:allow-subquery
-                        {:select 1
-                         :from   [[(t2/table-name :model/Field) :f]]
-                         :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]]}))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 
@@ -406,6 +360,38 @@
   "The Dimensions of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Dimension :field_id [:in field-ids]))
+
+(mu/defn dimensions-for-tables
+  "The Dimensions of the Fields of `table-ids`, each with its Field's `:table_id` and `:field_name`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select :model/Dimension
+             {:select [:d.* [:f.table_id :table_id] [:f.name :field_name]]
+              :from   [[(t2/table-name :model/Dimension) :d]]
+              :join   [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :d.field_id]]
+              :where  [:in :f.table_id table-ids]}))
+
+(mu/defn delete-dimensions-for-table!
+  "Delete the Dimensions of the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the number
+  deleted."
+  [table-id :- ::lib.schema.id/table]
+  (t2/delete! :model/Dimension
+              {:where [:exists ^:allow-subquery
+                       {:select 1
+                        :from   [[(t2/table-name :model/Field) :f]]
+                        :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]}))
+
+(mu/defn delete-dimensions-for-table-except!
+  "Delete the Dimensions of the Fields of the ::warehouse-schema.schema/table with `table-id` whose entity id is not
+  among `entity-ids`, returning the number deleted."
+  [table-id   :- ::lib.schema.id/table
+   entity-ids :- [:sequential :string]]
+  (t2/delete! :model/Dimension
+              {:where [:and
+                       [:not-in :entity_id entity-ids]
+                       [:exists ^:allow-subquery
+                        {:select 1
+                         :from   [[(t2/table-name :model/Field) :f]]
+                         :where  [:and [:= :f.id :field_id] [:= :f.table_id table-id]]}]]}))
 
 (mu/defn update-field-values!
   "Apply `changes` to the FieldValues with `field-values-id`, returning the number updated."

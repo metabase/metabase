@@ -77,6 +77,21 @@
      model-key
      (spec/removal-opts model-spec synced-collection-ids entity-ids))))
 
+(defn- remove-unsynced-table-settings!
+  "Drops the user settings, Field settings, and Dimensions of the Tables published in `synced-collection-ids` whose
+  TableUserSettings is not among `seen-paths`."
+  [synced-collection-ids seen-paths]
+  (when (seq synced-collection-ids)
+    (let [imported (into #{}
+                         (keep (fn [path]
+                                 (when (= "TableUserSettings" (:model (last path)))
+                                   (:id (serdes/load-find-local (pop path))))))
+                         seen-paths)]
+      (when-let [table-ids (not-empty (vec (remove imported (remote-sync.db/published-table-ids synced-collection-ids))))]
+        (remote-sync.db/delete-dimensions-for-tables! table-ids)
+        (remote-sync.db/delete-field-user-settings-for-tables! table-ids)
+        (remote-sync.db/delete-table-user-settings-for-tables! table-ids)))))
+
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
   [s]
@@ -352,7 +367,9 @@
     ;; commit, blocking the heartbeat for the whole reconcile and hashing phase.
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
-      (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
+      (let [synced-collection-ids (spec/all-syncable-collection-ids)]
+        (remove-unsynced! synced-collection-ids imported-data)
+        (remove-unsynced-table-settings! synced-collection-ids seen-paths))
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
       ;; insert. Chunked so insert/IN params and memory stay bounded.

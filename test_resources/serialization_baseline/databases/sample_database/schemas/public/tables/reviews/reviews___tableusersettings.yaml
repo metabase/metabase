@@ -1,0 +1,11 @@
+dimensions: []
+fields: []
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: REVIEWS
+  model: Table
+- id: '1'
+  model: TableUserSettings

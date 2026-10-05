@@ -17,17 +17,14 @@
 (methodical/defmethod t2/table-name :model/FieldUserSettings [_model] :metabase_field_user_settings)
 
 (t2/deftransforms :model/FieldUserSettings
-  {:effective_type         field/transform-field-effective-type
-   :coercion_strategy      field/transform-field-coercion-strategy
-   :semantic_type          field/transform-field-semantic-type
-   :visibility_type        mi/transform-keyword
-   :has_field_values       mi/transform-keyword
-   :data_sensitivity       mi/transform-keyword
-   :settings               mi/transform-json
-   :nfc_path               mi/transform-json
-   :description_set        mi/transform-boolean
-   :semantic_type_set      mi/transform-boolean
-   :fk_target_field_id_set mi/transform-boolean})
+  {:effective_type    field/transform-field-effective-type
+   :coercion_strategy field/transform-field-coercion-strategy
+   :semantic_type     field/transform-field-semantic-type
+   :visibility_type   mi/transform-keyword
+   :has_field_values  mi/transform-keyword
+   :data_sensitivity  mi/transform-keyword
+   :settings          mi/transform-json
+   :nfc_path          mi/transform-json})
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
@@ -103,10 +100,9 @@
            ks))))
 
 (defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids] :as opts}]
-  (serdes/extract-reducible-nested "FieldUserSettings" (dissoc opts :filter-column :filter-ids)
-                                   (if (= filter-column :table_id)
-                                     (warehouse-schema.db/field-user-settings-for-tables filter-ids)
-                                     (serdes/extract-query-collections :model/FieldUserSettings opts))))
+  (if (= filter-column :table_id)
+    (warehouse-schema.db/field-user-settings-for-tables filter-ids)
+    (serdes/extract-query-collections :model/FieldUserSettings opts)))
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
@@ -121,15 +117,6 @@
       ;; It's too short, so no schema. Shift them over and add a nil schema.
       [db nil schema table])))
 
-(def ^:private dimensions-transform
-  "The nested Dimensions of a FieldUserSettings, left alone on import when the entry has no `dimensions` key."
-  (update (serdes/nested :model/Dimension :field_id {:sort-by (juxt :name :created_at)})
-          :import-with-context
-          (fn [import-dimensions]
-            (fn [current k dimensions]
-              (when (some? dimensions)
-                (import-dimensions current k dimensions))))))
-
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
@@ -139,7 +126,6 @@
                :semantic_type_set      false
                :fk_target_field_id_set false}
    :transform {:created_at   (serdes/date)
-               :dimensions   dimensions-transform
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
                               :export     (constantly ::serdes/skip)

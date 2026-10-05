@@ -463,8 +463,8 @@
 
 (defmethod serdes/load-one! "Field" [ingested maybe-local]
   (let [field (serdes/default-load-one! ingested maybe-local)]
-    (when-let [dimensions (not-empty (:dimensions ingested))]
-      ((:import-with-context legacy-dimensions) field :dimensions dimensions))
+    (when (contains? ingested :dimensions)
+      ((:import-with-context legacy-dimensions) field :dimensions (:dimensions ingested)))
     field))
 
 (defmethod serdes/deserialization-dependencies "Field" [field]

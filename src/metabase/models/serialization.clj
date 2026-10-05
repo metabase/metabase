@@ -1869,12 +1869,14 @@
                                        :import #(*import-fk* % model)))))
 
 (defn nested
-  "Nested entities; `opts` may give `:sort-by`, `:key-field` and `:delete-children!`, a fn of the parent id."
+  "Nested entities; `opts` may give `:sort-by`, `:key-field`, `:delete-children!` (a fn of the parent id) and
+  `:delete-children-except!` (a fn of the parent id and the entity ids to keep)."
   [model backward-fk opts]
-  (let [model-name       (name model)
-        sorter           (:sort-by opts :created_at)
-        key-field        (:key-field opts :entity_id)
-        delete-children! (:delete-children! opts #(models.db/delete-children! model backward-fk %))]
+  (let [model-name              (name model)
+        sorter                  (:sort-by opts :created_at)
+        key-field               (:key-field opts :entity_id)
+        delete-children!        (:delete-children! opts #(models.db/delete-children! model backward-fk %))
+        delete-children-except! (:delete-children-except! opts #(models.db/delete-children-except! model backward-fk %1 %2))]
     {::nested             true
      :model               model
      :backward-fk         backward-fk
@@ -1907,7 +1909,7 @@
                                       (load-one! (enrich ingested) nil)))
 
                                 :else                       ; match by entity id
-                                (do (models.db/delete-children-except! model backward-fk parent-id (map :entity_id lst))
+                                (do (delete-children-except! parent-id (map :entity_id lst))
                                     (doseq [ingested lst
                                             :let [ingested (enrich ingested)
                                                   local    (lookup-by-id model (entity-id model-name ingested))]]

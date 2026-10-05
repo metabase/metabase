@@ -698,10 +698,11 @@
           (is (contains? descendants ["Field" field2-id])))
         (testing "Segments are included"
           (is (contains? descendants ["Segment" segment-id]))))))
-  (testing "Table with no fields or segments returns empty map"
+  (testing "Table with no fields or segments still has its settings"
     (mt/with-temp [:model/Database {db-id :id}    {:name "Test DB"}
                    :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
-      (is (= {} (serdes/descendants "Table" table-id {}))))))
+      (is (= {["TableUserSettings" table-id] {"Table" table-id}}
+             (serdes/descendants "Table" table-id {}))))))
 
 (deftest serdes-descendants-skip-archived-segments-test
   (testing "Table descendants respects skip-archived option for Segments"

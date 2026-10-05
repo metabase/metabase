@@ -390,10 +390,10 @@
     (assoc details :table_id (:id details) :table_name (:name details))))
 
 (defn- sync-table-user-settings!
-  "Track the Table's TableUserSettings when eligible and any of its user settings exist, else mark it removed."
+  "Track the Table's TableUserSettings when eligible, else mark it removed."
   [table-id eligible?]
   (cond
-    (and eligible? (remote-sync.db/user-settings-exist-for-table? table-id))
+    eligible?
     (create-or-update-remote-sync-object-entry!
      "TableUserSettings" table-id "update" hydrate-table-user-settings-details)
 
