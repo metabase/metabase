@@ -842,6 +842,11 @@
     (testing "google's service account key is a file field, but it is the whole credential"
       (is (= #{:service-account-key :oauth-access-token} (llm.provider/secret-field-keys "google"))))
     (is (= #{} (llm.provider/secret-field-keys "metabase"))))
+  (testing "every type other than the managed one is always available"
+    (is (true? (llm.provider/type-available? "anthropic")))
+    (is (false? (llm.provider/type-available? "evilai")))))
+
+(deftest ^:parallel provider-type-models-test
   (testing "every type's default model, which is what a first connection of that type gets selected for it"
     (is (= {"anthropic"  "claude-sonnet-4-6"
             "openai"     "gpt-5.4"
@@ -882,10 +887,7 @@
             "ollama"     nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
-    (is (nil? (llm.provider/mini-model "evilai"))))
-  (testing "every type other than the managed one is always available"
-    (is (true? (llm.provider/type-available? "anthropic")))
-    (is (false? (llm.provider/type-available? "evilai")))))
+    (is (nil? (llm.provider/mini-model "evilai")))))
 
 (deftest destination-fields-are-declared-for-every-type-test
   (testing (str "Which config fields decide which server a connection's credentials go to. The registry has to "

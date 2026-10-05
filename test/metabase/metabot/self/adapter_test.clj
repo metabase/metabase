@@ -95,21 +95,22 @@
            ((:error-msg @#'claude/provider) {})))))
 
 (def ^:private legacy-error-fallbacks
-  "The adapters whose own `... API error (HTTP {0})` msgid already has translations in `locales/*.po`, so
-  they keep declaring an `:error-fallback` until the shared parameterised template is translated too — see
-  [[metabase.metabot.self.adapter/provider]], which says the key exists for exactly that.
+  "The adapters that declare their own `... API error (HTTP {0})` msgid as an `:error-fallback`. Most have
+  translations of it in `locales/*.po` and keep it until the shared parameterised template is translated too —
+  see [[metabase.metabot.self.adapter/provider]], which says the key exists for exactly that. xAI's has none
+  yet; it is here because it already declares one.
 
   Enumerated rather than derived as \"everything except the new ones\": this set may only shrink, and an
-  adapter added from here on has no shipped translation to keep, so it must not be enrolled by default."
+  adapter added from here on uses the shared template, so it must not be enrolled by default."
   #{#'azure/provider #'bedrock/provider #'claude/provider #'deepseek/provider #'google/provider
     #'mistral/provider #'moonshot/provider #'openai/provider #'openrouter/provider #'vllm/provider
-    #'zai/provider})
+    #'xai/provider #'zai/provider})
 
 (deftest every-descriptor-brings-its-own-translated-messages-test
-  (testing "exactly the adapters with translations already shipped for their own msgid declare one. The
+  (testing "exactly the adapters in `legacy-error-fallbacks` declare their own msgid. The
             rendered English is identical either way, so `error-message-test` cannot tell the two apart —
             this can, in both directions: a legacy adapter may not silently lose its msgid, and a new one
-            may not add a twelfth for translators"
+            may not add another for translators"
     (is (= legacy-error-fallbacks
            (set (filter #(fn? (:error-fallback @%)) (keys expected-spans))))))
   (testing "the proxy refusal deliberately does not get the same treatment: it stays one shared msgid,
