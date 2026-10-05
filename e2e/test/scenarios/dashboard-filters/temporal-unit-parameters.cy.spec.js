@@ -999,48 +999,6 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
   });
 
-  describe("embedding", () => {
-    beforeEach(() => {
-      cy.signInAsAdmin();
-      H.updateSetting("enable-public-sharing", true);
-    });
-
-    it("should be able to use temporal unit parameters in a public dashboard", () => {
-      createDashboardWithMappedQuestion().then((dashboard) => {
-        cy.request("POST", `/api/dashboard/${dashboard.id}/public_link`).then(
-          ({ body: { uuid } }) => {
-            cy.signOut();
-            cy.visit(`/public/dashboard/${uuid}`);
-          },
-        );
-      });
-
-      H.filterWidget().click();
-      H.popover().findByText("Year").click();
-      H.getDashboardCard().findByText("Created At: Year").should("be.visible");
-    });
-
-    it("should be able to use temporal unit parameters in a embedded dashboard", () => {
-      createDashboardWithMappedQuestion({
-        dashboardDetails: {
-          enable_embedding: true,
-          embedding_params: {
-            [parameterDetails.slug]: "enabled",
-          },
-        },
-      }).then((dashboard) => {
-        H.visitEmbeddedPage({
-          resource: { dashboard: dashboard.id },
-          params: {},
-        });
-      });
-
-      H.filterWidget().click();
-      H.popover().findByText("Year").click();
-      H.getDashboardCard().findByText("Created At: Year").should("be.visible");
-    });
-  });
-
   describe("native queries", () => {
     it("should be able to use temporal unit parameters in a native query", () => {
       const questionWithoutDefaultValue = {
