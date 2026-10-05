@@ -203,6 +203,17 @@ const OVERVIEW_STATES = [
     label: "Disabled, filled",
     props: { disabled: true, defaultValue: OVERVIEW_VALUE },
   },
+  {
+    id: "clearable",
+    label: "With clear button",
+    props: { clearable: true, defaultValue: OVERVIEW_VALUE },
+  },
+  {
+    id: "clearable-focused",
+    label: "With clear button, focused",
+    props: { clearable: true, defaultValue: OVERVIEW_VALUE },
+    focus: true,
+  },
   // TODO: use the `loading` prop instead of a Loader in `rightSection` after upgrading Mantine
   {
     id: "loading-focused-empty",

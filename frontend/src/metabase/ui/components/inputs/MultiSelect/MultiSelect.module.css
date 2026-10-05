@@ -25,4 +25,14 @@
       margin-inline: 0;
     }
   }
+
+  /*
+ * Mantine reserves room for the clear button + chevron pair on clearable fields.
+ * The clear button replaces the chevron here, and the input already keeps the
+ * right section free.
+ * TODO: remove after upgrading Mantine (`clearSectionMode="clear"`)
+ */
+  .MultiSelectPillsList {
+    padding-inline-end: 0 !important;
+  }
 }

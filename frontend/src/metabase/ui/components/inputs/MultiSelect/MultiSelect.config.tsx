@@ -20,9 +20,7 @@ export const multiSelectOverrides = {
         withinPortal: true,
         keepMounted: false,
       },
-      clearButtonProps: {
-        color: "text-primary",
-      },
+      clearButtonProps: selectOverrides?.Select?.defaultProps?.clearButtonProps,
       "data-testid": "multi-select",
       inputWrapperOrder: ["label", "description", "input", "error"],
     },
@@ -31,6 +29,7 @@ export const multiSelectOverrides = {
       input: S.MultiSelectInput,
       inputField: S.MultiSelectField,
       pill: S.MultiSelectPill,
+      pillsList: S.MultiSelectPillsList,
     },
   }),
 };
