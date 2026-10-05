@@ -238,6 +238,9 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
             // `beginResearch` already asserted the detail-page URL.
             // No new-exploration CTA on the detail page.
+            cy.findAllByRole("treeitem", { timeout: 15000 })
+              .first()
+              .should("be.visible");
             cy.findByRole("button", { name: /Start research/i }).should(
               "not.exist",
             );
@@ -1071,6 +1074,14 @@ describe("scenarios > explorations > chart click-through", () => {
           "include",
           `/question/research/${explorationId}/page/`,
         );
+        cy.location("search").should("include", "tab=all");
+        cy.get("@newThreadName").then((name) => {
+          cy.findByRole("group", { name: String(name) }).should(
+            "have.attr",
+            "aria-expanded",
+            "true",
+          );
+        });
 
         // Temporal ranges use an en-dash (e.g. "Feb 2020 – Mar 2020"); exact
         // bounds depend on brush pixel coords, so just assert range formatting.
