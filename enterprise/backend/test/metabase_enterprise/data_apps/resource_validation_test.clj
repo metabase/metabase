@@ -55,14 +55,14 @@
 
 (deftest valid-resources-have-no-problems-test
   (data-apps.tu/do-with-sources!
-   (fn [{:keys [metric-id implicit-id query-action-id]}]
+   (fn [{:keys [metric-id action-id]}]
      (let [resources (data-apps.tu/build-resources
                       collection-eid
                       [{:entity_id question-eid :name "VenuesList" :query (venues-query)}
                        {:entity_id "shopQuestionMetricVen" :name "VenueCount"
                         :query {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                           :aggregations [{:type "metric" :id metric-id}]}]}}]
-                      [implicit-id query-action-id])]
+                      [action-id])]
        (is (= [] (messages (shop resources))))))))
 
 (deftest an-app-without-resources-has-no-problems-test
@@ -82,9 +82,10 @@
     (testing "a card outside the app's collection"
       (refused (edit-file (shop (question-resources)) question-path #(assoc % :collection_id "someOtherCollection01"))
                "must be in the collection"))
-    (testing "a card that isn't a question, model, or metric"
-      (refused (edit-file (shop (question-resources)) question-path #(assoc % :type "dashboard"))
-               "must be a question, model, or metric"))
+    (testing "a card that isn't a question or metric: a model has no place, now that no action hangs off one"
+      (doseq [card-type ["dashboard" "model"]]
+        (refused (edit-file (shop (question-resources)) question-path #(assoc % :type card-type))
+                 "must be a question or metric")))
     (testing "a card whose query names no database"
       (refused (edit-file (shop (question-resources)) question-path #(assoc % :dataset_query {}))
                "must hold a query"))
@@ -125,27 +126,24 @@
     (testing "resources without the collection file"
       (refused (shop (dissoc (question-resources) "collection.yaml")) "resource collection is missing"))))
 
-(deftest refuses-an-action-that-isnt-on-the-apps-model-test
+(deftest refuses-an-action-the-app-cannot-run-test
   (data-apps.tu/do-with-sources!
-   (fn [{:keys [metric-id model-id implicit-id]}]
-     (let [source-model-eid (t2/select-one-fn :entity_id :model/Card :id model-id)
-           resources        (data-apps.tu/build-resources collection-eid
-                                                          [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
-                                                          [implicit-id])
-           action-path      "data_apps/shop/resources/actions/"
-           tree             (edit-file (shop resources) action-path #(assoc % :model_id source-model-eid))]
-       (is (some #(str/includes? % "must belong to a model in the app's resources") (messages tree)))
-       (is (= [] (messages (shop resources))) "on the app's model copy it is fine")
-       (testing "an implicit action has to have a model, where a query action can sit in the collection alone"
-         (is (some #(str/includes? % "is an implicit action, so it must belong to a model")
-                   (messages (edit-file (shop resources) action-path #(assoc % :model_id nil)))))
-         (is (= [] (messages (edit-file (shop resources) action-path
-                                        #(assoc % :model_id nil :type "query" :implicit []
-                                                :query [{:database_id "test-data (h2)"
-                                                         :dataset_query {:database "test-data (h2)"
-                                                                         :lib/type "mbql/query"
-                                                                         :stages [{:lib/type "mbql.stage/native"
-                                                                                   :native "DELETE FROM venues"}]}}]))))))
+   (fn [{:keys [model-id action-id]}]
+     (let [model-eid   (t2/select-one-fn :entity_id :model/Card :id model-id)
+           resources   (data-apps.tu/build-resources collection-eid
+                                                     [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                                                     [action-id])
+           action-path "data_apps/shop/resources/actions/"]
+       (is (= [] (messages (shop resources))) "a query action that belongs to no model is fine")
+       (testing "a data app runs only actions that belong to no model, the ones the typed schema lists"
+         (is (some #(str/includes? % "must belong to no model")
+                   (messages (edit-file (shop resources) action-path #(assoc % :model_id model-eid))))))
+       (testing "and only query actions"
+         (is (some #(str/includes? % "must be a query action")
+                   (messages (edit-file (shop resources) action-path
+                                        #(assoc % :type "implicit" :query [] :implicit [{:kind "row/create"}])))))
+         (is (some #(str/includes? % "must carry exactly one query, and no implicit action")
+                   (messages (edit-file (shop resources) action-path #(assoc % :implicit [{:kind "row/create"}]))))))
        (testing "a card or action has to name its creator, since a load can't save one without"
          (is (some #(str/includes? % "must name its creator in creator_id")
                    (messages (edit-file (shop resources) action-path #(dissoc % :creator_id)))))
@@ -153,8 +151,7 @@
                    (messages (edit-file (shop resources) question-path #(dissoc % :creator_id))))))
        (testing "an action is in the app's collection, like a card"
          (is (some #(str/includes? % (str "must be in the collection " collection-eid))
-                   (messages (edit-file (shop resources) action-path #(assoc % :collection_id "elsewhere0000000000a"))))))
-       (is (pos? metric-id))))))
+                   (messages (edit-file (shop resources) action-path #(assoc % :collection_id "elsewhere0000000000a"))))))))))
 
 (deftest refuses-what-this-app-does-not-own-test
   (testing "serialization would update any row carrying an entity ID a file names, so a file may only name the app's own"

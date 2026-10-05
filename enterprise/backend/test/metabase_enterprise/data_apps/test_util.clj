@@ -131,7 +131,7 @@
 (defn build-resources
   "The resource files an author commits for the app whose collection has `collection-entity-id`, keyed by their path
   relative to `resources/`: a saved question per `{:entity_id :name :query}` in `queries`, and copies of the metrics
-  those use and of the actions with `action-ids` on copies of their models. Copies get [[copy-entity-id]]s."
+  those use and of the actions with `action-ids`, which belong to no model. Copies get [[copy-entity-id]]s."
   [collection-entity-id queries action-ids]
   (let [resolved  (for [{:keys [query] :as spec} queries
                         :let [table-id (get-in query [:stages 0 :source :id])
@@ -140,13 +140,10 @@
                     {:spec spec :query (lib/test-query mp query)})
         metrics   (t2/select :model/Card :id [:in (into #{-1} (mapcat (comp lib/all-source-card-ids :query)) resolved)])
         actions   (map #(t2/select-one :model/Action :id %) action-ids)
-        models    (t2/select :model/Card :id [:in (into #{-1} (map :model_id) actions)])
         copy-id   (fn [kind source] (copy-entity-id kind collection-entity-id (:entity_id source)))
-        copy-ids  (merge (into {} (map (juxt :id (partial copy-id "metric"))) metrics)
-                         (into {} (map (juxt :id (partial copy-id "model"))) models))
-        extract   (fn [model-name instance & [model-entity-id]]
-                    (cond-> (assoc (serdes/extract-one model-name {} instance) :collection_id collection-entity-id)
-                      (= model-name "Action") (assoc :model_id model-entity-id)))
+        copy-ids  (into {} (map (juxt :id (partial copy-id "metric"))) metrics)
+        extract   (fn [model-name instance]
+                    (assoc (serdes/extract-one model-name {} instance) :collection_id collection-entity-id))
         entities  (serdes/with-cache
                     (binding [resolve/*export-resolver* (copy-overriding-resolver resolve/*export-resolver* copy-ids)]
                       (doall
@@ -154,12 +151,11 @@
                         [(extract "Collection" (collection collection-entity-id))]
                         (for [{:keys [spec query]} resolved]
                           (extract "Card" (question spec query)))
-                        (for [card (concat metrics models)]
+                        (for [card metrics]
                           (extract "Card" (merge card instance-fields {:entity_id  (copy-ids (:id card))
                                                                        :creator_id (mt/user->id :crowberto)})))
                         (for [action actions]
-                          (extract "Action" (action-copy action (copy-id "action" action))
-                                   (copy-ids (:model_id action))))))))]
+                          (extract "Action" (action-copy action (copy-id "action" action))))))))]
     (into (sorted-map) (map (juxt file-path serialization.dump/yaml-content)) entities)))
 
 (defn do-with-sources!

@@ -2,8 +2,8 @@
   "What a data app's resource files may hold. Serialization loads them like any other entity files (see
   `metabase-enterprise.serialization.v2.ingest/shared-top-level-paths`), and a load trusts what it reads: it updates
   whatever row carries an entity ID and resolves references to any local entity. These checks run on the ingested
-  files first, so an app's `resources/` can only define its own collection and cards and actions in it, the actions
-  on its model copies when they have a model, referencing nothing else of Metabase's but what already exists."
+  files first, so an app's `resources/` can only define its own collection and, in it, questions, metrics, and query
+  actions that belong to no model, referencing nothing else of Metabase's but what already exists."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -18,9 +18,7 @@
   "Models a resource may reference outside the app. They must already exist: a load never creates them."
   #{"Database" "Table" "Field" "NativeQuerySnippet" "Segment" "Measure"})
 
-(def ^:private card-types #{"question" "model" "metric"})
-
-(def ^:private action-types #{"implicit" "query"})
+(def ^:private card-types #{"question" "metric"})
 
 (def ^:private resource-models
   "The model a resource file holds, by its path relative to `resources/`."
@@ -58,16 +56,12 @@
       (name t))))
 
 (defn- action-children-problems
-  "Serdes loads an action's implicit and query rows whatever its type, so a file must carry exactly the one its type
-  uses."
+  "Serdes loads an action's implicit and query rows whatever its type, so a query action's file must carry exactly
+  its query row."
   [{:keys [path entity]}]
-  (let [counts   (update-vals (select-keys entity [:implicit :query]) count)
-        expected (case (type-name entity)
-                   "implicit" {:implicit 1}
-                   "query"    {:query 1}
-                   nil)]
-    (when (and expected (not= expected (into {} (remove (comp zero? val)) counts)))
-      [(problem path (tru "{0} must carry exactly the row its action type uses." path))])))
+  (let [counts (update-vals (select-keys entity [:implicit :query]) count)]
+    (when (not= {:query 1} (into {} (remove (comp zero? val)) counts))
+      [(problem path (tru "{0} must carry exactly one query, and no implicit action." path))])))
 
 (defn- parameter-source-problems
   "An action's parameters can take their values from a card, which its dependencies don't include."
@@ -75,7 +69,7 @@
   (when (some (comp :card_id :values_source_config) (:parameters entity))
     [(problem path (tru "{0} must not take parameter values from a card." path))]))
 
-(defn- model-problems [collection-entity-id model-entity-ids {:keys [path model entity] :as file}]
+(defn- model-problems [collection-entity-id {:keys [path model entity] :as file}]
   (case model
     "Collection"
     (concat
@@ -92,7 +86,7 @@
      (when (not= collection-entity-id (:collection_id entity))
        [(problem path (tru "{0} must be in the collection {1}." path collection-entity-id))])
      (when-not (card-types (type-name entity))
-       [(problem path (tru "{0} must be a question, model, or metric." path))])
+       [(problem path (tru "{0} must be a question or metric." path))])
      (when-not (and (map? (:dataset_query entity)) (some? (:database (:dataset_query entity))))
        [(problem path (tru "{0} must hold a query." path))])
      (when (:archived entity)
@@ -106,12 +100,11 @@
     (concat
      (when (not= collection-entity-id (:collection_id entity))
        [(problem path (tru "{0} must be in the collection {1}." path collection-entity-id))])
-     (when-not (action-types (type-name entity))
-       [(problem path (tru "{0} must be an implicit or query action." path))])
-     (when (and (= "implicit" (type-name entity)) (nil? (:model_id entity)))
-       [(problem path (tru "{0} is an implicit action, so it must belong to a model." path))])
-     (when (and (some? (:model_id entity)) (not (contains? model-entity-ids (:model_id entity))))
-       [(problem path (tru "{0} must belong to a model in the app''s resources." path))])
+     ;; a data app runs only query actions that belong to no model, the ones the typed schema lists
+     (when (not= "query" (type-name entity))
+       [(problem path (tru "{0} must be a query action." path))])
+     (when (some? (:model_id entity))
+       [(problem path (tru "{0} must belong to no model." path))])
      (when (:archived entity)
        [(problem path (tru "{0} must not be archived." path))])
      (action-children-problems file)
@@ -248,9 +241,6 @@
       :else
       (let [cards            (filter (comp #{"Card"} :model) resources)
             card-entity-ids  (into #{} (map (comp :entity_id :entity)) cards)
-            model-entity-ids (into #{}
-                                   (comp (map :entity) (filter (comp #{"model"} type-name)) (map :entity_id))
-                                   cards)
             structural       (concat
                               (map #(problem (:path %) (tru "{0} is not a data app resource." (:path %))) unknown)
                               (when (empty? (filter (comp #{"Collection"} :model) resources))
@@ -261,7 +251,7 @@
         (if (seq structural)
           structural
           (concat
-           (mapcat (partial model-problems collection-entity-id model-entity-ids) resources)
+           (mapcat (partial model-problems collection-entity-id) resources)
            (mapcat (partial dependency-problems collection-entity-id card-entity-ids) resources)
            (ownership-problems (-> manifest :entity :entity_id) collection-entity-id resources)
            (external-dependency-problems resources)
