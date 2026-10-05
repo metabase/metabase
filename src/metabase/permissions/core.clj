@@ -41,6 +41,7 @@
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
+  data-app-collection-ids
   data-app-group-ids
   data-app-view-data-permission-level
   disable-perms-cache
