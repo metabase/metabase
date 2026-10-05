@@ -2,7 +2,7 @@
 name: metabase-data-app-setup
 description: Scaffold a new Metabase data-app into the connected remote-sync repository's `data_apps/<app>/` directory from the `data-app-template`. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
 metadata:
-    version: development
+    version: master
 ---
 
 # Create a Metabase Data App

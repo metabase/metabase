@@ -2,7 +2,7 @@
 name: metabase-data-app-actions
 description: Use when a Metabase data app needs to trigger a write or mutation — submitting a form, updating a row, deleting an entry, running a saved action, or any "do something" interaction. Covers invoking an existing action via `useAction`, parameter typing, response handling, and the critical post-action refresh of any UI data the action may have changed.
 metadata:
-  version: development
+  version: master
 ---
 
 # Triggering actions from a Metabase data app
