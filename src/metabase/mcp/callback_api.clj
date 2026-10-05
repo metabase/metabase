@@ -10,7 +10,6 @@
    [malli.error :as me]
    [metabase.agent-api.query-guards :as query-guards]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -334,14 +333,12 @@
                :route-params (when (vector? match) (vec (rest match)))})))
         route-table))
 
-(defn- scope-satisfied?
-  "Whether the credential `claims` hold `required-scope`, or nil `required-scope` means none is needed. Only the
-   literal scope set signed into the claim counts."
+(defn- holds-scope?
+  "Whether the credential `claims` hold `required-scope` literally, or nil `required-scope` means none is needed. No
+   wildcard in the claim satisfies a scope."
   [claims required-scope]
   (or (nil? required-scope)
-      (let [granted (:token-scopes claims)]
-        (and (set? granted)
-             (scope/scope-satisfied? (into #{} (filter string?) granted) required-scope)))))
+      (contains? (set (filter string? (:token-scopes claims))) required-scope)))
 
 (defn- respond-with
   "Send `response`, which may be a Ring response map or a streaming response."
@@ -362,7 +359,7 @@
       (not user)
       (respond {:status 401 :body "Unauthenticated"})
 
-      (not (scope-satisfied? claims scope))
+      (not (holds-scope? claims scope))
       (raise (ex-info (tru "This client was not granted the scope this request needs.")
                       {:status-code 403}))
 
