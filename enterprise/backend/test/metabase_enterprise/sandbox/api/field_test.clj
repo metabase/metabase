@@ -120,6 +120,22 @@
           (is (= [[1 "$"] [3 "$$$"]]
                  (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))))
 
+(deftest field-values-without-sandboxes-feature-test
+  (testing (str "GET /api/field/:id/values gives a sandboxed user no values "
+                "while sandboxing is unavailable")
+    (mt/with-temp-copy-of-db
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
+      (met/with-gtaps! {:gtaps      {:venues
+                                     {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                        :attributes {:cat 4}}
+        (letfn [(fetch-values []
+                  (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))]
+          (is (= [[1] [3]] (fetch-values)))
+          (mt/with-premium-features #{}
+            (is (= [] (fetch-values))))
+          (testing "and their own values once it's back"
+            (is (= [[1] [3]] (fetch-values)))))))))
+
 (deftest search-test
   (testing "GET /api/field/:id/search/:search-id"
     (met/with-gtaps! {:gtaps      {:venues
