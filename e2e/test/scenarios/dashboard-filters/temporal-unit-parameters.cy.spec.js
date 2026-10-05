@@ -459,7 +459,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget().eq(1).click();
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
-        // metabase#44684: the card applies the first parameter, the drill applies the last one
+        // the card applies the first parameter, the drill applies the last one
         cy.findByText("Created At: Quarter").should("be.visible");
         cy.findByText("Q2 2025").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
