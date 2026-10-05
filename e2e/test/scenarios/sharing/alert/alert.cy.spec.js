@@ -13,7 +13,7 @@ describe("scenarios > alert", () => {
   });
 
   describe("with nothing set", () => {
-    it("should prompt you to add email/slack credentials", () => {
+    it("should prompt admins to add email/slack credentials and tell non-admins to ask an admin", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       cy.findByLabelText("Move, trash, and more…").click();
@@ -37,9 +37,7 @@ describe("scenarios > alert", () => {
           .closest("a")
           .should("have.attr", "href", "/admin/settings/webhooks");
       });
-    });
 
-    it("should say to non-admins that admin must add email credentials", () => {
       cy.signInAsNormalUser();
 
       H.visitQuestion(ORDERS_QUESTION_ID);
@@ -50,7 +48,7 @@ describe("scenarios > alert", () => {
       H.modal().within(() => {
         cy.findByText(
           "To get notified when something happens, or to send this chart on a schedule, ask your admin to set up email, Slack, or a webhook.",
-        );
+        ).should("be.visible");
 
         cy.findByText("Set up email").should("not.exist");
         cy.findByText("Set up Slack").should("not.exist");
@@ -183,7 +181,7 @@ describe("scenarios > alert", () => {
         setAllowedDomains();
       });
 
-      it("should validate approved email domains for a question alert", () => {
+      it("should validate approved email domains for a question alert and a dashboard subscription (metabase#17977)", () => {
         H.visitQuestion(ORDERS_QUESTION_ID);
 
         cy.findByLabelText("Move, trash, and more…").click();
@@ -198,9 +196,7 @@ describe("scenarios > alert", () => {
           cy.findByText(adminAlertError);
           cy.button("Done").should("be.disabled");
         });
-      });
 
-      it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         H.toggleDashboardSubscriptionsSidebar();
 

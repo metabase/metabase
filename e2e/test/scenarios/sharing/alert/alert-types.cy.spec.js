@@ -1,9 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_BY_YEAR_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -28,17 +25,6 @@ const multiSeriesQuestionWithGoal = {
 
 const timeSeriesQuestionId = ORDERS_BY_YEAR_QUESTION_ID;
 
-const rawTestCases = [
-  {
-    questionType: "raw data question",
-    questionId: ORDERS_QUESTION_ID,
-  },
-  {
-    questionType: "timeseries question without a goal",
-    questionId: timeSeriesQuestionId,
-  },
-];
-
 describe("scenarios > alert > types", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/notification").as("updateAlert");
@@ -51,28 +37,26 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
   });
 
   describe("rows based alerts", () => {
-    rawTestCases.forEach(({ questionType, questionId }) => {
-      it(`should be supported for ${questionType}`, () => {
-        H.visitQuestion(questionId);
+    it("should be supported for timeseries question without a goal", () => {
+      H.visitQuestion(timeSeriesQuestionId);
 
-        cy.findByLabelText("Move, trash, and more…").click();
-        H.popover().findByText("Create an alert").click();
-        cy.wait("@channel");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+      cy.wait("@channel");
 
-        H.selectScheduleTime();
-        H.modal().within(() => {
-          cy.findByText("New alert").should("be.visible");
+      H.selectScheduleTime();
+      H.modal().within(() => {
+        cy.findByText("New alert").should("be.visible");
 
-          cy.findByTestId("alert-goal-select")
-            .should("not.be.enabled")
-            .should("have.text", "When this question has results");
+        cy.findByTestId("alert-goal-select")
+          .should("not.be.enabled")
+          .should("have.text", "When this question has results");
 
-          cy.findByText("Done").click();
-        });
+        cy.findByText("Done").click();
+      });
 
-        cy.wait("@updateAlert").then(({ response: { body } }) => {
-          expect(body.payload?.send_condition).to.equal("has_result");
-        });
+      cy.wait("@updateAlert").then(({ response: { body } }) => {
+        expect(body.payload?.send_condition).to.equal("has_result");
       });
     });
   });

@@ -28,28 +28,23 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     });
 
     H.selectScheduleTime();
+    H.modal().within(() => {
+      cy.findByText("New alert").should("be.visible");
+
+      cy.findByTestId("alert-goal-select")
+        .should("not.be.enabled")
+        .should("have.text", "When this question has results");
+    });
     cy.button("Done").click();
 
     cy.wait("@saveAlert").then(({ response: { body } }) => {
       expect(body.handlers).to.have.length(1);
       expect(body.handlers[0].channel_type).to.eq("channel/email");
+      expect(body.payload?.send_condition).to.equal("has_result");
     });
   });
 
-  it("should not claim a schedule when sending a one-off alert", () => {
-    createQuestionAndOpenAlert("One-off alert");
-
-    H.sendAlertAndVisitIt();
-
-    cy.get("table.header")
-      .first()
-      .within(() => {
-        cy.findByText("One-off alert").should("be.visible");
-        cy.findByText(/Run daily at/).should("not.exist");
-      });
-  });
-
-  it("should respect email alerts toggled off (metabase#12349)", () => {
+  it("should respect email alerts toggled off and save the Slack channel_id (metabase#12349)", () => {
     H.updateSetting("report-timezone", "America/New_York");
 
     //For this test, we need to pretend that slack is set up
@@ -80,6 +75,13 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.wait("@saveAlert").then(({ response: { body } }) => {
       expect(body.handlers).to.have.length(1);
       expect(body.handlers[0].channel_type).to.eq("channel/slack");
+
+      // The mocked channel `#work` has id `C001` in e2e-slack-helpers.js.
+      // Storing the immutable channel_id at save time is what makes the
+      // subscription survive future channel renames in Slack.
+      const slackDetails = body.handlers[0].recipients[0].details;
+      expect(slackDetails.value).to.eq("#work");
+      expect(slackDetails.channel_id).to.eq("C001");
     });
 
     cy.log(
@@ -95,51 +97,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.findByRole("button", { name: "Delete this alert" }).click();
   });
 
-  it("should persist the immutable Slack channel_id alongside the channel name", () => {
-    H.mockSlackConfigured();
+  it("should set up an email alert for a new question and update it without updating the question (metabase#36866)", () => {
+    cy.intercept("PUT", "/api/notification/*").as("updatedAlert");
 
-    openAlertForQuestion(ORDERS_QUESTION_ID);
-
-    H.removeNotificationHandlerChannel("Email");
-    H.addNotificationHandlerChannel("Slack", { hasNoChannelsAdded: true });
-
-    H.modal()
-      .findByPlaceholderText(/Pick a user or channel/)
-      .click();
-    H.popover().findByText("#work").click();
-
-    H.selectScheduleTime();
-    H.modal().within(() => {
-      cy.button("Done").click();
-    });
-
-    cy.wait("@saveAlert").then(({ response: { body } }) => {
-      // The mocked channel `#work` has id `C001` in e2e-slack-helpers.js.
-      // Storing the immutable channel_id at save time is what makes the
-      // subscription survive future channel renames in Slack.
-      const slackDetails = body.handlers[0].recipients[0].details;
-      expect(slackDetails.value).to.eq("#work");
-      expect(slackDetails.channel_id).to.eq("C001");
-    });
-  });
-
-  it("should set up an email alert for newly created question", () => {
-    H.openTable({
-      table: PEOPLE_ID,
-    });
-
-    saveAlert();
-
-    cy.findByTestId("toast-undo")
-      .findByText("Your alert is all set up.")
-      .should("be.visible");
-
-    cy.wait("@saveAlert").then(({ response: { body } }) => {
-      expect(body.handlers[0].channel_type).to.eq("channel/email");
-    });
-  });
-
-  it("should enable alert to be updated (without updating question) (metabase#36866)", () => {
     H.openTable({
       table: PEOPLE_ID,
     });
@@ -152,6 +112,10 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.findByTestId("toast-undo")
       .findByText("Your alert is all set up.")
       .should("be.visible");
+
+    cy.wait("@saveAlert").then(({ response: { body } }) => {
+      expect(body.handlers[0].channel_type).to.eq("channel/email");
+    });
 
     cy.findByLabelText("Move, duplicate, and more…").click();
     H.popover().findByText("Edit alerts").click();
@@ -172,6 +136,10 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     H.selectScheduleTime();
     cy.button("Save changes").click();
 
+    cy.wait("@updatedAlert").then(({ response: { body } }) => {
+      expect(body.subscriptions[0].cron_schedule).to.equal("0 0 8 ? * 2 *");
+    });
+
     cy.log("Check that /api/card has still only been called once");
     cy.get("@saveCard.all").should("have.length", 1);
   });
@@ -191,9 +159,21 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
         );
     });
 
-    it("should include branding for Starter instances", () => {
+    it("should include branding for Starter instances and not claim a schedule for a one-off alert", () => {
       H.activateToken("starter");
-      sendTestAlertForQuestion(questionName);
+      createQuestionAndOpenAlert(questionName);
+      H.sendAlertAndVisitIt();
+      cy.findAllByRole("link")
+        .filter(`:contains(${questionName})`)
+        .should("be.visible");
+
+      cy.get("table.header")
+        .first()
+        .within(() => {
+          cy.findByText(questionName).should("be.visible");
+          cy.findByText(/Run daily at/).should("not.exist");
+        });
+
       cy.findAllByRole("link")
         .filter(":contains(Made with)")
         .should("contain", "Metabase")
