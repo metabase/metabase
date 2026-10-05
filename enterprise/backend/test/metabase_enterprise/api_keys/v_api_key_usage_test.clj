@@ -1,10 +1,12 @@
 (ns metabase-enterprise.api-keys.v-api-key-usage-test
   "Tests for the `v_api_key_usage` SQL view. Client identity and PII are stored on each request row;
-  the view derives `client_display_name` from it, and its `user_id`/`user_display_name`/`group_name`
-  columns come from `created_by_id` — the real human who created the key — not the row's own `user_id`
-  (the key's synthetic service-account user, used for permission checks, never a real person). The
-  view LEFT JOINs api_key and core_user on purpose — `api_key_usage_log` has no foreign keys, so rows
-  outlive a deleted key or user."
+  the view derives `client_display_name` from it. Two separate identities: `actor_user_id` is the
+  row's own `user_id` (the key's synthetic service-account user, used for permission checks, never a
+  real person) — `creator_id`/`creator_display_name`/`group_name` come from `created_by_id` (the real
+  human who made the key) and the key's own group (via the key's synthetic user, not the creator's
+  memberships — a key has one group, a creator may have several). The view LEFT JOINs api_key and
+  core_user on purpose — `api_key_usage_log` has no foreign keys, so rows outlive a deleted key or
+  user."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
@@ -42,45 +44,50 @@
          m))
 
 (deftest joins-and-derived-columns-test
-  (testing "the view joins key and creator (not the row's own user_id) and derives the display columns"
+  (testing "the view separates the key's actor (synthetic user) from its creator, and group_name
+           follows the actor, not the creator"
     (mt/with-temp
-      [:model/User              {creator-id :id} {:first_name "Ada" :last_name "Lovelace"}
-       :model/PermissionsGroup  {group-id :id}   {:name "Analysts"}
-       :model/PermissionsGroupMembership _       {:user_id creator-id :group_id group-id}
-       :model/ApiKey            {key-id :id}     {::api-keys/unhashed-key "mb_1234567890"
-                                                  :name          "Reporting key"
-                                                  :user_id       creator-id
-                                                  :creator_id    creator-id
-                                                  :updated_by_id creator-id}
-       :model/ApiKeyUsageLog    {log-id :id}     (log-row {:api_key_id       key-id
-                                                           ;; the synthetic auth-time user_id — deliberately not a
-                                                           ;; real user, to prove the view doesn't join on it
-                                                           :user_id          Integer/MAX_VALUE
-                                                           :created_by_id    creator-id
-                                                           :route_template   "/api/card/:id"
-                                                           :http_method      "POST"
-                                                           :status           201
-                                                           :duration_ms      42
-                                                           :client_name      "metabase-cli"
-                                                           :embedding_client "embedding-sdk-react"
-                                                           :embedding_hostname "example.com"
-                                                           :ip_address       "10.0.0.7"
-                                                           :user_agent       "metabase-cli/1.2.3"})]
-      (is (=? {:route_template      "/api/card/:id"
-               :http_method         "POST"
-               :status              201
-               :duration_ms         42
-               :api_key_id          key-id
-               :api_key_name        "Reporting key"
-               :user_id             creator-id
-               :user_display_name   "Ada Lovelace"
-               :group_name          "Analysts"
-               :client_name         "metabase-cli"
-               :client_display_name "Metabase CLI"
-               :embedding_client    "embedding-sdk-react"
-               :embedding_hostname  "example.com"
-               :ip_address          "10.0.0.7"
-               :user_agent          "metabase-cli/1.2.3"}
+      [;; the creator: a real human, in a different group from the key itself
+       :model/User               {creator-id :id}   {:first_name "Ada" :last_name "Lovelace"}
+       :model/PermissionsGroup   {creator-group :id} {:name "Admins"}
+       :model/PermissionsGroupMembership _           {:user_id creator-id :group_id creator-group}
+       ;; the key's own synthetic service-account user, in its own (different) group
+       :model/User               {actor-id :id}     {:first_name "key" :last_name "service-account"}
+       :model/PermissionsGroup   {key-group :id}    {:name "Analysts"}
+       :model/PermissionsGroupMembership _           {:user_id actor-id :group_id key-group}
+       :model/ApiKey             {key-id :id}       {::api-keys/unhashed-key "mb_1234567890"
+                                                     :name          "Reporting key"
+                                                     :user_id       actor-id
+                                                     :creator_id    creator-id
+                                                     :updated_by_id creator-id}
+       :model/ApiKeyUsageLog     {log-id :id}       (log-row {:api_key_id       key-id
+                                                              :user_id          actor-id
+                                                              :created_by_id    creator-id
+                                                              :route_template   "/api/card/:id"
+                                                              :http_method      "POST"
+                                                              :status           201
+                                                              :duration_ms      42
+                                                              :client_name      "metabase-cli"
+                                                              :embedding_client "embedding-sdk-react"
+                                                              :embedding_hostname "example.com"
+                                                              :ip_address       "10.0.0.7"
+                                                              :user_agent       "metabase-cli/1.2.3"})]
+      (is (=? {:route_template       "/api/card/:id"
+               :http_method          "POST"
+               :status               201
+               :duration_ms          42
+               :api_key_id           key-id
+               :api_key_name         "Reporting key"
+               :actor_user_id        actor-id
+               :creator_id           creator-id
+               :creator_display_name "Ada Lovelace"
+               :group_name           "Analysts"
+               :client_name          "metabase-cli"
+               :client_display_name  "Metabase CLI"
+               :embedding_client     "embedding-sdk-react"
+               :embedding_hostname   "example.com"
+               :ip_address           "10.0.0.7"
+               :user_agent           "metabase-cli/1.2.3"}
               (find-row (query-view [log-id]) log-id))))))
 
 (deftest missing-key-and-creator-test
@@ -91,12 +98,12 @@
                                                        :created_by_id nil})]
       (let [row (find-row (query-view [orphan-id]) orphan-id)]
         (is (some? row) "the row is not dropped")
-        (is (=? {:route_template    "/api/card/:id"
-                 :api_key_id        Integer/MAX_VALUE
-                 :api_key_name      nil
-                 :user_id           nil
-                 :user_display_name nil
-                 :group_name        nil}
+        (is (=? {:route_template       "/api/card/:id"
+                 :api_key_id           Integer/MAX_VALUE
+                 :api_key_name         nil
+                 :creator_id           nil
+                 :creator_display_name nil
+                 :group_name           nil}
                 row))))))
 
 (deftest pii-columns-passthrough-test
@@ -106,12 +113,12 @@
       (is (=? {:ip_address nil :user_agent nil :embedding_client nil}
               (find-row (query-view [log-id]) log-id))))))
 
-(deftest user-display-name-falls-back-to-email-test
+(deftest creator-display-name-falls-back-to-email-test
   (testing "a creator with no last name falls back to their email"
     (mt/with-temp
       [:model/User           {creator-id :id, email :email} {:first_name "Ada" :last_name nil}
        :model/ApiKeyUsageLog {log-id :id}                   (log-row {:created_by_id creator-id})]
-      (is (=? {:user_display_name email}
+      (is (=? {:creator_display_name email}
               (find-row (query-view [log-id]) log-id))))))
 
 ;; Guard the hand-maintained client_name -> client_display_name coupling. These pairs must stay in
@@ -143,8 +150,8 @@
       (is (= "brand-new-client"
              (:client_display_name (find-row (query-view [log-id]) log-id)))))))
 
-(deftest user-display-name-has-a-plain-string-type-on-h2-test
-  (testing "user_display_name isn't typed VARCHAR_IGNORECASE on H2 (#EMB-2154)"
+(deftest creator-display-name-has-a-plain-string-type-on-h2-test
+  (testing "creator_display_name isn't typed VARCHAR_IGNORECASE on H2 (#EMB-2154)"
     ;; core_user.email is declared VARCHAR_IGNORECASE on H2 for case-insensitive lookups, and
     ;; COALESCE(name-concat, email) inherits that type. Metabase's H2 type mapper doesn't
     ;; recognize VARCHAR_IGNORECASE, so it falls back to an unknown column type, and
@@ -153,6 +160,6 @@
     (when (= (mdb/db-type) :h2)
       (let [column-type (-> (t2/query "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
                                         WHERE TABLE_NAME = 'V_API_KEY_USAGE'
-                                          AND COLUMN_NAME = 'USER_DISPLAY_NAME'")
+                                          AND COLUMN_NAME = 'CREATOR_DISPLAY_NAME'")
                             first :data_type)]
         (is (not= "VARCHAR_IGNORECASE" column-type))))))

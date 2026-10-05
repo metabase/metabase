@@ -10,15 +10,20 @@ SELECT
     t.duration_ms,
     t.api_key_id                                           AS api_key_id,
     ak.name                                                AS api_key_name,
-    t.created_by_id                                        AS user_id,
+    -- actor: who/what authenticated the request (the key's own synthetic service-account user).
+    t.user_id                                              AS actor_user_id,
+    -- creator: the real human who made the key — a different person from the actor above.
+    t.created_by_id                                        AS creator_id,
     -- CAST to VARCHAR: H2 declares core_user.email VARCHAR_IGNORECASE (for case-insensitive lookups),
     -- and COALESCE inherits that type, which Metabase's H2 type mapper doesn't recognize — it falls back
     -- to an unknown type, and metabase-lib silently excludes unknown-typed columns from sortable columns.
-    CAST(COALESCE(creator.first_name || ' ' || creator.last_name, creator.email) AS VARCHAR) AS user_display_name,
+    CAST(COALESCE(creator.first_name || ' ' || creator.last_name, creator.email) AS VARCHAR) AS creator_display_name,
+    -- the key's own group (via its synthetic user ak.user_id), not the creator's — a key has
+    -- exactly one group, but its creator may belong to several.
     (SELECT pg.name
      FROM permissions_group_membership pgm
      JOIN permissions_group pg ON pg.id = pgm.group_id
-     WHERE pgm.user_id = t.created_by_id
+     WHERE pgm.user_id = ak.user_id
        AND pg.id != 1
      ORDER BY pg.name
      LIMIT 1)                                              AS group_name,
