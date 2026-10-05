@@ -55,7 +55,9 @@
     (testing "a route that costs a scope needs the minting session to have held it"
       (is (false? (dataset {:token-scopes #{"agent:search"}})))
       (is (true? (dataset {:token-scopes #{"agent:query:run"}})))
-      (is (true? (dataset {:token-scopes #{"agent:query:*"}})))
+      (testing "a wildcard claim does not: MCP honors literal scopes only"
+        (doseq [grant ["agent:query:*" "agent:*" "*"]]
+          (is (false? (dataset {:token-scopes #{grant}})) grant)))
       (is (false? (dataset {:token-scopes #{::scope/unrestricted}}))
           "the unrestricted sentinel satisfies nothing on the surface: a claim holds only literal MCP scopes"))
     (testing "a v2 credential minted before the scope claim existed reaches only the free routes"

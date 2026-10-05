@@ -21,7 +21,6 @@
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -219,8 +218,9 @@
       ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
       ;; state apart by which 403 message it got back.
-      (let [token-scopes (into #{} (filter string?) (:token-scopes claims))]
-        (when-not (scope/scope-satisfied? token-scopes metabot.scope/agent-sql-run)
+      ;; Literal comparison: MCP honors only the literal scopes a credential claims, never a wildcard.
+      (let [token-scopes (set (filter string? (:token-scopes claims)))]
+        (when-not (contains? token-scopes metabot.scope/agent-sql-run)
           (throw (ex-info (str "Running raw SQL requires the " metabot.scope/agent-sql-run
                                " scope, which this client was not granted.")
                           {:status-code 403}))))

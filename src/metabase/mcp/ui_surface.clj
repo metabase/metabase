@@ -5,7 +5,6 @@
    whose token may hold nothing but `agent:query:run`, so what it reaches has to be decided here rather than
    inherited from whatever the embedded app happens to call."
   (:require
-   [metabase.api.macros.scope :as scope]
    [metabase.metabot.scope :as metabot.scope]))
 
 (set! *warn-on-reflection* true)
@@ -64,9 +63,8 @@
    Credentials minted before the scope claim existed decode to an empty scope set, so a rolling deploy
    degrades a credential to the routes that cost no scope rather than to full access.
 
-   Only literal scopes count: credentials are minted only from OAuth MCP sessions, whose scopes are literal MCP
-   scopes, so the unrestricted sentinel satisfies nothing here."
+   Only a literal scope in the claim counts: neither a wildcard nor the unrestricted sentinel satisfies a route."
   [method uri {:keys [token-scopes]}]
   (when-let [entry (surface-entry method uri)]
     (boolean (or (nil? (val entry))
-                 (scope/scope-satisfied? (into #{} (filter string?) token-scopes) (val entry))))))
+                 (contains? (set (filter string? token-scopes)) (val entry))))))

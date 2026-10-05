@@ -371,12 +371,12 @@
         (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
           (is (str/includes? text "test-ui-credential"))
           (is (true? minted?))))
-      (testing "GHY-4543: a wildcard scope covering the shell's scope earns the credential too"
+      (testing "a wildcard scope that would cover the shell's scope earns no credential: MCP honors literal scopes only"
         (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"}]]
           (testing (pr-str token-scopes)
             (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
-              (is (str/includes? text "test-ui-credential"))
-              (is (true? minted?))))))
+              (is (not (str/includes? text "test-ui-credential")))
+              (is (false? minted?))))))
       (testing "GHY-4543: a data resource is denied without its scope, naming the scope so the transport can
                 challenge for it"
         (is (= {:status :scope-denied :required-scope "agent:content:read"}

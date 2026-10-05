@@ -246,11 +246,15 @@
                        (ui-request #{"agent:query:run"}) legacy-native)
                       ""
                       (catch clojure.lang.ExceptionInfo e (ex-message e))))))
-  (testing "grants that cover agent:sql:run pass"
-    (are [scopes] (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                                 (ui-request scopes) legacy-native)))
-      #{"agent:sql:run"}
-      #{"agent:sql:*"}))                            ; metabot permissions grant wildcards
+  (testing "the literal agent:sql:run grant passes"
+    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                       (ui-request #{"agent:sql:run"}) legacy-native)))))
+  (testing "a wildcard grant does not: MCP honors literal scopes only"
+    (are [scopes] (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                          (ui-request scopes) legacy-native)))
+      #{"agent:sql:*"}
+      #{"agent:*"}
+      #{"*"}))
   (testing "v1's concrete agent:sql:execute does not grant raw SQL: an OAuth MCP session holds only literal v2
             scopes, so no credential minted today can carry it"
     (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!

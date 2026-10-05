@@ -1172,12 +1172,11 @@
       #{metabot.scope/agent-query-run}
       #{metabot.scope/agent-content-write}
       #{}
-      nil))
-  (testing "GHY-4138: the content-read scope and its wildcard reach the handler"
-    (are [scopes] (and (not (dispatch-error? (dispatch-data scopes {:action "list_databases"})))
-                       (str/starts-with? (dispatch-text scopes {:action "list_databases"}) "{\"data\":"))
-      content-read
-      #{"agent:*"})))
+      nil
+      #{"agent:*"}))
+  (testing "GHY-4138: the literal content-read scope reaches the handler; MCP honors literal scopes only"
+    (is (not (dispatch-error? (dispatch-data content-read {:action "list_databases"}))))
+    (is (str/starts-with? (dispatch-text content-read {:action "list_databases"}) "{\"data\":"))))
 
 (deftest ^:parallel browse-data-tools-list-visibility-test
   (testing "GHY-4543: tools/list shows the tool whatever the token's scopes; the gate is at call time (above)"

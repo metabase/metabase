@@ -25,10 +25,11 @@
   (testing "exact scope match"
     (is (true? (mcp.scope/matches? #{"agent:read"} "agent:read")))
     (is (false? (mcp.scope/matches? #{"agent:write"} "agent:read"))))
-  (testing "wildcard scope match"
-    (is (true? (mcp.scope/matches? #{"agent:*"} "agent:read")))
-    (is (true? (mcp.scope/matches? #{"agent:*"} "agent:write")))
-    (is (false? (mcp.scope/matches? #{"other:*"} "agent:read"))))
+  (testing "MCP honors literal scopes only: a wildcard grant matches no scope it would cover"
+    (doseq [grant ["agent:*" "agent:query:*" "*"]]
+      (testing grant
+        (is (false? (mcp.scope/matches? #{grant} "agent:query:run")))
+        (is (false? (mcp.scope/matches? #{grant} #{"agent:query:run" "agent:sql:run"}))))))
   (testing "any required scope match"
     (is (true? (mcp.scope/matches? #{"agent:read"} #{"agent:read" "agent:write"})))
     (is (true? (mcp.scope/matches? #{"agent:write"} #{"agent:read" "agent:write"})))

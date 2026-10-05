@@ -1,11 +1,9 @@
 (ns metabase.mcp.scope
   "Scope matching for MCP tools and resources.
 
-   Wraps [[metabase.api.macros.scope/scope-satisfied?]] with the conventions used by
-   MCP entry points: only scope strings are compared, so nil token-scopes, and a keyword sentinel such as the REST
-   API's unrestricted marker, grant nothing. No MCP caller skips the check."
-  (:require
-   [metabase.api.macros.scope :as api.scope]))
+   MCP compares scopes literally: a token grants exactly the scope strings it holds. A wildcard grant covers nothing,
+   and nil token-scopes or a keyword sentinel such as the REST API's unrestricted marker grant nothing. No MCP caller
+   skips the check.")
 
 (defn matches?
   "Does `token-scopes` grant access to an entity with the given `required-scope`, or any member of a set of
@@ -13,12 +11,13 @@
    - A set of required scopes matches when any member matches.
    - nil `required-scope` matches nothing (callers that want \"public to any authenticated MCP user\" should use
      [[public-or-matches?]]).
-   - Otherwise delegates wildcard/exact matching to [[api.scope/scope-satisfied?]]."
+   - Otherwise matches when `token-scopes` holds `required-scope` literally. MCP honors literal scopes only, so a
+     wildcard grant such as `agent:*` matches nothing it would cover."
   [token-scopes required-scope]
   (if (set? required-scope)
     (boolean (some #(matches? token-scopes %) required-scope))
     (boolean (and (some? required-scope)
-                  (api.scope/scope-satisfied? (into #{} (filter string?) token-scopes) required-scope)))))
+                  (contains? (set (filter string? token-scopes)) required-scope)))))
 
 (defn public-or-matches?
   "Like [[matches?]] but treats a nil `required-scope` as \"public to any authenticated MCP caller\". Nil
