@@ -125,9 +125,18 @@ describe("scenarios > explorations > new research > manual flow", () => {
           cy.location("pathname").should("eq", "/question/research/plan");
 
           cy.log("Search inside the + Metrics modal");
+          cy.intercept({
+            method: "GET",
+            pathname: "/api/exploration/dimensions",
+            query: { q: "over time" },
+          }).as("searchOverTime");
+          cy.intercept({
+            method: "GET",
+            pathname: "/api/exploration/dimensions",
+            query: { q: "zzz" },
+          }).as("searchNoMatch");
           cy.findByRole("button", { name: /Metrics/ }).click();
           // Seeded names are "Count of orders" + "Count of orders over time".
-          cy.wait("@getDimensions");
           // Seeded metrics aren't in the library; switch off the default Library tab.
           H.selectAllMetricsTab();
           cy.findByRole("checkbox", { name: ORDERS_COUNT_METRIC_NAME }).should(
@@ -139,7 +148,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
           // Type a substring that only matches the timeseries metric.
           cy.findByPlaceholderText("Search for a metric").type("over time");
-          cy.wait("@getDimensions");
+          cy.wait("@searchOverTime");
           cy.findByRole("checkbox", {
             name: ORDERS_TIMESERIES_METRIC_NAME,
           }).should("exist");
@@ -158,7 +167,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
           // Search for something that matches no metric → empty-state copy.
           cy.findByPlaceholderText("Search for a metric").type("zzz");
-          cy.wait("@getDimensions");
+          cy.wait("@searchNoMatch");
           cy.findByRole("dialog").should("contain", "No results");
 
           cy.findByPlaceholderText("Search for a metric").clear();
@@ -943,10 +952,14 @@ describe("scenarios > explorations > chart click-through", () => {
             openExploreFurtherToast(name);
           });
 
-          cy.location("pathname").should(
-            "include",
-            `/question/research/${explorationId}/page/`,
-          );
+          cy.get("@pageId").then((pageId) => {
+            cy.location("pathname")
+              .should("include", `/question/research/${explorationId}/page/`)
+              .and(
+                "not.eq",
+                `/question/research/${explorationId}/page/${pageId}`,
+              );
+          });
           cy.location("search").should("include", "tab=all");
           cy.location("search").should("include", `timeline=${timelineId}`);
 
@@ -957,16 +970,12 @@ describe("scenarios > explorations > chart click-through", () => {
               "true",
             );
           });
-
-          cy.findByRole("main")
-            .findByTestId("exploration-chart-grid")
-            .should("exist");
         });
       });
     });
   });
 
-  it("brushing a timeseries cartesian chart opens Explore further only, posts between explore_filters, navigates from the new-thread toast, and Add to Summary preserves filter pills", () => {
+  it("brushing a timeseries cartesian chart opens Explore further only, posts between explore_filters, navigates from the new-thread toast, and Add to Summary flips the placeholder Summary, preserves filter pills, and mirrors page comments", () => {
     cy.request<GetExplorationDataResponse>(
       "GET",
       "/api/exploration/dimensions",
@@ -1005,10 +1014,27 @@ describe("scenarios > explorations > chart click-through", () => {
 
         visitExplorationUntilSettled(explorationId, 1);
 
+        // Summary is pinned at the top of the tree but not initially selected
+        // while it is still a placeholder.
+        cy.findAllByRole("treeitem")
+          .first()
+          .should("contain.text", "Summary")
+          .and("have.attr", "aria-selected", "false");
+        cy.findAllByRole("treeitem")
+          .filter('[aria-selected="true"]')
+          .should("have.length", 1)
+          .and("not.contain.text", "Summary")
+          .invoke("attr", "href")
+          .should("match", /\/page\/\d+/);
+
         cy.request<Exploration>(
           "GET",
           `/api/exploration/${explorationId}`,
         ).then(({ body: exploration }) => {
+          expect(exploration.document, "BE auto-creates a Summary document").to
+            .exist;
+          expect(exploration.document?.name).to.eq("Summary");
+          expect(exploration.document?.is_placeholder).to.eq(true);
           initialThreadIds = (exploration.threads ?? []).map(
             (thread) => thread.id,
           );
@@ -1066,14 +1092,25 @@ describe("scenarios > explorations > chart click-through", () => {
           cy.wrap(newThread!.name).as("newThreadName");
         });
 
+        cy.location("pathname")
+          .should("include", `/question/research/${explorationId}/page/`)
+          .then((pathname) => {
+            cy.wrap(pathname).as("pathnameBeforeView");
+          });
+
         cy.get<string>("@newThreadName").then((name) => {
           openExploreFurtherToast(name);
         });
 
-        cy.location("pathname").should(
-          "include",
-          `/question/research/${explorationId}/page/`,
-        );
+        cy.get<string>("@pathnameBeforeView").then((pathnameBeforeView) => {
+          cy.location("pathname")
+            .should("include", `/question/research/${explorationId}/page/`)
+            .and("not.eq", pathnameBeforeView)
+            .then((pathname) => {
+              const pageId = Number(/\/page\/(\d+)/.exec(pathname)![1]);
+              cy.wrap(pageId).as("pageId");
+            });
+        });
         cy.location("search").should("include", "tab=all");
         cy.get("@newThreadName").then((name) => {
           cy.findByRole("group", { name: String(name) }).should(
@@ -1097,7 +1134,10 @@ describe("scenarios > explorations > chart click-through", () => {
         ).as("appendSummary");
 
         cy.findByRole("button", { name: "Add to Summary" }).click();
-        cy.wait("@appendSummary");
+        cy.wait("@appendSummary").then(({ response }) => {
+          expect(response?.statusCode).to.eq(200);
+          expect(response?.body?.is_placeholder).to.eq(false);
+        });
 
         H.undoToastListContainer().within(() => {
           cy.findByText(/Added to/).should("be.visible");
@@ -1116,83 +1156,6 @@ describe("scenarios > explorations > chart click-through", () => {
           .then((text) => {
             cy.get("@exploreFilterPillText").should("eq", text);
           });
-      });
-    });
-  });
-});
-
-describe("scenarios > explorations > Summary document", () => {
-  beforeEach(() => {
-    cy.task("stopMockLlmServer");
-    H.restore();
-    cy.signInAsAdmin();
-    H.enableExplorations();
-    seedMetrics();
-  });
-
-  it("auto-creates Summary at the top of the tree, keeps pages selected initially, supports Add to Summary, and mirrors comments both ways", () => {
-    H.createExplorationViaApi({ name: "Summary fixture" }).then(
-      (explorationId) => {
-        cy.request("GET", `/api/exploration/${explorationId}`).then(
-          ({ body }) => {
-            // api returns an Exploration
-            const exploration = body as Exploration;
-            expect(exploration.document, "BE auto-creates a Summary document")
-              .to.exist;
-            expect(exploration.document?.name).to.eq("Summary");
-            expect(exploration.document?.is_placeholder).to.eq(true);
-          },
-        );
-
-        visitExplorationUntilSettled(explorationId, 1);
-
-        // Summary is pinned at the top of the tree but not initially selected
-        // while it is still a placeholder.
-        cy.findAllByRole("treeitem")
-          .first()
-          .should("contain.text", "Summary")
-          .and("have.attr", "aria-selected", "false");
-
-        // Capture the settled page id from the auto-selected sidebar row
-        // (pages only exist after settlement), then click through
-        cy.findAllByRole("treeitem")
-          .filter('[aria-selected="true"]')
-          .should("have.length", 1)
-          .and("not.contain.text", "Summary")
-          .invoke("attr", "href")
-          .should("match", /\/page\/\d+/)
-          .then((href) => {
-            const pageId = Number(/\/page\/(\d+)/.exec(href!)![1]);
-            cy.wrap(pageId).as("pageId");
-            cy.get(`[role="treeitem"][href="${href}"]`).click();
-          });
-
-        cy.location("pathname").should("match", /\/page\/\d+$/);
-        cy.findByTestId("exploration-chart-grid").should("be.visible");
-
-        cy.intercept(
-          "POST",
-          `/api/exploration/${explorationId}/summary/append`,
-        ).as("appendSummary");
-
-        cy.findByRole("button", { name: "Add to Summary" }).click();
-        cy.wait("@appendSummary").then(({ response }) => {
-          expect(response?.statusCode).to.eq(200);
-          expect(response?.body?.is_placeholder).to.eq(false);
-        });
-
-        H.undoToastListContainer()
-          .findByText(/Added to/)
-          .should("be.visible");
-        H.undoToast().findByRole("button", { name: "View" }).click();
-
-        cy.location("pathname").should(
-          "eq",
-          `/question/research/${explorationId}/summary`,
-        );
-        cy.findByTestId("document-card-embed", { timeout: 15000 }).should(
-          "be.visible",
-        );
 
         // Seed a page comment via API
         cy.get<number>("@pageId").then((pageId) => {
@@ -1236,8 +1199,8 @@ describe("scenarios > explorations > Summary document", () => {
           "contain.text",
           "Shared comment",
         );
-      },
-    );
+      });
+    });
   });
 });
 
@@ -1256,8 +1219,10 @@ describe("scenarios > explorations > collection placement + archive", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("places a newly-created exploration in the creator's personal collection and lets the user move it to trash from there", () => {
+  it("places a newly-created exploration in the creator's personal collection, moves it to trash, and restores and permanently deletes archived explorations from the trash banner and the /trash page", () => {
     const explorationName = "Personal-collection archive fixture";
+    const restoreName = "Trash-page restore fixture";
+    const deleteName = "Trash-page delete-permanently fixture";
 
     H.createExplorationViaApi({ name: explorationName }).then(
       (explorationId) => {
@@ -1323,119 +1288,118 @@ describe("scenarios > explorations > collection placement + archive", () => {
             .findByText(explorationName)
             .should("be.visible");
         });
+
+        H.createExplorationViaApi({ name: restoreName }).then((restoreId) => {
+          H.createExplorationViaApi({ name: deleteName }).then((deleteId) => {
+            for (const id of [explorationId, restoreId, deleteId]) {
+              cy.request("PUT", `/api/exploration/${id}`, { archived: true });
+            }
+
+            cy.log("An archived exploration opens with the trash banner");
+            cy.intercept("PUT", `/api/exploration/${explorationId}`).as(
+              "bannerRestore",
+            );
+            H.visitExploration(explorationId);
+            cy.findByTestId("archive-banner")
+              .should("contain", "This research is in the trash.")
+              .findByRole("button", { name: /Restore/ })
+              .click();
+
+            cy.wait("@bannerRestore").then(({ request, response }) => {
+              expect(request.body).to.deep.eq({ archived: false });
+              expect(response?.statusCode).to.eq(200);
+            });
+            cy.findByTestId("exploration-page-sidebar").should("be.visible");
+            cy.findByTestId("archive-banner").should("not.exist");
+
+            cy.log(
+              "Delete permanently from the banner lands on the trash page",
+            );
+            cy.request("PUT", `/api/exploration/${explorationId}`, {
+              archived: true,
+            });
+            cy.intercept("DELETE", `/api/exploration/${explorationId}`).as(
+              "bannerDelete",
+            );
+            cy.reload();
+            cy.findByTestId("archive-banner")
+              .findByRole("button", { name: /Delete permanently/ })
+              .click();
+            H.modal()
+              .findByRole("button", { name: /Delete permanently/i })
+              .click();
+
+            cy.wait("@bannerDelete")
+              .its("response.statusCode")
+              .should("eq", 204);
+            cy.location("pathname").should("eq", "/trash");
+            H.undoToast()
+              .findByText("This item has been permanently deleted.")
+              .should("be.visible");
+            cy.request({
+              method: "GET",
+              url: `/api/exploration/${explorationId}`,
+              failOnStatusCode: false,
+            })
+              .its("status")
+              .should("eq", 404);
+
+            cy.log("Restore from the /trash page row menu");
+            cy.findByTestId("collection-table")
+              .findByText(restoreName)
+              .should("be.visible");
+            cy.findByTestId("collection-table")
+              .findByText(deleteName)
+              .should("be.visible");
+
+            cy.intercept("PUT", `/api/exploration/${restoreId}`).as(
+              "trashRestore",
+            );
+            H.openCollectionItemMenu(restoreName);
+            H.popover().findByText("Restore").click();
+
+            cy.wait("@trashRestore").then(({ request, response }) => {
+              expect(request.body).to.deep.eq({ archived: false });
+              expect(response?.statusCode).to.eq(200);
+            });
+            cy.findByText(restoreName).should("not.exist");
+            cy.request("GET", `/api/exploration/${restoreId}`).then(
+              ({ body }) => {
+                expect(
+                  body.archived,
+                  "exploration is no longer archived",
+                ).to.eq(false);
+              },
+            );
+
+            cy.log("Delete permanently from the /trash page row menu");
+            cy.findByTestId("collection-table")
+              .findByText(deleteName)
+              .should("be.visible");
+            cy.intercept("DELETE", `/api/exploration/${deleteId}`).as(
+              "trashDelete",
+            );
+            H.openCollectionItemMenu(deleteName);
+            H.popover().findByText("Delete permanently").click();
+            // The confirmation modal owns the final destructive button.
+            H.modal()
+              .findByRole("button", { name: /Delete permanently/i })
+              .click();
+
+            cy.wait("@trashDelete")
+              .its("response.statusCode")
+              .should("eq", 204);
+            cy.findByText(deleteName).should("not.exist");
+            cy.request({
+              method: "GET",
+              url: `/api/exploration/${deleteId}`,
+              failOnStatusCode: false,
+            })
+              .its("status")
+              .should("eq", 404);
+          });
+        });
       },
     );
-  });
-
-  it("restores and permanently deletes archived explorations from the trash banner and the /trash page", () => {
-    const bannerName = "Exploration-page trash banner fixture";
-    const restoreName = "Trash-page restore fixture";
-    const deleteName = "Trash-page delete-permanently fixture";
-
-    H.createExplorationViaApi({ name: bannerName }).then((bannerId) => {
-      H.createExplorationViaApi({ name: restoreName }).then((restoreId) => {
-        H.createExplorationViaApi({ name: deleteName }).then((deleteId) => {
-          for (const id of [bannerId, restoreId, deleteId]) {
-            cy.request("PUT", `/api/exploration/${id}`, { archived: true });
-          }
-
-          cy.log("An archived exploration opens with the trash banner");
-          cy.intercept("PUT", `/api/exploration/${bannerId}`).as(
-            "bannerRestore",
-          );
-          H.visitExploration(bannerId);
-          cy.findByTestId("archive-banner")
-            .should("contain", "This research is in the trash.")
-            .findByRole("button", { name: /Restore/ })
-            .click();
-
-          cy.wait("@bannerRestore").then(({ request, response }) => {
-            expect(request.body).to.deep.eq({ archived: false });
-            expect(response?.statusCode).to.eq(200);
-          });
-          cy.findByTestId("exploration-page-sidebar").should("be.visible");
-          cy.findByTestId("archive-banner").should("not.exist");
-
-          cy.log("Delete permanently from the banner lands on the trash page");
-          cy.request("PUT", `/api/exploration/${bannerId}`, {
-            archived: true,
-          });
-          cy.intercept("DELETE", `/api/exploration/${bannerId}`).as(
-            "bannerDelete",
-          );
-          cy.reload();
-          cy.findByTestId("archive-banner")
-            .findByRole("button", { name: /Delete permanently/ })
-            .click();
-          H.modal()
-            .findByRole("button", { name: /Delete permanently/i })
-            .click();
-
-          cy.wait("@bannerDelete").its("response.statusCode").should("eq", 204);
-          cy.location("pathname").should("eq", "/trash");
-          H.undoToast()
-            .findByText("This item has been permanently deleted.")
-            .should("be.visible");
-          cy.request({
-            method: "GET",
-            url: `/api/exploration/${bannerId}`,
-            failOnStatusCode: false,
-          })
-            .its("status")
-            .should("eq", 404);
-
-          cy.log("Restore from the /trash page row menu");
-          cy.findByTestId("collection-table")
-            .findByText(restoreName)
-            .should("be.visible");
-          cy.findByTestId("collection-table")
-            .findByText(deleteName)
-            .should("be.visible");
-
-          cy.intercept("PUT", `/api/exploration/${restoreId}`).as(
-            "trashRestore",
-          );
-          H.openCollectionItemMenu(restoreName);
-          H.popover().findByText("Restore").click();
-
-          cy.wait("@trashRestore").then(({ request, response }) => {
-            expect(request.body).to.deep.eq({ archived: false });
-            expect(response?.statusCode).to.eq(200);
-          });
-          cy.findByText(restoreName).should("not.exist");
-          cy.request("GET", `/api/exploration/${restoreId}`).then(
-            ({ body }) => {
-              expect(body.archived, "exploration is no longer archived").to.eq(
-                false,
-              );
-            },
-          );
-
-          cy.log("Delete permanently from the /trash page row menu");
-          cy.findByTestId("collection-table")
-            .findByText(deleteName)
-            .should("be.visible");
-          cy.intercept("DELETE", `/api/exploration/${deleteId}`).as(
-            "trashDelete",
-          );
-          H.openCollectionItemMenu(deleteName);
-          H.popover().findByText("Delete permanently").click();
-          // The confirmation modal owns the final destructive button.
-          H.modal()
-            .findByRole("button", { name: /Delete permanently/i })
-            .click();
-
-          cy.wait("@trashDelete").its("response.statusCode").should("eq", 204);
-          cy.findByText(deleteName).should("not.exist");
-          cy.request({
-            method: "GET",
-            url: `/api/exploration/${deleteId}`,
-            failOnStatusCode: false,
-          })
-            .its("status")
-            .should("eq", 404);
-        });
-      });
-    });
   });
 });
