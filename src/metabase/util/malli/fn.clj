@@ -8,9 +8,9 @@
    [metabase.config.core :as config]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli.closed-schemas :as mu.closed-schemas]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.strip :as mu.strip]
    [net.cgrand.macrovich :as macros]))
 
 (set! *warn-on-reflection* true)
@@ -234,11 +234,18 @@
                                       (pr-str (me/humanize error))))
            (dissoc details :value :error :humanized)))))))
 
+(def ^:private strip-undeclared-keys?
+  "Whether [[validate-input]] removes the keys an argument's map schemas do not declare."
+  (not config/is-prod?))
+
 (defn validate-input
-  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
-  explainer and throws an exception if the check fails."
+  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument `value` against `schema` and returns it, in dev
+  and test without the keys its map schemas do not declare."
   [error-context schema value]
-  (validate error-context schema value ::invalid-input))
+  (validate error-context schema value ::invalid-input)
+  (if (and strip-undeclared-keys? *enforce*)
+    (mu.strip/strip schema value)
+    value))
 
 (defn validate-output
   "Impl for [[metabase.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
@@ -271,7 +278,7 @@
                                              :varargs/map        {:as (last arg-names)})])
            arg-names))))
 
-(defn- input-schema->validation-forms [error-context [_cat & schemas :as input-schema]]
+(defn- input-schema->validation-bindings [error-context [_cat & schemas :as input-schema]]
   (let [arg-names (input-schema-arg-names input-schema)
         schemas   (if (= (varargs-type input-schema) :varargs/sequential)
                     (concat (butlast schemas) [[:maybe (last schemas)]])
@@ -285,10 +292,10 @@
                                       'more [:maybe [:* :any]]
                                       'kvs  [:* :any]
                                       :any))
-                  `(validate-input ~error-context ~schema ~arg-name)))
+                  [arg-name `(validate-input ~error-context ~schema ~arg-name)]))
               arg-names
               schemas)
-         (filter some?))))
+         (into [] cat))))
 
 (defn- input-schema->application-form [input-schema]
   (let [arg-names (input-schema-arg-names input-schema)]
@@ -318,7 +325,7 @@
                                  [:cat]
                                  input-schema)
         arglist                (input-schema->arglist input-schema)
-        input-validation-forms (input-schema->validation-forms error-context input-schema)
+        input-bindings         (input-schema->validation-bindings error-context input-schema)
         result-form            (input-schema->application-form input-schema)
         result-form            (if (and output-schema
                                         (not= output-schema :any))
@@ -327,8 +334,9 @@
                                  result-form)]
     `(~arglist
       (try
-        ~@input-validation-forms
-        ~result-form
+        ~(if (seq input-bindings)
+           `(let ~input-bindings ~result-form)
+           result-form)
         (catch Exception ~'error
           (throw (fixup-stacktrace ~'error)))))))
 
@@ -403,18 +411,11 @@
   return an unevaluated instrumented [[fn]] form like
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
-                    (fn [x y] (+ 1 2)))
-
-  With `checked-name`, the form also checks with [[mu.closed-schemas/check-args!]] that every argument map is closed."
-  [error-context lang parsed & [fn-name checked-name]]
+                    (fn [x y] (+ 1 2)))"
+  [error-context lang parsed & [fn-name]]
   (let [[fn-schema captured] (capture-schemas (fn-schema parsed))]
     `(let [~'&f ~(deparameterized-fn-form lang parsed fn-name)
            ~@(into [] cat captured)]
-       ~@(when checked-name
-           [`(mu.closed-schemas/check-args! '~checked-name
-                                            ~(case (first fn-schema)
-                                               :=>       [(second fn-schema)]
-                                               :function (mapv second (rest fn-schema))))])
        (core/fn ~'mufn ~@(instrumented-fn-tail error-context fn-schema)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------

@@ -19,7 +19,7 @@
 
 (mr/def ::value
   "Anything a message can interpolate or [[render]]: a message, raw text, or any other value, which renders cleaned."
-  [:schema {::mr/deliberately-open true, :description "any value a message renders"} :any])
+  [:schema {:description "any value a message renders"} :any])
 
 (mu/defn message? :- :boolean
   "Whether `x` is a message built by [[msg]]."
@@ -137,7 +137,7 @@
 
 (mr/def ::json-value
   "Any value JSON can encode."
-  [:schema {::mr/deliberately-open true, :description "any JSON-encodable value"} :any])
+  [:schema {:description "any JSON-encodable value"} :any])
 
 (mu/defn json-text :- :string
   "`x` encoded as JSON text, with every invisible, line-breaking, and unassigned code point written as `\\uXXXX`

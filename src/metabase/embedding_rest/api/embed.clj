@@ -32,7 +32,6 @@
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]))
 
@@ -43,7 +42,7 @@
   [:or ms/PositiveInt ms/NanoIdString])
 (def ^:private Token
   "An embedding JWT payload naming its `:resource` and `:params`, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
-  [:map {:closed false, ::mr/deliberately-open true, :description "embedding JWT claims"}
+  [:map {:closed false, :description "embedding JWT claims"}
    [:resource [:map {:closed true}
                [:question {:optional true} ResourceId]
                [:dashboard {:optional true} ResourceId]]]

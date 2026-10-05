@@ -177,7 +177,6 @@
           (is (= `(~'def ~'f
                          (clojure.core/let
                           [~'&f (clojure.core/fn ~'f_AMPERSAND_ [] "foo")]
-                           (~(symbol "metabase.util.malli.closed-schemas" "check-args!") '~(symbol (str *ns*) "f") [:cat])
                            (clojure.core/fn
                              ~'mufn
                              ([]

@@ -216,7 +216,7 @@
 
 (mr/def ::mbql-node
   "Any node reached while walking an MBQL form being imported, which may or may not be an MBQL clause."
-  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
+  [:schema {:description "an MBQL form node"} :any])
 
 (mu/defn- mbql-clause-tag :- [:maybe [:enum :field :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"

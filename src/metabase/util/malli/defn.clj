@@ -122,8 +122,7 @@
        ~(if instrument?
           (macros/case
             :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
-                    (mu.fn/instrumented-fn-form error-context :clj parsed cosmetic-name
-                                                (symbol (str *ns*) (str fn-name))))
+                    (mu.fn/instrumented-fn-form error-context :clj parsed cosmetic-name))
             :cljs (mu.fn/deparameterized-fn-form :cljs parsed cosmetic-name))
           (mu.fn/deparameterized-fn-form (macros/case :clj :clj, :cljs :cljs) parsed)))))
 

@@ -39,7 +39,7 @@
 (mr/def ::prose-mirror-node.json-attrs
   "The `attrs` of a ProseMirror node as decoded JSON, before normalization stringifies its keys: the keys belong to the
   editor's node type and may be keywords or strings."
-  [:map {:closed false, ::mr/deliberately-open true, :description "ProseMirror node attrs"}])
+  [:map {:closed false, :description "ProseMirror node attrs"}])
 
 (mr/def ::prose-mirror-node.json
   "A ProseMirror node as decoded JSON, before normalization stringifies the keys of its `attrs`."

@@ -1019,7 +1019,7 @@
 
 (mr/def ::mbql-node
   "Any node reached while walking an MBQL form being exported or imported, which may or may not be an MBQL clause."
-  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
+  [:schema {:description "an MBQL form node"} :any])
 
 (def ^:private MBQLNode
   [:ref ::mbql-node])

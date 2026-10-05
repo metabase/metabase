@@ -129,7 +129,7 @@
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
   string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
+  [:map-of {:description "tool call arguments"}
    [:or :string :keyword] ::decoded-json])
 
 (def ^:private AISDKPart
@@ -215,7 +215,7 @@
 (def ^:private JSONSchemaProperties
   "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
   string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
+  [:map-of {:description "JSON Schema properties"}
    [:or :string :keyword] JSONSchemaLeaf])
 
 (def ^:private JSONSchemaNode

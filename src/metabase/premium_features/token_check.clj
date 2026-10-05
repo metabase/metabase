@@ -161,23 +161,23 @@
 (def ^:private Meters
   "The `:meters` of a token status response, keyed by the meter names the license server defines, each meter's fields
   also being the license server's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "license-server meters"}])
+  [:map {:closed false, :description "license-server meters"}])
 
 (def ^:private StoreUser
   "A store user of a token status response, whose keys are the license server's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "license-server store user"}
+  [:map {:closed false, :description "license-server store user"}
    [:email :string]])
 
 (def ^:private Quota
   "A quota of a token status response, whose keys are the license server's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "license-server quota"}
+  [:map {:closed false, :description "license-server quota"}
    [:hosting-feature {:optional true} :string]
    [:soft-limit      {:optional true} number?]
    [:usage           {:optional true} number?]])
 
 (def TokenStatus
   "Schema for a response from the token status API, whose keys are the license server's."
-  [:map {:closed false, ::mr/deliberately-open true, :description "license-server token status"}
+  [:map {:closed false, :description "license-server token status"}
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
