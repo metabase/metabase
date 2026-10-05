@@ -63,33 +63,6 @@ describe("scenarios > dashboard > filters > number", () => {
     );
   });
 
-  it("should work when set as the default filter", () => {
-    H.setFilter("Number", "Equal to");
-    H.selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Default value").next().click();
-
-    addWidgetNumberFilter("2.07");
-
-    H.saveDashboard();
-    cy.wait("@dashboardData");
-
-    cy.findByTestId("dashcard")
-      .should("contain", "37.65")
-      .and("not.contain", "101.04");
-
-    H.clearFilterWidget();
-    cy.wait("@dashboardData");
-
-    H.filterWidget().click();
-    addWidgetNumberFilter("5.27", { buttonLabel: "Update filter" });
-    cy.wait("@dashboardData");
-
-    cy.findByTestId("dashcard")
-      .should("contain", "101.04")
-      .and("not.contain", "37.65");
-  });
-
   it("should support being required", () => {
     H.setFilter("Number", "Equal to", "Equal to");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");

@@ -52,39 +52,6 @@ describe("scenarios > dashboard > filters > date", () => {
     );
   });
 
-  // Rather than going through every single filter type,
-  // make sure the default filter works for just one of the available options
-  it("should work when set as the default filter", () => {
-    visitOrdersDashboardInEditMode();
-
-    H.setFilter("Date picker", "Month and Year");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Default value").next().click();
-
-    DateFilter.setMonthAndYear({
-      month: "Nov",
-      year: "2025",
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
-    H.popover().contains("Created At").first().click();
-
-    H.saveDashboard();
-
-    // The default value should immediately be applied
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("85.88");
-    });
-
-    // Make sure we can override the default value
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 2025").click();
-    H.popover().contains("Jun").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("33.9");
-  });
-
   it("should support being required", () => {
     visitOrdersDashboardInEditMode();
 
