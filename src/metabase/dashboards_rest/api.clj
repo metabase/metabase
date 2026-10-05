@@ -309,7 +309,7 @@
 (defn add-query-average-durations
   "Add a `average_execution_time` field to each card (and series) belonging to `dashboard`."
   [dashboard]
-  ;; Doall is needed to fetch the average durations in this thread, in the context of *dashboard-load-id*.
+  ;; Doall is needed to fetch the average durations in this thread, in the context of *dashboard-load-key*.
   ;; Otherwise it happens on other threads without the MetadataProvider caching and makes many more AppDB requests.
   (update dashboard :dashcards (comp doall add-query-average-duration-to-dashcards)))
 
@@ -333,13 +333,23 @@
   (* 10 1000))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *dashboard-load-id* nil)
+(def ^:private ^:dynamic *dashboard-load-key*
+  "`[current-user-id dashboard-load-id]` for the dashboard load in progress, or nil when nothing should be cached."
+  nil)
+
+(defn- dashboard-load-key
+  "Cache key for a dashboard load: the client-supplied `dashboard-load-id` scoped to the current user.
+
+  Returns nil, disabling caching, when there is no load ID or no current user."
+  [dashboard-load-id]
+  (when (and dashboard-load-id api/*current-user-id*)
+    [api/*current-user-id* dashboard-load-id]))
 
 ;; This is a kind of two-layer memoization:
-;; - The outer layer is a 10-second TTL cache on *dashboard-load-id*.
+;; - The outer layer is a 10-second TTL cache on *dashboard-load-key*.
 ;; - Its value is the *function* to use to get the dashboard by ID!
-;; If *dashboard-load-id* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
-;; If *dashboard-load-id* is nil, it returns the unwrapped get-dashboard*.
+;; If *dashboard-load-key* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
+;; If *dashboard-load-key* is nil, it returns the unwrapped get-dashboard*.
 
 (defn- set-download-perms-on-dashcards
   "Set each dashcard's nested :card map :download_perms based on the current user's actual permissions."
@@ -370,7 +380,7 @@
       add-query-average-durations
       set-download-perms-on-dashcards))
 
-;; TODO: This indirect memoization by *dashboard-load-id* could probably be turned into a macro for reuse elsewhere.
+;; TODO: This indirect memoization by *dashboard-load-key* could probably be turned into a macro for reuse elsewhere.
 (defn- get-dashboard*
   "Get Dashboard with ID."
   [id]
@@ -385,21 +395,21 @@
         (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
 (def ^:private get-dashboard-fn
-  (memoize/ttl (fn [dashboard-load-id]
-                 (if dashboard-load-id
-                   (memoize/memo get-dashboard*) ; If dashboard-load-id is set, return a memoized get-dashboard*.
-                   get-dashboard*))         ; If unset, just call through to get-dashboard*.
+  (memoize/ttl (fn [dashboard-load-key]
+                 (if dashboard-load-key
+                   (memoize/memo get-dashboard*) ; If dashboard-load-key is set, return a memoized get-dashboard*.
+                   get-dashboard*))          ; If unset, just call through to get-dashboard*.
                :ttl/threshold dashboard-load-cache-ttl))
 
 (def ^:private dashboard-load-metadata-provider-cache
-  (memoize/ttl (fn [_dashboard-load-id]
+  (memoize/ttl (fn [_dashboard-load-key]
                  (atom (cache/basic-cache-factory {})))
                :ttl/threshold dashboard-load-cache-ttl))
 
 (defn- do-with-dashboard-load-id [dashboard-load-id body-fn]
-  (if dashboard-load-id
-    (binding [*dashboard-load-id* dashboard-load-id]
-      (lib-be/with-existing-metadata-provider-cache (dashboard-load-metadata-provider-cache dashboard-load-id)
+  (if-let [load-key (dashboard-load-key dashboard-load-id)]
+    (binding [*dashboard-load-key* load-key]
+      (lib-be/with-existing-metadata-provider-cache (dashboard-load-metadata-provider-cache load-key)
         (log/debugf "Using dashboard_load_id %s" dashboard-load-id)
         (body-fn)))
     (do
@@ -412,9 +422,9 @@
 (defn- get-dashboard
   "Get Dashboard with ID.
 
-  Memoized per `*dashboard-load-id*` with a TTL of 10 seconds."
+  Memoized per `*dashboard-load-key*` with a TTL of 10 seconds."
   [id]
-  ((get-dashboard-fn *dashboard-load-id*) id))
+  ((get-dashboard-fn *dashboard-load-key*) id))
 
 (mu/defn- cards-to-copy :- [:map
                             [:discard [:sequential :any]]
