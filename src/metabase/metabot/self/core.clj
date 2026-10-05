@@ -174,7 +174,8 @@
    [:access-key-id     {:optional true} [:maybe :string]]
    [:secret-access-key {:optional true} [:maybe :string]]
    [:session-token     {:optional true} [:maybe :string]]
-   [:region            {:optional true} [:maybe :string]]])
+   [:region            {:optional true} [:maybe :string]]
+   [:model-id          {:optional true} [:maybe :string]]])
 
 (def ^:private GoogleCredentials
   [:map {:closed true}
@@ -1008,15 +1009,17 @@
   "Transducer that executes tool calls in parallel on virtual threads.
 
   Behavior:
-  - Passes all chunks through unchanged as they arrive
+  - Passes chunks through unchanged as they arrive
   - Tracks tool calls from :tool-input-start through :tool-input-available
   - Spawns virtual thread for each tool when input is complete
+  - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
   - At completion, waits for all tools and appends results
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
   (fn [rf]
-    (let [active (volatile! {})] ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+    (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+          errored? (volatile! false)]
       (fn
         ([result]
          (let [{tasks  true
@@ -1029,22 +1032,32 @@
              (rf result))))
 
         ([result {:keys [type toolCallId toolName] :as chunk}]
-         (case type
-           :tool-input-start
-           (vswap! active assoc toolCallId {:chunks [chunk]})
+         (if (and @errored? (#{:tool-input-start :tool-input-delta :tool-input-available} type))
+           result
+           (do
+             (case type
+               :tool-input-start
+               (vswap! active assoc toolCallId {:chunks [chunk]})
 
-           :tool-input-delta
-           (when (contains? @active toolCallId)
-             (vswap! active update-in [toolCallId :chunks] conj chunk))
+               :tool-input-delta
+               (when (contains? @active toolCallId)
+                 (vswap! active update-in [toolCallId :chunks] conj chunk))
 
-           :tool-input-available
-           (when-let [{:keys [chunks]} (get @active toolCallId)]
-             (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
-               (vswap! active assoc toolCallId {:task task})))
+               :tool-input-available
+               (when-let [{:keys [chunks]} (get @active toolCallId)]
+                 (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
+                   (vswap! active assoc toolCallId {:task task})))
 
-           ;; otherwise: do nothing
-           nil)
-         (rf result chunk))))))
+               :error
+               (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
+                 (vreset! errored? true)
+                 (when (seq cut-off)
+                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (vswap! active #(apply dissoc % cut-off))))
+
+               ;; otherwise: do nothing
+               nil)
+             (rf result chunk))))))))
 
 (def ^:private max-body-preview-chars
   "Cap on the body snippet spliced into provider error messages."
