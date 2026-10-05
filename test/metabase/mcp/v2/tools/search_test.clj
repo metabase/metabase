@@ -10,7 +10,10 @@
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -464,6 +467,23 @@
             (is (contains? (set @captured-entity-types) "question")
                 "sanity: the engine was asked for the content types")
             (is (not (contains? (set @captured-entity-types) "transform")))))))))
+
+(deftest transform-output-table-is-searchable-test
+  (testing "GHY-4746: MCP v2 has no transforms, but a transform's output is an ordinary table, so search with
+            type: [\"table\"] finds a table whose data_source is metabase-transform"
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-appdb-search-if-available-otherwise-legacy
+        (mt/with-temp [:model/Table {table-id :id} {:db_id       (mt/id)
+                                                    :name        "McpTransformOutputTable"
+                                                    :active      true
+                                                    :data_source :metabase-transform}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [content (tools.search/search-tool {:term_queries ["McpTransformOutputTable"] :type ["table"]}
+                                                    {:token-scopes #{"agent:content:read"}})
+                  rows    (-> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data)]
+              (is (not (:isError content)))
+              (is (some #(and (= "table" (:type %)) (= table-id (:id %))) rows)
+                  (str "the table is in the results: " (pr-str rows))))))))))
 
 (deftest collection-row-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: a collection row builds its path from its own :location — that path must
