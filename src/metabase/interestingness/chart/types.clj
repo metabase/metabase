@@ -184,7 +184,7 @@
    [:data-points :int]
    [:trend ::trend-summary]
    [:is-cumulative :boolean]
-   [:outliers {:optional true} [:maybe [:sequential [:or ::outlier ::cumulative-outlier]]]]
+   [:outliers {:optional true} [:maybe [:sequential [:or ::cumulative-outlier ::outlier]]]]
    [:volatility {:optional true} [:maybe ::volatility]]
    [:patterns {:optional true} [:maybe [:sequential ::pattern-insight]]]
    [:significant-changes {:optional true} [:maybe [:sequential ::significant-change]]]

@@ -444,16 +444,7 @@
   {:team "UX West"
    :api  #{metabase.batch-processing.core
            metabase.batch-processing.init}
-   :uses #{app-db
-           parameters.schema
-           query-processor.cache-backend
-           settings
-           util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/Document
-                    :model/Table}}
+   :uses #{app-db settings util}}
 
   bookmarks
   {:team "UX West"
@@ -978,7 +969,6 @@
            util}
    :model-imports #{:model/Card :model/Dashboard}
    :model-exports #{:model/EmbeddingTheme}}
-
 
   embedding.rest
   {:team "Embedding"

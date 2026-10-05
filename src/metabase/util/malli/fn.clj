@@ -5,12 +5,12 @@
    [malli.core :as mc]
    [malli.destructure :as md]
    [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.config.core :as config]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.strip :as mu.strip]
    [net.cgrand.macrovich :as macros]))
 
 (set! *warn-on-reflection* true)
@@ -21,7 +21,7 @@
 
     (add-default-schemas '[x {:keys [y]}])
     ;; =>
-    [x {:keys [y]} :- [:maybe :map]]"
+    [x {:keys [y]} :- [:maybe [:map {:closed false}]]]"
   [args]
   (if (empty? args)
     args
@@ -40,7 +40,7 @@
                      [:* :any]
 
                      (map? x)
-                     [:maybe :map]
+                     [:maybe [:map {:closed false}]]
 
                      (sequential? x)
                      [:maybe [:sequential :any]])
@@ -238,13 +238,25 @@
   "Whether [[validate-input]] removes the keys an argument's map schemas do not declare."
   (not config/is-prod?))
 
+(def ^:private strip-transformer
+  (mtx/strip-extra-keys-transformer))
+
+(defn- strip-undeclared-keys
+  "Removes the undeclared keys from `value`, returning `value` itself when there are none, since decoding rebuilds
+  collections without their metadata."
+  [schema value]
+  (let [stripped ((mr/cached ::strip-undeclared-keys schema #(mc/decoder schema strip-transformer)) value)]
+    (if (= stripped value)
+      value
+      stripped)))
+
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument `value` against `schema` and returns it, in dev
   and test without the keys its map schemas do not declare."
   [error-context schema value]
   (validate error-context schema value ::invalid-input)
   (if (and strip-undeclared-keys? *enforce*)
-    (mu.strip/strip schema value)
+    (strip-undeclared-keys schema value)
     value))
 
 (defn validate-output

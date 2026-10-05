@@ -70,7 +70,9 @@
 
 (defn- schema-or-update-fn
   [schema]
-  [:or schema [:-> schema schema]])
+  [:multi {:dispatch fn?}
+   [true  [:-> schema schema]]
+   [false schema]])
 
 (def ^:private Row
   [:map-of :string ::lib.schema.literal/literal])

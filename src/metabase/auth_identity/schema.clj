@@ -33,9 +33,18 @@
                                        [:hash :string]
                                        [:exp  :int]]]])
 
+(defn- credentials-type [credentials]
+  (cond
+    (some #{:plaintext_password :password_hash :password_salt} (keys credentials))   :password
+    (some #{:token_hash :expires_at :consumed_at :grant_ends_at} (keys credentials)) :token
+    :else                                                                            :totp))
+
 (mr/def ::auth-identity.credentials
   "The `:credentials` column of a AuthIdentity, decoded."
-  [:or ::auth-identity.credentials.password ::auth-identity.credentials.token ::auth-identity.credentials.totp])
+  [:multi {:dispatch credentials-type}
+   [:password ::auth-identity.credentials.password]
+   [:token    ::auth-identity.credentials.token]
+   [:totp     ::auth-identity.credentials.totp]])
 
 (mr/def ::auth-identity.metadata.emailed-secret
   "Metadata of an emailed-secret token."
@@ -53,7 +62,9 @@
 
 (mr/def ::auth-identity.metadata
   "The `:metadata` column of a AuthIdentity, decoded."
-  [:or ::auth-identity.metadata.emailed-secret ::auth-identity.metadata.slack-connect])
+  [:multi {:dispatch #(if (contains? % :signing_secret_version) :slack-connect :emailed-secret)}
+   [:emailed-secret ::auth-identity.metadata.emailed-secret]
+   [:slack-connect  ::auth-identity.metadata.slack-connect]])
 
 (mr/def ::auth-identity
   "A AuthIdentity as selected from the app DB: every column of `:auth_identity`."

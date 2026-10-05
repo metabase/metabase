@@ -61,13 +61,13 @@
 (mr/def ::notification-recipient.details
   "The `:details` column of a NotificationRecipient, decoded."
   [:or
-   [:map {:closed true}]
    [:map {:closed true}
     [:value                    :string]
     [:channel_id {:optional true} [:maybe :string]]]
    [:map {:closed true}
     [:pattern                  :string]
-    [:is_optional {:optional true} :boolean]]])
+    [:is_optional {:optional true} :boolean]]
+   [:map {:closed true}]])
 
 (mr/def ::notification-recipient
   "A NotificationRecipient as selected from the app DB: every column of `:notification_recipient`."

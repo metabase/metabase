@@ -296,7 +296,7 @@
 (defn process-query-for-card-default-run-fn
   "Create the default `:make-run` function for [[process-query-for-card]]."
   [qp export-format]
-  (mu/fn [query :- :map
+  (mu/fn [query :- [:map {:closed false}]
           info :- [:maybe ::lib.schema.info/info]]
     (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (qp (update query :info merge info) rff))))

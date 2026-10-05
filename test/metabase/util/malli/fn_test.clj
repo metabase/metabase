@@ -27,16 +27,16 @@
     '[x :- :int y]
 
     '[{:keys [x]}]
-    '[{:keys [x]} :- [:maybe :map]]
+    '[{:keys [x]} :- [:maybe [:map {:closed false}]]]
 
     '[{:keys [x]} y]
-    '[{:keys [x]} :- [:maybe :map] y]
+    '[{:keys [x]} :- [:maybe [:map {:closed false}]] y]
 
     '[{:keys [x]} :- [:map [:x :int]]]
     '[{:keys [x]} :- [:map [:x :int]]]
 
     '[{:keys [x]} :- [:map [:x :int]] {:keys [y]}]
-    '[{:keys [x]} :- [:map [:x :int]] {:keys [y]} :- [:maybe :map]]
+    '[{:keys [x]} :- [:map [:x :int]] {:keys [y]} :- [:maybe [:map {:closed false}]]]
 
     ;; key-value varargs: add [:* :any]
     '[path opts :- :map & {:keys [token-check?], :or {token-check? true}}]
@@ -160,10 +160,14 @@
   (let [f (mu.fn/fn [m :- [:map [:a :int] [:b {:optional true} [:map [:c :int]]]]] m)]
     (is (= {:a 1, :b {:c 2}}
            (f {:a 1, :x 2, :b {:c 2, :y 3}}))))
-  (testing "maps that are {:closed false} or declare no keys keep their keys"
-    (let [f (mu.fn/fn [m :- [:map {:closed false} [:a :int]] n :- :map] [m n])]
-      (is (= [{:a 1, :x 2} {:y 3}]
-             (f {:a 1, :x 2} {:y 3})))))
+  (testing "a {:closed false} map keeps its keys"
+    (let [f (mu.fn/fn [m :- [:map {:closed false} [:a :int]]] m)]
+      (is (= {:a 1, :x 2}
+             (f {:a 1, :x 2})))))
+  (testing "a destructured argument without a schema keeps its keys"
+    (let [f (mu.fn/fn [{:keys [a], :as m}] m)]
+      (is (= {:a 1, :x 2}
+             (f {:a 1, :x 2})))))
   (testing "a closed map still rejects undeclared keys"
     (let [f (mu.fn/fn [m :- [:map {:closed true} [:a :int]]] m)]
       (is (thrown-with-msg?
@@ -218,7 +222,7 @@
            (mu.fn/fn-schema (mu.fn/parse-fn-tail (rest form))))))
   (let [f (mu.fn/fn my-fn
             [path
-             opts :- :map
+             opts :- [:map {:closed false}]
              & {:keys [token-check?]
                 :or   {token-check? true}}]
             (merge {:path path, :token-check? token-check?} opts))]
@@ -412,7 +416,7 @@
         (is (=? '(let* [&f (clojure.core/fn [{:keys [a]}]
                              {:pre [(pos? a)] :post [(even? %)]}
                              (* a 2))
-                        &input-schema-0-a [:maybe :map]])
+                        &input-schema-0-a [:maybe [:map {:closed false}]]])
                 (take 2 expansion)))))
     (testing "multiple arity"
       (let [expansion (macroexpand '(metabase.util.malli.fn/fn
@@ -429,7 +433,7 @@
                              ([m k]
                               {:pre [(map? m)] :post [(map? %)]}
                               (update m k * 2)))
-                        &input-schema-0-a [:maybe :map]])
+                        &input-schema-0-a [:maybe [:map {:closed false}]]])
                 (take 2 expansion)))))))
 
 (deftest ^:synchronized pre-post-conditions-test-2-include-test-variants
@@ -450,7 +454,7 @@
                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
                                                         (int? %))]}
                                (* a 2))
-                          &input-schema-0-a [:maybe :map]])
+                          &input-schema-0-a [:maybe [:map {:closed false}]]])
                   (take 2 (macroexpand form)))))
         (testing "are excluded in prod"
           (with-redefs [config/is-prod? true]
@@ -458,7 +462,7 @@
                                  {:pre  [(pos? a)],
                                   :post [(even? %)]}
                                  (* a 2))
-                            &input-schema-0-a [:maybe :map]])
+                            &input-schema-0-a [:maybe [:map {:closed false}]]])
                     (take 2 (macroexpand form))))))))
     (testing "multiple arity"
       (let [form '(metabase.util.malli.fn/fn
@@ -492,7 +496,7 @@
                                         (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
                                                          (contains? m k))]}
                                 (update m k * 2)))
-                          &input-schema-0-a [:maybe :map]])
+                          &input-schema-0-a [:maybe [:map {:closed false}]]])
                   (take 2 (macroexpand form)))))
         (testing "are excluded in prod"
           (with-redefs [config/is-prod? true]
@@ -505,5 +509,5 @@
                                   {:pre  [(map? m)]
                                    :post [(map? %)]}
                                   (update m k * 2)))
-                            &input-schema-0-a [:maybe :map]])
+                            &input-schema-0-a [:maybe [:map {:closed false}]]])
                     (take 2 (macroexpand form))))))))))
