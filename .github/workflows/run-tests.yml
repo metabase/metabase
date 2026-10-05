@@ -22,10 +22,8 @@ jobs:
   # job has no opinion and every downstream gate behaves as it always has.
   #
   # Only the lowest unmerged PR of a stack runs CI: it is the one whose base
-  # ref is the stack base. Every PR above it gets `stack-skip`, which skips the
-  # same work as `force-skip` but still enters the test workflows with `skip`,
-  # so their required result checks pass instead of waiting forever. When the
-  # bottom PR merges, GitHub rebases the next one, and that push runs its CI.
+  # ref is the stack base. Every PR above it is force-skipped and gets tested
+  # once it reaches the bottom of the stack.
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -41,7 +39,7 @@ jobs:
             ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
-            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'stack-skip'
+            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
             || 'defer' }}
         run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
 
@@ -148,9 +146,7 @@ jobs:
   uberjar:
     needs: [should-run, files-changed]
     if: |
-      !cancelled() &&
-      needs.should-run.outputs.verdict != 'force-skip' &&
-      needs.should-run.outputs.verdict != 'stack-skip' &&
+      !cancelled() && needs.should-run.outputs.verdict != 'force-skip' &&
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
@@ -238,7 +234,6 @@ jobs:
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.should-run.outputs.verdict == 'stack-skip' ||
       needs.files-changed.result == 'success')
     needs: [should-run, files-changed, static-viz-files-changed]
     uses: ./.github/workflows/backend.yml
@@ -274,7 +269,6 @@ jobs:
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.should-run.outputs.verdict == 'stack-skip' ||
       needs.files-changed.result == 'success')
     needs: [should-run, files-changed]
     uses: ./.github/workflows/app-db.yml
@@ -289,7 +283,6 @@ jobs:
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.should-run.outputs.verdict == 'stack-skip' ||
       needs.files-changed.result == 'success')
     needs: [should-run, files-changed]
     uses: ./.github/workflows/drivers.yml
@@ -305,7 +298,6 @@ jobs:
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.should-run.outputs.verdict == 'stack-skip' ||
       needs.files-changed.result == 'success')
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
@@ -331,7 +323,6 @@ jobs:
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.should-run.outputs.verdict == 'stack-skip' ||
       needs.files-changed.result == 'success')
     uses: ./.github/workflows/loki.yml
     with:
@@ -346,16 +337,14 @@ jobs:
     # Skip e2e tests when the uberjar build failed or was cancelled — the
     # downstream tests can't fetch a missing artifact, and we don't want to
     # mask the uberjar failure with a wave of misleading e2e errors. We still
-    # enter the workflow when uberjar is `skipped` (docs-only PRs, `stack-skip`),
-    # because the inner `skip` input handles that path and reports the required
+    # enter the workflow when uberjar is `skipped` (docs-only PRs), because
+    # the inner `skip` input handles that path and reports the required
     # `e2e-tests-result` check as success. When the uberjar genuinely failed,
     # this whole job is skipped, the inner required checks never report, and
     # branch protection blocks the merge as pending.
     if: |
       always() && !cancelled() &&
-      (needs.should-run.outputs.verdict == 'force-run' ||
-      needs.should-run.outputs.verdict == 'stack-skip' ||
-      needs.files-changed.result == 'success') &&
+      (needs.should-run.outputs.verdict == 'force-run' || needs.files-changed.result == 'success') &&
       needs.uberjar.result != 'failure' &&
       needs.uberjar.result != 'cancelled'
     uses: ./.github/workflows/e2e-tests.yml
