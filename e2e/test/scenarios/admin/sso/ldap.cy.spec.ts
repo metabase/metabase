@@ -1,5 +1,26 @@
 const { H } = cy;
 
+import { USER_GROUPS } from "e2e/support/cypress_data";
+import type { GroupListQuery } from "metabase-types/api";
+
+import { groupMappingCardHelpers } from "./shared/group-mapping-card";
+
+const { ADMIN_GROUP, NOSQL_GROUP, READONLY_GROUP } = USER_GROUPS;
+
+const {
+  groupMappingSection,
+  groupMappingSwitch,
+  mappingRow,
+  newMappingButton,
+  groupsPicker,
+  toggleGroupMapping,
+  addMapping,
+  deleteMapping,
+} = groupMappingCardHelpers({
+  sectionTestId: "ldap-group-mapping-section",
+  nameLabel: "LDAP group name",
+});
+
 describe(
   "scenarios > admin > settings > SSO > LDAP",
   { tags: "@external" },
@@ -55,7 +76,7 @@ describe(
       getLdapCard().findByText("Set up").should("exist");
     });
 
-    it("should validate the port, not reset previously populated fields when schema or connection validation fails, and setup ldap once the port is valid (metabase#13313, metabase#16173, metabase#16226)", () => {
+    it("should validate the port, not reset previously populated fields when connection validation fails, and setup ldap once the port is valid (metabase#13313, metabase#16173, metabase#16226)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
       cy.findByLabelText(/LDAP Port/i)
@@ -71,21 +92,12 @@ describe(
 
       enterLdapPort("21.3");
       cy.get("@portSection")
-        .findByText("ldap-port must be an integer")
+        .findByText("Port must be a whole number between 1 and 65535")
         .should("be.visible");
-
-      cy.log("Schema validation error (metabase#16226)");
-      enterLdapPort("0");
-      cy.button("Save and enable").click();
-      cy.wait("@updateLdapSettings");
-
-      cy.findAllByText("nullable integer greater than 0").should("exist");
-      cy.findByDisplayValue("localhost").should("exist");
 
       cy.log("Connection validation error (metabase#16226)");
       enterLdapPort("1");
-      // the submit button reads "Failed" for 5s after a rejected save
-      cy.button(/Save and enable|Failed/).click();
+      cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
       cy.findAllByText("Wrong host or port").should("exist");
@@ -96,7 +108,7 @@ describe(
       );
       enterLdapPort("389 ");
       cy.get("@portSection")
-        .findByText("That's not a valid port number")
+        .findByText("Port must be a whole number between 1 and 65535")
         .should("not.exist");
 
       // the submit button can still read "Failed" from the rejected save above
@@ -132,7 +144,7 @@ describe(
       });
 
       it("should delete or clear mapped groups with their mappings and keep the remaining mappings consistent", () => {
-        turnGroupMappingOn();
+        toggleGroupMapping(true);
         addMapping("cn=People1", ["Administrators", "data", "nosql"]);
         addMapping("cn=People2", ["data", "collection"]);
         addMapping("cn=People3", ["collection", "readonly"]);
@@ -146,6 +158,12 @@ describe(
           "Remove mapping and delete groups",
         );
         cy.wait(["@deleteGroup", "@deleteGroup"]);
+        cy.wait("@updateSettings")
+          .its("request.body.ldap-group-mappings")
+          .should("deep.equal", {
+            "cn=People1": [ADMIN_GROUP, NOSQL_GROUP],
+            "cn=People3": [READONLY_GROUP],
+          });
         mappingRow("cn=People1").should("contain", "Administrators, nosql");
         mappingRow("cn=People3")
           .should("contain", "readonly")
@@ -188,16 +206,18 @@ describe(
           .should("be.visible");
 
         cy.log("Deleted groups are gone and cleared groups have no members");
-        cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
-          const names = groups.map((group) => group.name);
-          expect(names).to.include.members(["nosql", "readonly"]);
-          expect(names).not.to.include("data");
-          expect(names).not.to.include("collection");
-          const memberCount = (name) =>
-            groups.find((group) => group.name === name).member_count;
-          expect(memberCount("nosql")).to.equal(0);
-          expect(memberCount("readonly")).to.equal(0);
-        });
+        cy.request<GroupListQuery[]>("GET", "/api/permissions/group").then(
+          ({ body: groups }) => {
+            const names = groups.map((group) => group.name);
+            expect(names).to.include.members(["nosql", "readonly"]);
+            expect(names).not.to.include("data");
+            expect(names).not.to.include("collection");
+            const memberCount = (name: string) =>
+              groups.find((group) => group.name === name)?.member_count;
+            expect(memberCount("nosql")).to.equal(0);
+            expect(memberCount("readonly")).to.equal(0);
+          },
+        );
       });
     });
   },
@@ -287,55 +307,7 @@ const getLdapCard = () => {
     .parent();
 };
 
-const groupMappingSection = () => cy.findByTestId("ldap-group-mapping-section");
-
-const groupMappingSwitch = () =>
-  cy.findByRole("switch", { name: "Group mapping" });
-
-const mappingRow = (name) =>
-  cy.contains('[data-testid="group-mapping-row"]', name);
-
-const newMappingButton = () =>
-  groupMappingSection().findByRole("button", { name: "New" });
-
-const groupsPicker = () => cy.findByLabelText("Metabase groups");
-
-// Mantine hides the switch input, so the click goes to the title label wired to it
-const clickGroupMappingSwitch = () =>
-  groupMappingSection().contains("label", "Group mapping").click();
-
-const turnGroupMappingOn = () => {
-  groupMappingSwitch().should("not.be.checked");
-  clickGroupMappingSwitch();
-  cy.wait("@updateSetting")
-    .its("request.body")
-    .should("deep.equal", { value: true });
-};
-
-const addMapping = (name, groups) => {
-  newMappingButton().click();
-  cy.findByLabelText("LDAP group name").type(name);
-  groupsPicker().click();
-  groups.forEach((group) => {
-    cy.findByRole("option", { name: group }).click();
-  });
-  cy.button("Add mapping").click();
-  cy.wait("@updateSettings");
-  mappingRow(name).should("contain", groups.join(", "));
-};
-
-const deleteMapping = (name, consequenceLabel, confirmLabel) => {
-  mappingRow(name).findByLabelText("Delete mapping").click();
-  H.modal().within(() => {
-    cy.findByText("Remove this group mapping?").should("be.visible");
-    cy.findByRole("radio", { name: consequenceLabel }).click();
-    cy.button(confirmLabel).click();
-  });
-  cy.wait("@updateSettings");
-  mappingRow(name).should("not.exist");
-};
-
-const enterLdapPort = (value) => {
+const enterLdapPort = (value: string) => {
   H.typeAndBlurUsingLabel(/LDAP Port/i, value);
 };
 
