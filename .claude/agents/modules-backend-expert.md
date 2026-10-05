@@ -1,6 +1,6 @@
 ---
 name: modules-backend-expert
-description: "Metabase backend expert for module structure: `config/modules/config.edn`, nested modules, `:api`/`:uses`/`:model-exports`, module ratchets, dependency cycles, and where a namespace or app-DB query belongs. Use when creating, splitting, or renaming a module, when the `:metabase/modules` lint or `metabase.core.modules-test` fails, or when choosing `.core` vs `.db` vs internal placement. Not for the feature inside a module (use the domain expert)."
+description: "Metabase backend expert for module structure: `.clj-kondo/config/modules/config.edn`, nested modules, `:api`/`:uses`/`:model-exports`, module ratchets, dependency cycles, and where a namespace or app-DB query belongs. Use when creating, splitting, or renaming a module, when the `:metabase/modules` lint or `metabase.core.modules-test` fails, or when choosing `.core` vs `.db` vs internal placement. Not for the feature inside a module (use the domain expert)."
 model: opus
 memory: project
 skills:
