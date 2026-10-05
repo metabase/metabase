@@ -21,19 +21,30 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(def ^:private Entity
-  "Any dependency-tracked entity `calculate-deps` accepts. A `:dashboard` entity arrives hydrated with `:dashcards`,
-  each of those in turn hydrated with `:series`; every other entity is a plain row of its model."
-  [:or
-   ::queries.schema/card
-   :metabase.warehouse-schema.schema/table
-   :metabase.native-query-snippets.schema/native-query-snippet
-   ::transforms.schema/transform
-   :metabase.dashboards.schema/dashboard
-   ::documents.schema/document
-   :metabase-enterprise.sandbox.schema/sandbox
-   :metabase.segments.schema/segment
-   :metabase.measures.schema/measure])
+(def ^:private dependency-type->entity
+  "The schema of the entity of each dependency type `calculate-deps` accepts. A `:dashboard` entity arrives hydrated
+  with `:dashcards`, each of those in turn hydrated with `:series`; every other entity is a plain row of its model."
+  {:card      ::queries.schema/card
+   :table     :metabase.warehouse-schema.schema/table
+   :snippet   :metabase.native-query-snippets.schema/native-query-snippet
+   :transform ::transforms.schema/transform
+   :dashboard :metabase.dashboards.schema/dashboard
+   :document  ::documents.schema/document
+   :sandbox   :metabase-enterprise.sandbox.schema/sandbox
+   :segment   :metabase.segments.schema/segment
+   :measure   :metabase.measures.schema/measure})
+
+(def ^:private TypedEntity
+  "A dependency-tracked entity together with its dependency type."
+  (into [:multi {:dispatch :entity-type}]
+        (for [[entity-type entity] dependency-type->entity]
+          [entity-type [:map {:closed true}
+                        [:entity-type [:= entity-type]]
+                        [:entity      entity]]])))
+
+(mu/defn- typed-entity :- [:map {:closed false}]
+  [typed-entity :- TypedEntity]
+  (:entity typed-entity))
 
 (defmulti calculate-deps*
   "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
@@ -45,8 +56,8 @@
   "Calculate upstream dependencies for a single entity.
   Returns a map of dependency-type -> set of entity IDs."
   [entity-type :- ::deps.dependency-types/dependency-types
-   entity      :- Entity]
-  (calculate-deps* entity-type entity))
+   entity      :- [:map {:closed false}]]
+  (calculate-deps* entity-type (typed-entity {:entity-type entity-type, :entity entity})))
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 

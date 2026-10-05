@@ -170,7 +170,7 @@
    (boolean
     (when (analytics.settings/metaplow-tracking-enabled)
       (try
-        (enqueue! (build-payload schema data))
+        (enqueue! (build-payload schema (snowplow/event-data {:schema schema, :data data})))
         (catch Throwable e
           (analytics/inc! :metabase-metaplow/errors {:stage :track-event!})
           (log/warnf "Error queueing Metaplow event: %s" (ex-message e))

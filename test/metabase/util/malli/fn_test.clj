@@ -91,8 +91,8 @@
     '(let* [&f (fn* ([x y]))]
        (fn* mufn ([a b]
                   (try
-                    (let* [a (metabase.util.malli.fn/validate-input {} :int a)]
-                      (&f a b))
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (&f a b)
                     (catch java.lang.Exception error
                       (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
@@ -100,8 +100,8 @@
     '(let* [&f (fn* ([x y]))]
        (fn* mufn ([a b]
                   (try
-                    (let* [a (metabase.util.malli.fn/validate-input {} :int a)]
-                      (metabase.util.malli.fn/validate-output {} :int (&f a b)))
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (metabase.util.malli.fn/validate-output {} :int (&f a b))
                     (catch java.lang.Exception error
                       (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
@@ -109,8 +109,8 @@
     '(let* [&f (fn* ([x y] (+ x y)))]
        (fn* mufn ([a b]
                   (try
-                    (let* [a (metabase.util.malli.fn/validate-input {} :int a)]
-                      (metabase.util.malli.fn/validate-output {} :int (&f a b)))
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (metabase.util.malli.fn/validate-output {} :int (&f a b))
                     (catch java.lang.Exception error
                       (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
@@ -119,8 +119,8 @@
                      {:pre [(int? x)]}))]
        (fn* mufn ([a b]
                   (try
-                    (let* [a (metabase.util.malli.fn/validate-input {} :int a)]
-                      (&f a b))
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (&f a b)
                     (catch java.lang.Exception error
                       (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
@@ -140,8 +140,8 @@
               (throw (metabase.util.malli.fn/fixup-stacktrace error)))))
          ([a b]
           (try
-            (let* [a (metabase.util.malli.fn/validate-input {} :int a)]
-              (metabase.util.malli.fn/validate-output {} :int (&f a b)))
+            (metabase.util.malli.fn/validate-input {} :int a)
+            (metabase.util.malli.fn/validate-output {} :int (&f a b))
             (catch java.lang.Exception error
               (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))))
 
@@ -155,30 +155,6 @@
          clojure.lang.ExceptionInfo
          #"Invalid output:.*should be an integer"
          (f nil)))))
-
-(deftest ^:parallel strip-undeclared-keys-test
-  (let [f (mu.fn/fn [m :- [:map [:a :int] [:b {:optional true} [:map [:c :int]]]]] m)]
-    (is (= {:a 1, :b {:c 2}}
-           (f {:a 1, :x 2, :b {:c 2, :y 3}}))))
-  (testing "a {:closed false} map keeps its keys"
-    (let [f (mu.fn/fn [m :- [:map {:closed false} [:a :int]]] m)]
-      (is (= {:a 1, :x 2}
-             (f {:a 1, :x 2})))))
-  (testing "a destructured argument without a schema keeps its keys"
-    (let [f (mu.fn/fn [{:keys [a], :as m}] m)]
-      (is (= {:a 1, :x 2}
-             (f {:a 1, :x 2})))))
-  (testing "a closed map still rejects undeclared keys"
-    (let [f (mu.fn/fn [m :- [:map {:closed true} [:a :int]]] m)]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid input"
-           (f {:a 1, :x 2})))))
-  (testing "nothing is stripped without enforcement"
-    (let [f (mu.fn/fn [m :- [:map [:a :int]]] m)]
-      (mu/disable-enforcement
-        (is (= {:a 1, :x 2}
-               (f {:a 1, :x 2})))))))
 
 (deftest ^:parallel registry-test
   (mr/def ::number :int)
@@ -211,8 +187,8 @@
                 mufn
                 ([a b & {:as kvs}]
                  (try
-                   (clojure.core/let [b (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)]
-                     (&f a b kvs))
+                   (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
+                   (&f a b kvs)
                    (catch java.lang.Exception error
                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
            (macroexpand form)))
@@ -222,7 +198,7 @@
            (mu.fn/fn-schema (mu.fn/parse-fn-tail (rest form))))))
   (let [f (mu.fn/fn my-fn
             [path
-             opts :- [:map {:closed false}]
+             opts :- :map
              & {:keys [token-check?]
                 :or   {token-check? true}}]
             (merge {:path path, :token-check? token-check?} opts))]
@@ -245,12 +221,12 @@
                   mufn
                   ([a b & more]
                    (try
-                     (clojure.core/let [a (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
-                                        b (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
-                                        more (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:maybe &input-schema-0-a] more)]
-                       (clojure.core/->>
-                        (clojure.core/apply &f a b more)
-                        (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :int)))
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:maybe &input-schema-0-a] more)
+                     (clojure.core/->>
+                      (clojure.core/apply &f a b more)
+                      (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :int))
                      (catch java.lang.Exception error
                        (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
              (macroexpand form)))
@@ -284,12 +260,12 @@
                   mufn
                   ([a b & {:as kvs}]
                    (try
-                     (clojure.core/let [a (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
-                                        b (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
-                                        kvs (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} &input-schema-0-a kvs)]
-                       (clojure.core/->>
-                        (&f a b kvs)
-                        (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :map)))
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} &input-schema-0-a kvs)
+                     (clojure.core/->>
+                      (&f a b kvs)
+                      (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :map))
                      (catch java.lang.Exception error
                        (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
              (macroexpand form)))

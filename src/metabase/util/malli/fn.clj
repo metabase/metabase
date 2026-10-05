@@ -234,8 +234,14 @@
                                       (pr-str (me/humanize error))))
            (dissoc details :value :error :humanized)))))))
 
+(defn validate-input
+  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
+  explainer and throws an exception if the check fails."
+  [error-context schema value]
+  (validate error-context schema value ::invalid-input))
+
 (def ^:private strip-undeclared-keys?
-  "Whether [[validate-input]] removes the keys an argument's map schemas do not declare."
+  "Whether [[validate-and-strip-input]] removes the keys an argument's map schemas do not declare."
   (not config/is-prod?))
 
 (def ^:private strip-transformer
@@ -250,11 +256,11 @@
       value
       stripped)))
 
-(defn validate-input
-  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument `value` against `schema` and returns it, in dev
-  and test without the keys its map schemas do not declare."
+(defn validate-and-strip-input
+  "Impl for [[metabase.util.malli.defn/defn]]; validates an input argument `value` against `schema` and returns it, in
+  dev and test without the keys its map schemas do not declare."
   [error-context schema value]
-  (validate error-context schema value ::invalid-input)
+  (validate-input error-context schema value)
   (if (and strip-undeclared-keys? *enforce*)
     (strip-undeclared-keys schema value)
     value))
@@ -290,7 +296,7 @@
                                              :varargs/map        {:as (last arg-names)})])
            arg-names))))
 
-(defn- input-schema->validation-bindings [error-context [_cat & schemas :as input-schema]]
+(defn- input-schema->validation-forms [error-context [_cat & schemas :as input-schema]]
   (let [arg-names (input-schema-arg-names input-schema)
         schemas   (if (= (varargs-type input-schema) :varargs/sequential)
                     (concat (butlast schemas) [[:maybe (last schemas)]])
@@ -304,10 +310,18 @@
                                       'more [:maybe [:* :any]]
                                       'kvs  [:* :any]
                                       :any))
-                  [arg-name `(validate-input ~error-context ~schema ~arg-name)]))
+                  `(validate-input ~error-context ~schema ~arg-name)))
               arg-names
               schemas)
-         (into [] cat))))
+         (filter some?))))
+
+(defn- input-schema->strip-bindings
+  "Like [[input-schema->validation-forms]], but `let` bindings that rebind each argument to its stripped value."
+  [error-context input-schema]
+  (into []
+        (mapcat (core/fn [[_validate-input _error-context schema arg-name]]
+                  [arg-name `(validate-and-strip-input ~error-context ~schema ~arg-name)]))
+        (input-schema->validation-forms error-context input-schema)))
 
 (defn- input-schema->application-form [input-schema]
   (let [arg-names (input-schema-arg-names input-schema)]
@@ -325,6 +339,7 @@
                     (into-array StackTraceElement
                                 (drop-while (comp #{(.getName (class validate))
                                                     (.getName (class validate-input))
+                                                    (.getName (class validate-and-strip-input))
                                                     (.getName (class validate-output))}
                                                   #(.getClassName ^StackTraceElement %))
                                             trace)))]
@@ -332,12 +347,13 @@
         (.setStackTrace cleaned)))
     e))
 
-(defn- instrumented-arity [error-context [_=> input-schema output-schema]]
+(defn- instrumented-arity [error-context strip? [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
                                  input-schema)
         arglist                (input-schema->arglist input-schema)
-        input-bindings         (input-schema->validation-bindings error-context input-schema)
+        input-validation-forms (when-not strip? (input-schema->validation-forms error-context input-schema))
+        input-strip-bindings   (when strip? (input-schema->strip-bindings error-context input-schema))
         result-form            (input-schema->application-form input-schema)
         result-form            (if (and output-schema
                                         (not= output-schema :any))
@@ -346,21 +362,22 @@
                                  result-form)]
     `(~arglist
       (try
-        ~(if (seq input-bindings)
-           `(let ~input-bindings ~result-form)
+        ~@input-validation-forms
+        ~(if (seq input-strip-bindings)
+           `(let ~input-strip-bindings ~result-form)
            result-form)
         (catch Exception ~'error
           (throw (fixup-stacktrace ~'error)))))))
 
-(defn- instrumented-fn-tail [error-context [schema-type :as schema]]
+(defn- instrumented-fn-tail [error-context strip? [schema-type :as schema]]
   (case schema-type
     :=>
-    [(instrumented-arity error-context schema)]
+    [(instrumented-arity error-context strip? schema)]
 
     :function
     (let [[_function & schemas] schema]
       (for [schema schemas]
-        (instrumented-arity error-context schema)))))
+        (instrumented-arity error-context strip? schema)))))
 
 (defn- should-capture-schema? [schema]
   (cond
@@ -423,12 +440,14 @@
   return an unevaluated instrumented [[fn]] form like
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
-                    (fn [x y] (+ 1 2)))"
-  [error-context lang parsed & [fn-name]]
+                    (fn [x y] (+ 1 2)))
+
+  With `strip?`, each argument is passed on through [[validate-and-strip-input]]."
+  [error-context lang parsed & [fn-name strip?]]
   (let [[fn-schema captured] (capture-schemas (fn-schema parsed))]
     `(let [~'&f ~(deparameterized-fn-form lang parsed fn-name)
            ~@(into [] cat captured)]
-       (core/fn ~'mufn ~@(instrumented-fn-tail error-context fn-schema)))))
+       (core/fn ~'mufn ~@(instrumented-fn-tail error-context strip? fn-schema)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 

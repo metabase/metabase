@@ -204,7 +204,7 @@
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
   not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
   Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
-  [query-params :- [:or QueryParams ParsedQueryParams]]
+  [query-params :- [:or ParsedQueryParams QueryParams]]
   (-> query-params
       (update-keys name)
       (update-vals (fn [v] (if (= v "") nil v)))))

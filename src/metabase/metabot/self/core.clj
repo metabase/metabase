@@ -192,7 +192,18 @@
 (def LLMCredentials
   "A connection's credentials, in whichever provider shape it carries. Public so the adapter layer can say
   `:credentials` once rather than restating an open map at each schema that carries one."
-  [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
+  [:multi {:dispatch (fn [credentials]
+                       (let [ks (set (keys credentials))]
+                         (cond
+                           (some #{:access-key-id :secret-access-key :session-token :region :model-id} ks) :bedrock
+                           (some #{:service-account-key :oauth-access-token :project-id :location
+                                   :auth-method :endpoint-id} ks)                                            :google
+                           (some #{:model-family :deployment-name} ks)                                       :azure
+                           :else                                                                             :api-key)))}
+   [:api-key ApiKeyCredentials]
+   [:azure   AzureCredentials]
+   [:bedrock BedrockCredentials]
+   [:google  GoogleCredentials]])
 
 (def ^:private ReasoningConfig
   "A dialect-shaped reasoning/thinking directive, sent verbatim to the provider."

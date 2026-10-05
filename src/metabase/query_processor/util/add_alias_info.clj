@@ -468,7 +468,8 @@
              (update :joins (let [unique (comp (partial *escape-alias-fn* driver/*driver*)
                                                (make-join-alias-unique-name-generator))]
                               (fn [joins]
-                                (mapv (mu/fn [join :- ::lib.schema.join/join]
+                                (mapv (mu/fn [join :- [:map
+                                                       [:alias ::lib.schema.join/alias]]]
                                         (assoc join ::alias (unique (:alias join))))
                                       joins))))
              (as-> $stage (assoc $stage ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins $stage))))))))))

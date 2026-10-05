@@ -165,7 +165,7 @@
    (unreduced
     (walk-query*
      query
-     (mu/fn [query     :- [:map {:closed false}] ; query can be invalid during the walk process, only needs to be valid again at the end.
+     (mu/fn [query     :- :map ; query can be invalid during the walk process, only needs to be valid again at the end.
              path-type :- ::path-type
              path      :- ::path]
        (let [stage-or-join  (get-in query path)
@@ -191,7 +191,7 @@
    (walk
     query
     (mu/fn :- ::walk-stages-fn-result
-      [query         :- [:map {:closed false}] ; don't re-validate query at every step in case we make edits that make it temporarily invalid
+      [query         :- :map ; don't re-validate query at every step in case we make edits that make it temporarily invalid
        path-type     :- ::path-type
        path          :- ::path
        stage-or-join :- ::stage-or-join]

@@ -354,12 +354,17 @@
    :names nil
    :errors #{(lib/syntax-error)}})
 
+(def ^:private MacawAst
+  "A macaw AST, validated against macaw's own schema without decoding through it, since that schema does not declare
+  every key the parser emits."
+  [:fn {:error/message "a macaw AST"} (mr/validator macaw.ast-types/ast)])
+
 (mu/defn field-references :- [:ref ::field-references]
   "Takes a sql query in the macaw ast format and returns the fields referenced by a query.
 
   Specifically, this returns a set of the fields used and a list of the fields returned, along with a boolean that
   denotes when this is given an invalid query of some sort."
   [driver :- :keyword
-   expr :- macaw.ast-types/ast]
+   expr :- MacawAst]
   (-> (field-references-impl driver nil #{} expr)
       (dissoc :names)))

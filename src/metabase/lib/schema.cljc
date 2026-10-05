@@ -643,9 +643,9 @@
 (mr/def ::driver-native-query
   "A driver's native query: a native query document, or a form in the driver's own shape such as a keyword-keyed map decoded from a JSON request."
   [:or
-   ::native-query-document-value
    [:schema {:description "a driver's native query in the driver's own shape, e.g. a keyword-keyed map from a JSON request"}
-    :some]])
+    :some]
+   ::native-query-document-value])
 
 (mr/def ::compiled-native-query
   "A native query compiled from this query by [[metabase.query-processor.compile]], ready to hand to the driver.
