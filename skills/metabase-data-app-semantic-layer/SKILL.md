@@ -68,7 +68,8 @@ If the user asks for any mutation-like flow, such as creating, updating, deletin
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
-from the app dir, not in the app dir). The command below `source`s that file so
+from the app dir, not in the app dir). The key must be one in the Administrators group:
+the typed schema answers only an admin, and any other key gets a `403`. The command below `source`s that file so
 the shell substitutes the values straight into `curl` — you never read, extract,
 or handle the credentials yourself.
 
